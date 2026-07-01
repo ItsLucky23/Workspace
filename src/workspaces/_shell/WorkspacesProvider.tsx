@@ -192,16 +192,34 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
       createWorkspace: (name) => { control('create-workspace', {}, { name }); },
       permRoles: snap.roles,
-      togglePerm: (ri, ci) => { setSnap((s) => ({ ...s, roles: s.roles.map((r, i) => (i === ri && !r.locked ? { ...r, perms: r.perms.map((v, j) => (j === ci ? !v : v)) } : r)) })); },
-      addRole: (name) => { setSnap((s) => ({ ...s, roles: [...s.roles, { name, perms: (s.roles[0]?.perms ?? []).map(() => false) }] })); },
+      togglePerm: (ri, ci) => {
+        const role = snap.roles[ri];
+        if (!role || role.locked === true) return;
+        const perms = role.perms.map((v, j) => (j === ci ? !v : v));
+        setSnap((s) => ({ ...s, roles: s.roles.map((r, i) => (i === ri ? { ...r, perms } : r)) }));
+        control('role-update', { roleKey: role.key }, { perms });
+      },
+      addRole: (name) => {
+        const key = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || `role-${String(snap.roles.length + 1)}`;
+        const perms = (snap.roles[0]?.perms ?? []).map(() => false);
+        setSnap((s) => ({ ...s, roles: [...s.roles, { key, name, perms }] }));
+        control('role-create', {}, { key, label: name, perms });
+      },
       memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.role])),
       setMemberRole: (mid, role) => { control('change-role', { memberId: mid }, { roleKey: role }); },
       envVars: snap.envVars,
       saveEnvVar: (v) => { control('save-env', {}, { key: v.key, value: v.value, secret: v.secret }); },
       removeEnvVar: (id) => { control('remove-env', { envId: id }, {}); },
       integrationTools: snap.integrations,
-      saveIntegrationTool: (t) => { setSnap((s) => ({ ...s, integrations: s.integrations.some((x) => x.id === t.id) ? s.integrations.map((x) => (x.id === t.id ? t : x)) : [...s.integrations, t] })); },
-      removeIntegrationTool: (id) => { setSnap((s) => ({ ...s, integrations: s.integrations.filter((x) => x.id !== id) })); },
+      saveIntegrationTool: (t) => {
+        const known = snap.integrations.some((x) => x.id === t.id);
+        setSnap((s) => ({ ...s, integrations: known ? s.integrations.map((x) => (x.id === t.id ? t : x)) : [...s.integrations, t] }));
+        control('save-integration', known ? { integrationId: t.id } : {}, { name: t.name, type: t.type, fields: t.fields, mcp: t.mcp });
+      },
+      removeIntegrationTool: (id) => {
+        setSnap((s) => ({ ...s, integrations: s.integrations.filter((x) => x.id !== id) }));
+        control('remove-integration', { integrationId: id }, {});
+      },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
       // live tenant data

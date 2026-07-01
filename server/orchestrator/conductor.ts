@@ -44,6 +44,22 @@ function boolArr(o: Record<string, unknown>, k: string): boolean[] {
   const v = o[k];
   return Array.isArray(v) ? v.map((x) => x === true) : [];
 }
+function asRec(v: unknown): Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+//? Coerce the client's integration `fields`/`mcp` payload into the Prisma composite shapes.
+function readIntegrationFields(v: unknown): { id: string; label: string; placeholder?: string; envVarId?: string }[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((raw) => asRec(raw)).map((f) => {
+    const placeholder = str(f, 'placeholder');
+    const envVarId = str(f, 'envVarId');
+    return { id: str(f, 'id') ?? '', label: str(f, 'label') ?? '', ...(placeholder !== undefined ? { placeholder } : {}), ...(envVarId !== undefined ? { envVarId } : {}) };
+  });
+}
+function readMcp(v: unknown): { enabled: boolean; command: string } {
+  const o = asRec(v);
+  return { enabled: o.enabled === true, command: str(o, 'command') ?? '' };
+}
 
 //? Workspace teardown — delete every tenant-scoped row, then the workspace (04b §11d).
 //? Live-container teardown (07 §A) precedes this in Fase 2; there are none in Fase 1.
@@ -289,9 +305,11 @@ async function executeAction(action: ControlAction): Promise<void> {
       const integrationId = str(target, 'integrationId') ?? str(payload, 'id');
       if (!name) return;
       const type = str(payload, 'type') ?? 'custom';
+      const fields = readIntegrationFields(payload.fields);
+      const mcp = readMcp(payload.mcp);
       await (integrationId
-        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type } })
-        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields: [], mcp: { enabled: false, command: '' } } }));
+        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type, fields: { set: fields }, mcp: { set: mcp } } })
+        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields, mcp } }));
       return;
     }
     case 'remove-integration': {

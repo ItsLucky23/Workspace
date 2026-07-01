@@ -101,7 +101,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     return {
       workspaces, activeWorkspaceId, members, budget, docs, skills,
-      roles: roleRows.map((r) => ({ name: r.label, locked: r.key === 'owner', perms: r.perms })),
+      roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       tickets: ticketRows.map((t): Ticket => ({
         id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
