@@ -14,6 +14,7 @@
 import { getPrismaClient, redis, formatKey } from '@luckystack/core';
 
 import { runInTenant } from '../tenant/tenantContext';
+import { encryptSecret } from '../crypto/secretBox';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -319,8 +320,8 @@ async function executeAction(action: ControlAction): Promise<void> {
     }
     case 'gitlab-settings': {
       const gitlabUrl = str(payload, 'baseUrl') ?? str(payload, 'url'); const token = str(payload, 'token');
-      //? Token stored as-is for Fase 1 (should be encrypted — B-07; app-owned encryption is a later slice).
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: token } : {}) } });
+      //? Token is app-encrypted at rest (B-07) — see server/crypto/secretBox.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}) } });
       return;
     }
     case 'gitlab-verify':

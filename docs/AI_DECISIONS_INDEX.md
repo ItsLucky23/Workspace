@@ -9,12 +9,13 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (2)
+## Decisions (3)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | Embed per-stage config as composite types, keep loose ObjectId refs, and omit the framework-provided identity models in the Workspaces V1 Prisma schema | 🟢 accepted | workspaces, data-model, prisma, mongodb, lane-b | — | `docs/decisions/0001-workspaces-v1-schema-shape.md` |
 | 0002 | In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2 | 🟢 accepted | workspaces, control-api, conductor, fase-1, orchestrator | — | `docs/decisions/0002-fase1-inprocess-conductor.md` |
+| 0004 | App-owned AES-256-GCM encryption for per-workspace secrets | 🟢 accepted | security, secrets, workspaces, gitlab | — | `docs/decisions/0004-app-owned-secret-encryption.md` |
 
 ## Summaries
 
@@ -33,6 +34,14 @@
 *In Fase 1 the control-API handler enqueues to an IN-PROCESS serial Conductor executor** (a single-writer promise-chain/mutex inside the one running web-app/dev process), which executes each op via `tenantDb` under `runInTenant(workspaceId)`. The *Redis-backed signal-log + `lease:orchestrator` + the out-of-process drain loop land in Fase 2** when the orchestrator process actually splits out (Lane A, A3). The `ControlRequest`/`ControlAck` contract and the enqueue→Conductor→`ws-ai:*` shape are unchanged — only the *transport* of the enqueue (in-memory queue vs Redis list) and the *host* of the drain (same process vs leased orchestrator) differ between phases.
 
 → `docs/decisions/0002-fase1-inprocess-conductor.md`
+
+### 0004 — App-owned AES-256-GCM encryption for per-workspace secrets
+
+**0004** · accepted · tags: security, secrets, workspaces, gitlab · 2026-07-01
+
+Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretBox.ts` (`encryptSecret`/`decryptSecret`), keyed by a single app key from `WORKSPACES_ENC_KEY` (any string, SHA-256-hashed to 32 bytes; resolved at boot like any env, so it can be a secret-manager pointer). Stored format is self-describing: `v1:<iv>:<tag>:<ct>` (base64). The **Conductor** is the only writer (B-23) — `gitlab-settings` encrypts on write; a Fase-2 GitLab client decrypts on use.
+
+→ `docs/decisions/0004-app-owned-secret-encryption.md`
 
 ## Code governed by decisions
 
