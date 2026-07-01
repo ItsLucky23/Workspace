@@ -4,20 +4,28 @@
 //? (or a dropped ~/.ssh/config containing it) maps to an SSH identity:
 //? 123 → test, 456 → mathijs. Dummy data; desktop-first.
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useSession, useTranslator, useUpdateLanguage } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+import { apiRequest } from 'src/_sockets/apiRequest';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
 import { SESSIONS, SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { SshKeyEntry } from '../_data/types';
+import type { SessionLayout } from '../../../config';
 
 //? An example file path shown in the SSH drop-zone — code, not translatable copy.
 const SSH_CONFIG_PATH = '~/.ssh/config';
+
+//? Selectable UI languages — one code per `src/_locales/*.json` locale file, each
+//? with a `settings.language.<code>` label. Mirrors `src/settings/page.tsx`.
+const LANGUAGES = ['nl', 'en', 'de', 'fr'] as const;
+type Language = typeof LANGUAGES[number];
 
 function Card({ title, desc, right, children }: { title: string; desc?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -101,8 +109,26 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
 export default function AccountSettings() {
   const translate = useTranslator();
   const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById } = useWorkspaces();
+  const { session } = useSession<SessionLayout>();
+  const setLanguage = useUpdateLanguage();
   const [push, setPush] = useState(false);
+  const [language, setSelectedLanguage] = useState<Language>(session?.language ?? 'en');
   const sshUser = sshUserId ? membersById[sshUserId] : null;
+
+  //? Theme + language autosave: apply the change instantly (DOM class / active
+  //? locale) and persist it to the account via the framework's `settings/updateUser`
+  //? route — no save button. `TemplateProvider` + the language source keep both in
+  //? sync from the session on reload, so a persisted choice survives.
+  const persist = async (data: { theme?: SessionLayout['theme']; language?: Language }) => {
+    const response = await apiRequest({ name: 'settings/updateUser', version: 'v1', data });
+    if (response.status !== 'success') notify.error({ key: 'settings.failedUpdateUser' });
+  };
+
+  const languageItems: DropdownItem[] = useMemo(
+    () => LANGUAGES.map((code) => ({ id: code, value: code, item: translate({ key: `settings.language.${code}` }) })),
+    [translate],
+  );
+  const selectedLanguage = languageItems.find((it) => it.id === language);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -123,11 +149,11 @@ export default function AccountSettings() {
             <div className="mt-4 flex flex-col gap-1">
               <Row>
                 <span className="text-sm text-common">{translate({ key: 'workspaces.account.theme' })}</span>
-                <Segmented value={theme} onChange={setTheme} options={[{ id: 'light', label: <><Icon name="sun" /> {translate({ key: 'workspaces.account.light' })}</> }, { id: 'dark', label: <><Icon name="moon" /> {translate({ key: 'workspaces.account.dark' })}</> }]} />
+                <Segmented value={theme} onChange={(next) => { setTheme(next); void persist({ theme: next }); }} options={[{ id: 'light', label: <><Icon name="sun" /> {translate({ key: 'workspaces.account.light' })}</> }, { id: 'dark', label: <><Icon name="moon" /> {translate({ key: 'workspaces.account.dark' })}</> }]} />
               </Row>
               <Row>
                 <span className="text-sm text-common">{translate({ key: 'workspaces.account.language' })}</span>
-                <span className="text-sm text-title">{translate({ key: 'workspaces.account.english' })}</span>
+                <Dropdown size="sm" items={languageItems} value={selectedLanguage} onChange={(it) => { const code = LANGUAGES.find((l) => l === it.value); if (!code) return; setSelectedLanguage(code); setLanguage(code); void persist({ language: code }); }} />
               </Row>
             </div>
           </Card>

@@ -156,3 +156,42 @@ html, body {
     height: calc(var(--vh, 1vh) * 100);
   }
 }
+
+/*
+ * SCROLLBARS
+ *
+ * App-wide themed scrollbars for every scroll area. Colors pull from the same
+ * tokens as the rest of the UI, so they switch automatically with the `.dark`
+ * class (no per-theme rules needed). Thin resting thumb in `disabled`, darkening
+ * to `muted` on hover, on a transparent track. The `.ws-no-scrollbar` utility
+ * (higher specificity) still fully hides scrollbars where a scroll area must
+ * stay chrome-free.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-disabled) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-disabled);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

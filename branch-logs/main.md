@@ -152,3 +152,17 @@
 **Geflagd (niet gefixt — buiten scope / bewust Fase-1):** RBAC/integration-edits in de Provider zijn optimistic-local (nooit gepersisteerd → wiped op refetch); env-value-input vuurt control-write+refetch per toetsaanslag (blaast rateLimit 30); Conductor bevestigt write vóór de serial-chain draait (falende write alleen ge-logd); `ControlAck`-error-shape wijkt af van het bevroren contract; terminal-PTY-bridge = host-RCE voor elke ingelogde user zodra enabled (non-prod gated); `tenantDb` blanket-`where.workspaceId` is latent-onveilig voor `findUnique`/`update` op compound-key (Conductor gebruikt plain prisma, dus niet actief). Test-dekking: RBAC-*enforcement* (deny-pad) en 38/41 control-ops zijn nog niet write-getest.
 
 **Verificatie:** `tsc --noEmit` **0 errors** (na `generateArtifacts`), `eslint` op aangeraakte files schoon, `ai:lint` geen violations, 4 locales valide JSON, **`npm run test:ws` 7/7 groen** (tenant-test nu 22 asserts). Niet gepusht; changes staan op branch `workspaces-audit-fixes` klaar om te mergen naar `main`.
+
+## 2026-07-01 — UI-tweaks (2e navbar weg + settings theme/language autosave) in worktree `workspaces-audit-fixes`
+
+**User prompt:** kleine UI-tweaks: de 2e top-navbar (Board + WorkspaceAI-toggle) weghalen (beide knoppen staan al elders); settings-page zonder save-button (autosave, werkt nu niet voor theme); language is geen dropdown meer en niet aanpasbaar.
+
+**Gedaan:**
+1. **2e navbar verwijderd.** `WorkspacesShell.tsx`: `<TabBar>` (Board-tab + WorkspaceAI-toggle) niet meer gerenderd + import verwijderd. Board + Workspace-AI blijven bereikbaar via de NavRail; terug-navigatie via de contextuele back-row + ⌘K-palette. NB: de open-ticket-tabs woonden óók in die balk — die zijn nu weg (functie `TabBar` blijft ongebruikt geëxporteerd in `Shell.tsx`).
+2. **Theme autosave.** `AccountSettings.tsx`: `Segmented` onChange past theme direct toe én persisteert via de framework-route `settings/updateUser` (geen save-button). `TemplateProvider` synct `session.theme` bij reload → keuze blijft plakken.
+3. **Language weer een werkende dropdown.** Statische span vervangen door `Dropdown` (codes nl/en/de/fr via bestaande `settings.language.*` keys), onChange = `useUpdateLanguage()` (direct) + `settings/updateUser` (persist). De language-source leest bij reload uit de sessie → blijft plakken.
+4. **Globale, theme-passende scrollbars** (vervolg-prompt: "overal waar potentieel een scrollbar kan zijn ... passend voor white en dark"). `src/index.css`: app-brede WebKit (`::-webkit-scrollbar*`) + Firefox (`scrollbar-width`/`scrollbar-color`) styling op basis van de bestaande tokens (`--color-disabled` rust → `--color-muted` hover, transparante track) → switcht automatisch mee via `.dark`, geen per-theme regels. `.ws-no-scrollbar` (`workspaces.css`, hogere specificity) blijft scrollbars volledig verbergen waar nodig.
+
+**Files:** `src/workspaces/_shell/WorkspacesShell.tsx`, `src/workspaces/_screens/AccountSettings.tsx`, `src/index.css`.
+
+**Verificatie:** `tsc --noEmit` 0 errors, `npm run build` groen, `ai:lint` geen violations. Resterende eslint-meldingen (SSH-form guard-false-positives regels 69/76/184 + bestaande `noop`) zijn pre-existing (lesson 0001), niet van deze change. Niet gecommit — batch met volgende tweaks.

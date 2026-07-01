@@ -2,4 +2,4 @@
 
 | Branch | Log | Last updated | Entries | Status |
 |---|---|---|---|---|
-| `main` | [main.md](./main.md) | 2026-07-01 | 8 | Fase 1 COMPLEET + getest + branch-audit: 3 echte bugs gefixt (clientRequestId write-suppressie, activity-feed identity/ordering, Board empty-stages crash) + no-`where` mutatie-isolatie regressie-test. Fixes op worktree-branch `workspaces-audit-fixes` |
+| `main` | [main.md](./main.md) | 2026-07-01 | 9 | Fase 1 COMPLEET + getest + branch-audit (3 bugs gefixt + regressie-test) + UI-tweaks (2e navbar weg, settings theme/language autosave). Op worktree-branch `workspaces-audit-fixes` |
