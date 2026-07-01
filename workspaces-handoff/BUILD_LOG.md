@@ -2,9 +2,9 @@
 
 > **Lees dit eerst bij verdergaan.** Dit is de levende voortgangsstatus van het bouwprogramma ([`BUILD_PROGRAM.md`](./BUILD_PROGRAM.md)). De uitvoerende AI **leest** de "Volgende actie", doet die stap volgens het uitvoeringsmodel, en **werkt daarna dit bestand bij** (vink af, verzet de pointer, append een logregel).
 
-**Laatst bijgewerkt:** 2026-07-01 (0.2 gebouwd + geverifieerd; volledig V1 Prisma-schema staat, validate+generate+Opus-verify groen)
-**Huidige fase:** 0 — Bootstrap (0.1 + 0.2 done+verified; Fase 0-verificatie (Opus) is next → dan Fase 1)
-**Volgende actie:** **Fase 0-verificatie (Opus)** afronden (0.1 + 0.2 samen als geheel), daarna **Fase 1 stap 1.1 (Auth/login)**. Twee losstaande, besliste taken die op step-1-schermen leunen: (a) de **`types.ts §15`-backfill** (StageId→StageKind-reconciliatie in `Board.tsx`/`Pipeline.tsx`/`WorkspacesContext.tsx`, + de doc-only types) en (b) de **volledige i18n-migratie** van de prototype-schermen (alle strings → `useTranslator`, GEEN scope-disable/uitstel-hack) + de resterende ~67 niet-i18n lint-errors. Developer-actie later: `prisma db push` naar de echte Mongo (via SSH-tunnel) bij het wiren van de sync-backend. Rollback-basis: commits t/m `7ec31fa` + de 0.2-schema-commit (nog niet gepusht — user pusht via eigen SSH).
+**Laatst bijgewerkt:** 2026-07-01 (Fase-1 foundation gelegd: types-backfill + tenant-laag + control-API-contract + Conductor-referentie-slice; alles compile/lint/build-clean, E2E nog ongetest)
+**Huidige fase:** 1 — Basisplatform (foundation gelegd; slices + E2E-test volgen mét DB live)
+**Volgende actie (mét server+DB live, zodat elk stuk compileert/registreert/test in één keer):** de **resterende ~16 control-ops** in de Conductor + `control_v1`, **bootstrap-on-first-login** (eerste user → eerste workspace), de **`_sync` snapshot/stream-backend** (seq/merge-on-seq, Lane B B5/B8), en de **`useWorkspaceData()`-data-seam-rewire** van de 15 schermen (Lane C C1). Losse open: echte nl/de/fr-vertaling (nu Engelse mirrors); `noUncheckedIndexedAccess`-strictness-pass (lesson 0001). Developer-actie: `prisma db push` naar de echte Mongo (SSH-tunnel) vóór de eerste E2E-test. Rollback-basis: commits t/m `a8a015e` (nog niet gepusht — user pusht via eigen SSH).
 
 > Statuswaarden per stap: `todo` → `done` (gebouwd) → `verified` (Opus-verificatie groen). Een fase is af als alle stappen `verified` zijn.
 
@@ -18,7 +18,8 @@
 - [ ] **Fase 0 verificatie (Opus)** — `todo`
 
 ### Fase 1 — Basisplatform (geen AI)
-- [ ] 1.1 Auth/login — `todo`
+- [~] **1.0 Foundation** — `done (compile-clean, E2E-untest)`: `types.ts §15`-backfill (canonical shapes mirroren het schema); tenant-laag (`server/tenant/` — `runInTenant`/`tenantDb $extends`/per-workspace Redis-formatter, boot-wired); frozen **control-API-contract** (`_functions/controlApi.ts`); **Conductor-referentie-slice** (in-process serial writer, ADR 0002) + `control_v1`-route + `bootstrapWorkspace()`. OAuth-login werkt al (user-getest).
+- [ ] 1.1 Auth/login — `todo` (OAuth ✓; SSH-key terminal-gate + account-UI-wiring resteert)
 - [ ] 1.2 Workspaces — `todo`
 - [ ] 1.3 Invites via email — `todo`
 - [ ] 1.4 RBAC volledig — `todo`

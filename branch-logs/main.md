@@ -72,3 +72,24 @@
 **Files touched:** `src/workspaces/**` (types/seed/screens/shell/components), `src/_locales/{en,nl,de,fr}.json`, `eslint.official.config.js`, `tsconfig.json`, `docs/lessons/0001-*.md` (+ index).
 
 **Developer-actie / open:** echte nl/de/fr-vertaling (nu Engelse mirrors); `noUncheckedIndexedAccess`-strictness-pass (aanbevolen); Fase-1 wiring lost de stub-handlers op.
+
+## 2026-07-01 19:30 — Fase 1 foundation: tenant-laag + control-API-contract + Conductor-referentie-slice
+
+**User prompt:** (onderweg) "zo veel mogelijk kwa code schrijven, straks alles testen; welke fases kunnen nu? OAuth werkt al." → maximaal Fase 1 (Lane B + C + A1/A3, niet-spike-gated) bouwen; E2E-test door user later.
+
+**Aanpak-beslissing:** alleen **Fase 1** is nu zinvol autonoom bouwbaar (Fase 2/3 = containers + de P0.5-billing-spike op de host → samen met user). Foundation-first, compile/lint/build-geverifieerd; de write-path-executie met veel framework-integratiedetails bewust als één coherente **referentie-slice** i.p.v. 20 ongeteste routes blind (kwaliteit boven volume).
+
+**What I did (3 commits):**
+1. **Foundation** (`6ac3593`): `types.ts §15`-backfill (via agent — canonical `WorkspaceSuggestion`/`TicketEvent`/`AgentSession`/`SpendRecord`/`WorkspaceRole`/`CarryOverEnvelope`/`Handoff`/`Question(Set)`/`WorkspaceSignal`/`WorkspaceTrigger` + field-sweep; additief/kept-both → 0 nieuwe tsc-errors). **Tenant-laag** (`server/tenant/`): `tenantContext` (`runInTenant`/`currentWorkspaceId` via AsyncLocalStorage, loud-fail), `tenantDb` (`$extends` where-injection over 25 `TENANT_MODELS`), `tenantRedis` (per-workspace key-prefix, delegeert framework/unscoped naar default) — boot-wired.
+2. **Control-API-contract** (`e93e70f`): `_functions/controlApi.ts` — `ControlOp`-catalogus + `ControlRequest`/`ControlAck` + positionele `RBAC_CAPABILITIES` + `OP_CAPABILITY` + `CONFIRM_REQUIRED`. Frozen A1, unblokkeert Lane C/D.
+3. **Conductor-referentie-slice** (`a8a015e`): `server/orchestrator/conductor.ts` — in-process serial writer (ADR `0002`), append-only `WorkspaceSignal` (monotone Redis-INCR seq), reference-ops change-role/save-env/remove-env/rename-workspace + `bootstrapWorkspace()` (workspace + 3 built-in rollen + Owner). `control_v1`-route (RBAC via `OP_CAPABILITY` + `WorkspaceRole.perms` → enqueue, nooit inline schrijven).
+
+**Verificatie:** alle nieuwe files **lint-clean + server-tsc clean (0 nieuwe errors)** + `vite build` groen + `generateArtifacts` registreert `workspaces/control/v1`. De 14 resterende server-tsc-errors zitten in pre-existing framework-scaffold (`config.ts`/`SessionProvider`/`socketInitializer`), niet in mijn werk.
+
+**Bewuste keuzes / leaves:**
+- **In-process Conductor voor Fase 1** (ADR 0002): Redis-signal-log + `lease:orchestrator` → Fase 2 (er is nog geen orchestrator-proces). Single-writer-invariant houdt (1 proces).
+- Tenant-primitives van `functions/` → `server/tenant/` verplaatst: de `$extends`-client-type brak de function-injection-type-generator; server-code importeert 'm direct.
+- Conductor schrijft via plain `prisma` + expliciete `workspaceId` (type-correct; Prisma's input-types eisen 'm); `tenantDb` is de read-seam voor Lane B's `_sync`-handlers.
+- **E2E ONGETEST** — bewust: de resterende write-path (16 ops + bootstrap-on-login + `_sync` seq/merge-backend + `useWorkspaceData()`-rewire van 15 schermen) bouwen we mét server+DB live zodat elk stuk in één keer compileert/registreert/test. `prisma db push` (SSH-tunnel) is de developer-actie vóór de eerste test.
+
+**Files touched:** `src/workspaces/_data/types.ts`, `server/tenant/{tenantContext,tenantDb,tenantRedis}.ts` (nieuw), `src/workspaces/_functions/controlApi.ts` (nieuw), `server/orchestrator/conductor.ts` (nieuw), `src/workspaces/_api/control_v1.ts` (nieuw), `luckystack/server/index.ts`, `docs/decisions/0002-*.md` (nieuw).
