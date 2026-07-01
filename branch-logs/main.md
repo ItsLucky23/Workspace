@@ -367,3 +367,17 @@
 **Verificatie:** front-tsc 0 (bewijst dat ELKE op correct bedraad is met matchende payload), server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 6/6 files. tsc is het vangnet: een niet-bedrade of mismatchende op zou falen.
 
 **Nog te doen:** Fase-2 cleanup (conductor `executeAction` per-op typen; ongebruikte `OP_CAPABILITY` opruimen), lesson-0002 (default-pipeline naar server/ vóór prod), realtime-`_sync`-laag (browser-gated), Fase-3 features.
+
+## 2026-07-02 01:30 — /loop Fase-3: Activity-feed producer (event-recorder) + audit-verificatie (stale) + backlog bulk unassign/backlog
+
+**Context:** de `FUNCTIONALITY_AUDIT_2026-07-02.md` bleek grotendeels STALE — 4 parallelle verificatie-agents bevestigden dat Board/WorkspaceSettings/Sources/Backlog al bedraad zijn (de audit-fixes landden in 0dace22/41a8935 vóór deze /loop; mijn Fase-0 behield alle wiring, door tsc bevestigd).
+
+**Gedaan (echte gaps):**
+1. **Activity-feed producer (event-recorder — expliciete user-wens).** Alleen `seedWorkspace` schreef `TicketEvent`; geen enkele control-op deed dat → Activity-feed was leeg voor echte workspaces. Nu schrijft de Conductor per ticket-op een append-only `TicketEvent`: nieuwe `recordTicketEvent(workspaceId, ticketId, type, actor, text)` (best-effort via `tryCatch`, seq monotone per ticket via read-max+1 — race-vrij want single serial writer) + `ticketIdsForKeys` (DEV-####→ObjectId). Ingehaakt op quick-add ('created'), archive/bulk-archive ('archived'), bulk-move ('moved to X'), bulk-status ('status set to X'), bulk-assign ('reassigned'/'unassigned'), bulk-sprint. `actor` = caller-userId (feed resolvet naar member). NB: `time:''`-audit-claim was óók stale (snapshot doet al `formatTime`).
+2. **Backlog bulk-bar** (agent): "Unassign" (bulkAssign '') + "Backlog"/geen-sprint (bulkSprint '') opties toegevoegd — er was geen manier om assignee/sprint te wissen (de 'backlog'-sprint is virtueel, niet in de snapshot).
+
+**Files:** `server/orchestrator/conductor.ts`, `src/workspaces/backlog/page.tsx`, `tests/integration/activityFeed.test.mts` (nieuw).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 7/7 files (activityFeed 5/5: quick-add + bulk-move appenden een event, seq 1→2, actor = caller).
+
+**Optionele polish (niet gedaan):** dedicated i18n-keys `workspaces.backlog.unassign`/`noSprint` (agent hergebruikte `board.unassigned`/`backlog.title`). Nog open: Pipeline-config-persist verifiëren (audit-claim mogelijk ook stale — saveStageConfig-route + stageConfigs-snapshot bestaan), lesson-0002 (default-pipeline naar server/), realtime-`_sync` (browser-gated).

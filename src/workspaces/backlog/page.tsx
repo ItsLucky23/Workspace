@@ -97,8 +97,14 @@ export default function Backlog() {
   ];
   const moveItems: PickerItem[] = stages.map((s) => ({ label: s.name, onClick: () => { bulkMove(selectedIds, s.id); finishBulk(); } }));
   const statusItems: PickerItem[] = statusOptions.map((s) => ({ label: s.label, onClick: () => { bulkStatus(selectedIds, s.value); finishBulk(); } }));
-  const assignItems: PickerItem[] = members.map((m) => ({ label: m.name, onClick: () => { bulkAssign(selectedIds, m.id); finishBulk(); } }));
-  const sprintItems: PickerItem[] = sprints.map((s) => ({ label: s.name, onClick: () => { bulkSprint(selectedIds, s.id); finishBulk(); } }));
+  const assignItems: PickerItem[] = [
+    { label: translate({ key: 'workspaces.board.unassigned' }), onClick: () => { bulkAssign(selectedIds, ''); finishBulk(); } },
+    ...members.map((m) => ({ label: m.name, onClick: () => { bulkAssign(selectedIds, m.id); finishBulk(); } })),
+  ];
+  const sprintItems: PickerItem[] = [
+    { label: translate({ key: 'workspaces.backlog.title' }), onClick: () => { bulkSprint(selectedIds, ''); finishBulk(); } },
+    ...sprints.filter((s) => s.id !== 'backlog').map((s) => ({ label: s.name, onClick: () => { bulkSprint(selectedIds, s.id); finishBulk(); } })),
+  ];
 
   return (
     <div className="relative flex flex-col h-full min-h-0">

@@ -11,7 +11,7 @@
 //? for the Redis signal-log and moves the drain into the leased orchestrator process
 //? — the ControlRequest/ControlAck contract and this op-dispatch are unchanged.
 
-import { getPrismaClient, redis, formatKey } from '@luckystack/core';
+import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
@@ -193,6 +193,28 @@ async function nextSignalSeq(workspaceId: string): Promise<number> {
   });
 }
 
+//? Activity-feed producer (04b §6). Appends a `TicketEvent` to the append-only,
+//? per-ticket fact stream that the Activity feed + ticket timeline read. Runs INSIDE
+//? the serial chain (single writer), so `seq` is race-free via read-max-then-+1 (no
+//? Redis needed). BEST-EFFORT: a failed feed append must never fail the authoritative
+//? write that already succeeded, so it's wrapped in tryCatch and only logged.
+//? `actor` is the caller's userId (the feed resolves it to a member); `type` is a
+//? TicketEvent type ('status-change' | 'comment' | …); `text` is the rendered one-liner.
+async function recordTicketEvent(workspaceId: string, ticketId: string, type: string, actor: string, text: string): Promise<void> {
+  const [error] = await tryCatch(async () => {
+    const last = await prisma.ticketEvent.findFirst({ where: { workspaceId, ticketId }, orderBy: { seq: 'desc' }, select: { seq: true } });
+    await prisma.ticketEvent.create({ data: { workspaceId, ticketId, seq: (last?.seq ?? 0) + 1, type, actor, text } });
+  });
+  if (error) console.error('[conductor] recordTicketEvent failed:', error);
+}
+
+//? Resolve DEV-#### keys → ticket ObjectIds (TicketEvent.ticketId is an ObjectId,
+//? but the board/bulk ops address tickets by their human `key`).
+async function ticketIdsForKeys(workspaceId: string, keys: string[]): Promise<{ id: string; key: string }[]> {
+  if (keys.length === 0) return [];
+  return prisma.ticket.findMany({ where: { workspaceId, key: { in: keys } }, select: { id: true, key: true } });
+}
+
 //? The single-writer serial chain — each action awaits the previous one, so there
 //? is never a concurrent authoritative write in this process.
 let chain: Promise<unknown> = Promise.resolve();
@@ -287,7 +309,7 @@ async function executeAction(action: ControlAction): Promise<void> {
       if (!project) return;
       const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
       const number = (last?.number ?? 1239) + 1;
-      await prisma.ticket.create({
+      const created = await prisma.ticket.create({
         data: {
           workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
           //? A user-created ticket ALWAYS enters the pipeline at `unrefined` — the
@@ -297,37 +319,56 @@ async function executeAction(action: ControlAction): Promise<void> {
           status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId, sprintId: str(payload, 'sprintId') ?? null,
         },
       });
+      await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket');
       return;
     }
     case 'archive': {
       const key = str(target, 'ticketId');
       if (!key) return;
       await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { archived: true } });
+      const [archived] = await ticketIdsForKeys(action.workspaceId, [key]);
+      if (archived) await recordTicketEvent(action.workspaceId, archived.id, 'status-change', userId, 'archived the ticket');
       return;
     }
     case 'bulk-archive': {
       const keys = strArr(target, 'ticketIds');
-      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { archived: true } });
+      if (keys.length > 0) {
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { archived: true } });
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'archived the ticket');
+      }
       return;
     }
     case 'bulk-move': {
       const keys = strArr(target, 'ticketIds'); const stageId = str(payload, 'stageId');
-      if (keys.length > 0 && stageId) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
+      if (keys.length > 0 && stageId) {
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `moved to ${stageId}`);
+      }
       return;
     }
     case 'bulk-status': {
       const keys = strArr(target, 'ticketIds'); const status = str(payload, 'status');
-      if (keys.length > 0 && status) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { status } });
+      if (keys.length > 0 && status) {
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { status } });
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `status set to ${status}`);
+      }
       return;
     }
     case 'bulk-assign': {
       const keys = strArr(target, 'ticketIds');
-      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { assigneeId: str(payload, 'assigneeId') ?? null } });
+      if (keys.length > 0) {
+        const assigneeId = str(payload, 'assigneeId') ?? null;
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { assigneeId } });
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, assigneeId ? 'reassigned the ticket' : 'unassigned the ticket');
+      }
       return;
     }
     case 'bulk-sprint': {
       const keys = strArr(target, 'ticketIds');
-      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { sprintId: str(payload, 'sprintId') ?? null } });
+      if (keys.length > 0) {
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { sprintId: str(payload, 'sprintId') ?? null } });
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'moved to another sprint');
+      }
       return;
     }
     // ---- sprints ----
