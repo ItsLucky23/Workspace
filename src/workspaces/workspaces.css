@@ -1,0 +1,10 @@
+/*
+ * Workspaces — small layout helpers scoped to the workspaces app. All motion
+ * now lives in the `motion` (Framer Motion) layer (`_components/motion.tsx`);
+ * reduced-motion is handled globally by <MotionConfig reducedMotion="user">.
+ * Colours come from the global theme tokens (src/index.css).
+ */
+
+/* Hide scrollbars on the horizontal board/tab scrollers while keeping scroll. */
+.ws-no-scrollbar { scrollbar-width: none; }
+.ws-no-scrollbar::-webkit-scrollbar { display: none; }

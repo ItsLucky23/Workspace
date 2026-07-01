@@ -377,4 +377,22 @@ When verifying the frontend in a browser, follow the cheapest-first ladder + sug
   Add your team's conventions, custom slash-command notes, or per-project policy overrides here.
 -->
 
-(none yet — add project-specific rules below this line)
+### Workspaces — product build contract (load-bearing, non-negotiable)
+
+> This repo is being built into **Workspaces**: a self-hosted, AI-driven dev-orchestration app on top of `@luckystack/*`. A user writes simple tickets; a configurable **pipeline of stages** (refine → plan → implement → test → review) drives each ticket; the human is a **man-in-the-middle who only approves and answers questions** (phone-first). The deep design-corpus lives in **`src/workspaces/_docs/`** (its authoritative front doors are grafted here because the original `workspaces-handoff/` scaffold folder is temporary and will be deleted once the build is done). The gefaseerde bouwprogramma + levend voortgangslog: `workspaces-handoff/BUILD_PROGRAM.md` + `BUILD_LOG.md` (move these into the repo before deleting the handoff).
+
+**Read order before touching Workspaces code (every session):** `src/workspaces/_docs/BUILD_HANDOFF.md` → `src/workspaces/_docs/V1_SCOPE.md` (ground truth for *what ships* — wins on conflict, §5) → `src/workspaces/_docs/BUILD_ORDER.md`. Then the owning build-doc for your piece (`07b` containers, `CONTROL_API` writes, `04b` persistence, `GOLDEN_PLAN_STAGE`, `P0_CLI_SPIKE`, `CLIENT_AND_PUSH`, `MIGRATION`). Codes resolve via `REFERENCE_CODES.md`.
+
+**The nine standing invariants — a change violating one is wrong even if it "works":**
+
+1. **B-23 — single-writer.** AI proposes → user accepts (Assistant: instruction = consent) → the **Conductor executes**. The Conductor is the **only writer** of board/git/status; LLMs never write authoritative state directly. Destructive/irreversible actions require an explicit confirm.
+2. **No new verbs — the FROZEN 7+6 structured-channel surface** (all `read|propose`, none write). Never add a verb/entity to close a feature gap — re-express via existing verbs + `WorkspaceTrigger` + `run-command` + MCP.
+3. **Every user-initiated write is a `[control-API]` op:** `_api` route → `preApiExecute` RBAC → enqueue → Conductor. No direct writers of authoritative state; the client merges by `seq`.
+4. **`runInTenant` on every orchestrator-side path** — every sync-handler AND every background worker runs tenant-scoped row-isolation (loud-fail by design). The Assistant is scoped to a workspace-action whitelist — never host/system-level, never out-of-workspace.
+5. **Single by design** — one forge (**GitLab** only), one provider (**Claude PTY** only), one host, **single-instance orchestrator** under `lease:orchestrator`. Every multi-* surface (GitHub, built-in git-server, built-in MR/merge/CI, multi-provider, preview-deploy, analytics, voice) is OUT of V1 (designed-but-deferred — `V1_SCOPE.md §4`). Never build a deferred surface to "complete" a feature.
+6. **The PTY-billing invariant** — every Claude session is interactive `claude` in a node-pty PTY; **never `claude -p`, never the Agent SDK** (bills a separate metered pool, not the Max subscription). Structured output via `type:http` hooks + the structured channel only.
+7. **The P0.5 CLI billing spike GATES the build** (`P0_CLI_SPIKE.md`) — it is the first task; container/PTY work waits until it is GREEN. A billing/PTY RED **escalates to the user — it never routes around the gate to headless**.
+8. **V1_SCOPE wins on conflict** — precedence: locked V1 scope → decided `REVIEW_AND_OPEN_QUESTIONS` answers → build-docs' mechanics → `00_SPEC_RECONCILIATION.md` for any `_docs`-vs-`handoff` conflict. A real conflict with no ERRATA row is a **flag to the user**, never a silent pick.
+9. **The 4 non-overlapping build lanes** — **A** Engine & Orchestrator (server/PTY/containers/control-API write-handlers/GitLab/the P0.5 spike) · **B** Data, tenancy & sync-backend (Prisma schema incl. `04b §6–§11`, `runInTenant`, seq/merge-on-seq event-log, migration/seed — publishes the schema/types FIRST) · **C** Frontend & realtime-client (board/tickets/pipeline UI, Assistant chat, PWA+push, notifications, auth UI) · **D** Code-editor & changes/config (openvscode-server, diff/edit, stage-lock/pause/resume, per-stage config, the `GOLDEN_PLAN_STAGE` renderer). Own only your lane's directories; **propose** cross-lane changes, never edit another lane's files; build against the frozen contracts (B's types, A's control-API shapes).
+
+> All the framework rules above (file-based routing, function-injection, strict typing/no-casts, `tryCatch`, i18n, Tailwind tokens, surgical changes, lint+build, branch-log, decision-memory/lessons) still apply on top of these.

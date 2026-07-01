@@ -3,7 +3,9 @@ dist
 .eslintcache
 
 # Local env: .env holds only non-secret config and IS committed.
-# .env.local holds secrets (DATABASE_URL, OAuth keys, etc.) and is NOT committed.
+# .env.local holds secret-manager POINTERS (e.g. DATABASE_URL_V1), not literal
+# secrets — the real bearer token is `.secret-manager-token` (gitignored). So
+# .env.local IS committed by design.
 # .env.local
 
 # @luckystack/secret-manager shared bearer token (single-line file, never commit).

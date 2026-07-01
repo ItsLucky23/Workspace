@@ -1,0 +1,7 @@
+<svg width="240" height="56" viewBox="0 0 240 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Workspaces">
+  <rect x="2" y="2" width="52" height="52" rx="14" fill="#3B82F6"></rect>
+  <rect x="11" y="14" width="8.5" height="28" rx="3" fill="#FFFFFF" opacity="0.55"></rect>
+  <rect x="23.5" y="14" width="8.5" height="19" rx="3" fill="#FFFFFF" opacity="0.8"></rect>
+  <rect x="36" y="14" width="8.5" height="24" rx="3" fill="#FFFFFF"></rect>
+  <text x="68" y="36" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" letter-spacing="-0.01em" fill="#1E1F21">Workspaces</text>
+</svg>
