@@ -1,0 +1,2077 @@
+{
+  "version": 2,
+  "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
+  "counts": {
+    "nodes": 81,
+    "edges": 138,
+    "symbols": 76,
+    "callEdges": 26
+  },
+  "nodes": [
+    {
+      "id": "_api/logout_v1.ts",
+      "kind": "api",
+      "route": null
+    },
+    {
+      "id": "_api/session_v1.ts",
+      "kind": "api",
+      "route": null
+    },
+    {
+      "id": "_components/Avatar.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/ConfirmMenu.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/dropdown/Dropdown.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/dropdown/dropdownInternals.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/dropdown/MultiSelectDropdown.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/ErrorPage.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Checkbox.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/DatePicker.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/dateUtils.ts",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/fieldShell.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/floatingLayer.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Popover.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/TextField.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Toggle.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/LoginForm.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/MenuHandler.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/templates/Home.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/templates/TemplateProvider.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_functions/confetti.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_functions/icon.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_functions/menuHandler.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_providers/SessionProvider.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/apiRequest.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/offlineQueue.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/socketInitializer.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/syncRequest.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "dashboard/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "docs/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "login/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "main.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "register/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts",
+      "kind": "api",
+      "route": "api/reset-password/confirmReset/v1"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts",
+      "kind": "api",
+      "route": "api/reset-password/sendReset/v1"
+    },
+    {
+      "id": "reset-password/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts",
+      "kind": "api",
+      "route": "api/settings/changePassword/v1"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts",
+      "kind": "api",
+      "route": "api/settings/confirmEmailChange/v1"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts",
+      "kind": "api",
+      "route": "api/settings/deleteAccount/v1"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts",
+      "kind": "api",
+      "route": "api/settings/listSessions/v1"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts",
+      "kind": "api",
+      "route": "api/settings/requestEmailChange/v1"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts",
+      "kind": "api",
+      "route": "api/settings/revokeSession/v1"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts",
+      "kind": "api",
+      "route": "api/settings/signOutEverywhere/v1"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts",
+      "kind": "api",
+      "route": "api/settings/updatePreferences/v1"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts",
+      "kind": "api",
+      "route": "api/settings/updateUser/v1"
+    },
+    {
+      "id": "settings/confirm-email/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "settings/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/control_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/control_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/control/v1"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/snapshot/v1"
+    },
+    {
+      "id": "workspaces/_components/Icon.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/motion.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/primitives.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/SearchPalette.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/TerminalView.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/XtermTerminal.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_data/seed.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_data/types.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/controlApi.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_screens/Placeholder.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/MobileChrome.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/Shell.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesContext.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesProvider.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesShell.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesTemplate.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/activity/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/backlog/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/board/[ticketId]/DiffView.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/board/[ticketId]/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/pipeline/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/settings/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/sources/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/terminals/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/usage/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/workspace/page.tsx",
+      "kind": "page",
+      "route": null
+    }
+  ],
+  "edges": [
+    {
+      "from": "_components/dropdown/Dropdown.tsx",
+      "to": "_components/dropdown/dropdownInternals.tsx"
+    },
+    {
+      "from": "_components/dropdown/MultiSelectDropdown.tsx",
+      "to": "_components/dropdown/dropdownInternals.tsx"
+    },
+    {
+      "from": "_components/inputs/Checkbox.tsx",
+      "to": "_components/inputs/fieldShell.tsx"
+    },
+    {
+      "from": "_components/inputs/DatePicker.tsx",
+      "to": "_components/inputs/floatingLayer.tsx"
+    },
+    {
+      "from": "_components/inputs/DatePicker.tsx",
+      "to": "_components/inputs/TextField.tsx"
+    },
+    {
+      "from": "_components/inputs/Toggle.tsx",
+      "to": "_components/inputs/fieldShell.tsx"
+    },
+    {
+      "from": "_components/MenuHandler.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "_components/templates/TemplateProvider.tsx",
+      "to": "_components/templates/Home.tsx"
+    },
+    {
+      "from": "_components/templates/TemplateProvider.tsx",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "_components/templates/TemplateProvider.tsx",
+      "to": "workspaces/_shell/WorkspacesTemplate.tsx"
+    },
+    {
+      "from": "_functions/menuHandler.ts",
+      "to": "_components/ConfirmMenu.tsx"
+    },
+    {
+      "from": "_functions/menuHandler.ts",
+      "to": "_components/MenuHandler.tsx"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx",
+      "to": "_sockets/socketInitializer.ts"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts",
+      "to": "_sockets/offlineQueue.ts"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/socketInitializer.ts"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "login/page.tsx",
+      "to": "_components/LoginForm.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/ErrorPage.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/MenuHandler.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/templates/TemplateProvider.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_providers/SessionProvider.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "register/page.tsx",
+      "to": "_components/LoginForm.tsx"
+    },
+    {
+      "from": "reset-password/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.ts",
+      "to": "settings/_api/listSessions_v1.ts"
+    },
+    {
+      "from": "settings/confirm-email/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_components/Avatar.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "workspaces/_api/control_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
+      "from": "workspaces/_components/primitives.tsx",
+      "to": "_components/Avatar.tsx"
+    },
+    {
+      "from": "workspaces/_components/primitives.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/primitives.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/_components/primitives.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_components/TerminalView.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_screens/Placeholder.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_screens/Placeholder.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "workspaces/_shell/Shell.tsx"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_components/SearchPalette.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_shell/MobileChrome.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_shell/Shell.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesTemplate.tsx",
+      "to": "workspaces/_shell/WorkspacesProvider.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesTemplate.tsx",
+      "to": "workspaces/_shell/WorkspacesShell.tsx"
+    },
+    {
+      "from": "workspaces/activity/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/activity/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/activity/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/activity/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/backlog/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/DiffView.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "to": "workspaces/board/[ticketId]/DiffView.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_components/XtermTerminal.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/board/[ticketId]/FileDiffViewer.tsx"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/sources/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_components/XtermTerminal.tsx"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/terminals/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    }
+  ],
+  "blastRadius": {
+    "_components/Avatar.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "settings/page.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/primitives.tsx",
+      "workspaces/_screens/Placeholder.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "_components/ConfirmMenu.tsx": [
+      "_components/MenuHandler.tsx",
+      "_components/templates/TemplateProvider.tsx",
+      "_functions/menuHandler.ts",
+      "main.tsx",
+      "settings/page.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "_components/dropdown/Dropdown.tsx": [
+      "settings/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "_components/dropdown/dropdownInternals.tsx": [
+      "_components/dropdown/Dropdown.tsx",
+      "_components/dropdown/MultiSelectDropdown.tsx",
+      "settings/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "_components/ErrorPage.tsx": [
+      "main.tsx"
+    ],
+    "_components/inputs/fieldShell.tsx": [
+      "_components/inputs/Checkbox.tsx",
+      "_components/inputs/Toggle.tsx"
+    ],
+    "_components/inputs/floatingLayer.tsx": [
+      "_components/inputs/DatePicker.tsx"
+    ],
+    "_components/inputs/TextField.tsx": [
+      "_components/inputs/DatePicker.tsx"
+    ],
+    "_components/LoginForm.tsx": [
+      "login/page.tsx",
+      "register/page.tsx"
+    ],
+    "_components/MenuHandler.tsx": [
+      "_functions/menuHandler.ts",
+      "main.tsx"
+    ],
+    "_components/templates/Home.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx"
+    ],
+    "_components/templates/TemplateProvider.tsx": [
+      "main.tsx"
+    ],
+    "_functions/menuHandler.ts": [
+      "_components/MenuHandler.tsx",
+      "_components/templates/TemplateProvider.tsx",
+      "_functions/menuHandler.ts",
+      "main.tsx",
+      "settings/page.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "_providers/SessionProvider.tsx": [
+      "main.tsx"
+    ],
+    "_providers/socketStatusProvider.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "_providers/SessionProvider.tsx",
+      "_sockets/socketInitializer.ts",
+      "docs/page.tsx",
+      "main.tsx"
+    ],
+    "_sockets/apiRequest.ts": [
+      "_providers/SessionProvider.tsx",
+      "docs/page.tsx",
+      "main.tsx",
+      "reset-password/page.tsx",
+      "settings/confirm-email/page.tsx",
+      "settings/page.tsx",
+      "workspaces/settings/page.tsx"
+    ],
+    "_sockets/offlineQueue.ts": [
+      "_providers/SessionProvider.tsx",
+      "_sockets/socketInitializer.ts",
+      "docs/page.tsx",
+      "main.tsx"
+    ],
+    "_sockets/socketInitializer.ts": [
+      "_providers/SessionProvider.tsx",
+      "docs/page.tsx",
+      "main.tsx"
+    ],
+    "_sockets/syncRequest.ts": [
+      "_providers/SessionProvider.tsx",
+      "_sockets/socketInitializer.ts",
+      "docs/page.tsx",
+      "main.tsx"
+    ],
+    "settings/_api/listSessions_v1.ts": [
+      "settings/_api/revokeSession_v1.ts"
+    ],
+    "workspaces/_components/Icon.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/primitives.tsx",
+      "workspaces/_screens/Placeholder.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_components/motion.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/primitives.tsx",
+      "workspaces/_screens/Placeholder.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_components/primitives.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_screens/Placeholder.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_components/SearchPalette.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_components/XtermTerminal.tsx": [
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/terminals/page.tsx"
+    ],
+    "workspaces/_data/seed.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_data/types.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/TerminalView.tsx",
+      "workspaces/_components/primitives.tsx",
+      "workspaces/_screens/Placeholder.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/DiffView.tsx",
+      "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_functions/controlApi.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_api/control_v1.ts",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/MobileChrome.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/Shell.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/WorkspacesContext.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_shell/WorkspacesProvider.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/WorkspacesShell.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/WorkspacesTemplate.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx"
+    ],
+    "workspaces/board/[ticketId]/DiffView.tsx": [
+      "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/board/[ticketId]/FileDiffViewer.tsx": [
+      "workspaces/board/[ticketId]/page.tsx"
+    ]
+  },
+  "godNodes": [
+    {
+      "id": "workspaces/_data/types.ts",
+      "kind": "other",
+      "dependents": 22,
+      "directDependents": 16
+    },
+    {
+      "id": "_components/Avatar.tsx",
+      "kind": "component",
+      "dependents": 20,
+      "directDependents": 2
+    },
+    {
+      "id": "workspaces/_components/Icon.tsx",
+      "kind": "other",
+      "dependents": 20,
+      "directDependents": 17
+    },
+    {
+      "id": "workspaces/_components/motion.tsx",
+      "kind": "other",
+      "dependents": 19,
+      "directDependents": 7
+    },
+    {
+      "id": "workspaces/_components/primitives.tsx",
+      "kind": "other",
+      "dependents": 18,
+      "directDependents": 14
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesContext.tsx",
+      "kind": "other",
+      "dependents": 18,
+      "directDependents": 15
+    },
+    {
+      "id": "_components/ConfirmMenu.tsx",
+      "kind": "component",
+      "dependents": 17,
+      "directDependents": 1
+    },
+    {
+      "id": "_functions/menuHandler.ts",
+      "kind": "helper",
+      "dependents": 17,
+      "directDependents": 11
+    },
+    {
+      "id": "workspaces/_data/seed.ts",
+      "kind": "other",
+      "dependents": 10,
+      "directDependents": 7
+    },
+    {
+      "id": "_components/dropdown/dropdownInternals.tsx",
+      "kind": "component",
+      "dependents": 8,
+      "directDependents": 2
+    },
+    {
+      "id": "_sockets/apiRequest.ts",
+      "kind": "other",
+      "dependents": 7,
+      "directDependents": 6
+    },
+    {
+      "id": "_components/dropdown/Dropdown.tsx",
+      "kind": "component",
+      "dependents": 6,
+      "directDependents": 6
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx",
+      "kind": "other",
+      "dependents": 5,
+      "directDependents": 3
+    },
+    {
+      "id": "workspaces/_functions/controlApi.ts",
+      "kind": "other",
+      "dependents": 5,
+      "directDependents": 2
+    },
+    {
+      "id": "workspaces/_shell/Shell.tsx",
+      "kind": "other",
+      "dependents": 5,
+      "directDependents": 2
+    },
+    {
+      "id": "_sockets/offlineQueue.ts",
+      "kind": "other",
+      "dependents": 4,
+      "directDependents": 1
+    },
+    {
+      "id": "_sockets/syncRequest.ts",
+      "kind": "other",
+      "dependents": 4,
+      "directDependents": 2
+    },
+    {
+      "id": "workspaces/_components/SearchPalette.tsx",
+      "kind": "other",
+      "dependents": 4,
+      "directDependents": 1
+    },
+    {
+      "id": "workspaces/_shell/MobileChrome.tsx",
+      "kind": "other",
+      "dependents": 4,
+      "directDependents": 1
+    },
+    {
+      "id": "_sockets/socketInitializer.ts",
+      "kind": "other",
+      "dependents": 3,
+      "directDependents": 2
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesProvider.tsx",
+      "kind": "other",
+      "dependents": 3,
+      "directDependents": 1
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesShell.tsx",
+      "kind": "other",
+      "dependents": 3,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/fieldShell.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/LoginForm.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/MenuHandler.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    }
+  ],
+  "symbols": [
+    {
+      "id": "_api/logout_v1.ts::<module>",
+      "file": "_api/logout_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/logout_v1.ts::main",
+      "file": "_api/logout_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "_api/session_v1.ts::<module>",
+      "file": "_api/session_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/session_v1.ts::main",
+      "file": "_api/session_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::<module>",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::getCurrentSession",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "getCurrentSession",
+      "kind": "function"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::handler",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "handler",
+      "kind": "function"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::SessionProvider",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "SessionProvider",
+      "kind": "function"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::setSession",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "setSession",
+      "kind": "fn"
+    },
+    {
+      "id": "_providers/SessionProvider.tsx::setSessionLoaded",
+      "file": "_providers/SessionProvider.tsx",
+      "name": "setSessionLoaded",
+      "kind": "fn"
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx::<module>",
+      "file": "_providers/socketStatusProvider.tsx",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx::SocketStatusProvider",
+      "file": "_providers/socketStatusProvider.tsx",
+      "name": "SocketStatusProvider",
+      "kind": "function"
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx::useSocketStatus",
+      "file": "_providers/socketStatusProvider.tsx",
+      "name": "useSocketStatus",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/apiRequest.ts::<module>",
+      "file": "_sockets/apiRequest.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_sockets/offlineQueue.ts::<module>",
+      "file": "_sockets/offlineQueue.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::<module>",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::canFlushQueue",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "canFlushQueue",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::getJoinedRooms",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "getJoinedRooms",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::handleActivity",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "handleActivity",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::handleOnline",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "handleOnline",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::handleVisibility",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "handleVisibility",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::joinRoom",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "joinRoom",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::leaveRoom",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "leaveRoom",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::resolve",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "resolve",
+      "kind": "fn"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::setDisconnectedStatus",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "setDisconnectedStatus",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::setSocketStatus",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "setSocketStatus",
+      "kind": "fn"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::updateLocationRequest",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "updateLocationRequest",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/socketInitializer.ts::useSocket",
+      "file": "_sockets/socketInitializer.ts",
+      "name": "useSocket",
+      "kind": "function"
+    },
+    {
+      "id": "_sockets/syncRequest.ts::<module>",
+      "file": "_sockets/syncRequest.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts::<module>",
+      "file": "reset-password/_api/confirmReset_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts::main",
+      "file": "reset-password/_api/confirmReset_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts::<module>",
+      "file": "reset-password/_api/sendReset_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts::main",
+      "file": "reset-password/_api/sendReset_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts::<module>",
+      "file": "settings/_api/changePassword_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts::main",
+      "file": "settings/_api/changePassword_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts::<module>",
+      "file": "settings/_api/confirmEmailChange_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts::main",
+      "file": "settings/_api/confirmEmailChange_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts::<module>",
+      "file": "settings/_api/deleteAccount_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts::main",
+      "file": "settings/_api/deleteAccount_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::<module>",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::main",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::sessionHandle",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "sessionHandle",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts::<module>",
+      "file": "settings/_api/requestEmailChange_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts::main",
+      "file": "settings/_api/requestEmailChange_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts::<module>",
+      "file": "settings/_api/revokeSession_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts::main",
+      "file": "settings/_api/revokeSession_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts::<module>",
+      "file": "settings/_api/signOutEverywhere_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts::main",
+      "file": "settings/_api/signOutEverywhere_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts::<module>",
+      "file": "settings/_api/updatePreferences_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts::main",
+      "file": "settings/_api/updatePreferences_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::<module>",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::encodeAndSave",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "encodeAndSave",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::main",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/control_v1.tests.ts::<module>",
+      "file": "workspaces/_api/control_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/control_v1.tests.ts::deleteUser",
+      "file": "workspaces/_api/control_v1.tests.ts",
+      "name": "deleteUser",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/control_v1.tests.ts::deleteWorkspace",
+      "file": "workspaces/_api/control_v1.tests.ts",
+      "name": "deleteWorkspace",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/control_v1.tests.ts::run",
+      "file": "workspaces/_api/control_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/control_v1.ts::<module>",
+      "file": "workspaces/_api/control_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/control_v1.ts::main",
+      "file": "workspaces/_api/control_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.tests.ts::<module>",
+      "file": "workspaces/_api/snapshot_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.tests.ts::cleanupUser",
+      "file": "workspaces/_api/snapshot_v1.tests.ts",
+      "name": "cleanupUser",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.tests.ts::run",
+      "file": "workspaces/_api/snapshot_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail",
+      "file": "workspaces/_api/snapshot_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.ts::<module>",
+      "file": "workspaces/_api/snapshot_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/snapshot_v1.ts::main",
+      "file": "workspaces/_api/snapshot_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::<module>",
+      "file": "workspaces/_data/seed.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::baseStatuses",
+      "file": "workspaces/_data/seed.ts",
+      "name": "baseStatuses",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::cfg",
+      "file": "workspaces/_data/seed.ts",
+      "name": "cfg",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::escalationRules",
+      "file": "workspaces/_data/seed.ts",
+      "name": "escalationRules",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::modelCfg",
+      "file": "workspaces/_data/seed.ts",
+      "name": "modelCfg",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::network",
+      "file": "workspaces/_data/seed.ts",
+      "name": "network",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::ticketAssignee",
+      "file": "workspaces/_data/seed.ts",
+      "name": "ticketAssignee",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::ticketCreator",
+      "file": "workspaces/_data/seed.ts",
+      "name": "ticketCreator",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/seed.ts::ticketLinkedMembers",
+      "file": "workspaces/_data/seed.ts",
+      "name": "ticketLinkedMembers",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/types.ts::<module>",
+      "file": "workspaces/_data/types.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_functions/controlApi.ts::<module>",
+      "file": "workspaces/_functions/controlApi.ts",
+      "name": "<module>",
+      "kind": "module"
+    }
+  ],
+  "callEdges": [
+    {
+      "from": "_providers/SessionProvider.tsx::handler",
+      "to": "_providers/SessionProvider.tsx::setSession"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx::SessionProvider",
+      "to": "_providers/SessionProvider.tsx::setSession"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx::SessionProvider",
+      "to": "_providers/SessionProvider.tsx::setSessionLoaded"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx::SessionProvider",
+      "to": "_sockets/socketInitializer.ts::useSocket"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::getJoinedRooms",
+      "to": "_sockets/socketInitializer.ts::resolve"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::joinRoom",
+      "to": "_sockets/socketInitializer.ts::resolve"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::leaveRoom",
+      "to": "_sockets/socketInitializer.ts::resolve"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::setDisconnectedStatus",
+      "to": "_sockets/socketInitializer.ts::setSocketStatus"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::useSocket",
+      "to": "_providers/socketStatusProvider.tsx::useSocketStatus"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts::useSocket",
+      "to": "_sockets/socketInitializer.ts::setDisconnectedStatus"
+    },
+    {
+      "from": "settings/_api/listSessions_v1.ts::main",
+      "to": "settings/_api/listSessions_v1.ts::sessionHandle"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.ts::main",
+      "to": "settings/_api/listSessions_v1.ts::sessionHandle"
+    },
+    {
+      "from": "workspaces/_api/control_v1.tests.ts::run",
+      "to": "workspaces/_api/control_v1.tests.ts::deleteUser"
+    },
+    {
+      "from": "workspaces/_api/control_v1.tests.ts::run",
+      "to": "workspaces/_api/control_v1.tests.ts::deleteWorkspace"
+    },
+    {
+      "from": "workspaces/_api/snapshot_v1.tests.ts::run",
+      "to": "workspaces/_api/snapshot_v1.tests.ts::cleanupUser"
+    },
+    {
+      "from": "workspaces/_api/snapshot_v1.tests.ts::run",
+      "to": "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::<module>",
+      "to": "workspaces/_data/seed.ts::baseStatuses"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::<module>",
+      "to": "workspaces/_data/seed.ts::cfg"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::<module>",
+      "to": "workspaces/_data/seed.ts::modelCfg"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::cfg",
+      "to": "workspaces/_data/seed.ts::baseStatuses"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::cfg",
+      "to": "workspaces/_data/seed.ts::modelCfg"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::cfg",
+      "to": "workspaces/_data/seed.ts::network"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::modelCfg",
+      "to": "workspaces/_data/seed.ts::escalationRules"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::ticketAssignee",
+      "to": "workspaces/_data/seed.ts::ticketCreator"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::ticketLinkedMembers",
+      "to": "workspaces/_data/seed.ts::ticketAssignee"
+    },
+    {
+      "from": "workspaces/_data/seed.ts::ticketLinkedMembers",
+      "to": "workspaces/_data/seed.ts::ticketCreator"
+    }
+  ],
+  "symbolBlastRadius": {
+    "_providers/SessionProvider.tsx::setSession": [
+      "_providers/SessionProvider.tsx::SessionProvider",
+      "_providers/SessionProvider.tsx::handler"
+    ],
+    "_providers/SessionProvider.tsx::setSessionLoaded": [
+      "_providers/SessionProvider.tsx::SessionProvider"
+    ],
+    "_providers/socketStatusProvider.tsx::useSocketStatus": [
+      "_providers/SessionProvider.tsx::SessionProvider",
+      "_sockets/socketInitializer.ts::useSocket"
+    ],
+    "_sockets/socketInitializer.ts::resolve": [
+      "_sockets/socketInitializer.ts::getJoinedRooms",
+      "_sockets/socketInitializer.ts::joinRoom",
+      "_sockets/socketInitializer.ts::leaveRoom"
+    ],
+    "_sockets/socketInitializer.ts::setDisconnectedStatus": [
+      "_providers/SessionProvider.tsx::SessionProvider",
+      "_sockets/socketInitializer.ts::useSocket"
+    ],
+    "_sockets/socketInitializer.ts::setSocketStatus": [
+      "_providers/SessionProvider.tsx::SessionProvider",
+      "_sockets/socketInitializer.ts::setDisconnectedStatus",
+      "_sockets/socketInitializer.ts::useSocket"
+    ],
+    "_sockets/socketInitializer.ts::useSocket": [
+      "_providers/SessionProvider.tsx::SessionProvider"
+    ],
+    "settings/_api/listSessions_v1.ts::sessionHandle": [
+      "settings/_api/listSessions_v1.ts::main",
+      "settings/_api/revokeSession_v1.ts::main"
+    ],
+    "workspaces/_api/control_v1.tests.ts::deleteUser": [
+      "workspaces/_api/control_v1.tests.ts::run"
+    ],
+    "workspaces/_api/control_v1.tests.ts::deleteWorkspace": [
+      "workspaces/_api/control_v1.tests.ts::run"
+    ],
+    "workspaces/_api/snapshot_v1.tests.ts::cleanupUser": [
+      "workspaces/_api/snapshot_v1.tests.ts::run"
+    ],
+    "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail": [
+      "workspaces/_api/snapshot_v1.tests.ts::run"
+    ],
+    "workspaces/_data/seed.ts::baseStatuses": [
+      "workspaces/_data/seed.ts::<module>",
+      "workspaces/_data/seed.ts::cfg"
+    ],
+    "workspaces/_data/seed.ts::cfg": [
+      "workspaces/_data/seed.ts::<module>"
+    ],
+    "workspaces/_data/seed.ts::escalationRules": [
+      "workspaces/_data/seed.ts::<module>",
+      "workspaces/_data/seed.ts::cfg",
+      "workspaces/_data/seed.ts::modelCfg"
+    ],
+    "workspaces/_data/seed.ts::modelCfg": [
+      "workspaces/_data/seed.ts::<module>",
+      "workspaces/_data/seed.ts::cfg"
+    ],
+    "workspaces/_data/seed.ts::network": [
+      "workspaces/_data/seed.ts::<module>",
+      "workspaces/_data/seed.ts::cfg"
+    ],
+    "workspaces/_data/seed.ts::ticketAssignee": [
+      "workspaces/_data/seed.ts::ticketLinkedMembers"
+    ],
+    "workspaces/_data/seed.ts::ticketCreator": [
+      "workspaces/_data/seed.ts::ticketAssignee",
+      "workspaces/_data/seed.ts::ticketLinkedMembers"
+    ]
+  }
+}

@@ -8,8 +8,8 @@ import { useRef, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import DiffView from './DiffView';
-import Icon from './Icon';
-import type { TicketFile } from '../_data/types';
+import Icon from '../../_components/Icon';
+import type { TicketFile } from '../../_data/types';
 
 const baseName = (path: string) => path.split('/').pop() ?? path;
 

@@ -3,7 +3,7 @@
 //? semantic theme tokens. Read-only preview; a real editor (VS Code) comes
 //? later.
 
-import type { DiffLine } from '../_data/types';
+import type { DiffLine } from '../../_data/types';
 
 const ROW: Record<DiffLine['kind'], string> = {
   add: 'bg-correct/10',
