@@ -45,7 +45,9 @@ export const MEMBERS: Record<string, Member> = {
   daan: { id: 'daan', name: 'Daan', email: 'daan@youcomm.nl', avatarFallback: '#16A34A', role: 'member' },
 };
 
-export const ME: Member = MEMBERS.mathijs;
+const meMember = MEMBERS.mathijs;
+if (!meMember) throw new Error('MEMBERS.mathijs missing');
+export const ME: Member = meMember;
 
 export const WORKSPACES: Workspace[] = [
   { id: 'ws-youcomm', name: 'YouComm Core', slug: 'youcomm-core', ownerId: 'mathijs', role: 'owner' },
@@ -416,9 +418,9 @@ const ADMIN_PERMS = [true, true, true, true, true, false, false, false];
 const MEMBER_PERMS = [true, false, false, false, false, false, false, false];
 
 export const DEFAULT_PERM_ROLES: PermRole[] = [
-  { name: 'Owner', locked: true, perms: RBAC_CAPABILITIES.map(() => true) },
-  { name: 'Admin', perms: ADMIN_PERMS },
-  { name: 'Member', perms: MEMBER_PERMS },
+  { key: 'owner', name: 'Owner', locked: true, perms: RBAC_CAPABILITIES.map(() => true) },
+  { key: 'admin', name: 'Admin', perms: ADMIN_PERMS },
+  { key: 'member', name: 'Member', perms: MEMBER_PERMS },
 ];
 
 //? Workspace-AI seed conversation.

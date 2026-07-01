@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import {
   AI_SUGGESTIONS, BUDGET, DOCS, ENV_VARS, EVENTS, INTEGRATION_TOOLS, INVITES,
-  MEMBERS, PROJECTS, SKILLS, SPRINTS, STAGE_CONFIGS, TICKETS,
+  MEMBERS, NOTIFICATIONS, PROJECTS, SKILLS, SPRINTS, STAGE_CONFIGS, TICKETS,
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
 
@@ -50,7 +50,9 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     }
   }
 
-  const project = await prisma.project.create({ data: { workspaceId, name: PROJECTS[0].name, gitlabPath: PROJECTS[0].gitlabPath } });
+  const seedProject = PROJECTS[0];
+  if (!seedProject) throw new Error('seedDemoWorkspace: PROJECTS[0] is missing');
+  const project = await prisma.project.create({ data: { workspaceId, name: seedProject.name, gitlabPath: seedProject.gitlabPath } });
 
   //? Pipeline stages — the composite config maps through 1:1 (the schema composite
   //? types mirror PipelineStageCfg). `key` is the stable slug tickets reference.
@@ -102,6 +104,17 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
       data: {
         workspaceId, type: sug.type, title: sug.title, body: sug.body, status: 'open',
         ticketIds: sug.ticketIds.map((k) => ticketKeyToId[k]).filter((id): id is string => id !== undefined),
+      },
+    });
+  }
+
+  //? Notifications — bell items for the owner; ticket keys mapped to real ObjectIds.
+  for (const n of NOTIFICATIONS) {
+    await prisma.notification.create({
+      data: {
+        workspaceId, userId: ownerId, type: n.type, title: n.title, body: n.body,
+        ticketId: n.ticketId ? (ticketKeyToId[n.ticketId] ?? null) : null,
+        read: n.read,
       },
     });
   }

@@ -166,3 +166,42 @@
 **Files:** `src/workspaces/_shell/WorkspacesShell.tsx`, `src/workspaces/_screens/AccountSettings.tsx`, `src/index.css`.
 
 **Verificatie:** `tsc --noEmit` 0 errors, `npm run build` groen, `ai:lint` geen violations. Resterende eslint-meldingen (SSH-form guard-false-positives regels 69/76/184 + bestaande `noop`) zijn pre-existing (lesson 0001), niet van deze change. Niet gecommit — batch met volgende tweaks.
+
+## 2026-07-02 01:00 — 7b (strictness + i18n) + 7a.3/7a.4/7a.5 (mutaties/integraties/encryptie)
+
+**User prompt:** "doe heel 7a + 7b af; noUncheckedIndexedAccess AAN + alles fixen; alle vier de talen echt vertalen."
+
+**Gedaan (allemaal geverifieerd — lint 0, test:ws 8/8 = 219 asserts, build groen):**
+- **7b.1 — `noUncheckedIndexedAccess` AAN** (tsconfig) + alle ~57 gesurfacete sites gefixt (workflow, 1 agent/disjuncte file: minimale guards/hoists/optional-chaining, geen casts/non-null) + volledige lint-cleanup naar 0 errors (tryCatch-thunk, char-guard, String()-template, Fase-2-stub-intent-comments, module-scope noop, globalThis-behoud). De 19 guard-false-positives lossen nu correct op (index = `T | undefined`).
+- **7b.2 — echte nl/de/fr-vertaling** van de 455 `workspaces.*`-keys (workflow, 1 agent/locale; framework-namespaces byte-identiek; placeholders/keys intact; product-nouns/tech-terms als loanwords). Alle 3 KEYS-MATCH (730 leaves).
+- **7a.3 — mutaties → control-API:** togglePerm→role-update, addRole→role-create, saveIntegrationTool→save-integration, removeIntegrationTool→remove-integration (optimistic + persist + refetch). `PermRole.key` toegevoegd (uit `WorkspaceRole.key`). **E2E:** role-create→reviewer(1)→role-update→reviewer(2). ✓
+- **7a.4 — save-integration composites:** de Conductor persisteert nu `fields`/`mcp` (readIntegrationFields/readMcp; update via `{set}`). **E2E:** Sentry-integratie met field + mcp.command persist. ✓
+- **7a.5 — GitLab-token-encryptie:** `server/crypto/secretBox.ts` (AES-256-GCM, key uit `WORKSPACES_ENC_KEY`, `v1:iv:tag:ct`-envelope, `plain:`-fallback+warning zonder key). Conductor gitlab-settings encrypt on write. ADR `0004` + `.env.local_template` + unit-test (7 asserts: round-trip/tamper/fallback). ✓
+
+**Commits:** `5768373` (7b.1), `8e89fdc` (7b.2), `5b9af1e` (7a.3+7a.4), `31b94c5` (7a.5), + 2 lint-fixes.
+
+**NOG OPEN in 7a (bewust niet nu):**
+- **7a.2 — Pipeline-config-persist** (de core surface): de volledige `PipelineStageCfg` uit de DB-composites in de snapshot brengen (9 composite-subtypes, cast-vrije union-narrowing) + Pipeline.tsx van `STAGE_CONFIGS` af + save-stage-config volledig. Groot + kwaliteitsgevoelig → **beter met verse context** (aanbevolen als eerste taak volgende sessie).
+- **7a.1 (notifications/usage/spend/terminals live) + 7a.6 (sessions-UI):** grotendeels **Fase-2-gated** — er zijn in Fase 1 nog geen data-producers (pipeline-events/AI-usage/pty/session-list). Live plumbing zou lege data tonen; heeft pas zin met de Fase-2-engine.
+
+## 2026-07-02 02:30 — ALLE missende functionaliteit bedraad (audit-fixes, in één pass)
+
+**User prompt:** "fix nu in één keer alle missende functionaliteiten met ultracode/Sonnet, snelheid voorop; verifieer daarna met Opus."
+
+**Aanpak:** gefaseerde Sonnet-workflow (backend + contract met generateArtifacts-barrier → 8 schermen parallel) + Opus-verificatie (ik) + E2E tegen echte Mongo.
+
+**Backend (E2E-bewezen):**
+- Conductor `save-stage-config` persisteert nu de VOLLEDIGE `PipelineStageCfg` (9 cast-vrije composite-readers) — was alleen name/aiEnabled/customInstructions. **= 7a.2-backend af.**
+- `accept-suggestion` geïmplementeerd (status='accepted').
+- Snapshot: `notifications[]` + `stageConfigs[]` (volledige per-stage config, cast-vrije union-narrowing) + lege event/notif-timestamps gefixt (HH:MM).
+- Seed: 5 demo-notificaties.
+
+**Contract (Provider+Context):** ~25 nieuwe ctx-handlers (quickAdd, archive, bulk-*, invite, revoke, removeMember, transfer, delete, rename, saveGitlab, toggleSkill, saveStageConfig, notifications+markRead+markAllRead, acceptSuggestion, signOut[framework-logout]). notifications/unread nu live (van seed af).
+
+**8 schermen bedraad:** Board (new-ticket→quick-add, archive, sprint+status/assignee-filters), Backlog (volledige bulk-bar met pickers), TicketDetail (promote→bulk-move), Sources (skill-toggle persist), WorkspaceSettings (remove/transfer/delete/invite/revoke/gitlab-save/rename + env-debounce-fix), AccountSettings (export + session-revoke), **Pipeline (laadt ctx.stageConfigs + saveStageConfig = 7a.2-frontend)**, Shell (notificatie-panel + mark-read, suggestie-accept, sign-out). **De confirm-void-bug-klasse overal gefixt.** Echte Fase-2-gaten = gemarkeerde stubs (geen verzonnen verbs — frozen control-API gerespecteerd).
+
+**E2E-bewezen:** save-stage-config (model/commands/network/hooks persisteren), mark-read, accept-suggestion, invite, bulk-move — allemaal persistent. tsc 0 / server 14-baseline / lint 0 / build groen / test:ws 8/8.
+
+**Commit:** `956d76d`.
+
+**Resteert (echt Fase-2, geen op / geen data-producer):** needs-input-reply, add-reference/link-ticket, teardown-container, pause/resume/kill (AI-session), upload-doc/reindex/regenerate, echte AI-chat, echte usage-cijfers, container-terminals, SSH-key-persist + echte sessie-lijst, real-time/presence.

@@ -371,6 +371,7 @@ export interface SpendRecord {
 //? Owner row (always all-true, not editable). Persisted per workspace — held in
 //? app context for the prototype so edits survive tab/route changes.
 export interface PermRole {
+  key: string;
   name: string;
   locked?: boolean;
   perms: boolean[];

@@ -14,6 +14,7 @@
 import { getPrismaClient, redis, formatKey } from '@luckystack/core';
 
 import { runInTenant } from '../tenant/tenantContext';
+import { encryptSecret } from '../crypto/secretBox';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -43,6 +44,96 @@ function strArr(o: Record<string, unknown>, k: string): string[] {
 function boolArr(o: Record<string, unknown>, k: string): boolean[] {
   const v = o[k];
   return Array.isArray(v) ? v.map((x) => x === true) : [];
+}
+function asRec(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+//? Coerce the client's integration `fields`/`mcp` payload into the Prisma composite shapes.
+function readIntegrationFields(v: unknown): { id: string; label: string; placeholder?: string; envVarId?: string }[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((raw) => asRec(raw)).map((f) => {
+    const out: { id: string; label: string; placeholder?: string; envVarId?: string } = { id: str(f, 'id') ?? '', label: str(f, 'label') ?? '' };
+    const placeholder = str(f, 'placeholder');
+    if (placeholder !== undefined) out.placeholder = placeholder;
+    const envVarId = str(f, 'envVarId');
+    if (envVarId !== undefined) out.envVarId = envVarId;
+    return out;
+  });
+}
+function readMcp(v: unknown): { enabled: boolean; command: string } {
+  const o = asRec(v);
+  return { enabled: o.enabled === true, command: str(o, 'command') ?? '' };
+}
+//? Coerce the client's stage-config `commands`/`tools`/`statuses`/`processes`/
+//? `modelCfg`/`network`/`hooks` payload into the Prisma composite shapes
+//? (mirrors PipelineStageCfg, src/workspaces/_data/types.ts).
+function readCommandCfg(raw: unknown): { id: string; pattern: string; mode: string; title?: string; desc?: string; category?: string } {
+  const f = asRec(raw);
+  const out: { id: string; pattern: string; mode: string; title?: string; desc?: string; category?: string } = {
+    id: str(f, 'id') ?? '', pattern: str(f, 'pattern') ?? '', mode: str(f, 'mode') ?? 'ask',
+  };
+  const title = str(f, 'title'); if (title !== undefined) out.title = title;
+  const desc = str(f, 'desc'); if (desc !== undefined) out.desc = desc;
+  const category = str(f, 'category'); if (category !== undefined) out.category = category;
+  return out;
+}
+function readCommands(v: unknown): ReturnType<typeof readCommandCfg>[] {
+  return Array.isArray(v) ? v.map((r) => readCommandCfg(r)) : [];
+}
+function readToolCfg(raw: unknown): { toolId: string; tier: string } {
+  const f = asRec(raw);
+  return { toolId: str(f, 'toolId') ?? '', tier: str(f, 'tier') ?? 'ro' };
+}
+function readTools(v: unknown): ReturnType<typeof readToolCfg>[] {
+  return Array.isArray(v) ? v.map((r) => readToolCfg(r)) : [];
+}
+function readStatusCfg(raw: unknown): { key: string; label: string; kind: string } {
+  const f = asRec(raw);
+  return { key: str(f, 'key') ?? '', label: str(f, 'label') ?? '', kind: str(f, 'kind') ?? 'custom' };
+}
+function readStatuses(v: unknown): ReturnType<typeof readStatusCfg>[] {
+  return Array.isArray(v) ? v.map((r) => readStatusCfg(r)) : [];
+}
+function readEnvVar(raw: unknown): { key: string; value: string } {
+  const f = asRec(raw);
+  return { key: str(f, 'key') ?? '', value: str(f, 'value') ?? '' };
+}
+function readEnvVars(v: unknown): ReturnType<typeof readEnvVar>[] {
+  return Array.isArray(v) ? v.map((r) => readEnvVar(r)) : [];
+}
+function readProcessCfg(raw: unknown): { id: string; name: string; cwd: string; env: ReturnType<typeof readEnvVar>[]; commands: string[] } {
+  const f = asRec(raw);
+  return { id: str(f, 'id') ?? '', name: str(f, 'name') ?? '', cwd: str(f, 'cwd') ?? '', env: readEnvVars(f.env), commands: strArr(f, 'commands') };
+}
+function readProcesses(v: unknown): ReturnType<typeof readProcessCfg>[] {
+  return Array.isArray(v) ? v.map((r) => readProcessCfg(r)) : [];
+}
+function readModelChoice(v: unknown): { model: string; effort: string; maxTurns: number } {
+  const f = asRec(v);
+  return { model: str(f, 'model') ?? 'sonnet', effort: str(f, 'effort') ?? 'medium', maxTurns: num(f, 'maxTurns') ?? 0 };
+}
+function readModelRule(raw: unknown): { id: string; minScore: number; model: string; effort: string; maxTurns: number } {
+  const f = asRec(raw);
+  return { id: str(f, 'id') ?? '', minScore: num(f, 'minScore') ?? 0, ...readModelChoice(f) };
+}
+function readModelCfg(v: unknown): { autoEscalate: boolean; base: ReturnType<typeof readModelChoice>; rules: ReturnType<typeof readModelRule>[]; contextBudgetTokens?: number } {
+  const f = asRec(v);
+  const out: { autoEscalate: boolean; base: ReturnType<typeof readModelChoice>; rules: ReturnType<typeof readModelRule>[]; contextBudgetTokens?: number } = {
+    autoEscalate: bool(f, 'autoEscalate'), base: readModelChoice(f.base), rules: Array.isArray(f.rules) ? f.rules.map((r) => readModelRule(r)) : [],
+  };
+  const contextBudgetTokens = num(f, 'contextBudgetTokens');
+  if (contextBudgetTokens !== undefined) out.contextBudgetTokens = contextBudgetTokens;
+  return out;
+}
+function readNetworkCfg(v: unknown): { enabled: boolean; mode: string; categories: string[]; domains: string[] } {
+  const f = asRec(v);
+  return { enabled: bool(f, 'enabled'), mode: str(f, 'mode') ?? 'blacklist', categories: strArr(f, 'categories'), domains: strArr(f, 'domains') };
+}
+function readHooks(v: unknown): Record<string, boolean> {
+  const f = asRec(v);
+  const out: Record<string, boolean> = {};
+  for (const k of Object.keys(f)) out[k] = f[k] === true;
+  return out;
 }
 
 //? Workspace teardown — delete every tenant-scoped row, then the workspace (04b §11d).
@@ -293,9 +384,11 @@ async function executeAction(action: ControlAction): Promise<void> {
       const integrationId = str(target, 'integrationId') ?? str(payload, 'id');
       if (!name) return;
       const type = str(payload, 'type') ?? 'custom';
+      const fields = readIntegrationFields(payload.fields);
+      const mcp = readMcp(payload.mcp);
       await (integrationId
-        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type } })
-        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields: [], mcp: { enabled: false, command: '' } } }));
+        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type, fields: { set: fields }, mcp: { set: mcp } } })
+        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields, mcp } }));
       return;
     }
     case 'remove-integration': {
@@ -305,8 +398,8 @@ async function executeAction(action: ControlAction): Promise<void> {
     }
     case 'gitlab-settings': {
       const gitlabUrl = str(payload, 'baseUrl') ?? str(payload, 'url'); const token = str(payload, 'token');
-      //? Token stored as-is for Fase 1 (should be encrypted — B-07; app-owned encryption is a later slice).
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: token } : {}) } });
+      //? Token is app-encrypted at rest (B-07) — see server/crypto/secretBox.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}) } });
       return;
     }
     case 'gitlab-verify':
@@ -340,9 +433,32 @@ async function executeAction(action: ControlAction): Promise<void> {
       if (!stageId) return;
       const data: Record<string, unknown> = {};
       const name = str(payload, 'name'); if (name) data.name = name;
+      const kind = str(payload, 'kind'); if (kind) data.kind = kind;
       if ('aiEnabled' in payload) data.aiEnabled = bool(payload, 'aiEnabled');
       const ci = str(payload, 'customInstructions'); if (ci !== undefined) data.customInstructions = ci;
+      const promptTemplate = str(payload, 'promptTemplate'); if (promptTemplate !== undefined) data.promptTemplate = promptTemplate;
+      const systemPrompt = str(payload, 'systemPrompt'); if (systemPrompt !== undefined) data.systemPrompt = systemPrompt;
+      const roleKey = str(payload, 'roleKey'); if (roleKey !== undefined) data.roleKey = roleKey;
+      if ('userEditable' in payload) data.userEditable = bool(payload, 'userEditable');
+      if ('gateForApproval' in payload) data.gateForApproval = bool(payload, 'gateForApproval');
+      if (Array.isArray(payload.skillKeys)) data.skillKeys = { set: strArr(payload, 'skillKeys') };
+      if (Array.isArray(payload.sourceIds)) data.sourceIds = { set: strArr(payload, 'sourceIds') };
+      if (Array.isArray(payload.visibleStageIds)) data.visibleStageIds = { set: strArr(payload, 'visibleStageIds') };
+      if (Array.isArray(payload.commands)) data.commands = { set: readCommands(payload.commands) };
+      if (Array.isArray(payload.tools)) data.tools = { set: readTools(payload.tools) };
+      if (Array.isArray(payload.statuses)) data.statuses = { set: readStatuses(payload.statuses) };
+      if (Array.isArray(payload.processes)) data.processes = { set: readProcesses(payload.processes) };
+      if (payload.modelCfg !== undefined) data.modelCfg = { set: readModelCfg(payload.modelCfg) };
+      if (payload.network !== undefined) data.network = { set: readNetworkCfg(payload.network) };
+      if (payload.hooks !== undefined) data.hooks = readHooks(payload.hooks);
+      const wipLimit = num(payload, 'wipLimit'); if (wipLimit !== undefined) data.wipLimit = wipLimit;
       if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: stageId }, data });
+      return;
+    }
+    // ---- suggestions ----
+    case 'accept-suggestion': {
+      const suggestionId = str(target, 'suggestionId');
+      if (suggestionId) await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId }, data: { status: 'accepted' } });
       return;
     }
     // ---- notifications ----

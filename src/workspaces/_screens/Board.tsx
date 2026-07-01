@@ -15,13 +15,28 @@ import { useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import Dropdown from 'src/_components/dropdown/Dropdown';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
-import { SPRING_SOFT } from '../_components/motion';
-import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, type PopMenuItem } from '../_components/primitives';
+import { Popover, SPRING_SOFT } from '../_components/motion';
+import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, useClickAway, type PopMenuItem } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { PipelineStage, Ticket } from '../_data/types';
+import type { PipelineStage, Ticket, TicketStatus } from '../_data/types';
+
+//? Filters applied client-side on top of the live snapshot (no control-API op — this
+//? is purely a view concern, nothing is persisted).
+interface BoardFilters { status: TicketStatus | 'all'; assigneeId: string }
+const ALL_FILTERS: BoardFilters = { status: 'all', assigneeId: 'all' };
+
+const STATUS_FILTER_OPTIONS: TicketStatus[] = ['idle', 'needs-input', 'busy', 'done', 'paused', 'stuck'];
+const STATUS_LABEL_KEY: Record<TicketStatus, string> = {
+  idle: 'workspaces.common.statusIdle',
+  'needs-input': 'workspaces.common.statusNeedsInput',
+  busy: 'workspaces.common.statusBusy',
+  done: 'workspaces.common.statusDone',
+  paused: 'workspaces.common.statusPaused',
+  stuck: 'workspaces.common.statusStuck',
+};
 
 //? Columns are keyed by the stage's free-string id (04b §12), not a fixed enum.
 type Columns = Record<string, Ticket[]>;
@@ -33,7 +48,9 @@ function buildColumns(tickets: Ticket[], stages: PipelineStage[], overrides: Rec
   const cols: Columns = Object.fromEntries(stages.map((s) => [s.id, [] as Ticket[]]));
   for (const t of tickets) {
     const stage = overrides[t.id] ?? t.stageId;
-    cols[stage].push(t);
+    const list = cols[stage];
+    if (!list) continue;
+    list.push(t);
   }
   return cols;
 }
@@ -43,14 +60,19 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
   return [
     { label: translate({ key: 'workspaces.board.openTicket' }), icon: 'up-right-from-square', onClick: () => { ctx.openTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
-    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => {} },
+    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { /* Fase 2: attach a TicketReference */ } },
     { divider: true },
-    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => {} },
+    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { /* Fase 2: pause/resume the ticket's AI session */ } },
     { label: translate({ key: 'workspaces.board.copyDevId' }), icon: 'copy', onClick: () => void navigator.clipboard.writeText(ticket.id) },
     { divider: true },
     {
       label: translate({ key: 'workspaces.board.archive' }), icon: 'box-archive', danger: true,
-      onClick: () => void menuHandler.confirm({ title: translate({ key: 'workspaces.board.archiveConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.board.archiveConfirmContent' }) }),
+      onClick: () => {
+        void menuHandler.confirm({
+          title: translate({ key: 'workspaces.board.archiveConfirmTitle', params: [{ key: 'id', value: ticket.id }] }),
+          content: translate({ key: 'workspaces.board.archiveConfirmContent' }),
+        }).then((ok) => { if (ok) ctx.archiveTicket(ticket.id); });
+      },
     },
   ];
 }
@@ -135,14 +157,109 @@ function KanbanColumn({ stage, tickets }: { stage: PipelineStage; tickets: Ticke
   );
 }
 
-function BoardHeader({ isMobile }: { isMobile: boolean }) {
+//? Opened via menuHandler (outside the WorkspacesProvider tree, per the
+//? `CreateWorkspaceForm` pattern in Shell.tsx), so it receives the stage list +
+//? create callback as props instead of reading them from context.
+function NewTicketForm({ stages, onCreate }: { stages: PipelineStage[]; onCreate: (input: { title: string; stageId: string }) => void }) {
+  const translate = useTranslator();
+  const [title, setTitle] = useState('');
+  const [stageId, setStageId] = useState(stages[0]?.id ?? '');
+  const stageItems: DropdownItem[] = stages.map((s) => ({ id: s.id, value: s.id, item: s.name }));
+  const submit = () => {
+    const t = title.trim();
+    if (!t || !stageId) return;
+    onCreate({ title: t, stageId });
+    void menuHandler.close();
+  };
+  return (
+    <div className="w-full flex flex-col gap-3">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
+      <input
+        value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.board.newTicketTitlePlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.board.newTicketStage' })}</span>
+        <Dropdown size="sm" items={stageItems} defaultValue={stageItems[0]} onChange={(it) => { setStageId(String(it.id)); }} />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
+//? Simple client-side status/assignee filter popover — a view concern only,
+//? nothing is persisted (no control-API op).
+function FilterMenu({ isMobile, filters, onChange }: { isMobile: boolean; filters: BoardFilters; onChange: (next: BoardFilters) => void }) {
+  const translate = useTranslator();
+  const { members } = useWorkspaces();
+  const [open, setOpen] = useState(false);
+  const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
+
+  const statusItems: DropdownItem[] = [
+    { id: 'all', value: 'all', item: translate({ key: 'workspaces.board.allStatuses' }) },
+    ...STATUS_FILTER_OPTIONS.map((s) => ({ id: s, value: s, item: translate({ key: STATUS_LABEL_KEY[s] }) })),
+  ];
+  const assigneeItems: DropdownItem[] = [
+    { id: 'all', value: 'all', item: translate({ key: 'workspaces.board.allAssignees' }) },
+    ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
+  ];
+  const active = filters.status !== 'all' || filters.assigneeId !== 'all';
+
+  return (
+    <div className="relative" ref={ref}>
+      <WsButton variant="secondary" icon="filter" onClick={() => { setOpen((o) => !o); }} className={active ? 'ring-2 ring-primary/40' : ''}>
+        {isMobile ? '' : translate({ key: 'workspaces.board.filter' })}
+      </WsButton>
+      <Popover open={open} className="absolute right-0 mt-1 z-30 w-64 rounded-xl border border-container1-border bg-container1 p-3 shadow-lg flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted">{translate({ key: 'workspaces.board.filterStatus' })}</span>
+          <Dropdown
+            size="sm" items={statusItems} value={statusItems.find((i) => i.id === filters.status)}
+            onChange={(it) => { onChange({ ...filters, status: STATUS_FILTER_OPTIONS.find((s) => s === it.id) ?? 'all' }); }}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted">{translate({ key: 'workspaces.board.filterAssignee' })}</span>
+          <Dropdown
+            size="sm" items={assigneeItems} value={assigneeItems.find((i) => i.id === filters.assigneeId)}
+            onChange={(it) => { onChange({ ...filters, assigneeId: String(it.id) }); }}
+          />
+        </div>
+        {active && (
+          <button type="button" onClick={() => { onChange(ALL_FILTERS); }} className="text-xs text-primary hover:underline text-left cursor-pointer">
+            {translate({ key: 'workspaces.board.clearFilters' })}
+          </button>
+        )}
+      </Popover>
+    </div>
+  );
+}
+
+function BoardHeader({
+  isMobile, sprintFilter, onSprintFilterChange, filters, onFiltersChange,
+}: {
+  isMobile: boolean;
+  sprintFilter: string;
+  onSprintFilterChange: (sprintId: string) => void;
+  filters: BoardFilters;
+  onFiltersChange: (next: BoardFilters) => void;
+}) {
   const ctx = useWorkspaces();
   const translate = useTranslator();
-  const sprintItems = ctx.sprints.map((s) => {
+  const allSprintsItem: DropdownItem = { id: 'all', value: 'all', item: translate({ key: 'workspaces.board.allSprints' }) };
+  const sprintItems: DropdownItem[] = ctx.sprints.map((s) => {
     let suffix = '';
     if (s.start) suffix = s.daysLeft ? ` · ${translate({ key: 'workspaces.board.daysLeft', params: [{ key: 'n', value: String(s.daysLeft) }] })}` : ` · ${s.start}–${s.end ?? ''}`;
     return { id: s.id, value: s.id, item: `${s.name}${suffix}` };
   });
+  const openNewTicket = () => {
+    void menuHandler.open(<NewTicketForm stages={ctx.stages} onCreate={ctx.quickAdd} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
+  };
+  const selectedSprintItem = sprintItems.find((i) => i.id === sprintFilter) ?? allSprintsItem;
   return (
     <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-baseline gap-2 min-w-0">
@@ -152,15 +269,18 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
       <div className="flex items-center gap-2">
         <Dropdown
           size="sm"
-          defaultValue={sprintItems[0]}
-          items={[...sprintItems, { id: 'manage', value: 'manage', item: translate({ key: 'workspaces.board.manageSprints' }) }]}
-          onChange={(it) => { if (it.id === 'manage') ctx.navigate('backlog'); }}
+          value={selectedSprintItem}
+          items={[allSprintsItem, ...sprintItems, { id: 'manage', value: 'manage', item: translate({ key: 'workspaces.board.manageSprints' }) }]}
+          onChange={(it) => {
+            if (it.id === 'manage') { ctx.navigate('backlog'); return; }
+            onSprintFilterChange(String(it.id));
+          }}
         />
         {!isMobile && (
           <IconButton icon="pause" title={translate({ key: 'workspaces.board.pauseAll' })} onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.board.pauseAllConfirmTitle' }), content: translate({ key: 'workspaces.board.pauseAllConfirmContent' }) })} />
         )}
-        <WsButton variant="secondary" icon="filter">{isMobile ? '' : translate({ key: 'workspaces.board.filter' })}</WsButton>
-        <WsButton icon="plus">{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
+        <FilterMenu isMobile={isMobile} filters={filters} onChange={onFiltersChange} />
+        <WsButton icon="plus" onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
       </div>
     </div>
   );
@@ -169,16 +289,16 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
 function BoardMobile({ columns }: { columns: Columns }) {
   const translate = useTranslator();
   const { stages } = useWorkspaces();
-  const [active, setActive] = useState<string>(stages.find((s) => columns[s.id].length)?.id ?? stages[0].id);
+  const [active, setActive] = useState<string>(stages.find((s) => columns[s.id]?.length)?.id ?? stages[0]?.id ?? '');
   const stage = stages.find((s) => s.id === active)!;
-  const list = columns[active];
+  const list = columns[active] ?? [];
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto ws-no-scrollbar">
         {stages.map((s) => (
           <button key={s.id} type="button" onClick={() => { setActive(s.id); }}
             className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${s.id === active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>
-            {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id].length}</span>
+            {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id]?.length ?? 0}</span>
           </button>
         ))}
       </div>
@@ -193,7 +313,16 @@ function BoardMobile({ columns }: { columns: Columns }) {
 export default function Board() {
   const { isMobile, stageOverrides, tickets, stages } = useWorkspaces();
   const translate = useTranslator();
-  const columns = useMemo(() => buildColumns(tickets, stages, stageOverrides), [tickets, stages, stageOverrides]);
+  const [sprintFilter, setSprintFilter] = useState('all');
+  const [filters, setFilters] = useState<BoardFilters>(ALL_FILTERS);
+
+  const filteredTickets = useMemo(() => tickets.filter((t) => {
+    if (sprintFilter !== 'all' && t.sprintId !== sprintFilter) return false;
+    if (filters.status !== 'all' && t.status !== filters.status) return false;
+    if (filters.assigneeId !== 'all' && t.assigneeId !== filters.assigneeId) return false;
+    return true;
+  }), [tickets, sprintFilter, filters]);
+  const columns = useMemo(() => buildColumns(filteredTickets, stages, stageOverrides), [filteredTickets, stages, stageOverrides]);
 
   //? No pipeline stages yet — the snapshot is still loading, or this is a freshly
   //? bootstrapped workspace. Render an empty state instead of indexing stages[0]
@@ -201,7 +330,7 @@ export default function Board() {
   if (stages.length === 0) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <BoardHeader isMobile={isMobile} />
+        <BoardHeader isMobile={isMobile} sprintFilter={sprintFilter} onSprintFilterChange={setSprintFilter} filters={filters} onFiltersChange={setFilters} />
         <div className="flex-1 min-h-0 flex items-center justify-center px-4">
           <EmptyState icon="table-columns" title={translate({ key: 'workspaces.board.emptyStagesTitle' })} sub={translate({ key: 'workspaces.board.emptyStagesSub' })} />
         </div>
@@ -212,7 +341,7 @@ export default function Board() {
   if (isMobile) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <BoardHeader isMobile />
+        <BoardHeader isMobile sprintFilter={sprintFilter} onSprintFilterChange={setSprintFilter} filters={filters} onFiltersChange={setFilters} />
         <BoardMobile columns={columns} />
       </div>
     );
@@ -220,11 +349,11 @@ export default function Board() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <BoardHeader isMobile={false} />
+      <BoardHeader isMobile={false} sprintFilter={sprintFilter} onSprintFilterChange={setSprintFilter} filters={filters} onFiltersChange={setFilters} />
       <div className="flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6">
         <LayoutGroup>
           <div className="flex gap-3 h-full">
-            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id]} />)}
+            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id] ?? []} />)}
             {/* trailing space so the last column isn't flush against the AI panel / viewport edge */}
             <div className="w-2 shrink-0" aria-hidden />
           </div>

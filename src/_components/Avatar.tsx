@@ -96,7 +96,7 @@ export default function Avatar({ user, textSize = 'text-lg' }: AvatarProps) {
         className={`rounded-full aspect-square text-title-primary flex items-center justify-center w-full h-full select-none ${textSize}`}
         style={{ backgroundColor: user.avatarFallback ?? '#9ca3af' }}
       >
-        {user.name ? user.name[0].toUpperCase() : null}
+        {user.name ? user.name[0]?.toUpperCase() : null}
       </div>
     );
   }

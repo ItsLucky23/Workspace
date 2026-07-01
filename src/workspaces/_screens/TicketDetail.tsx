@@ -51,7 +51,14 @@ export default function TicketDetail({ id }: { id: string }) {
           tone="correct" icon="circle-check"
           title={translate({ key: 'workspaces.ticket.doneIn', params: [{ key: 'stage', value: stage?.name ?? translate({ key: 'workspaces.ticket.thisStage' }) }] })}
           action={nextStage && (
-            <WsButton onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.promoteConfirmTitle', params: [{ key: 'id', value: ticket.id }, { key: 'stage', value: nextStage.name }] }), content: ticket.carryOver ?? translate({ key: 'workspaces.ticket.promoteConfirmContent' }) })}>
+            <WsButton
+              onClick={() => {
+                void menuHandler.confirm({
+                  title: translate({ key: 'workspaces.ticket.promoteConfirmTitle', params: [{ key: 'id', value: ticket.id }, { key: 'stage', value: nextStage.name }] }),
+                  content: ticket.carryOver ?? translate({ key: 'workspaces.ticket.promoteConfirmContent' }),
+                }).then((ok) => { if (ok) ctx.bulkMove([ticket.id], nextStage.id); });
+              }}
+            >
               {translate({ key: 'workspaces.ticket.promoteTo', params: [{ key: 'stage', value: nextStage.name }] })}
             </WsButton>
           )}
@@ -101,7 +108,7 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
         <MetaChip icon="up-right-from-square" text={translate({ key: 'workspaces.ticket.previewLive' })} tone="correct" />
         <div className="flex-1" />
         <WsButton variant="secondary" icon="terminal" onClick={() => { ctx.navigate('terminals'); }}>{translate({ key: 'workspaces.ticket.openTerminal' })}</WsButton>
-        <WsButton variant="secondary" icon="up-right-from-square">{translate({ key: 'workspaces.ticket.gitlab' })}</WsButton>
+        <WsButton variant="secondary" icon="up-right-from-square" onClick={() => { /* Fase 2: no GitLab deep-link op yet */ }}>{translate({ key: 'workspaces.ticket.gitlab' })}</WsButton>
       </div>
 
       {ticket.labels.length > 0 && <div className="flex flex-wrap gap-1 mt-3">{ticket.labels.map((l) => <LabelChip key={l} name={l} />)}</div>}
@@ -148,7 +155,7 @@ function NeedsInputBanner({ question }: { question: string }) {
           placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
           className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
         />
-        <WsButton onClick={() => { setReply(''); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
+        <WsButton onClick={() => { /* Fase 2: no reply/send control-op yet — clears the input only */ setReply(''); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
       </div>
     </Banner>
   );
@@ -176,7 +183,10 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
       <div className="flex items-center gap-2">
         <WsButton
           variant="danger" icon="box-archive"
-          onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }), input: ticket.id })}
+          onClick={() => {
+            /* Fase 2: no teardown-container control-op yet — confirm only, no follow-up write */
+            void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }), input: ticket.id });
+          }}
         >
           {translate({ key: 'workspaces.ticket.teardownContainer' })}
         </WsButton>
@@ -185,6 +195,8 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
   );
 }
 
+//? Fase 2: still reads the seed TERMINALS catalog directly (no live snapshot field
+//? for terminal sessions yet) — replace once terminals are part of the tenant data.
 function TerminalTab({ ticketId }: { ticketId: string }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
@@ -194,6 +206,9 @@ function TerminalTab({ ticketId }: { ticketId: string }) {
     return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalSub' })} />;
   }
   const proc = terminal.processes[active] ?? terminal.processes[0];
+  if (!proc) {
+    return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalSub' })} />;
+  }
   return (
     <div className="rounded-xl overflow-hidden border border-container1-border">
       <div className="flex items-center justify-between gap-2 bg-terminal-surface px-3 h-10 text-terminal-text">
@@ -222,7 +237,7 @@ function FilesTab({ files }: { files: TicketFile[] }) {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.ticket.changedFilesCount', params: [{ key: 'count', value: files.length }] })}</span>
-        <WsButton variant="secondary" icon="link">{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
+        <WsButton variant="secondary" icon="link" onClick={() => { /* Fase 2: reference picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
       </div>
       <FileDiffViewer files={files} />
     </div>
@@ -276,7 +291,7 @@ function LinksTab({ links, onOpen }: { links: TicketLink[]; onOpen: (id: string)
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.ticket.relatedTickets' })}</span>
-        <WsButton variant="secondary" icon="link">{translate({ key: 'workspaces.ticket.linkTicket' })}</WsButton>
+        <WsButton variant="secondary" icon="link" onClick={() => { /* Fase 2: ticket link picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.linkTicket' })}</WsButton>
       </div>
       {links.length === 0
         ? <EmptyState icon="link" title={translate({ key: 'workspaces.ticket.noLinks' })} sub={translate({ key: 'workspaces.ticket.noLinksSub' })} />
