@@ -133,3 +133,22 @@
 **Commits:** `7fe670e` (rewire+ops), `c604f6e` (tests+tenant-fix).
 
 **Fase 1 status:** basisplatform-datalaag + read/write-path + schermen + tests **compleet + getest**. Open (secundair): SESSIONS/TERMINALS/USAGE_ROWS/NOTIFICATIONS nog op seed (niet in snapshot); de Pipeline-editor-config nog op seed (stage-config-persist-slice); Fase-2 AI-session-ops zijn scaffold. **Developer-note:** elke nieuwe `_api`-route heeft `export const validation = 'relaxed'` nodig (devkit-bug, lesson 0002).
+
+## 2026-07-01 — Branch-audit + fixes (cross-tenant + correctness) in worktree `workspaces-audit-fixes`
+
+**User prompt:** verifieer al het werk op deze gitbranch (bugs, en vooral datalekken tussen workspaces); fix meteen wat nodig is; snel werken want andere AIs bouwen parallel verder.
+
+**Aanpak:** volledige read-only audit van alle gecommitte code (24 commits) — kern-tenant/read/write-path zelf gelezen, 3 parallelle agents voor frontend-rewire / test-rigor / schema+seed. Fixes geïsoleerd in worktree `workspaces-audit-fixes` (branch vanaf HEAD) zodat parallelle AIs op `main` niet gehinderd worden.
+
+**Bevinding vooraf:** tenant-isolatie is structureel solide — `TENANT_MODELS` ↔ `workspaceId` is exact, unique-constraints zijn per-tenant, de Conductor scoped elke `where` op `workspaceId`, `buildSnapshot` valideert `wantWorkspaceId` tegen membership. De security-fix `c604f6e` (no-arg `findMany` leak) is echt en volledig. Geen render-leak.
+
+**Gefixt (echte bugs):**
+1. **🔴 Cross-user/cross-tenant write-suppressie.** `clientRequestId` was een deterministische module-counter die reset bij reload (`c1-20`, `c2-27`…); de Conductor-dedup keyde er globaal op → user B's 1e write botste met user A's 1e write en werd stil gedropt. Fix: client → `crypto.randomUUID()` (`WorkspacesProvider.tsx`); dedup genamespaced op `workspaceId:clientRequestId` (`conductor.ts`, defense-in-depth).
+2. **Activity-feed identiteits-mismatch + ordering.** Snapshot gaf events' `ticketId` als ObjectId terug terwijl de UI tickets op DEV-key keyt → `openTicket` "not found" + TicketDetail Activity-tab permanent leeg; feed sorteerde op per-ticket `seq` (kruist tickets). Fix (`workspaceSnapshot.ts`): ObjectId→key map voor events + suggestions, `time` gevuld via `relTime(createdAt)`, feed op `createdAt desc`.
+3. **Board-crash bij lege `stages`.** `BoardMobile` deed `stages[0].id` → white-screen op laad-venster / vers-gebootstrapte workspace (phone-first). Fix: early empty-state-guard in `Board.tsx` + 2 i18n-keys (en/nl/de/fr).
+
+**Toegevoegd (test):** regressie-guard in `tests/integration/tenant.test.mts` voor het gevaarlijkste ONGETESTE isolatie-pad — no-`where` `updateMany`/`deleteMany` + create-stamping + no-arg `count` over 2 workspaces. **Bewezen tegen echte Mongo: no-`where` mutatie in wsA raakt wsB niet aan.**
+
+**Geflagd (niet gefixt — buiten scope / bewust Fase-1):** RBAC/integration-edits in de Provider zijn optimistic-local (nooit gepersisteerd → wiped op refetch); env-value-input vuurt control-write+refetch per toetsaanslag (blaast rateLimit 30); Conductor bevestigt write vóór de serial-chain draait (falende write alleen ge-logd); `ControlAck`-error-shape wijkt af van het bevroren contract; terminal-PTY-bridge = host-RCE voor elke ingelogde user zodra enabled (non-prod gated); `tenantDb` blanket-`where.workspaceId` is latent-onveilig voor `findUnique`/`update` op compound-key (Conductor gebruikt plain prisma, dus niet actief). Test-dekking: RBAC-*enforcement* (deny-pad) en 38/41 control-ops zijn nog niet write-getest.
+
+**Verificatie:** `tsc --noEmit` **0 errors** (na `generateArtifacts`), `eslint` op aangeraakte files schoon, `ai:lint` geen violations, 4 locales valide JSON, **`npm run test:ws` 7/7 groen** (tenant-test nu 22 asserts). Niet gepusht; changes staan op branch `workspaces-audit-fixes` klaar om te mergen naar `main`.

@@ -718,7 +718,9 @@
       "filter": "Filter",
       "ticket": "Ticket",
       "mobileEmptyTitle": "Nothing in {{stage}}",
-      "mobileEmptySub": "Pull tickets from GitLab to get started."
+      "mobileEmptySub": "Pull tickets from GitLab to get started.",
+      "emptyStagesTitle": "Setting up your board…",
+      "emptyStagesSub": "Loading your pipeline stages."
     },
     "activity": {
       "title": "Activity",

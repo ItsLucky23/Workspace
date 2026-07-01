@@ -29,6 +29,15 @@ const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s ===
 const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
 
+//? Compact "time ago" for the activity feed (mirrors the seed's '2m'/'1h'/'3d' style).
+const relTime = (d: Date): string => {
+  const secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${String(Math.floor(secs / 60))}m`;
+  if (secs < 86_400) return `${String(Math.floor(secs / 3600))}h`;
+  return `${String(Math.floor(secs / 86_400))}d`;
+};
+
 export interface WorkspaceSnapshot {
   workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role'>)[];
   activeWorkspaceId: string | null;
@@ -75,7 +84,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.envVar.findMany(),
       tenantDb.integrationTool.findMany(),
       tenantDb.invite.findMany({ where: { status: 'pending' } }),
-      tenantDb.ticketEvent.findMany({ orderBy: { seq: 'desc' }, take: 50 }),
+      //? `seq` is monotonic PER TICKET, so it can't order a cross-ticket workspace
+      //? feed (ticket A#5 would outrank the newer ticket B#4). Order by createdAt —
+      //? the @@index([workspaceId, createdAt]) exists for exactly this feed.
+      tenantDb.ticketEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -89,6 +101,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     const ticketCountBySprint = new Map<string, number>();
     for (const t of ticketRows) { if (t.sprintId) ticketCountBySprint.set(t.sprintId, (ticketCountBySprint.get(t.sprintId) ?? 0) + 1); }
+
+    //? Events + suggestions store ticket ObjectIds, but the frontend keys tickets by
+    //? their DEV-#### `key` (Ticket.id in the snapshot). Map ObjectId → key so
+    //? open-ticket / activity-tab filters resolve; unknown ids pass through.
+    const ticketKeyById = new Map(ticketRows.map((t) => [t.id, t.key]));
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
@@ -110,11 +127,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
       })),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
-      suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds })),
+      suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.value, secret: e.secret })),
       integrations: integrationRows.map((it): IntegrationTool => ({ id: it.id, name: it.name, type: it.type, fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })), mcp: it.mcp })),
       invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sent: 'pending' })),
-      events: eventRows.map((ev): ActivityEvent => ({ time: '', actor: ev.actor, ticketId: ev.ticketId, type: asEvType(ev.type), text: ev.text })),
+      events: eventRows.map((ev): ActivityEvent => ({ time: relTime(ev.createdAt), actor: ev.actor, ticketId: ticketKeyById.get(ev.ticketId) ?? ev.ticketId, type: asEvType(ev.type), text: ev.text })),
     };
   });
 }

@@ -70,6 +70,36 @@ try {
   assert(TENANT_MODELS.has('Ticket'), 'TENANT_MODELS includes Ticket (tenant-scoped)');
   assert(TENANT_MODELS.has('WorkspaceMember'), 'TENANT_MODELS includes WorkspaceMember (tenant-scoped)');
   assert(TENANT_MODELS.has('EnvVar'), 'TENANT_MODELS includes EnvVar (tenant-scoped)');
+
+  //? ---- REGRESSION GUARD: the MOST dangerous cross-tenant path — a NO-`where`
+  //? MUTATION (updateMany/deleteMany with no filter) must hit ONLY the active tenant.
+  //? A bug that injected workspaceId only when a `where` already existed would make
+  //? these blanket-write/delete EVERY workspace's rows. Also covers create-stamping
+  //? + no-arg count. bootstrapWorkspace seeds no EnvVars, so each ws starts at 0.
+  const stamp = String(Date.now());
+  //? create-stamping: no workspaceId in `data` → the extension stamps the active one.
+  const envA = await runInTenant(wsA, async () => tenantDb.envVar.create({ data: { key: `K_A_${stamp}`, value: 'a', secret: false } }));
+  const envB = await runInTenant(wsB, async () => tenantDb.envVar.create({ data: { key: `K_B_${stamp}`, value: 'b', secret: false } }));
+  eq(envA.workspaceId, wsA, 'tenantDb.create in wsA scope stamps workspaceId=wsA (no explicit id in data)');
+  eq(envB.workspaceId, wsB, 'tenantDb.create in wsB scope stamps workspaceId=wsB');
+
+  //? no-arg count is tenant-scoped (never counts the other tenant's row).
+  const countA = await runInTenant(wsA, async () => tenantDb.envVar.count());
+  eq(countA, 1, 'runInTenant(wsA) → NO-ARG tenantDb.envVar.count() counts ONLY wsA rows');
+
+  //? no-`where` updateMany in wsA MUST NOT touch wsB's row.
+  await runInTenant(wsA, async () => tenantDb.envVar.updateMany({ data: { value: 'changed-A' } }));
+  const bAfterUpdate = await prisma.envVar.findUnique({ where: { id: envB.id } });
+  eq(bAfterUpdate?.value, 'b', 'no-`where` updateMany in wsA left wsB\'s env var UNCHANGED (no cross-tenant write)');
+  const aAfterUpdate = await prisma.envVar.findUnique({ where: { id: envA.id } });
+  eq(aAfterUpdate?.value, 'changed-A', 'no-`where` updateMany in wsA DID update wsA\'s own row');
+
+  //? no-`where` deleteMany in wsA MUST NOT delete wsB's row.
+  await runInTenant(wsA, async () => tenantDb.envVar.deleteMany({}));
+  const bAfterDelete = await prisma.envVar.findUnique({ where: { id: envB.id } });
+  assert(bAfterDelete !== null, 'no-`where` deleteMany in wsA left wsB\'s env var INTACT (no cross-tenant delete)');
+  const aAfterDelete = await prisma.envVar.findUnique({ where: { id: envA.id } });
+  assert(aAfterDelete === null, 'no-`where` deleteMany in wsA DID delete wsA\'s own row');
 } finally {
   //? ---- best-effort cleanup: both workspaces + all tenant rows + the demo owner ----
   if (wsA) await cleanupWorkspace(prisma, wsA, ownerId ? [ownerId] : []);

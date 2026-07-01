@@ -77,9 +77,14 @@ function useIsMobile(): boolean {
   return mobile;
 }
 
-//? A monotonic-ish client request id for control-API idempotency.
+//? A globally-unique client request id for control-API idempotency. MUST be unique
+//? across users, tabs and reloads: the Conductor dedups on it, so a reused id (the
+//? old reload-resetting counter did this) makes a real write look like a duplicate
+//? re-send and get silently dropped. `randomUUID` is available in every secure
+//? context (https + localhost/127.0.0.1).
+function nextReqId(): string { return globalThis.crypto.randomUUID(); }
+//? A local counter for UI-only ids (chat messages) — never sent to the server.
 let reqCounter = 0;
-function nextReqId(): string { reqCounter += 1; return `c${String(reqCounter)}-${String(reqCounter * 7 + 13)}`; }
 
 export function WorkspacesProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();

@@ -192,7 +192,22 @@ function BoardMobile({ columns }: { columns: Columns }) {
 
 export default function Board() {
   const { isMobile, stageOverrides, tickets, stages } = useWorkspaces();
+  const translate = useTranslator();
   const columns = useMemo(() => buildColumns(tickets, stages, stageOverrides), [tickets, stages, stageOverrides]);
+
+  //? No pipeline stages yet — the snapshot is still loading, or this is a freshly
+  //? bootstrapped workspace. Render an empty state instead of indexing stages[0]
+  //? (BoardMobile would otherwise crash the phone-first board on load).
+  if (stages.length === 0) {
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <BoardHeader isMobile={isMobile} />
+        <div className="flex-1 min-h-0 flex items-center justify-center px-4">
+          <EmptyState icon="table-columns" title={translate({ key: 'workspaces.board.emptyStagesTitle' })} sub={translate({ key: 'workspaces.board.emptyStagesSub' })} />
+        </div>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (

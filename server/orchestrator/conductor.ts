@@ -109,11 +109,15 @@ let chain: Promise<unknown> = Promise.resolve();
 const seenRequestIds = new Set<string>();
 
 export async function enqueueControlAction(action: ControlAction): Promise<{ signalSeq: number }> {
-  if (seenRequestIds.has(action.clientRequestId)) {
+  //? Dedup key is namespaced by workspace so a clientRequestId collision across
+  //? tenants (or a client that reused an id) can never suppress a real write in a
+  //? DIFFERENT workspace. Idempotent re-sends of the SAME action still dedup.
+  const dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
+  if (seenRequestIds.has(dedupKey)) {
     // Duplicate re-send — already enqueued; return a benign ack (no double write).
     return { signalSeq: -1 };
   }
-  seenRequestIds.add(action.clientRequestId);
+  seenRequestIds.add(dedupKey);
   const signalSeq = await nextSignalSeq(action.workspaceId);
 
   //? Append the durable (append-only, B-O6) signal, then run the write — both
