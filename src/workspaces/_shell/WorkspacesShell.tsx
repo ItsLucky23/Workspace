@@ -24,12 +24,12 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen((o) => !o); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    globalThis.addEventListener('keydown', onKey);
+    return () => { globalThis.removeEventListener('keydown', onKey); };
   }, []);
 
   const noop = () => {};
-  const openSearch = () => setSearchOpen(true);
+  const openSearch = () => { setSearchOpen(true); };
 
   return (
     <MotionConfig reducedMotion="user">
@@ -64,7 +64,7 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
           <MobileBottomBar onFab={noop} />
         </div>
       </div>
-      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SearchPalette open={searchOpen} onClose={() => { setSearchOpen(false); }} />
     </MotionConfig>
   );
 }

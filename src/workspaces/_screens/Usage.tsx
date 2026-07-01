@@ -77,7 +77,7 @@ export default function Usage() {
                 </thead>
                 <tbody>
                   {USAGE_ROWS.map((r) => (
-                    <tr key={r.ticketId} className="border-b border-divider last:border-0 hover:bg-container2/40 cursor-pointer" onClick={() => openTicket(r.ticketId)}>
+                    <tr key={r.ticketId} className="border-b border-divider last:border-0 hover:bg-container2/40 cursor-pointer" onClick={() => { openTicket(r.ticketId); }}>
                       <td className="py-2.5 font-mono text-xs text-primary">{r.ticketId}</td>
                       <td className="py-2.5 text-right font-mono text-xs text-muted">{r.tokensIn}</td>
                       <td className="py-2.5 text-right font-mono text-xs text-muted">{r.tokensOut}</td>
@@ -100,7 +100,7 @@ export default function Usage() {
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {tickets.map((t) => (
-                          <button key={t.id} type="button" onClick={() => openTicket(t.id)} className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] font-mono text-common hover:bg-container2-hover cursor-pointer">{t.id}</button>
+                          <button key={t.id} type="button" onClick={() => { openTicket(t.id); }} className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] font-mono text-common hover:bg-container2-hover cursor-pointer">{t.id}</button>
                         ))}
                       </div>
                     </div>

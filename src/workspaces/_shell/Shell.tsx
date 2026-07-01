@@ -51,7 +51,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
     const active = isAi ? aiOpen : view === it.id;
     return (
       <button
-        key={it.id} type="button" onClick={() => (isAi ? toggleAi() : navigate(it.id))}
+        key={it.id} type="button" onClick={() => { isAi ? toggleAi() : navigate(it.id); }}
         title={expanded ? undefined : it.label}
         className={`group relative flex items-center gap-3 rounded-xl h-10 px-3 transition-colors cursor-pointer ${active ? 'bg-container2 text-title' : 'text-muted hover:bg-container2 hover:text-common'}`}
       >
@@ -71,14 +71,14 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
           <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">W</span>
           {expanded && <span className="font-semibold text-title whitespace-nowrap">Workspaces</span>}
         </div>
-        <button type="button" onClick={() => setExpanded((e) => !e)} title={expanded ? 'Collapse' : 'Expand'} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
+        <button type="button" onClick={() => { setExpanded((e) => !e); }} title={expanded ? 'Collapse' : 'Expand'} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
           <Icon name={expanded ? 'angle-left' : 'angle-right'} />
         </button>
       </div>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2">{NAV_ITEMS.map((it) => renderItem(it))}</div>
       <div className="flex flex-col gap-1 px-2.5 py-3 border-t border-divider">
         {NAV_BOTTOM.map((it) => renderItem(it))}
-        <button type="button" onClick={() => navigate('settings')} title={expanded ? undefined : `${currentUser.name} · settings`}
+        <button type="button" onClick={() => { navigate('settings'); }} title={expanded ? undefined : `${currentUser.name} · settings`}
           className="flex items-center gap-3 rounded-xl h-10 px-2.5 text-muted hover:bg-container2 transition-colors cursor-pointer">
           <AvatarBubble user={currentUser} size={24} />
           {expanded && <span className="text-sm font-medium text-common whitespace-nowrap">{currentUser.name}</span>}
@@ -93,9 +93,9 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
   const { navigate, theme, setTheme, currentUser, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace } = useWorkspaces();
   const [wsOpen, setWsOpen] = useState(false);
   const [avOpen, setAvOpen] = useState(false);
-  const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => setWsOpen(false));
-  const avRef = useClickAway<HTMLDivElement>(avOpen, () => setAvOpen(false));
-  const presence = [MEMBERS.sanne!, MEMBERS.tom!, MEMBERS.mathijs!];
+  const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => { setWsOpen(false); });
+  const avRef = useClickAway<HTMLDivElement>(avOpen, () => { setAvOpen(false); });
+  const presence = [MEMBERS.sanne, MEMBERS.tom, MEMBERS.mathijs];
   const unread = NOTIFICATIONS.filter((n) => !n.read).length;
   const openCreate = () => { setWsOpen(false); void menuHandler.open(<CreateWorkspaceForm onCreate={createWorkspace} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
@@ -104,7 +104,7 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
       {/* workspace switcher — one project = one workspace */}
       <div className="flex items-center gap-1.5">
         <div className="relative" ref={wsRef}>
-          <button type="button" onClick={() => setWsOpen((o) => !o)} className="flex items-center gap-2 rounded-xl px-2 h-9 hover:bg-container2 transition-colors cursor-pointer">
+          <button type="button" onClick={() => { setWsOpen((o) => !o); }} className="flex items-center gap-2 rounded-xl px-2 h-9 hover:bg-container2 transition-colors cursor-pointer">
             <span className="w-6 h-6 rounded-md bg-primary text-title-primary text-xs font-bold flex items-center justify-center">{activeWorkspace.name[0]}</span>
             <span className="text-sm font-semibold text-title">{activeWorkspace.name}</span>
             <Icon name="caret-down" className={`text-xs text-muted transition-transform ${wsOpen ? 'rotate-180' : ''}`} />
@@ -142,9 +142,9 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
           <Icon name="bell" />
           {unread > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-white text-[10px] font-semibold flex items-center justify-center">{unread}</span>}
         </button>
-        <IconButton icon={theme === 'dark' ? 'sun' : 'moon'} title="Toggle theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <IconButton icon={theme === 'dark' ? 'sun' : 'moon'} title="Toggle theme" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} />
         <div className="relative" ref={avRef}>
-          <button type="button" onClick={() => setAvOpen((o) => !o)} className="rounded-full cursor-pointer"><AvatarBubble user={currentUser} size={32} /></button>
+          <button type="button" onClick={() => { setAvOpen((o) => !o); }} className="rounded-full cursor-pointer"><AvatarBubble user={currentUser} size={32} /></button>
           <Popover open={avOpen} className="absolute right-0 mt-1 w-56 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
             <div className="flex items-center gap-2.5 px-2.5 py-2">
               <AvatarBubble user={currentUser} size={36} />
@@ -152,10 +152,10 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
             </div>
             <div className="my-1 h-px bg-divider" />
             <button type="button" onClick={() => { setAvOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> Account</button>
-            <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> Theme: {theme}</button>
+            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> Theme: {theme}</button>
             <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="language" className="w-4 text-center" /> Language: English</button>
             <div className="my-1 h-px bg-divider" />
-            <button type="button" onClick={() => setAvOpen(false)} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> Sign out</button>
+            <button type="button" onClick={() => { setAvOpen(false); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> Sign out</button>
           </Popover>
         </div>
       </div>
@@ -174,12 +174,12 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
   return (
     <div className="hidden md:flex items-center gap-2 h-11 px-3 border-b border-divider bg-background">
       <div className="flex-1 flex items-center gap-1 overflow-x-auto ws-no-scrollbar">
-        <button type="button" onClick={() => navigate('board')} className={`relative flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${view === 'board' ? 'text-title' : 'text-muted hover:text-common'}`}>
+        <button type="button" onClick={() => { navigate('board'); }} className={`relative flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${view === 'board' ? 'text-title' : 'text-muted hover:text-common'}`}>
           {view === 'board' && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
           <span className="relative z-10 inline-flex items-center gap-2"><Icon name="table-columns" /> Board</span>
         </button>
         {openTabs.map((id) => (
-          <div key={id} onClick={() => navigate(id)} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
+          <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
             {view === id && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
             <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(id) }} />
             <span className="relative z-10">{id}</span>
@@ -207,7 +207,7 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void })
       <div className="text-base font-semibold text-title">Create workspace</div>
       <span className="text-sm text-muted -mt-2">One project, one workspace — invite your team once it exists.</span>
       <input
-        value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         placeholder="Workspace name…"
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
@@ -244,7 +244,7 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
       setShown(text.slice(0, i));
       if (i >= text.length) clearInterval(id);
     }, 16);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); };
   }, [text, animate]);
   return { shown, typing: shown.length < text.length };
 }
@@ -321,8 +321,8 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
           <IconButton icon="xmark" onClick={onClose} />
         </div>
         <div className="flex items-center gap-1 px-3 h-11 border-b border-divider">
-          <PanelTab label="Chat" icon="comment" on={tab === 'chat'} onClick={() => setTab('chat')} />
-          <PanelTab label="Suggestions" icon="robot" count={suggestions.length} on={tab === 'suggestions'} onClick={() => setTab('suggestions')} />
+          <PanelTab label="Chat" icon="comment" on={tab === 'chat'} onClick={() => { setTab('chat'); }} />
+          <PanelTab label="Suggestions" icon="robot" count={suggestions.length} on={tab === 'suggestions'} onClick={() => { setTab('suggestions'); }} />
         </div>
         {tab === 'chat' ? (
           <>
@@ -331,7 +331,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
             </div>
             <div className="border-t border-divider p-3 flex items-center gap-2">
               <input
-                value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+                value={draft} onChange={(e) => { setDraft(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
                 placeholder="Ask the AI to do something…"
                 className="flex-1 min-w-0 h-9 px-3 rounded-xl border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
               />
@@ -341,7 +341,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
             {suggestions.length === 0 && <div className="text-center text-sm text-muted py-12">All caught up ✨</div>}
-            {suggestions.map((s) => <SuggestionCard key={s.id} s={s} onOpenTicket={openTicket} onDismiss={() => dismissSuggestion(s.id)} />)}
+            {suggestions.map((s) => <SuggestionCard key={s.id} s={s} onOpenTicket={openTicket} onDismiss={() => { dismissSuggestion(s.id); }} />)}
           </div>
         )}
       </div>
@@ -358,7 +358,7 @@ function SuggestionCard({ s, onOpenTicket, onDismiss }: { s: AiSuggestion; onOpe
       </div>
       <p className="text-sm text-common leading-relaxed">{s.body}</p>
       <div className="flex flex-wrap gap-1.5 mt-2">
-        {s.ticketIds.map((t) => <button key={t} type="button" onClick={() => onOpenTicket(t)} className="rounded-md bg-container2 px-1.5 py-0.5 text-xs font-mono text-common hover:bg-container2-hover cursor-pointer">{t}</button>)}
+        {s.ticketIds.map((t) => <button key={t} type="button" onClick={() => { onOpenTicket(t); }} className="rounded-md bg-container2 px-1.5 py-0.5 text-xs font-mono text-common hover:bg-container2-hover cursor-pointer">{t}</button>)}
       </div>
       <div className="flex items-center gap-2 mt-3">
         <button type="button" onClick={onDismiss} className="rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer">Accept</button>
@@ -388,7 +388,7 @@ export function MobileBottomBar({ onFab }: { onFab: () => void }) {
               <Icon name="plus" className="text-lg" />
             </button>
           )}
-          <button type="button" onClick={() => (it.id === 'ai' ? toggleAi() : navigate(it.id))} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs cursor-pointer ${active === it.id ? 'text-primary' : 'text-muted'}`}>
+          <button type="button" onClick={() => { it.id === 'ai' ? toggleAi() : navigate(it.id); }} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs cursor-pointer ${active === it.id ? 'text-primary' : 'text-muted'}`}>
             <Icon name={it.icon} className="text-lg" /> {it.label}
           </button>
         </div>

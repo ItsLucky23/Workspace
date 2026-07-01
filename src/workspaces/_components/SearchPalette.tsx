@@ -40,8 +40,8 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
     setQ('');
     const focusTimer = setTimeout(() => inputRef.current?.focus(), 30);
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => { clearTimeout(focusTimer); window.removeEventListener('keydown', onKey); };
+    globalThis.addEventListener('keydown', onKey);
+    return () => { clearTimeout(focusTimer); globalThis.removeEventListener('keydown', onKey); };
   }, [open, onClose]);
 
   const query = q.trim().toLowerCase();
@@ -54,12 +54,12 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
 
   const actions: QuickAction[] = [
     { label: 'New ticket', icon: 'plus', run: onClose },
-    { label: 'Go to Board', icon: 'table-columns', run: () => go('board') },
-    { label: 'Backlog', icon: 'list-check', run: () => go('backlog') },
-    { label: 'Terminals', icon: 'terminal', run: () => go('terminals') },
-    { label: 'Pipeline', icon: 'diagram-project', run: () => go('pipeline') },
-    { label: 'Sources', icon: 'book-open', run: () => go('sources') },
-    { label: 'Usage', icon: 'chart-column', run: () => go('usage') },
+    { label: 'Go to Board', icon: 'table-columns', run: () => { go('board'); } },
+    { label: 'Backlog', icon: 'list-check', run: () => { go('backlog'); } },
+    { label: 'Terminals', icon: 'terminal', run: () => { go('terminals'); } },
+    { label: 'Pipeline', icon: 'diagram-project', run: () => { go('pipeline'); } },
+    { label: 'Sources', icon: 'book-open', run: () => { go('sources'); } },
+    { label: 'Usage', icon: 'chart-column', run: () => { go('usage'); } },
     { label: ctx.aiOpen ? 'Hide Workspace-AI' : 'Open Workspace-AI', icon: 'robot', run: () => { ctx.toggleAi(); onClose(); } },
   ];
 
@@ -76,7 +76,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
               <div className="flex items-center gap-3 px-4 h-12 border-b border-divider">
                 <Icon name="magnifying-glass" className="text-muted" />
                 <input
-                  ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
+                  ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && tickets[0]) openTicket(tickets[0].id); }}
                   placeholder="Search tickets, sources, actions…"
                   className="flex-1 bg-transparent text-sm text-title focus:outline-none"
@@ -98,7 +98,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                     {recentTickets.length > 0 && (
                       <>
                         <Section title="Recent" />
-                        {recentTickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => openTicket(t.id)} />)}
+                        {recentTickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
                       </>
                     )}
                   </>
@@ -107,10 +107,10 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                   <>
                     {tickets.length === 0 && docs.length === 0 && <div className="text-center text-sm text-muted py-8">No matches</div>}
                     {tickets.length > 0 && <Section title="Tickets" />}
-                    {tickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => openTicket(t.id)} />)}
+                    {tickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
                     {docs.length > 0 && <Section title="Sources" />}
                     {docs.map((d) => (
-                      <button key={d.id} type="button" onClick={() => go('sources')} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
+                      <button key={d.id} type="button" onClick={() => { go('sources'); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
                         <span className="w-5 text-center text-muted"><Icon name="file-lines" /></span>
                         <div className="min-w-0 flex-1"><div className="text-sm text-title truncate">{d.name}</div><div className="text-xs text-muted truncate">{d.summary}</div></div>
                       </button>

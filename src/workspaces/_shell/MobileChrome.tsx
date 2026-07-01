@@ -21,9 +21,9 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
     <>
       <header className="md:hidden flex items-center gap-2 h-14 px-3 border-b border-divider bg-container1 shrink-0">
         {onTicket ? (
-          <button type="button" onClick={() => navigate('board')} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> Board</button>
+          <button type="button" onClick={() => { navigate('board'); }} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> Board</button>
         ) : (
-          <button type="button" onClick={() => setDrawer(true)} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
+          <button type="button" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
         )}
         <button type="button" className="flex items-center gap-2 ml-1 text-sm font-semibold text-title">
           <span className="w-5 h-5 rounded-md bg-primary text-title-primary text-[11px] font-bold flex items-center justify-center">{activeWorkspace.name[0]}</span>
@@ -37,7 +37,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
       <AnimatePresence>
         {drawer && (
           <>
-            <motion.div className="md:hidden fixed inset-0 z-40 bg-overlay" onClick={() => setDrawer(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
+            <motion.div className="md:hidden fixed inset-0 z-40 bg-overlay" onClick={() => { setDrawer(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
             <motion.div className="md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-container1 border-r border-divider p-3 flex flex-col gap-1"
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={SPRING_SHEET}>
               <div className="flex items-center gap-2 px-2 h-12 mb-1">

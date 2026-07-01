@@ -77,7 +77,7 @@ export default function Activity() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-title">{actorName(e.actor)}</span>
                   <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${EVENT_TINT[e.type]}`}>{EVENT_LABEL[e.type]}</span>
-                  <button type="button" onClick={() => openTicket(e.ticketId)} className="font-mono text-xs text-primary hover:underline cursor-pointer">{e.ticketId}</button>
+                  <button type="button" onClick={() => { openTicket(e.ticketId); }} className="font-mono text-xs text-primary hover:underline cursor-pointer">{e.ticketId}</button>
                   <span className="text-xs text-muted">· {e.time}</span>
                 </div>
                 <div className="text-sm text-common mt-1 break-words">{e.text}</div>

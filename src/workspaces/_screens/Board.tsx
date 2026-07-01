@@ -39,8 +39,8 @@ function buildColumns(tickets: Ticket[], overrides: Record<string, StageId>): Co
 function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>): PopMenuItem[] {
   const paused = ticket.status === 'paused';
   return [
-    { label: 'Open ticket', icon: 'up-right-from-square', onClick: () => ctx.openTicket(ticket.id) },
-    { label: 'Open terminal', icon: 'terminal', onClick: () => ctx.pushTo('terminals') },
+    { label: 'Open ticket', icon: 'up-right-from-square', onClick: () => { ctx.openTicket(ticket.id); } },
+    { label: 'Open terminal', icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
     { label: 'Add reference…', icon: 'link', onClick: () => {} },
     { divider: true },
     { label: paused ? 'Resume agent' : 'Pause agent', icon: paused ? 'play' : 'pause', onClick: () => {} },
@@ -56,7 +56,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>): P
 function KanbanCard({ ticket }: { ticket: Ticket }) {
   const ctx = useWorkspaces();
   const linked = ticketLinkedMembers(ticket);
-  const stop = { onClick: (e: React.MouseEvent) => e.stopPropagation() };
+  const stop = { onClick: (e: React.MouseEvent) => { e.stopPropagation(); } };
   const downAt = useRef(0);
   const menuClosedAt = useRef(0);
   //? Open the ticket only on a deliberate, quick click: not after a text
@@ -65,7 +65,7 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
   const handleClick = () => {
     if (Date.now() - menuClosedAt.current < 250) return;
     if (Date.now() - downAt.current > 350) return;
-    if ((window.getSelection()?.toString() ?? '') !== '') return;
+    if ((globalThis.getSelection()?.toString() ?? '') !== '') return;
     ctx.openTicket(ticket.id);
   };
   return (
@@ -162,14 +162,14 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
 }
 
 function BoardMobile({ columns }: { columns: Columns }) {
-  const [active, setActive] = useState<StageId>(STAGES.find((s) => columns[s.id].length)?.id ?? STAGES[0]!.id);
+  const [active, setActive] = useState<StageId>(STAGES.find((s) => columns[s.id].length)?.id ?? STAGES[0].id);
   const stage = STAGES.find((s) => s.id === active)!;
   const list = columns[active];
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto ws-no-scrollbar">
         {STAGES.map((s) => (
-          <button key={s.id} type="button" onClick={() => setActive(s.id)}
+          <button key={s.id} type="button" onClick={() => { setActive(s.id); }}
             className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${s.id === active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>
             {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id].length}</span>
           </button>

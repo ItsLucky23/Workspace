@@ -3,7 +3,7 @@
 //? helpers, so any screen/card deep in the tree can drive the shell without
 //? prop-drilling. State lives in `page.tsx`; this just types + exposes it.
 
-import { createContext, useContext } from 'react';
+import { createContext, use } from 'react';
 
 import type { AiSuggestion, ChatMessage, EnvVar, IntegrationTool, Member, PermRole, SshKeyEntry, StageId, Workspace } from '../_data/types';
 
@@ -82,7 +82,7 @@ const WorkspacesContext = createContext<WorkspacesCtx | null>(null);
 export const WorkspacesContextProvider = WorkspacesContext.Provider;
 
 export function useWorkspaces(): WorkspacesCtx {
-  const ctx = useContext(WorkspacesContext);
+  const ctx = use(WorkspacesContext);
   if (!ctx) throw new Error('useWorkspaces must be used within <WorkspacesProvider>');
   return ctx;
 }

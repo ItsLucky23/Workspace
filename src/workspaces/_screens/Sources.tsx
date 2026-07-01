@@ -116,7 +116,7 @@ function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
       <div className="flex items-center gap-3 mt-1">
         <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> Preview</button>
         {doc.source !== 'uploaded' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> Regenerate</button>}
-        <button type="button" onClick={() => openDetail(<DocDetail doc={doc} />)} className="text-xs text-common hover:text-title cursor-pointer ml-auto">Details</button>
+        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer ml-auto">Details</button>
       </div>
     </div>
   );
@@ -133,7 +133,7 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
         </div>
         <div className="text-xs text-muted truncate">{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
-      <button type="button" onClick={() => openDetail(<SkillDetail skill={skill} />)} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">Details</button>
+      <button type="button" onClick={() => { openDetail(<SkillDetail skill={skill} />); }} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">Details</button>
       {skill.kind === 'frozen' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">Reindex</button>}
       <Toggle on={skill.on} onChange={onToggle} />
     </div>
@@ -162,23 +162,23 @@ export default function Sources() {
         {tab === 'docs' && (
           DOCS.length === 0
             ? <EmptyState icon="file-lines" title="No context docs yet" />
-            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{DOCS.map((d) => <DocCard key={d.id} doc={d} onOpen={() => setPreview(d)} />)}</div>
+            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{DOCS.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} />)}</div>
         )}
         {tab === 'skills' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {skills.map((s) => (
-              <SkillRow key={s.id} skill={s} onToggle={() => setSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, on: !x.on } : x)))} />
+              <SkillRow key={s.id} skill={s} onToggle={() => { setSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, on: !x.on } : x))); }} />
             ))}
           </div>
         )}
       </div>
 
-      <Sheet open={preview !== null} onClose={() => setPreview(null)} side="right" className="flex flex-col">
+      <Sheet open={preview !== null} onClose={() => { setPreview(null); }} side="right" className="flex flex-col">
         {preview && (
           <>
             <div className="flex items-center justify-between gap-2 px-4 h-14 border-b border-divider shrink-0">
               <span className="font-mono text-sm text-title truncate">{preview.name}</span>
-              <button type="button" onClick={() => setPreview(null)} className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="xmark" /></button>
+              <button type="button" onClick={() => { setPreview(null); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="xmark" /></button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-4">
               <pre className="whitespace-pre-wrap font-mono text-xs text-common leading-relaxed">{preview.content}</pre>

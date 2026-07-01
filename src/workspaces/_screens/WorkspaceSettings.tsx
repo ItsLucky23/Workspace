@@ -59,7 +59,7 @@ function MembersTab() {
                 size="sm" showSearch searchPlaceholder="Find role…"
                 value={current} placeholder="Set role"
                 items={roleItems}
-                onChange={(it) => setMemberRole(m.id, String(it.id))}
+                onChange={(it) => { setMemberRole(m.id, String(it.id)); }}
               />
             )}
             {isOwner ? <span className="w-7" /> : <PopMenu items={removeMenu(m)} />}
@@ -106,12 +106,12 @@ function PermissionsTab() {
         </div>
         {adding ? (
           <div className="flex items-center gap-2">
-            <input value={newRole} onChange={(e) => setNewRole(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Role name…"
+            <input value={newRole} onChange={(e) => { setNewRole(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Role name…"
               className="h-8 px-2.5 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
             <WsButton onClick={submit}>Add</WsButton>
             <WsButton variant="ghost" onClick={() => { setAdding(false); setNewRole(''); }}>Cancel</WsButton>
           </div>
-        ) : <WsButton variant="secondary" icon="plus" onClick={() => setAdding(true)}>Add role</WsButton>}
+        ) : <WsButton variant="secondary" icon="plus" onClick={() => { setAdding(true); }}>Add role</WsButton>}
       </div>
 
       <div className="rounded-2xl border border-container1-border bg-container1 overflow-x-auto">
@@ -124,7 +124,7 @@ function PermissionsTab() {
             <span>{action}</span>
             {permRoles.map((r, ri) => (
               <span key={r.name} className="flex justify-center">
-                <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => togglePerm(ri, ci)} />
+                <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => { togglePerm(ri, ci); }} />
               </span>
             ))}
           </div>
@@ -173,17 +173,17 @@ function EnvTab() {
         {envVars.map((v) => (
           <div key={v.id} className="flex items-center gap-2 px-4 py-2.5">
             <span className="font-mono text-sm text-title w-44 shrink-0 truncate">{v.key}</span>
-            <input value={v.secret && !reveal[v.id] ? '••••••••••' : v.value} readOnly={v.secret && !reveal[v.id]} onChange={(e) => saveEnvVar({ ...v, value: e.target.value })} className={`flex-1 min-w-0 font-mono ${fieldCls}`} />
-            {v.secret && <IconButton icon="eye" title={reveal[v.id] ? 'Hide' : 'Reveal'} onClick={() => setReveal((s) => ({ ...s, [v.id]: !s[v.id] }))} />}
-            <button type="button" onClick={() => removeEnvVar(v.id)} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
+            <input value={v.secret && !reveal[v.id] ? '••••••••••' : v.value} readOnly={v.secret && !reveal[v.id]} onChange={(e) => { saveEnvVar({ ...v, value: e.target.value }); }} className={`flex-1 min-w-0 font-mono ${fieldCls}`} />
+            {v.secret && <IconButton icon="eye" title={reveal[v.id] ? 'Hide' : 'Reveal'} onClick={() => { setReveal((s) => ({ ...s, [v.id]: !s[v.id] })); }} />}
+            <button type="button" onClick={() => { removeEnvVar(v.id); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
           </div>
         ))}
         {envVars.length === 0 && <div className="px-4 py-4 text-sm text-muted text-center">No env vars yet.</div>}
       </div>
       <div className="rounded-xl border border-container1-border bg-container2/40 p-3 flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="KEY" className={`w-44 font-mono ${fieldCls}`} />
-          <input value={newVal} onChange={(e) => setNewVal(e.target.value)} placeholder="value" className={`flex-1 min-w-0 font-mono ${fieldCls}`} />
+          <input value={newKey} onChange={(e) => { setNewKey(e.target.value); }} placeholder="KEY" className={`w-44 font-mono ${fieldCls}`} />
+          <input value={newVal} onChange={(e) => { setNewVal(e.target.value); }} placeholder="value" className={`flex-1 min-w-0 font-mono ${fieldCls}`} />
         </div>
         <div className="flex items-center justify-between gap-2">
           <Toggle on={newSecret} onChange={setNewSecret} label="Secret (masked)" />
@@ -196,11 +196,11 @@ function EnvTab() {
 
 function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool | null; onSave: (t: IntegrationTool) => void; onCancel: () => void }) {
   const { envVars } = useWorkspaces();
-  const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0]!.key);
+  const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0].key);
   const [name, setName] = useState(tool?.name ?? '');
-  const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0]!.fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })));
+  const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0].fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })));
   const [mcpEnabled, setMcpEnabled] = useState(tool?.mcp.enabled ?? true);
-  const [mcpCmd, setMcpCmd] = useState(tool?.mcp.command ?? INTEGRATION_TYPES[0]!.mcp);
+  const [mcpCmd, setMcpCmd] = useState(tool?.mcp.command ?? INTEGRATION_TYPES[0].mcp);
 
   const applyType = (key: string) => {
     setTypeKey(key);
@@ -218,8 +218,8 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><div className="text-xs text-muted mb-1">Type</div><Dropdown size="sm" value={typeItems.find((t) => t.id === typeKey)} items={typeItems} onChange={(it) => applyType(String(it.id))} /></div>
-        <div><div className="text-xs text-muted mb-1">Name</div><input value={name} onChange={(e) => setName(e.target.value)} placeholder="MongoDB (prod)" className={`w-full ${fieldCls}`} /></div>
+        <div><div className="text-xs text-muted mb-1">Type</div><Dropdown size="sm" value={typeItems.find((t) => t.id === typeKey)} items={typeItems} onChange={(it) => { applyType(String(it.id)); }} /></div>
+        <div><div className="text-xs text-muted mb-1">Name</div><input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="MongoDB (prod)" className={`w-full ${fieldCls}`} /></div>
       </div>
       <div>
         <div className="text-xs text-muted mb-1">Config fields → env vars</div>
@@ -234,7 +234,7 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
         </div>
       </div>
       <Toggle on={mcpEnabled} onChange={setMcpEnabled} label="Expose to the AI via an MCP server" />
-      {mcpEnabled && <div><div className="text-xs text-muted mb-1">MCP server command</div><input value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} placeholder="node /pty-agent/mcp/…" className={`w-full font-mono ${fieldCls}`} /></div>}
+      {mcpEnabled && <div><div className="text-xs text-muted mb-1">MCP server command</div><input value={mcpCmd} onChange={(e) => { setMcpCmd(e.target.value); }} placeholder="node /pty-agent/mcp/…" className={`w-full font-mono ${fieldCls}`} /></div>}
       <div className="flex items-center gap-2">
         <WsButton icon="check" onClick={submit}>Save integration</WsButton>
         <WsButton variant="ghost" onClick={onCancel}>Cancel</WsButton>
@@ -252,7 +252,7 @@ function IntegrationsTab() {
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div><span className="text-sm font-semibold text-title">Integration tools</span><span className="text-sm text-muted ml-2">third-party tools the AI can use</span></div>
-        {!adding && !editing && <WsButton variant="secondary" icon="plus" onClick={() => setAdding(true)}>Set up integration</WsButton>}
+        {!adding && !editing && <WsButton variant="secondary" icon="plus" onClick={() => { setAdding(true); }}>Set up integration</WsButton>}
       </div>
       {(adding || editing) && <IntegrationToolForm tool={editing} onSave={(t) => { saveIntegrationTool(t); setAdding(false); setEditing(null); }} onCancel={() => { setAdding(false); setEditing(null); }} />}
       <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
@@ -264,7 +264,7 @@ function IntegrationsTab() {
               <div className="text-xs text-muted truncate">{t.fields.map((f) => `${f.label}: ${envName(f.envVarId)}`).join(' · ')}</div>
             </div>
             <button type="button" onClick={() => { setEditing(t); setAdding(false); }} className="text-xs text-common hover:text-title cursor-pointer shrink-0">Edit</button>
-            <button type="button" onClick={() => removeIntegrationTool(t.id)} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
+            <button type="button" onClick={() => { removeIntegrationTool(t.id); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
           </div>
         ))}
         {integrationTools.length === 0 && <div className="px-4 py-6 text-sm text-muted text-center">No integrations yet — set one up to expose it to the AI.</div>}

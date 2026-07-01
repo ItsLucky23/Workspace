@@ -45,19 +45,19 @@ export const MEMBERS: Record<string, Member> = {
   daan: { id: 'daan', name: 'Daan', email: 'daan@youcomm.nl', avatarFallback: '#16A34A', role: 'member' },
 };
 
-export const ME: Member = MEMBERS.mathijs!;
+export const ME: Member = MEMBERS.mathijs;
 
 export const WORKSPACES: Workspace[] = [
   { id: 'ws-youcomm', name: 'YouComm Core', slug: 'youcomm-core', ownerId: 'mathijs', role: 'owner' },
   { id: 'ws-luckystack', name: 'LuckyStack OSS', slug: 'luckystack-oss', ownerId: 'sanne', role: 'member' },
 ];
-export const ACTIVE_WORKSPACE = WORKSPACES[0]!;
+export const ACTIVE_WORKSPACE = WORKSPACES[0];
 
 export const PROJECTS: Project[] = [
   { id: 'prj-app', workspaceId: 'ws-youcomm', name: 'youcomm-app', gitlabPath: 'youcomm/app' },
   { id: 'prj-api', workspaceId: 'ws-youcomm', name: 'youcomm-api', gitlabPath: 'youcomm/api' },
 ];
-export const ACTIVE_PROJECT = PROJECTS[0]!;
+export const ACTIVE_PROJECT = PROJECTS[0];
 
 export const STAGES: PipelineStage[] = [
   { id: 'unrefined', name: 'Unrefined', order: 0, aiEnabled: false },
@@ -228,7 +228,7 @@ export const SPRINTS: Sprint[] = [
   { id: 's23', name: 'Sprint 23', start: 'May 13', end: 'May 26', active: false, ticketCount: 11, daysLeft: 0 },
   { id: 'backlog', name: 'Backlog', start: null, end: null, active: false, ticketCount: 3, daysLeft: null },
 ];
-export const ACTIVE_SPRINT = SPRINTS[0]!;
+export const ACTIVE_SPRINT = SPRINTS[0];
 
 export const NOTIFICATIONS: NotificationItem[] = [
   { id: 'n1', type: 'needs-input', title: 'DEV-1241 needs your input', body: 'AI asks where the Microsoft client secret should live.', ticketId: 'DEV-1241', time: '2m', read: false },

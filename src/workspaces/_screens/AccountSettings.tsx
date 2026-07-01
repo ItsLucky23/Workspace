@@ -65,16 +65,16 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
     if (file) void file.text().then((t) => { setValue(t); submit(t, name || file.name); });
   };
 
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => setOpen(true)}>Add SSH key</WsButton>;
+  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>Add SSH key</WsButton>;
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3 mt-2">
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Key name (e.g. MacBook Pro)"
+      <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="Key name (e.g. MacBook Pro)"
         className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <textarea value={value} onChange={(e) => setValue(e.target.value)} placeholder="Paste public key (try 123 or 456)…" rows={2}
+      <textarea value={value} onChange={(e) => { setValue(e.target.value); }} placeholder="Paste public key (try 123 or 456)…" rows={2}
         className="px-3 py-2 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
+        onDragLeave={() => { setDragOver(false); }}
         onDrop={onDrop}
         onClick={() => fileInput.current?.click()}
         className={`rounded-lg border border-dashed p-3 text-center text-xs cursor-pointer transition-colors ${dragOver ? 'border-primary bg-primary/5 text-primary' : 'border-container2-border text-muted hover:bg-container2/60'}`}
@@ -84,7 +84,7 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
       </div>
       {error && <div className="text-sm text-wrong inline-flex items-center gap-1.5"><Icon name="triangle-exclamation" /> {error}</div>}
       <div className="flex items-center gap-2">
-        <WsButton icon="check" onClick={() => submit(value, name)}>Verify & add</WsButton>
+        <WsButton icon="check" onClick={() => { submit(value, name); }}>Verify & add</WsButton>
         <WsButton variant="ghost" onClick={() => { setOpen(false); setError(''); }}>Cancel</WsButton>
       </div>
     </div>
@@ -149,7 +149,7 @@ export default function AccountSettings() {
                     <div className="text-sm font-medium text-title">{k.name} <span className="text-xs text-muted font-mono">· {k.type}</span> {k.userId === sshUserId && <span className="ml-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">active</span>}</div>
                     <div className="text-xs text-muted font-mono truncate">{k.fingerprint} · added {k.added} · authenticates as {MEMBERS[k.userId]?.name ?? k.userId}</div>
                   </div>
-                  <button type="button" onClick={() => removeSshKey(k.id)} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">Remove</button>
+                  <button type="button" onClick={() => { removeSshKey(k.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">Remove</button>
                 </Row>
               ))}
               {sshKeys.length === 0 && <div className="text-sm text-muted py-3">No keys linked — terminals are locked.</div>}

@@ -99,7 +99,7 @@ export default function XtermTerminal({ sessionId, className }: { sessionId: str
       });
     }
 
-    const ro = new ResizeObserver(() => doFit());
+    const ro = new ResizeObserver(() => { doFit(); });
     ro.observe(host);
 
     return () => {

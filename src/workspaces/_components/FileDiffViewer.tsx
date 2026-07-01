@@ -27,7 +27,7 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
         <div className="px-2 py-1.5 text-xs font-medium text-muted">{files.length} files</div>
         {files.map((f) => (
           <button
-            key={f.path} type="button" onClick={() => jumpTo(f.path)}
+            key={f.path} type="button" onClick={() => { jumpTo(f.path); }}
             className="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-container2 transition-colors cursor-pointer"
           >
             <span className="font-mono text-xs text-common truncate" title={f.path}>{baseName(f.path)}</span>
@@ -47,7 +47,7 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
             <div key={f.path} ref={(el) => { sectionRefs.current[f.path] = el; }} className="rounded-xl border border-container1-border overflow-hidden">
               <button
                 type="button"
-                onClick={() => setOpen((prev) => ({ ...prev, [f.path]: !isOpen }))}
+                onClick={() => { setOpen((prev) => ({ ...prev, [f.path]: !isOpen })); }}
                 className="w-full flex items-center justify-between gap-3 bg-container1 hover:bg-container1-hover px-3 h-10 cursor-pointer transition-colors"
               >
                 <span className="flex items-center gap-2 min-w-0">

@@ -39,7 +39,7 @@ export function useClickAway<T extends HTMLElement>(active: boolean, onAway: () 
 export function AvatarBubble({ user, size = 28 }: { user: Member | { name: string; avatar?: string; avatarFallback?: string }; size?: number }) {
   return (
     <div className="rounded-full overflow-hidden shrink-0" style={{ width: size, height: size }}>
-      <BaseAvatar user={user} textSize={size <= 22 ? 'text-xs' : size <= 30 ? 'text-sm' : 'text-base'} />
+      <BaseAvatar user={user} textSize={size <= 22 ? 'text-xs' : (size <= 30 ? 'text-sm' : 'text-base')} />
     </div>
   );
 }
@@ -146,7 +146,7 @@ export function Tabs({ tabs, active, onChange }: { tabs: TabDef[]; active: strin
         const on = active === t.id;
         return (
           <button
-            key={t.id} type="button" onClick={() => onChange(t.id)}
+            key={t.id} type="button" onClick={() => { onChange(t.id); }}
             className={`relative inline-flex items-center gap-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${on ? 'text-title' : 'text-muted hover:text-common'}`}
           >
             {t.icon && <Icon name={t.icon} />}
@@ -178,7 +178,7 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
     <div className="inline-flex items-center gap-0.5 rounded-xl bg-container2 p-0.5">
       {options.map((o) => (
         <button
-          key={o.id} type="button" onClick={() => onChange(o.id)}
+          key={o.id} type="button" onClick={() => { onChange(o.id); }}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-sm font-medium transition-colors cursor-pointer ${value === o.id ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}
         >
           {o.label}
@@ -238,7 +238,7 @@ export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean
 export function PopMenu({ items, align = 'right', icon = 'ellipsis', triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const change = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
-  const ref = useClickAway<HTMLDivElement>(open, () => change(false));
+  const ref = useClickAway<HTMLDivElement>(open, () => { change(false); });
   return (
     <div className="relative" ref={ref}>
       <button

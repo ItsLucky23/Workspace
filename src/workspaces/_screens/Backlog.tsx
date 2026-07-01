@@ -43,11 +43,11 @@ export default function Backlog() {
 
   const groups = useMemo(() => SPRINTS.map((s) => ({ sprint: s, rows: filtered.filter((t) => (t.sprintId ?? 'backlog') === s.id) })), [filtered]);
 
-  const toggleRow = (id: string) => setSelected((prev) => {
+  const toggleRow = (id: string) => { setSelected((prev) => {
     const n = new Set(prev);
     if (n.has(id)) n.delete(id); else n.add(id);
     return n;
-  });
+  }); };
 
   const personItems = [
     { id: 'all', value: 'all', item: 'All people' },
@@ -67,13 +67,13 @@ export default function Backlog() {
       <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 pb-3">
         <div className="flex items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 min-w-52">
           <Icon name="magnifying-glass" className="text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tickets…" className="bg-transparent text-sm text-title flex-1 focus:outline-none" />
+          <input value={q} onChange={(e) => { setQ(e.target.value); }} placeholder="Search tickets…" className="bg-transparent text-sm text-title flex-1 focus:outline-none" />
         </div>
         <Segmented<Quick>
           value={quick} onChange={setQuick}
           options={[{ id: 'all', label: 'All' }, { id: 'unrefined', label: 'Unrefined' }, { id: 'needs-input', label: 'Needs input' }, { id: 'done', label: 'Done' }]}
         />
-        <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => setPerson(String(it.id))} />
+        <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => { setPerson(String(it.id)); }} />
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-24">
@@ -85,7 +85,7 @@ export default function Backlog() {
             const open = openSprints[sprint.id] ?? true;
             return (
               <div key={sprint.id} className="rounded-2xl border border-container1-border bg-container1 overflow-hidden">
-                <button type="button" onClick={() => setOpenSprints((p) => ({ ...p, [sprint.id]: !open }))}
+                <button type="button" onClick={() => { setOpenSprints((p) => ({ ...p, [sprint.id]: !open })); }}
                   className="w-full flex items-center justify-between gap-3 px-4 h-12 hover:bg-container1-hover cursor-pointer transition-colors">
                   <span className="flex items-center gap-2 min-w-0">
                     <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className="inline-flex w-4 justify-center text-muted shrink-0"><Icon name="angle-down" /></motion.span>
@@ -107,7 +107,7 @@ export default function Backlog() {
                     >
                       {rows.length === 0 && <div className="px-4 py-4 text-sm text-muted text-center">No tickets</div>}
                       {rows.map((t, i) => (
-                        <Row key={t.id} ticket={t} index={i} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => toggleRow(t.id)} onOpen={() => openTicket(t.id)} />
+                        <Row key={t.id} ticket={t} index={i} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
                       ))}
                     </motion.div>
                   )}
@@ -126,8 +126,8 @@ export default function Backlog() {
           <BarBtn icon="circle-check" label="Status" />
           <BarBtn icon="users" label="Assign" />
           <BarBtn icon="calendar-day" label="Sprint" />
-          <BarBtn icon="box-archive" label="Archive" danger onClick={() => void menuHandler.confirm({ title: `Archive ${String(selected.size)} tickets?`, content: 'They move out of the active board.' }).then(() => setSelected(new Set()))} />
-          <button type="button" onClick={() => setSelected(new Set())} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1"><Icon name="xmark" /></button>
+          <BarBtn icon="box-archive" label="Archive" danger onClick={() => void menuHandler.confirm({ title: `Archive ${String(selected.size)} tickets?`, content: 'They move out of the active board.' }).then(() => { setSelected(new Set()); })} />
+          <button type="button" onClick={() => { setSelected(new Set()); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1"><Icon name="xmark" /></button>
         </div>
       )}
     </div>
@@ -141,7 +141,7 @@ function Row({ ticket, index, selectMode, selected, onToggle, onOpen }: {
   return (
     <div onClick={onOpen} className={`flex items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
       {selectMode && (
-        <span onClick={(e) => e.stopPropagation()} className="flex items-center">
+        <span onClick={(e) => { e.stopPropagation(); }} className="flex items-center">
           <input type="checkbox" checked={selected} onChange={onToggle} className="accent-primary cursor-pointer" />
         </span>
       )}

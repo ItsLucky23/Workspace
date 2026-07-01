@@ -96,7 +96,7 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
         {ticket.costLabel && <MetaChip icon="chart-column" text={ticket.costLabel} />}
         <MetaChip icon="up-right-from-square" text="Preview · live" tone="correct" />
         <div className="flex-1" />
-        <WsButton variant="secondary" icon="terminal" onClick={() => ctx.navigate('terminals')}>Open terminal</WsButton>
+        <WsButton variant="secondary" icon="terminal" onClick={() => { ctx.navigate('terminals'); }}>Open terminal</WsButton>
         <WsButton variant="secondary" icon="up-right-from-square">GitLab</WsButton>
       </div>
 
@@ -139,11 +139,11 @@ function NeedsInputBanner({ question }: { question: string }) {
       <p className="text-sm text-common mt-0.5">{question}</p>
       <div className="flex items-center gap-2 mt-2">
         <input
-          value={reply} onChange={(e) => setReply(e.target.value)}
+          value={reply} onChange={(e) => { setReply(e.target.value); }}
           placeholder="Type your answer…"
           className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
         />
-        <WsButton onClick={() => setReply('')}>Send</WsButton>
+        <WsButton onClick={() => { setReply(''); }}>Send</WsButton>
       </div>
     </Banner>
   );
@@ -186,20 +186,20 @@ function TerminalTab({ ticketId }: { ticketId: string }) {
   if (!terminal) {
     return <EmptyState icon="terminal" title="No terminal running" sub="This ticket has no active container. Reactivate it to attach a terminal." />;
   }
-  const proc = terminal.processes[active] ?? terminal.processes[0]!;
+  const proc = terminal.processes[active] ?? terminal.processes[0];
   return (
     <div className="rounded-xl overflow-hidden border border-container1-border">
       <div className="flex items-center justify-between gap-2 bg-terminal-surface px-3 h-10 text-terminal-text">
         <div className="flex items-center gap-1">
           {terminal.processes.map((p, i) => (
-            <button key={p.name} type="button" onClick={() => setActive(i)}
+            <button key={p.name} type="button" onClick={() => { setActive(i); }}
               className={`rounded-md px-2 py-0.5 text-xs font-mono cursor-pointer transition-colors ${i === active ? 'bg-white/10 text-terminal-text' : 'text-terminal-muted hover:text-terminal-text'}`}>
               {p.name}
             </button>
           ))}
           <span className="text-terminal-muted text-xs ml-1">· {proc.cwd}</span>
         </div>
-        <button type="button" onClick={() => ctx.navigate('terminals')} className="text-xs text-terminal-muted hover:text-terminal-text cursor-pointer inline-flex items-center gap-1">
+        <button type="button" onClick={() => { ctx.navigate('terminals'); }} className="text-xs text-terminal-muted hover:text-terminal-text cursor-pointer inline-flex items-center gap-1">
           <Icon name="up-right-from-square" /> Open in Terminals
         </button>
       </div>
@@ -221,7 +221,7 @@ function FilesTab({ files }: { files: TicketFile[] }) {
   );
 }
 
-const ACTOR_GLYPH = (actor: string) => (actor === 'ai' ? '🤖' : actor === 'mr' ? '🔀' : (MEMBERS[actor]?.name[0] ?? '·'));
+const ACTOR_GLYPH = (actor: string) => (actor === 'ai' ? '🤖' : (actor === 'mr' ? '🔀' : (MEMBERS[actor]?.name[0] ?? '·')));
 const EVENT_TINT: Record<ActivityEvent['type'], string> = {
   command: 'bg-container2 text-common',
   'file-change': 'bg-primary/12 text-primary',
@@ -273,7 +273,7 @@ function LinksTab({ links, onOpen }: { links: TicketLink[]; onOpen: (id: string)
             <div className="flex flex-col divide-y divide-divider">
               {links.map((l) => (
                 <div key={l.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
-                  <button type="button" onClick={() => onOpen(l.id)} className="font-mono text-sm text-primary hover:underline cursor-pointer">{l.id}</button>
+                  <button type="button" onClick={() => { onOpen(l.id); }} className="font-mono text-sm text-primary hover:underline cursor-pointer">{l.id}</button>
                   <span className="text-sm text-muted">{l.rel}</span>
                   {l.ai && (
                     <span className="ml-auto inline-flex items-center gap-1.5">

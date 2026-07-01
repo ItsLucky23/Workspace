@@ -49,12 +49,12 @@ function viewLabel(view: WsView): string {
 }
 
 function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [mobile, setMobile] = useState(() => globalThis.window !== undefined && globalThis.matchMedia('(max-width: 767px)').matches);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const onChange = () => setMobile(mq.matches);
+    const mq = globalThis.matchMedia('(max-width: 767px)');
+    const onChange = () => { setMobile(mq.matches); };
     mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    return () => { mq.removeEventListener('change', onChange); };
   }, []);
   return mobile;
 }
@@ -63,10 +63,10 @@ function useIsMobile(): boolean {
 function parseMove(text: string): { id: string; stage: StageId; stageName: string } | { unknownStage: string } | null {
   const m = /move\s+(dev-\d+)\s+to\s+([a-z]+)/i.exec(text.trim());
   if (!m) return null;
-  const id = m[1]!.toUpperCase();
-  const term = m[2]!.toLowerCase();
+  const id = m[1].toUpperCase();
+  const term = m[2].toLowerCase();
   const stage = STAGES.find((s) => s.id === term || s.name.toLowerCase() === term);
-  return stage ? { id, stage: stage.id, stageName: stage.name } : { unknownStage: m[2]! };
+  return stage ? { id, stage: stage.id, stageName: stage.name } : { unknownStage: m[2] };
 }
 
 export function WorkspacesProvider({ children }: { children: React.ReactNode }) {
@@ -84,7 +84,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [recent, setRecent] = useState<string[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>(INITIAL_CHAT);
   const [workspaces, setWorkspaces] = useState<Workspace[]>(WORKSPACES);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(WORKSPACES[0]!.id);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(WORKSPACES[0].id);
   const [permRoles, setPermRoles] = useState<PermRole[]>(DEFAULT_PERM_ROLES);
   const [memberRoles, setMemberRoles] = useState<Record<string, string>>(
     () => Object.fromEntries(Object.values(MEMBERS).map((m) => [m.id, ROLE_DISPLAY[m.role]])),
@@ -93,8 +93,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [envVars, setEnvVars] = useState<EnvVar[]>(ENV_VARS);
   const [integrationTools, setIntegrationTools] = useState<IntegrationTool[]>(INTEGRATION_TOOLS);
 
-  const addSshKey = useCallback((key: SshKeyEntry) => setSshKeys((prev) => [...prev, key]), []);
-  const removeSshKey = useCallback((id: string) => setSshKeys((prev) => prev.filter((k) => k.id !== id)), []);
+  const addSshKey = useCallback((key: SshKeyEntry) => { setSshKeys((prev) => [...prev, key]); }, []);
+  const removeSshKey = useCallback((id: string) => { setSshKeys((prev) => prev.filter((k) => k.id !== id)); }, []);
   //? Active SSH identity = the most recently linked key's mapped user.
   const sshUserId = sshKeys.at(-1)?.userId ?? null;
   const currentUser = ME; // the account; SSH identity is separate (terminals)
@@ -150,7 +150,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       theme: theme === 'dark' ? 'dark' : 'light',
       setTheme,
       suggestions,
-      dismissSuggestion: (id) => setSuggestions((s) => s.filter((x) => x.id !== id)),
+      dismissSuggestion: (id) => { setSuggestions((s) => s.filter((x) => x.id !== id)); },
       unreadNotifications: NOTIFICATIONS.filter((n) => !n.read).length,
       currentUser,
       sshKeys,
@@ -158,12 +158,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       addSshKey,
       removeSshKey,
       aiOpen,
-      toggleAi: () => setAiOpen((o) => !o),
+      toggleAi: () => { setAiOpen((o) => !o); },
       chat,
       sendChat,
       workspaces,
-      activeWorkspace: workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0]!,
-      setActiveWorkspace: (id) => setActiveWorkspaceId(id),
+      activeWorkspace: workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0],
+      setActiveWorkspace: (id) => { setActiveWorkspaceId(id); },
       createWorkspace: (name) => {
         const slug = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
         const id = `ws-${slug || 'new'}`;
@@ -171,18 +171,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setActiveWorkspaceId(id);
       },
       permRoles,
-      togglePerm: (ri, ci) => setPermRoles((prev) => prev.map((r, i) => (i === ri && !r.locked ? { ...r, perms: r.perms.map((v, j) => (j === ci ? !v : v)) } : r))),
-      addRole: (name) => setPermRoles((prev) => [...prev, { name, perms: prev[0]!.perms.map(() => false) }]),
+      togglePerm: (ri, ci) => { setPermRoles((prev) => prev.map((r, i) => (i === ri && !r.locked ? { ...r, perms: r.perms.map((v, j) => (j === ci ? !v : v)) } : r))); },
+      addRole: (name) => { setPermRoles((prev) => [...prev, { name, perms: prev[0].perms.map(() => false) }]); },
       memberRoles,
-      setMemberRole: (mid, role) => setMemberRoles((prev) => ({ ...prev, [mid]: role })),
+      setMemberRole: (mid, role) => { setMemberRoles((prev) => ({ ...prev, [mid]: role })); },
       envVars,
-      saveEnvVar: (v) => setEnvVars((prev) => (prev.some((x) => x.id === v.id) ? prev.map((x) => (x.id === v.id ? v : x)) : [...prev, v])),
-      removeEnvVar: (id) => setEnvVars((prev) => prev.filter((x) => x.id !== id)),
+      saveEnvVar: (v) => { setEnvVars((prev) => (prev.some((x) => x.id === v.id) ? prev.map((x) => (x.id === v.id ? v : x)) : [...prev, v])); },
+      removeEnvVar: (id) => { setEnvVars((prev) => prev.filter((x) => x.id !== id)); },
       integrationTools,
-      saveIntegrationTool: (t) => setIntegrationTools((prev) => (prev.some((x) => x.id === t.id) ? prev.map((x) => (x.id === t.id ? t : x)) : [...prev, t])),
-      removeIntegrationTool: (id) => setIntegrationTools((prev) => prev.filter((x) => x.id !== id)),
+      saveIntegrationTool: (t) => { setIntegrationTools((prev) => (prev.some((x) => x.id === t.id) ? prev.map((x) => (x.id === t.id ? t : x)) : [...prev, t])); },
+      removeIntegrationTool: (id) => { setIntegrationTools((prev) => prev.filter((x) => x.id !== id)); },
       stageOverrides,
-      moveTicket: (id, stage) => setStageOverrides((prev) => ({ ...prev, [id]: stage })),
+      moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
     };
   }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, suggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, workspaces, activeWorkspaceId, permRoles, memberRoles, envVars, integrationTools, stageOverrides]);
 

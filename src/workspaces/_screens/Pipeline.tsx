@@ -72,7 +72,7 @@ function GeneralTab({ s, update }: TabProps) {
     <div className="flex flex-col gap-5 max-w-3xl">
       <div>
         <FieldLabel title="Custom instructions" hint="Loaded into the stage's CLAUDE.md — domain rules + per-stage goals." />
-        <textarea rows={4} value={s.customInstructions} onChange={(e) => update({ customInstructions: e.target.value })} className={areaCls} placeholder="e.g. Follow the plan exactly. Keep changes surgical." />
+        <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder="e.g. Follow the plan exactly. Keep changes surgical." />
       </div>
       <div>
         <FieldLabel title="Statuses" hint="Base statuses are always present. “Stopped” is set when you stop all AIs or the subscription limit is hit. Add custom chips for this stage." />
@@ -80,12 +80,12 @@ function GeneralTab({ s, update }: TabProps) {
           {s.statuses.map((st) => (
             <span key={st.key} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${st.kind === 'base' ? 'bg-container2 text-common' : 'bg-primary/12 text-primary'}`}>
               {st.label}
-              {st.kind === 'custom' && <button type="button" onClick={() => update({ statuses: s.statuses.filter((x) => x.key !== st.key) })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>}
+              {st.kind === 'custom' && <button type="button" onClick={() => { update({ statuses: s.statuses.filter((x) => x.key !== st.key) }); }} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>}
             </span>
           ))}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <input value={newStatus} onChange={(e) => setNewStatus(e.target.value)} placeholder="Add custom status…" className={inputCls} />
+          <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder="Add custom status…" className={inputCls} />
           <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); }}>Add</WsButton>
         </div>
       </div>
@@ -104,7 +104,7 @@ function ContextTab({ s, update }: TabProps) {
           {DOCS.map((d) => {
             const on = s.sourceIds.includes(d.id);
             return (
-              <button key={d.id} type="button" onClick={() => update({ sourceIds: toggleKey(s.sourceIds, d.id) })} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
+              <button key={d.id} type="button" onClick={() => { update({ sourceIds: toggleKey(s.sourceIds, d.id) }); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
                 <Icon name="file-lines" className={on ? 'text-primary' : 'text-muted'} />
                 <div className="min-w-0 flex-1"><div className="text-sm text-title truncate">{d.name}</div><div className="text-xs text-muted line-clamp-2">{d.summary}</div></div>
                 <Icon name={on ? 'circle-check' : 'plus'} className={`text-xs shrink-0 ${on ? 'text-primary' : 'text-muted'}`} />
@@ -128,7 +128,7 @@ function ContextTab({ s, update }: TabProps) {
                   </div>
                   <div className="text-xs text-muted line-clamp-2 mt-0.5">{sk.description ?? sk.status}</div>
                 </div>
-                <Toggle on={on} onChange={() => update({ skillKeys: toggleKey(s.skillKeys, sk.id) })} />
+                <Toggle on={on} onChange={() => { update({ skillKeys: toggleKey(s.skillKeys, sk.id) }); }} />
               </div>
             );
           })}
@@ -144,7 +144,7 @@ function ModeSwitch({ value, onChange }: { value: CommandMode | null; onChange: 
   return (
     <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
       {opts.map(([label, val]) => (
-        <button key={label} type="button" onClick={() => onChange(val)} className={`rounded-md px-2 h-7 text-xs font-medium cursor-pointer transition-colors ${value === val ? (val ? MODE_TINT[val] : 'bg-container1 text-title shadow-sm') : 'text-muted hover:text-common'}`}>{label}</button>
+        <button key={label} type="button" onClick={() => { onChange(val); }} className={`rounded-md px-2 h-7 text-xs font-medium cursor-pointer transition-colors ${value === val ? (val ? MODE_TINT[val] : 'bg-container1 text-title shadow-sm') : 'text-muted hover:text-common'}`}>{label}</button>
       ))}
     </div>
   );
@@ -182,22 +182,22 @@ function AddCommandForm({ categories, onAdd }: { categories: string[]; onAdd: (c
     onAdd({ category, title: t, desc: desc.trim(), pattern: p });
     setTitle(''); setDesc(''); setPattern(''); setNewCat(''); setOpen(false);
   };
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => setOpen(true)}>Add command</WsButton>;
+  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>Add command</WsButton>;
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <div className="text-xs text-muted mb-1">Category</div>
-          <Dropdown size="sm" value={items.find((i) => i.id === catId)} items={items} onChange={(it) => setCatId(String(it.id))} />
+          <Dropdown size="sm" value={items.find((i) => i.id === catId)} items={items} onChange={(it) => { setCatId(String(it.id)); }} />
         </div>
-        {isNew && <div><div className="text-xs text-muted mb-1">New category</div><input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="e.g. Migrations" className={`w-full ${inputCls}`} /></div>}
+        {isNew && <div><div className="text-xs text-muted mb-1">New category</div><input value={newCat} onChange={(e) => { setNewCat(e.target.value); }} placeholder="e.g. Migrations" className={`w-full ${inputCls}`} /></div>}
       </div>
-      <div><div className="text-xs text-muted mb-1">Title</div><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Run database migrations" className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">Description <span className="text-muted/70">(optional)</span></div><input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What this command does + why it's allowed" className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">Command</div><input value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">Title</div><input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder="Run database migrations" className={`w-full ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">Description <span className="text-muted/70">(optional)</span></div><input value={desc} onChange={(e) => { setDesc(e.target.value); }} placeholder="What this command does + why it's allowed" className={`w-full ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">Command</div><input value={pattern} onChange={(e) => { setPattern(e.target.value); }} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
       <div className="flex items-center gap-2">
         <WsButton icon="plus" onClick={submit}>Add</WsButton>
-        <WsButton variant="ghost" onClick={() => setOpen(false)}>Cancel</WsButton>
+        <WsButton variant="ghost" onClick={() => { setOpen(false); }}>Cancel</WsButton>
       </div>
     </div>
   );
@@ -226,7 +226,7 @@ function CommandsTab({ s, update }: TabProps) {
         <div key={group.category}>
           <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{group.category}</div>
           <div className="flex flex-col gap-1.5">
-            {group.commands.map((c) => <CommandRow key={c.pattern} title={c.label} pattern={c.pattern} desc={c.desc} mode={modeOf(c.pattern)} onMode={(m) => setMode(c.pattern, m)} />)}
+            {group.commands.map((c) => <CommandRow key={c.pattern} title={c.label} pattern={c.pattern} desc={c.desc} mode={modeOf(c.pattern)} onMode={(m) => { setMode(c.pattern, m); }} />)}
           </div>
         </div>
       ))}
@@ -236,7 +236,7 @@ function CommandsTab({ s, update }: TabProps) {
           <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{cat}</div>
           <div className="flex flex-col gap-1.5">
             {custom.filter((c) => (c.category ?? 'Custom') === cat).map((c) => (
-              <CommandRow key={c.id} title={c.title ?? c.pattern} pattern={c.pattern} desc={c.desc} mode={c.mode} onMode={(m) => setMode(c.pattern, m)} onDelete={() => update({ commands: s.commands.filter((x) => x.id !== c.id) })} />
+              <CommandRow key={c.id} title={c.title ?? c.pattern} pattern={c.pattern} desc={c.desc} mode={c.mode} onMode={(m) => { setMode(c.pattern, m); }} onDelete={() => { update({ commands: s.commands.filter((x) => x.id !== c.id) }); }} />
             ))}
           </div>
         </div>
@@ -251,15 +251,15 @@ function CommandsTab({ s, update }: TabProps) {
 function IntegrationsTab({ s, update }: TabProps) {
   const { integrationTools, navigate } = useWorkspaces();
   const selected = (toolId: string) => s.tools.find((t) => t.toolId === toolId);
-  const toggle = (toolId: string) => update({ tools: selected(toolId) ? s.tools.filter((t) => t.toolId !== toolId) : [...s.tools, { toolId, tier: 'ro' }] });
-  const setTier = (toolId: string, tier: ToolTier) => update({ tools: s.tools.map((t) => (t.toolId === toolId ? { ...t, tier } : t)) });
+  const toggle = (toolId: string) => { update({ tools: selected(toolId) ? s.tools.filter((t) => t.toolId !== toolId) : [...s.tools, { toolId, tier: 'ro' }] }); };
+  const setTier = (toolId: string, tier: ToolTier) => { update({ tools: s.tools.map((t) => (t.toolId === toolId ? { ...t, tier } : t)) }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <FieldLabel title="Integrations" hint="Pick which workspace integration tools this stage may use + the access tier. Read-only is enforced at the MCP-handler. Configure tools in Workspace settings → Integrations." />
       {integrationTools.length === 0 && (
         <div className="rounded-xl border border-container1-border bg-container2/40 p-4 text-sm text-muted flex items-center justify-between gap-3">
           <span>No integration tools configured for this workspace yet.</span>
-          <WsButton variant="secondary" icon="database" onClick={() => navigate('workspace')}>Set up integrations</WsButton>
+          <WsButton variant="secondary" icon="database" onClick={() => { navigate('workspace'); }}>Set up integrations</WsButton>
         </div>
       )}
       <div className="flex flex-col gap-1.5">
@@ -276,11 +276,11 @@ function IntegrationsTab({ s, update }: TabProps) {
                 <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
                   {(['Read', 'Write'] as const).map((label) => {
                     const tier: ToolTier = label === 'Read' ? 'ro' : 'rw';
-                    return <button key={label} type="button" onClick={() => setTier(tool.id, tier)} className={`rounded-md px-2.5 h-7 text-xs font-medium cursor-pointer ${sel.tier === tier ? (tier === 'rw' ? 'bg-wrong/15 text-wrong' : 'bg-primary/15 text-primary') : 'text-muted hover:text-common'}`}>{label}</button>;
+                    return <button key={label} type="button" onClick={() => { setTier(tool.id, tier); }} className={`rounded-md px-2.5 h-7 text-xs font-medium cursor-pointer ${sel.tier === tier ? (tier === 'rw' ? 'bg-wrong/15 text-wrong' : 'bg-primary/15 text-primary') : 'text-muted hover:text-common'}`}>{label}</button>;
                   })}
                 </div>
               )}
-              <Toggle on={Boolean(sel)} onChange={() => toggle(tool.id)} />
+              <Toggle on={Boolean(sel)} onChange={() => { toggle(tool.id); }} />
             </div>
           );
         })}
@@ -299,7 +299,7 @@ function VisibilityTab({ s, update, stages }: TabProps & { stages: PipelineStage
         {stages.filter((x) => x.id !== s.id).map((other) => (
           <div key={other.id} className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2">
             <span className="flex-1 text-sm text-title">{other.name}</span>
-            <Toggle on={s.visibleStageIds.includes(other.id)} onChange={() => update({ visibleStageIds: toggleKey(s.visibleStageIds, other.id) })} />
+            <Toggle on={s.visibleStageIds.includes(other.id)} onChange={() => { update({ visibleStageIds: toggleKey(s.visibleStageIds, other.id) }); }} />
           </div>
         ))}
       </div>
@@ -309,7 +309,7 @@ function VisibilityTab({ s, update, stages }: TabProps & { stages: PipelineStage
 
 /* ----------------------------------------------------------------- Process */
 function ProcessTab({ s, update }: TabProps) {
-  const setProc = (id: string, patch: Partial<PipelineStageCfg['processes'][number]>) => update({ processes: s.processes.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
+  const setProc = (id: string, patch: Partial<PipelineStageCfg['processes'][number]>) => { update({ processes: s.processes.map((p) => (p.id === id ? { ...p, ...patch } : p)) }); };
   return (
     <div className="flex flex-col gap-3 max-w-3xl">
       <FieldLabel title="Container processes" hint="What boots in the stage's container — where it runs (working dir), its env vars, and the ordered commands. Stack-agnostic." />
@@ -318,12 +318,12 @@ function ProcessTab({ s, update }: TabProps) {
         <div key={p.id} className="rounded-xl border border-container1-border p-3 flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 shrink-0 rounded-md bg-container2 text-xs font-semibold text-muted flex items-center justify-center">{i + 1}</span>
-            <input value={p.name} onChange={(e) => setProc(p.id, { name: e.target.value })} placeholder="name" className={`w-32 shrink-0 ${inputCls}`} />
+            <input value={p.name} onChange={(e) => { setProc(p.id, { name: e.target.value }); }} placeholder="name" className={`w-32 shrink-0 ${inputCls}`} />
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <span className="text-xs text-muted shrink-0">cwd</span>
-              <input value={p.cwd} onChange={(e) => setProc(p.id, { cwd: e.target.value })} placeholder="/app" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
+              <input value={p.cwd} onChange={(e) => { setProc(p.id, { cwd: e.target.value }); }} placeholder="/app" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
             </div>
-            <button type="button" onClick={() => update({ processes: s.processes.filter((x) => x.id !== p.id) })} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
+            <button type="button" onClick={() => { update({ processes: s.processes.filter((x) => x.id !== p.id) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
           </div>
 
           <div className="pl-8 flex flex-col gap-1.5">
@@ -331,28 +331,28 @@ function ProcessTab({ s, update }: TabProps) {
             {p.commands.map((cmd, ci) => (
               <div key={ci} className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-mono w-4 shrink-0 text-right">{ci + 1}</span>
-                <input value={cmd} onChange={(e) => setProc(p.id, { commands: p.commands.map((c, j) => (j === ci ? e.target.value : c)) })} className={`flex-1 min-w-0 font-mono ${inputCls}`} placeholder="cd packages/api && dotnet run" />
-                <button type="button" onClick={() => setProc(p.id, { commands: p.commands.filter((_, j) => j !== ci) })} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
+                <input value={cmd} onChange={(e) => { setProc(p.id, { commands: p.commands.map((c, j) => (j === ci ? e.target.value : c)) }); }} className={`flex-1 min-w-0 font-mono ${inputCls}`} placeholder="cd packages/api && dotnet run" />
+                <button type="button" onClick={() => { setProc(p.id, { commands: p.commands.filter((_, j) => j !== ci) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
               </div>
             ))}
-            <button type="button" onClick={() => setProc(p.id, { commands: [...p.commands, ''] })} className="self-start text-xs text-primary hover:underline cursor-pointer">+ command</button>
+            <button type="button" onClick={() => { setProc(p.id, { commands: [...p.commands, ''] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">+ command</button>
           </div>
 
           <div className="pl-8 flex flex-col gap-1.5">
             <div className="text-xs text-muted">Environment variables</div>
             {p.env.map((ev, ei) => (
               <div key={ei} className="flex items-center gap-2">
-                <input value={ev.key} onChange={(e) => setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, key: e.target.value } : x)) })} placeholder="KEY" className={`w-40 shrink-0 font-mono ${inputCls}`} />
+                <input value={ev.key} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, key: e.target.value } : x)) }); }} placeholder="KEY" className={`w-40 shrink-0 font-mono ${inputCls}`} />
                 <span className="text-muted">=</span>
-                <input value={ev.value} onChange={(e) => setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, value: e.target.value } : x)) })} placeholder="value" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
-                <button type="button" onClick={() => setProc(p.id, { env: p.env.filter((_, j) => j !== ei) })} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
+                <input value={ev.value} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, value: e.target.value } : x)) }); }} placeholder="value" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
+                <button type="button" onClick={() => { setProc(p.id, { env: p.env.filter((_, j) => j !== ei) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
               </div>
             ))}
-            <button type="button" onClick={() => setProc(p.id, { env: [...p.env, { key: '', value: '' }] })} className="self-start text-xs text-primary hover:underline cursor-pointer">+ env var</button>
+            <button type="button" onClick={() => { setProc(p.id, { env: [...p.env, { key: '', value: '' }] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">+ env var</button>
           </div>
         </div>
       ))}
-      <WsButton variant="secondary" icon="plus" onClick={() => update({ processes: [...s.processes, { id: `proc-${String(Date.now())}`, name: 'process', cwd: '/app', env: [], commands: [''] }] })}>Add process</WsButton>
+      <WsButton variant="secondary" icon="plus" onClick={() => { update({ processes: [...s.processes, { id: `proc-${String(Date.now())}`, name: 'process', cwd: '/app', env: [], commands: [''] }] }); }}>Add process</WsButton>
     </div>
   );
 }
@@ -375,7 +375,7 @@ function CarryoverTab({ s, update }: TabProps) {
         <div className="flex flex-col gap-1.5">
           {CARRY_VARS.map((v) => (
             <div key={v.token} className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2">
-              <button type="button" onClick={() => update({ promptTemplate: `${s.promptTemplate}${s.promptTemplate && !s.promptTemplate.endsWith('\n') ? ' ' : ''}${v.token}` })} className="rounded-md bg-container2 px-2 py-1 text-xs font-mono text-primary hover:bg-container2-hover cursor-pointer shrink-0">{v.token}</button>
+              <button type="button" onClick={() => { update({ promptTemplate: `${s.promptTemplate}${s.promptTemplate && !s.promptTemplate.endsWith('\n') ? ' ' : ''}${v.token}` }); }} className="rounded-md bg-container2 px-2 py-1 text-xs font-mono text-primary hover:bg-container2-hover cursor-pointer shrink-0">{v.token}</button>
               <span className="text-xs text-muted">{v.desc}</span>
             </div>
           ))}
@@ -384,7 +384,7 @@ function CarryoverTab({ s, update }: TabProps) {
 
       <div>
         <FieldLabel title="Prompt template" hint="Rendered with the incoming values at stage start (Claude's -p flag + carry-over file)." />
-        <textarea rows={5} value={s.promptTemplate} onChange={(e) => update({ promptTemplate: e.target.value })} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
+        <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>
 
       <div>
@@ -404,18 +404,18 @@ function CarryoverTab({ s, update }: TabProps) {
 function ChoiceControls({ choice, onChange }: { choice: StageModelChoice; onChange: (p: Partial<StageModelChoice>) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Segmented<StageModelTier> value={choice.model} onChange={(v) => onChange({ model: v })} options={MODEL_OPTS} />
-      <Segmented<StageEffort> value={choice.effort} onChange={(v) => onChange({ effort: v })} options={EFFORT_OPTS} />
-      <div className="flex items-center gap-1.5"><span className="text-xs text-muted">turns</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => onChange({ maxTurns: Number(e.target.value) })} className={`w-16 ${inputCls}`} /></div>
+      <Segmented<StageModelTier> value={choice.model} onChange={(v) => { onChange({ model: v }); }} options={MODEL_OPTS} />
+      <Segmented<StageEffort> value={choice.effort} onChange={(v) => { onChange({ effort: v }); }} options={EFFORT_OPTS} />
+      <div className="flex items-center gap-1.5"><span className="text-xs text-muted">turns</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => { onChange({ maxTurns: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} /></div>
     </div>
   );
 }
 
 function ModelTab({ s, update }: TabProps) {
   const m = s.modelCfg;
-  const setBase = (patch: Partial<StageModelChoice>) => update({ modelCfg: { ...m, base: { ...m.base, ...patch } } });
-  const setRule = (id: string, patch: Partial<StageModelChoice & { minScore: number }>) => update({ modelCfg: { ...m, rules: m.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)) } });
-  const addRule = () => update({ modelCfg: { ...m, rules: [...m.rules, { id: `rule-${String(Date.now())}`, minScore: 5, model: 'sonnet', effort: 'medium', maxTurns: 20 }] } });
+  const setBase = (patch: Partial<StageModelChoice>) => { update({ modelCfg: { ...m, base: { ...m.base, ...patch } } }); };
+  const setRule = (id: string, patch: Partial<StageModelChoice & { minScore: number }>) => { update({ modelCfg: { ...m, rules: m.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)) } }); };
+  const addRule = () => { update({ modelCfg: { ...m, rules: [...m.rules, { id: `rule-${String(Date.now())}`, minScore: 5, model: 'sonnet', effort: 'medium', maxTurns: 20 }] } }); };
   const sortedRules = m.rules.toSorted((a, b) => b.minScore - a.minScore);
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
@@ -424,7 +424,7 @@ function ModelTab({ s, update }: TabProps) {
           <div className="text-sm font-medium text-title">Let the agent pick the model</div>
           <div className="text-xs text-muted mt-0.5">The agent rates the task 1–10 and chooses the highest matching band below — and may escalate itself upward mid-task.</div>
         </div>
-        <Toggle on={m.autoEscalate} onChange={(v) => update({ modelCfg: { ...m, autoEscalate: v } })} />
+        <Toggle on={m.autoEscalate} onChange={(v) => { update({ modelCfg: { ...m, autoEscalate: v } }); }} />
       </div>
 
       {!m.autoEscalate && (
@@ -442,11 +442,11 @@ function ModelTab({ s, update }: TabProps) {
               <div key={r.id} className="rounded-xl border border-container1-border p-3 flex flex-col gap-2.5">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-common">score ≥</span>
-                  <input type="number" min={1} max={10} value={r.minScore} onChange={(e) => setRule(r.id, { minScore: Number(e.target.value) })} className={`w-16 ${inputCls}`} />
+                  <input type="number" min={1} max={10} value={r.minScore} onChange={(e) => { setRule(r.id, { minScore: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} />
                   <span className="text-xs text-muted">/ 10</span>
-                  <button type="button" onClick={() => update({ modelCfg: { ...m, rules: m.rules.filter((x) => x.id !== r.id) } })} className="ml-auto text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center"><Icon name="trash" className="text-xs" /></button>
+                  <button type="button" onClick={() => { update({ modelCfg: { ...m, rules: m.rules.filter((x) => x.id !== r.id) } }); }} className="ml-auto text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center"><Icon name="trash" className="text-xs" /></button>
                 </div>
-                <ChoiceControls choice={r} onChange={(p) => setRule(r.id, p)} />
+                <ChoiceControls choice={r} onChange={(p) => { setRule(r.id, p); }} />
               </div>
             ))}
             {/* fixed fallback band — always last, can't be removed, score locked at 0 */}
@@ -471,25 +471,25 @@ function ModelTab({ s, update }: TabProps) {
 function NetworkTab({ s, update }: TabProps) {
   const n = s.network;
   const [newDomain, setNewDomain] = useState('');
-  const toggleCat = (key: string) => update({ network: { ...n, categories: n.categories.includes(key) ? n.categories.filter((c) => c !== key) : [...n.categories, key] } });
+  const toggleCat = (key: string) => { update({ network: { ...n, categories: n.categories.includes(key) ? n.categories.filter((c) => c !== key) : [...n.categories, key] } }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <div className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2.5">
         <div className="flex-1"><div className="text-sm font-medium text-title">Network egress</div><div className="text-xs text-muted mt-0.5">Off = the container has no internet at all.</div></div>
-        <Toggle on={n.enabled} onChange={(v) => update({ network: { ...n, enabled: v } })} />
+        <Toggle on={n.enabled} onChange={(v) => { update({ network: { ...n, enabled: v } }); }} />
       </div>
       {n.enabled && (
         <>
           <div>
             <FieldLabel title="Mode" />
-            <Segmented<NetworkMode> value={n.mode} onChange={(v) => update({ network: { ...n, mode: v } })} options={[{ id: 'whitelist', label: 'Allow only these' }, { id: 'blacklist', label: 'Block these' }]} />
+            <Segmented<NetworkMode> value={n.mode} onChange={(v) => { update({ network: { ...n, mode: v } }); }} options={[{ id: 'whitelist', label: 'Allow only these' }, { id: 'blacklist', label: 'Block these' }]} />
             <div className="text-xs text-muted mt-1.5">{n.mode === 'whitelist' ? 'Everything is blocked except the categories + hosts below (locked-down).' : 'Everything is allowed except the categories + hosts below (open).'}</div>
           </div>
           <div>
             <FieldLabel title="Categories" />
             <div className="flex flex-col gap-1.5">
               {NETWORK_CATEGORIES.map((c) => (
-                <button key={c.key} type="button" onClick={() => toggleCat(c.key)} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${n.categories.includes(c.key) ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
+                <button key={c.key} type="button" onClick={() => { toggleCat(c.key); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${n.categories.includes(c.key) ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
                   <Icon name={n.categories.includes(c.key) ? 'circle-check' : 'plus'} className={`text-xs shrink-0 ${n.categories.includes(c.key) ? 'text-primary' : 'text-muted'}`} />
                   <div className="min-w-0 flex-1"><div className="text-sm text-title">{c.label}</div><div className="text-xs text-muted truncate">{c.desc}</div></div>
                 </button>
@@ -501,12 +501,12 @@ function NetworkTab({ s, update }: TabProps) {
             <div className="flex flex-wrap items-center gap-2">
               {n.domains.map((d) => (
                 <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-container2 px-2.5 py-1 text-xs font-mono text-common">
-                  {d}<button type="button" onClick={() => update({ network: { ...n, domains: n.domains.filter((x) => x !== d) } })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>
+                  {d}<button type="button" onClick={() => { update({ network: { ...n, domains: n.domains.filter((x) => x !== d) } }); }} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>
                 </span>
               ))}
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <input value={newDomain} onChange={(e) => setNewDomain(e.target.value)} placeholder="*.github.com" className={`font-mono ${inputCls}`} />
+              <input value={newDomain} onChange={(e) => { setNewDomain(e.target.value); }} placeholder="*.github.com" className={`font-mono ${inputCls}`} />
               <WsButton variant="secondary" icon="plus" onClick={() => { const d = newDomain.trim(); if (!d) return; update({ network: { ...n, domains: [...new Set([...n.domains, d])] } }); setNewDomain(''); }}>Add</WsButton>
             </div>
           </div>
@@ -536,7 +536,7 @@ function HooksTab({ s, update }: TabProps) {
                   <div className="text-xs text-muted mt-0.5">{h.desc}</div>
                   <div className="text-[11px] text-primary mt-0.5">→ {h.feeds}</div>
                 </div>
-                <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => update({ hooks: { ...s.hooks, [h.key]: v } })} />
+                <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />
               </div>
             ))}
           </div>
@@ -550,21 +550,21 @@ function HooksTab({ s, update }: TabProps) {
 export default function Pipeline() {
   const { activeWorkspace } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(STAGE_CONFIGS);
-  const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0]!.id);
+  const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0].id);
   const [tab, setTab] = useState('general');
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
-  const s = stages.find((x) => x.id === selectedId) ?? stages[0]!;
-  const update = (patch: Partial<PipelineStageCfg>) => setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st)));
+  const s = stages.find((x) => x.id === selectedId) ?? stages[0];
+  const update = (patch: Partial<PipelineStageCfg>) => { setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st))); };
 
-  const move = (dir: -1 | 1) => setStages((p) => {
+  const move = (dir: -1 | 1) => { setStages((p) => {
     const i = p.findIndex((x) => x.id === selectedId);
     const j = i + dir;
     if (j < 0 || j >= p.length) return p;
     const copy = [...p];
-    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+    [copy[i], copy[j]] = [copy[j], copy[i]];
     return copy.map((st, idx) => ({ ...st, order: idx }));
-  });
+  }); };
 
   const addStage = () => {
     const id = `stage-${String(stages.length)}-${String(Date.now())}`;
@@ -627,8 +627,8 @@ export default function Pipeline() {
             return (
               <div key={st.id} className="flex items-center gap-1 shrink-0">
                 <button
-                  type="button" onClick={() => setSelectedId(st.id)}
-                  className={`relative flex items-center gap-2 rounded-xl border px-3 h-11 cursor-pointer transition-colors ${active ? 'border-primary bg-primary/10' : st.aiEnabled ? 'border-container1-border bg-container1 hover:bg-container1-hover' : 'border-container1-border bg-container2/40 hover:bg-container2'}`}
+                  type="button" onClick={() => { setSelectedId(st.id); }}
+                  className={`relative flex items-center gap-2 rounded-xl border px-3 h-11 cursor-pointer transition-colors ${active ? 'border-primary bg-primary/10' : (st.aiEnabled ? 'border-container1-border bg-container1 hover:bg-container1-hover' : 'border-container1-border bg-container2/40 hover:bg-container2')}`}
                 >
                   <span className={`w-5 h-5 shrink-0 rounded-md text-[11px] font-bold flex items-center justify-center ${active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>{i + 1}</span>
                   <span className="text-sm font-medium text-title whitespace-nowrap">{st.name}</span>
@@ -650,8 +650,8 @@ export default function Pipeline() {
                   <div key={i} className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 ${w.severity === 'warn' ? 'border-warning/40 bg-warning/10' : 'border-container1-border bg-container2/40'}`}>
                     <Icon name={w.severity === 'warn' ? 'triangle-exclamation' : 'circle-question'} className={`mt-0.5 shrink-0 ${w.severity === 'warn' ? 'text-warning' : 'text-muted'}`} />
                     <span className="flex-1 text-sm text-common">{w.text}</span>
-                    <button type="button" onClick={() => setSelectedId(w.stageId)} className="text-xs text-primary hover:underline cursor-pointer shrink-0">Go to stage</button>
-                    <button type="button" onClick={() => setWarnings((p) => p.filter((_, j) => j !== i))} className="text-muted hover:text-title cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
+                    <button type="button" onClick={() => { setSelectedId(w.stageId); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">Go to stage</button>
+                    <button type="button" onClick={() => { setWarnings((p) => p.filter((_, j) => j !== i)); }} className="text-muted hover:text-title cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
                   </div>
                 ))}
               </div>
@@ -662,11 +662,11 @@ export default function Pipeline() {
         {/* selected stage */}
         <div className="rounded-2xl border border-container1-border bg-container1">
           <div className="flex items-center gap-3 px-4 md:px-5 py-3 border-b border-divider">
-            <input value={s.name} onChange={(e) => update({ name: e.target.value })} className="text-base font-semibold text-title bg-transparent focus:outline-none border-b border-transparent focus:border-primary min-w-0 flex-1" />
+            <input value={s.name} onChange={(e) => { update({ name: e.target.value }); }} className="text-base font-semibold text-title bg-transparent focus:outline-none border-b border-transparent focus:border-primary min-w-0 flex-1" />
             <div className="flex items-center gap-2 shrink-0">
-              <Toggle on={s.aiEnabled} onChange={(v) => update({ aiEnabled: v })} label={s.aiEnabled ? 'AI on' : 'No AI'} />
-              <IconButton icon="angle-left" title="Move earlier" onClick={() => move(-1)} />
-              <IconButton icon="angle-right" title="Move later" onClick={() => move(1)} />
+              <Toggle on={s.aiEnabled} onChange={(v) => { update({ aiEnabled: v }); }} label={s.aiEnabled ? 'AI on' : 'No AI'} />
+              <IconButton icon="angle-left" title="Move earlier" onClick={() => { move(-1); }} />
+              <IconButton icon="angle-right" title="Move later" onClick={() => { move(1); }} />
               <IconButton icon="trash" title="Delete stage" onClick={removeStage} className="hover:text-wrong" />
             </div>
           </div>

@@ -26,7 +26,7 @@ function termStatus(t: Terminal): TicketStatus {
 
 function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; sshUser: string; className?: string }) {
   const [active, setActive] = useState(0);
-  const proc = terminal.processes[active] ?? terminal.processes[0]!;
+  const proc = terminal.processes[active] ?? terminal.processes[0];
   const sessionId = `${terminal.ticketId}:${proc.name}`;
   const menuItems = [
     { label: 'Restart', icon: 'play' as const, onClick: () => {} },
@@ -48,7 +48,7 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
           <span className="hidden md:inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] font-mono text-terminal-muted"><Icon name="user" /> {sshUser}</span>
           <div className="flex items-center gap-1">
             {terminal.processes.map((p, i) => (
-              <button key={p.name} type="button" onClick={() => setActive(i)}
+              <button key={p.name} type="button" onClick={() => { setActive(i); }}
                 className={`rounded-md px-2 py-0.5 text-xs font-mono cursor-pointer transition-colors ${i === active ? 'bg-white/10 text-terminal-text' : 'text-terminal-muted hover:text-terminal-text'}`}>
                 {p.name}
               </button>
@@ -107,7 +107,7 @@ export default function Terminals() {
         )}
       </div>
 
-      {!unlocked && <SshLocked onGoToSettings={() => navigate('settings')} />}
+      {!unlocked && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
 
       {unlocked && TERMINALS.length === 0 && (
         <EmptyState icon="terminal" title="No terminals running" sub="Activate a ticket to attach a live terminal." />
@@ -125,9 +125,9 @@ export default function Terminals() {
         <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
           <div className="flex items-center gap-1 mb-3 overflow-x-auto ws-no-scrollbar">
             {TERMINALS.map((t) => (
-              <button key={t.ticketId} type="button" onClick={() => setActiveTab(t.ticketId)}
+              <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
                 className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${activeTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: `var(--color-${termStatus(t) === 'busy' ? 'primary' : termStatus(t) === 'stuck' || termStatus(t) === 'needs-input' ? 'warning' : 'muted'})` }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: `var(--color-${termStatus(t) === 'busy' ? 'primary' : (termStatus(t) === 'stuck' || termStatus(t) === 'needs-input' ? 'warning' : 'muted')})` }} />
                 {t.ticketId}
               </button>
             ))}
