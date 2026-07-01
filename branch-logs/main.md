@@ -349,3 +349,21 @@
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen. Write-logica ongewijzigd (dezelfde Conductor-ops, al gedekt door integration-tests).
 
 **Migratie-status Fase 0:** 8/~40 ops getypt (quickAdd, sprintCreate + 6 board). Resterend: members (change-role/remove/transfer/invite/revoke), roles (create/update), settings (save-env/remove-env/save-integration/remove-integration/gitlab-*/raise-cap/edit-budget/resume-spend/skill-toggle/save-stage-config), notifications (mark-read), suggestions (accept). Daarna `control_v1` + generieke `control()` weg.
+
+## 2026-07-02 01:15 — /loop Fase-0 COMPLEET: hele write-path gemigreerd naar getypte per-actie routes + `control` verwijderd
+
+**Gedaan:** de resterende ~18 client-aangeroepen ops → eigen getypte `_api`-route (zelfde thin patroon: validate + `hasCapability` RBAC + enqueue naar seriële Conductor):
+- members/RBAC/lifecycle: `changeRole`, `removeMember`, `transferOwnership`, `renameWorkspace`, `deleteWorkspace`, `roleCreate`, `roleUpdate`, `invite`, `revokeInvite`.
+- settings: `saveEnv`, `removeEnv`, `removeIntegration`, `gitlabSettings`, `skillToggle`, `saveIntegration` (echte `IntegrationTool['fields']/['mcp']`-types), `saveStageConfig` (`PipelineStageCfg`-type).
+- notifications/suggestions: `markRead` (single + all), `acceptSuggestion`.
+- login-only: `createWorkspace` (→ `createBlankWorkspace`, geeft id), `acceptInvite` (login-only enqueue).
+- **`WorkspacesProvider` volledig omgezet:** nieuwe `afterWrite(promise)`-helper (neemt een Promise, geen route-naam → erase't de apiRequest-inferentie niet), alle ctx-methods roepen nu hun getypte route aan. Generieke `control()`-helper + `ControlOp`-import verwijderd.
+- **Legacy `workspaces/control` route + test verwijderd** (`control_v1.ts` + `control_v1.tests.ts`). Niet-client-aangeroepen ops (raise-cap/edit-budget/resume-spend/gitlab-verify/gitlab-resync/AI-session pause/kill/…) NIET gemigreerd — geen caller (speculatief; blijven in de `ControlOp`-union + conductor voor Fase 2).
+
+**Resultaat item 9:** alle write-calls client-side volledig getypt via de gegenereerde type-map; `Record<string,unknown>` weg aan de client-grens. ~26 ops elk een eigen getypte route. Conductor `executeAction`-interne readers blijven loose (server-intern, onzichtbaar voor de type-server) — per-op typing is Fase-2 cleanup.
+
+**Files:** 20 nieuwe `src/workspaces/_api/*_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, verwijderd `control_v1.ts(+tests)`.
+
+**Verificatie:** front-tsc 0 (bewijst dat ELKE op correct bedraad is met matchende payload), server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 6/6 files. tsc is het vangnet: een niet-bedrade of mismatchende op zou falen.
+
+**Nog te doen:** Fase-2 cleanup (conductor `executeAction` per-op typen; ongebruikte `OP_CAPABILITY` opruimen), lesson-0002 (default-pipeline naar server/ vóór prod), realtime-`_sync`-laag (browser-gated), Fase-3 features.

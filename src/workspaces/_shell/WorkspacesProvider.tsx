@@ -3,10 +3,10 @@
 //? Fetches the tenant-scoped `workspaces/snapshot` (the `useWorkspaceData()` seam,
 //? MIGRATION §4) and exposes it + the navigation helpers via `useWorkspaces()`.
 //? Navigation drives REAL framework routes; the active `view` is derived from the
-//? URL. Mutations go through the `workspaces/control` [control-API] route + refetch
-//? (the ops the Conductor implements persist; the rest are optimistic-local until
-//? their write slice lands). UI-only state (open tabs, AI panel, chat, ssh keys)
-//? stays client-side.
+//? URL. Mutations go through PER-ACTION typed `_api` routes (`workspaces/quickAdd`,
+//? `workspaces/changeRole`, …) — each fully typed via the generated type-map — then
+//? refetch the snapshot (Fase-0 split; ADR 0005). UI-only state (open tabs, AI panel,
+//? chat, ssh keys) stays client-side.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -16,7 +16,6 @@ import { apiRequest, tryCatch, useSession, useTheme } from '@luckystack/core/cli
 import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
-import type { ControlOp } from '../_functions/controlApi';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
@@ -113,17 +112,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, [wantWorkspaceId]);
   useEffect(() => { refetch(); }, [refetch]);
 
-  //? A control-API write: enqueue → the Conductor persists → refetch the snapshot.
-  //? Legacy generic path (still used by the not-yet-migrated ops). Fase-0 migrates
-  //? each op to its OWN typed `_api` route (see quickAdd/sprintCreate below); once
-  //? every op has moved, this + the `workspaces/control` route are removed.
-  const control = useCallback((op: ControlOp, target: Record<string, unknown>, payload: Record<string, unknown>) => {
-    void (async () => {
-      await apiRequest({ name: 'workspaces/control', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', op, target, payload, clientRequestId: nextReqId() } });
-      refetch();
-    })();
-  }, [snap.activeWorkspaceId, refetch]);
-
   //? Per-action TYPED writes (Fase-0 split). Each calls its op's own `_api` route
   //? with a fully-typed payload — the generated type-map types the call end-to-end
   //? (no `Record<string, unknown>` envelope), then refetches like `control`.
@@ -139,6 +127,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+
+  //? Fire-and-refetch for the typed per-action writes: takes the (already typed)
+  //? `apiRequest(...)` promise and refetches the snapshot once it settles. Takes a
+  //? Promise (NOT a route name), so it never erases apiRequest's route/version
+  //? inference — the literal `name:` at each call site keeps the payload fully typed.
+  const afterWrite = useCallback((p: Promise<unknown>) => { void p.then(() => { refetch(); }); }, [refetch]);
 
   // UI-only state (not yet server-backed).
   const [openTabs, setOpenTabs] = useState<string[]>([]);
@@ -221,13 +215,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       suggestions: activeSuggestions,
       dismissSuggestion: (id) => { setLocalSuggestionsDismissed((prev) => [...prev, id]); },
       acceptSuggestion: (id) => {
-        control('accept-suggestion', { suggestionId: id }, {});
+        afterWrite(apiRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', suggestionId: id, clientRequestId: nextReqId() } }));
         setLocalSuggestionsDismissed((prev) => [...prev, id]);
       },
       notifications: snap.notifications,
       unreadNotifications: snap.notifications.filter((n) => !n.read).length,
-      markNotificationRead: (id) => { control('mark-read', { notificationId: id }, {}); },
-      markAllNotificationsRead: () => { control('mark-read', { all: true }, {}); },
+      markNotificationRead: (id) => { afterWrite(apiRequest({ name: 'workspaces/markRead', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', notificationId: id, clientRequestId: nextReqId() } })); },
+      markAllNotificationsRead: () => { afterWrite(apiRequest({ name: 'workspaces/markRead', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', all: true, clientRequestId: nextReqId() } })); },
       currentUser,
       sshKeys,
       sshUserId,
@@ -240,18 +234,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
-      createWorkspace: (name) => { control('create-workspace', {}, { name }); },
+      createWorkspace: (name) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() } })); },
       myInvites: snap.myInvites,
-      acceptInvite: (token) => { control('accept-invite', { inviteToken: token }, {}); },
+      acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
-      renameWorkspace: (name) => { control('rename-workspace', {}, { name }); },
+      renameWorkspace: (name) => { afterWrite(apiRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', name, clientRequestId: nextReqId() } })); },
       deleteWorkspace: () => {
-        control('delete-workspace', {}, {});
+        afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', clientRequestId: nextReqId() } }));
         setWantWorkspaceId(undefined);
         setLoading(true);
       },
       saveGitlab: (baseUrl, token) => {
-        control('gitlab-settings', {}, token ? { baseUrl, token } : { baseUrl });
+        afterWrite(apiRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', baseUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() } }));
       },
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {
@@ -259,32 +253,32 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!role || role.locked === true) return;
         const perms = role.perms.map((v, j) => (j === ci ? !v : v));
         setSnap((s) => ({ ...s, roles: s.roles.map((r, i) => (i === ri ? { ...r, perms } : r)) }));
-        control('role-update', { roleKey: role.key }, { perms });
+        afterWrite(apiRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', roleKey: role.key, perms, clientRequestId: nextReqId() } }));
       },
       addRole: (name) => {
         const key = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || `role-${String(snap.roles.length + 1)}`;
         const perms = (snap.roles[0]?.perms ?? []).map(() => false);
         setSnap((s) => ({ ...s, roles: [...s.roles, { key, name, perms }] }));
-        control('role-create', {}, { key, label: name, perms });
+        afterWrite(apiRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', key, label: name, perms, clientRequestId: nextReqId() } }));
       },
       memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.role])),
-      setMemberRole: (mid, role) => { control('change-role', { memberId: mid }, { roleKey: role }); },
-      inviteMember: (email, roleKey) => { control('invite', {}, { email, roleKey }); },
-      revokeInvite: (inviteId) => { control('revoke-invite', { inviteId }, {}); },
-      removeMember: (memberId) => { control('remove-member', { memberId }, {}); },
-      transferOwnership: (memberId) => { control('transfer-ownership', { memberId }, {}); },
+      setMemberRole: (mid, role) => { afterWrite(apiRequest({ name: 'workspaces/changeRole', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId: mid, roleKey: role, clientRequestId: nextReqId() } })); },
+      inviteMember: (email, roleKey) => { afterWrite(apiRequest({ name: 'workspaces/invite', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', email, roleKey, clientRequestId: nextReqId() } })); },
+      revokeInvite: (inviteId) => { afterWrite(apiRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', inviteId, clientRequestId: nextReqId() } })); },
+      removeMember: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/removeMember', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
+      transferOwnership: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
       envVars: snap.envVars,
-      saveEnvVar: (v) => { control('save-env', {}, { key: v.key, value: v.value, secret: v.secret }); },
-      removeEnvVar: (id) => { control('remove-env', { envId: id }, {}); },
+      saveEnvVar: (v) => { afterWrite(apiRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() } })); },
+      removeEnvVar: (id) => { afterWrite(apiRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', envId: id, clientRequestId: nextReqId() } })); },
       integrationTools: snap.integrations,
       saveIntegrationTool: (t) => {
         const known = snap.integrations.some((x) => x.id === t.id);
         setSnap((s) => ({ ...s, integrations: known ? s.integrations.map((x) => (x.id === t.id ? t : x)) : [...s.integrations, t] }));
-        control('save-integration', known ? { integrationId: t.id } : {}, { name: t.name, type: t.type, fields: t.fields, mcp: t.mcp });
+        afterWrite(apiRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() } }));
       },
       removeIntegrationTool: (id) => {
         setSnap((s) => ({ ...s, integrations: s.integrations.filter((x) => x.id !== id) }));
-        control('remove-integration', { integrationId: id }, {});
+        afterWrite(apiRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', integrationId: id, clientRequestId: nextReqId() } }));
       },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
@@ -296,9 +290,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       bulkAssign: (ids, assigneeId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, assigneeId, clientRequestId: nextReqId() } }); refetch(); })(); },
       bulkSprint: (ids, sprintId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, sprintId, clientRequestId: nextReqId() } }); refetch(); })(); },
       bulkArchive: (ids) => { void (async () => { await apiRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, clientRequestId: nextReqId() } }); refetch(); })(); },
-      toggleSkill: (id, on) => { control('skill-toggle', { sourceId: id }, { on }); },
+      toggleSkill: (id, on) => { afterWrite(apiRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', sourceId: id, on, clientRequestId: nextReqId() } })); },
       stageConfigs: snap.stageConfigs,
-      saveStageConfig: (cfg) => { control('save-stage-config', { stageId: cfg.id }, { ...cfg }); },
+      saveStageConfig: (cfg) => { afterWrite(apiRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', stageId: cfg.id, cfg, clientRequestId: nextReqId() } })); },
       signOut,
       // live tenant data
       loading,
@@ -318,7 +312,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       invites: snap.invites,
       activityEvents: snap.events,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, control, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, afterWrite, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }
