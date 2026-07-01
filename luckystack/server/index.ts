@@ -6,7 +6,7 @@
 import { registerHook, resolveEnvKey } from '@luckystack/core';
 import { registerNotificationHooks } from '../../server/hooks/notifications';
 import { registerWorkspacesTerminalHooks } from '../../server/hooks/workspacesTerminal';
-import { registerTenantKeyFormatter } from '../../functions/tenantRedis';
+import { registerTenantKeyFormatter } from '../../server/tenant/tenantRedis';
 
 //? Wires the transactional notification hooks (new sign-in email,
 //? password-change email). Reads `user.preferences` to respect opt-in. Safe

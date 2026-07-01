@@ -53,20 +53,18 @@ export const tenantDb = getPrismaClient().$extends({
   query: {
     $allModels: {
       $allOperations({ model, operation, args, query }) {
-        if (!model || !TENANT_MODELS.has(model)) return query(args);
+        if (!TENANT_MODELS.has(model)) return query(args);
         const workspaceId = currentWorkspaceId();
-        const a = args as Record<string, unknown>;
-        if (operation === 'create' || operation === 'update' || operation === 'upsert') {
-          if (operation === 'create' && a.data && typeof a.data === 'object') {
-            a.data = { ...(a.data as Record<string, unknown>), workspaceId };
-          }
-          if ('where' in a && a.where && typeof a.where === 'object') {
-            a.where = { ...(a.where as Record<string, unknown>), workspaceId };
-          }
-        } else if (operation === 'createMany' && Array.isArray((a.data as unknown[]) ?? null)) {
-          a.data = (a.data as Record<string, unknown>[]).map((row) => ({ ...row, workspaceId }));
+        const a: Record<string, unknown> = args;
+        const data = a.data;
+        if (operation === 'create' && data !== null && typeof data === 'object') {
+          a.data = { ...data, workspaceId };
+        } else if (operation === 'createMany' && Array.isArray(data)) {
+          const rows: unknown[] = data;
+          a.data = rows.map((row) => (row !== null && typeof row === 'object' ? { ...row, workspaceId } : row));
         } else if ('where' in a) {
-          a.where = { ...((a.where as Record<string, unknown> | undefined) ?? {}), workspaceId };
+          const where = a.where;
+          a.where = where !== null && typeof where === 'object' ? { ...where, workspaceId } : { workspaceId };
         }
         return query(args);
       },

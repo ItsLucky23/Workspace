@@ -9,11 +9,12 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (1)
+## Decisions (2)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | Embed per-stage config as composite types, keep loose ObjectId refs, and omit the framework-provided identity models in the Workspaces V1 Prisma schema | 🟢 accepted | workspaces, data-model, prisma, mongodb, lane-b | — | `docs/decisions/0001-workspaces-v1-schema-shape.md` |
+| 0002 | In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2 | 🟢 accepted | workspaces, control-api, conductor, fase-1, orchestrator | — | `docs/decisions/0002-fase1-inprocess-conductor.md` |
 
 ## Summaries
 
@@ -24,6 +25,14 @@
 1. **Embed per-stage config as Prisma composite `type` blocks** (`StageCommandCfg`, `StageToolCfg`, `StageStatusCfg`, `StageProcessCfg`, `StageModelCfg`, …) directly on `PipelineStage`, mirroring the prototype's flattened `PipelineStageCfg` — not normalized child collections. 2. **No wrapper `Pipeline` model.** `PipelineStage` belongs to a `Project` via `projectId`. The one V1 ticket-pipeline per project is just its ordered stage list. 3. **Loose `@db.ObjectId` reference fields, no formal Prisma `@relation`s.** Delete-cascade (`04b §11d`) and tenant isolation are Conductor / app-enforced, matching the single-writer model + the `$extends` where-injection isolation. 4. **Leave `User` untouched and add no `OAuthAccount`.** Framework auth + `User.provider` cover V1 identity; Workspaces adds only `SshKey` (B-05 terminal gate) and `PushSubscription` (web-push) as framework-global rows. 5. **`String` + a value-listing comment for growth-tolerant product fields**, not Prisma enums (only the framework's own `LANGUAGE`/`THEME`/`PROVIDERS` enums stay).
 
 → `docs/decisions/0001-workspaces-v1-schema-shape.md`
+
+### 0002 — In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2
+
+**0002** · accepted · tags: workspaces, control-api, conductor, fase-1, orchestrator · 2026-07-01
+
+*In Fase 1 the control-API handler enqueues to an IN-PROCESS serial Conductor executor** (a single-writer promise-chain/mutex inside the one running web-app/dev process), which executes each op via `tenantDb` under `runInTenant(workspaceId)`. The *Redis-backed signal-log + `lease:orchestrator` + the out-of-process drain loop land in Fase 2** when the orchestrator process actually splits out (Lane A, A3). The `ControlRequest`/`ControlAck` contract and the enqueue→Conductor→`ws-ai:*` shape are unchanged — only the *transport* of the enqueue (in-memory queue vs Redis list) and the *host* of the drain (same process vs leased orchestrator) differ between phases.
+
+→ `docs/decisions/0002-fase1-inprocess-conductor.md`
 
 ## Code governed by decisions
 
