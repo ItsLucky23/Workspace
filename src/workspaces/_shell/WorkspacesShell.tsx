@@ -13,8 +13,10 @@ import { MobileHeader } from './MobileChrome';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
 import Icon from '../_components/Icon';
+import { useTranslator } from '@luckystack/core/client';
 
 export function WorkspacesShell({ children }: { children: React.ReactNode }) {
+  const translate = useTranslator();
   const ctx = useWorkspaces();
   const [expanded, setExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -47,7 +49,7 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
                   <motion.div key="backbar" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden border-b border-divider bg-background">
                     <div className="px-4 md:px-6 py-2">
                       <button type="button" onClick={ctx.goBack} className="inline-flex items-center gap-2 rounded-lg pl-2 pr-3 h-8 text-sm text-common hover:bg-container2 cursor-pointer">
-                        <Icon name="arrow-left" /> Back{ctx.backLabel ? ` to ${ctx.backLabel}` : ''}
+                        <Icon name="arrow-left" /> {translate({ key: 'workspaces.wsShell.back' })}{ctx.backLabel ? translate({ key: 'workspaces.wsShell.backTo', params: [{ key: 'label', value: ctx.backLabel }] }) : ''}
                       </button>
                     </div>
                   </motion.div>

@@ -5,11 +5,14 @@
 
 import { useRef, useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import DiffView from './DiffView';
 import Icon from './Icon';
 import type { TicketFile } from '../_data/types';
 
 export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
+  const translate = useTranslator();
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(files.map((f) => [f.path, true])));
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -24,7 +27,7 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
     <div className="flex gap-4 items-start">
       {/* file list */}
       <div className="w-56 shrink-0 sticky top-0 rounded-xl border border-container1-border bg-container1 p-2 hidden md:block">
-        <div className="px-2 py-1.5 text-xs font-medium text-muted">{files.length} files</div>
+        <div className="px-2 py-1.5 text-xs font-medium text-muted">{translate({ key: 'workspaces.fileDiff.fileCount', params: [{ key: 'count', value: files.length }] })}</div>
         {files.map((f) => (
           <button
             key={f.path} type="button" onClick={() => { jumpTo(f.path); }}
@@ -62,7 +65,7 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
               {isOpen && (
                 f.diff
                   ? <DiffView lines={f.diff} className="rounded-none border-0 border-t border-divider" />
-                  : <div className="px-3 py-4 text-xs text-muted border-t border-divider">No inline diff captured for this file in the prototype data.</div>
+                  : <div className="px-3 py-4 text-xs text-muted border-t border-divider">{translate({ key: 'workspaces.fileDiff.noInlineDiff' })}</div>
               )}
             </div>
           );

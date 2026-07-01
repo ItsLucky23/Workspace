@@ -5,6 +5,8 @@
 
 import { useMemo } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import Icon from '../_components/Icon';
 import { AvatarBubble } from '../_components/primitives';
 import { MEMBERS, SPEND_7D, TICKETS, USAGE_ROWS, ticketAssignee, ticketCreator } from '../_data/seed';
@@ -25,6 +27,7 @@ function Card({ title, desc, children, className }: { title: string; desc?: stri
 
 export default function Usage() {
   const { openTicket } = useWorkspaces();
+  const translate = useTranslator();
   const maxDay = Math.max(...SPEND_7D.map((d) => d.cost));
 
   const byMember = useMemo(() => {
@@ -45,13 +48,13 @@ export default function Usage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">Usage</h1>
-        <span className="text-sm text-muted">Token volume &amp; time · running on the Claude Pro Max CLI (no metered API)</span>
+        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.usage.title' })}</h1>
+        <span className="text-sm text-muted">{translate({ key: 'workspaces.usage.subtitle' })}</span>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
         <div className="flex flex-col gap-4">
-          <Card title="Activity · last 7 days">
+          <Card title={translate({ key: 'workspaces.usage.activityTitle' })}>
             <div className="flex items-end gap-3 h-36">
               {SPEND_7D.map((d) => (
                 <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5">
@@ -65,14 +68,14 @@ export default function Usage() {
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <Card title="By ticket" desc="Tokens and time per ticket this period.">
+            <Card title={translate({ key: 'workspaces.usage.byTicketTitle' })} desc={translate({ key: 'workspaces.usage.byTicketDesc' })}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted border-b border-divider">
-                    <th className="py-2 font-medium">Ticket</th>
-                    <th className="py-2 font-medium text-right">Tokens in</th>
-                    <th className="py-2 font-medium text-right">Tokens out</th>
-                    <th className="py-2 font-medium text-right">Time</th>
+                    <th className="py-2 font-medium">{translate({ key: 'workspaces.usage.colTicket' })}</th>
+                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensIn' })}</th>
+                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensOut' })}</th>
+                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTime' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -88,7 +91,7 @@ export default function Usage() {
               </table>
             </Card>
 
-            <Card title="By person" desc="Who handled which tickets.">
+            <Card title={translate({ key: 'workspaces.usage.byPersonTitle' })} desc={translate({ key: 'workspaces.usage.byPersonDesc' })}>
               <div className="flex flex-col gap-2">
                 {byMember.map(({ member, tickets }) => (
                   <div key={member.id} className="flex items-start gap-3 py-2 border-b border-divider last:border-0">
@@ -96,7 +99,7 @@ export default function Usage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-title">{member.name}</span>
-                        <span className="rounded-full bg-container2 px-2 text-xs text-muted">{tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}</span>
+                        <span className="rounded-full bg-container2 px-2 text-xs text-muted">{tickets.length} {tickets.length === 1 ? translate({ key: 'workspaces.usage.ticketSingular' }) : translate({ key: 'workspaces.usage.ticketPlural' })}</span>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {tickets.map((t) => (
@@ -111,7 +114,7 @@ export default function Usage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted">
-            <Icon name="circle-question" /> Runaway control (stuck/idle detection) escalates a session to “needs input” — independent of any spend cap.
+            <Icon name="circle-question" /> {translate({ key: 'workspaces.usage.runawayNote' })}
           </div>
         </div>
       </div>

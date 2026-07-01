@@ -83,6 +83,7 @@ export default tseslint.config(
           '@', '#', '$', '^', '*', '+', '=', '|', '.', '...',
           '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
           ' ', ' ', ' | ', ' • ', ' » ', ' « ', '—', '–',
+          '·', ' · ', '· ', '−', // middot separators + the U+2212 minus glyph (typographic, non-translatable)
           'x', 'px', 'rem', 'em', 'ms', 's', '°',
         ],
         ignoreProps: true,

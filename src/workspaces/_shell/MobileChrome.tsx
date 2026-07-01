@@ -6,6 +6,8 @@ import { useState } from 'react';
 
 import { AnimatePresence, motion } from 'motion/react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import Icon from '../_components/Icon';
 import { SPRING_SHEET } from '../_components/motion';
 import { AvatarBubble } from '../_components/primitives';
@@ -13,6 +15,7 @@ import { NAV_BOTTOM, NAV_ITEMS } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
+  const translate = useTranslator();
   const { view, navigate, currentUser, activeWorkspace } = useWorkspaces();
   const [drawer, setDrawer] = useState(false);
   const onTicket = isTicketView(view);
@@ -21,7 +24,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
     <>
       <header className="md:hidden flex items-center gap-2 h-14 px-3 border-b border-divider bg-container1 shrink-0">
         {onTicket ? (
-          <button type="button" onClick={() => { navigate('board'); }} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> Board</button>
+          <button type="button" onClick={() => { navigate('board'); }} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> {translate({ key: 'workspaces.mobileChrome.board' })}</button>
         ) : (
           <button type="button" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
         )}
@@ -41,8 +44,8 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
             <motion.div className="md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-container1 border-r border-divider p-3 flex flex-col gap-1"
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={SPRING_SHEET}>
               <div className="flex items-center gap-2 px-2 h-12 mb-1">
-                <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold">W</span>
-                <span className="font-semibold text-title">Workspaces</span>
+                <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold">{translate({ key: 'workspaces.mobileChrome.logoInitial' })}</span>
+                <span className="font-semibold text-title">{translate({ key: 'workspaces.mobileChrome.appName' })}</span>
               </div>
               {[...NAV_ITEMS, ...NAV_BOTTOM].map((it) => (
                 <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}

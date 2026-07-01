@@ -5,6 +5,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { AnimatePresence, motion } from 'motion/react';
 
 import Icon, { type IconName } from './Icon';
@@ -31,6 +33,7 @@ function TicketRow({ t, onClick }: { t: Ticket; onClick: () => void }) {
 }
 
 export default function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const translate = useTranslator();
   const ctx = useWorkspaces();
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,14 +56,14 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
   const openTicket = (id: string) => { ctx.openTicket(id); onClose(); };
 
   const actions: QuickAction[] = [
-    { label: 'New ticket', icon: 'plus', run: onClose },
-    { label: 'Go to Board', icon: 'table-columns', run: () => { go('board'); } },
-    { label: 'Backlog', icon: 'list-check', run: () => { go('backlog'); } },
-    { label: 'Terminals', icon: 'terminal', run: () => { go('terminals'); } },
-    { label: 'Pipeline', icon: 'diagram-project', run: () => { go('pipeline'); } },
-    { label: 'Sources', icon: 'book-open', run: () => { go('sources'); } },
-    { label: 'Usage', icon: 'chart-column', run: () => { go('usage'); } },
-    { label: ctx.aiOpen ? 'Hide Workspace-AI' : 'Open Workspace-AI', icon: 'robot', run: () => { ctx.toggleAi(); onClose(); } },
+    { label: translate({ key: 'workspaces.search.newTicket' }), icon: 'plus', run: onClose },
+    { label: translate({ key: 'workspaces.search.goToBoard' }), icon: 'table-columns', run: () => { go('board'); } },
+    { label: translate({ key: 'workspaces.search.backlog' }), icon: 'list-check', run: () => { go('backlog'); } },
+    { label: translate({ key: 'workspaces.search.terminals' }), icon: 'terminal', run: () => { go('terminals'); } },
+    { label: translate({ key: 'workspaces.search.pipeline' }), icon: 'diagram-project', run: () => { go('pipeline'); } },
+    { label: translate({ key: 'workspaces.search.sources' }), icon: 'book-open', run: () => { go('sources'); } },
+    { label: translate({ key: 'workspaces.search.usage' }), icon: 'chart-column', run: () => { go('usage'); } },
+    { label: ctx.aiOpen ? translate({ key: 'workspaces.search.hideWorkspaceAi' }) : translate({ key: 'workspaces.search.openWorkspaceAi' }), icon: 'robot', run: () => { ctx.toggleAi(); onClose(); } },
   ];
 
   return (
@@ -78,16 +81,16 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                 <input
                   ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && tickets[0]) openTicket(tickets[0].id); }}
-                  placeholder="Search tickets, sources, actions…"
+                  placeholder={translate({ key: 'workspaces.search.placeholder' })}
                   className="flex-1 bg-transparent text-sm text-title focus:outline-none"
                 />
-                <kbd className="rounded-md border border-container1-border bg-container2 px-1.5 text-xs text-muted">Esc</kbd>
+                <kbd className="rounded-md border border-container1-border bg-container2 px-1.5 text-xs text-muted">{translate({ key: 'workspaces.search.escKey' })}</kbd>
               </div>
 
               <div className="flex-1 overflow-y-auto p-2">
                 {!query && (
                   <>
-                    <Section title="Quick actions" />
+                    <Section title={translate({ key: 'workspaces.search.quickActions' })} />
                     <div className="grid grid-cols-2 gap-1 px-1 pb-2">
                       {actions.map((a) => (
                         <button key={a.label} type="button" onClick={a.run} className="flex items-center gap-2.5 rounded-lg px-2.5 h-9 text-sm text-common hover:bg-container2 cursor-pointer">
@@ -97,7 +100,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                     </div>
                     {recentTickets.length > 0 && (
                       <>
-                        <Section title="Recent" />
+                        <Section title={translate({ key: 'workspaces.search.recent' })} />
                         {recentTickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
                       </>
                     )}
@@ -105,10 +108,10 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                 )}
                 {query && (
                   <>
-                    {tickets.length === 0 && docs.length === 0 && <div className="text-center text-sm text-muted py-8">No matches</div>}
-                    {tickets.length > 0 && <Section title="Tickets" />}
+                    {tickets.length === 0 && docs.length === 0 && <div className="text-center text-sm text-muted py-8">{translate({ key: 'workspaces.search.noMatches' })}</div>}
+                    {tickets.length > 0 && <Section title={translate({ key: 'workspaces.search.tickets' })} />}
                     {tickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
-                    {docs.length > 0 && <Section title="Sources" />}
+                    {docs.length > 0 && <Section title={translate({ key: 'workspaces.search.sources' })} />}
                     {docs.map((d) => (
                       <button key={d.id} type="button" onClick={() => { go('sources'); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
                         <span className="w-5 text-center text-muted"><Icon name="file-lines" /></span>
@@ -120,7 +123,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
               </div>
 
               <div className="flex items-center gap-2 px-4 h-9 border-t border-divider text-xs text-muted">
-                <Icon name="wand-magic-sparkles" className="text-primary" /> Semantic search across the whole board — coming soon.
+                <Icon name="wand-magic-sparkles" className="text-primary" /> {translate({ key: 'workspaces.search.comingSoon' })}
               </div>
             </motion.div>
           </div>

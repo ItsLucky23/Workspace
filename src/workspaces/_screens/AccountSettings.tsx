@@ -6,6 +6,8 @@
 
 import { useRef, useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
@@ -13,6 +15,9 @@ import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primit
 import { MEMBERS, SESSIONS, SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { SshKeyEntry } from '../_data/types';
+
+//? An example file path shown in the SSH drop-zone — code, not translatable copy.
+const SSH_CONFIG_PATH = '~/.ssh/config';
 
 function Card({ title, desc, right, children }: { title: string; desc?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -41,6 +46,7 @@ function resolveUser(text: string): string | null {
 }
 
 function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
+  const translate = useTranslator();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
@@ -50,8 +56,8 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
 
   const submit = (raw: string, keyName: string) => {
     const userId = resolveUser(raw);
-    if (!userId) { setError('We couldn’t find a private key for the given public key.'); return; }
-    onAdd({ id: `k-${raw.trim()}-${userId}`, name: keyName || `${MEMBERS[userId]?.name ?? userId}'s key`, type: 'ed25519', fingerprint: `SHA256:${raw.trim().slice(0, 6)}…`, added: 'just now', lastUsed: '—', userId });
+    if (!userId) { setError(translate({ key: 'workspaces.account.keyNotFound' })); return; }
+    onAdd({ id: `k-${raw.trim()}-${userId}`, name: keyName || translate({ key: 'workspaces.account.defaultKeyName', params: [{ key: 'name', value: MEMBERS[userId]?.name ?? userId }] }), type: 'ed25519', fingerprint: `SHA256:${raw.trim().slice(0, 6)}…`, added: 'just now', lastUsed: '—', userId });
     setOpen(false); setName(''); setValue(''); setError('');
   };
 
@@ -65,12 +71,12 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
     if (file) void file.text().then((t) => { setValue(t); submit(t, name || file.name); });
   };
 
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>Add SSH key</WsButton>;
+  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>{translate({ key: 'workspaces.account.addSshKey' })}</WsButton>;
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3 mt-2">
-      <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder="Key name (e.g. MacBook Pro)"
+      <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.account.keyNamePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <textarea value={value} onChange={(e) => { setValue(e.target.value); }} placeholder="Paste public key (try 123 or 456)…" rows={2}
+      <textarea value={value} onChange={(e) => { setValue(e.target.value); }} placeholder={translate({ key: 'workspaces.account.publicKeyPlaceholder' })} rows={2}
         className="px-3 py-2 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -79,19 +85,20 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
         onClick={() => fileInput.current?.click()}
         className={`rounded-lg border border-dashed p-3 text-center text-xs cursor-pointer transition-colors ${dragOver ? 'border-primary bg-primary/5 text-primary' : 'border-container2-border text-muted hover:bg-container2/60'}`}
       >
-        Drag & drop your <span className="font-mono">~/.ssh/config</span> — or click to choose a file
+        {translate({ key: 'workspaces.account.dropConfigPre' })} <span className="font-mono">{SSH_CONFIG_PATH}</span> {translate({ key: 'workspaces.account.dropConfigPost' })}
         <input ref={fileInput} type="file" className="hidden" onChange={onPick} />
       </div>
       {error && <div className="text-sm text-wrong inline-flex items-center gap-1.5"><Icon name="triangle-exclamation" /> {error}</div>}
       <div className="flex items-center gap-2">
-        <WsButton icon="check" onClick={() => { submit(value, name); }}>Verify & add</WsButton>
-        <WsButton variant="ghost" onClick={() => { setOpen(false); setError(''); }}>Cancel</WsButton>
+        <WsButton icon="check" onClick={() => { submit(value, name); }}>{translate({ key: 'workspaces.account.verifyAndAdd' })}</WsButton>
+        <WsButton variant="ghost" onClick={() => { setOpen(false); setError(''); }}>{translate({ key: 'workspaces.account.cancel' })}</WsButton>
       </div>
     </div>
   );
 }
 
 export default function AccountSettings() {
+  const translate = useTranslator();
   const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey } = useWorkspaces();
   const [push, setPush] = useState(false);
   const sshUser = sshUserId ? MEMBERS[sshUserId] : null;
@@ -99,89 +106,89 @@ export default function AccountSettings() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">Account</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.account.heading' })}</h1>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
         <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-          <Card title="Profile">
+          <Card title={translate({ key: 'workspaces.account.profile' })}>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16"><AvatarBubble user={currentUser} size={64} /></div>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-title">{currentUser.name}</div>
                 <div className="text-sm text-muted">{currentUser.email}</div>
               </div>
-              <WsButton variant="secondary">Edit</WsButton>
+              <WsButton variant="secondary">{translate({ key: 'workspaces.account.edit' })}</WsButton>
             </div>
             <div className="mt-4 flex flex-col gap-1">
               <Row>
-                <span className="text-sm text-common">Theme</span>
-                <Segmented value={theme} onChange={setTheme} options={[{ id: 'light', label: <><Icon name="sun" /> Light</> }, { id: 'dark', label: <><Icon name="moon" /> Dark</> }]} />
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.theme' })}</span>
+                <Segmented value={theme} onChange={setTheme} options={[{ id: 'light', label: <><Icon name="sun" /> {translate({ key: 'workspaces.account.light' })}</> }, { id: 'dark', label: <><Icon name="moon" /> {translate({ key: 'workspaces.account.dark' })}</> }]} />
               </Row>
               <Row>
-                <span className="text-sm text-common">Language</span>
-                <span className="text-sm text-title">English</span>
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.language' })}</span>
+                <span className="text-sm text-title">{translate({ key: 'workspaces.account.english' })}</span>
               </Row>
             </div>
           </Card>
 
-          <Card title="Connections" desc="OAuth identity providers linked to your account.">
+          <Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
             <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> GitLab</span>
-              <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> Connected</span>
+              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.gitlab' })}</span>
+              <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>
             </Row>
             <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> GitHub</span>
-              <WsButton variant="secondary">Connect</WsButton>
+              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}</span>
+              <WsButton variant="secondary">{translate({ key: 'workspaces.account.connect' })}</WsButton>
             </Row>
           </Card>
 
           <Card
-            title="SSH keys"
-            desc="Required to open terminals. Your private key stays on your device; we only store the public half."
+            title={translate({ key: 'workspaces.account.sshKeysTitle' })}
+            desc={translate({ key: 'workspaces.account.sshKeysDesc' })}
             right={sshUser
-              ? <span className="inline-flex items-center gap-1.5 rounded-lg bg-correct/15 text-correct px-2 h-7 text-xs font-medium"><Icon name="circle-check" /> Terminal SSH user: {sshUser.name}</span>
-              : <span className="inline-flex items-center gap-1.5 rounded-lg bg-warning/15 text-warning px-2 h-7 text-xs font-medium"><Icon name="triangle-exclamation" /> Terminals locked</span>}
+              ? <span className="inline-flex items-center gap-1.5 rounded-lg bg-correct/15 text-correct px-2 h-7 text-xs font-medium"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.terminalSshUser', params: [{ key: 'name', value: sshUser.name }] })}</span>
+              : <span className="inline-flex items-center gap-1.5 rounded-lg bg-warning/15 text-warning px-2 h-7 text-xs font-medium"><Icon name="triangle-exclamation" /> {translate({ key: 'workspaces.account.terminalsLocked' })}</span>}
           >
             <div className="flex flex-col">
               {sshKeys.map((k) => (
                 <Row key={k.id}>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-title">{k.name} <span className="text-xs text-muted font-mono">· {k.type}</span> {k.userId === sshUserId && <span className="ml-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">active</span>}</div>
-                    <div className="text-xs text-muted font-mono truncate">{k.fingerprint} · added {k.added} · authenticates as {MEMBERS[k.userId]?.name ?? k.userId}</div>
+                    <div className="text-sm font-medium text-title">{k.name} <span className="text-xs text-muted font-mono">· {k.type}</span> {k.userId === sshUserId && <span className="ml-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.account.active' })}</span>}</div>
+                    <div className="text-xs text-muted font-mono truncate">{translate({ key: 'workspaces.account.keyMeta', params: [{ key: 'fingerprint', value: k.fingerprint }, { key: 'added', value: k.added }, { key: 'name', value: MEMBERS[k.userId]?.name ?? k.userId }] })}</div>
                   </div>
-                  <button type="button" onClick={() => { removeSshKey(k.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">Remove</button>
+                  <button type="button" onClick={() => { removeSshKey(k.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.account.remove' })}</button>
                 </Row>
               ))}
-              {sshKeys.length === 0 && <div className="text-sm text-muted py-3">No keys linked — terminals are locked.</div>}
+              {sshKeys.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noKeysLinked' })}</div>}
             </div>
             <div className="mt-3"><AddKeyForm onAdd={addSshKey} /></div>
           </Card>
 
-          <Card title="Sessions" desc="Devices currently signed in." right={<button type="button" onClick={() => void menuHandler.confirm({ title: 'Revoke all other sessions?', content: 'Every device except this one will be signed out.' })} className="text-xs text-wrong hover:underline cursor-pointer">Revoke all others</button>}>
+          <Card title={translate({ key: 'workspaces.account.sessionsTitle' })} desc={translate({ key: 'workspaces.account.sessionsDesc' })} right={<button type="button" onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.account.revokeAllTitle' }), content: translate({ key: 'workspaces.account.revokeAllContent' }) })} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revokeAllOthers' })}</button>}>
             <div className="flex flex-col">
               {SESSIONS.map((s) => (
                 <Row key={s.id}>
                   <div>
-                    <div className="text-sm font-medium text-title">{s.device} {s.current && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px]">this device</span>}</div>
+                    <div className="text-sm font-medium text-title">{s.device} {s.current && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.account.thisDevice' })}</span>}</div>
                     <div className="text-xs text-muted">{s.location} · {s.lastActive}</div>
                   </div>
-                  {!s.current && <button type="button" className="text-xs text-wrong hover:underline cursor-pointer">Revoke</button>}
+                  {!s.current && <button type="button" className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revoke' })}</button>}
                 </Row>
               ))}
             </div>
           </Card>
 
-          <Card title="Notifications" desc="Get pinged when an AI needs your input.">
+          <Card title={translate({ key: 'workspaces.account.notificationsTitle' })} desc={translate({ key: 'workspaces.account.notificationsDesc' })}>
             <Row>
-              <span className="text-sm text-common">Web push</span>
-              <Toggle on={push} onChange={setPush} label={push ? 'Enabled' : 'Off'} />
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
+              <Toggle on={push} onChange={setPush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
             </Row>
           </Card>
 
-          <Card title="Your data">
+          <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>
             <Row>
-              <span className="text-sm text-common">Download a copy of your data</span>
-              <WsButton variant="secondary" icon="up-right-from-square">Export</WsButton>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.downloadData' })}</span>
+              <WsButton variant="secondary" icon="up-right-from-square">{translate({ key: 'workspaces.account.export' })}</WsButton>
             </Row>
           </Card>
         </div>

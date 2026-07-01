@@ -6,6 +6,8 @@
 
 import { useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import FileDiffViewer from '../_components/FileDiffViewer';
@@ -16,21 +18,22 @@ import { EVENTS, MEMBERS, STAGES, TERMINALS, TICKETS, ticketLinkedMembers } from
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ActivityEvent, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../_data/types';
 
-const TABS: TabDef[] = [
-  { id: 'overview', label: 'Overview', icon: 'file-lines' },
-  { id: 'terminal', label: 'Terminal', icon: 'terminal' },
-  { id: 'files', label: 'Files & refs', icon: 'diagram-project' },
-  { id: 'activity', label: 'Activity', icon: 'wave-square' },
-  { id: 'links', label: 'Links', icon: 'link' },
-  { id: 'history', label: 'Stage history', icon: 'list-check' },
-];
-
 export default function TicketDetail({ id }: { id: string }) {
+  const translate = useTranslator();
   const ctx = useWorkspaces();
   const ticket = TICKETS.find((t) => t.id === id);
   const [tab, setTab] = useState('overview');
 
-  if (!ticket) return <EmptyState icon="circle-question" title={`${id} not found`} />;
+  const TABS: TabDef[] = [
+    { id: 'overview', label: translate({ key: 'workspaces.ticket.tabOverview' }), icon: 'file-lines' },
+    { id: 'terminal', label: translate({ key: 'workspaces.ticket.tabTerminal' }), icon: 'terminal' },
+    { id: 'files', label: translate({ key: 'workspaces.ticket.tabFiles' }), icon: 'diagram-project' },
+    { id: 'activity', label: translate({ key: 'workspaces.ticket.tabActivity' }), icon: 'wave-square' },
+    { id: 'links', label: translate({ key: 'workspaces.ticket.tabLinks' }), icon: 'link' },
+    { id: 'history', label: translate({ key: 'workspaces.ticket.tabHistory' }), icon: 'list-check' },
+  ];
+
+  if (!ticket) return <EmptyState icon="circle-question" title={translate({ key: 'workspaces.ticket.notFound', params: [{ key: 'id', value: id }] })} />;
 
   //? Status is AI-owned — the user can't change it (it'd be wrong to flip
   //? "needs input" to "busy"). Shown read-only; the user's lever is replying.
@@ -46,10 +49,10 @@ export default function TicketDetail({ id }: { id: string }) {
       {status === 'done' && (
         <Banner
           tone="correct" icon="circle-check"
-          title={`Done in ${stage?.name ?? 'this stage'}`}
+          title={translate({ key: 'workspaces.ticket.doneIn', params: [{ key: 'stage', value: stage?.name ?? translate({ key: 'workspaces.ticket.thisStage' }) }] })}
           action={nextStage && (
-            <WsButton onClick={() => void menuHandler.confirm({ title: `Promote ${ticket.id} to ${nextStage.name}?`, content: ticket.carryOver ?? 'The structured carry-over from this stage will be injected as the next stage’s start prompt.' })}>
-              Promote to {nextStage.name}
+            <WsButton onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.promoteConfirmTitle', params: [{ key: 'id', value: ticket.id }, { key: 'stage', value: nextStage.name }] }), content: ticket.carryOver ?? translate({ key: 'workspaces.ticket.promoteConfirmContent' }) })}>
+              {translate({ key: 'workspaces.ticket.promoteTo', params: [{ key: 'stage', value: nextStage.name }] })}
             </WsButton>
           )}
         />
@@ -74,6 +77,7 @@ export default function TicketDetail({ id }: { id: string }) {
 }
 
 function TicketHeader({ ticket }: { ticket: Ticket }) {
+  const translate = useTranslator();
   const ctx = useWorkspaces();
   const linked = ticketLinkedMembers(ticket);
   return (
@@ -87,17 +91,17 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
           </div>
           <h1 className="text-xl md:text-2xl font-semibold text-title mt-1.5 leading-snug">{ticket.title}</h1>
         </div>
-        {linked.length > 0 && <div className="shrink-0 pt-1" title="Creator · assignee"><AvatarStack users={linked} size={26} /></div>}
+        {linked.length > 0 && <div className="shrink-0 pt-1" title={translate({ key: 'workspaces.ticket.creatorAssignee' })}><AvatarStack users={linked} size={26} /></div>}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap mt-3">
         {ticket.branch && <MetaChip icon="diagram-project" text={ticket.branch} />}
         {ticket.mr && ticket.mr !== '—' && <MetaChip icon="code-merge" text={ticket.mr} />}
         {ticket.costLabel && <MetaChip icon="chart-column" text={ticket.costLabel} />}
-        <MetaChip icon="up-right-from-square" text="Preview · live" tone="correct" />
+        <MetaChip icon="up-right-from-square" text={translate({ key: 'workspaces.ticket.previewLive' })} tone="correct" />
         <div className="flex-1" />
-        <WsButton variant="secondary" icon="terminal" onClick={() => { ctx.navigate('terminals'); }}>Open terminal</WsButton>
-        <WsButton variant="secondary" icon="up-right-from-square">GitLab</WsButton>
+        <WsButton variant="secondary" icon="terminal" onClick={() => { ctx.navigate('terminals'); }}>{translate({ key: 'workspaces.ticket.openTerminal' })}</WsButton>
+        <WsButton variant="secondary" icon="up-right-from-square">{translate({ key: 'workspaces.ticket.gitlab' })}</WsButton>
       </div>
 
       {ticket.labels.length > 0 && <div className="flex flex-wrap gap-1 mt-3">{ticket.labels.map((l) => <LabelChip key={l} name={l} />)}</div>}
@@ -133,46 +137,48 @@ function Banner({ tone, icon, title, action, children }: { tone: 'warning' | 'co
 }
 
 function NeedsInputBanner({ question }: { question: string }) {
+  const translate = useTranslator();
   const [reply, setReply] = useState('');
   return (
-    <Banner tone="warning" icon="circle-question" title="Agent needs your input">
+    <Banner tone="warning" icon="circle-question" title={translate({ key: 'workspaces.ticket.agentNeedsInput' })}>
       <p className="text-sm text-common mt-0.5">{question}</p>
       <div className="flex items-center gap-2 mt-2">
         <input
           value={reply} onChange={(e) => { setReply(e.target.value); }}
-          placeholder="Type your answer…"
+          placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
           className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
         />
-        <WsButton onClick={() => { setReply(''); }}>Send</WsButton>
+        <WsButton onClick={() => { setReply(''); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
       </div>
     </Banner>
   );
 }
 
 function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
+  const translate = useTranslator();
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Description">
-        <p className="text-sm text-common leading-relaxed">{ticket.description ?? 'No description yet.'}</p>
+      <Card title={translate({ key: 'workspaces.ticket.description' })}>
+        <p className="text-sm text-common leading-relaxed">{ticket.description ?? translate({ key: 'workspaces.ticket.noDescription' })}</p>
       </Card>
       {ticket.carryOver && (
-        <Card title="Carry-over from previous stage">
+        <Card title={translate({ key: 'workspaces.ticket.carryOverTitle' })}>
           <p className="text-sm text-common leading-relaxed">{ticket.carryOver}</p>
         </Card>
       )}
-      <Card title="Stage config">
+      <Card title={translate({ key: 'workspaces.ticket.stageConfig' })}>
         <div className="flex items-center gap-2 text-sm text-common">
           <Icon name="diagram-project" className="text-muted" />
           <span className="text-title font-medium">{stage ?? '—'}</span>
-          <span className="text-muted">· AI-driven · RAG, graphify, symbol-index</span>
+          <span className="text-muted">{translate({ key: 'workspaces.ticket.stageConfigMeta' })}</span>
         </div>
       </Card>
       <div className="flex items-center gap-2">
         <WsButton
           variant="danger" icon="box-archive"
-          onClick={() => void menuHandler.confirm({ title: `Teardown ${ticket.id}'s container?`, content: 'The container + worktree are removed. The branch and event log persist — you can reactivate later.', input: ticket.id })}
+          onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }), input: ticket.id })}
         >
-          Teardown container
+          {translate({ key: 'workspaces.ticket.teardownContainer' })}
         </WsButton>
       </div>
     </div>
@@ -180,11 +186,12 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
 }
 
 function TerminalTab({ ticketId }: { ticketId: string }) {
+  const translate = useTranslator();
   const ctx = useWorkspaces();
   const terminal = TERMINALS.find((t) => t.ticketId === ticketId);
   const [active, setActive] = useState(0);
   if (!terminal) {
-    return <EmptyState icon="terminal" title="No terminal running" sub="This ticket has no active container. Reactivate it to attach a terminal." />;
+    return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalSub' })} />;
   }
   const proc = terminal.processes[active] ?? terminal.processes[0];
   return (
@@ -200,7 +207,7 @@ function TerminalTab({ ticketId }: { ticketId: string }) {
           <span className="text-terminal-muted text-xs ml-1">· {proc.cwd}</span>
         </div>
         <button type="button" onClick={() => { ctx.navigate('terminals'); }} className="text-xs text-terminal-muted hover:text-terminal-text cursor-pointer inline-flex items-center gap-1">
-          <Icon name="up-right-from-square" /> Open in Terminals
+          <Icon name="up-right-from-square" /> {translate({ key: 'workspaces.ticket.openInTerminals' })}
         </button>
       </div>
       <XtermTerminal key={`${ticketId}:${proc.name}`} sessionId={`${ticketId}:${proc.name}`} className="h-80" />
@@ -209,12 +216,13 @@ function TerminalTab({ ticketId }: { ticketId: string }) {
 }
 
 function FilesTab({ files }: { files: TicketFile[] }) {
-  if (files.length === 0) return <EmptyState icon="diagram-project" title="No file changes yet" sub="Changed files appear here as the agent edits the worktree." />;
+  const translate = useTranslator();
+  if (files.length === 0) return <EmptyState icon="diagram-project" title={translate({ key: 'workspaces.ticket.noFileChanges' })} sub={translate({ key: 'workspaces.ticket.noFileChangesSub' })} />;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-title">{files.length} changed files</span>
-        <WsButton variant="secondary" icon="link">Add reference…</WsButton>
+        <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.ticket.changedFilesCount', params: [{ key: 'count', value: files.length }] })}</span>
+        <WsButton variant="secondary" icon="link">{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
       </div>
       <FileDiffViewer files={files} />
     </div>
@@ -232,7 +240,8 @@ const EVENT_TINT: Record<ActivityEvent['type'], string> = {
 };
 
 function ActivityTab({ events }: { events: ActivityEvent[] }) {
-  if (events.length === 0) return <EmptyState icon="wave-square" title="No activity yet" />;
+  const translate = useTranslator();
+  if (events.length === 0) return <EmptyState icon="wave-square" title={translate({ key: 'workspaces.ticket.noActivity' })} />;
   return (
     <div className="flex flex-col gap-2">
       {events.map((e, i) => (
@@ -248,11 +257,12 @@ function ActivityTab({ events }: { events: ActivityEvent[] }) {
 }
 
 function WhyPopover({ reason }: { reason: string }) {
+  const translate = useTranslator();
   return (
     <span className="relative group/why inline-flex">
       <span className="w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center cursor-help">?</span>
       <span className="pointer-events-none absolute right-0 top-6 z-30 w-64 rounded-xl border border-container1-border bg-container1 p-3 text-xs text-common shadow-lg opacity-0 translate-y-1 group-hover/why:opacity-100 group-hover/why:translate-y-0 transition-all duration-150">
-        <span className="font-semibold text-title block mb-1">Why this link?</span>
+        <span className="font-semibold text-title block mb-1">{translate({ key: 'workspaces.ticket.whyThisLink' })}</span>
         {reason}
       </span>
     </span>
@@ -260,14 +270,15 @@ function WhyPopover({ reason }: { reason: string }) {
 }
 
 function LinksTab({ links, onOpen }: { links: TicketLink[]; onOpen: (id: string) => void }) {
+  const translate = useTranslator();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-title">Related tickets</span>
-        <WsButton variant="secondary" icon="link">Link ticket…</WsButton>
+        <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.ticket.relatedTickets' })}</span>
+        <WsButton variant="secondary" icon="link">{translate({ key: 'workspaces.ticket.linkTicket' })}</WsButton>
       </div>
       {links.length === 0
-        ? <EmptyState icon="link" title="No links yet" sub="Relate, block, or dedupe against other tickets." />
+        ? <EmptyState icon="link" title={translate({ key: 'workspaces.ticket.noLinks' })} sub={translate({ key: 'workspaces.ticket.noLinksSub' })} />
         : (
           <Card>
             <div className="flex flex-col divide-y divide-divider">
@@ -277,7 +288,7 @@ function LinksTab({ links, onOpen }: { links: TicketLink[]; onOpen: (id: string)
                   <span className="text-sm text-muted">{l.rel}</span>
                   {l.ai && (
                     <span className="ml-auto inline-flex items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px] font-medium"><Icon name="robot" /> AI-suggested</span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px] font-medium"><Icon name="robot" /> {translate({ key: 'workspaces.ticket.aiSuggested' })}</span>
                       {l.reason && <WhyPopover reason={l.reason} />}
                     </span>
                   )}
@@ -291,7 +302,8 @@ function LinksTab({ links, onOpen }: { links: TicketLink[]; onOpen: (id: string)
 }
 
 function HistoryTab({ history }: { history: StageHistoryEntry[] }) {
-  if (history.length === 0) return <EmptyState icon="list-check" title="No stage history yet" />;
+  const translate = useTranslator();
+  if (history.length === 0) return <EmptyState icon="list-check" title={translate({ key: 'workspaces.ticket.noStageHistory' })} />;
   return (
     <div className="flex flex-col">
       {history.map((h, i) => (

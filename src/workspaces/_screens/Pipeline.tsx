@@ -7,6 +7,8 @@
 
 import { useMemo, useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { AnimatePresence, motion } from 'motion/react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
@@ -21,25 +23,18 @@ import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageMode
 
 interface TabProps { s: PipelineStageCfg; update: (patch: Partial<PipelineStageCfg>) => void }
 
-const CONFIG_TABS: TabDef[] = [
-  { id: 'general', label: 'General', icon: 'sliders' },
-  { id: 'context', label: 'Context & Skills', icon: 'book-open' },
-  { id: 'commands', label: 'Commands', icon: 'terminal' },
-  { id: 'integrations', label: 'Integrations', icon: 'database' },
-  { id: 'visibility', label: 'Visibility', icon: 'eye' },
-  { id: 'process', label: 'Process', icon: 'play' },
-  { id: 'carryover', label: 'Carry-over', icon: 'code-merge' },
-  { id: 'model', label: 'Model & Effort', icon: 'bolt' },
-  { id: 'network', label: 'Network', icon: 'shield-halved' },
-  { id: 'hooks', label: 'Hooks', icon: 'link' },
-];
-
-const MODEL_OPTS: { id: StageModelTier; label: string }[] = [{ id: 'haiku', label: 'Haiku' }, { id: 'sonnet', label: 'Sonnet' }, { id: 'opus', label: 'Opus' }];
-const EFFORT_OPTS: { id: StageEffort; label: string }[] = [{ id: 'low', label: 'Low' }, { id: 'medium', label: 'Med' }, { id: 'high', label: 'High' }, { id: 'xhigh', label: 'X-High' }, { id: 'max', label: 'Max' }];
 const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-correct', ask: 'bg-warning/15 text-warning', deny: 'bg-wrong/15 text-wrong' };
 
 const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const areaCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title font-mono leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+
+//? The carry-over schema each stage must emit — a code sample, not translatable UI copy.
+const EMIT_SCHEMA_SAMPLE = `{
+  "summary": "string",
+  "changedFiles": ["path", …],
+  "openQuestions": ["string", …],
+  "commitHash": "string"
+}`;
 
 function FieldLabel({ title, hint }: { title: string; hint?: string }) {
   return (
@@ -67,15 +62,16 @@ function blankStage(id: string, name: string, order: number): PipelineStageCfg {
 
 /* ----------------------------------------------------------------- General */
 function GeneralTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const [newStatus, setNewStatus] = useState('');
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
       <div>
-        <FieldLabel title="Custom instructions" hint="Loaded into the stage's CLAUDE.md — domain rules + per-stage goals." />
-        <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder="e.g. Follow the plan exactly. Keep changes surgical." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.customInstructions' })} hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })} />
+        <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
       </div>
       <div>
-        <FieldLabel title="Statuses" hint="Base statuses are always present. “Stopped” is set when you stop all AIs or the subscription limit is hit. Add custom chips for this stage." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.statuses' })} hint={translate({ key: 'workspaces.pipeline.statusesHint' })} />
         <div className="flex flex-wrap items-center gap-2">
           {s.statuses.map((st) => (
             <span key={st.key} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${st.kind === 'base' ? 'bg-container2 text-common' : 'bg-primary/12 text-primary'}`}>
@@ -85,8 +81,8 @@ function GeneralTab({ s, update }: TabProps) {
           ))}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder="Add custom status…" className={inputCls} />
-          <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); }}>Add</WsButton>
+          <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.addStatusPlaceholder' })} className={inputCls} />
+          <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
         </div>
       </div>
     </div>
@@ -95,11 +91,12 @@ function GeneralTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Context & Skills */
 function ContextTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const toggleKey = (arr: string[], key: string) => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
-        <FieldLabel title="Context docs" hint="Loaded into the container once, read-only." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.contextDocs' })} hint={translate({ key: 'workspaces.pipeline.contextDocsHint' })} />
         <div className="flex flex-col gap-1.5">
           {DOCS.map((d) => {
             const on = s.sourceIds.includes(d.id);
@@ -114,7 +111,7 @@ function ContextTab({ s, update }: TabProps) {
         </div>
       </div>
       <div>
-        <FieldLabel title="Skills / MCP" hint="Queried on demand. Frozen-per-commit or live." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
         <div className="flex flex-col gap-1.5">
           {SKILLS.map((sk) => {
             const on = s.skillKeys.includes(sk.id);
@@ -140,7 +137,8 @@ function ContextTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Commands */
 function ModeSwitch({ value, onChange }: { value: CommandMode | null; onChange: (m: CommandMode | null) => void }) {
-  const opts: [string, CommandMode | null][] = [['Off', null], ['Allow', 'allow'], ['Ask', 'ask'], ['Deny', 'deny']];
+  const translate = useTranslator();
+  const opts: [string, CommandMode | null][] = [[translate({ key: 'workspaces.pipeline.modeOff' }), null], [translate({ key: 'workspaces.pipeline.modeAllow' }), 'allow'], [translate({ key: 'workspaces.pipeline.modeAsk' }), 'ask'], [translate({ key: 'workspaces.pipeline.modeDeny' }), 'deny']];
   return (
     <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
       {opts.map(([label, val]) => (
@@ -167,6 +165,7 @@ function CommandRow({ title, pattern, desc, mode, onMode, onDelete }: { title: s
 }
 
 function AddCommandForm({ categories, onAdd }: { categories: string[]; onAdd: (c: { category: string; title: string; desc: string; pattern: string }) => void }) {
+  const translate = useTranslator();
   const [open, setOpen] = useState(false);
   const [catId, setCatId] = useState(categories[0] ?? 'Custom');
   const [newCat, setNewCat] = useState('');
@@ -174,7 +173,7 @@ function AddCommandForm({ categories, onAdd }: { categories: string[]; onAdd: (c
   const [desc, setDesc] = useState('');
   const [pattern, setPattern] = useState('');
   const isNew = catId === '__new__';
-  const items = [...categories.map((c) => ({ id: c, value: c, item: c })), { id: '__new__', value: '__new__', item: '＋ New category…' }];
+  const items = [...categories.map((c) => ({ id: c, value: c, item: c })), { id: '__new__', value: '__new__', item: translate({ key: 'workspaces.pipeline.newCategoryOption' }) }];
   const submit = () => {
     const category = (isNew ? newCat : catId).trim();
     const t = title.trim(); const p = pattern.trim();
@@ -182,28 +181,29 @@ function AddCommandForm({ categories, onAdd }: { categories: string[]; onAdd: (c
     onAdd({ category, title: t, desc: desc.trim(), pattern: p });
     setTitle(''); setDesc(''); setPattern(''); setNewCat(''); setOpen(false);
   };
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>Add command</WsButton>;
+  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>{translate({ key: 'workspaces.pipeline.addCommand' })}</WsButton>;
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-muted mb-1">Category</div>
+          <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.category' })}</div>
           <Dropdown size="sm" value={items.find((i) => i.id === catId)} items={items} onChange={(it) => { setCatId(String(it.id)); }} />
         </div>
-        {isNew && <div><div className="text-xs text-muted mb-1">New category</div><input value={newCat} onChange={(e) => { setNewCat(e.target.value); }} placeholder="e.g. Migrations" className={`w-full ${inputCls}`} /></div>}
+        {isNew && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.newCategory' })}</div><input value={newCat} onChange={(e) => { setNewCat(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.newCategoryPlaceholder' })} className={`w-full ${inputCls}`} /></div>}
       </div>
-      <div><div className="text-xs text-muted mb-1">Title</div><input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder="Run database migrations" className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">Description <span className="text-muted/70">(optional)</span></div><input value={desc} onChange={(e) => { setDesc(e.target.value); }} placeholder="What this command does + why it's allowed" className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">Command</div><input value={pattern} onChange={(e) => { setPattern(e.target.value); }} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.title' })}</div><input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.titlePlaceholder' })} className={`w-full ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.description' })} <span className="text-muted/70">{translate({ key: 'workspaces.pipeline.optional' })}</span></div><input value={desc} onChange={(e) => { setDesc(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.descriptionPlaceholder' })} className={`w-full ${inputCls}`} /></div>
+      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.command' })}</div><input value={pattern} onChange={(e) => { setPattern(e.target.value); }} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
       <div className="flex items-center gap-2">
-        <WsButton icon="plus" onClick={submit}>Add</WsButton>
-        <WsButton variant="ghost" onClick={() => { setOpen(false); }}>Cancel</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
+        <WsButton variant="ghost" onClick={() => { setOpen(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
       </div>
     </div>
   );
 }
 
 function CommandsTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const catalogPatterns = useMemo(() => new Set(COMMAND_CATALOG.flatMap((g) => g.commands.map((c) => c.pattern))), []);
   const custom = s.commands.filter((c) => !catalogPatterns.has(c.pattern));
   const customCats = [...new Set(custom.map((c) => c.category ?? 'Custom'))];
@@ -221,7 +221,7 @@ function CommandsTab({ s, update }: TabProps) {
 
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
-      <FieldLabel title="Command permissions" hint="Pick the commands this stage may run — Allow runs silently, Ask prompts, Deny blocks (deny wins). Hover ? for what each does. Maps to .claude permission rules." />
+      <FieldLabel title={translate({ key: 'workspaces.pipeline.commandPermissions' })} hint={translate({ key: 'workspaces.pipeline.commandPermissionsHint' })} />
       {COMMAND_CATALOG.map((group) => (
         <div key={group.category}>
           <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{group.category}</div>
@@ -249,17 +249,18 @@ function CommandsTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Integrations */
 function IntegrationsTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const { integrationTools, navigate } = useWorkspaces();
   const selected = (toolId: string) => s.tools.find((t) => t.toolId === toolId);
   const toggle = (toolId: string) => { update({ tools: selected(toolId) ? s.tools.filter((t) => t.toolId !== toolId) : [...s.tools, { toolId, tier: 'ro' }] }); };
   const setTier = (toolId: string, tier: ToolTier) => { update({ tools: s.tools.map((t) => (t.toolId === toolId ? { ...t, tier } : t)) }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
-      <FieldLabel title="Integrations" hint="Pick which workspace integration tools this stage may use + the access tier. Read-only is enforced at the MCP-handler. Configure tools in Workspace settings → Integrations." />
+      <FieldLabel title={translate({ key: 'workspaces.pipeline.integrations' })} hint={translate({ key: 'workspaces.pipeline.integrationsHint' })} />
       {integrationTools.length === 0 && (
         <div className="rounded-xl border border-container1-border bg-container2/40 p-4 text-sm text-muted flex items-center justify-between gap-3">
-          <span>No integration tools configured for this workspace yet.</span>
-          <WsButton variant="secondary" icon="database" onClick={() => { navigate('workspace'); }}>Set up integrations</WsButton>
+          <span>{translate({ key: 'workspaces.pipeline.noIntegrationTools' })}</span>
+          <WsButton variant="secondary" icon="database" onClick={() => { navigate('workspace'); }}>{translate({ key: 'workspaces.pipeline.setUpIntegrations' })}</WsButton>
         </div>
       )}
       <div className="flex flex-col gap-1.5">
@@ -276,7 +277,7 @@ function IntegrationsTab({ s, update }: TabProps) {
                 <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
                   {(['Read', 'Write'] as const).map((label) => {
                     const tier: ToolTier = label === 'Read' ? 'ro' : 'rw';
-                    return <button key={label} type="button" onClick={() => { setTier(tool.id, tier); }} className={`rounded-md px-2.5 h-7 text-xs font-medium cursor-pointer ${sel.tier === tier ? (tier === 'rw' ? 'bg-wrong/15 text-wrong' : 'bg-primary/15 text-primary') : 'text-muted hover:text-common'}`}>{label}</button>;
+                    return <button key={label} type="button" onClick={() => { setTier(tool.id, tier); }} className={`rounded-md px-2.5 h-7 text-xs font-medium cursor-pointer ${sel.tier === tier ? (tier === 'rw' ? 'bg-wrong/15 text-wrong' : 'bg-primary/15 text-primary') : 'text-muted hover:text-common'}`}>{translate({ key: label === 'Read' ? 'workspaces.pipeline.tierRead' : 'workspaces.pipeline.tierWrite' })}</button>;
                   })}
                 </div>
               )}
@@ -291,10 +292,11 @@ function IntegrationsTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Visibility */
 function VisibilityTab({ s, update, stages }: TabProps & { stages: PipelineStageCfg[] }) {
+  const translate = useTranslator();
   const toggleKey = (arr: string[], key: string) => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
   return (
     <div className="flex flex-col gap-3 max-w-2xl">
-      <FieldLabel title="Visible to other stages" hint="Which stages can read this stage via the cross-ticket skill. The source stage controls its own visibility." />
+      <FieldLabel title={translate({ key: 'workspaces.pipeline.visibleToStages' })} hint={translate({ key: 'workspaces.pipeline.visibleToStagesHint' })} />
       <div className="flex flex-col gap-1.5">
         {stages.filter((x) => x.id !== s.id).map((other) => (
           <div key={other.id} className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2">
@@ -309,25 +311,26 @@ function VisibilityTab({ s, update, stages }: TabProps & { stages: PipelineStage
 
 /* ----------------------------------------------------------------- Process */
 function ProcessTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const setProc = (id: string, patch: Partial<PipelineStageCfg['processes'][number]>) => { update({ processes: s.processes.map((p) => (p.id === id ? { ...p, ...patch } : p)) }); };
   return (
     <div className="flex flex-col gap-3 max-w-3xl">
-      <FieldLabel title="Container processes" hint="What boots in the stage's container — where it runs (working dir), its env vars, and the ordered commands. Stack-agnostic." />
-      {s.processes.length === 0 && <div className="text-sm text-muted">No processes — nothing starts in the container for this stage.</div>}
+      <FieldLabel title={translate({ key: 'workspaces.pipeline.containerProcesses' })} hint={translate({ key: 'workspaces.pipeline.containerProcessesHint' })} />
+      {s.processes.length === 0 && <div className="text-sm text-muted">{translate({ key: 'workspaces.pipeline.noProcesses' })}</div>}
       {s.processes.map((p, i) => (
         <div key={p.id} className="rounded-xl border border-container1-border p-3 flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 shrink-0 rounded-md bg-container2 text-xs font-semibold text-muted flex items-center justify-center">{i + 1}</span>
             <input value={p.name} onChange={(e) => { setProc(p.id, { name: e.target.value }); }} placeholder="name" className={`w-32 shrink-0 ${inputCls}`} />
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <span className="text-xs text-muted shrink-0">cwd</span>
+              <span className="text-xs text-muted shrink-0">{translate({ key: 'workspaces.pipeline.cwd' })}</span>
               <input value={p.cwd} onChange={(e) => { setProc(p.id, { cwd: e.target.value }); }} placeholder="/app" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
             </div>
             <button type="button" onClick={() => { update({ processes: s.processes.filter((x) => x.id !== p.id) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
           </div>
 
           <div className="pl-8 flex flex-col gap-1.5">
-            <div className="text-xs text-muted">Commands (run in order)</div>
+            <div className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.commandsInOrder' })}</div>
             {p.commands.map((cmd, ci) => (
               <div key={ci} className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-mono w-4 shrink-0 text-right">{ci + 1}</span>
@@ -335,43 +338,44 @@ function ProcessTab({ s, update }: TabProps) {
                 <button type="button" onClick={() => { setProc(p.id, { commands: p.commands.filter((_, j) => j !== ci) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
               </div>
             ))}
-            <button type="button" onClick={() => { setProc(p.id, { commands: [...p.commands, ''] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">+ command</button>
+            <button type="button" onClick={() => { setProc(p.id, { commands: [...p.commands, ''] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.pipeline.addCommandLine' })}</button>
           </div>
 
           <div className="pl-8 flex flex-col gap-1.5">
-            <div className="text-xs text-muted">Environment variables</div>
+            <div className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.environmentVariables' })}</div>
             {p.env.map((ev, ei) => (
               <div key={ei} className="flex items-center gap-2">
                 <input value={ev.key} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, key: e.target.value } : x)) }); }} placeholder="KEY" className={`w-40 shrink-0 font-mono ${inputCls}`} />
-                <span className="text-muted">=</span>
+                <span className="text-muted">{translate({ key: 'workspaces.pipeline.equals' })}</span>
                 <input value={ev.value} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, value: e.target.value } : x)) }); }} placeholder="value" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
                 <button type="button" onClick={() => { setProc(p.id, { env: p.env.filter((_, j) => j !== ei) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
               </div>
             ))}
-            <button type="button" onClick={() => { setProc(p.id, { env: [...p.env, { key: '', value: '' }] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">+ env var</button>
+            <button type="button" onClick={() => { setProc(p.id, { env: [...p.env, { key: '', value: '' }] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.pipeline.addEnvVar' })}</button>
           </div>
         </div>
       ))}
-      <WsButton variant="secondary" icon="plus" onClick={() => { update({ processes: [...s.processes, { id: `proc-${String(Date.now())}`, name: 'process', cwd: '/app', env: [], commands: [''] }] }); }}>Add process</WsButton>
+      <WsButton variant="secondary" icon="plus" onClick={() => { update({ processes: [...s.processes, { id: `proc-${String(Date.now())}`, name: 'process', cwd: '/app', env: [], commands: [''] }] }); }}>{translate({ key: 'workspaces.pipeline.addProcess' })}</WsButton>
     </div>
   );
 }
 
 /* ----------------------------------------------------------------- Carry-over */
 function CarryoverTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   return (
     <div className="flex flex-col gap-4 max-w-3xl">
       {/* flow */}
       <div className="flex items-center gap-2 text-xs">
-        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">Previous stage emits structured output</span>
+        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">{translate({ key: 'workspaces.pipeline.carryFlowEmit' })}</span>
         <Icon name="angle-right" className="text-muted" />
-        <span className="rounded-lg bg-primary/12 px-2.5 py-1.5 text-primary font-medium">injected into this prompt</span>
+        <span className="rounded-lg bg-primary/12 px-2.5 py-1.5 text-primary font-medium">{translate({ key: 'workspaces.pipeline.carryFlowInject' })}</span>
         <Icon name="angle-right" className="text-muted" />
-        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">this stage emits the same shape</span>
+        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">{translate({ key: 'workspaces.pipeline.carryFlowSameShape' })}</span>
       </div>
 
       <div>
-        <FieldLabel title="Incoming variables" hint="What the previous stage hands you — click to insert into the template." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.incomingVariables' })} hint={translate({ key: 'workspaces.pipeline.incomingVariablesHint' })} />
         <div className="flex flex-col gap-1.5">
           {CARRY_VARS.map((v) => (
             <div key={v.token} className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2">
@@ -383,18 +387,13 @@ function CarryoverTab({ s, update }: TabProps) {
       </div>
 
       <div>
-        <FieldLabel title="Prompt template" hint="Rendered with the incoming values at stage start (Claude's -p flag + carry-over file)." />
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.promptTemplate' })} hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })} />
         <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>
 
       <div>
-        <FieldLabel title="Outgoing — this stage must emit" hint="Enforced via --json-schema so the next stage can read it. This is how data chains between stages." />
-        <pre className="rounded-xl border border-container1-border bg-container2/40 p-3 text-xs font-mono text-common overflow-x-auto">{`{
-  "summary": "string",
-  "changedFiles": ["path", …],
-  "openQuestions": ["string", …],
-  "commitHash": "string"
-}`}</pre>
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.outgoingEmit' })} hint={translate({ key: 'workspaces.pipeline.outgoingEmitHint' })} />
+        <pre className="rounded-xl border border-container1-border bg-container2/40 p-3 text-xs font-mono text-common overflow-x-auto">{EMIT_SCHEMA_SAMPLE}</pre>
       </div>
     </div>
   );
@@ -402,16 +401,20 @@ function CarryoverTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Model & Effort */
 function ChoiceControls({ choice, onChange }: { choice: StageModelChoice; onChange: (p: Partial<StageModelChoice>) => void }) {
+  const translate = useTranslator();
+  const modelOpts: { id: StageModelTier; label: string }[] = [{ id: 'haiku', label: translate({ key: 'workspaces.pipeline.modelHaiku' }) }, { id: 'sonnet', label: translate({ key: 'workspaces.pipeline.modelSonnet' }) }, { id: 'opus', label: translate({ key: 'workspaces.pipeline.modelOpus' }) }];
+  const effortOpts: { id: StageEffort; label: string }[] = [{ id: 'low', label: translate({ key: 'workspaces.pipeline.effortLow' }) }, { id: 'medium', label: translate({ key: 'workspaces.pipeline.effortMed' }) }, { id: 'high', label: translate({ key: 'workspaces.pipeline.effortHigh' }) }, { id: 'xhigh', label: translate({ key: 'workspaces.pipeline.effortXHigh' }) }, { id: 'max', label: translate({ key: 'workspaces.pipeline.effortMax' }) }];
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Segmented<StageModelTier> value={choice.model} onChange={(v) => { onChange({ model: v }); }} options={MODEL_OPTS} />
-      <Segmented<StageEffort> value={choice.effort} onChange={(v) => { onChange({ effort: v }); }} options={EFFORT_OPTS} />
-      <div className="flex items-center gap-1.5"><span className="text-xs text-muted">turns</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => { onChange({ maxTurns: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} /></div>
+      <Segmented<StageModelTier> value={choice.model} onChange={(v) => { onChange({ model: v }); }} options={modelOpts} />
+      <Segmented<StageEffort> value={choice.effort} onChange={(v) => { onChange({ effort: v }); }} options={effortOpts} />
+      <div className="flex items-center gap-1.5"><span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.turns' })}</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => { onChange({ maxTurns: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} /></div>
     </div>
   );
 }
 
 function ModelTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const m = s.modelCfg;
   const setBase = (patch: Partial<StageModelChoice>) => { update({ modelCfg: { ...m, base: { ...m.base, ...patch } } }); };
   const setRule = (id: string, patch: Partial<StageModelChoice & { minScore: number }>) => { update({ modelCfg: { ...m, rules: m.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)) } }); };
@@ -421,29 +424,29 @@ function ModelTab({ s, update }: TabProps) {
     <div className="flex flex-col gap-5 max-w-2xl">
       <div className="flex items-start gap-3 rounded-xl border border-container1-border px-3 py-2.5">
         <div className="flex-1">
-          <div className="text-sm font-medium text-title">Let the agent pick the model</div>
-          <div className="text-xs text-muted mt-0.5">The agent rates the task 1–10 and chooses the highest matching band below — and may escalate itself upward mid-task.</div>
+          <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.letAgentPickModel' })}</div>
+          <div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.letAgentPickModelDesc' })}</div>
         </div>
         <Toggle on={m.autoEscalate} onChange={(v) => { update({ modelCfg: { ...m, autoEscalate: v } }); }} />
       </div>
 
       {!m.autoEscalate && (
         <div>
-          <FieldLabel title="Model" />
+          <FieldLabel title={translate({ key: 'workspaces.pipeline.model' })} />
           <ChoiceControls choice={m.base} onChange={setBase} />
         </div>
       )}
 
       {m.autoEscalate && (
         <div>
-          <FieldLabel title="Escalation bands" hint="if task score ≥ N → use this model / effort / turns. Highest match wins; the bottom band is the default that catches everything else." />
+          <FieldLabel title={translate({ key: 'workspaces.pipeline.escalationBands' })} hint={translate({ key: 'workspaces.pipeline.escalationBandsHint' })} />
           <div className="flex flex-col gap-2">
             {sortedRules.map((r) => (
               <div key={r.id} className="rounded-xl border border-container1-border p-3 flex flex-col gap-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-common">score ≥</span>
+                  <span className="text-sm text-common">{translate({ key: 'workspaces.pipeline.scoreGte' })}</span>
                   <input type="number" min={1} max={10} value={r.minScore} onChange={(e) => { setRule(r.id, { minScore: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} />
-                  <span className="text-xs text-muted">/ 10</span>
+                  <span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.outOfTen' })}</span>
                   <button type="button" onClick={() => { update({ modelCfg: { ...m, rules: m.rules.filter((x) => x.id !== r.id) } }); }} className="ml-auto text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center"><Icon name="trash" className="text-xs" /></button>
                 </div>
                 <ChoiceControls choice={r} onChange={(p) => { setRule(r.id, p); }} />
@@ -452,14 +455,14 @@ function ModelTab({ s, update }: TabProps) {
             {/* fixed fallback band — always last, can't be removed, score locked at 0 */}
             <div className="rounded-xl border border-dashed border-container1-border p-3 flex flex-col gap-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted">score ≥</span>
+                <span className="text-sm text-muted">{translate({ key: 'workspaces.pipeline.scoreGte' })}</span>
                 <input type="number" value={0} disabled className={`w-16 opacity-50 cursor-not-allowed ${inputCls}`} />
-                <span className="text-xs text-muted">/ 10</span>
-                <span className="ml-auto rounded-md bg-container2 px-2 py-0.5 text-[11px] font-medium text-muted">Fallback</span>
+                <span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.outOfTen' })}</span>
+                <span className="ml-auto rounded-md bg-container2 px-2 py-0.5 text-[11px] font-medium text-muted">{translate({ key: 'workspaces.pipeline.fallback' })}</span>
               </div>
               <ChoiceControls choice={m.base} onChange={setBase} />
             </div>
-            <WsButton variant="secondary" icon="plus" onClick={addRule}>Add band</WsButton>
+            <WsButton variant="secondary" icon="plus" onClick={addRule}>{translate({ key: 'workspaces.pipeline.addBand' })}</WsButton>
           </div>
         </div>
       )}
@@ -469,24 +472,25 @@ function ModelTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Network */
 function NetworkTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const n = s.network;
   const [newDomain, setNewDomain] = useState('');
   const toggleCat = (key: string) => { update({ network: { ...n, categories: n.categories.includes(key) ? n.categories.filter((c) => c !== key) : [...n.categories, key] } }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <div className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2.5">
-        <div className="flex-1"><div className="text-sm font-medium text-title">Network egress</div><div className="text-xs text-muted mt-0.5">Off = the container has no internet at all.</div></div>
+        <div className="flex-1"><div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkEgress' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkEgressDesc' })}</div></div>
         <Toggle on={n.enabled} onChange={(v) => { update({ network: { ...n, enabled: v } }); }} />
       </div>
       {n.enabled && (
         <>
           <div>
-            <FieldLabel title="Mode" />
-            <Segmented<NetworkMode> value={n.mode} onChange={(v) => { update({ network: { ...n, mode: v } }); }} options={[{ id: 'whitelist', label: 'Allow only these' }, { id: 'blacklist', label: 'Block these' }]} />
-            <div className="text-xs text-muted mt-1.5">{n.mode === 'whitelist' ? 'Everything is blocked except the categories + hosts below (locked-down).' : 'Everything is allowed except the categories + hosts below (open).'}</div>
+            <FieldLabel title={translate({ key: 'workspaces.pipeline.mode' })} />
+            <Segmented<NetworkMode> value={n.mode} onChange={(v) => { update({ network: { ...n, mode: v } }); }} options={[{ id: 'whitelist', label: translate({ key: 'workspaces.pipeline.modeAllowOnly' }) }, { id: 'blacklist', label: translate({ key: 'workspaces.pipeline.modeBlock' }) }]} />
+            <div className="text-xs text-muted mt-1.5">{n.mode === 'whitelist' ? translate({ key: 'workspaces.pipeline.whitelistDesc' }) : translate({ key: 'workspaces.pipeline.blacklistDesc' })}</div>
           </div>
           <div>
-            <FieldLabel title="Categories" />
+            <FieldLabel title={translate({ key: 'workspaces.pipeline.categories' })} />
             <div className="flex flex-col gap-1.5">
               {NETWORK_CATEGORIES.map((c) => (
                 <button key={c.key} type="button" onClick={() => { toggleCat(c.key); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${n.categories.includes(c.key) ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
@@ -497,7 +501,7 @@ function NetworkTab({ s, update }: TabProps) {
             </div>
           </div>
           <div>
-            <FieldLabel title="Hosts & prefixes" hint="Exact hosts or wildcard prefixes, e.g. registry.npmjs.org or *.github.com." />
+            <FieldLabel title={translate({ key: 'workspaces.pipeline.hostsPrefixes' })} hint={translate({ key: 'workspaces.pipeline.hostsPrefixesHint' })} />
             <div className="flex flex-wrap items-center gap-2">
               {n.domains.map((d) => (
                 <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-container2 px-2.5 py-1 text-xs font-mono text-common">
@@ -507,7 +511,7 @@ function NetworkTab({ s, update }: TabProps) {
             </div>
             <div className="flex items-center gap-2 mt-2">
               <input value={newDomain} onChange={(e) => { setNewDomain(e.target.value); }} placeholder="*.github.com" className={`font-mono ${inputCls}`} />
-              <WsButton variant="secondary" icon="plus" onClick={() => { const d = newDomain.trim(); if (!d) return; update({ network: { ...n, domains: [...new Set([...n.domains, d])] } }); setNewDomain(''); }}>Add</WsButton>
+              <WsButton variant="secondary" icon="plus" onClick={() => { const d = newDomain.trim(); if (!d) return; update({ network: { ...n, domains: [...new Set([...n.domains, d])] } }); setNewDomain(''); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
             </div>
           </div>
         </>
@@ -518,10 +522,11 @@ function NetworkTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- Hooks */
 function HooksTab({ s, update }: TabProps) {
+  const translate = useTranslator();
   const categories = [...new Set(HOOK_CATALOG.map((h) => h.category))];
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
-      <FieldLabel title="Lifecycle hooks" hint="Hooks POST to the orchestrator — they power the event-log, status tracking and needs-input escalation. Disabling them blinds those features." />
+      <FieldLabel title={translate({ key: 'workspaces.pipeline.lifecycleHooks' })} hint={translate({ key: 'workspaces.pipeline.lifecycleHooksHint' })} />
       {categories.map((cat) => (
         <div key={cat}>
           <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{cat}</div>
@@ -534,7 +539,7 @@ function HooksTab({ s, update }: TabProps) {
                     <span className="rounded-md bg-container2 px-1.5 py-0.5 text-[10px] font-mono text-muted">{h.matcher}</span>
                   </div>
                   <div className="text-xs text-muted mt-0.5">{h.desc}</div>
-                  <div className="text-[11px] text-primary mt-0.5">→ {h.feeds}</div>
+                  <div className="text-[11px] text-primary mt-0.5">{translate({ key: 'workspaces.pipeline.stageFeeds', params: [{ key: 'feeds', value: h.feeds }] })}</div>
                 </div>
                 <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />
               </div>
@@ -548,6 +553,7 @@ function HooksTab({ s, update }: TabProps) {
 
 /* ----------------------------------------------------------------- main */
 export default function Pipeline() {
+  const translate = useTranslator();
   const { activeWorkspace } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(STAGE_CONFIGS);
   const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0].id);
@@ -573,7 +579,7 @@ export default function Pipeline() {
     setTab('general');
   };
 
-  const removeStage = () => void menuHandler.confirm({ title: `Delete stage “${s.name}”?`, content: 'Tickets in this stage move to the next one. This cannot be undone.' }).then((ok) => {
+  const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s.name }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
     if (!ok) return;
     const fallback = stages.find((x) => x.id !== selectedId)?.id ?? '';
     setStages((p) => p.filter((x) => x.id !== selectedId).map((st, idx) => ({ ...st, order: idx })));
@@ -584,18 +590,18 @@ export default function Pipeline() {
     const w: StageWarning[] = [];
     for (const st of stages) {
       if (st.aiEnabled && st.skillKeys.length === 0 && st.order !== 0 && st.order !== stages.length - 1)
-        w.push({ stageId: st.id, severity: 'info', text: `${st.name} has AI on but no skills enabled — it'll work blind.` });
+        w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnBlind', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.customInstructions.trim())
-        w.push({ stageId: st.id, severity: 'info', text: `${st.name} has no custom instructions.` });
+        w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNoInstructions', params: [{ key: 'name', value: st.name }] }) });
       if (st.tools.some((t) => t.tier === 'rw') && st.id !== 'impl')
-        w.push({ stageId: st.id, severity: 'warn', text: `${st.name} has write access to a service — usually only Implementatie needs that.` });
+        w.push({ stageId: st.id, severity: 'warn', text: translate({ key: 'workspaces.pipeline.warnWriteAccess', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.network.enabled && st.skillKeys.length > 0)
-        w.push({ stageId: st.id, severity: 'info', text: `${st.name} has network off but uses skills that may need egress.` });
+        w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNetworkOff', params: [{ key: 'name', value: st.name }] }) });
     }
     const refined = stages.find((x) => x.id === 'refined');
     const plan = stages.find((x) => x.id === 'plan');
     if (refined?.skillKeys.includes('rag') && plan && !plan.skillKeys.includes('rag'))
-      w.push({ stageId: 'plan', severity: 'warn', text: 'Refined loads RAG but Plan does not — the decision stage usually needs more context, not less.' });
+      w.push({ stageId: 'plan', severity: 'warn', text: translate({ key: 'workspaces.pipeline.warnRagMismatch' }) });
     setWarnings(w);
   };
 
@@ -605,16 +611,29 @@ export default function Pipeline() {
     return m;
   }, [warnings]);
 
+  const configTabs: TabDef[] = [
+    { id: 'general', label: translate({ key: 'workspaces.pipeline.tabGeneral' }), icon: 'sliders' },
+    { id: 'context', label: translate({ key: 'workspaces.pipeline.tabContext' }), icon: 'book-open' },
+    { id: 'commands', label: translate({ key: 'workspaces.pipeline.tabCommands' }), icon: 'terminal' },
+    { id: 'integrations', label: translate({ key: 'workspaces.pipeline.integrations' }), icon: 'database' },
+    { id: 'visibility', label: translate({ key: 'workspaces.pipeline.tabVisibility' }), icon: 'eye' },
+    { id: 'process', label: translate({ key: 'workspaces.pipeline.tabProcess' }), icon: 'play' },
+    { id: 'carryover', label: translate({ key: 'workspaces.pipeline.tabCarryover' }), icon: 'code-merge' },
+    { id: 'model', label: translate({ key: 'workspaces.pipeline.tabModel' }), icon: 'bolt' },
+    { id: 'network', label: translate({ key: 'workspaces.pipeline.tabNetwork' }), icon: 'shield-halved' },
+    { id: 'hooks', label: translate({ key: 'workspaces.pipeline.tabHooks' }), icon: 'link' },
+  ];
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4 shrink-0">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-semibold text-title">Pipeline</h1>
-          <span className="text-sm text-muted">{activeWorkspace.name} · {stages.length} stages · the AI moves tickets through these</span>
+          <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.pipeline.pipelineTitle' })}</h1>
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.pipeline.headerSummary', params: [{ key: 'name', value: activeWorkspace.name }, { key: 'count', value: String(stages.length) }] })}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <WsButton variant="secondary" icon="wand-magic-sparkles" onClick={validate}>Validate with AI</WsButton>
-          <WsButton icon="plus" onClick={addStage}>Add stage</WsButton>
+          <WsButton variant="secondary" icon="wand-magic-sparkles" onClick={validate}>{translate({ key: 'workspaces.pipeline.validateWithAi' })}</WsButton>
+          <WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>
         </div>
       </div>
 
@@ -633,7 +652,7 @@ export default function Pipeline() {
                   <span className={`w-5 h-5 shrink-0 rounded-md text-[11px] font-bold flex items-center justify-center ${active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>{i + 1}</span>
                   <span className="text-sm font-medium text-title whitespace-nowrap">{st.name}</span>
                   <Icon name={st.aiEnabled ? 'robot' : 'ban'} className={`text-xs ${st.aiEnabled ? 'text-primary' : 'text-muted'}`} />
-                  {warns > 0 && <span className="w-1.5 h-1.5 rounded-full bg-warning" title={`${String(warns)} finding(s)`} />}
+                  {warns > 0 && <span className="w-1.5 h-1.5 rounded-full bg-warning" title={translate({ key: 'workspaces.pipeline.findingsCount', params: [{ key: 'count', value: String(warns) }] })} />}
                 </button>
                 {i < stages.length - 1 && <Icon name="angle-right" className="text-muted text-xs shrink-0" />}
               </div>
@@ -650,7 +669,7 @@ export default function Pipeline() {
                   <div key={i} className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 ${w.severity === 'warn' ? 'border-warning/40 bg-warning/10' : 'border-container1-border bg-container2/40'}`}>
                     <Icon name={w.severity === 'warn' ? 'triangle-exclamation' : 'circle-question'} className={`mt-0.5 shrink-0 ${w.severity === 'warn' ? 'text-warning' : 'text-muted'}`} />
                     <span className="flex-1 text-sm text-common">{w.text}</span>
-                    <button type="button" onClick={() => { setSelectedId(w.stageId); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">Go to stage</button>
+                    <button type="button" onClick={() => { setSelectedId(w.stageId); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.pipeline.goToStage' })}</button>
                     <button type="button" onClick={() => { setWarnings((p) => p.filter((_, j) => j !== i)); }} className="text-muted hover:text-title cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
                   </div>
                 ))}
@@ -664,15 +683,15 @@ export default function Pipeline() {
           <div className="flex items-center gap-3 px-4 md:px-5 py-3 border-b border-divider">
             <input value={s.name} onChange={(e) => { update({ name: e.target.value }); }} className="text-base font-semibold text-title bg-transparent focus:outline-none border-b border-transparent focus:border-primary min-w-0 flex-1" />
             <div className="flex items-center gap-2 shrink-0">
-              <Toggle on={s.aiEnabled} onChange={(v) => { update({ aiEnabled: v }); }} label={s.aiEnabled ? 'AI on' : 'No AI'} />
-              <IconButton icon="angle-left" title="Move earlier" onClick={() => { move(-1); }} />
-              <IconButton icon="angle-right" title="Move later" onClick={() => { move(1); }} />
-              <IconButton icon="trash" title="Delete stage" onClick={removeStage} className="hover:text-wrong" />
+              <Toggle on={s.aiEnabled} onChange={(v) => { update({ aiEnabled: v }); }} label={s.aiEnabled ? translate({ key: 'workspaces.pipeline.aiOn' }) : translate({ key: 'workspaces.pipeline.noAi' })} />
+              <IconButton icon="angle-left" title={translate({ key: 'workspaces.pipeline.moveEarlier' })} onClick={() => { move(-1); }} />
+              <IconButton icon="angle-right" title={translate({ key: 'workspaces.pipeline.moveLater' })} onClick={() => { move(1); }} />
+              <IconButton icon="trash" title={translate({ key: 'workspaces.pipeline.deleteStage' })} onClick={removeStage} className="hover:text-wrong" />
             </div>
           </div>
 
           <div className="px-4 md:px-5 pt-2">
-            <Tabs tabs={CONFIG_TABS} active={tab} onChange={setTab} />
+            <Tabs tabs={configTabs} active={tab} onChange={setTab} />
           </div>
 
           <div className="p-4 md:p-5">

@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { motion } from 'motion/react';
 
 import Icon, { type IconName } from '../_components/Icon';
@@ -44,6 +46,7 @@ const roleChip = (role: string) => (
 /* ----------------------------------------------------------------- nav rail */
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
   const { view, navigate, suggestions, currentUser, aiOpen, toggleAi } = useWorkspaces();
+  const translate = useTranslator();
 
   const renderItem = (it: NavDef) => {
     const isAi = it.id === 'ai';
@@ -68,17 +71,17 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
     <nav className={`hidden md:flex flex-col shrink-0 border-r border-divider bg-container1 transition-all duration-200 ${expanded ? 'w-60' : 'w-[68px]'}`}>
       <div className="flex items-center justify-between gap-2 px-3 h-14">
         <div className="flex items-center gap-2 overflow-hidden">
-          <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">W</span>
-          {expanded && <span className="font-semibold text-title whitespace-nowrap">Workspaces</span>}
+          <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
+          {expanded && <span className="font-semibold text-title whitespace-nowrap">{translate({ key: 'workspaces.shell.brand' })}</span>}
         </div>
-        <button type="button" onClick={() => { setExpanded((e) => !e); }} title={expanded ? 'Collapse' : 'Expand'} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
+        <button type="button" onClick={() => { setExpanded((e) => !e); }} title={expanded ? translate({ key: 'workspaces.shell.collapse' }) : translate({ key: 'workspaces.shell.expand' })} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
           <Icon name={expanded ? 'angle-left' : 'angle-right'} />
         </button>
       </div>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2">{NAV_ITEMS.map((it) => renderItem(it))}</div>
       <div className="flex flex-col gap-1 px-2.5 py-3 border-t border-divider">
         {NAV_BOTTOM.map((it) => renderItem(it))}
-        <button type="button" onClick={() => { navigate('settings'); }} title={expanded ? undefined : `${currentUser.name} · settings`}
+        <button type="button" onClick={() => { navigate('settings'); }} title={expanded ? undefined : translate({ key: 'workspaces.shell.userSettingsTitle', params: [{ key: 'name', value: currentUser.name }] })}
           className="flex items-center gap-3 rounded-xl h-10 px-2.5 text-muted hover:bg-container2 transition-colors cursor-pointer">
           <AvatarBubble user={currentUser} size={24} />
           {expanded && <span className="text-sm font-medium text-common whitespace-nowrap">{currentUser.name}</span>}
@@ -91,6 +94,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 /* ----------------------------------------------------------------- top bar */
 export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNotifications: () => void }) {
   const { navigate, theme, setTheme, currentUser, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace } = useWorkspaces();
+  const translate = useTranslator();
   const [wsOpen, setWsOpen] = useState(false);
   const [avOpen, setAvOpen] = useState(false);
   const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => { setWsOpen(false); });
@@ -110,7 +114,7 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
             <Icon name="caret-down" className={`text-xs text-muted transition-transform ${wsOpen ? 'rotate-180' : ''}`} />
           </button>
           <Popover open={wsOpen} className="absolute left-0 mt-1 w-64 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
-            <div className="px-2.5 py-1.5 text-xs font-medium text-muted">Workspaces</div>
+            <div className="px-2.5 py-1.5 text-xs font-medium text-muted">{translate({ key: 'workspaces.shell.brand' })}</div>
             {workspaces.map((w) => (
                 <button key={w.id} type="button" onClick={() => { setActiveWorkspace(w.id); setWsOpen(false); }} className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer ${w.id === activeWorkspace.id ? 'bg-container2' : 'hover:bg-container2'}`}>
                   <span className="flex items-center gap-2 text-sm text-title">
@@ -121,28 +125,28 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
                 </button>
               ))}
               <div className="my-1 h-px bg-divider" />
-              <button type="button" onClick={openCreate} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="w-4 text-center" /> Create workspace</button>
-              <button type="button" onClick={() => { setWsOpen(false); navigate('workspace'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="users" className="w-4 text-center" /> Manage members</button>
+              <button type="button" onClick={openCreate} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.createWorkspace' })}</button>
+              <button type="button" onClick={() => { setWsOpen(false); navigate('workspace'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="users" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.manageMembers' })}</button>
           </Popover>
         </div>
       </div>
 
       {/* search */}
       <button type="button" onClick={onCmdK} className="flex items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 text-sm text-muted hover:bg-container2 transition-colors cursor-pointer min-w-44">
-        <Icon name="magnifying-glass" /> <span className="flex-1 text-left">Search</span>
-        <kbd className="rounded-md border border-container1-border bg-container1 px-1.5 text-xs font-sans">⌘K</kbd>
+        <Icon name="magnifying-glass" /> <span className="flex-1 text-left">{translate({ key: 'workspaces.shell.search' })}</span>
+        <kbd className="rounded-md border border-container1-border bg-container1 px-1.5 text-xs font-sans">{translate({ key: 'workspaces.shell.searchShortcut' })}</kbd>
       </button>
 
       <div className="flex-1" />
 
       {/* right */}
       <div className="flex items-center gap-1.5">
-        <div title="Sanne, Tom viewing" className="mr-1"><AvatarStack users={presence} size={26} max={3} /></div>
-        <button type="button" onClick={onNotifications} title="Notifications" className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
+        <div title={translate({ key: 'workspaces.shell.presenceViewing' })} className="mr-1"><AvatarStack users={presence} size={26} max={3} /></div>
+        <button type="button" onClick={onNotifications} title={translate({ key: 'workspaces.shell.notifications' })} className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
           <Icon name="bell" />
           {unread > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-white text-[10px] font-semibold flex items-center justify-center">{unread}</span>}
         </button>
-        <IconButton icon={theme === 'dark' ? 'sun' : 'moon'} title="Toggle theme" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} />
+        <IconButton icon={theme === 'dark' ? 'sun' : 'moon'} title={translate({ key: 'workspaces.shell.toggleTheme' })} onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} />
         <div className="relative" ref={avRef}>
           <button type="button" onClick={() => { setAvOpen((o) => !o); }} className="rounded-full cursor-pointer"><AvatarBubble user={currentUser} size={32} /></button>
           <Popover open={avOpen} className="absolute right-0 mt-1 w-56 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
@@ -151,11 +155,11 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
               <div><div className="text-sm font-semibold text-title">{currentUser.name}</div><div className="text-xs text-muted">{currentUser.email}</div></div>
             </div>
             <div className="my-1 h-px bg-divider" />
-            <button type="button" onClick={() => { setAvOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> Account</button>
-            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> Theme: {theme}</button>
-            <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="language" className="w-4 text-center" /> Language: English</button>
+            <button type="button" onClick={() => { setAvOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
+            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
+            <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="language" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.languageEnglish' })}</button>
             <div className="my-1 h-px bg-divider" />
-            <button type="button" onClick={() => { setAvOpen(false); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> Sign out</button>
+            <button type="button" onClick={() => { setAvOpen(false); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.signOut' })}</button>
           </Popover>
         </div>
       </div>
@@ -166,6 +170,7 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
 /* ----------------------------------------------------------------- tab bar */
 export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
   const { view, navigate, openTabs, closeTab, suggestions } = useWorkspaces();
+  const translate = useTranslator();
   const statusColor = (id: string) => {
     const t = TICKET_STATUS_LOOKUP[id];
     return t ? `var(--color-${t === 'busy' ? 'primary' : t === 'done' ? 'correct' : t === 'needs-input' || t === 'stuck' ? 'warning' : 'muted'})` : 'var(--color-muted)';
@@ -176,7 +181,7 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
       <div className="flex-1 flex items-center gap-1 overflow-x-auto ws-no-scrollbar">
         <button type="button" onClick={() => { navigate('board'); }} className={`relative flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${view === 'board' ? 'text-title' : 'text-muted hover:text-common'}`}>
           {view === 'board' && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
-          <span className="relative z-10 inline-flex items-center gap-2"><Icon name="table-columns" /> Board</span>
+          <span className="relative z-10 inline-flex items-center gap-2"><Icon name="table-columns" /> {translate({ key: 'workspaces.shell.board' })}</span>
         </button>
         {openTabs.map((id) => (
           <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
@@ -188,7 +193,7 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
         ))}
       </div>
       <button type="button" onClick={onAiToggle} className="flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 transition-colors cursor-pointer">
-        <Icon name="robot" className="text-primary" /> Workspace-AI
+        <Icon name="robot" className="text-primary" /> {translate({ key: 'workspaces.shell.workspaceAi' })}
         {suggestions.length > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-title-primary text-xs font-semibold flex items-center justify-center">{suggestions.length}</span>}
       </button>
     </div>
@@ -200,20 +205,21 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
 //? the context — it receives the create callback as a prop. Kept intentionally
 //? simple: one project = one workspace, add the team afterwards.
 function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void }) {
+  const translate = useTranslator();
   const [name, setName] = useState('');
   const submit = () => { const n = name.trim(); if (!n) return; onCreate(n); void menuHandler.close(); };
   return (
     <div className="w-full flex flex-col gap-3">
-      <div className="text-base font-semibold text-title">Create workspace</div>
-      <span className="text-sm text-muted -mt-2">One project, one workspace — invite your team once it exists.</span>
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createWorkspace' })}</div>
+      <span className="text-sm text-muted -mt-2">{translate({ key: 'workspaces.shell.createWorkspaceSubtitle' })}</span>
       <input
         value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder="Workspace name…"
+        placeholder={translate({ key: 'workspaces.shell.workspaceNamePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
       <div className="flex items-center justify-end gap-2">
-        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>Cancel</WsButton>
-        <WsButton icon="plus" onClick={submit}>Create</WsButton>
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
       </div>
     </div>
   );
@@ -271,6 +277,7 @@ let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
   const { suggestions, dismissSuggestion, openTicket, chat, sendChat } = useWorkspaces();
+  const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions'>('chat');
   const [draft, setDraft] = useState('');
   const [width, setWidth] = useState(rememberedAiWidth);
@@ -309,20 +316,20 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
     >
       <div
         onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
-        title="Drag to resize"
+        title={translate({ key: 'workspaces.shell.dragToResize' })}
         className={`absolute left-0 top-0 bottom-0 z-20 w-1.5 cursor-col-resize transition-colors ${dragging ? 'bg-primary/50' : 'hover:bg-primary/30'}`}
       />
       <div style={{ width }} className="h-full flex flex-col">
         <div className="flex items-center justify-between h-14 px-4 border-b border-divider">
           <div className="flex items-center gap-2 font-semibold text-title">
             <span className="w-7 h-7 rounded-lg bg-primary/12 text-primary flex items-center justify-center"><Icon name="robot" /></span>
-            Workspace-AI
+            {translate({ key: 'workspaces.shell.workspaceAi' })}
           </div>
           <IconButton icon="xmark" onClick={onClose} />
         </div>
         <div className="flex items-center gap-1 px-3 h-11 border-b border-divider">
-          <PanelTab label="Chat" icon="comment" on={tab === 'chat'} onClick={() => { setTab('chat'); }} />
-          <PanelTab label="Suggestions" icon="robot" count={suggestions.length} on={tab === 'suggestions'} onClick={() => { setTab('suggestions'); }} />
+          <PanelTab label={translate({ key: 'workspaces.shell.chat' })} icon="comment" on={tab === 'chat'} onClick={() => { setTab('chat'); }} />
+          <PanelTab label={translate({ key: 'workspaces.shell.suggestions' })} icon="robot" count={suggestions.length} on={tab === 'suggestions'} onClick={() => { setTab('suggestions'); }} />
         </div>
         {tab === 'chat' ? (
           <>
@@ -332,15 +339,15 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
             <div className="border-t border-divider p-3 flex items-center gap-2">
               <input
                 value={draft} onChange={(e) => { setDraft(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-                placeholder="Ask the AI to do something…"
+                placeholder={translate({ key: 'workspaces.shell.askAiPlaceholder' })}
                 className="flex-1 min-w-0 h-9 px-3 rounded-xl border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
               />
-              <button type="button" onClick={send} title="Send" className="w-9 h-9 shrink-0 rounded-xl bg-primary text-title-primary flex items-center justify-center cursor-pointer hover:bg-primary-hover"><Icon name="paper-plane" /></button>
+              <button type="button" onClick={send} title={translate({ key: 'workspaces.shell.send' })} className="w-9 h-9 shrink-0 rounded-xl bg-primary text-title-primary flex items-center justify-center cursor-pointer hover:bg-primary-hover"><Icon name="paper-plane" /></button>
             </div>
           </>
         ) : (
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-            {suggestions.length === 0 && <div className="text-center text-sm text-muted py-12">All caught up ✨</div>}
+            {suggestions.length === 0 && <div className="text-center text-sm text-muted py-12">{translate({ key: 'workspaces.shell.allCaughtUp' })}</div>}
             {suggestions.map((s) => <SuggestionCard key={s.id} s={s} onOpenTicket={openTicket} onDismiss={() => { dismissSuggestion(s.id); }} />)}
           </div>
         )}
@@ -350,6 +357,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
 }
 
 function SuggestionCard({ s, onOpenTicket, onDismiss }: { s: AiSuggestion; onOpenTicket: (id: string) => void; onDismiss: () => void }) {
+  const translate = useTranslator();
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-3">
       <div className="flex items-center gap-2 mb-1.5">
@@ -361,9 +369,9 @@ function SuggestionCard({ s, onOpenTicket, onDismiss }: { s: AiSuggestion; onOpe
         {s.ticketIds.map((t) => <button key={t} type="button" onClick={() => { onOpenTicket(t); }} className="rounded-md bg-container2 px-1.5 py-0.5 text-xs font-mono text-common hover:bg-container2-hover cursor-pointer">{t}</button>)}
       </div>
       <div className="flex items-center gap-2 mt-3">
-        <button type="button" onClick={onDismiss} className="rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer">Accept</button>
-        <button type="button" onClick={onDismiss} className="rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 cursor-pointer">Dismiss</button>
-        <button type="button" title="Snooze" className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="clock" /></button>
+        <button type="button" onClick={onDismiss} className="rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.accept' })}</button>
+        <button type="button" onClick={onDismiss} className="rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 cursor-pointer">{translate({ key: 'workspaces.shell.dismiss' })}</button>
+        <button type="button" title={translate({ key: 'workspaces.shell.snooze' })} className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="clock" /></button>
       </div>
     </div>
   );

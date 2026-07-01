@@ -7,6 +7,8 @@
 
 import { useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
@@ -25,16 +27,17 @@ function termStatus(t: Terminal): TicketStatus {
 }
 
 function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; sshUser: string; className?: string }) {
+  const translate = useTranslator();
   const [active, setActive] = useState(0);
   const proc = terminal.processes[active] ?? terminal.processes[0];
   const sessionId = `${terminal.ticketId}:${proc.name}`;
   const menuItems = [
-    { label: 'Restart', icon: 'play' as const, onClick: () => {} },
-    { label: 'Clear', icon: 'xmark' as const, onClick: () => {} },
-    { label: 'Rename', icon: 'file-lines' as const, onClick: () => {} },
-    { label: 'Copy buffer', icon: 'copy' as const, onClick: () => {} },
+    { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => {} },
+    { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => {} },
+    { label: translate({ key: 'workspaces.terminals.rename' }), icon: 'file-lines' as const, onClick: () => {} },
+    { label: translate({ key: 'workspaces.terminals.copyBuffer' }), icon: 'copy' as const, onClick: () => {} },
     { divider: true },
-    { label: 'Kill', icon: 'triangle-exclamation' as const, danger: true, onClick: () => void menuHandler.confirm({ title: `Kill ${terminal.ticketId} · ${proc.name}?`, content: 'The process is terminated. You can restart it after.' }) },
+    { label: translate({ key: 'workspaces.terminals.kill' }), icon: 'triangle-exclamation' as const, danger: true, onClick: () => void menuHandler.confirm({ title: translate({ key: 'workspaces.terminals.killConfirmTitle', params: [{ key: 'ticket', value: terminal.ticketId }, { key: 'proc', value: proc.name }] }), content: translate({ key: 'workspaces.terminals.killConfirmContent' }) }) },
   ];
   return (
     <div className={`flex flex-col rounded-xl overflow-hidden border border-container1-border bg-terminal-bg ${className ?? ''}`}>
@@ -60,31 +63,33 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
       <XtermTerminal key={sessionId} sessionId={sessionId} className="flex-1 min-h-0" />
       <div className="flex items-center justify-between bg-terminal-surface border-t border-white/5 px-3 h-7 shrink-0 text-[11px] font-mono text-terminal-muted">
         <span>{sshUser}@{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
-        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-terminal-green" /> live</span>
+        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-terminal-green" /> {translate({ key: 'workspaces.terminals.live' })}</span>
       </div>
     </div>
   );
 }
 
 function SshLocked({ onGoToSettings }: { onGoToSettings: () => void }) {
+  const translate = useTranslator();
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="max-w-sm w-full rounded-2xl border border-container1-border bg-container1 p-6 text-center">
         <div className="w-12 h-12 rounded-xl bg-warning/15 text-warning flex items-center justify-center mx-auto mb-4 text-xl"><Icon name="terminal" /></div>
-        <div className="text-base font-semibold text-title">Terminals locked</div>
-        <p className="text-sm text-muted mt-1.5">Opening a terminal is shell access to a container, so it needs an SSH key linked to your account.</p>
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.terminals.lockedTitle' })}</div>
+        <p className="text-sm text-muted mt-1.5">{translate({ key: 'workspaces.terminals.lockedDescription' })}</p>
         <div className="mt-4">
           <button type="button" onClick={onGoToSettings} className="inline-flex items-center gap-2 rounded-xl bg-primary text-title-primary px-4 h-9 text-sm font-medium hover:bg-primary-hover cursor-pointer">
-            <Icon name="check" /> Unlock with SSH key
+            <Icon name="check" /> {translate({ key: 'workspaces.terminals.unlockWithSshKey' })}
           </button>
         </div>
-        <p className="text-xs text-muted mt-3">Takes you to Account → SSH keys.</p>
+        <p className="text-xs text-muted mt-3">{translate({ key: 'workspaces.terminals.takesYouToAccount' })}</p>
       </div>
     </div>
   );
 }
 
 export default function Terminals() {
+  const translate = useTranslator();
   const { sshUserId, navigate } = useWorkspaces();
   const [layout, setLayout] = useState<Layout>('grid');
   const [activeTab, setActiveTab] = useState(TERMINALS[0]?.ticketId ?? '');
@@ -95,14 +100,14 @@ export default function Terminals() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl md:text-2xl font-semibold text-title">Terminals</h1>
-          {unlocked && <span className="inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common"><Icon name="user" /> ssh: {sshUserName}</span>}
+          <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.terminals.title' })}</h1>
+          {unlocked && <span className="inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common"><Icon name="user" /> {translate({ key: 'workspaces.terminals.sshLabel', params: [{ key: 'name', value: sshUserName }] })}</span>}
         </div>
         {unlocked && TERMINALS.length > 0 && (
           <Segmented<Layout>
             value={layout}
             onChange={setLayout}
-            options={[{ id: 'grid', label: <><Icon name="table-cells-large" /> Grid</> }, { id: 'tabs', label: <><Icon name="table-columns" /> Tabs</> }]}
+            options={[{ id: 'grid', label: <><Icon name="table-cells-large" /> {translate({ key: 'workspaces.terminals.layoutGrid' })}</> }, { id: 'tabs', label: <><Icon name="table-columns" /> {translate({ key: 'workspaces.terminals.layoutTabs' })}</> }]}
           />
         )}
       </div>
@@ -110,7 +115,7 @@ export default function Terminals() {
       {!unlocked && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
 
       {unlocked && TERMINALS.length === 0 && (
-        <EmptyState icon="terminal" title="No terminals running" sub="Activate a ticket to attach a live terminal." />
+        <EmptyState icon="terminal" title={translate({ key: 'workspaces.terminals.emptyTitle' })} sub={translate({ key: 'workspaces.terminals.emptySub' })} />
       )}
 
       {unlocked && TERMINALS.length > 0 && layout === 'grid' && (

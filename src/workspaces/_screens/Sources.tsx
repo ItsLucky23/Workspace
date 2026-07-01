@@ -6,6 +6,8 @@
 
 import { useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
@@ -14,11 +16,6 @@ import { EmptyState, Tabs, Toggle, WsButton, type TabDef } from '../_components/
 import { DOCS, SKILLS } from '../_data/seed';
 import type { InfoDoc, SkillEntry } from '../_data/types';
 
-const TABS: TabDef[] = [
-  { id: 'docs', label: 'Context docs', icon: 'file-lines', count: DOCS.length },
-  { id: 'skills', label: 'Skills / MCP', icon: 'robot', count: SKILLS.length },
-];
-
 const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   generated: 'bg-primary/12 text-primary',
   git: 'bg-container2 text-muted',
@@ -26,7 +23,8 @@ const SOURCE_TINT: Record<InfoDoc['source'], string> = {
 };
 
 function StageChips({ stages }: { stages?: string[] }) {
-  if (!stages || stages.length === 0) return <span className="text-sm text-muted">No stages</span>;
+  const translate = useTranslator();
+  if (!stages || stages.length === 0) return <span className="text-sm text-muted">{translate({ key: 'workspaces.sources.noStages' })}</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {stages.map((s) => <span key={s} className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-common">{s}</span>)}
@@ -45,27 +43,29 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 //? Rendered inside menuHandler's centered modal.
 function DocDetail({ doc }: { doc: InfoDoc }) {
+  const translate = useTranslator();
   return (
     <div className="p-5 w-full">
       <DetailHead title={doc.name} />
-      <DetailRow label="Summary">{doc.summary}</DetailRow>
-      <DetailRow label="Source">{doc.source}</DetailRow>
-      <DetailRow label="Last updated">{doc.updated} · {doc.note}</DetailRow>
-      {doc.pendingBranches && <DetailRow label="Not yet processed"><span className="text-warning">{doc.pendingBranches.join(', ')}</span></DetailRow>}
-      <DetailRow label="Loaded by stages"><StageChips stages={doc.usedByStages} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.summary' })}>{doc.summary}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.source' })}>{doc.source}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.lastUpdated' })}>{doc.updated} · {doc.note}</DetailRow>
+      {doc.pendingBranches && <DetailRow label={translate({ key: 'workspaces.sources.notYetProcessed' })}><span className="text-warning">{doc.pendingBranches.join(', ')}</span></DetailRow>}
+      <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}><StageChips stages={doc.usedByStages} /></DetailRow>
     </div>
   );
 }
 
 function SkillDetail({ skill }: { skill: SkillEntry }) {
+  const translate = useTranslator();
   return (
     <div className="p-5 w-full">
       <DetailHead title={skill.name} />
-      <DetailRow label="What it does">{skill.description ?? '—'}</DetailRow>
-      <DetailRow label="Type">{skill.kind === 'frozen' ? 'Frozen per commit' : 'Live'}{skill.model ? ` · ${skill.model}` : ''}</DetailRow>
-      <DetailRow label="Status">{skill.status}</DetailRow>
-      <DetailRow label="Last indexed">{skill.lastIndexed ?? '—'}</DetailRow>
-      <DetailRow label="Enabled by stages"><StageChips stages={skill.usedByStages} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.whatItDoes' })}>{skill.description ?? '—'}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.type' })}>{skill.kind === 'frozen' ? translate({ key: 'workspaces.sources.frozenPerCommit' }) : translate({ key: 'workspaces.sources.live' })}{skill.model ? ` · ${skill.model}` : ''}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.status' })}>{skill.status}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.lastIndexed' })}>{skill.lastIndexed ?? '—'}</DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.enabledByStages' })}><StageChips stages={skill.usedByStages} /></DetailRow>
     </div>
   );
 }
@@ -82,19 +82,21 @@ function DetailHead({ title }: { title: string }) {
 const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBackground: true, background: 'bg-container1', size: 'md' });
 
 function HealthBanner() {
+  const translate = useTranslator();
   return (
     <div className="mx-4 md:mx-6 rounded-xl border border-warning/40 bg-warning/10 p-3 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-2.5 text-sm min-w-0 flex-1">
         <Icon name="triangle-exclamation" className="text-warning shrink-0" />
-        <span className="text-title font-medium shrink-0">RAG index is behind main by 3 commits.</span>
-        <span className="text-muted truncate">Open tickets stay frozen on their own commit; reindex to refresh the live snapshot.</span>
+        <span className="text-title font-medium shrink-0">{translate({ key: 'workspaces.sources.ragBehind' })}</span>
+        <span className="text-muted truncate">{translate({ key: 'workspaces.sources.ragBehindHint' })}</span>
       </div>
-      <WsButton variant="secondary" icon="wave-square">Reindex</WsButton>
+      <WsButton variant="secondary" icon="wave-square">{translate({ key: 'workspaces.sources.reindex' })}</WsButton>
     </div>
   );
 }
 
 function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
+  const translate = useTranslator();
   return (
     <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
       <button type="button" onClick={onOpen} className="flex items-center justify-between gap-2 text-left cursor-pointer group">
@@ -105,24 +107,25 @@ function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
         <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${SOURCE_TINT[doc.source]}`}>{doc.source}</span>
       </button>
       <div className="flex items-center gap-2 text-xs text-muted">
-        <span>updated {doc.updated}</span><span>·</span><span className="font-mono">{doc.note}</span>
+        <span>{translate({ key: 'workspaces.sources.updatedAt', params: [{ key: 'date', value: doc.updated }] })}</span><span>·</span><span className="font-mono">{doc.note}</span>
       </div>
       {doc.pendingBranches && doc.pendingBranches.length > 0 && (
         <div className="flex items-center gap-1.5 text-xs text-warning">
           <Icon name="triangle-exclamation" />
-          <span>{doc.pendingBranches.join(', ')} not yet processed in this file</span>
+          <span>{translate({ key: 'workspaces.sources.notProcessedInFile', params: [{ key: 'branches', value: doc.pendingBranches.join(', ') }] })}</span>
         </div>
       )}
       <div className="flex items-center gap-3 mt-1">
-        <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> Preview</button>
-        {doc.source !== 'uploaded' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> Regenerate</button>}
-        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer ml-auto">Details</button>
+        <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> {translate({ key: 'workspaces.sources.preview' })}</button>
+        {doc.source !== 'uploaded' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> {translate({ key: 'workspaces.sources.regenerate' })}</button>}
+        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer ml-auto">{translate({ key: 'workspaces.sources.details' })}</button>
       </div>
     </div>
   );
 }
 
 function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void }) {
+  const translate = useTranslator();
   return (
     <div className="flex items-center gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3">
       <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${skill.on ? 'bg-primary/12 text-primary' : 'bg-container2 text-muted'}`}><Icon name="robot" /></span>
@@ -133,35 +136,41 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
         </div>
         <div className="text-xs text-muted truncate">{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
-      <button type="button" onClick={() => { openDetail(<SkillDetail skill={skill} />); }} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">Details</button>
-      {skill.kind === 'frozen' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">Reindex</button>}
+      <button type="button" onClick={() => { openDetail(<SkillDetail skill={skill} />); }} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.details' })}</button>
+      {skill.kind === 'frozen' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.reindex' })}</button>}
       <Toggle on={skill.on} onChange={onToggle} />
     </div>
   );
 }
 
 export default function Sources() {
+  const translate = useTranslator();
   const [tab, setTab] = useState('docs');
   const [skills, setSkills] = useState(SKILLS);
   const [preview, setPreview] = useState<InfoDoc | null>(null);
 
+  const tabs: TabDef[] = [
+    { id: 'docs', label: translate({ key: 'workspaces.sources.tabDocs' }), icon: 'file-lines', count: DOCS.length },
+    { id: 'skills', label: translate({ key: 'workspaces.sources.tabSkills' }), icon: 'robot', count: SKILLS.length },
+  ];
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">Sources</h1>
-        {tab === 'docs' && <WsButton variant="secondary" icon="plus">Upload spec</WsButton>}
+        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
+        {tab === 'docs' && <WsButton variant="secondary" icon="plus">{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
       </div>
 
       <HealthBanner />
 
       <div className="px-4 md:px-6 mt-3">
-        <Tabs tabs={TABS} active={tab} onChange={setTab} />
+        <Tabs tabs={tabs} active={tab} onChange={setTab} />
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
         {tab === 'docs' && (
           DOCS.length === 0
-            ? <EmptyState icon="file-lines" title="No context docs yet" />
+            ? <EmptyState icon="file-lines" title={translate({ key: 'workspaces.sources.emptyDocsTitle' })} />
             : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{DOCS.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} />)}</div>
         )}
         {tab === 'skills' && (

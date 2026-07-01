@@ -8,6 +8,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import BaseAvatar from 'src/_components/Avatar';
 
 import { motion } from 'motion/react';
@@ -45,6 +47,7 @@ export function AvatarBubble({ user, size = 28 }: { user: Member | { name: strin
 }
 
 export function AvatarStack({ users, max = 3, size = 22 }: { users: Member[]; max?: number; size?: number }) {
+  const translate = useTranslator();
   const shown = users.slice(0, max);
   const extra = users.length - shown.length;
   return (
@@ -59,7 +62,7 @@ export function AvatarStack({ users, max = 3, size = 22 }: { users: Member[]; ma
           className="rounded-full ring-2 ring-container1 bg-container2 text-muted flex items-center justify-center font-medium"
           style={{ width: size, height: size, marginLeft: -size * 0.32, fontSize: size * 0.4 }}
         >
-          +{extra}
+          {translate({ key: 'workspaces.common.plusCount', params: [{ key: 'count', value: String(extra) }] })}
         </div>
       )}
     </div>
@@ -68,12 +71,12 @@ export function AvatarStack({ users, max = 3, size = 22 }: { users: Member[]; ma
 
 /* ----------------------------------------------------------------- status pill */
 const STATUS_META: Record<TicketStatus, { label: string; tint: string; dot: string; pulse?: boolean }> = {
-  'needs-input': { label: 'Needs input', tint: 'bg-warning/15 text-warning', dot: 'bg-warning' },
-  busy: { label: 'Busy', tint: 'bg-primary/12 text-primary', dot: 'bg-primary', pulse: true },
-  done: { label: 'Done', tint: 'bg-correct/15 text-correct', dot: 'bg-correct' },
-  idle: { label: 'No AI', tint: 'bg-container2 text-muted', dot: 'bg-muted' },
-  paused: { label: 'Paused', tint: 'bg-container2 text-muted', dot: 'bg-muted' },
-  stuck: { label: 'Stuck', tint: 'bg-warning/15 text-warning', dot: 'bg-warning', pulse: true },
+  'needs-input': { label: 'workspaces.common.statusNeedsInput', tint: 'bg-warning/15 text-warning', dot: 'bg-warning' },
+  busy: { label: 'workspaces.common.statusBusy', tint: 'bg-primary/12 text-primary', dot: 'bg-primary', pulse: true },
+  done: { label: 'workspaces.common.statusDone', tint: 'bg-correct/15 text-correct', dot: 'bg-correct' },
+  idle: { label: 'workspaces.common.statusIdle', tint: 'bg-container2 text-muted', dot: 'bg-muted' },
+  paused: { label: 'workspaces.common.statusPaused', tint: 'bg-container2 text-muted', dot: 'bg-muted' },
+  stuck: { label: 'workspaces.common.statusStuck', tint: 'bg-warning/15 text-warning', dot: 'bg-warning', pulse: true },
 };
 
 export function statusColorVar(status: TicketStatus): string {
@@ -84,11 +87,12 @@ export function statusColorVar(status: TicketStatus): string {
 }
 
 export function StatusPill({ status, dot = true }: { status: TicketStatus; dot?: boolean }) {
+  const translate = useTranslator();
   const m = STATUS_META[status];
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${m.tint}`}>
       {dot && <span className={`w-1.5 h-1.5 rounded-full ${m.dot} ${m.pulse ? 'motion-safe:animate-pulse' : ''}`} />}
-      {m.label}
+      {translate({ key: m.label })}
     </span>
   );
 }
