@@ -330,6 +330,7 @@ model PipelineStage {
   id                 String            @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId        String            @db.ObjectId
   projectId          String            @db.ObjectId
+  key                String                                   // stable semantic slug ('unrefined'|'impl'|…) — the id Tickets reference + the board columns key on (the ObjectId _id can't be the slug: it must be unique per collection). The read-snapshot maps this → the frontend's `id`.
   kind               String                                   // StageKind: 'refine'|'plan'|'code'|'test'|'review'|'final' (04b §12)
   name               String
   order              Int
@@ -362,6 +363,7 @@ model PipelineStage {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
+  @@unique([workspaceId, projectId, key])
   @@index([workspaceId, projectId, order])
 }
 

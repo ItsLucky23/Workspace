@@ -7,6 +7,7 @@ import { registerHook, resolveEnvKey } from '@luckystack/core';
 import { registerNotificationHooks } from '../../server/hooks/notifications';
 import { registerWorkspacesTerminalHooks } from '../../server/hooks/workspacesTerminal';
 import { registerTenantKeyFormatter } from '../../server/tenant/tenantRedis';
+import { registerFirstLoginBootstrap } from '../../server/bootstrap/registerBootstrap';
 
 //? Wires the transactional notification hooks (new sign-in email,
 //? password-change email). Reads `user.preferences` to respect opt-in. Safe
@@ -18,6 +19,10 @@ registerNotificationHooks();
 //? inside a `runInTenant(...)` scope are prefixed `:ws:<workspaceId>:`; framework
 //? + un-scoped keys keep their historical bytes. Spec: ARCHITECTURE_MULTI_TENANCY §3.
 registerTenantKeyFormatter();
+
+//? On first login (no workspace membership yet), seed a demo workspace so the app
+//? opens onto populated screens. Idempotent (guarded by the membership count).
+registerFirstLoginBootstrap();
 
 //? Wires the Workspaces dev terminal PTY bridge (Socket.io ⇄ node-pty). It
 //? HARD-gates itself to non-production (a browser→host-shell channel is an RCE
