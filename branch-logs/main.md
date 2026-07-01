@@ -150,3 +150,25 @@
 **NOG OPEN in 7a (bewust niet nu):**
 - **7a.2 — Pipeline-config-persist** (de core surface): de volledige `PipelineStageCfg` uit de DB-composites in de snapshot brengen (9 composite-subtypes, cast-vrije union-narrowing) + Pipeline.tsx van `STAGE_CONFIGS` af + save-stage-config volledig. Groot + kwaliteitsgevoelig → **beter met verse context** (aanbevolen als eerste taak volgende sessie).
 - **7a.1 (notifications/usage/spend/terminals live) + 7a.6 (sessions-UI):** grotendeels **Fase-2-gated** — er zijn in Fase 1 nog geen data-producers (pipeline-events/AI-usage/pty/session-list). Live plumbing zou lege data tonen; heeft pas zin met de Fase-2-engine.
+
+## 2026-07-02 02:30 — ALLE missende functionaliteit bedraad (audit-fixes, in één pass)
+
+**User prompt:** "fix nu in één keer alle missende functionaliteiten met ultracode/Sonnet, snelheid voorop; verifieer daarna met Opus."
+
+**Aanpak:** gefaseerde Sonnet-workflow (backend + contract met generateArtifacts-barrier → 8 schermen parallel) + Opus-verificatie (ik) + E2E tegen echte Mongo.
+
+**Backend (E2E-bewezen):**
+- Conductor `save-stage-config` persisteert nu de VOLLEDIGE `PipelineStageCfg` (9 cast-vrije composite-readers) — was alleen name/aiEnabled/customInstructions. **= 7a.2-backend af.**
+- `accept-suggestion` geïmplementeerd (status='accepted').
+- Snapshot: `notifications[]` + `stageConfigs[]` (volledige per-stage config, cast-vrije union-narrowing) + lege event/notif-timestamps gefixt (HH:MM).
+- Seed: 5 demo-notificaties.
+
+**Contract (Provider+Context):** ~25 nieuwe ctx-handlers (quickAdd, archive, bulk-*, invite, revoke, removeMember, transfer, delete, rename, saveGitlab, toggleSkill, saveStageConfig, notifications+markRead+markAllRead, acceptSuggestion, signOut[framework-logout]). notifications/unread nu live (van seed af).
+
+**8 schermen bedraad:** Board (new-ticket→quick-add, archive, sprint+status/assignee-filters), Backlog (volledige bulk-bar met pickers), TicketDetail (promote→bulk-move), Sources (skill-toggle persist), WorkspaceSettings (remove/transfer/delete/invite/revoke/gitlab-save/rename + env-debounce-fix), AccountSettings (export + session-revoke), **Pipeline (laadt ctx.stageConfigs + saveStageConfig = 7a.2-frontend)**, Shell (notificatie-panel + mark-read, suggestie-accept, sign-out). **De confirm-void-bug-klasse overal gefixt.** Echte Fase-2-gaten = gemarkeerde stubs (geen verzonnen verbs — frozen control-API gerespecteerd).
+
+**E2E-bewezen:** save-stage-config (model/commands/network/hooks persisteren), mark-read, accept-suggestion, invite, bulk-move — allemaal persistent. tsc 0 / server 14-baseline / lint 0 / build groen / test:ws 8/8.
+
+**Commit:** `956d76d`.
+
+**Resteert (echt Fase-2, geen op / geen data-producer):** needs-input-reply, add-reference/link-ticket, teardown-container, pause/resume/kill (AI-session), upload-doc/reindex/regenerate, echte AI-chat, echte usage-cijfers, container-terminals, SSH-key-persist + echte sessie-lijst, real-time/presence.
