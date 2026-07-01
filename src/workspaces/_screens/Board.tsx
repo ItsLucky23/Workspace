@@ -20,14 +20,15 @@ import { SPRING_SOFT } from '../_components/motion';
 import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, type PopMenuItem } from '../_components/primitives';
 import { SPRINTS, STAGES, TICKETS, ticketLinkedMembers } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { PipelineStage, StageId, Ticket } from '../_data/types';
+import type { PipelineStage, Ticket } from '../_data/types';
 
-type Columns = Record<StageId, Ticket[]>;
+//? Columns are keyed by the stage's free-string id (04b §12), not a fixed enum.
+type Columns = Record<string, Ticket[]>;
 
 //? Apply the AI-driven stage overrides (from the Workspace-AI chat) on top of
 //? the seed stage, so a "move DEV-#### to …" lands the card in a new column and
 //? the shared layoutId animates it there.
-function buildColumns(tickets: Ticket[], overrides: Record<string, StageId>): Columns {
+function buildColumns(tickets: Ticket[], overrides: Record<string, string>): Columns {
   const cols = Object.fromEntries(STAGES.map((s) => [s.id, [] as Ticket[]])) as Columns;
   for (const t of tickets) {
     const stage = overrides[t.id] ?? t.stageId;
@@ -162,7 +163,7 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
 }
 
 function BoardMobile({ columns }: { columns: Columns }) {
-  const [active, setActive] = useState<StageId>(STAGES.find((s) => columns[s.id].length)?.id ?? STAGES[0].id);
+  const [active, setActive] = useState<string>(STAGES.find((s) => columns[s.id].length)?.id ?? STAGES[0].id);
   const stage = STAGES.find((s) => s.id === active)!;
   const list = columns[active];
   return (

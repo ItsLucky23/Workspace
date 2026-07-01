@@ -52,7 +52,7 @@ function FieldLabel({ title, hint }: { title: string; hint?: string }) {
 
 function blankStage(id: string, name: string, order: number): PipelineStageCfg {
   return {
-    id, name, order, aiEnabled: true, customInstructions: '', promptTemplate: '',
+    id, kind: 'code', name, order, aiEnabled: true, customInstructions: '', promptTemplate: '',
     skillKeys: [], sourceIds: [], commands: [], tools: [],
     statuses: [
       { key: 'needs-input', label: 'Needs input', kind: 'base' }, { key: 'busy', label: 'Busy', kind: 'base' },

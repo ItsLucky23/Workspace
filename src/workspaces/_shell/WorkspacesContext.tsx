@@ -5,7 +5,7 @@
 
 import { createContext, use } from 'react';
 
-import type { AiSuggestion, ChatMessage, EnvVar, IntegrationTool, Member, PermRole, SshKeyEntry, StageId, Workspace } from '../_data/types';
+import type { AiSuggestion, ChatMessage, EnvVar, IntegrationTool, Member, PermRole, SshKeyEntry, Workspace } from '../_data/types';
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
@@ -68,8 +68,8 @@ export interface WorkspacesCtx {
   removeIntegrationTool: (id: string) => void;
   //? AI-driven board moves: stage overrides on top of the seed data, so the
   //? Workspace-AI chat can move a ticket and the board animates it.
-  stageOverrides: Record<string, StageId>;
-  moveTicket: (id: string, stage: StageId) => void;
+  stageOverrides: Record<string, string>;        // ticketId → stage id (free string, 04b §12)
+  moveTicket: (id: string, stage: string) => void;
 }
 
 export const isTicketView = (v: string): boolean => v.startsWith('DEV-');

@@ -18,7 +18,7 @@ import {
   AI_SUGGESTIONS, DEFAULT_PERM_ROLES, ENV_VARS, INITIAL_CHAT, INTEGRATION_TOOLS,
   ME, MEMBERS, NOTIFICATIONS, ROLE_DISPLAY, SSH_KEYS, STAGES, WORKSPACES,
 } from '../_data/seed';
-import type { ChatMessage, EnvVar, IntegrationTool, PermRole, SshKeyEntry, StageId, Workspace } from '../_data/types';
+import type { ChatMessage, EnvVar, IntegrationTool, PermRole, SshKeyEntry, Workspace } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
 const BASE = '/workspaces';
@@ -60,7 +60,7 @@ function useIsMobile(): boolean {
 }
 
 //? Parse a "move DEV-1240 to review" instruction from the AI chat → a stage id.
-function parseMove(text: string): { id: string; stage: StageId; stageName: string } | { unknownStage: string } | null {
+function parseMove(text: string): { id: string; stage: string; stageName: string } | { unknownStage: string } | null {
   const m = /move\s+(dev-\d+)\s+to\s+([a-z]+)/i.exec(text.trim());
   if (!m) return null;
   const id = m[1].toUpperCase();
@@ -89,7 +89,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [memberRoles, setMemberRoles] = useState<Record<string, string>>(
     () => Object.fromEntries(Object.values(MEMBERS).map((m) => [m.id, ROLE_DISPLAY[m.role]])),
   );
-  const [stageOverrides, setStageOverrides] = useState<Record<string, StageId>>({});
+  const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   const [envVars, setEnvVars] = useState<EnvVar[]>(ENV_VARS);
   const [integrationTools, setIntegrationTools] = useState<IntegrationTool[]>(INTEGRATION_TOOLS);
 

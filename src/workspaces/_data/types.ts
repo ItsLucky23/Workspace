@@ -11,7 +11,10 @@ export type Role = 'owner' | 'admin' | 'member';
 
 //? Ticket lifecycle: STAGE = pipeline column, STATUS = state within that stage.
 //? Strictly two levels (DATAMODEL DH5). `status` here is the StageStatus.key.
-export type StageId = 'unrefined' | 'refined' | 'plan' | 'impl' | 'test' | 'review' | 'final';
+//? A stage's `id` is a FREE string (custom stages allowed); `StageKind` is the
+//? typed SEMANTIC role the stage plays, which a preset instantiates (04b §12).
+//? 'unrefined'+'refined' both map to the 'refine' role; 'impl' → 'code'.
+export type StageKind = 'refine' | 'plan' | 'code' | 'test' | 'review' | 'final';
 export type TicketStatus = 'idle' | 'needs-input' | 'busy' | 'done' | 'paused' | 'stuck';
 
 export interface Member {
@@ -39,7 +42,8 @@ export interface Project {
 }
 
 export interface PipelineStage {
-  id: StageId;
+  id: string;          // free stage id (e.g. 'impl'); custom stages allowed
+  kind: StageKind;     // the typed semantic role (04b §12)
   name: string;
   order: number;
   aiEnabled: boolean;
@@ -52,7 +56,7 @@ export interface Ticket {
   projectId: string;
   title: string;
   description?: string;
-  stageId: StageId;      // current pipeline column
+  stageId: string;       // current pipeline column → PipelineStage.id (free string)
   status: TicketStatus;  // StageStatus.key within the stage
   labels: string[];      // GitLab-native, cached
   creatorId?: string;    // who created the ticket (shown first); falls back to viewers[0]
@@ -296,9 +300,11 @@ export interface StageModelCfg { autoEscalate: boolean; base: StageModelChoice; 
 export interface StageNetworkCfg { enabled: boolean; mode: NetworkMode; categories: string[]; domains: string[] }
 
 //? One pipeline stage (meta) + its full editable config, flattened for the UI.
-//? `id` is a free string (not StageId) so custom stages can be added in the editor.
+//? `id` is a free string (not a fixed StageId) so custom stages can be added in
+//? the editor; `kind` is the typed semantic role (04b §12).
 export interface PipelineStageCfg {
   id: string;
+  kind: StageKind;
   name: string;
   order: number;
   aiEnabled: boolean;

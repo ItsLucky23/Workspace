@@ -24,7 +24,7 @@ import type {
   SkillEntry,
   Sprint,
   SshKeyEntry,
-  StageId,
+  StageKind,
   StageModelCfg,
   StageModelChoice,
   StageNetworkCfg,
@@ -60,13 +60,13 @@ export const PROJECTS: Project[] = [
 export const ACTIVE_PROJECT = PROJECTS[0];
 
 export const STAGES: PipelineStage[] = [
-  { id: 'unrefined', name: 'Unrefined', order: 0, aiEnabled: false },
-  { id: 'refined', name: 'Refined', order: 1, aiEnabled: true },
-  { id: 'plan', name: 'Plan', order: 2, aiEnabled: true, wipLimit: 2 },
-  { id: 'impl', name: 'Implementatie', order: 3, aiEnabled: true },
-  { id: 'test', name: 'Test', order: 4, aiEnabled: true },
-  { id: 'review', name: 'Review', order: 5, aiEnabled: true },
-  { id: 'final', name: 'Final', order: 6, aiEnabled: true },
+  { id: 'unrefined', kind: 'refine', name: 'Unrefined', order: 0, aiEnabled: false },
+  { id: 'refined', kind: 'refine', name: 'Refined', order: 1, aiEnabled: true },
+  { id: 'plan', kind: 'plan', name: 'Plan', order: 2, aiEnabled: true, wipLimit: 2 },
+  { id: 'impl', kind: 'code', name: 'Implementatie', order: 3, aiEnabled: true },
+  { id: 'test', kind: 'test', name: 'Test', order: 4, aiEnabled: true },
+  { id: 'review', kind: 'review', name: 'Review', order: 5, aiEnabled: true },
+  { id: 'final', kind: 'final', name: 'Final', order: 6, aiEnabled: true },
 ];
 
 const WS = 'ws-youcomm';
@@ -569,9 +569,9 @@ const escalationRules = () => [
 const modelCfg = (base: StageModelChoice, autoEscalate: boolean): StageModelCfg => ({ autoEscalate, base, rules: autoEscalate ? escalationRules() : [] });
 const network = (over?: Partial<StageNetworkCfg>): StageNetworkCfg => ({ enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: ['gitlab.youcomm.nl'], ...over });
 
-function cfg(id: StageId, name: string, order: number, over: Partial<PipelineStageCfg>): PipelineStageCfg {
+function cfg(id: string, kind: StageKind, name: string, order: number, over: Partial<PipelineStageCfg>): PipelineStageCfg {
   return {
-    id, name, order, aiEnabled: true,
+    id, kind, name, order, aiEnabled: true,
     customInstructions: '', promptTemplate: '',
     skillKeys: [], sourceIds: ['summary'], commands: [],
     tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
@@ -586,25 +586,25 @@ function cfg(id: StageId, name: string, order: number, over: Partial<PipelineSta
 }
 
 export const STAGE_CONFIGS: PipelineStageCfg[] = [
-  cfg('unrefined', 'Unrefined', 0, {
+  cfg('unrefined', 'refine', 'Unrefined', 0, {
     aiEnabled: false, skillKeys: [], sourceIds: ['summary'], processes: [], tools: [],
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 8 }, false),
     statuses: [...baseStatuses(), { key: 'triage', label: 'Triage', kind: 'custom' }],
     customInstructions: 'Human triage stage — no AI. Tickets land here from GitLab and wait for a person to refine them.',
   }),
-  cfg('refined', 'Refined', 1, {
+  cfg('refined', 'refine', 'Refined', 1, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 12 }, false),
     skillKeys: ['rag', 'cross'], sourceIds: ['summary', 'glossary'],
     promptTemplate: 'Refine the ticket into clear acceptance criteria.\nPrior summary: {{summary}}\nOpen questions: {{openQuestions}}',
     customInstructions: 'Clarify scope only. Do NOT write code. Produce acceptance criteria + edge cases.',
   }),
-  cfg('plan', 'Plan', 2, {
+  cfg('plan', 'plan', 'Plan', 2, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 20 }, true),
     skillKeys: ['rag', 'graphify', 'symbol'], sourceIds: ['summary', 'dbschema', 'authspec'], visibleStageIds: ['refined'],
     promptTemplate: 'Produce a step-by-step implementation plan.\nFrom Refined: {{summary}}\nKnown files: {{changedFiles}}',
     customInstructions: 'Output a numbered plan + risks + a rollback note. No edits. Reference the db-schema where relevant.',
   }),
-  cfg('impl', 'Implementatie', 3, {
+  cfg('impl', 'code', 'Implementatie', 3, {
     modelCfg: modelCfg({ model: 'sonnet', effort: 'high', maxTurns: 30 }, true),
     skillKeys: ['rag', 'graphify', 'symbol', 'git', 'test'], sourceIds: ['summary', 'conventions', 'dbschema'],
     tools: [{ toolId: 'tool-mongodb', tier: 'rw' }, { toolId: 'tool-redis', tier: 'rw' }], visibleStageIds: ['plan', 'refined'],
@@ -622,7 +622,7 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
     customInstructions: 'Follow the Plan stage exactly. Keep changes surgical. Run the test suite before finishing.',
     statuses: [...baseStatuses(), { key: 'review-ready', label: 'Review-ready', kind: 'custom' }],
   }),
-  cfg('test', 'Test', 4, {
+  cfg('test', 'test', 'Test', 4, {
     modelCfg: modelCfg({ model: 'sonnet', effort: 'medium', maxTurns: 20 }, true),
     skillKeys: ['test', 'git'], sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl'],
     processes: [
@@ -636,7 +636,7 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
     promptTemplate: 'Write & run tests for the changes.\nChanged files: {{changedFiles}}',
     customInstructions: 'Add a regression test for every changed file. Fail loudly on uncovered branches.',
   }),
-  cfg('review', 'Review', 5, {
+  cfg('review', 'review', 'Review', 5, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 18 }, true),
     skillKeys: ['cross', 'deps', 'git'], sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl', 'test'],
     commands: [{ id: 'r1', pattern: 'Bash(git push:*)', mode: 'ask' }],
@@ -644,7 +644,7 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
     customInstructions: 'Be a skeptical reviewer. Flag security + correctness first. Default to requesting changes.',
     statuses: [...baseStatuses(), { key: 'approved', label: 'Approved', kind: 'custom' }],
   }),
-  cfg('final', 'Final', 6, {
+  cfg('final', 'final', 'Final', 6, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 10 }, false),
     skillKeys: [], sourceIds: ['summary'], processes: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     promptTemplate: 'Summarise the merged change for the changelog.\n{{summary}}',
