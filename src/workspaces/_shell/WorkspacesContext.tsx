@@ -5,7 +5,10 @@
 
 import { createContext, use } from 'react';
 
-import type { AiSuggestion, ChatMessage, EnvVar, IntegrationTool, Member, PermRole, SshKeyEntry, Workspace } from '../_data/types';
+import type {
+  ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
+  Member, PermRole, PipelineStage, SkillEntry, Sprint, SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
+} from '../_data/types';
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
@@ -66,10 +69,27 @@ export interface WorkspacesCtx {
   integrationTools: IntegrationTool[];
   saveIntegrationTool: (t: IntegrationTool) => void;
   removeIntegrationTool: (id: string) => void;
-  //? AI-driven board moves: stage overrides on top of the seed data, so the
+  //? AI-driven board moves: stage overrides on top of the live data, so the
   //? Workspace-AI chat can move a ticket and the board animates it.
   stageOverrides: Record<string, string>;        // ticketId → stage id (free string, 04b §12)
   moveTicket: (id: string, stage: string) => void;
+
+  //? ----- live tenant data (from the `workspaces/snapshot` read; MIGRATION §4) -----
+  //? These replace the screens' old direct `_data/seed` DATA imports. Static
+  //? CATALOGS (HOOK_CATALOG, COMMAND_CATALOG, INTEGRATION_TYPES, NETWORK_CATEGORIES,
+  //? CARRY_VARS, RBAC_CAPABILITIES, ROLE_DISPLAY, …) stay as `_data/seed` imports.
+  loading: boolean;                    // snapshot still loading
+  refetch: () => void;                 // re-pull the snapshot (after a control-API write)
+  tickets: Ticket[];                   // was TICKETS
+  members: Member[];                   // was Object.values(MEMBERS)
+  membersById: Record<string, Member>; // was MEMBERS
+  stages: PipelineStage[];             // was STAGES (board meta; full editor config still on seed)
+  sprints: Sprint[];                   // was SPRINTS
+  budget: WorkspaceBudget | null;      // was BUDGET
+  docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
+  skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
+  invites: InviteEntry[];              // was INVITES
+  activityEvents: ActivityEvent[];     // was EVENTS
 }
 
 export const isTicketView = (v: string): boolean => v.startsWith('DEV-');
