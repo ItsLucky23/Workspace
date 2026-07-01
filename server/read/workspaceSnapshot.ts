@@ -31,7 +31,7 @@ const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || 
 const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' ? s : 'ai-message');
 const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
-const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' ? s : 'container-failure');
+const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' ? s : 'container-failure');
 const asCommandMode = (s: string): CommandMode => (s === 'allow' || s === 'deny' ? s : 'ask');
 const asToolTier = (s: string): ToolTier => (s === 'rw' ? s : 'ro');
 const asStatusKind = (s: string): StageStatusCfg['kind'] => (s === 'base' ? s : 'custom');

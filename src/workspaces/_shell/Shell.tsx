@@ -36,6 +36,7 @@ function notificationIcon(type: NotificationItem['type']): IconName {
     case 'needs-input': { return 'circle-question'; }
     case 'merge': { return 'code-merge'; }
     case 'ai-suggestion': { return 'robot'; }
+    case 'assignment': { return 'user'; }
     case 'container-failure': { return 'triangle-exclamation'; }
     default: { return 'bell'; }
   }

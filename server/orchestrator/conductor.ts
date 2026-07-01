@@ -215,6 +215,25 @@ async function ticketIdsForKeys(workspaceId: string, keys: string[]): Promise<{ 
   return prisma.ticket.findMany({ where: { workspaceId, key: { in: keys } }, select: { id: true, key: true } });
 }
 
+//? Notification producer — the in-app bell/panel (04b §10) reads `Notification` rows;
+//? until now only the seed wrote them, so the bell was empty on real workspaces. This
+//? emits an 'assignment' notification to a ticket's new assignee. Best-effort (a failed
+//? notification must never fail the authoritative write). `deepLink` carries the DEV-key
+//? so the bell can navigate to the board ticket (D65). `Notification.ticketId` is the
+//? ObjectId, mirroring the seed shape.
+async function notifyAssignment(workspaceId: string, recipientUserId: string, ticketId: string, ticketKey: string): Promise<void> {
+  const [error] = await tryCatch(async () => {
+    await prisma.notification.create({
+      data: {
+        workspaceId, userId: recipientUserId, type: 'assignment',
+        title: 'Assigned to a ticket', body: `You were assigned ${ticketKey}.`,
+        ticketId, deepLink: { view: 'board', ticketId: ticketKey }, read: false,
+      },
+    });
+  });
+  if (error) console.error('[conductor] notifyAssignment failed:', error);
+}
+
 //? The single-writer serial chain — each action awaits the previous one, so there
 //? is never a concurrent authoritative write in this process.
 let chain: Promise<unknown> = Promise.resolve();
@@ -372,7 +391,11 @@ async function executeAction(action: ControlAction): Promise<void> {
       if (keys.length > 0) {
         const assigneeId = str(payload, 'assigneeId') ?? null;
         await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { assigneeId } });
-        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, assigneeId ? 'reassigned the ticket' : 'unassigned the ticket');
+        for (const r of await ticketIdsForKeys(action.workspaceId, keys)) {
+          await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, assigneeId ? 'reassigned the ticket' : 'unassigned the ticket');
+          //? Notify the new assignee — unless they assigned it to themselves.
+          if (assigneeId && assigneeId !== userId) await notifyAssignment(action.workspaceId, assigneeId, r.id, r.key);
+        }
       }
       return;
     }

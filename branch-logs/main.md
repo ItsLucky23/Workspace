@@ -395,3 +395,13 @@
 **Files:** `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_api/ticketEdit_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesContext.tsx,WorkspacesProvider.tsx}`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/ticketEdit.test.mts` (nieuw).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, ticketEdit.test 5/5 (edit titel+desc, clear desc naar '', isolatie).
+
+## 2026-07-02 01:50 — /loop Fase-3: Notification-producer (assignment-notificaties)
+
+**Gedaan:** de in-app bel/panel las alleen seed-`Notification`s → leeg voor echte workspaces. Nu emit de Conductor een 'assignment'-notificatie naar de nieuwe assignee bij ticket-toewijzing:
+- Nieuwe notif-`type` `'assignment'`: `NotificationItem.type`-union (types.ts) + `asNotifType`-narrower (workspaceSnapshot.ts) + `notificationIcon` → 'user' (Shell.tsx).
+- `notifyAssignment(workspaceId, recipient, ticketId, ticketKey)` in de Conductor (best-effort via tryCatch; `deepLink {view:'board', ticketId:key}` voor navigatie; `Notification.ticketId` = ObjectId, seed-shape). Ingehaakt op bulk-assign: notify de assignee **tenzij zelf-toewijzing** (assigneeId === actor → geen notificatie).
+
+**Files:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/Shell.tsx`, `server/orchestrator/conductor.ts`, `tests/integration/notificationProducer.test.mts` (nieuw).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, notificationProducer.test 4/4 (assign → notificatie voor assignee + body bevat key; zelf-assign → géén notificatie).

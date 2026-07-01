@@ -166,7 +166,7 @@ export interface Sprint {
 //? The read-projection of `Notification` (04b §10). `deepLink` = the D65 navigate payload.
 export interface NotificationItem {
   id: string;
-  type: 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure';
+  type: 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure' | 'assignment';
   title: string;
   body: string;
   ticketId?: string;
