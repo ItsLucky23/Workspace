@@ -14,7 +14,6 @@ export interface ApiParams {
 }
 
 export const main = ({ user }: ApiParams): MaybePromise<ApiResponse> => {
-  console.log(process.env)
   if (!user) return { status: 'success', result: null };
   //? Strip the server-only credential VALUES before returning the session to the
   //? browser, while keeping the `SessionLayout` TYPE so the generated route types

@@ -13,6 +13,7 @@ dist
 src/_sockets/apiTypes.generated.ts
 src/_sockets/apiInputSchemas.generated.ts
 src/docs/apiDocs.generated.json
+src/docs/apiTypeDiagnostics.generated.json
 server/prod/generatedApis*.ts
 
 # `luckystack check-env` / `check-i18n` scan reports.
