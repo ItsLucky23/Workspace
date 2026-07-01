@@ -644,6 +644,8 @@
       "send": "Versturen",
       "description": "Beschrijving",
       "noDescription": "Nog geen beschrijving.",
+      "editTitle": "Titel bewerken",
+      "addDescriptionPlaceholder": "Voeg een beschrijving toe…",
       "carryOverTitle": "Carry-over van vorige stage",
       "stageConfig": "Stage-config",
       "stageConfigMeta": "· AI-gedreven · RAG, graphify, symbol-index",

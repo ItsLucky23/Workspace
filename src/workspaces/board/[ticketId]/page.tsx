@@ -4,7 +4,7 @@
 //? Desktop-first; dummy data. Overlays (promote preview, teardown, reference
 //? picker) run through the shared `menuHandler.confirm`.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -90,6 +90,21 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const linked = ctx.ticketMembers(ticket);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState(ticket.title);
+  //? Focus the title input when edit mode opens (user-initiated, so a11y-safe —
+  //? avoids the `autoFocus` prop the jsx-a11y rule bans for on-load focus).
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (renaming) nameRef.current?.focus(); }, [renaming]);
+
+  const startRename = () => { setNameInput(ticket.title); setRenaming(true); };
+  const commitRename = () => {
+    if (!renaming) return;
+    setRenaming(false);
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== ticket.title) ctx.editTicket(ticket.id, { title: trimmed });
+  };
+
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-5 pb-3">
       <div className="flex items-start justify-between gap-3">
@@ -99,7 +114,20 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
             {ticket.issue && <span>· {ticket.issue}</span>}
             {ticket.status !== 'idle' && <StatusPill status={ticket.status} />}
           </div>
-          <h1 className="text-xl md:text-2xl font-semibold text-title mt-1.5 leading-snug">{ticket.title}</h1>
+          {renaming ? (
+            <input
+              ref={nameRef}
+              value={nameInput} onChange={(e) => { setNameInput(e.target.value); }}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false); }}
+              className="w-full text-xl md:text-2xl font-semibold text-title bg-transparent border-b border-primary mt-1.5 leading-snug focus:outline-none"
+            />
+          ) : (
+            <div className="flex items-center gap-2 mt-1.5">
+              <h1 className="text-xl md:text-2xl font-semibold text-title leading-snug">{ticket.title}</h1>
+              <button type="button" onClick={startRename} title={translate({ key: 'workspaces.ticket.editTitle' })} className="text-xs text-muted hover:text-title cursor-pointer shrink-0">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
+            </div>
+          )}
         </div>
         {linked.length > 0 && <div className="shrink-0 pt-1" title={translate({ key: 'workspaces.ticket.creatorAssignee' })}><AvatarStack users={linked} size={26} /></div>}
       </div>
@@ -166,10 +194,20 @@ function NeedsInputBanner({ question }: { question: string }) {
 
 function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
   const translate = useTranslator();
+  const ctx = useWorkspaces();
+  const [desc, setDesc] = useState(ticket.description ?? '');
+  useEffect(() => { setDesc(ticket.description ?? ''); }, [ticket.description]);
+  const commitDesc = () => { if (desc !== (ticket.description ?? '')) ctx.editTicket(ticket.id, { description: desc }); };
   return (
     <div className="flex flex-col gap-4">
       <Card title={translate({ key: 'workspaces.ticket.description' })}>
-        <p className="text-sm text-common leading-relaxed">{ticket.description ?? translate({ key: 'workspaces.ticket.noDescription' })}</p>
+        <textarea
+          value={desc} onChange={(e) => { setDesc(e.target.value); }}
+          onBlur={commitDesc}
+          placeholder={translate({ key: 'workspaces.ticket.addDescriptionPlaceholder' })}
+          rows={4}
+          className="w-full resize-y rounded-lg border border-container1-border bg-container2/50 px-3 py-2 text-sm text-common leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
+        />
       </Card>
       {ticket.carryOver && (
         <Card title={translate({ key: 'workspaces.ticket.carryOverTitle' })}>

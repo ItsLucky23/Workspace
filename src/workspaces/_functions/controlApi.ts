@@ -22,6 +22,7 @@
 export type ControlOp =
   // tickets / board (12/13)
   | 'quick-add'
+  | 'ticket-edit'
   | 'archive'
   | 'bulk-move' | 'bulk-status' | 'bulk-assign' | 'bulk-sprint' | 'bulk-archive'
   | 'sprint-create' | 'sprint-edit'

@@ -644,6 +644,8 @@
       "send": "Send",
       "description": "Description",
       "noDescription": "No description yet.",
+      "editTitle": "Edit title",
+      "addDescriptionPlaceholder": "Add a description…",
       "carryOverTitle": "Carry-over from previous stage",
       "stageConfig": "Stage config",
       "stageConfigMeta": "· AI-driven · RAG, graphify, symbol-index",

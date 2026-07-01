@@ -381,3 +381,17 @@
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 7/7 files (activityFeed 5/5: quick-add + bulk-move appenden een event, seq 1→2, actor = caller).
 
 **Optionele polish (niet gedaan):** dedicated i18n-keys `workspaces.backlog.unassign`/`noSprint` (agent hergebruikte `board.unassigned`/`backlog.title`). Nog open: Pipeline-config-persist verifiëren (audit-claim mogelijk ook stale — saveStageConfig-route + stageConfigs-snapshot bestaan), lesson-0002 (default-pipeline naar server/), realtime-`_sync` (browser-gated).
+
+## 2026-07-02 01:45 — /loop Fase-3: ticket-edit (titel/beschrijving/labels) — nieuwe feature
+
+**Gedaan:** nieuwe `ticket-edit`-op — de ticket-detail was read-only. Volgt het Fase-0 patroon end-to-end:
+- `ControlOp` += `'ticket-edit'` (controlApi.ts) + `OP_CAPABILITY` (workTickets, rbac.ts).
+- Conductor-case `ticket-edit`: update titel/beschrijving/labels by key (`'description' in payload` staat clearen naar '' toe) + `recordTicketEvent` ('edited').
+- `src/workspaces/_api/ticketEdit_v1.ts` (getypte route; payload imperatief opgebouwd zodat `description: ''` kan clearen).
+- ctx-helper `editTicket(id, { title?, description?, labels? })` (interface + provider via `afterWrite`).
+- **UI (agent):** ticket-detail titel klik-om-te-bewerken (Enter/blur commit, Esc annuleert, ref-focus i.p.v. autoFocus voor a11y) + beschrijving inline `<textarea>` (blur commit, leeg = clear, placeholder). Stage/assignee-wijziging hergebruikt bestaande bulkMove/bulkAssign op één ticket (geen nieuwe op).
+- 2 nieuwe i18n-keys (`workspaces.ticket.editTitle`, `addDescriptionPlaceholder`) in en/nl/de/fr.
+
+**Files:** `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_api/ticketEdit_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesContext.tsx,WorkspacesProvider.tsx}`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/ticketEdit.test.mts` (nieuw).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, ticketEdit.test 5/5 (edit titel+desc, clear desc naar '', isolatie).

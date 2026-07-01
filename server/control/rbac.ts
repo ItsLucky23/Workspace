@@ -39,6 +39,7 @@ export const CAP = {
 //? Which capability index a control-API op requires (`null` = login-only own-resource).
 export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'quick-add': CAP.workTickets,
+  'ticket-edit': CAP.workTickets,
   archive: CAP.workTickets,
   'bulk-move': CAP.workTickets,
   'bulk-status': CAP.workTickets,

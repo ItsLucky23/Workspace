@@ -322,6 +322,19 @@ async function executeAction(action: ControlAction): Promise<void> {
       await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket');
       return;
     }
+    case 'ticket-edit': {
+      const key = str(target, 'ticketId');
+      if (!key) return;
+      const data: { title?: string; description?: string | null; labels?: string[] } = {};
+      const title = str(payload, 'title'); if (title !== undefined) data.title = title;
+      if ('description' in payload) data.description = str(payload, 'description') ?? null;
+      if (Array.isArray(payload.labels)) data.labels = strArr(payload, 'labels');
+      if (Object.keys(data).length === 0) return;
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
+      const [edited] = await ticketIdsForKeys(action.workspaceId, [key]);
+      if (edited) await recordTicketEvent(action.workspaceId, edited.id, 'comment', userId, 'edited the ticket');
+      return;
+    }
     case 'archive': {
       const key = str(target, 'ticketId');
       if (!key) return;

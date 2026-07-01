@@ -644,6 +644,8 @@
       "send": "Envoyer",
       "description": "Description",
       "noDescription": "Pas encore de description.",
+      "editTitle": "Modifier le titre",
+      "addDescriptionPlaceholder": "Ajouter une description…",
       "carryOverTitle": "Transfert depuis l’étape précédente",
       "stageConfig": "Config de l’étape",
       "stageConfigMeta": "· piloté par l’IA · RAG, graphify, index de symboles",

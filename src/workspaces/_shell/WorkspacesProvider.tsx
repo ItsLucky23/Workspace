@@ -283,6 +283,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
       quickAdd: quickAddApi,
+      editTicket: (id, patch) => { afterWrite(apiRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId: id, ...patch, clientRequestId: nextReqId() } })); },
       //? Board/ticket writes — each on its OWN typed `_api` route (Fase-0 split).
       archiveTicket: (id) => { void (async () => { await apiRequest({ name: 'workspaces/archive', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId: id, clientRequestId: nextReqId() } }); refetch(); })(); },
       bulkMove: (ids, stageId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, stageId, clientRequestId: nextReqId() } }); refetch(); })(); },
