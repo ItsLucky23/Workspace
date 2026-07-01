@@ -28,6 +28,9 @@ const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-corr
 const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const areaCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title font-mono leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
+//? Toggle a key's presence in a string array (used by the context + visibility tabs).
+const toggleKey = (arr: string[], key: string): string[] => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
+
 //? The carry-over schema each stage must emit — a code sample, not translatable UI copy.
 const EMIT_SCHEMA_SAMPLE = `{
   "summary": "string",
@@ -92,7 +95,6 @@ function GeneralTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Context & Skills */
 function ContextTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const toggleKey = (arr: string[], key: string) => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
@@ -293,7 +295,6 @@ function IntegrationsTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Visibility */
 function VisibilityTab({ s, update, stages }: TabProps & { stages: PipelineStageCfg[] }) {
   const translate = useTranslator();
-  const toggleKey = (arr: string[], key: string) => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
   return (
     <div className="flex flex-col gap-3 max-w-2xl">
       <FieldLabel title={translate({ key: 'workspaces.pipeline.visibleToStages' })} hint={translate({ key: 'workspaces.pipeline.visibleToStagesHint' })} />

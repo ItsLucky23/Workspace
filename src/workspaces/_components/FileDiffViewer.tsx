@@ -11,6 +11,8 @@ import DiffView from './DiffView';
 import Icon from './Icon';
 import type { TicketFile } from '../_data/types';
 
+const baseName = (path: string) => path.split('/').pop() ?? path;
+
 export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
   const translate = useTranslator();
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(files.map((f) => [f.path, true])));
@@ -20,8 +22,6 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
     setOpen((prev) => ({ ...prev, [path]: true }));
     sectionRefs.current[path]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-
-  const baseName = (path: string) => path.split('/').pop() ?? path;
 
   return (
     <div className="flex gap-4 items-start">

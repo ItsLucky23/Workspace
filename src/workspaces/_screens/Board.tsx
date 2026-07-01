@@ -31,7 +31,7 @@ type Columns = Record<string, Ticket[]>;
 //? the seed stage, so a "move DEV-#### to …" lands the card in a new column and
 //? the shared layoutId animates it there.
 function buildColumns(tickets: Ticket[], overrides: Record<string, string>): Columns {
-  const cols = Object.fromEntries(STAGES.map((s) => [s.id, [] as Ticket[]])) as Columns;
+  const cols: Columns = Object.fromEntries(STAGES.map((s) => [s.id, [] as Ticket[]]));
   for (const t of tickets) {
     const stage = overrides[t.id] ?? t.stageId;
     cols[stage].push(t);

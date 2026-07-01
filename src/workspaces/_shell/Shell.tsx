@@ -20,6 +20,19 @@ import type { AiSuggestion, ChatMessage } from '../_data/types';
 // Status lookup so the tab bar can colour its dots without re-deriving ticket logic.
 const TICKET_STATUS_LOOKUP: Record<string, string> = Object.fromEntries(TICKETS.map((t) => [t.id, t.status]));
 
+//? The CSS color token for a ticket's live status dot.
+function statusColor(id: string): string {
+  let tint: string;
+  switch (TICKET_STATUS_LOOKUP[id]) {
+    case 'busy': { tint = 'primary'; break; }
+    case 'done': { tint = 'correct'; break; }
+    case 'needs-input':
+    case 'stuck': { tint = 'warning'; break; }
+    default: { tint = 'muted'; }
+  }
+  return `var(--color-${tint})`;
+}
+
 //? No-bounce spring for the AI-panel width animation — bounce would overshoot
 //? the panel width and wobble the board edge.
 const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
@@ -54,7 +67,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
     const active = isAi ? aiOpen : view === it.id;
     return (
       <button
-        key={it.id} type="button" onClick={() => { isAi ? toggleAi() : navigate(it.id); }}
+        key={it.id} type="button" onClick={() => { if (isAi) { toggleAi(); } else { navigate(it.id); } }}
         title={expanded ? undefined : it.label}
         className={`group relative flex items-center gap-3 rounded-xl h-10 px-3 transition-colors cursor-pointer ${active ? 'bg-container2 text-title' : 'text-muted hover:bg-container2 hover:text-common'}`}
       >
@@ -171,10 +184,6 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
 export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
   const { view, navigate, openTabs, closeTab, suggestions } = useWorkspaces();
   const translate = useTranslator();
-  const statusColor = (id: string) => {
-    const t = TICKET_STATUS_LOOKUP[id];
-    return t ? `var(--color-${t === 'busy' ? 'primary' : t === 'done' ? 'correct' : t === 'needs-input' || t === 'stuck' ? 'warning' : 'muted'})` : 'var(--color-muted)';
-  };
 
   return (
     <div className="hidden md:flex items-center gap-2 h-11 px-3 border-b border-divider bg-background">
@@ -380,7 +389,9 @@ function SuggestionCard({ s, onOpenTicket, onDismiss }: { s: AiSuggestion; onOpe
 /* ----------------------------------------------------------------- mobile bottom bar */
 export function MobileBottomBar({ onFab }: { onFab: () => void }) {
   const { view, navigate, aiOpen, toggleAi } = useWorkspaces();
-  const active = aiOpen ? 'ai' : ['board', 'terminals', 'activity'].includes(view) ? view : isTicketView(view) ? 'board' : view;
+  let active = view;
+  if (aiOpen) active = 'ai';
+  else if (isTicketView(view)) active = 'board';
   const items: NavDef[] = [
     { id: 'board', icon: 'table-columns', label: 'Board' },
     { id: 'terminals', icon: 'terminal', label: 'Terminals' },
@@ -396,7 +407,7 @@ export function MobileBottomBar({ onFab }: { onFab: () => void }) {
               <Icon name="plus" className="text-lg" />
             </button>
           )}
-          <button type="button" onClick={() => { it.id === 'ai' ? toggleAi() : navigate(it.id); }} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs cursor-pointer ${active === it.id ? 'text-primary' : 'text-muted'}`}>
+          <button type="button" onClick={() => { if (it.id === 'ai') { toggleAi(); } else { navigate(it.id); } }} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs cursor-pointer ${active === it.id ? 'text-primary' : 'text-muted'}`}>
             <Icon name={it.icon} className="text-lg" /> {it.label}
           </button>
         </div>
