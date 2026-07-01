@@ -8,11 +8,16 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { OP_CAPABILITY, type ControlOp } from '../_functions/controlApi';
+import type { ControlOp } from '../_functions/controlApi';
+import { OP_CAPABILITY } from '../../../server/control/rbac';
 import { bootstrapWorkspace, enqueueControlAction } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
+
+//? Skip the strict devkit `validateInputByType` (depth-64 framework issue — see
+//? snapshot_v1). The handler validates op + RBAC; the zod input schema still guards.
+export const validation = 'relaxed' as const;
 
 export const auth: AuthProps = { login: true, additional: [] };
 

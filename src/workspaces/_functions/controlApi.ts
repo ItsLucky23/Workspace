@@ -94,68 +94,10 @@ export const RBAC_CAPABILITIES = [
 ] as const;
 
 export type Capability = (typeof RBAC_CAPABILITIES)[number];
-export const CAP = {
-  workTickets: 0,
-  editPipeline: 1,
-  workspaceSettings: 2,
-  manageMembers: 3,
-  manageSprints: 4,
-  promoteAdmin: 5,
-  demoteAdmin: 6,
-  ownerActions: 7,
-} as const;
 
-//? Which capability index a control-API op requires. The `preApiExecute` gate
-//? checks the caller's WorkspaceRole.perms[requiredCap] === true (Owner is always
-//? all-true). `null` = login-only (own-resource ops like mark-read / accept-invite).
-export const OP_CAPABILITY: Record<ControlOp, number | null> = {
-  // tickets / board
-  'quick-add': CAP.workTickets,
-  archive: CAP.workTickets,
-  'bulk-move': CAP.workTickets,
-  'bulk-status': CAP.workTickets,
-  'bulk-assign': CAP.workTickets,
-  'bulk-sprint': CAP.manageSprints,
-  'bulk-archive': CAP.workTickets,
-  'sprint-create': CAP.manageSprints,
-  'sprint-edit': CAP.manageSprints,
-  // members / RBAC / lifecycle
-  'create-workspace': null, // any logged-in user may create a workspace (they become Owner)
-  'rename-workspace': CAP.workspaceSettings,
-  'delete-workspace': CAP.ownerActions,
-  'transfer-ownership': CAP.ownerActions,
-  'change-role': CAP.manageMembers,
-  'remove-member': CAP.manageMembers,
-  invite: CAP.manageMembers,
-  'revoke-invite': CAP.manageMembers,
-  'accept-invite': null, // token-scoped, login-only
-  'role-create': CAP.editPipeline,
-  'role-update': CAP.editPipeline,
-  // settings
-  'save-env': CAP.workspaceSettings,
-  'remove-env': CAP.workspaceSettings,
-  'save-integration': CAP.workspaceSettings,
-  'remove-integration': CAP.workspaceSettings,
-  'gitlab-settings': CAP.workspaceSettings,
-  'gitlab-verify': CAP.workspaceSettings,
-  'gitlab-resync': CAP.workspaceSettings,
-  'raise-cap': CAP.workspaceSettings,
-  'edit-budget': CAP.workspaceSettings,
-  'resume-spend': CAP.workspaceSettings,
-  'skill-toggle': CAP.editPipeline,
-  'save-stage-config': CAP.editPipeline,
-  // notifications
-  'mark-read': null, // own notifications
-  // AI-session controls (Fase 2)
-  pause: CAP.workTickets,
-  resume: CAP.workTickets,
-  kill: CAP.demoteAdmin, // Admin+ (D69)
-  'pause-all': CAP.demoteAdmin,
-  'resume-all': CAP.demoteAdmin,
-  'preview-up': CAP.workTickets,
-  'preview-down': CAP.workTickets,
-  'accept-suggestion': null, // per the suggestion's own required cap, checked at accept time
-};
+//? The op→capability map (`OP_CAPABILITY`) + `CAP` indices are the RUNTIME RBAC
+//? source and live in `server/control/rbac.ts` (the generated server bundle stubs
+//? non-`_api` `src/` runtime imports to undefined; type imports here erase fine).
 
 //? Destructive/irreversible ops that require an explicit user confirm BEFORE the
 //? control-API request is even sent (V1_SCOPE §3.3 confirm-on-important).

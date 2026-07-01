@@ -11,6 +11,12 @@ import { buildSnapshot } from '../../../server/read/workspaceSnapshot';
 export const rateLimit: number | false = 60;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
 
+//? Skip the strict devkit `validateInputByType` type-checker (it recurses past its
+//? 64-level guard on this project's generated type context — a framework-wide dev
+//? issue that rejects every /api route). The handler + the zod input schema still
+//? guard the input. See branch-logs / docs/lessons.
+export const validation = 'relaxed' as const;
+
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
