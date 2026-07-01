@@ -54,3 +54,21 @@
 - **Bewust weggelaten** (komt met hun lane): `previewConcurrencyCap` + alle `04b §18`-deferred modellen (MergeRequest/CI-Pipeline/ForgeConnection/AuditEntry/PreviewDeployment) + `forgeMode`/`autonomyLevel`.
 - `TicketReference` = afgeleide minimale shape (docs noemen 't in de cascade-lijst maar geven geen body) — geflagd in de schema-header + ADR.
 - **Nog niet gedaan (developer-actie / Lane B):** `prisma db push` naar de echte Mongo (via SSH-tunnel) — pas nodig bij het wiren van de sync-backend; het schema is offline bewezen. Ook nog open: de `types.ts §15`-backfill (StageKind-reconciliatie in `Board.tsx`/`Pipeline.tsx`) + de volledige i18n-migratie.
+
+## 2026-07-01 18:00 — StageKind-reconciliatie + volledige i18n-migratie + niet-i18n lint-cleanup
+
+**User prompt:** (onderweg, telefoon) "kan je verder met volgende fases of heb je human input nodig?" → autonoom doorwerken op de besliste step-1 prerequisites terwijl user sport.
+
+**What I did (3 commits, elk een rollback-punt):**
+1. **StageKind-reconciliatie** (`c60a0de`) — `04b §12`: de fixed 7-literal `StageId` → semantische `StageKind` (`refine|plan|code|test|review|final`); stage-`id` + `Ticket.stageId` verbreed naar vrije string; `kind` toegevoegd aan `PipelineStage`/`PipelineStageCfg`; board-kolommen keyen op vrije stage-id. Consumers: `types.ts`, `seed.ts` (7 stages getagd), `Board.tsx`, `Pipeline.tsx`, `WorkspacesContext.tsx`, `WorkspacesProvider.tsx`. Type-clean, build groen.
+2. **Volledige i18n-migratie** (`e92bf4b`) — alle **209 hardcoded JSX-strings → `useTranslator`** over 17 screen/shell/component-files, via een **18-agent workflow** (merge-patroon: elke agent 1 file + geeft z'n key-map terug; ik merge de 4 locale-JSONs serieel → geen write-conflicts). **455 keys** in `en/nl/de/fr` (nl/de/fr = Engelse mirrors, wachten op echte vertaalslag). `react/jsx-no-literals`: **209 → 0**, GEEN suppression. Typografische glyphs (`·`/`−`) toegevoegd aan `allowedStrings` (naast de al toegestane `•`/`—`); 2 code-samples naar module-const.
+3. **ES2023 + mechanische lint-cleanup** (`ad98bb7` + `8284645`) — tsconfig `target`/`lib` ES2022→ES2023 (typeert `toSorted` correct → ruimt **36 `unsafe-*` errors** op in Usage/Pipeline). Plus scoping-hoists, nested-ternary→switch, ternary-as-statement→if/else, overbodige type-assertion weg, unieke AnimatePresence-key. **Lint-errors: 68 → 23; totaal 297 → 44 problemen; build groen.**
+
+**Bewuste leaves (NIET blind gefixt — geflagd):**
+- **15 `no-unnecessary-condition`** = correcte defensieve guards (`MEMBERS[key]?.x ?? fallback`, `arr[0] ?? fallback`) die de linter mist-flagt zonder `noUncheckedIndexedAccess`. Guards slopen = echte bugs. Vastgelegd als **lesson `docs/lessons/0001`**. Juiste fix = `noUncheckedIndexedAccess` project-breed (gemeten: 56 tsc-sites incl. framework-overlay) → user-gated follow-up.
+- **8 `no-empty-function`/scoping** = bewuste Fase-1 stub-handlers (unwired knoppen; bedraad in Fase 1).
+- Warnings (21): `no-array-index-key` op statische lijsten, `only-export-components` (architecturaal — primitives/motion co-exporteren helpers), 2 non-null-asserts.
+
+**Files touched:** `src/workspaces/**` (types/seed/screens/shell/components), `src/_locales/{en,nl,de,fr}.json`, `eslint.official.config.js`, `tsconfig.json`, `docs/lessons/0001-*.md` (+ index).
+
+**Developer-actie / open:** echte nl/de/fr-vertaling (nu Engelse mirrors); `noUncheckedIndexedAccess`-strictness-pass (aanbevolen); Fase-1 wiring lost de stub-handlers op.
