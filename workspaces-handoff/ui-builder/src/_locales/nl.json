@@ -1,0 +1,51 @@
+{
+  "test": "Hallo {{name}}",
+  "common": {
+    "whiteSpace": " ",
+    "error": "FOUT",
+    "404": "Er is iets misgegaan, probeer het later opnieuw."
+  },
+  "middleware": {
+    "notAdmin": "Je bent geen admin."
+  },
+  "login": {
+    "empty": "Geen e-mail of wachtwoord opgegeven.",
+    "emailCharacterLimit": "E-mail mag niet langer zijn dan 191 tekens.",
+    "passwordCharacterMinimum": "Wachtwoord moet minimaal 8 tekens lang zijn.",
+    "passwordCharacterLimit": "Wachtwoord mag niet langer zijn dan 191 tekens.",
+    "nameCharacterLimit": "Naam mag niet langer zijn dan 191 tekens.",
+    "invalidEmailFormat": "Ongeldig e-mailformaat.",
+    "passwordNotMatch": "Wachtwoorden komen niet overeen.",
+    "emailExists": "E-mail bestaat al.",
+    "userCreated": "Gebruiker aangemaakt.",
+    "createUserFailed": "Gebruiker aanmaken mislukt.",
+    "userNotFound": "Gebruiker niet gevonden.",
+    "wrongPassword": "Wachtwoord komt niet overeen.",
+    "loggedIn": "Gebruiker ingelogd.",
+    "providerNotFound": "Provider niet gevonden.",
+    "noReason": "Geen reden opgegeven."
+  },
+  "settings": {
+    "changeAvatar": "Verander avatar",
+    "changeAvatarDescription": "JPG, GIF of PNG. Max 4MB.",
+    "language": {
+      "title": "Taal",
+      "nl": "NL",
+      "en": "EN",
+      "de": "DE",
+      "fr": "FR"
+    },
+    "theme": {
+      "title": "Thema",
+      "light": "Licht",
+      "dark": "Donker"
+    },
+    "saveChanges": "Wijzigingen opslaan",
+    "updatedUser": "gebruiker bijgewerkt",
+    "failedUpdateUser": "Bijwerken gebruiker mislukt",
+    "noChangesMade": "Geen wijzigingen gemaakt",
+    "sizeToLarge": "Maximale uploadgrootte is 4~5 MB, kies een kleinere afbeelding!!",
+    "loadingImg": "Foto word geladen",
+    "imgLoaded": "Foto is geladen"
+  }
+}

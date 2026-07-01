@@ -1,0 +1,30 @@
+# Exclude dependencies and builds
+node_modules/
+dist/
+build/
+.next/
+public/
+
+# Exclude large data/config files
+package-lock.json
+yarn.lock
+container-safelist.txt
+*.svg
+*.png
+
+# Exclude logs and temp files
+*.log
+.env*
+
+src/sandbox/_functions/codeEditor/themes/TypeScriptReact.tmLanguage.json
+src/sandbox/types/react.d.ts
+src/types/react/index.d.ts
+public/themes/trae_dark.json
+src/sandbox/_functions/codeEditor/themes/trae_dark_vs.json
+src/sandbox/_functions/codeEditor/tailwindcss/classes.js
+src/sandbox/types/react-dom.d.ts
+src/types/react-dom.d.ts
+src/sandbox/types/react-global.d.ts
+src/types/react/global.d.ts
+envTemplate.txt
+configTemplate.txt

@@ -1,0 +1,52 @@
+{
+  "test": "Hallo {{name}}",
+  "common": {
+    "whiteSpace": " ",
+    "error": "ERROR",
+    "404": "Something went wrong, try again later."
+  },
+  "middleware": {
+    "notAdmin": "You are not an admin."
+  },
+  "login": {
+    "empty": "No email or password provided.",
+    "emailCharacterLimit": "Email can't be longer than 191 characters.",
+    "passwordCharacterMinimum": "Password must be at least 8 characters long.",
+    "passwordCharacterLimit": "Password can't be longer than 191 characters.",
+    "nameCharacterLimit": "Name can't be longer than 191 characters.",
+    "invalidEmailFormat": "Invalid email format.",
+    "passwordNotMatch": "Passwords do not match.",
+    "emailExists": "Email already exists.",
+    "userCreated": "User created.",
+    "createUserFailed": "Failed to create new user.",
+    "userNotFound": "User not found.",
+    "wrongPassword": "Password does not match.",
+    "loggedIn": "User logged in.",
+    "providerNotFound": "Provider not found.",
+    "noReason": "No reason provided."
+  },
+  "settings": {
+    "changeAvatar": "Change avatar",
+    "deleteAvatar": "Delete avatar",
+    "changeAvatarDescription": "JPG, GIF or PNG. 4MB max.",
+    "language": {
+      "title": "Language",
+      "nl": "NL",
+      "en": "EN",
+      "de": "DE",
+      "fr": "FR"
+    },
+    "theme": {
+      "title": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "saveChanges": "Save changes",
+    "updatedUser": "updated the user",
+    "failedUpdateUser": "Failed to update the user",
+    "noChangesMade": "No changes made",
+    "sizeToLarge": "Max upload size is 4~5 MB, chose a smaller img!!",
+    "loadingImg": "Photo is loading",
+    "imgLoaded": "Photo has loaded"
+  }
+}

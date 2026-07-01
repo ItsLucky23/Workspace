@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id        String   @id @map("_id") @default(uuid())
+  email     String
+  name      String
+  password  String?
+  admin     Boolean @default(false)
+  avatar    String @default("")
+  language  String @default("en")
+  theme     THEME @default(dark)
+  provider  PROVIDERS
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum THEME {
+  dark
+  light
+}
+
+enum PROVIDERS {
+  credentials
+  google
+  github
+  x
+  facebook
+  linkedIn
+  apple
+  discord
+  instagram
+}
+
+// Command:               Purpose
+/*
+npx prisma format:	      Auto-format your schema.prisma file (fixes spacing, indentation, style)
+npx prisma validate:	    Validate that your schema.prisma is correct (syntax & relational rules)
+npx prisma generate:	    Generate the Prisma Client (after changing schema or installing Prisma)
+npx prisma db pull:	      Pull the current database structure into your Prisma schema (reverse-engineer an existing database)
+npx prisma db push:	      Push your Prisma schema to the database — creates tables based on schema (development only, no migrations)
+npx prisma migrate dev:	  Create a new migration based on schema changes and apply it to the database
+npx prisma migrate reset:	Reset the database: drops all tables, re-applies migrations, and runs seed scripts if any
+npx prisma studio:      	Open Prisma Studio (a GUI to view and edit database records easily)
+*/

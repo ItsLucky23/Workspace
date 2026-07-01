@@ -1,0 +1,52 @@
+{
+  "test": "Bonjour {{name}}",
+  "common": {
+    "whiteSpace": " ",
+    "error": "ERREUR",
+    "404": "Un problème est survenu, réessayez plus tard."
+  },
+  "middleware": {
+    "notAdmin": "Vous n'êtes pas administrateur."
+  },
+  "login": {
+    "empty": "Aucun e-mail ou mot de passe fourni.",
+    "emailCharacterLimit": "L'e-mail ne peut pas dépasser 191 caractères.",
+    "passwordCharacterMinimum": "Le mot de passe doit comporter au moins 8 caractères.",
+    "passwordCharacterLimit": "Le mot de passe ne peut pas dépasser 191 caractères.",
+    "nameCharacterLimit": "Le nom ne peut pas dépasser 191 caractères.",
+    "invalidEmailFormat": "Format d'e-mail invalide.",
+    "passwordNotMatch": "Les mots de passe ne correspondent pas.",
+    "emailExists": "L'e-mail existe déjà.",
+    "userCreated": "Utilisateur créé.",
+    "createUserFailed": "Échec de la création de l'utilisateur.",
+    "userNotFound": "Utilisateur non trouvé.",
+    "wrongPassword": "Le mot de passe est incorrect.",
+    "loggedIn": "Utilisateur connecté.",
+    "providerNotFound": "Fournisseur introuvable.",
+    "noReason": "Aucune raison fournie."
+  },
+  
+  "settings": {
+    "changeAvatar": "Changer d'avatar",
+    "changeAvatarDescription": "JPG, GIF ou PNG. Max 4 Mo.",
+    "language": {
+      "title": "Langue",
+      "nl": "NL",
+      "en": "EN",
+      "de": "DE",
+      "fr": "FR"
+    },
+    "theme": {
+      "title": "Thème",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
+    "saveChanges": "Enregistrer les modifications",
+    "updatedUser": "utilisateur mis à jour",
+    "failedUpdateUser": "Échec de la mise à jour de l'utilisateur",
+    "noChangesMade": "Aucun changement effectué",
+    "sizeToLarge": "La taille maximale est de 4~5 Mo, choisissez une image plus petite !!",
+    "loadingImg": "La photo est en cours de chargement",
+    "imgLoaded": "La photo a été chargée"
+  }
+}

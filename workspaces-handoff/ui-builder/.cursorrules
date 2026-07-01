@@ -1,0 +1,21 @@
+
+# Cursor AI Project Rules
+
+You have access to valid project context in the following files. You should prioritize reading these files to understand the project structure, configuration, and current state before proposing changes or answering complex questions:
+
+1. **`repomix-output.xml`**: Contains a comprehensive dump or summary of the codebase. Check this for overall code patterns and existing implementation.
+2. **`PROJECT_CONTEXT.md`**: Contains high-level architecture documentation, terminology, and design decisions. useful for "big picture" understanding.
+3. **`config.ts`**: Contains the main application configuration constants and types.
+4. **`.env`**: Contains environment variables and active configuration settings.
+
+## Behavior
+- When starting a significant task, always check `PROJECT_CONTEXT.md` first.
+- If you need to understand the broader codebase without searching every file, `repomix-output.xml` is a good source.
+- Verify configuration values in `config.ts` and `.env` when debugging or adding features.
+
+## Context Update Rule (IMPORTANT)
+**After every code change, you MUST:**
+1. **Update `PROJECT_CONTEXT.md`** - Document any new files, functions, patterns, or behavior changes you've made. Keep the documentation in sync with the codebase.
+2. **Regenerate `repomix-output.xml`** - Run `npx repomix` to regenerate the codebase summary with your changes.
+
+This ensures future AI sessions have accurate context about the current state of the codebase.

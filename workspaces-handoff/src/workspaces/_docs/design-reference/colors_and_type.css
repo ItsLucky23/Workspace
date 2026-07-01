@@ -1,0 +1,250 @@
+/* ============================================================================
+   Workspaces — Design Foundations: Colors & Type
+   ----------------------------------------------------------------------------
+   Token NAMES mirror the live LuckyStack theme system exactly (container1,
+   title, common, primary, correct, warning, wrong, …) so designs built here
+   map 1:1 onto real Tailwind utilities (bg-container1, text-title, …).
+
+   Shape/spacing follows the "friendly & airy" redesign direction from the
+   brief: roomy whitespace, soft radii (cards 2xl, inputs/buttons xl, pills
+   full), hairline borders, light diffuse elevation.
+
+   Light-first. Dark mode activates via `.dark` on <html> (mirrors the live
+   useTheme() behaviour). Terminals are ALWAYS a dark surface, even in light.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ---------------------------------------------------------------------------
+   1. COLOR TOKENS
+   --------------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --background:            #F5F5F5;
+  --container1:            #FFFFFF;
+  --container1-hover:      #F3F4F6;
+  --container1-border:     #E6E8EC;
+  --container2:            #F3F4F6;
+  --container2-hover:      #E8EAEE;
+  --container2-border:     #DFE2E8;
+
+  /* Text */
+  --title:                 #1E1F21;   /* headings / strong text */
+  --common:                #4B5563;    /* body */
+  --muted:                 #8A93A1;    /* secondary / meta */
+  --disabled:              #C2C8D1;    /* disabled text */
+
+  /* Accent — primary (blue) */
+  --primary:               #3B82F6;
+  --primary-hover:         #2F6FE0;
+  --primary-border:        #2563EB;
+  --title-primary:         #FFFFFF;    /* text on primary */
+  --common-primary:        rgba(255,255,255,0.82);
+
+  /* Accent — secondary (teal; used sparingly for a 2nd voice) */
+  --secondary:             #0EA5A4;
+  --secondary-hover:       #0C8E8D;
+  --secondary-border:      #0C8E8D;
+  --title-secondary:       #FFFFFF;
+  --common-secondary:      rgba(255,255,255,0.82);
+
+  /* Semantic state */
+  --correct:               #16A34A;   /* success / done */
+  --correct-hover:         #15803D;
+  --warning:               #E0920A;   /* needs-input  (amber, AA on white) */
+  --warning-hover:         #C57F06;
+  --wrong:                 #E5484D;   /* error / destructive */
+  --wrong-hover:           #D03A3F;
+
+  /* Status semantics (board / pills) — alias the above */
+  --status-needs-input:    var(--warning);
+  --status-busy:           var(--primary);
+  --status-done:           var(--correct);
+  --status-idle:           var(--muted);
+
+  /* Utility */
+  --overlay:               rgba(0,0,0,0.40);
+  --focus-ring:            rgba(59,130,246,0.45);
+  --divider:               #EEF0F3;     /* lighter than border */
+
+  /* Terminal surface — fixed dark, both themes */
+  --term-bg:               #0C1018;
+  --term-surface:          #11161F;
+  --term-border:           #1E2733;
+  --term-text:             #C9D4E3;
+  --term-muted:            #6B7688;
+  --term-green:            #4ADE80;
+  --term-blue:             #5CA8FF;
+  --term-amber:            #F4B850;
+  --term-red:              #FF7B72;
+  --term-cyan:             #56D4DD;
+
+  /* Shape / elevation (friendly-airy) */
+  --radius-card:           1rem;     /* rounded-2xl  */
+  --radius-control:        0.75rem;  /* rounded-xl   */
+  --radius-pill:           9999px;
+  --radius-sm:             0.5rem;   /* rounded-lg-ish */
+
+  --shadow-card:           0 1px 2px rgba(16,24,40,0.04);
+  --shadow-card-hover:     0 6px 20px rgba(16,24,40,0.08);
+  --shadow-pop:            0 12px 32px rgba(16,24,40,0.14);
+
+  /* Spacing rhythm (reference scale — use directly or via Tailwind) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+}
+
+.dark {
+  --background:            #0B0F19;
+  --container1:            #111827;
+  --container1-hover:      #18212F;
+  --container1-border:     #1F2937;
+  --container2:            #1E293B;
+  --container2-hover:      #273449;
+  --container2-border:     #334155;
+
+  --title:                 #F1F5F9;
+  --common:                #AEB9C8;
+  --muted:                 #6B7688;
+  --disabled:              #475063;
+
+  --primary:               #3B82F6;
+  --primary-hover:         #5C9CFF;
+  --primary-border:        #2563EB;
+  --title-primary:         #FFFFFF;
+  --common-primary:        rgba(255,255,255,0.82);
+
+  --secondary:             #14B8A6;
+  --secondary-hover:       #2DD4BF;
+  --secondary-border:      #0D9488;
+
+  --correct:               #22C55E;
+  --correct-hover:         #4ADE80;
+  --warning:               #F0A93B;
+  --warning-hover:         #F7C167;
+  --wrong:                 #F87171;
+  --wrong-hover:           #FCA5A5;
+
+  --overlay:               rgba(0,0,0,0.62);
+  --focus-ring:            rgba(96,165,250,0.55);
+  --divider:               #1A2333;
+
+  --shadow-card:           0 1px 2px rgba(0,0,0,0.30);
+  --shadow-card-hover:     0 6px 22px rgba(0,0,0,0.45);
+  --shadow-pop:            0 16px 40px rgba(0,0,0,0.55);
+}
+
+/* ---------------------------------------------------------------------------
+   2. TYPOGRAPHY TOKENS
+   --------------------------------------------------------------------------- */
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Menlo', 'Consolas',
+               monospace;
+
+  /* Type scale (px / line-height) — see VISUAL FOUNDATIONS in README */
+  --text-page-title:  1.5rem;   /* 24 — page H1 (md+: may go 1.75) */
+  --text-section:     1rem;     /* 16 — section heading */
+  --text-body:        0.875rem; /* 14 — default body */
+  --text-meta:        0.75rem;  /* 12 — meta / labels */
+  --text-mono:        0.8125rem;/* 13 — terminal / code default */
+
+  --lh-tight:  1.2;
+  --lh-snug:   1.35;
+  --lh-normal: 1.55;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+}
+
+/* ---------------------------------------------------------------------------
+   3. SEMANTIC TYPE CLASSES  (use these or compose Tailwind from the tokens)
+   --------------------------------------------------------------------------- */
+.ws-page-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-page-title);
+  line-height: var(--lh-tight);
+  font-weight: var(--fw-semibold);
+  color: var(--title);
+  letter-spacing: -0.01em;
+}
+.ws-section-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-section);
+  line-height: var(--lh-snug);
+  font-weight: var(--fw-semibold);
+  color: var(--title);
+}
+.ws-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--lh-normal);
+  font-weight: var(--fw-regular);
+  color: var(--common);
+}
+.ws-meta {
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  line-height: var(--lh-snug);
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+.ws-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-meta);
+  font-weight: var(--fw-medium);
+  color: var(--common);
+}
+.ws-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  font-weight: var(--fw-regular);
+  letter-spacing: -0.01em;
+}
+/* Ticket prefixes, commit hashes, file paths inline */
+.ws-code-inline {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------------------
+   4. SHARED PRIMITIVE HELPERS (handy when not using Tailwind directly)
+   --------------------------------------------------------------------------- */
+.ws-surface {
+  background: var(--container1);
+  border: 1px solid var(--container1-border);
+  border-radius: var(--radius-card);
+}
+.ws-input {
+  background: var(--container2);
+  border: 1px solid var(--container2-border);
+  border-radius: var(--radius-control);
+  height: 2.25rem;            /* h-9 */
+  padding: 0 0.75rem;
+  font: var(--fw-regular) var(--text-body)/1 var(--font-sans);
+  color: var(--title);
+}
+.ws-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.ws-btn-primary {
+  background: var(--primary);
+  color: var(--title-primary);
+  border-radius: var(--radius-control);
+}
+.ws-btn-primary:hover { background: var(--primary-hover); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ws-pulse { animation: ws-pulse 1.8s ease-in-out infinite; }
+}
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}

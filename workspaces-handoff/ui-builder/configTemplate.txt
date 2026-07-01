@@ -1,0 +1,81 @@
+import { PrismaClient } from "@prisma/client";
+
+const config = {
+  // backendUrl: 'https://your.domain.com', //* the url of the backend server
+  backendUrl: 'http://localhost:80', //* the url of the backend server
+
+  dev: true, //* if true then we get extra console logs
+  loginPageUrl: '/login', //* url the client is redirected to when the user is not authenticate
+  loginRedirectUrl: '/test', //* url the client is redirected to after logging in
+  defaultLanguage: 'en', //* default language if the session data doesnt include it, this is used with the notify system with the json files in the localed folder
+  defaultTheme: 'dark', //* the default theme the client uses when the user hasnt set a theme yet
+  mobileConsole: false, //* if true then there is a extra console you can open on any device (including mobile)
+
+  
+  //? if false syncing works to users in your room but they wont know who they are sycning to
+  //? if true on the client we know the activity status of all users in the same room
+  //? this is usefull for multiplayer games to e.g. pause the game when a user is afk
+  //? this data is stored in socketStatus (context provider)
+  socketActivityBroadcaster: false
+}
+//* these values are optional to have in the session object, used for type declartion after an apiRequest on the client
+export interface SessionLayout {
+  id: string;
+  name: string;
+  email: string;
+  provider: string;
+  admin: boolean;
+  avatar: string;
+  avatarFallback: string;
+  language: string;
+  theme: 'light' | 'dark';
+  createdAt: Date;
+  updatedAt: Date;
+  token: string;
+  location?: {
+    pathName: string;
+    searchParams: {
+      [key: string]: string;
+    };
+  };
+};
+
+export interface AuthProps {
+  login: boolean; //* if true then the user needs to have an id in the session object
+  additional?: { //* if true then the user needs to have the additional keys in the session object with the condition
+    key: keyof SessionLayout; //* the key of the session object
+    value?: any //* the exact value the key needs to have. this is a strict comparison
+    type?: 'string' | 'number' | 'boolean'; //* the type of the key. this is a strict comparison
+    nullish?: boolean; //* if true then the key needs to be null or undefined, if false then the key needs to be not null and not undefined
+    mustBeFalsy?: boolean; //* if true than the passes key needs to be a false value such as false, 0, -0, 0n, "", null, undefined or NaN, if false then the key needs to be a true value such as true, 1, 'a' or any other value
+  }[]
+}
+
+interface ServerFunctions {
+  prisma: PrismaClient;
+
+  saveSession: (token: string, data: any) => Promise<boolean>;
+  getSession: (token: string) => Promise<any | null>;
+  deleteSession: (token: string) => Promise<boolean>;
+
+  tryCatch: <T, P>(func: (values: P) => Promise<T> | T, params?: P) => Promise<[any, T | null]>;
+  sleep: (ms: number) => Promise<void>;
+
+  [key: string]: any; // allows you to call functions you made yourself, autocomplete wont work for your own functions if you dont add them here
+};
+
+
+export interface ServerSyncProps {
+  clientData: any;
+  functions: ServerFunctions;
+  user: SessionLayout;
+}
+
+export interface ClientSyncProps extends ServerSyncProps {
+  serverData: any;
+}
+
+export const providers = ['credentials', 'google', 'github', 'facebook', 'discord'];
+
+export default config;
+export const { backendUrl, dev, loginPageUrl, loginRedirectUrl, defaultLanguage, mobileConsole } = config;

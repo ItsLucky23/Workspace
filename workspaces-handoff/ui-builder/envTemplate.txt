@@ -1,0 +1,110 @@
+# NODE_ENV=production # development | production
+NODE_ENV=development # development | production
+# VITE_SESSION_BASED_TOKEN=false # when true we store the token in the sessionStorage wich allows you to upen multiple tabs at the same time and have different session data on there, if false we use cookies
+VITE_SESSION_BASED_TOKEN=true # when true we store the token in the sessionStorage wich allows you to upen multiple tabs at the same time and have different session data on there, if false we use cookies
+# SECURE=true # when true we use https else http, make sure your nginx server is configured to use https if this is set to true
+SECURE=false # when true we use https else http, make sure your nginx server is configured to use https if this is set to true
+PROJECT_NAME=YOUR_PROJECT_NAME # used for the redis cache so that when using the same template other session data will not collide with this one
+# example would be that if you login here with a certain email that on a different project you will not be logged out automaticly cause it is a different project (on the same project you will be logged out)
+
+SERVER_IP=localhost # this should either be localhost if using a reverse proxy or 0.0.0.0 if you want other devices on your network to access the server to test mobile support for example or networking between devices. have it set to the ip when calling the node server directly
+# SERVER_PORT=3000 # 80 for localhost and for production any port you like e.g 3000
+SERVER_PORT=80 # 80 for localhost and for production any port you like e.g 3000
+
+# DNS is used to redirect the user to the server when they login with oauth
+# so when NODE_ENV is set to development it should be someting like http://localhost:5173
+# and when NODE_ENV is set to production it should be someting like https://random.dns.com
+# DNS=https://random.dns.com
+DNS=http://localhost:5173
+
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+#here you can add urls that are allowed to communicate with the server, such as oauth urls
+#when adding new urls make sure to saperate them with a ','
+EXTERNAL_ORIGINS=https://accounts.google.com,https://github.com,https://www.facebook.com,https://discord.com
+
+#https://console.cloud.google.com/apis/credentials
+# create a new project, go to credentials, create OAuth clientId
+# scroll down to Authorized redirect URIs and add the server ip port and than /auth/callback/google
+# so for dev it should be http://localhost:80/auth/callback/google
+# copy the google client id and secret.
+
+#USED FOR PRODUCTION
+GOOGLE_CLIENT_ID=xxxxx
+GOOGLE_CLIENT_SECRET=xxxxx
+#USED FOR DEVELOPMENT
+DEV_GOOGLE_CLIENT_ID=xxxxx
+DEV_GOOGLE_CLIENT_SECRET=xxxxx
+
+
+
+#https://github.com/settings/developers
+# create a new OAuth app, homepage url can be http://localhost:80/auth/callback/github
+# callback url should be ip port and than /auth/callback/github, so for dev it should be http://localhost:80/auth/callback/github
+# than just copy the client id and secret
+
+#USED FOR PRODUCTION
+GITHUB_CLIENT_ID=xxxxxxx
+GITHUB_CLIENT_SECRET=xxxxxxx
+#USED FOR DEVELOPMENT
+DEV_GITHUB_CLIENT_ID=xxxxxxx
+DEV_GITHUB_CLIENT_SECRET=xxxxxxx
+
+
+
+#https://developers.facebook.com/async/registration/dialog/?src=default
+# go to my apps and it want you to create an account, after creating an account you should be able to create a new app
+# go to use cases and click customize on 'authenticate and request data from users with facebook login' and then click on quickstart
+# after quick setup go to apps ettings - basics and copy the app id and app secret, the callback url for localhost is automaticly handeld but for production you need to change this
+# you can change this on use cases and click on 'authenticate and request data from users with facebook login' and then click on 'settings' and go down to valid oauth redirect urls
+
+#USED FOR PRODUCTION
+FACEBOOK_CLIENT_ID=xxxxxxx
+FACEBOOK_CLIENT_SECRET=xxxxxxx
+#USED FOR DEVELOPMENT
+DEV_FACEBOOK_CLIENT_ID=xxxxxxx
+DEV_FACEBOOK_CLIENT_SECRET=xxxxxxx
+
+
+
+#https://discord.com/developers/applications
+# create a new application, navigate to OAuth2, copy the client id and secret
+# add a redirects url, for dev it should be http://localhost:80/auth/callback/discord
+
+#USED FOR PRODUCTION
+DISCORD_CLIENT_ID=xxxxxxx
+DISCORD_CLIENT_SECRET=xxxxxxx
+#USED FOR DEVELOPMENT
+DEV_DISCORD_CLIENT_ID=xxxxxxx
+DEV_DISCORD_CLIENT_SECRET=xxxxxxx
+
+
+
+# https://www.linkedin.com/developers/apps/new
+# requires you to have an company page wich requires id verification
+# LINKEDIN_CLIENT_ID=aaaaaaaaaaa
+# LINKEDIN_CLIENT_SECRET=aaaaaaaaaaa
+
+
+
+# requires a $99 subscription to create a App id
+# APPLE_CLIENT_ID=a
+# APPLE_CLIENT_SECRET=a
+
+
+
+# only supports businness accounts so you can add it yourself if you want but not worth my time right now
+# INSTAGRAM_CLIENT_ID=a
+# INSTAGRAM_CLIENT_SECRET=a
+
+
+
+# currently switching from twitter to X and no clear documentation in my opinion 
+# X_CLIENT_ID=a
+# X_CLIENT_SECRET=a
+
+
+
+# DATABASE_URL="provider://user:password@host:port/database"
+# example: DATABASE_URL="mysql://root:@localhost:3306/test"

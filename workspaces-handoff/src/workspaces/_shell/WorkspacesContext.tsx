@@ -1,0 +1,85 @@
+//? Workspaces — app-level context. Holds the SPA state the prototype kept in
+//? App.jsx (current view, open ticket tabs, AI suggestions) and the navigation
+//? helpers, so any screen/card deep in the tree can drive the shell without
+//? prop-drilling. State lives in `page.tsx`; this just types + exposes it.
+
+import { createContext, useContext } from 'react';
+
+import type { AiSuggestion, ChatMessage, EnvVar, IntegrationTool, Member, PermRole, SshKeyEntry, StageId, Workspace } from '../_data/types';
+
+export type WsView =
+  | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
+  | 'pipeline' | 'usage' | 'ai' | 'settings' | 'workspace'
+  | (string & {}); // ticket views use the DEV-#### id
+
+export interface WorkspacesCtx {
+  view: WsView;
+  //? Chrome navigation (nav rail, tab bar, switcher) — does NOT push the back
+  //? stack. Use `pushTo`/`openTicket` for reference navigations (clicking a
+  //? ticket/link from page content) so only those land in the back history.
+  navigate: (view: WsView) => void;
+  pushTo: (view: WsView) => void;
+  goBack: () => void;
+  canGoBack: boolean;
+  backLabel: string | null;  // label of the view goBack would return to
+  openTabs: string[];        // open ticket ids
+  openTicket: (id: string) => void;
+  closeTab: (id: string) => void;
+  recent: string[];          // recently opened ticket ids (search palette history)
+  isMobile: boolean;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
+  suggestions: AiSuggestion[];
+  dismissSuggestion: (id: string) => void;
+  unreadNotifications: number;
+  currentUser: Member;   // the account you're using the app as
+  //? SSH keys live on the account (Account settings) and are what unlock + drive
+  //? the terminals. The active SSH identity = the most recent key's mapped user
+  //? (123 → test, 456 → mathijs). No app-level login gate.
+  sshKeys: SshKeyEntry[];
+  sshUserId: string | null;
+  addSshKey: (key: SshKeyEntry) => void;
+  removeSshKey: (id: string) => void;
+  //? Workspace-AI panel — available on every screen; the nav/bottom-bar entry
+  //? toggles it rather than routing.
+  aiOpen: boolean;
+  toggleAi: () => void;
+  chat: ChatMessage[];
+  sendChat: (text: string) => void;
+  //? Workspaces: one project = one workspace. Switch the active one or create a
+  //? new (still-simple) workspace. Dummy data shared across them for now.
+  workspaces: Workspace[];
+  activeWorkspace: Workspace;
+  setActiveWorkspace: (id: string) => void;
+  createWorkspace: (name: string) => void;
+  //? Editable per-workspace RBAC + each member's assigned role. Held here so the
+  //? edits persist across tab/route changes (would persist server-side for real).
+  permRoles: PermRole[];
+  togglePerm: (roleIndex: number, capIndex: number) => void;
+  addRole: (name: string) => void;
+  memberRoles: Record<string, string>;
+  setMemberRole: (memberId: string, role: string) => void;
+  //? Workspace env vars + configured integration tools (the Pipeline selects from these).
+  envVars: EnvVar[];
+  saveEnvVar: (v: EnvVar) => void;
+  removeEnvVar: (id: string) => void;
+  integrationTools: IntegrationTool[];
+  saveIntegrationTool: (t: IntegrationTool) => void;
+  removeIntegrationTool: (id: string) => void;
+  //? AI-driven board moves: stage overrides on top of the seed data, so the
+  //? Workspace-AI chat can move a ticket and the board animates it.
+  stageOverrides: Record<string, StageId>;
+  moveTicket: (id: string, stage: StageId) => void;
+}
+
+export const isTicketView = (v: string): boolean => v.startsWith('DEV-');
+
+const WorkspacesContext = createContext<WorkspacesCtx | null>(null);
+
+export const WorkspacesProvider = WorkspacesContext.Provider;
+
+export function useWorkspaces(): WorkspacesCtx {
+  const ctx = useContext(WorkspacesContext);
+  if (!ctx) throw new Error('useWorkspaces must be used within <WorkspacesProvider>');
+  return ctx;
+}

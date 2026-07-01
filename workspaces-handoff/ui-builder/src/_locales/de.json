@@ -1,0 +1,51 @@
+{
+  "test": "Hallo {{name}}",
+  "common": {
+    "whiteSpace": " ",
+    "error": "FEHLER",
+    "404": "Etwas ist schiefgelaufen, versuche es später erneut."
+  },
+  "middleware": {
+    "notAdmin": "Du bist kein Admin."
+  },
+  "login": {
+    "empty": "Keine E-Mail oder kein Passwort angegeben.",
+    "emailCharacterLimit": "E-Mail darf nicht länger als 191 Zeichen sein.",
+    "passwordCharacterMinimum": "Passwort muss mindestens 8 Zeichen lang sein.",
+    "passwordCharacterLimit": "Passwort darf nicht länger als 191 Zeichen sein.",
+    "nameCharacterLimit": "Name darf nicht länger als 191 Zeichen sein.",
+    "invalidEmailFormat": "Ungültiges E-Mail-Format.",
+    "passwordNotMatch": "Passwörter stimmen nicht überein.",
+    "emailExists": "E-Mail existiert bereits.",
+    "userCreated": "Benutzer erstellt.",
+    "createUserFailed": "Fehler beim Erstellen des Benutzers.",
+    "userNotFound": "Benutzer nicht gefunden.",
+    "wrongPassword": "Passwort stimmt nicht überein.",
+    "loggedIn": "Benutzer eingeloggt.",
+    "providerNotFound": "Provider nicht gefunden.",
+    "noReason": "Kein Grund angegeben."
+  },
+  "settings": {
+    "changeAvatar": "Avatar ändern",
+    "changeAvatarDescription": "JPG, GIF oder PNG. Max 4 MB.",
+    "language": {
+      "title": "Sprache",
+      "nl": "NL",
+      "en": "EN",
+      "de": "DE",
+      "fr": "FR"
+    },
+    "theme": {
+      "title": "Thema",
+      "light": "Hell",
+      "dark": "Dunkel"
+    },
+    "saveChanges": "Änderungen speichern",
+    "updatedUser": "Benutzer aktualisiert",
+    "failedUpdateUser": "Fehler beim Aktualisieren des Benutzers",
+    "noChangesMade": "Keine Änderungen vorgenommen",
+    "sizeToLarge": "Maximale Uploadgröße ist 4~5 MB, wähle ein kleineres Bild!!",
+    "loadingImg": "Foto wird geladen",
+    "imgLoaded": "Foto wurde geladen"
+  }
+}
