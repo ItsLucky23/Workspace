@@ -2,11 +2,12 @@
 //? REAL running dev server (http://localhost:80). Exercises the exact browser
 //? contract: cookie-mode session + the double-submit-less, session-bound CSRF
 //? token + the origin gate. Flow:
-//?   register (credentials, CSRF-exempt) -> postLogin hook seeds the demo workspace
-//?   -> GET /auth/csrf (session-bound token) -> POST snapshot (12 tickets)
-//?   -> POST control quick-add -> Conductor drains -> snapshot (13 tickets).
-//? The Conductor writes ASYNC off the serial chain, so the second snapshot polls.
-//? Best-effort cleanup (throwaway owner + seeded workspace) before report().
+//?   register (credentials, CSRF-exempt) -> a fresh user has NO workspace (login
+//?   seeding is disabled — they onboard) -> GET /auth/csrf -> snapshot (0 workspaces)
+//?   -> control create-workspace -> snapshot (1 blank workspace, 0 tickets)
+//?   -> control quick-add -> Conductor drains -> snapshot (1 ticket, at `unrefined`).
+//? The Conductor writes ASYNC off the serial chain, so snapshots poll.
+//? Best-effort cleanup (throwaway owner + created workspace) before report().
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
@@ -52,6 +53,10 @@ function ticketCount(snapshot: { result?: Record<string, unknown> }): number {
   const tickets = snapshot.result?.tickets;
   return Array.isArray(tickets) ? tickets.length : -1;
 }
+function workspaceCount(snapshot: { result?: Record<string, unknown> }): number {
+  const w = snapshot.result?.workspaces;
+  return Array.isArray(w) ? w.length : -1;
+}
 
 let ownerId: string | undefined;
 let workspaceId: string | undefined;
@@ -77,34 +82,48 @@ try {
   csrfToken = csrfBody.csrfToken ?? '';
   assert(csrfToken.length > 0, 'GET /auth/csrf returned a token');
 
-  // 3) First snapshot — the seeded demo workspace has exactly 12 tickets.
+  // 3) First snapshot — a fresh user now has NO workspace (login seeding disabled;
+  //    they go through onboarding). Expect zero workspaces + no active workspace.
   const snap1 = await apiPost('/api/workspaces/snapshot/v1', {});
   assert(snap1.status === 'success', 'snapshot v1 returned success');
-  eq(ticketCount(snap1), 12, 'seeded workspace has 12 tickets');
-  const activeId = snap1.result?.activeWorkspaceId;
-  assert(typeof activeId === 'string' && activeId.length > 0, 'snapshot carries an active workspaceId');
-  workspaceId = typeof activeId === 'string' ? activeId : undefined;
+  eq(workspaceCount(snap1), 0, 'a fresh user starts with zero workspaces');
+  assert(snap1.result?.activeWorkspaceId == null, 'no active workspace before onboarding');
 
-  // 4) Control quick-add — the single write op through the [control-API] path.
+  // 4) Onboarding: create a workspace via the [control-API] path (login-only op).
+  const cw = await apiPost('/api/workspaces/control/v1', {
+    workspaceId: '', op: 'create-workspace', target: {}, payload: { name: 'E2E Workspace' }, clientRequestId: 'cw1',
+  });
+  assert(cw.status === 'success', 'control create-workspace returned success');
+
+  // 5) Poll until the new (blank) workspace lands — it has a pipeline but 0 tickets.
+  let created: { result?: Record<string, unknown> } = {};
+  for (let i = 0; i < 30; i += 1) {
+    created = await apiPost('/api/workspaces/snapshot/v1', {});
+    if (workspaceCount(created) === 1) break;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  eq(workspaceCount(created), 1, 'after create-workspace the user has one workspace');
+  eq(ticketCount(created), 0, 'a freshly-created workspace has no tickets');
+  const activeId = created.result?.activeWorkspaceId;
+  workspaceId = typeof activeId === 'string' ? activeId : undefined;
+  assert(typeof workspaceId === 'string' && workspaceId.length > 0, 'the new workspace is active');
+
+  // 6) Control quick-add — the ticket enters the pipeline at `unrefined`.
   const ctrl = await apiPost('/api/workspaces/control/v1', {
-    workspaceId,
-    op: 'quick-add',
-    target: {},
-    payload: { title: 'HTTP E2E' },
-    clientRequestId: 'e1',
+    workspaceId, op: 'quick-add', target: {}, payload: { title: 'HTTP E2E' }, clientRequestId: 'e1',
   });
   assert(ctrl.status === 'success', 'control quick-add returned success');
   assert(ctrl.result?.accepted === true, 'control ack: accepted');
 
-  // 5) The Conductor writes asynchronously — poll the snapshot until the ticket lands.
+  // 7) The Conductor writes asynchronously — poll the snapshot until the ticket lands.
   let after = -1;
   for (let i = 0; i < 30; i += 1) {
     const snap = await apiPost('/api/workspaces/snapshot/v1', {});
     after = ticketCount(snap);
-    if (after === 13) break;
+    if (after === 1) break;
     await new Promise((r) => setTimeout(r, 200));
   }
-  eq(after, 13, 'after quick-add the workspace has 13 tickets');
+  eq(after, 1, 'after quick-add the workspace has one ticket');
 } finally {
   // Best-effort cleanup: delete the seeded workspace + all tenant rows + the
   // throwaway owner (and demo member Users) so the DB is left clean.

@@ -343,6 +343,15 @@ export interface InviteEntry {
   sent: string;
 }
 
+//? A pending invitation addressed to the LOGGED-IN user's email, resolved across
+//? ALL workspaces (not tenant-scoped) — drives the onboarding "you've been invited"
+//? list. Accepted by its opaque `token` via the `accept-invite` control-op.
+export interface MyInvite {
+  token: string;
+  workspaceName: string;
+  role: Role;
+}
+
 //? The rendered spend aggregate (UI). `SpendRecord` below is the per-turn fact.
 export interface UsageRow {
   ticketId: string;

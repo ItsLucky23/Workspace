@@ -10,6 +10,7 @@ import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 
 import { AIPanel, MobileBottomBar, NavRail, TabBar, TopBar } from './Shell';
 import { MobileHeader } from './MobileChrome';
+import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
 import Icon from '../_components/Icon';
@@ -35,6 +36,11 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const openSearch = () => { setSearchOpen(true); };
+
+  //? Zero-workspace users get the onboarding takeover instead of the shell chrome —
+  //? the nav rail / board make no sense without a workspace. Wait for the first
+  //? snapshot (`loading`) so we never flash onboarding before data lands.
+  if (!ctx.loading && ctx.workspaces.length === 0) return <Onboarding />;
 
   return (
     <MotionConfig reducedMotion="user">

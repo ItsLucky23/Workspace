@@ -317,6 +317,12 @@
     "socketStatus": "État du Socket :"
   },
   "workspaces": {
+    "onboarding": {
+      "welcome": "Bienvenue sur Workspaces",
+      "subtitle": "Créez un espace de travail pour commencer, ou acceptez une invitation ci-dessous.",
+      "createHeading": "Créer un espace de travail",
+      "invitesHeading": "Vos invitations"
+    },
     "pipeline": {
       "customInstructions": "Instructions personnalisées",
       "customInstructionsHint": "Chargées dans le CLAUDE.md de l’étape — règles métier + objectifs par étape.",

@@ -15,6 +15,8 @@ import { getPrismaClient, redis, formatKey } from '@luckystack/core';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
+import { sendInviteEmail } from '../email/sendInviteEmail';
+import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -209,6 +211,19 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
     return { signalSeq: -1 };
   }
   seenRequestIds.add(dedupKey);
+
+  //? Login-only ops (create-workspace / accept-invite) carry NO workspace yet: there
+  //? is no per-workspace audit log to append to, and `workspaceId: ''` is not a valid
+  //? ObjectId (the signal write would throw and the chain would swallow it, silently
+  //? dropping the op). Run them on the serial chain WITHOUT a signal (they use the
+  //? plain client, so they need no tenant scope either).
+  if (!action.workspaceId) {
+    chain = chain.then(() => executeAction(action)).catch((error: unknown) => {
+      console.error(`[conductor] action ${action.op} failed:`, error);
+    });
+    return { signalSeq: -1 };
+  }
+
   const signalSeq = await nextSignalSeq(action.workspaceId);
 
   //? Append the durable (append-only, B-O6) signal, then run the write — both
@@ -362,9 +377,23 @@ async function executeAction(action: ControlAction): Promise<void> {
       return;
     }
     // ---- invites ----
+    case 'create-workspace': {
+      //? Login-only op (no active workspace yet). Builds a blank-but-functional
+      //? workspace owned by the caller — the onboarding "create a workspace" path.
+      //? Uses the plain client (not tenant-scoped): there is no tenant yet.
+      const name = str(payload, 'name');
+      if (name) await createBlankWorkspace(prisma, userId, name.trim());
+      return;
+    }
     case 'invite': {
       const email = str(payload, 'email');
-      if (email) await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+      if (email) {
+        await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+        //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
+        //? unconfigured) — never block or fail the authoritative write on delivery.
+        const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
+        void sendInviteEmail(email, ws?.name ?? 'a workspace');
+      }
       return;
     }
     case 'revoke-invite': {

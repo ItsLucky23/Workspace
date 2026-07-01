@@ -19,7 +19,7 @@ import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type { ControlOp } from '../_functions/controlApi';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
   SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
@@ -44,11 +44,12 @@ interface Snap {
   events: ActivityEvent[];
   notifications: NotificationItem[];
   stageConfigs: PipelineStageCfg[];
+  myInvites: MyInvite[];
 }
 const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [],
+  notifications: [], stageConfigs: [], myInvites: [],
 };
 
 function pathForView(view: WsView): string {
@@ -221,6 +222,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
       createWorkspace: (name) => { control('create-workspace', {}, { name }); },
+      myInvites: snap.myInvites,
+      acceptInvite: (token) => { control('accept-invite', { inviteToken: token }, {}); },
       sprintCreate: (name) => { control('sprint-create', {}, { name, active: false }); },
       renameWorkspace: (name) => { control('rename-workspace', {}, { name }); },
       deleteWorkspace: () => {

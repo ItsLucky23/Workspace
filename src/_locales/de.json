@@ -317,6 +317,12 @@
     "socketStatus": "Socket-Status:"
   },
   "workspaces": {
+    "onboarding": {
+      "welcome": "Willkommen bei Workspaces",
+      "subtitle": "Erstelle einen Workspace, um zu starten, oder nimm unten eine Einladung an.",
+      "createHeading": "Workspace erstellen",
+      "invitesHeading": "Deine Einladungen"
+    },
     "pipeline": {
       "customInstructions": "Eigene Anweisungen",
       "customInstructionsHint": "Wird in die CLAUDE.md der Stage geladen — Domänenregeln + Ziele pro Stage.",

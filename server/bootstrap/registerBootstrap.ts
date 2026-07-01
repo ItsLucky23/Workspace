@@ -1,20 +1,10 @@
 //? Workspaces — first-login bootstrap.
 //?
-//? On a user's FIRST login (no workspace membership yet), seed them a demo
-//? workspace so the app opens onto populated screens (MIGRATION §5). Idempotent:
-//? guarded by the membership count, so a returning user never re-seeds.
-
-import { registerHook, getPrismaClient, tryCatch } from '@luckystack/core';
-
-import { seedDemoWorkspace } from './seedWorkspace';
+//? Auto-seeding a demo workspace on first login is intentionally DISABLED: a new
+//? user starts with ZERO workspaces and goes through the onboarding empty-state
+//? (create a workspace, or accept a pending email invitation). `seedDemoWorkspace`
+//? is kept for tests and manual dev seeding only — it is no longer wired to login.
 
 export function registerFirstLoginBootstrap(): void {
-  registerHook('postLogin', async ({ userId }) => {
-    const prisma = getPrismaClient();
-    const count = await prisma.workspaceMember.count({ where: { userId } });
-    if (count === 0) {
-      const [error] = await tryCatch(() => seedDemoWorkspace(prisma, userId));
-      if (error) console.error('[bootstrap] first-login seed failed:', error);
-    }
-  });
+  //? No first-login side-effect — onboarding (client) owns the zero-workspace path.
 }

@@ -283,3 +283,23 @@
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, test:ws 8/8 (conductor-test bevestigt quick-add→unrefined; `stages[0].id==='unrefined'`).
 
 **Nog open:** [5] dropdown-full-width grotendeels opgelost door stage-picker-removal (resterende smalle-menu-dropdowns bij gelegenheid). [7] seed weg + onboarding + email-invites (aparte stap, coördineert met DB-wipe). [9] suggestions/sync/presence (discussie).
+
+## 2026-07-02 — Punt 7: seed weg + onboarding (create/join) + echte email-invites (Resend) + create-workspace-op + signal-bug fix
+
+**User prompt:** stop met random seed-data bij nieuwe accounts; nieuwe user → fatsoenlijke onboarding (workspace aanmaken óf invites zien/accepteren); echte email-invites (user koos Resend, die al opgezet is).
+
+**Gedaan:**
+1. **Seed-op-login uit** (`registerBootstrap.ts`): geen `seedDemoWorkspace` meer bij eerste login; nieuwe user start met 0 workspaces. `seedDemoWorkspace` blijft voor tests/dev.
+2. **Onboarding empty-state** (`_shell/Onboarding.tsx` + gate in `WorkspacesShell`): bij 0 workspaces een full-screen takeover — workspace aanmaken (`create-workspace`) óf pending invites voor je e-mail accepteren (`accept-invite`). Beide bestaande frozen ops, geen nieuwe verbs.
+3. **`myInvites`-read** (cross-workspace, by-email, NIET tenant-scoped) toegevoegd aan de snapshot (`MyInvite`-type in `_data/types.ts`, server + provider `Snap` + context bijgewerkt, `generateArtifacts` gedraaid voor de gegenereerde koppeling).
+4. **`create-workspace`-op geïmplementeerd** — ontbrak volledig in de conductor (was no-op). Nieuwe `createBlankWorkspace` (`seedWorkspace.ts`): Workspace + owner-role/membership + Project + default pipeline-stages (incl. `unrefined`) + disabled budget. Geen demo-data.
+5. **Echte invite-email** (`server/email/sendInviteEmail.ts` + conductor `invite`-case): `sendEmail` via `@luckystack/email` (auto-select Resend — `RESEND_API_KEY`+`EMAIL_FROM` gezet, `resend` v6.16 geïnstalleerd), accept-link → `…/workspaces`. Fire-and-forget, no-op als niet geconfigureerd.
+6. **BUG FIX (lesson 0004):** login-only ops (`create-workspace`/`accept-invite`, `workspaceId: ''`) werden **stil gedropt** — de workspace-scoped `WorkspaceSignal`-append (`@db.ObjectId`) gooit "Malformed ObjectID" op `''`, de chain-`.catch` slikte 'm. `enqueueControlAction` slaat nu de signal/seq/tenant over voor login-only ops.
+
+**Tests:** nieuwe `tests/integration/createWorkspace.test.mts` (9/9, code-direct, betrouwbaar) valideert create-workspace → project/stages/roles/member → quick-add op unrefined. httpControl e2e aangepast aan de no-seed-flow (register → 0 workspaces → create-workspace → 1 blank ws → quick-add → 1 ticket).
+
+**Files:** `server/bootstrap/registerBootstrap.ts`, `server/bootstrap/seedWorkspace.ts`, `server/email/sendInviteEmail.ts` (nieuw), `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{Onboarding.tsx(nieuw),WorkspacesShell.tsx,WorkspacesProvider.tsx,WorkspacesContext.tsx}`, `src/_locales/{en,nl,de,fr}.json`, `tests/{integration/createWorkspace.test.mts(nieuw),e2e/httpControl.test.mts}`, `docs/lessons/0004-*.md`, generated apiTypes.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, test:ws 8/9 (de enige rode = e2e-quick-add tegen de user's :80 die deels-stale hot-reloade code draait; de code-direct integratietest is 9/9 groen).
+
+**Developer-acties:** (1) **herstart de `:80`-dev-server** met verse code (dan is de e2e ook groen); (2) daarna mag je de DB wipen en de onboarding + email-invite live testen (Resend staat klaar). **Flag (lesson 0002):** `createBlankWorkspace` importeert `STAGE_CONFIGS` uit `src/` (werkt in dev/tsx); vóór een PROD-build moet de default-pipeline naar `server/` verhuizen, anders krijgt create-workspace daar geen stages.

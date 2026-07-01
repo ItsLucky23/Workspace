@@ -17,7 +17,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
-  ModelRule, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
+  ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketStatus, ToolTier, Workspace, WorkspaceBudget,
 } from '../../src/workspaces/_data/types';
@@ -80,9 +80,12 @@ export interface WorkspaceSnapshot {
   invites: InviteEntry[];
   events: ActivityEvent[];
   notifications: NotificationItem[];
+  //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
+  //? present — even for a user with zero workspaces (the no-workspace early return).
+  myInvites: MyInvite[];
 }
 
-const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId'> = {
+const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [],
 };
@@ -94,8 +97,18 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
   const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member') }));
 
+  //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
+  //? can accept from the onboarding. Uses the plain client — a user with no workspace
+  //? has no tenant to scope to, and an invite lives in the INVITING workspace.
+  const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  const inviteRowsForMe = userRow?.email ? await prisma.invite.findMany({ where: { email: userRow.email, status: 'pending' } }) : [];
+  const inviteWsIds = [...new Set(inviteRowsForMe.map((i) => i.workspaceId))];
+  const inviteWsRows = inviteWsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: inviteWsIds } }, select: { id: true, name: true } }) : [];
+  const inviteWsName = new Map(inviteWsRows.map((w) => [w.id, w.name]));
+  const myInvites: MyInvite[] = inviteRowsForMe.map((i) => ({ token: i.token, workspaceName: inviteWsName.get(i.workspaceId) ?? '—', role: asRole(i.roleKey) }));
+
   const activeWorkspaceId = wantWorkspaceId && wsIds.includes(wantWorkspaceId) ? wantWorkspaceId : (wsIds[0] ?? null);
-  if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY };
+  if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows] = await Promise.all([
@@ -192,6 +205,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: n.id, type: asNotifType(n.type), title: n.title, body: n.body, ticketId: n.ticketId ?? undefined,
         deepLink: asDeepLink(n.deepLink), time: formatTime(n.createdAt), read: n.read,
       })),
+      myInvites,
     };
   });
 }

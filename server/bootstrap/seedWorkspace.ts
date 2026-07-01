@@ -22,6 +22,57 @@ const MEMBER_PERMS = [true, false, false, false, false, false, false, false];
 //? The prototype's "ME" (owner) member — replaced by the real logged-in user.
 const OWNER_SEED_ID = 'mathijs';
 
+//? A stable, url-safe slug from a free-text workspace name (suffixed by the owner
+//? id in the caller to keep it unique across users).
+function slugify(name: string): string {
+  return name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40) || 'workspace';
+}
+
+//? Create a BLANK-but-functional workspace: the owner's roles + membership, a
+//? project, the default pipeline stages (so the board has columns + quick-add's
+//? `unrefined` stage exists) and a disabled default budget. NO demo tickets/members
+//? — this is the real onboarding "create a workspace" path (the Conductor calls it
+//? for the `create-workspace` op). See [[lesson-0002]]: `STAGE_CONFIGS` is a `src/`
+//? runtime import that the PROD server bundle stubs — move the default pipeline into
+//? `server/` before a production build so create-workspace still gets its stages.
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string): Promise<{ workspaceId: string }> {
+  const short = ownerId.slice(-6);
+  const ws = await prisma.workspace.create({
+    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey: 'professional' },
+  });
+  const workspaceId = ws.id;
+
+  await prisma.workspaceRole.createMany({
+    data: [
+      { workspaceId, key: 'owner', label: 'Owner', perms: OWNER_PERMS, builtIn: true },
+      { workspaceId, key: 'admin', label: 'Admin', perms: ADMIN_PERMS, builtIn: true },
+      { workspaceId, key: 'member', label: 'Member', perms: MEMBER_PERMS, builtIn: true },
+    ],
+  });
+  await prisma.workspaceMember.create({ data: { workspaceId, userId: ownerId, roleKey: 'owner' } });
+
+  const project = await prisma.project.create({ data: { workspaceId, name, gitlabPath: '' } });
+  for (const s of STAGE_CONFIGS) {
+    await prisma.pipelineStage.create({
+      data: {
+        workspaceId, projectId: project.id, key: s.id, kind: s.kind, name: s.name, order: s.order,
+        aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? null,
+        roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
+        customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
+        skillKeys: s.skillKeys, sourceIds: s.sourceIds,
+        commands: s.commands, tools: s.tools, statuses: s.statuses, processes: s.processes,
+        visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, network: s.network, hooks: s.hooks,
+      },
+    });
+  }
+
+  await prisma.workspaceBudget.create({
+    data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },
+  });
+
+  return { workspaceId };
+}
+
 export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   const ws = await prisma.workspace.create({

@@ -8,7 +8,7 @@ import { createContext, use } from 'react';
 
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
   SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
@@ -63,6 +63,9 @@ export interface WorkspacesCtx {
   setActiveWorkspace: (id: string) => void;
   createWorkspace: (name: string) => void;
   sprintCreate: (name: string) => void;
+  //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
+  myInvites: MyInvite[];
+  acceptInvite: (token: string) => void;
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string) => void;

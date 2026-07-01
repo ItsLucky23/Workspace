@@ -317,6 +317,12 @@
     "socketStatus": "Socket status:"
   },
   "workspaces": {
+    "onboarding": {
+      "welcome": "Welkom bij Workspaces",
+      "subtitle": "Maak een workspace aan om te beginnen, of accepteer hieronder een uitnodiging.",
+      "createHeading": "Workspace aanmaken",
+      "invitesHeading": "Je uitnodigingen"
+    },
     "pipeline": {
       "customInstructions": "Aangepaste instructies",
       "customInstructionsHint": "Wordt in de CLAUDE.md van de stage geladen — domeinregels + doelen per stage.",
