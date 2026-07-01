@@ -4,7 +4,7 @@
 
 **Laatst bijgewerkt:** 2026-07-01 (0.1 gebouwd + geverifieerd; UI draait framework-native op `/workspaces`)
 **Huidige fase:** 0 — Bootstrap (0.1 done+verified; 0.2 schema is next)
-**Volgende actie:** Stap **0.2 — Volledig Prisma-schema** (Sonnet + Opus-verify). Los daarnaast de step-1 lint/i18n-debt van de prototype-code op.
+**Volgende actie:** Stap **0.2 — Volledig Prisma-schema** (Sonnet + Opus-verify), te starten in verse context na `/compact`. Losstaande, besliste step-1 taak: **volledige i18n-migratie** van de prototype-schermen (alle strings → `useTranslator`, GEEN scope-disable/uitstel-hack) + de resterende 67 niet-i18n lint-errors opruimen. Rollback-basis: commits t/m `56aa4e0` (nog niet gepusht — user pusht via eigen SSH).
 
 > Statuswaarden per stap: `todo` → `done` (gebouwd) → `verified` (Opus-verificatie groen). Een fase is af als alle stappen `verified` zijn.
 
