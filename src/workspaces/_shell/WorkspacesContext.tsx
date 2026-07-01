@@ -76,7 +76,10 @@ export const isTicketView = (v: string): boolean => v.startsWith('DEV-');
 
 const WorkspacesContext = createContext<WorkspacesCtx | null>(null);
 
-export const WorkspacesProvider = WorkspacesContext.Provider;
+//? Raw context provider. The self-contained stateful provider component lives in
+//? `WorkspacesProvider.tsx` (it owns the dummy-data state + router-based nav and
+//? feeds this). Screens consume via `useWorkspaces()`.
+export const WorkspacesContextProvider = WorkspacesContext.Provider;
 
 export function useWorkspaces(): WorkspacesCtx {
   const ctx = useContext(WorkspacesContext);

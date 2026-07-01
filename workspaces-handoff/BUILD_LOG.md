@@ -2,9 +2,9 @@
 
 > **Lees dit eerst bij verdergaan.** Dit is de levende voortgangsstatus van het bouwprogramma ([`BUILD_PROGRAM.md`](./BUILD_PROGRAM.md)). De uitvoerende AI **leest** de "Volgende actie", doet die stap volgens het uitvoeringsmodel, en **werkt daarna dit bestand bij** (vink af, verzet de pointer, append een logregel).
 
-**Laatst bijgewerkt:** 2026-07-01 (0.1 code-port + wiring gedaan; geblokkeerd op dep-install + build-verify)
-**Huidige fase:** 0 — Bootstrap (0.1 in uitvoering)
-**Volgende actie:** Developer: `npm install motion @xterm/xterm @xterm/addon-fit node-pty` (node-pty = native, Windows-buildtools) → dan `npm run build` groen → server starten → prototype-UI op `/workspaces` verifiëren.
+**Laatst bijgewerkt:** 2026-07-01 (0.1 gebouwd + geverifieerd; UI draait framework-native op `/workspaces`)
+**Huidige fase:** 0 — Bootstrap (0.1 done+verified; 0.2 schema is next)
+**Volgende actie:** Stap **0.2 — Volledig Prisma-schema** (Sonnet + Opus-verify). Los daarnaast de step-1 lint/i18n-debt van de prototype-code op.
 
 > Statuswaarden per stap: `todo` → `done` (gebouwd) → `verified` (Opus-verificatie groen). Een fase is af als alle stappen `verified` zijn.
 
@@ -13,7 +13,7 @@
 ## Status
 
 ### Fase 0 — Bootstrap & volledig schema
-- [~] 0.1 Repo bootstrap — `in uitvoering` (code-port + hook-wiring + CLAUDE.md-graft done; wacht op dep-install + build-groen + UI-verify)
+- [x] 0.1 Repo bootstrap — `verified` (port + hooks + CLAUDE.md-graft + deps; splat→framework-native routes; build groen; UI geverifieerd op `/workspaces` via chrome-devtools MCP)
 - [ ] 0.2 Volledig Prisma-schema — `todo`
 - [ ] **Fase 0 verificatie (Opus)** — `todo`
 

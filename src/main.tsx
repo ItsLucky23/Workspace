@@ -127,8 +127,17 @@ const getRoutes = (loaders: Record<string, PageLoader>): RouteObject[] => {
         }
         const template = module.template ?? 'plain';
         return {
+          //? Key the template element by template NAME (not by route path) so a
+          //? layout template stays MOUNTED while you navigate between sibling
+          //? routes that share it — only the inner page (`children`) swaps. This
+          //? is what lets a stateful layout (e.g. the `workspaces` shell: tabs,
+          //? AI chat, nav-stack) persist across its routes instead of remounting
+          //? on every navigation. Switching to a DIFFERENT template still remounts
+          //? (the key changes). Framework templates are stateless layouts, so this
+          //? is safe for them; it emulates a React-Router layout route on the
+          //? framework's flat file-based routes.
           element: (
-            <TemplateProvider key={`${template}-${finalPath}`} initialTemplate={template}>
+            <TemplateProvider key={template} initialTemplate={template}>
               <PageWrapper Page={module.default} />
             </TemplateProvider>
           ),

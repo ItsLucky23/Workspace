@@ -16,12 +16,16 @@ import { useTheme, useSession, useTranslator } from '@luckystack/core/client';
 import type { SessionLayout } from 'config';
 import { useSocketStatus } from 'src/_providers/socketStatusProvider';
 import Home from './Home';
+import WorkspacesTemplate from 'src/workspaces/_shell/WorkspacesTemplate';
 
-export type Template = 'home' | 'plain';
+export type Template = 'home' | 'plain' | 'workspaces';
 
 const Templates = {
   home: Home,
   plain: PlainTemplate,
+  //? The Workspaces app layout (persistent shell + shared-state provider). Used by
+  //? every `src/workspaces/**/page.tsx` via `export const template = 'workspaces'`.
+  workspaces: WorkspacesTemplate,
 } satisfies Record<Template, React.ComponentType<{ children: React.ReactNode }>>;
 
 function PlainTemplate({ children }: { children: React.ReactNode }) {
