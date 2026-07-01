@@ -194,6 +194,9 @@ function TerminalTab({ ticketId }: { ticketId: string }) {
     return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalSub' })} />;
   }
   const proc = terminal.processes[active] ?? terminal.processes[0];
+  if (!proc) {
+    return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalSub' })} />;
+  }
   return (
     <div className="rounded-xl overflow-hidden border border-container1-border">
       <div className="flex items-center justify-between gap-2 bg-terminal-surface px-3 h-10 text-terminal-text">

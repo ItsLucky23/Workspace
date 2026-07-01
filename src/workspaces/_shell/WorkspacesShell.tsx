@@ -15,6 +15,10 @@ import SearchPalette from '../_components/SearchPalette';
 import Icon from '../_components/Icon';
 import { useTranslator } from '@luckystack/core/client';
 
+//? Intentional no-op for handlers whose feature lands in Fase 2 (the notifications
+//? panel + the mobile FAB action). Module-scoped so it's a stable prop reference.
+const noop = (): void => { /* Fase 2: notifications panel / mobile FAB */ };
+
 export function WorkspacesShell({ children }: { children: React.ReactNode }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
@@ -30,7 +34,6 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
     return () => { globalThis.removeEventListener('keydown', onKey); };
   }, []);
 
-  const noop = () => {};
   const openSearch = () => { setSearchOpen(true); };
 
   return (

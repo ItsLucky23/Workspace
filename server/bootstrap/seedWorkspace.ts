@@ -50,7 +50,9 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     }
   }
 
-  const project = await prisma.project.create({ data: { workspaceId, name: PROJECTS[0].name, gitlabPath: PROJECTS[0].gitlabPath } });
+  const seedProject = PROJECTS[0];
+  if (!seedProject) throw new Error('seedDemoWorkspace: PROJECTS[0] is missing');
+  const project = await prisma.project.create({ data: { workspaceId, name: seedProject.name, gitlabPath: seedProject.gitlabPath } });
 
   //? Pipeline stages — the composite config maps through 1:1 (the schema composite
   //? types mirror PipelineStageCfg). `key` is the stable slug tickets reference.

@@ -60,7 +60,7 @@ async function cleanupUser(db: TestContext['prisma'], userId: string): Promise<v
   await db.user.deleteMany({ where: { id: userId } });
 }
 
-const uniqueEmail = (tag: string): string => `lstest_snapshot_${tag}_${Date.now()}_${Math.floor(Math.random() * 1e6)}@youcomm.nl`;
+const uniqueEmail = (tag: string): string => `lstest_snapshot_${tag}_${String(Date.now())}_${String(Math.floor(Math.random() * 1e6))}@youcomm.nl`;
 
 export const customTests: CustomTestCase[] = [
   {

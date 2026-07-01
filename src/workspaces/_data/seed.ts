@@ -45,7 +45,9 @@ export const MEMBERS: Record<string, Member> = {
   daan: { id: 'daan', name: 'Daan', email: 'daan@youcomm.nl', avatarFallback: '#16A34A', role: 'member' },
 };
 
-export const ME: Member = MEMBERS.mathijs;
+const meMember = MEMBERS.mathijs;
+if (!meMember) throw new Error('MEMBERS.mathijs missing');
+export const ME: Member = meMember;
 
 export const WORKSPACES: Workspace[] = [
   { id: 'ws-youcomm', name: 'YouComm Core', slug: 'youcomm-core', ownerId: 'mathijs', role: 'owner' },

@@ -194,11 +194,11 @@ function EnvTab() {
 function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool | null; onSave: (t: IntegrationTool) => void; onCancel: () => void }) {
   const translate = useTranslator();
   const { envVars } = useWorkspaces();
-  const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0].key);
+  const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0]?.key ?? '');
   const [name, setName] = useState(tool?.name ?? '');
-  const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0].fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })));
+  const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0]?.fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })) ?? []);
   const [mcpEnabled, setMcpEnabled] = useState(tool?.mcp.enabled ?? true);
-  const [mcpCmd, setMcpCmd] = useState(tool?.mcp.command ?? INTEGRATION_TYPES[0].mcp);
+  const [mcpCmd, setMcpCmd] = useState(tool?.mcp.command ?? INTEGRATION_TYPES[0]?.mcp ?? '');
 
   const applyType = (key: string) => {
     setTypeKey(key);

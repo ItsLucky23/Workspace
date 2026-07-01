@@ -33,7 +33,9 @@ function buildColumns(tickets: Ticket[], stages: PipelineStage[], overrides: Rec
   const cols: Columns = Object.fromEntries(stages.map((s) => [s.id, [] as Ticket[]]));
   for (const t of tickets) {
     const stage = overrides[t.id] ?? t.stageId;
-    cols[stage].push(t);
+    const list = cols[stage];
+    if (!list) continue;
+    list.push(t);
   }
   return cols;
 }
@@ -43,9 +45,9 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
   return [
     { label: translate({ key: 'workspaces.board.openTicket' }), icon: 'up-right-from-square', onClick: () => { ctx.openTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
-    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => {} },
+    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { /* Fase 2: attach a TicketReference */ } },
     { divider: true },
-    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => {} },
+    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { /* Fase 2: pause/resume the ticket's AI session */ } },
     { label: translate({ key: 'workspaces.board.copyDevId' }), icon: 'copy', onClick: () => void navigator.clipboard.writeText(ticket.id) },
     { divider: true },
     {
@@ -169,16 +171,16 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
 function BoardMobile({ columns }: { columns: Columns }) {
   const translate = useTranslator();
   const { stages } = useWorkspaces();
-  const [active, setActive] = useState<string>(stages.find((s) => columns[s.id].length)?.id ?? stages[0].id);
+  const [active, setActive] = useState<string>(stages.find((s) => columns[s.id]?.length)?.id ?? stages[0]?.id ?? '');
   const stage = stages.find((s) => s.id === active)!;
-  const list = columns[active];
+  const list = columns[active] ?? [];
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto ws-no-scrollbar">
         {stages.map((s) => (
           <button key={s.id} type="button" onClick={() => { setActive(s.id); }}
             className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${s.id === active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>
-            {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id].length}</span>
+            {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id]?.length ?? 0}</span>
           </button>
         ))}
       </div>
@@ -209,7 +211,7 @@ export default function Board() {
       <div className="flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6">
         <LayoutGroup>
           <div className="flex gap-3 h-full">
-            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id]} />)}
+            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id] ?? []} />)}
             {/* trailing space so the last column isn't flush against the AI panel / viewport edge */}
             <div className="w-2 shrink-0" aria-hidden />
           </div>

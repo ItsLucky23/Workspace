@@ -85,7 +85,7 @@ const findFocusableIndex = (options: NormalizedOption[], from: number, direction
   if (options.length === 0) return -1;
   for (let step = 0; step < options.length; step++) {
     const idx = (from + direction * step + options.length) % options.length;
-    if (!options[idx].disabled) return idx;
+    if (!options[idx]?.disabled) return idx;
   }
   return -1;
 };
@@ -367,7 +367,7 @@ export function DropdownMenuShell({
     const initial = initialFocusKey
       ? focusableOptions.find((o) => o.key === initialFocusKey)
       : undefined;
-    controller.setFocusedKey(initial?.key ?? focusableOptions[0].key);
+    controller.setFocusedKey(initial?.key ?? focusableOptions[0]?.key ?? null);
   }, [controller, focusableOptions, initialFocusKey]);
 
   // Reset focus when filtering removes the focused option.
@@ -402,7 +402,7 @@ export function DropdownMenuShell({
 
     const next = findFocusableIndex(filteredOptions, startFrom, direction);
     if (next === -1) return;
-    controller.setFocusedKey(filteredOptions[next].key);
+    controller.setFocusedKey(filteredOptions[next]?.key ?? null);
   }, [controller, filteredOptions]);
 
   const focusEdge = useCallback((edge: "start" | "end") => {
@@ -411,7 +411,7 @@ export function DropdownMenuShell({
     const direction: 1 | -1 = edge === "start" ? 1 : -1;
     const next = findFocusableIndex(filteredOptions, from, direction);
     if (next === -1) return;
-    controller.setFocusedKey(filteredOptions[next].key);
+    controller.setFocusedKey(filteredOptions[next]?.key ?? null);
   }, [controller, filteredOptions]);
 
   const handleMenuKeyDown = (event: React.KeyboardEvent) => {

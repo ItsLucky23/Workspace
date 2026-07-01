@@ -558,7 +558,7 @@ export default function Pipeline() {
   const translate = useTranslator();
   const { activeWorkspace } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(STAGE_CONFIGS);
-  const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0].id);
+  const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0]?.id ?? '');
   const [tab, setTab] = useState('general');
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
@@ -570,7 +570,11 @@ export default function Pipeline() {
     const j = i + dir;
     if (j < 0 || j >= p.length) return p;
     const copy = [...p];
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    const a = copy[i];
+    const b = copy[j];
+    if (!a || !b) return p;
+    copy[i] = b;
+    copy[j] = a;
     return copy.map((st, idx) => ({ ...st, order: idx }));
   }); };
 
@@ -581,7 +585,7 @@ export default function Pipeline() {
     setTab('general');
   };
 
-  const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s.name }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
+  const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s?.name ?? '' }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
     if (!ok) return;
     const fallback = stages.find((x) => x.id !== selectedId)?.id ?? '';
     setStages((p) => p.filter((x) => x.id !== selectedId).map((st, idx) => ({ ...st, order: idx })));
@@ -625,6 +629,8 @@ export default function Pipeline() {
     { id: 'network', label: translate({ key: 'workspaces.pipeline.tabNetwork' }), icon: 'shield-halved' },
     { id: 'hooks', label: translate({ key: 'workspaces.pipeline.tabHooks' }), icon: 'link' },
   ];
+
+  if (!s) return null;
 
   return (
     <div className="flex flex-col h-full min-h-0">

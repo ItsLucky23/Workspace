@@ -47,10 +47,14 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
       return { status: "error", errorCode: 'avatar.invalidFormat' };
     }
     const contentType = matches[1];
+    const base64Data = matches[2];
+    if (contentType === undefined || base64Data === undefined) {
+      return { status: "error", errorCode: 'avatar.invalidFormat' };
+    }
     if (!ALLOWED_AVATAR_TYPES.has(contentType)) {
       return { status: 'error', errorCode: 'avatar.invalidFormat' };
     }
-    const buffer = Buffer.from(matches[2], "base64");
+    const buffer = Buffer.from(base64Data, "base64");
     if (buffer.byteLength > AVATAR_MAX_BYTES) {
       return { status: 'error', errorCode: 'avatar.uploadFailed' };
     }

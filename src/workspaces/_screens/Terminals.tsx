@@ -30,12 +30,13 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
   const translate = useTranslator();
   const [active, setActive] = useState(0);
   const proc = terminal.processes[active] ?? terminal.processes[0];
+  if (!proc) return null;
   const sessionId = `${terminal.ticketId}:${proc.name}`;
   const menuItems = [
-    { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => {} },
-    { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => {} },
-    { label: translate({ key: 'workspaces.terminals.rename' }), icon: 'file-lines' as const, onClick: () => {} },
-    { label: translate({ key: 'workspaces.terminals.copyBuffer' }), icon: 'copy' as const, onClick: () => {} },
+    { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => { /* Fase 2: restart the pty process */ } },
+    { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => { /* Fase 2: clear the terminal buffer */ } },
+    { label: translate({ key: 'workspaces.terminals.rename' }), icon: 'file-lines' as const, onClick: () => { /* Fase 2: rename the session */ } },
+    { label: translate({ key: 'workspaces.terminals.copyBuffer' }), icon: 'copy' as const, onClick: () => { /* Fase 2: copy the terminal buffer */ } },
     { divider: true },
     { label: translate({ key: 'workspaces.terminals.kill' }), icon: 'triangle-exclamation' as const, danger: true, onClick: () => void menuHandler.confirm({ title: translate({ key: 'workspaces.terminals.killConfirmTitle', params: [{ key: 'ticket', value: terminal.ticketId }, { key: 'proc', value: proc.name }] }), content: translate({ key: 'workspaces.terminals.killConfirmContent' }) }) },
   ];

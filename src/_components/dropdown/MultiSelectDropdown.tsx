@@ -96,13 +96,14 @@ export default function MultiSelectDropdown({
   const selectedCount = selectedItems.length;
   let triggerLabel: ReactNode = placeholder;
   if (selectedCount === 1) {
-    const option = options.find((o) => o.sourceItem.id === selectedItems[0].id);
+    const firstSelected = selectedItems[0];
+    const option = options.find((o) => o.sourceItem.id === firstSelected?.id);
     triggerLabel = option?.selectedItem ?? placeholder;
   } else if (selectedCount > 1) {
     triggerLabel = selectedCountText?.(selectedCount) ?? `${String(selectedCount)} selected`;
   }
 
-  const firstSelectedKey = selectedItems.length > 0 ? String(selectedItems[0].id) : undefined;
+  const firstSelectedKey = selectedItems[0] ? String(selectedItems[0].id) : undefined;
 
   return (
     <DropdownMenuShell

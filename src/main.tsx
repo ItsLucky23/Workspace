@@ -83,6 +83,7 @@ const getRoutes = (loaders: Record<string, PageLoader>): RouteObject[] => {
   const seenRoutes = new Map<string, string>();
   for (const path in loaders) {
     const loader = loaders[path];
+    if (!loader) continue;
 
     //? Apply the framework's invisible-parent rule: `_<folder>` segments
     //? are stripped from the URL; pages directly inside an `_<folder>` are
