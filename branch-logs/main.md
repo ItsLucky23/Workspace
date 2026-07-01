@@ -303,3 +303,26 @@
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, test:ws 8/9 (de enige rode = e2e-quick-add tegen de user's :80 die deels-stale hot-reloade code draait; de code-direct integratietest is 9/9 groen).
 
 **Developer-acties:** (1) **herstart de `:80`-dev-server** met verse code (dan is de e2e ook groen); (2) daarna mag je de DB wipen en de onboarding + email-invite live testen (Resend staat klaar). **Flag (lesson 0002):** `createBlankWorkspace` importeert `STAGE_CONFIGS` uit `src/` (werkt in dev/tsx); vóór een PROD-build moet de default-pipeline naar `server/` verhuizen, anders krijgt create-workspace daar geen stages.
+
+## 2026-07-02 00:37 — /loop Fase 1 (batch A+B): 11-punten UI/config-fixes + create-workspace/accept-invite/seed bugfixes
+
+**User prompt:** overnight `/loop` — voer Fase 0 (typed/sync-rewrite) + Fase 1 (11 punten) + Fase 2 (cleanup/seed) + Fase 3 (features) uit, blijf loopen tot alles groen. Gekozen uitvoervolgorde: eerst de laag-risico onafhankelijke Fase-1 fixes (altijd-groen, gegarandeerd werkende app), dán de grote Fase-0 rewrite.
+
+**Gedaan (batch A — UI/config, geen DB/infra):**
+1. **[item 2]** post-login redirect → `/workspaces` (was `/dashboard`) in `config.ts`.
+2. **[item 3]** socket-status-card naar onder-midden: `SocketStatusIndicator` `position="bottom-left"` + `className="left-1/2 right-auto -translate-x-1/2"` (className wint bij conflict).
+3. **[item 4]** topbar theme-knop + avatar-dropdown weg; leftbar user-icon → dropdown (Account/settings + theme-toggle + uitloggen); losse gear-icon in leftbar weg (blijft in mobiel-menu via `NAV_BOTTOM`).
+4. **[item 5]** leftbar-logo clip-fix: in collapsed state IS de "W"-mark de expand-toggle (gecentreerd, hover→pijl), geen aparte arrow-knop meer die de bg half afkapt.
+5. **[item 1]** onboarding-flash: `WorkspacesShell` rendert een neutrale spinner zolang `loading`, pas daarna board-shell vs onboarding (geen "heeft-workspace"-flits meer).
+6. **[item 6]** terminals-pagina: prototype-dummy `TERMINALS`-seed weg → lege lijst → nette (unlocked) empty-state tot de PTY/container-backend echte `AgentSession`-data levert.
+
+**Gedaan (batch B — backend-bugs, huidige arch):**
+7. **[item 8]** `control_v1` create-workspace gebruikte de bare `bootstrapWorkspace` (géén project/stages → blanco board + falende quick-add). Nu `createBlankWorkspace` (project + pipeline + seed). `bootstrapWorkspace` blijft als test-helper.
+8. **[accept-invite 400 / item 9-deel]** `control_v1:58` weigerde `accept-invite` op lege `workspaceId` (`api.invalidRequest`). Nu expliciet vóór de workspace-guard afgevangen en via de Conductor login-only-pad enqueued → onboarding-join werkt.
+9. **[item 11]** `createBlankWorkspace` seedt nu 1 actieve sprint + 2 voorbeeld-tickets (owner) i.p.v. leeg — board/pipeline/backlog niet meer blanco. (Oude 20-tickets/6-fake-members demo blijft in `seedDemoWorkspace`, test-only.)
+
+**Files:** `config.ts`, `src/_components/templates/TemplateProvider.tsx`, `src/workspaces/_shell/{Shell.tsx,WorkspacesShell.tsx}`, `src/workspaces/terminals/page.tsx`, `src/workspaces/_api/control_v1.ts`, `server/bootstrap/seedWorkspace.ts`, `tests/e2e/httpControl.test.mts`.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration-tests 5/5 files (createWorkspace 9/9, snapshot 21/21, tenant 22/22). E2e (httpControl) NIET gedraaid — vereist herstart van de user's :80 met verse code (assertions aangepast: 2 seed-tickets + quick-add = 3).
+
+**Nog te doen deze loop:** Fase 0 (per-actie getypte `_sync`/`_api` rewrite + event-recorder), item 10 (1 account per e-mail — schema `@@unique([email,provider])`→`[email]` + auth-linking, vereist `prisma db push`), item 7-sprint-create verifiëren, Fase 2 cleanup, Fase 3 features.

@@ -37,10 +37,19 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
 
   const openSearch = () => { setSearchOpen(true); };
 
-  //? Zero-workspace users get the onboarding takeover instead of the shell chrome —
-  //? the nav rail / board make no sense without a workspace. Wait for the first
-  //? snapshot (`loading`) so we never flash onboarding before data lands.
-  if (!ctx.loading && ctx.workspaces.length === 0) return <Onboarding />;
+  //? Until the first snapshot lands we don't yet know whether the user has a
+  //? workspace, so render a neutral spinner — NOT the shell chrome (which would
+  //? flash a "has-workspace" board for a frame before onboarding takes over) and
+  //? NOT onboarding (which would flash for existing users). Only once `loading`
+  //? clears do we branch: zero workspaces → onboarding takeover; otherwise → shell.
+  if (ctx.loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-background">
+        <span className="w-6 h-6 rounded-full border-2 border-container2-border border-t-primary animate-spin" />
+      </div>
+    );
+  }
+  if (ctx.workspaces.length === 0) return <Onboarding />;
 
   return (
     <MotionConfig reducedMotion="user">

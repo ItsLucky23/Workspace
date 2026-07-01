@@ -62,10 +62,15 @@ export default function TemplateProvider({
 
   return (
     <div className='w-full h-full relative'>
+      {/* Anchored bottom-CENTER: pass the bottom-left corner then override the
+          horizontal anchor via className (which wins on conflict) so the floating
+          badge sits centered along the bottom edge, clear of the app's top chrome. */}
       <SocketStatusIndicator
         status={socketStatus.self.status}
         reconnectAttempt={socketStatus.self.reconnectAttempt}
         label={translate({ key: 'template.socketStatus' })}
+        position="bottom-left"
+        className="left-1/2 right-auto -translate-x-1/2"
       />
       <TemplateComponent>{children}</TemplateComponent>
     </div>

@@ -66,8 +66,10 @@ const roleChip = (role: string) => (
 
 /* ----------------------------------------------------------------- nav rail */
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
-  const { view, navigate, suggestions, currentUser, aiOpen, toggleAi } = useWorkspaces();
+  const { view, navigate, suggestions, currentUser, aiOpen, toggleAi, theme, setTheme, signOut } = useWorkspaces();
   const translate = useTranslator();
+  const [userOpen, setUserOpen] = useState(false);
+  const userRef = useClickAway<HTMLDivElement>(userOpen, () => { setUserOpen(false); });
 
   const renderItem = (it: NavDef) => {
     const isAi = it.id === 'ai';
@@ -90,23 +92,51 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 
   return (
     <nav className={`hidden md:flex flex-col shrink-0 border-r border-divider bg-container1 transition-all duration-200 ${expanded ? 'w-60' : 'w-[68px]'}`}>
-      <div className="flex items-center justify-between gap-2 px-3 h-14">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
-          {expanded && <span className="font-semibold text-title whitespace-nowrap">{translate({ key: 'workspaces.shell.brand' })}</span>}
-        </div>
-        <button type="button" onClick={() => { setExpanded((e) => !e); }} title={expanded ? translate({ key: 'workspaces.shell.collapse' }) : translate({ key: 'workspaces.shell.expand' })} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
-          <Icon name={expanded ? 'angle-left' : 'angle-right'} />
-        </button>
+      {/* Brand row. Collapsed: the "W" mark IS the expand toggle (centered, no
+          separate arrow) so the brand + arrow can never overlap/clip at 68px.
+          Expanded: brand + label on the left, the collapse arrow on the right. */}
+      <div className={`flex items-center gap-2 px-3 h-14 ${expanded ? 'justify-between' : 'justify-center'}`}>
+        {expanded ? (
+          <>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
+              <span className="font-semibold text-title whitespace-nowrap">{translate({ key: 'workspaces.shell.brand' })}</span>
+            </div>
+            <button type="button" onClick={() => { setExpanded((e) => !e); }} title={translate({ key: 'workspaces.shell.collapse' })} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
+              <Icon name="angle-left" />
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={() => { setExpanded((e) => !e); }} title={translate({ key: 'workspaces.shell.expand' })} className="group relative w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0 cursor-pointer">
+            <span className="group-hover:opacity-0 transition-opacity">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
+            <Icon name="angle-right" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        )}
       </div>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2">{NAV_ITEMS.map((it) => renderItem(it))}</div>
       <div className="flex flex-col gap-1 px-2.5 py-3 border-t border-divider">
-        {NAV_BOTTOM.map((it) => renderItem(it))}
-        <button type="button" onClick={() => { navigate('settings'); }} title={expanded ? undefined : translate({ key: 'workspaces.shell.userSettingsTitle', params: [{ key: 'name', value: currentUser.name }] })}
-          className="flex items-center gap-3 rounded-xl h-10 px-2.5 text-muted hover:bg-container2 transition-colors cursor-pointer">
-          <AvatarBubble user={currentUser} size={24} />
-          {expanded && <span className="text-sm font-medium text-common whitespace-nowrap">{currentUser.name}</span>}
-        </button>
+        {/* Only the Workspace-AI toggle lives here now; Account/Settings moved into
+            the user dropdown below (no separate gear icon — item 4). */}
+        {NAV_BOTTOM.filter((it) => it.id !== 'settings').map((it) => renderItem(it))}
+        <div className="relative" ref={userRef}>
+          <button type="button" onClick={() => { setUserOpen((o) => !o); }} title={expanded ? undefined : translate({ key: 'workspaces.shell.userSettingsTitle', params: [{ key: 'name', value: currentUser.name }] })}
+            className={`flex w-full items-center gap-3 rounded-xl h-10 px-2.5 transition-colors cursor-pointer ${userOpen ? 'bg-container2 text-title' : 'text-muted hover:bg-container2'}`}>
+            <AvatarBubble user={currentUser} size={24} />
+            {expanded && <span className="flex-1 min-w-0 text-left text-sm font-medium text-common truncate">{currentUser.name}</span>}
+            {expanded && <Icon name="caret-down" className={`text-xs transition-transform ${userOpen ? 'rotate-180' : ''}`} />}
+          </button>
+          <Popover open={userOpen} className="absolute bottom-full left-0 mb-1 w-56 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
+            <div className="flex items-center gap-2.5 px-2.5 py-2">
+              <AvatarBubble user={currentUser} size={36} />
+              <div className="min-w-0"><div className="text-sm font-semibold text-title truncate">{currentUser.name}</div><div className="text-xs text-muted truncate">{currentUser.email}</div></div>
+            </div>
+            <div className="my-1 h-px bg-divider" />
+            <button type="button" onClick={() => { setUserOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
+            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
+            <div className="my-1 h-px bg-divider" />
+            <button type="button" onClick={() => { setUserOpen(false); signOut(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.signOut' })}</button>
+          </Popover>
+        </div>
       </div>
     </nav>
   );
@@ -115,15 +145,13 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 /* ----------------------------------------------------------------- top bar */
 export function TopBar({ onCmdK }: { onCmdK: () => void }) {
   const {
-    navigate, theme, setTheme, currentUser, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members,
-    notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead, signOut,
+    navigate, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members,
+    notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead,
   } = useWorkspaces();
   const translate = useTranslator();
   const [wsOpen, setWsOpen] = useState(false);
-  const [avOpen, setAvOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => { setWsOpen(false); });
-  const avRef = useClickAway<HTMLDivElement>(avOpen, () => { setAvOpen(false); });
   const notifRef = useClickAway<HTMLDivElement>(notifOpen, () => { setNotifOpen(false); });
   const presence = members.slice(0, 3);
   const openCreate = () => { setWsOpen(false); void menuHandler.open(<CreateWorkspaceForm onCreate={createWorkspace} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -206,23 +234,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
             </div>
           </Popover>
         </div>
-        <IconButton icon={theme === 'dark' ? 'sun' : 'moon'} title={translate({ key: 'workspaces.shell.toggleTheme' })} onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} />
-        <div className="relative" ref={avRef}>
-          <button type="button" onClick={() => { setAvOpen((o) => !o); }} className="rounded-full cursor-pointer"><AvatarBubble user={currentUser} size={32} /></button>
-          <Popover open={avOpen} className="absolute right-0 mt-1 w-56 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
-            <div className="flex items-center gap-2.5 px-2.5 py-2">
-              <AvatarBubble user={currentUser} size={36} />
-              <div><div className="text-sm font-semibold text-title">{currentUser.name}</div><div className="text-xs text-muted">{currentUser.email}</div></div>
-            </div>
-            <div className="my-1 h-px bg-divider" />
-            <button type="button" onClick={() => { setAvOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
-            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
-            {/* Fase 2: language picker — only English is available today */}
-            <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="language" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.languageEnglish' })}</button>
-            <div className="my-1 h-px bg-divider" />
-            <button type="button" onClick={() => { setAvOpen(false); signOut(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.signOut' })}</button>
-          </Popover>
-        </div>
+        {/* Theme toggle + account/sign-out moved to the leftbar user dropdown (item 4). */}
       </div>
     </header>
   );

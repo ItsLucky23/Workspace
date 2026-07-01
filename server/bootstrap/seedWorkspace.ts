@@ -70,6 +70,27 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
     data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },
   });
 
+  //? Light starter seed (item 11): ONE active sprint + TWO example tickets owned by
+  //? the creator, so a brand-new board + pipeline + backlog aren't empty on first
+  //? open. This deliberately replaces the old heavy demo (20 tickets / 6 fake
+  //? members) — that lives in `seedDemoWorkspace` and is dev/test-only.
+  const sprint = await prisma.sprint.create({ data: { workspaceId, name: 'Sprint 1', active: true } });
+  const starterTickets = [
+    { title: 'Welcome to your workspace 👋', description: 'This is an example ticket. Drag it across the pipeline, assign it, or archive it — your call.' },
+    { title: 'Connect your GitLab project', description: 'Add your repository under Settings → GitLab so the pipeline can work on real issues and merge requests.' },
+  ];
+  let number = 1240;
+  for (const t of starterTickets) {
+    await prisma.ticket.create({
+      data: {
+        workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+        title: t.title, description: t.description, stageId: 'unrefined', status: 'idle',
+        labels: [], creatorId: ownerId, sprintId: sprint.id,
+      },
+    });
+    number += 1;
+  }
+
   return { workspaceId };
 }
 

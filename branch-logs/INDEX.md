@@ -2,4 +2,4 @@
 
 | Branch | Log | Last updated | Entries | Status |
 |---|---|---|---|---|
-| `main` | [main.md](./main.md) | 2026-07-02 | 14 | Fase 1 + 7a/7b + ALLE UI-functionaliteit bedraad (bulk/invite/gitlab/stage-config-persist/notifications/sign-out) + branch-audit (3 cross-tenant/correctness-bugs + regressie-test) + UI-tweaks (2e navbar weg, theme/language autosave, themed scrollbars) + `_screens/`→page.tsx refactor + dode-files-weg + 2e navbar terug (open-tickets, in content-kolom) + alle tsc-errors (server-DOM-lib) + eslint-warnings naar nul. **Alles op origin/main.** |
+| `main` | [main.md](./main.md) | 2026-07-02 00:37 | 15 | Fase 1 + 7a/7b + ALLE UI-functionaliteit bedraad + branch-audit + UI-tweaks + `_screens/`→page.tsx refactor + tsc/eslint naar nul. **/loop Fase-1 batch A+B:** 11-punten UI/config (redirect, socket-card onder-midden, leftbar user-dropdown+theme, logo-clip, onboarding-flash-gate, terminals empty-state) + backend-bugfixes (create-workspace→createBlankWorkspace, accept-invite-400, lichte seed 1 sprint/2 tickets). Integration 5/5 groen. |

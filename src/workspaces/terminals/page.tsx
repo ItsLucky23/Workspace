@@ -14,7 +14,6 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
 import XtermTerminal from '../_components/XtermTerminal';
 import { EmptyState, PopMenu, Segmented, StatusPill } from '../_components/primitives';
-import { TERMINALS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Terminal, TicketStatus } from '../_data/types';
 
@@ -32,6 +31,12 @@ function termStatus(t: Terminal): TicketStatus {
 let rememberedGridHeight = 460;
 const MIN_PANEL_HEIGHT = 220;
 const MAX_PANEL_HEIGHT = 900;
+
+//? There are no live terminals until the PTY/container backend (Fase 2) surfaces
+//? real `AgentSession` rows in the workspace snapshot. Until then this page renders
+//? its (unlocked) empty state instead of the old prototype dummy terminals — item 6.
+//? Swap this for the snapshot-derived terminal list when that lane lands.
+const terminals: Terminal[] = [];
 
 function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
@@ -136,7 +141,7 @@ export default function Terminals() {
   const translate = useTranslator();
   const { sshUserId, navigate, membersById } = useWorkspaces();
   const [layout, setLayout] = useState<Layout>('grid');
-  const [activeTab, setActiveTab] = useState(TERMINALS[0]?.ticketId ?? '');
+  const [activeTab, setActiveTab] = useState(terminals[0]?.ticketId ?? '');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   const sshUserName = sshUserId ? (membersById[sshUserId]?.name ?? sshUserId) : '';
   const unlocked = sshUserId !== null;
@@ -148,7 +153,7 @@ export default function Terminals() {
           <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.terminals.title' })}</h1>
           {unlocked && <span className="inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common"><Icon name="user" /> {translate({ key: 'workspaces.terminals.sshLabel', params: [{ key: 'name', value: sshUserName }] })}</span>}
         </div>
-        {unlocked && TERMINALS.length > 0 && (
+        {unlocked && terminals.length > 0 && (
           <Segmented<Layout>
             value={layout}
             onChange={setLayout}
@@ -159,30 +164,30 @@ export default function Terminals() {
 
       {!unlocked && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
 
-      {unlocked && TERMINALS.length === 0 && (
+      {unlocked && terminals.length === 0 && (
         <EmptyState icon="terminal" title={translate({ key: 'workspaces.terminals.emptyTitle' })} sub={translate({ key: 'workspaces.terminals.emptySub' })} />
       )}
 
-      {unlocked && TERMINALS.length > 0 && layout === 'grid' && maximizedId !== null && (
+      {unlocked && terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
         <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
-          {TERMINALS.filter((t) => t.ticketId === maximizedId).map((t) => (
+          {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
             <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
           ))}
         </div>
       )}
 
-      {unlocked && TERMINALS.length > 0 && layout === 'grid' && maximizedId === null && (
+      {unlocked && terminals.length > 0 && layout === 'grid' && maximizedId === null && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            {TERMINALS.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
+            {terminals.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
           </div>
         </div>
       )}
 
-      {unlocked && TERMINALS.length > 0 && layout === 'tabs' && (
+      {unlocked && terminals.length > 0 && layout === 'tabs' && (
         <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
           <div className="flex items-center gap-1 mb-3 overflow-x-auto ws-no-scrollbar">
-            {TERMINALS.map((t) => (
+            {terminals.map((t) => (
               <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
                 className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${activeTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: `var(--color-${termStatus(t) === 'busy' ? 'primary' : (termStatus(t) === 'stuck' || termStatus(t) === 'needs-input' ? 'warning' : 'muted')})` }} />
@@ -190,7 +195,7 @@ export default function Terminals() {
               </button>
             ))}
           </div>
-          {TERMINALS.filter((t) => t.ticketId === activeTab).map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill />)}
+          {terminals.filter((t) => t.ticketId === activeTab).map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill />)}
         </div>
       )}
     </div>

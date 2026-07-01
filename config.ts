@@ -54,7 +54,10 @@ export const oauthCallbackBase = dev ? backendOrigin : publicUrl;
 const config = {
   pageTitle: 'Test',
   loginPageUrl: '/login',
-  loginRedirectUrl: '/dashboard',
+  //? Workspaces is the app's home — a fresh login lands on /workspaces (which
+  //? routes the user to their board, or the onboarding empty-state if they have
+  //? no workspace yet), NOT the framework playground /dashboard.
+  loginRedirectUrl: '/workspaces',
   defaultLanguage: 'en' as const,
   defaultTheme: 'light' as const,
   /** false = HttpOnly cookie, true = sessionStorage. */
