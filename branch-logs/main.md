@@ -205,3 +205,20 @@
 **Commit:** `956d76d`.
 
 **Resteert (echt Fase-2, geen op / geen data-producer):** needs-input-reply, add-reference/link-ticket, teardown-container, pause/resume/kill (AI-session), upload-doc/reindex/regenerate, echte AI-chat, echte usage-cijfers, container-terminals, SSH-key-persist + echte sessie-lijst, real-time/presence.
+
+## 2026-07-02 — Merge main + `_screens/`→page.tsx refactor + push naar origin/main
+
+**User prompt:** refactor `_screens/` zodat we de file-router écht gebruiken (code in `page.tsx`, geen 1-op-1 wrapper) + 1-op-1 functions/components mee naar de route-folder; daarna origin main pullen, conflicten oplossen, alles pushen naar origin main, dan lokaal pullen zodat live Vite alles ziet.
+
+**Belangrijke vondst vooraf:** `origin/main` (38041d8) liep **35 commits achter** op local main (0dace22) — de parallelle AIs hadden lokaal gecommit maar nooit gepusht. Geïntegreerd met local main (de echte laatste code); op advies eerst gemergd, dán pas gerefactord (anders structuur-vs-inhoud-conflict op elke screen).
+
+**Gedaan:**
+1. **Merge `main` (0dace22) → branch** (commit `41a8935`). Conflicten opgelost: `workspaceSnapshot.ts` (mijn createdAt-feed-ordering + ObjectId→key-identity-fix bovenop main's notifications; ongebruikte `relTime` weg, main's `formatTime`), `Board.tsx` (main's sprint/status/assignee-filters + mijn empty-stages-guard), `AccountSettings.tsx` (main's sessions/revoke/export + mijn theme/language-autosave), `WorkspacesShell.tsx` (TabBar-removal op main's nieuwe TopBar-signatuur), 4 locales (main's echte nl/de/fr + mijn `emptyStages`-keys vertaald), branch-logs (beide entry-sets).
+2. **`_screens/`→page.tsx refactor** (commit `2649a97`): 10 screens ge-inlined in hun route-`page.tsx` (code in de route, `export const template='workspaces'`; Board=index `./`, TicketDetail=`../../` + `id` uit `params.ticketid`). Colocatie in `board/[ticketId]/`: `FileDiffViewer.tsx` + private dep `DiffView.tsx` (exclusief TicketDetail). Gedeeld gebleven: `Icon`/`primitives`/`motion`/`XtermTerminal`; `SearchPalette` (shell-only). Router globt alleen `**/page.tsx` → colocated siblings niet geroute. AI-indexen ververst.
+3. **Gepusht naar `origin/main`** (`38041d8..2649a97`, clean fast-forward) — synct meteen ook de 35 achterstallige local-main-commits.
+
+**Files:** 10× `_screens/*.tsx`→`<route>/page.tsx`, `board/[ticketId]/{FileDiffViewer,DiffView}.tsx` (verplaatst), + merge-resoluties.
+
+**Verificatie:** `tsc --noEmit` **0 errors**, `npm run build` groen, `ai:lint` schoon, eslint (verplaatste files) alleen pre-existing warnings, **`test:ws` 7/8** (Mongo-directe files groen).
+
+**Geflagd (niet gefixt):** (a) `test:ws`'s `httpControl` e2e faalt op quick-add-persist — maar die test de **live :80 server (main-checkout)**, niet deze worktree; los van deze refactor (mogelijk de eerder-geflagde async-ack of stale server). (b) Dode files zonder importers: `_components/TerminalView.tsx` + `_screens/Placeholder.tsx`. (c) Open-ticket-tabjes verdwenen mee met de 2e navbar (eerdere tweak).
