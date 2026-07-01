@@ -339,3 +339,13 @@
 **Verificatie:** front-tsc 0 (bewijst end-to-end client-typing van de nieuwe routes = item-9-proof), server-tsc 0, eslint 0/0, ai:lint schoon, build groen, rbac.test 7/7 + createWorkspace 9/9. De 1 "degraded type extraction" is `system/session` (framework, pre-existing), niet mijn routes.
 
 **Volgende slices (fan-out, workflow):** resterende ~37 ops → eigen getypte `_api`-route + provider-helper (tickets/board bulk-*, members/RBAC, settings/env/integrations/gitlab/budget, stage-config, notifications, suggestions, invite), daarna `control_v1` + generieke `control()` verwijderen. Optioneel per-op `TicketEvent`-enrichment (activity feed) + realtime-`_sync`-laag (browser-gated).
+
+## 2026-07-02 00:58 — /loop Fase-0: board/ticket-ops gemigreerd naar getypte routes
+
+**Gedaan:** 6 board/ticket-ops → eigen getypte `_api`-route (zelfde thin patroon: validate + `hasCapability` RBAC + enqueue naar seriële Conductor): `archive`, `bulkArchive`, `bulkMove`, `bulkStatus`, `bulkAssign` (cap workTickets), `bulkSprint` (cap manageSprints). `WorkspacesProvider` de 6 helpers omgezet naar getypte `apiRequest`-calls (ctx-interface + consumers ongewijzigd). Legacy `control()` nog voor members/settings/RBAC/env/integrations/gitlab/budget/stage-config/notifications/suggestions/invite.
+
+**Files:** `src/workspaces/_api/{archive,bulkArchive,bulkMove,bulkStatus,bulkAssign,bulkSprint}_v1.ts` (nieuw), `src/workspaces/_shell/WorkspacesProvider.tsx`.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen. Write-logica ongewijzigd (dezelfde Conductor-ops, al gedekt door integration-tests).
+
+**Migratie-status Fase 0:** 8/~40 ops getypt (quickAdd, sprintCreate + 6 board). Resterend: members (change-role/remove/transfer/invite/revoke), roles (create/update), settings (save-env/remove-env/save-integration/remove-integration/gitlab-*/raise-cap/edit-budget/resume-spend/skill-toggle/save-stage-config), notifications (mark-read), suggestions (accept). Daarna `control_v1` + generieke `control()` weg.
