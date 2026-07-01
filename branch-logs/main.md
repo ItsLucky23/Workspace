@@ -35,3 +35,22 @@
 **Files touched:** `src/workspaces/_shell/{WorkspacesProvider,WorkspacesShell,WorkspacesTemplate}.tsx` (nieuw), `_shell/WorkspacesContext.tsx` (raw provider hernoemd), `src/workspaces/page.tsx` + 8 nieuwe `<view>/page.tsx` + `board/[ticketId]/page.tsx`, `src/_components/templates/TemplateProvider.tsx`, `src/main.tsx`.
 
 **Open (step-1 debt, geflagd):** de hele prototype-code faalt de strikte consumer-lint (271 errors) — grotendeels **i18n** (hardcoded JSX-strings, `react/jsx-no-literals`) + `window`→`globalThis` + `!`-asserts. De i18n-migratie is expliciet step-1-werk; de mechanische fixes doe ik apart. Ook: `useWorkspaceData()`-seam nog te doen (Lane B); icon-barrel `export *` → later narrowen.
+
+## 2026-07-01 16:30 — Workspaces stap 0.2: volledig V1 Prisma-schema
+
+**User prompt:** `/compact` + dan 0.2 schema (Sonnet-bouw + Opus-verify).
+
+**What I did:**
+- Volledig V1-datamodel in `prisma/schema.prisma` gezet, gegrond in `04_DATA_MODEL.md`, `04b §6–§17` (NIET §18-deferred), de §13 field-sweep en `V1_SCOPE.md`. De `04b §6–§11`-bodies (TicketEvent, AgentSession, WorkspaceSuggestion, SpendRecord, WorkspaceBudget, Notification, PushSubscription, WorkspaceRole) zijn veld-voor-veld letterlijk overgenomen incl. indexes/uniques.
+- **27 modellen**: framework-global (`User` ongewijzigd, `SshKey`, `PushSubscription`) + 24 tenant-scoped (Workspace, WorkspaceMember/Role, Invite, Project, PipelineStage, Ticket, TicketLink, TicketReference, Sprint, TicketEvent, AgentSession, CarryOver, Handoff, QuestionSet, WorkspaceTrigger, WorkspaceSignal, WorkspaceSuggestion, WorkspaceNote, SpendRecord, WorkspaceBudget, Notification, InfoSource, RagEntry, EnvVar, IntegrationTool). Rijke per-stage-config als **Prisma composite `type`s** (MongoDB-idiomatisch, spiegelt `PipelineStageCfg`).
+- **Ontwerpkeuzes vastgelegd** in `docs/decisions/0001-workspaces-v1-schema-shape.md` (embed-vs-normalize, geen `Pipeline`-wrapper, losse ObjectId-refs i.p.v. `@relation`-cascades, geen `OAuthAccount`, `String`+comment i.p.v. Prisma-enums). `ai:decisions` ge-refresht.
+
+**Verificatie:** `prisma validate` groen 🚀 + `prisma generate` groen (offline, dummy-URL — geen DB-verbinding nodig). **Adversariële Opus-verify tegen de docs**: verdict *ship-ready* — 0 deferred-leaks, 0 invariant-schendingen, alle §6–§11-bodies kloppen; enige echte fix (`WorkspaceBudget.periodWindow` miste `@default`) doorgevoerd + her-gevalideerd. `vite build` groen.
+
+**Files touched:** `prisma/schema.prisma` (herschreven), `docs/decisions/0001-workspaces-v1-schema-shape.md` (nieuw), `docs/AI_DECISIONS_INDEX.md` (regen), `node_modules/@prisma/client` (regen).
+
+**Notes / bewuste keuzes:**
+- **App-enforced verplichtingen** (niet door Prisma afgedwongen — hebben code+tests nodig): workspace-teardown-cascade over alle `workspaceId`-rijen (`04b §11d`), append-only-immutabiliteit (TicketEvent/RagEntry/WorkspaceSignal/SpendRecord/CarryOver/Handoff), `runInTenant` op elk non-`/api`-pad.
+- **Bewust weggelaten** (komt met hun lane): `previewConcurrencyCap` + alle `04b §18`-deferred modellen (MergeRequest/CI-Pipeline/ForgeConnection/AuditEntry/PreviewDeployment) + `forgeMode`/`autonomyLevel`.
+- `TicketReference` = afgeleide minimale shape (docs noemen 't in de cascade-lijst maar geven geen body) — geflagd in de schema-header + ADR.
+- **Nog niet gedaan (developer-actie / Lane B):** `prisma db push` naar de echte Mongo (via SSH-tunnel) — pas nodig bij het wiren van de sync-backend; het schema is offline bewezen. Ook nog open: de `types.ts §15`-backfill (StageKind-reconciliatie in `Board.tsx`/`Pipeline.tsx`) + de volledige i18n-migratie.

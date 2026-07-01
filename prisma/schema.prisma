@@ -1,6 +1,35 @@
-// Prisma schema — recommended User model for LuckyStack's `defaultPrismaUserAdapter`.
-// If your app's User model deviates, call `registerUserAdapter()` in
-// `luckystack/server/index.ts` with a custom adapter instead of editing the framework.
+// Prisma schema — LuckyStack framework baseline (User) + the Workspaces V1 data model.
+//
+// Provider: MongoDB. Tenant = `Workspace`; every tenant-scoped model carries a
+// `workspaceId` and goes through `runInTenant` + the graded clients (B-O8). The
+// framework-global rows (`User`, `SshKey`, `PushSubscription`) carry NO
+// `workspaceId` (04b §11b).
+//
+// Authority + provenance for the Workspaces block:
+//   • src/workspaces/_docs/V1_SCOPE.md        — what ships (wins on conflict, §5)
+//   • src/workspaces/_docs/04_DATA_MODEL.md    — §1 already-modeled · §2 new models · §3 field extensions
+//   • src/workspaces/_docs/04b_DATA_MODEL_ADDENDA.md — §6–§17 build-grade bodies (transcribed here)
+//   • src/workspaces/_docs/REFERENCE_CODES.md  — B-##/DH# binding definitions
+//
+// Deliberately ABSENT (recorded, not built — 04b §18 / V1_SCOPE §4): every built-in
+// forge/MR/CI/auto-merge/preview-deploy/multi-provider surface. Do NOT add a model
+// from 04b §18 to this file in V1.
+//
+// Design choices for this schema (see docs/decisions/0001-workspaces-v1-schema-shape.md):
+//   1. Rich per-stage config is EMBEDDED as Prisma composite `type` blocks
+//      (MongoDB-idiomatic), mirroring the prototype's flattened `PipelineStageCfg`
+//      — not normalized into StageSkill/StageCommand/… child collections.
+//   2. No separate `Pipeline` wrapper model — `PipelineStage` belongs to a `Project`
+//      directly (the §18 CI `Pipeline` is deferred and name-clashes).
+//   3. Models use loose `@db.ObjectId` reference fields, NOT formal Prisma
+//      `@relation`s: delete-cascade (04b §11d) + tenant isolation are Conductor /
+//      app-enforced, matching the single-writer + `$extends` where-injection model.
+//   4. `User` is left untouched (the framework `defaultPrismaUserAdapter` contract);
+//      no `OAuthAccount` model in V1 — framework auth + `User.provider` cover identity.
+//   5. Growth-tolerant product fields (status/type/kind/…) are `String` + a
+//      value-listing comment, verbatim from 04b, rather than Prisma enums — this
+//      preserves prototype↔schema fidelity (`types.ts` uses the hyphenated literals)
+//      and honors the docs' explicit "(+ growth)" intent.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,6 +41,10 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+// ============================================================================
+// Framework-global identity (LuckyStack) — NO `workspaceId` (04b §11b)
+// ============================================================================
 
 enum LANGUAGE {
   en
@@ -34,6 +67,9 @@ enum PROVIDERS {
   microsoft
 }
 
+// Recommended User model for LuckyStack's `defaultPrismaUserAdapter`. If your
+// app's User model deviates, call `registerUserAdapter()` in
+// `luckystack/server/index.ts` with a custom adapter instead of editing this.
 model User {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   createdAt       DateTime  @default(now())
@@ -56,4 +92,740 @@ model User {
   preferences     Json?
 
   @@unique([email, provider])
+}
+
+//? SSH public key (B-05). Framework-global — a user's key, not a workspace's.
+//? The linked public key is the capability-gate on the `/pty` namespace; the
+//? private key never leaves the client (17_ACCOUNT_AND_AUTH). Prototype mirror:
+//? `SshKeyEntry` (types.ts:199).
+model SshKey {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId          // FRAMEWORK-GLOBAL (no workspaceId)
+  name        String
+  type        String                           // 'ed25519' | 'rsa' | ...
+  fingerprint String
+  publicKey   String                           // the public half; server verifies against it
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+//? Web-push registration (04b §10). FRAMEWORK-GLOBAL — a user's device, not a
+//? workspace's (§11b). Redacted-push posture: `fullBodyOptIn` gates whether the
+//? push payload may carry the full `Notification.body` (D80 REVERSED,
+//? Q-SEC-NOTIF-PUSH).
+model PushSubscription {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId          // FRAMEWORK-GLOBAL (not tenant-scoped)
+  endpoint      String                           // the Web Push endpoint URL
+  keys          Json                             // { p256dh, auth } — Web Push encryption keys (server-only secret)
+  fullBodyOptIn Boolean   @default(false)         // D80 REVERSED: push is REDACTED by default; full body opt-in per device
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+
+  @@index([userId])
+}
+
+// ============================================================================
+// Tenant root + identity/access (tenant-scoped)
+// ============================================================================
+
+//? The tenant (B-06). Everything else in this section carries its `workspaceId`.
+//? Field sweep (04b §13): timezone/pricing/assistant+reasoner budget/
+//? handoffInstruction/presetKey. GitLab token stored ENCRYPTED per workspace
+//? (B-07). Preview-concurrency cap is OMITTED in V1 (preview-deploy is OUT,
+//? V1_SCOPE §4) and lands the day that lane opens.
+model Workspace {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                  String
+  slug                  String
+  ownerId               String   @db.ObjectId          // User.id (framework-global) — current owner (single-owner, D77)
+
+  // --- GitLab (the only V1 forge; B-07/B-29) ---
+  gitlabUrl             String?                          // the workspace's GitLab base url
+  gitlabTokenEnc        String?                          // ENCRYPTED per-workspace GitLab token (app-owned encryption v1)
+
+  // --- settings / field sweep (04b §13) ---
+  timezone              String   @default("UTC")         // D55 — IANA tz; anchors cron + budget window reset + sprint dates
+  presetKey             String   @default("professional")// D1/D18 — 'simple'|'advanced'|'professional' (provenance only; tiers editable after)
+  pricing               Json?                            // D31 — per-model price map (editable; zero-out → tokens-only cost chips)
+
+  // --- workspace-AI budget + self-handoff (06, 04 §3) ---
+  assistantTokenBudget  Int?                             // per-user-Assistant context budget → self-handoff
+  reasonerTokenBudget   Int?                             // optional future one-shot reasoner budget
+  handoffInstruction    String   @default("")            // the editable self-handoff instruction template
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+//? Workspace membership. `roleKey` references a `WorkspaceRole.key` (per-workspace,
+//? replacing the fixed enum — 04b §11e). Prototype mirror: `Member` (types.ts:17).
+model WorkspaceMember {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  userId      String   @db.ObjectId          // User.id (framework-global)
+  roleKey     String                          // → WorkspaceRole.key ('owner'|'admin'|'member' seeded; custom added)
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+}
+
+//? Custom RBAC role (04b §11e, D76). `perms` is one boolean per RBAC_CAPABILITIES
+//? entry (B-28 matrix, positional). Built-ins seeded per workspace (editable,
+//? not deletable). Single-Owner invariant (D77) enforced in the membership
+//? `preApiExecute` check, NOT by locking rows. Prototype mirror: `PermRole`
+//? (types.ts:236).
+model WorkspaceRole {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String    @db.ObjectId
+  key         String                          // stable ref ('owner'|'admin'|'member' seeded; custom keys added)
+  label       String                          // editable display name
+  perms       Boolean[]                       // one boolean per RBAC_CAPABILITIES entry (positional)
+  builtIn     Boolean   @default(false)       // seeded built-ins (cannot be deleted; CAN be edited per D76)
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId])
+}
+
+//? Pending email invite (B-06, via @luckystack/email). Prototype mirror:
+//? `InviteEntry` (types.ts:217).
+model Invite {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  email        String
+  roleKey      String                          // → WorkspaceRole.key to grant on accept
+  invitedById  String?  @db.ObjectId           // User.id who sent it
+  token        String                          // single-use accept token
+  status       String   @default("pending")    // 'pending' | 'accepted' | 'revoked' | 'expired'
+  createdAt    DateTime @default(now())
+  acceptedAt   DateTime?
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId, status])
+}
+
+// ============================================================================
+// Project & pipeline (tenant-scoped)
+// ============================================================================
+
+//? A `{ path, role }` entry — GENERATE (framework writes docs here) vs LINK
+//? (reference existing) — D9/D19.
+type LinkedFile {
+  path String
+  role String        // 'generate' | 'link'
+}
+
+//? The linked repo + its build/image config. Field sweep (04b §13): gitUrl,
+//? linkedFiles[], generatedDocsPath, baseImageRef(+dockerfilePath). Prototype
+//? mirror: `Project` (types.ts:34).
+model Project {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId       String       @db.ObjectId
+  name              String
+  gitlabPath        String                                    // e.g. "youcomm/app"
+  gitUrl            String?                                    // the linked repo url (alongside gitlabPath)
+  linkedFiles       LinkedFile[]                              // D9/D19 — GENERATE vs LINK
+  generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
+  baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
+  dockerfilePath    String?                                    // optional per-project Dockerfile
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([workspaceId])
+}
+
+// ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
+
+//? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).
+type StageModelChoice {
+  model    String        // 'haiku' | 'sonnet' | 'opus' (provider-specific; Q-MP-CAPREG forward-pointer)
+  effort   String        // 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+  maxTurns Int
+}
+
+//? One auto-escalation rule: "score >= minScore → this model/effort/max-turns".
+type ModelRule {
+  id       String
+  minScore Int
+  model    String
+  effort   String
+  maxTurns Int
+}
+
+//? Model selection: a base choice + optional auto-escalation by the self-assigned
+//? complexity score. `contextBudgetTokens` = per-stage token budget → self-handoff
+//? (04 §3, 06).
+type StageModelCfg {
+  autoEscalate        Boolean
+  base                StageModelChoice
+  rules               ModelRule[]
+  contextBudgetTokens Int?
+}
+
+//? Network egress: allow-list (only these) or block-list (all except these),
+//? built from category presets + explicit hosts. Maps to permissions.sandbox.network.
+type StageNetworkCfg {
+  enabled    Boolean
+  mode       String        // 'whitelist' | 'blacklist'
+  categories String[]
+  domains    String[]
+}
+
+//? A whitelisted command pattern → a `.claude` permission rule (allow/ask/deny).
+type StageCommandCfg {
+  id       String
+  pattern  String
+  mode     String          // 'allow' | 'ask' | 'deny'
+  title    String?
+  desc     String?
+  category String?
+}
+
+//? A stage selects a workspace-configured integration tool (by id) + a tier
+//? (the tier → mongo:ro|rw graded client, B-O8).
+type StageToolCfg {
+  toolId String
+  tier   String            // 'ro' | 'rw'
+}
+
+//? A per-stage status label (non-lifecycle; distinct from the AI-owned
+//? TicketStatus enum). `kind` = 'base' | 'custom'.
+type StageStatusCfg {
+  key   String
+  label String
+  kind  String
+}
+
+//? An env var injected into a stage process.
+type StageEnvVar {
+  key   String
+  value String
+}
+
+//? A container process: where it runs (cwd), its env, and the ordered commands.
+//? Stack-agnostic (npm / dotnet / go / make / …).
+type StageProcessCfg {
+  id       String
+  name     String
+  cwd      String
+  env      StageEnvVar[]
+  commands String[]
+}
+
+//? One pipeline stage (meta) + its full editable config, flattened onto the model
+//? (mirrors the prototype `PipelineStageCfg`). Belongs to a Project directly (no
+//? separate `Pipeline` wrapper — decision #2). `id` is a FREE string (custom
+//? stages allowed); `kind` is the typed StageKind role (04b §12). Field sweep
+//? (04b §13): systemPrompt, roleKey, avgTokensPerTurn, contextBudgetTokens
+//? (on modelCfg). V1_SCOPE §3.2: `userEditable` (edit-lock) + `gateForApproval`
+//? (proceed-or-gate).
+model PipelineStage {
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId        String            @db.ObjectId
+  projectId          String            @db.ObjectId
+  kind               String                                   // StageKind: 'refine'|'plan'|'code'|'test'|'review'|'final' (04b §12)
+  name               String
+  order              Int
+  aiEnabled          Boolean           @default(true)
+  wipLimit           Int?                                     // column WIP warning threshold
+
+  // --- prompt layering (D2/D17) ---
+  roleKey            String            @default("code")       // 04 §3 (03 §3) — the AgentRole plugin binding
+  systemPrompt       String            @default("")           // D2/D17 — layered base prompt
+  customInstructions String            @default("")
+  promptTemplate     String            @default("")           // carry-over template with {{chips}}
+
+  // --- V1_SCOPE §3.2 per-stage flow toggles ---
+  userEditable       Boolean           @default(true)         // "may the user edit while this stage is active" (edit-lock)
+  gateForApproval    Boolean           @default(false)        // proceed-or-gate: gate for human approval before promoting
+
+  // --- child config (embedded) ---
+  skillKeys          String[]                                 // enabled InfoSource(skill) ids
+  sourceIds          String[]                                 // loaded InfoSource(context-doc) ids
+  commands           StageCommandCfg[]
+  tools              StageToolCfg[]
+  statuses           StageStatusCfg[]
+  processes          StageProcessCfg[]
+  visibleStageIds    String[]
+  modelCfg           StageModelCfg
+  network            StageNetworkCfg
+  hooks              Json                                     // Record<hookKey, boolean> — which lifecycle hooks fire
+  avgTokensPerTurn   Int?                                     // doc 05 (D4/D28) — rolling per-stage average feeding the estimate blend
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([workspaceId, projectId, order])
+}
+
+// ============================================================================
+// Tickets / board (tenant-scoped)
+// ============================================================================
+
+//? A ticket = { stageId, status } (DH5 two-level). `status` is the AI-owned
+//? TicketStatus lifecycle ('idle'|'needs-input'|'busy'|'done'|'paused'|'stuck',
+//? Q-DATA-STATUS closed set). `stageId` is a free string → PipelineStage.id.
+//? GitLab-derived caches (B-29, Q-DATA-ASSIGNMENT): creatorId/assigneeId/
+//? mrUrl/issueUrl. Field sweep (04b §13): archived, lastActivityAt, canonical
+//? mrUrl/issueUrl (prototype `mr?`/`issue?` shorthands). `commitHash` frozen at
+//? worktree creation (DH5). Prototype mirror: `Ticket` (types.ts:49).
+model Ticket {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  projectId      String   @db.ObjectId
+  key            String                          // display id, e.g. "DEV-1240" (GitLab issue-derived)
+  number         Int                             // the GitLab issue number
+  title          String
+  description    String?
+  stageId        String                          // current pipeline column → PipelineStage.id (free string)
+  status         String                          // TicketStatus: idle|needs-input|busy|done|paused|stuck
+  labels         String[]                        // GitLab-native, cached
+  creatorId      String?  @db.ObjectId           // GitLab-derived cache (B-29)
+  assigneeId     String?  @db.ObjectId           // GitLab-derived cache (B-29)
+  branch         String?                         // the DEV-#### branch
+  mrUrl          String?                         // GitLab-derived cache — the MR url (canonical, was prototype `mr?`)
+  issueUrl       String?                         // GitLab-derived cache — the issue url (canonical, was prototype `issue?`)
+  commitHash     String?                         // frozen worktree commit the ticket's context is pinned to (DH5)
+  sprintId       String?  @db.ObjectId
+  carryOver      String?                         // the HUMAN one-liner (derived from the latest CarryOver envelope summary, 04b §14)
+  needsInput     String?                         // denormalized banner = first open question (04 §2)
+  archived       Boolean  @default(false)        // doc 13 bulk Archive — soft, never deletes
+  lastActivityAt DateTime?                        // denormalized from the latest TicketEvent — default backlog sort key
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, projectId, stageId])
+  @@index([workspaceId, sprintId])
+  @@index([workspaceId, archived, lastActivityAt])
+}
+
+//? A ticket↔ticket relation. `ai` = AI-suggested; `reason` = why (shown on hover).
+//? Prototype mirror: `TicketLink` (types.ts:88).
+model TicketLink {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  ticketId       String   @db.ObjectId
+  targetTicketId String   @db.ObjectId          // the related ticket
+  rel            String                          // 'relates to' | 'blocks' | 'duplicates'
+  ai             Boolean  @default(false)        // AI-suggested
+  reason         String?                         // why the AI proposed the link
+  createdAt      DateTime @default(now())
+
+  @@index([workspaceId, ticketId])
+}
+
+//? An external / info reference attached to a ticket (04 §1, cascade list 04b
+//? §11d). Minimal V1 shape — the docs name the model but give no build-grade body;
+//? this is an inferred shape (flagged in the ADR). Covers e.g. an attached
+//? InfoSource or an external url a stage produced.
+model TicketReference {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  ticketId    String   @db.ObjectId
+  kind        String                          // 'info-source' | 'url' | ... (inferred)
+  sourceId    String?  @db.ObjectId           // → InfoSource.id when kind='info-source'
+  url         String?
+  label       String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, ticketId])
+}
+
+//? A sprint with a duration (B-30). Real DateTime columns replace the prototype's
+//? display strings (04b §13: startAt/endAt, workspace tz). Prototype mirror:
+//? `Sprint` (types.ts:109).
+model Sprint {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String    @db.ObjectId
+  name        String
+  startAt     DateTime?                         // workspace tz (D55) — replaces prototype display-string `start`
+  endAt       DateTime?                         // replaces prototype display-string `end`
+  active      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, active])
+}
+
+// ============================================================================
+// Event log (tenant-scoped, APPEND-ONLY)
+// ============================================================================
+
+//? The single ordered, immutable, per-ticket fact stream (04b §6). Append-only:
+//? never updated/deleted via the app. `seq` is MONOTONIC per ticket (Redis INCR
+//? ws:{workspaceId}:ticket:{ticketId}:evseq) and is the client merge/dedupe key
+//? (NOT createdAt — clock skew). The ONLY writer is the Conductor (B-23). Prototype
+//? mirror: `ActivityEvent` (types.ts:137).
+model TicketEvent {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  ticketId    String   @db.ObjectId
+  seq         Int                              // MONOTONIC per ticket (Redis INCR); the merge/dedupe key
+  type        String                           // 'command'|'file-change'|'ai-message'|'status-change'|'mr'|'comment' (+ growth)
+  actor       String                           // member userId | 'ai' | 'conductor' | 'mr' | 'gitlab'
+  sessionKey  String?                          // worker:ticket:stage | assistant:user | conductor — provenance of an AI-sourced event
+  stageId     String?                          // the StageKind key the event occurred in, if stage-scoped
+  text        String                           // rendered one-liner for the feed
+  metadata    Json?                            // { commitHash?, changedFiles?[], mrUrl?, diffRef?, voiceTranscript?, ... }
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, ticketId, seq])        // the ordered-read index (subscribe-first → snapshot)
+  @@index([workspaceId, createdAt])             // the workspace-wide feed (bounded-window)
+}
+
+// ============================================================================
+// Runtime (tenant-scoped)
+// ============================================================================
+
+//? The ONE canonical runtime row (04b §7 — merges three prior conflicting defs).
+//? The orchestrator's durable runtime fact: socket sessions are ephemeral; the
+//? SessionManager rehydrates PTYs from these rows on boot (resumeAll, 01 §4).
+//? `status` = ready|busy|paused|stopped (canonical 4-set, distinct from
+//? Ticket.status + StageStatusCfg). No LLM verb mutates this row — driven by
+//? [control-API] Conductor actions + Stop/SessionStart hooks.
+model AgentSession {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  ticketId         String?  @db.ObjectId          // null for assistant sessions not bound to a ticket
+  stageId          String?                         // the StageKind key; worker sessions only
+
+  // --- identity / role ---
+  kind             String                          // 'assistant' | 'worker' (+ optional future 'reasoner')
+  userId           String?  @db.ObjectId           // ASSISTANT sessions only: whose chat → drives that user's RBAC
+  sessionKey       String                          // assistant:{userId} | worker:{ticketId}:{stageId} | reasoner:{...}
+
+  // --- engine / lifecycle (Claude-CLI-PTY) ---
+  claudeSessionId  String?                         // for `claude --resume`; RE-CAPTURED if /clear rotates it
+  model            String?                         // resolved model literal at spawn (haiku|sonnet|opus)
+  cliVersion       String?                         // EXACT pinned Claude CLI version that ran this session (audit)
+  baseImageRef     String?                         // resolved L2 image tag (content-hash) this session ran in
+
+  // --- container binding (crash-recovery) ---
+  containerId      String?                         // L3 per-ticket container id; null for host-side reasoning roles
+  worktreePath     String?                         // the in-container clone path
+  ptyAgentUrl      String?                         // 127.0.0.1:<port> the in-container pty-agent publishes
+
+  // --- status (the SINGLE runtime state machine) ---
+  status           String                          // ready | busy | paused | stopped
+
+  // --- budget / estimate feed (advisory) ---
+  tokenEstimate    Int      @default(0)            // running estimate for the self-handoff / budget trigger; ADVISORY
+  durationEstimate Int?                             // seconds; cold-start self-estimate (D4); nullable until a planning stage runs
+
+  // --- structured-channel security ---
+  channelTokenId   String?                         // id (NOT secret) of the per-session structured-channel token; RE-MINTED per spawn/resume
+  hookTokenId      String?                         // id of the SEPARATE per-session WS_HOOK_TOKEN
+
+  startedAt        DateTime @default(now())
+  lastHeartbeatAt  DateTime?
+
+  @@index([workspaceId, ticketId])
+  @@index([workspaceId, kind, userId])            // an Assistant lookup by (kind, user)
+  @@index([workspaceId, status])                  // CapacityManager admission scan
+  @@unique([workspaceId, sessionKey])             // one live row per logical session
+}
+
+// ============================================================================
+// Carry-forward + questions (tenant-scoped)
+// ============================================================================
+
+//? The structured stage→stage envelope (04 §2, B-O2). APPEND-ONLY (04b §11a).
+//? `Ticket.carryOver` (string) stays the human one-liner; this stores the machine
+//? envelope. Emitted as a `ws-carryover` fenced block, parsed Conductor-side (04b §14).
+model CarryOver {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  ticketId    String   @db.ObjectId
+  fromStageId String
+  toStageId   String
+  sessionId   String   @db.ObjectId
+  envelope    Json                             // { summary, changedFiles[], openQuestions[], commitHash }
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, ticketId, createdAt])
+}
+
+//? Token-optimization self-handoff (04 §2, 06). APPEND-ONLY (04b §11a). Written
+//? when a long session crosses its context budget: the AI emits `emit_handoff`,
+//? the orchestrator stores it, /clears the session, and reloads `body` as the
+//? fresh opening context. Superset of the CarryOver envelope (04b §14).
+model Handoff {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  sessionKey  String                          // assistant:… | worker:ticket:stage (| reasoner:… future)
+  ticketId    String?  @db.ObjectId
+  stageId     String?
+  body        Json                             // { summary, decisions[], state, next[], gotchas[], carried? }
+  reason      String                           // 'budget' | 'manual'
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, sessionKey, createdAt])
+}
+
+//? One question inside a QuestionSet (embedded composite).
+type Question {
+  id      String
+  text    String
+  kind    String         // 'free' | 'choice' | 'approve'
+  choices String[]
+  answer  String?
+}
+
+//? The phone-from-the-beach loop (04 §2, 02 §5). `Ticket.needsInput` (denormalized
+//? banner) = the first open question. A correction is a NEW superseding set (D49).
+model QuestionSet {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String     @db.ObjectId
+  ticketId    String     @db.ObjectId
+  stageId     String
+  sessionId   String     @db.ObjectId
+  status      String                          // 'open' | 'answered' | 'superseded'
+  questions   Question[]
+  createdAt   DateTime   @default(now())
+  answeredAt  DateTime?
+
+  @@index([workspaceId, ticketId, status])
+}
+
+// ============================================================================
+// Automation + workspace-AI (tenant-scoped)
+// ============================================================================
+
+//? Automation (04 §2, 03 §1). Accepting an `automation` suggestion materializes
+//? one of these through [control-API] → the Conductor (never the LLM, B-23).
+model WorkspaceTrigger {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  enabled          Boolean  @default(true)
+  name             String
+  on               String                          // stage.on_enter|on_complete|on_signal|on_approval | ticket.created|merged | suggestion.accepted | cron
+  match            Json                             // { stageIds?[], statusKeys?[], projectIds?[] }
+  cron             String?                          // iff on=='cron'
+  action           String                           // start-stage|invoke-workspace-ai|run-command|emit-signal|notify
+  params           Json                             // { targetStageId?, template?, command?, notifyType? }
+  requiresApproval Boolean  @default(false)
+  dedupeKey        String?
+  debounceMs       Int?
+  lastFiredAt      DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([workspaceId, on, enabled])
+}
+
+//? Durable signal transport (B-O6). APPEND-ONLY (04b §11a). The Conductor /
+//? Workspace-AI consumes serially; `seq` (monotonic) + `processedAt` give the
+//? serial-consumption ordering (04 §3). Survives restart; part of the audit.
+model WorkspaceSignal {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String    @db.ObjectId
+  seq         Int                               // MONOTONIC (serial consumption ordering)
+  kind        String                             // the signal type
+  payload     Json
+  processedAt DateTime?                           // null until the consumer serially processes it
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, seq])
+  @@index([workspaceId, processedAt])
+}
+
+//? The Assistant's propose-only output (B-23). 5-value `type` (04b §8, CANONICAL).
+//? `patch` carries the appliable config/automation patch — applied ONLY when the
+//? user accepts → Conductor executes. Prototype mirror: `AiSuggestion` (types.ts:101).
+model WorkspaceSuggestion {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  type        String                              // 'link-tickets'|'create-epic'|'config-review'|'maintenance'|'automation' (5-value)
+  title       String
+  body        String
+  ticketIds   String[] @db.ObjectId               // tickets the suggestion concerns
+  patch       Json?                               // appliable config patch { path, before, after } (config-review/automation only)
+  status      String   @default("open")           // 'open' | 'accepted' | 'dismissed'
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, status, createdAt])
+}
+
+//? A note the Workspace-AI may write (B-23 allows propose + notes, no writes).
+//? Minimal V1 shape (04 §1 lists WorkspaceNote; no build-grade body given).
+model WorkspaceNote {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  ticketId    String?  @db.ObjectId
+  authorKind  String                              // 'assistant' | 'user'
+  authorId    String?  @db.ObjectId               // User.id when authorKind='user'
+  body        String
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, ticketId, createdAt])
+}
+
+// ============================================================================
+// Spend / budget (tenant-scoped)
+// ============================================================================
+
+//? The append-grade per-turn cost fact (04b §9). APPEND-ONLY (04b §11a). Tokens
+//? are ADVISORY in PTY mode (hook payload if present, else char-count estimate).
+//? Prototype mirror: `UsageRow` (types.ts:225).
+model SpendRecord {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  ticketId     String?  @db.ObjectId
+  stageId      String?                             // StageKind key
+  sessionKey   String                              // the AgentSession this turn belongs to
+  tokensIn     Int      @default(0)                // ADVISORY
+  tokensOut    Int      @default(0)
+  model        String                              // resolved model literal (pricing key)
+  costEstimate Float    @default(0)                // tokens × editable per-model price (D31); 0 when pricing zeroed-out
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId, ticketId, createdAt])      // per-ticket cost chip
+  @@index([workspaceId, stageId, createdAt])       // rolling per-stage average → the D4 estimate blend
+}
+
+//? Multi-row / multi-cap budget (04b §9, D81/D82). MULTIPLE rows per workspace.
+//? `enforcement` = 'pauseNew' (block new sessions) | 'pauseAll' (pause all now) —
+//? a Conductor action, advisory-then-pause. `periodWindow` = 'calendar-month'
+//? (default, workspace tz) or a rolling window { rolling: '5h' }. Prototype mirror:
+//? `WorkspaceBudget` (types.ts:129, single-row → multi-cap here).
+model WorkspaceBudget {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String   @db.ObjectId               // MULTIPLE rows per workspace (multi-cap, D81)
+  label         String                              // the cap's display name in the caps-list editor
+  cap           Float                               // the spend/quota ceiling, in the periodWindow's unit
+  alertPct      Int      @default(80)               // notify threshold (% of cap)
+  enforcement   String                              // 'pauseNew' | 'pauseAll'
+  periodWindow  Json     @default("\"calendar-month\"") // 'calendar-month' (default) | { rolling: '5h' | '30d' | ... } (D82)
+  spent         Float    @default(0)                // running spend in the current window (recomputed on reset)
+  windowStartAt DateTime @default(now())            // start of the current period window (rolls forward on reset)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([workspaceId, enabled])
+}
+
+// ============================================================================
+// Notifications (tenant-scoped; PushSubscription is framework-global above)
+// ============================================================================
+
+//? The server-owned notification source (04b §10). Full `body` stored server-side,
+//? shown IN-APP behind auth; the web-push payload is REDACTED by default (D80
+//? reversed). Fan-out is one row per recipient. Prototype mirror: `NotificationItem`
+//? (types.ts:119, a read-projection).
+model Notification {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  userId      String   @db.ObjectId               // recipient (per-user)
+  type        String                              // 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure'
+  title       String
+  body        String                              // full body — stored server-side, shown in-app behind auth
+  ticketId    String?  @db.ObjectId               // deep-link target
+  deepLink    Json?                               // { view, ticketId?, tab?, terminalId? } — the D65 navigate payload
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, userId, read, createdAt])  // the bell + unread badge + grouped center
+}
+
+// ============================================================================
+// Info layer (tenant-scoped)
+// ============================================================================
+
+//? Context docs (loaded as files) + skills/MCP (queried on demand) — 04 §1,
+//? B-14/B-15. `mode` = 'context-doc' | 'skill'. Prototype mirrors: `InfoDoc`
+//? (types.ts:173) + `SkillEntry` (types.ts:185), unified here.
+model InfoSource {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String    @db.ObjectId
+  projectId     String?   @db.ObjectId
+  mode          String                            // 'context-doc' | 'skill'
+  name          String
+  source        String?                            // context-doc: 'generated'|'git'|'uploaded'
+  summary       String?
+  note          String?                            // "frozen @ abc123" | "spec"
+  content       String?                            // context-doc body (read-only preview)
+  usedByStages  String[]                           // stage ids/names that load this source
+  commitHash    String?                            // frozen-per-commit store stamp (B-25)
+  // --- skill-specific ---
+  kind          String?                            // skill: 'frozen' | 'live'
+  model         String?                            // skill: embedding/model label
+  enabled       Boolean   @default(true)           // skill on/off (SkillEntry.on)
+  lastIndexedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workspaceId, mode])
+}
+
+//? The append-only, commit-stamped RAG store (B-25, server-only). APPEND-ONLY
+//? (04b §11a). Embeddings stored as Json (the Atlas $vectorSearch payload, or a
+//? Float[] app-side-cosine fallback, B-24/G10). Dedupe on commitHash+filePath+
+//? chunkId (B-O3). Minimal V1 shape (no build-grade body in the docs).
+model RagEntry {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  projectId   String?  @db.ObjectId
+  sourceId    String?  @db.ObjectId               // → InfoSource.id
+  commitHash  String                              // the frozen commit this chunk is stamped to
+  filePath    String
+  chunkId     String
+  content     String
+  embedding   Json?                               // the vector (Atlas $vectorSearch) or Float[] fallback
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, commitHash, filePath])
+}
+
+// ============================================================================
+// Workspace-level integrations (tenant-scoped)
+// ============================================================================
+
+//? A field on an integration tool, mapped to an env var. Embedded composite.
+type IntegrationField {
+  id          String
+  label       String
+  placeholder String?
+  envVarId    String?        // → EnvVar.id
+}
+
+//? An MCP-server exposure of an integration tool. Embedded composite.
+type McpCfg {
+  enabled Boolean
+  command String
+}
+
+//? A workspace env var (holds the real secret/config; integration tools point at
+//? it). Prototype mirror: `EnvVar` (types.ts:272). Secrets stored encrypted
+//? server-side (the `value` here is the app-owned encrypted payload when secret).
+model EnvVar {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  key         String
+  value       String                              // encrypted when `secret`
+  secret      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId])
+}
+
+//? A configured integration tool (maps config fields → env vars + optionally an
+//? MCP server). The pipeline SELECTS which tools a stage may use (StageToolCfg).
+//? Prototype mirror: `IntegrationTool` (types.ts:274).
+model IntegrationTool {
+  id          String             @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String             @db.ObjectId
+  name        String
+  type        String                              // INTEGRATION_TYPES key, or custom
+  fields      IntegrationField[]
+  mcp         McpCfg
+  createdAt   DateTime           @default(now())
+
+  @@index([workspaceId])
 }
