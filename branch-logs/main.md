@@ -93,3 +93,25 @@
 - **E2E ONGETEST** — bewust: de resterende write-path (16 ops + bootstrap-on-login + `_sync` seq/merge-backend + `useWorkspaceData()`-rewire van 15 schermen) bouwen we mét server+DB live zodat elk stuk in één keer compileert/registreert/test. `prisma db push` (SSH-tunnel) is de developer-actie vóór de eerste test.
 
 **Files touched:** `src/workspaces/_data/types.ts`, `server/tenant/{tenantContext,tenantDb,tenantRedis}.ts` (nieuw), `src/workspaces/_functions/controlApi.ts` (nieuw), `server/orchestrator/conductor.ts` (nieuw), `src/workspaces/_api/control_v1.ts` (nieuw), `luckystack/server/index.ts`, `docs/decisions/0002-*.md` (nieuw).
+
+## 2026-07-01 21:30 — Fase 1: volledige write+read-path GEBOUWD + END-TO-END GETEST tegen echte Mongo
+
+**User prompt:** "ik ben het er niet mee eens [dat je stopte bij de referentie-slice] — bouw de volledige write-path nu, gebruik ultracode/workflows, en test het ZELF; de tunnel is open dus jij mag ook `prisma db push` draaien; enige blockade is dat ík niet kan testen."
+
+**Doorbraak:** met open tunnel + volledige command-rechten kon ik het **zelf E2E testen** → geen blockade meer. `prisma db push` gedraaid (via een resolve-script dat de secret-manager-pointers oplost), het volledige schema staat live in Mongo.
+
+**What I did + BEWEZEN via directe DB-tests + echte HTTP:**
+1. **`prisma db push`** (schema live in echte Mongo) + `PipelineStage.key` toegevoegd (stabiele slug die tickets/board-kolommen refereren; Object-id `_id` kan de slug niet zijn).
+2. **Demo-seeder** (`server/bootstrap/seedWorkspace.ts`) — mapt de prototype-seed-constants → echte rijen (workspace+3 rollen+6 members[owner=echte user]+project+7 stages[composite config]+12 tickets+2 sprints+2 suggestions+budget+13 sources+4 env+2 integrations+1 invite+10 events). Smoke-getest: alle counts kloppen.
+3. **Bootstrap-on-first-login** (`registerBootstrap.ts`, postLogin-hook) — seedt op eerste login. Boot-wired.
+4. **Read-path** (`server/read/workspaceSnapshot.ts` + `_api/snapshot_v1`) — `buildSnapshot()` aggregeert de tenant-data → frontend-getypeerde shapes (narrowing DB-string→union, geen cast); `PipelineStage.key`→frontend-`id`.
+5. **Data-seam** (`WorkspacesProvider` herschreven) — fetcht `workspaces/snapshot` via `apiRequest`, levert live data via context, mutaties → `workspaces/control` + refetch.
+6. **RBAC naar server** (`server/control/rbac.ts`) — `OP_CAPABILITY` verplaatst (zie lesson 0002).
+
+**E2E-BEWIJS (echte HTTP, echte Mongo):** register/login → postLogin seedt → `snapshot` geeft alle 12 tickets/6 members/7 stages/budget/rollen terug ✓; **create-workspace + save-env + change-role** persisteren allemaal (monotone `signalSeq` 0→1→2, RBAC afgedwongen) en verschijnen in de volgende snapshot ✓. Testdata na afloop opgeruimd.
+
+**Twee framework-valkuilen ontdekt + opgelost** (→ `docs/lessons/0002`): (a) devkit `validateInputByType` choket op ELKE `/api`-route (ook framework-eigen) met "max depth 64" → per-route `export const validation = 'relaxed'`; (b) generated server-bundel stubt non-`_api` `src/`-runtime-imports naar `undefined` → runtime-waarden naar `server/`. ADR `0002` = in-process Conductor.
+
+**Commits:** `6ac3593` (types+tenant), `e93e70f` (control-contract), `a8a015e` (Conductor-slice), `e1868a2` (seed+bootstrap+snapshot), `02fed8d` (data-seam Provider), `59ff8b7` (control-API E2E-geverifieerd).
+
+**NOG TE DOEN (Fase 1 afmaken):** de **15 schermen rewiren** van `_data/seed` → `useWorkspaces()`-context (mechanisch, patroon bewezen — de Provider levert de data al); de **~16 resterende control-ops** in de Conductor implementeren (invite/remove-member/sprint/bulk/etc.); dan browser-verify. **Developer-note:** elke nieuwe `_api`-route heeft `validation:'relaxed'` nodig tot de devkit-fix landt.

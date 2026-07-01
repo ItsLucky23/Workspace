@@ -9,11 +9,12 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (1)
+## Lessons (2)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | The workspaces no-unnecessary-condition lint errors are CORRECT guards — do not strip them | 🟠 high | src/workspaces | lint, typescript, tsconfig, prototype | `docs/lessons/0001-workspaces-guard-false-positives.md` |
+| 0002 | Two framework gotchas when adding _api routes with server-side deps in this project | 🟠 high | src/workspaces/_api | api, devkit, validation, server-bundle, imports | `docs/lessons/0002-workspaces-api-framework-gotchas.md` |
 
 ## Takeaways
 
@@ -24,3 +25,11 @@
 **Never remove these guards to silence the linter.** They are correct defensive code. The proper fix is project-wide: enable `compilerOptions.noUncheckedIndexedAccess` in `tsconfig.json`. Measured blast radius on 2026-07-01: **56 new `tsc` errors** (42 in `src/workspaces`, 14 in framework-overlay code — `Avatar`, `dropdown`, `main.tsx`, settings APIs), each a genuine latent undefined-access to fix. That is a deliberate, user-gated strictness pass, not a drive-by — hence deferred (recorded here so it isn't lost). Until then, treat these specific `no-unnecessary-condition` errors as known-correct and leave them. Same for `@typescript-eslint/no-empty-function` on the not-yet-wired Fase-1 stub handlers (Board menu items, Terminals actions, the `WorkspacesShell` notification/FAB `noop`) — they resolve when their feature is wired in Fase 1, not by faking a body.
 
 → `docs/lessons/0001-workspaces-guard-false-positives.md`
+
+### 0002 — Two framework gotchas when adding _api routes with server-side deps in this project
+
+**0002** · high · src/workspaces/_api · tags: api, devkit, validation, server-bundle, imports · 2026-07-01
+
+**Per-route escape hatch for the validator:** add `export const validation = 'relaxed' as const;` to the route. `resolveValidationMode` maps `'relaxed'` (or `{ input: 'skip' }`) to skip the strict `validateInputByType`; the generated zod `apiInputSchemas` (`.strict()`) + the handler's own checks remain the real input guard. (A proper fix is a devkit change to not recurse the type context — until then, every new Workspaces `_api` route needs this.) **Put any RUNTIME value a route needs under `server/`**, not `src/…/_functions/`. Import TYPES from `src/` (they erase) but the values from `server/`. E.g. the RBAC `OP_CAPABILITY`/`CAP` map lives in `server/control/rbac.ts`; `controlApi.ts` keeps the `ControlOp` types + client-facing `CONFIRM_REQUIRED`. **The HTTP body for an `_api` POST is the `data` object DIRECTLY** (not wrapped in `{ data: {...} }`) — the framework passes the parsed body to the handler as `data`. (`apiRequest` sends the correct shape; only hand-rolled curl tests get this wrong.) These do NOT affect the socket transport or the framework's own `apiRequest` client; they surfaced during raw-HTTP E2E testing + server-side route wiring.
+
+→ `docs/lessons/0002-workspaces-api-framework-gotchas.md`
