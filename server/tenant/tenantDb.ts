@@ -57,14 +57,24 @@ export const tenantDb = getPrismaClient().$extends({
         const workspaceId = currentWorkspaceId();
         const a: Record<string, unknown> = args;
         const data = a.data;
+        //? create/createMany → stamp `workspaceId` onto the data.
         if (operation === 'create' && data !== null && typeof data === 'object') {
           a.data = { ...data, workspaceId };
-        } else if (operation === 'createMany' && Array.isArray(data)) {
+          return query(args);
+        }
+        if (operation === 'createMany' && Array.isArray(data)) {
           const rows: unknown[] = data;
           a.data = rows.map((row) => (row !== null && typeof row === 'object' ? { ...row, workspaceId } : row));
-        } else if ('where' in a) {
-          const where = a.where;
-          a.where = where !== null && typeof where === 'object' ? { ...where, workspaceId } : { workspaceId };
+          return query(args);
+        }
+        //? EVERY other operation (find*/update*/delete*/count/aggregate/upsert) → force
+        //? `where.workspaceId`, INCLUDING no-arg reads like `findMany()` where no `where`
+        //? exists yet. Missing this leaks cross-tenant rows (the whole point of tenantDb).
+        const where = a.where;
+        a.where = where !== null && typeof where === 'object' ? { ...where, workspaceId } : { workspaceId };
+        //? upsert also creates — stamp the create payload too.
+        if (operation === 'upsert' && a.create !== null && typeof a.create === 'object') {
+          a.create = { ...a.create, workspaceId };
         }
         return query(args);
       },

@@ -31,6 +31,7 @@
     "scaffold:test": "node scripts/scaffoldRouteTest.mjs",
     "scaffold:page": "node scripts/scaffoldPage.mjs",
     "test:e2e": "playwright test",
+    "test:ws": "node scripts/runWsTests.mjs",
     "prisma:generate": "dotenv -e .env.local -- prisma generate",
     "prisma:db:push": "dotenv -e .env.local -- prisma db push",
     "prisma:migrate:dev": "dotenv -e .env.local -- prisma migrate dev",

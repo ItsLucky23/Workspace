@@ -9,12 +9,13 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (2)
+## Lessons (3)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | The workspaces no-unnecessary-condition lint errors are CORRECT guards — do not strip them | 🟠 high | src/workspaces | lint, typescript, tsconfig, prototype | `docs/lessons/0001-workspaces-guard-false-positives.md` |
 | 0002 | Two framework gotchas when adding _api routes with server-side deps in this project | 🟠 high | src/workspaces/_api | api, devkit, validation, server-bundle, imports | `docs/lessons/0002-workspaces-api-framework-gotchas.md` |
+| 0003 | tenantDb's $extends must inject workspaceId even when the query has no `where` (no-arg findMany leaked cross-tenant) | 🔴 critical | server/tenant | multi-tenancy, security, prisma, tests | `docs/lessons/0003-tenantdb-no-arg-findmany-leak.md` |
 
 ## Takeaways
 
@@ -33,3 +34,11 @@
 **Per-route escape hatch for the validator:** add `export const validation = 'relaxed' as const;` to the route. `resolveValidationMode` maps `'relaxed'` (or `{ input: 'skip' }`) to skip the strict `validateInputByType`; the generated zod `apiInputSchemas` (`.strict()`) + the handler's own checks remain the real input guard. (A proper fix is a devkit change to not recurse the type context — until then, every new Workspaces `_api` route needs this.) **Put any RUNTIME value a route needs under `server/`**, not `src/…/_functions/`. Import TYPES from `src/` (they erase) but the values from `server/`. E.g. the RBAC `OP_CAPABILITY`/`CAP` map lives in `server/control/rbac.ts`; `controlApi.ts` keeps the `ControlOp` types + client-facing `CONFIRM_REQUIRED`. **The HTTP body for an `_api` POST is the `data` object DIRECTLY** (not wrapped in `{ data: {...} }`) — the framework passes the parsed body to the handler as `data`. (`apiRequest` sends the correct shape; only hand-rolled curl tests get this wrong.) These do NOT affect the socket transport or the framework's own `apiRequest` client; they surfaced during raw-HTTP E2E testing + server-side route wiring.
 
 → `docs/lessons/0002-workspaces-api-framework-gotchas.md`
+
+### 0003 — tenantDb's $extends must inject workspaceId even when the query has no `where` (no-arg findMany leaked cross-tenant)
+
+**0003** · critical · server/tenant · tags: multi-tenancy, security, prisma, tests · 2026-07-01
+
+**For every non-create tenant operation, force `where.workspaceId` — create the `where` if none exists.** Only `create`/`createMany` inject into `data`; `upsert` needs BOTH (`where` + `create`). The fix: ```ts if (operation === 'create') { a.data = { ...data, workspaceId }; return query(args); } if (operation === 'createMany') { /* map rows + workspaceId */ return query(args); } const where = a.where; a.where = where && typeof where === 'object' ? { ...where, workspaceId } : { workspaceId }; if (operation === 'upsert') a.create = { ...a.create, workspaceId }; ``` **Always test tenant isolation with ≥2 workspaces and a NO-ARG read.** A single-tenant test can never catch a scoping leak. `tests/integration/tenant.test.mts` now asserts a bare `findMany()` inside `runInTenant(wsA)` returns only wsA's rows. General: prefer verifying an isolation *guarantee* over the happy path — the happy path passed for months here while the guarantee was broken.
+
+→ `docs/lessons/0003-tenantdb-no-arg-findmany-leak.md`
