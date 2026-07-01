@@ -678,7 +678,10 @@
       "layoutGrid": "Grid",
       "layoutTabs": "Tabs",
       "emptyTitle": "No terminals running",
-      "emptySub": "Activate a ticket to attach a live terminal."
+      "emptySub": "Activate a ticket to attach a live terminal.",
+      "maximizeTitle": "Maximize",
+      "restoreTitle": "Back to grid",
+      "resizeTitle": "Drag to resize height"
     },
     "sources": {
       "noStages": "No stages",
@@ -768,6 +771,8 @@
       "countOfTotal": "{{count}} of {{total}}",
       "done": "Done",
       "select": "Select",
+      "newSprint": "New sprint",
+      "sprintNamePlaceholder": "Sprint name…",
       "searchPlaceholder": "Search tickets…",
       "filterAll": "All",
       "filterUnrefined": "Unrefined",

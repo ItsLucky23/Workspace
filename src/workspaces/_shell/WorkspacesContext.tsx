@@ -62,6 +62,7 @@ export interface WorkspacesCtx {
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
   createWorkspace: (name: string) => void;
+  sprintCreate: (name: string) => void;
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string) => void;
@@ -89,7 +90,9 @@ export interface WorkspacesCtx {
   stageOverrides: Record<string, string>;        // ticketId → stage id (free string, 04b §12)
   moveTicket: (id: string, stage: string) => void;
   //? Ticket/board writes (12/13) — the [control-API] `quick-add`/`archive`/`bulk-*` ops.
-  quickAdd: (input: { title: string; stageId?: string; description?: string; sprintId?: string }) => void;
+  //? New tickets always enter at `unrefined` (Conductor-enforced), so creation takes
+  //? only a title — no stage/sprint choice at creation time.
+  quickAdd: (input: { title: string }) => void;
   archiveTicket: (id: string) => void;
   bulkMove: (ids: string[], stageId: string) => void;
   bulkStatus: (ids: string[], status: string) => void;

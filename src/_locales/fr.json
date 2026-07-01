@@ -678,7 +678,10 @@
       "layoutGrid": "Grille",
       "layoutTabs": "Onglets",
       "emptyTitle": "Aucun terminal en cours d’exécution",
-      "emptySub": "Activez un ticket pour attacher un terminal en direct."
+      "emptySub": "Activez un ticket pour attacher un terminal en direct.",
+      "maximizeTitle": "Agrandir",
+      "restoreTitle": "Retour à la grille",
+      "resizeTitle": "Glisser pour ajuster la hauteur"
     },
     "sources": {
       "noStages": "Aucune étape",
@@ -759,6 +762,8 @@
       "countOfTotal": "{{count}} sur {{total}}",
       "done": "Terminé",
       "select": "Sélectionner",
+      "newSprint": "Nouveau sprint",
+      "sprintNamePlaceholder": "Nom du sprint…",
       "searchPlaceholder": "Rechercher des tickets…",
       "filterAll": "Tout",
       "filterUnrefined": "Non affinés",

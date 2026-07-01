@@ -268,3 +268,18 @@
 **Verificatie:** frontend-tsc 0, server-tsc 0, eslint 0/0, build groen. Crash-fix nog niet in-browser geverifieerd (hypothese-gedreven maar hoog-confidence + groen).
 
 **Nog missende settings-validation (geflagd, niet gefixt):** `updatePreferences/listSessions/revokeSession/deleteAccount/signOutEverywhere` missen óók `validation='relaxed'` — latente depth-64-bug als hun data-type diep is.
+
+## 2026-07-02 — Board unrefined-only + inline add (2/3) · sprint aanmaken (1) · terminals groter+resizable (4)
+
+**User prompt:** batch losse problemen. Deze commit dekt 1/2/3/4 (6+8 al in 667212f; 5 grotendeels opgelost; 7+9 apart).
+
+**Gedaan:**
+1. **[2/3] Board add-ticket + alleen-unrefined.** Conductor forceert nu `stageId: 'unrefined'` voor élk `quick-add` (single-writer — client kan niet mid-pipeline plaatsen). Create-UI: stage-picker verwijderd, `quickAdd`-type teruggebracht naar `{ title }`, titel-input auto-focust. Nieuwe `UnrefinedAddCard` = Trello-stijl inline add onderaan de unrefined-kolom (klik → autofocus-input → Enter maakt + leegt voor snelle invoer, Esc/leeg-blur klapt in). Top-rechts-knop blijft (toekomstige "push naar voren").
+2. **[1] Sprint aanmaken.** Ontbrekende wiring toegevoegd: `sprintCreate`-handler (provider → frozen `sprint-create`-op) + context-type + "Nieuwe sprint"-knop in de Backlog-header → `SprintForm` (autofocus name-input). Keys `backlog.newSprint`/`sprintNamePlaceholder` in 4 locales.
+3. **[4] Terminals groter + resizable** (subagent, alleen `terminals/page.tsx` + locales): default-hoogte 320→460px (bewaard module-level), drag-resize onderrand-strip (pointer-capture, clamp 220–900px, xterm herfit via ResizeObserver), maximize/restore-toggle per paneel. Keys `terminals.maximizeTitle/restoreTitle/resizeTitle` in 4 locales.
+
+**Files:** `server/orchestrator/conductor.ts`, `src/workspaces/page.tsx`, `_shell/WorkspacesContext.tsx`, `_shell/WorkspacesProvider.tsx`, `backlog/page.tsx`, `terminals/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, test:ws 8/8 (conductor-test bevestigt quick-add→unrefined; `stages[0].id==='unrefined'`).
+
+**Nog open:** [5] dropdown-full-width grotendeels opgelost door stage-picker-removal (resterende smalle-menu-dropdowns bij gelegenheid). [7] seed weg + onboarding + email-invites (aparte stap, coördineert met DB-wipe). [9] suggestions/sync/presence (discussie).

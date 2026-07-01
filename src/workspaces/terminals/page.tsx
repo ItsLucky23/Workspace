@@ -5,7 +5,7 @@
 //? (123 → test, 456 → mathijs) drives the terminals and is shown per panel.
 //? Terminals are grouped per ticket; process sub-tabs switch instances.
 
-import { useState } from 'react';
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -26,12 +26,39 @@ function termStatus(t: Terminal): TicketStatus {
   return t.processes.some((p) => p.status === 'busy') ? 'busy' : 'idle';
 }
 
-function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; sshUser: string; className?: string }) {
+//? Remembered grid-panel height (module-level so a drag persists across remounts
+//? and layout switches without threading height through page state — mirrors the
+//? AI panel's rememberedAiWidth pattern in Shell.tsx). Bigger default than before.
+let rememberedGridHeight = 460;
+const MIN_PANEL_HEIGHT = 220;
+const MAX_PANEL_HEIGHT = 900;
+
+function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
   const [active, setActive] = useState(0);
+  const [height, setHeight] = useState(rememberedGridHeight);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
   const proc = terminal.processes[active] ?? terminal.processes[0];
   if (!proc) return null;
   const sessionId = `${terminal.ticketId}:${proc.name}`;
+
+  //? Drag the bottom strip to resize the panel height. Clamp to a sane range and
+  //? remember the last height at module level. Pointer-capture keeps the drag
+  //? tracking even when the cursor leaves the thin handle (mirrors AIPanel).
+  const onHandleDown = (e: ReactPointerEvent) => {
+    dragRef.current = { startY: e.clientY, startH: height };
+    setDragging(true);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onHandleMove = (e: ReactPointerEvent) => {
+    if (!dragRef.current) return;
+    const next = Math.min(MAX_PANEL_HEIGHT, Math.max(MIN_PANEL_HEIGHT, dragRef.current.startH + (e.clientY - dragRef.current.startY)));
+    rememberedGridHeight = next;
+    setHeight(next);
+  };
+  const onHandleUp = () => { dragRef.current = null; setDragging(false); };
+
   const menuItems = [
     { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => { /* Fase 2: restart the pty process */ } },
     { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => { /* Fase 2: clear the terminal buffer */ } },
@@ -41,7 +68,7 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
     { label: translate({ key: 'workspaces.terminals.kill' }), icon: 'triangle-exclamation' as const, danger: true, onClick: () => void menuHandler.confirm({ title: translate({ key: 'workspaces.terminals.killConfirmTitle', params: [{ key: 'ticket', value: terminal.ticketId }, { key: 'proc', value: proc.name }] }), content: translate({ key: 'workspaces.terminals.killConfirmContent' }) }) },
   ];
   return (
-    <div className={`flex flex-col rounded-xl overflow-hidden border border-container1-border bg-terminal-bg ${className ?? ''}`}>
+    <div style={fill ? undefined : { height }} className={`relative flex flex-col rounded-xl overflow-hidden border border-container1-border bg-terminal-bg ${fill ? 'flex-1 min-h-0' : ''}`}>
       <div className="flex items-center justify-between gap-2 bg-terminal-surface px-3 h-10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-xs text-terminal-text">{terminal.ticketId}</span>
@@ -58,6 +85,13 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
               </button>
             ))}
           </div>
+          {onToggleMaximize && (
+            <button type="button" onClick={onToggleMaximize}
+              title={translate({ key: isMaximized ? 'workspaces.terminals.restoreTitle' : 'workspaces.terminals.maximizeTitle' })}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-terminal-muted hover:bg-white/10 hover:text-terminal-text cursor-pointer">
+              <Icon name={isMaximized ? 'table-cells-large' : 'up-right-from-square'} />
+            </button>
+          )}
           <PopMenu items={menuItems} triggerClass="w-7 h-7 flex items-center justify-center rounded-lg text-terminal-muted hover:bg-white/10 hover:text-terminal-text cursor-pointer" />
         </div>
       </div>
@@ -66,6 +100,13 @@ function TerminalPanel({ terminal, sshUser, className }: { terminal: Terminal; s
         <span>{sshUser}@{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-terminal-green" /> {translate({ key: 'workspaces.terminals.live' })}</span>
       </div>
+      {!fill && (
+        <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
+          title={translate({ key: 'workspaces.terminals.resizeTitle' })}
+          className="group shrink-0 h-2.5 flex items-center justify-center cursor-ns-resize bg-terminal-surface border-t border-white/5">
+          <span className={`w-8 h-0.5 rounded-full transition-colors ${dragging ? 'bg-primary' : 'bg-terminal-muted/50 group-hover:bg-terminal-muted'}`} />
+        </div>
+      )}
     </div>
   );
 }
@@ -96,6 +137,7 @@ export default function Terminals() {
   const { sshUserId, navigate, membersById } = useWorkspaces();
   const [layout, setLayout] = useState<Layout>('grid');
   const [activeTab, setActiveTab] = useState(TERMINALS[0]?.ticketId ?? '');
+  const [maximizedId, setMaximizedId] = useState<string | null>(null);
   const sshUserName = sshUserId ? (membersById[sshUserId]?.name ?? sshUserId) : '';
   const unlocked = sshUserId !== null;
 
@@ -121,10 +163,18 @@ export default function Terminals() {
         <EmptyState icon="terminal" title={translate({ key: 'workspaces.terminals.emptyTitle' })} sub={translate({ key: 'workspaces.terminals.emptySub' })} />
       )}
 
-      {unlocked && TERMINALS.length > 0 && layout === 'grid' && (
+      {unlocked && TERMINALS.length > 0 && layout === 'grid' && maximizedId !== null && (
+        <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
+          {TERMINALS.filter((t) => t.ticketId === maximizedId).map((t) => (
+            <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
+          ))}
+        </div>
+      )}
+
+      {unlocked && TERMINALS.length > 0 && layout === 'grid' && maximizedId === null && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            {TERMINALS.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} className="h-80" />)}
+            {TERMINALS.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
           </div>
         </div>
       )}
@@ -140,7 +190,7 @@ export default function Terminals() {
               </button>
             ))}
           </div>
-          {TERMINALS.filter((t) => t.ticketId === activeTab).map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} className="flex-1 min-h-0" />)}
+          {TERMINALS.filter((t) => t.ticketId === activeTab).map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill />)}
         </div>
       )}
     </div>

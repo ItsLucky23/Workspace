@@ -678,7 +678,10 @@
       "layoutGrid": "Raster",
       "layoutTabs": "Reiter",
       "emptyTitle": "Keine Terminals aktiv",
-      "emptySub": "Aktiviere ein Ticket, um ein Live-Terminal anzuhängen."
+      "emptySub": "Aktiviere ein Ticket, um ein Live-Terminal anzuhängen.",
+      "maximizeTitle": "Maximieren",
+      "restoreTitle": "Zurück zum Raster",
+      "resizeTitle": "Ziehen, um die Höhe anzupassen"
     },
     "sources": {
       "noStages": "Keine Stages",
@@ -759,6 +762,8 @@
       "countOfTotal": "{{count}} von {{total}}",
       "done": "Fertig",
       "select": "Auswählen",
+      "newSprint": "Neuer Sprint",
+      "sprintNamePlaceholder": "Sprint-Name…",
       "searchPlaceholder": "Tickets suchen…",
       "filterAll": "Alle",
       "filterUnrefined": "Nicht verfeinert",

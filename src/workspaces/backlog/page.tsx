@@ -4,7 +4,7 @@
 //? avatar is the creator, the second the assignee. Checkboxes are hidden until
 //? you enter Select mode (bulk action bar). Dummy data; desktop-first.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -25,15 +25,41 @@ const LAST = ['2m', '14m', '1h', '2h', '3h', '5h', '1d', '2d', '3d', '4d', '6d',
 
 export const template = 'workspaces';
 
+//? Minimal create-sprint menu (opened via menuHandler → `sprint-create` op). Name
+//? input auto-focuses; the new sprint starts inactive (the user activates it later).
+function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
+  const translate = useTranslator();
+  const [name, setName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  const submit = () => { const n = name.trim(); if (!n) return; onCreate(n); void menuHandler.close(); };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.newSprint' })}</div>
+      <input
+        ref={inputRef}
+        value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.backlog.sprintNamePlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(sprints.map((s) => [s.id, true])));
+  const openNewSprint = () => { void menuHandler.open(<SprintForm onCreate={sprintCreate} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const filtered = useMemo(() => tickets.filter((t) => {
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -80,6 +106,7 @@ export default function Backlog() {
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.backlog.title' })}</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted hidden sm:inline">{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
+          <WsButton variant="secondary" icon="plus" onClick={openNewSprint}>{translate({ key: 'workspaces.backlog.newSprint' })}</WsButton>
           <WsButton variant={selectMode ? 'primary' : 'secondary'} icon="circle-check" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); }}>{selectMode ? translate({ key: 'workspaces.backlog.done' }) : translate({ key: 'workspaces.backlog.select' })}</WsButton>
         </div>
       </div>

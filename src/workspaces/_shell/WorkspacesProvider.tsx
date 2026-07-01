@@ -221,6 +221,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
       createWorkspace: (name) => { control('create-workspace', {}, { name }); },
+      sprintCreate: (name) => { control('sprint-create', {}, { name, active: false }); },
       renameWorkspace: (name) => { control('rename-workspace', {}, { name }); },
       deleteWorkspace: () => {
         control('delete-workspace', {}, {});

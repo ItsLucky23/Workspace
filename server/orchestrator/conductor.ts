@@ -275,7 +275,10 @@ async function executeAction(action: ControlAction): Promise<void> {
       await prisma.ticket.create({
         data: {
           workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
-          title, description: str(payload, 'description') ?? null, stageId: str(payload, 'stageId') ?? 'unrefined',
+          //? A user-created ticket ALWAYS enters the pipeline at `unrefined` — the
+          //? Conductor (single writer) enforces this, so no client can place a
+          //? ticket mid-pipeline regardless of what it sends. The AI moves it on.
+          title, description: str(payload, 'description') ?? null, stageId: 'unrefined',
           status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId, sprintId: str(payload, 'sprintId') ?? null,
         },
       });

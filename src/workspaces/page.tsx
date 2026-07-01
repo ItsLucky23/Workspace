@@ -8,7 +8,7 @@
 //? Columns are derived from dummy data for now. Desktop-first; mobile shows
 //? read-only stage-segments.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -147,38 +147,73 @@ function KanbanColumn({ stage, tickets }: { stage: PipelineStage; tickets: Ticke
       </div>
       <div className="flex flex-col gap-2 px-2 pb-2 overflow-y-auto flex-1 min-h-0">
         {tickets.map((t) => <KanbanCard key={t.id} ticket={t} />)}
-        {tickets.length === 0 && <div className="text-center text-xs text-muted py-6">{translate({ key: 'workspaces.board.noTickets' })}</div>}
+        {tickets.length === 0 && stage.id !== 'unrefined' && <div className="text-center text-xs text-muted py-6">{translate({ key: 'workspaces.board.noTickets' })}</div>}
+        {stage.id === 'unrefined' && <UnrefinedAddCard />}
       </div>
     </div>
+  );
+}
+
+//? Trello-style inline add at the bottom of the Unrefined column. New tickets can
+//? only enter here (Conductor forces `unrefined`); a click reveals an auto-focused
+//? input, Enter creates + clears for rapid entry, Escape/empty-blur collapses.
+function UnrefinedAddCard() {
+  const translate = useTranslator();
+  const { quickAdd } = useWorkspaces();
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (adding) inputRef.current?.focus(); }, [adding]);
+  const submit = () => {
+    const t = draft.trim();
+    if (!t) return;
+    quickAdd({ title: t });
+    setDraft('');
+  };
+  if (!adding) {
+    return (
+      <button type="button" onClick={() => { setAdding(true); }} className="flex items-center gap-2 rounded-xl px-3 h-9 text-sm text-muted hover:text-common hover:bg-container2 transition-colors cursor-pointer">
+        <Icon name="plus" /> {translate({ key: 'workspaces.board.ticket' })}
+      </button>
+    );
+  }
+  return (
+    <input
+      ref={inputRef}
+      value={draft} onChange={(e) => { setDraft(e.target.value); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setAdding(false); setDraft(''); } }}
+      onBlur={() => { if (!draft.trim()) setAdding(false); }}
+      placeholder={translate({ key: 'workspaces.board.newTicketTitlePlaceholder' })}
+      className="h-9 px-3 rounded-xl border border-primary/50 bg-container1 text-sm text-title focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
   );
 }
 
 //? Opened via menuHandler (outside the WorkspacesProvider tree, per the
 //? `CreateWorkspaceForm` pattern in Shell.tsx), so it receives the stage list +
 //? create callback as props instead of reading them from context.
-function NewTicketForm({ stages, onCreate }: { stages: PipelineStage[]; onCreate: (input: { title: string; stageId: string }) => void }) {
+//? Creation takes only a title — every new ticket enters at `unrefined` (the
+//? Conductor enforces this). The title input auto-focuses on open.
+function NewTicketForm({ onCreate }: { onCreate: (input: { title: string }) => void }) {
   const translate = useTranslator();
   const [title, setTitle] = useState('');
-  const [stageId, setStageId] = useState(stages[0]?.id ?? '');
-  const stageItems: DropdownItem[] = stages.map((s) => ({ id: s.id, value: s.id, item: s.name }));
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
   const submit = () => {
     const t = title.trim();
-    if (!t || !stageId) return;
-    onCreate({ title: t, stageId });
+    if (!t) return;
+    onCreate({ title: t });
     void menuHandler.close();
   };
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
       <input
+        ref={inputRef}
         value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         placeholder={translate({ key: 'workspaces.board.newTicketTitlePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted">{translate({ key: 'workspaces.board.newTicketStage' })}</span>
-        <Dropdown size="sm" items={stageItems} defaultValue={stageItems[0]} onChange={(it) => { setStageId(String(it.id)); }} />
-      </div>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
@@ -253,7 +288,7 @@ function BoardHeader({
     return { id: s.id, value: s.id, item: `${s.name}${suffix}` };
   });
   const openNewTicket = () => {
-    void menuHandler.open(<NewTicketForm stages={ctx.stages} onCreate={ctx.quickAdd} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
+    void menuHandler.open(<NewTicketForm onCreate={ctx.quickAdd} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
   };
   const selectedSprintItem = sprintItems.find((i) => i.id === sprintFilter) ?? allSprintsItem;
   return (

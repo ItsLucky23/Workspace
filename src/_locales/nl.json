@@ -678,7 +678,10 @@
       "layoutGrid": "Raster",
       "layoutTabs": "Tabbladen",
       "emptyTitle": "Geen terminals actief",
-      "emptySub": "Activeer een ticket om een live terminal te koppelen."
+      "emptySub": "Activeer een ticket om een live terminal te koppelen.",
+      "maximizeTitle": "Maximaliseren",
+      "restoreTitle": "Terug naar rooster",
+      "resizeTitle": "Sleep om de hoogte aan te passen"
     },
     "sources": {
       "noStages": "Geen stages",
@@ -768,6 +771,8 @@
       "countOfTotal": "{{count}} van {{total}}",
       "done": "Klaar",
       "select": "Selecteren",
+      "newSprint": "Nieuwe sprint",
+      "sprintNamePlaceholder": "Sprintnaam…",
       "searchPlaceholder": "Tickets zoeken…",
       "filterAll": "Alle",
       "filterUnrefined": "Niet verfijnd",
