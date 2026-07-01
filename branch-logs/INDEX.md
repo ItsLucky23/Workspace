@@ -2,4 +2,4 @@
 
 | Branch | Log | Last updated | Entries | Status |
 |---|---|---|---|---|
-| `main` | [main.md](./main.md) | 2026-07-01 | 7 | Fase 1 COMPLEET + getest: schema/seed/snapshot/control-API + 12 schermen gerewired + alle ops + test-suite (212 asserts groen) + cross-tenant-leak-fix. E2E tegen echte Mongo |
+| `main` | [main.md](./main.md) | 2026-07-02 | 8 | Fase 1 + 7b (strictness+i18n) + 7a.3/7a.4/7a.5 (mutaties/integraties/gitlab-encryptie). Open: 7a.2 pipeline-config (verse context), 7a.1/7a.6 Fase-2-gated |

@@ -133,3 +133,20 @@
 **Commits:** `7fe670e` (rewire+ops), `c604f6e` (tests+tenant-fix).
 
 **Fase 1 status:** basisplatform-datalaag + read/write-path + schermen + tests **compleet + getest**. Open (secundair): SESSIONS/TERMINALS/USAGE_ROWS/NOTIFICATIONS nog op seed (niet in snapshot); de Pipeline-editor-config nog op seed (stage-config-persist-slice); Fase-2 AI-session-ops zijn scaffold. **Developer-note:** elke nieuwe `_api`-route heeft `export const validation = 'relaxed'` nodig (devkit-bug, lesson 0002).
+
+## 2026-07-02 01:00 — 7b (strictness + i18n) + 7a.3/7a.4/7a.5 (mutaties/integraties/encryptie)
+
+**User prompt:** "doe heel 7a + 7b af; noUncheckedIndexedAccess AAN + alles fixen; alle vier de talen echt vertalen."
+
+**Gedaan (allemaal geverifieerd — lint 0, test:ws 8/8 = 219 asserts, build groen):**
+- **7b.1 — `noUncheckedIndexedAccess` AAN** (tsconfig) + alle ~57 gesurfacete sites gefixt (workflow, 1 agent/disjuncte file: minimale guards/hoists/optional-chaining, geen casts/non-null) + volledige lint-cleanup naar 0 errors (tryCatch-thunk, char-guard, String()-template, Fase-2-stub-intent-comments, module-scope noop, globalThis-behoud). De 19 guard-false-positives lossen nu correct op (index = `T | undefined`).
+- **7b.2 — echte nl/de/fr-vertaling** van de 455 `workspaces.*`-keys (workflow, 1 agent/locale; framework-namespaces byte-identiek; placeholders/keys intact; product-nouns/tech-terms als loanwords). Alle 3 KEYS-MATCH (730 leaves).
+- **7a.3 — mutaties → control-API:** togglePerm→role-update, addRole→role-create, saveIntegrationTool→save-integration, removeIntegrationTool→remove-integration (optimistic + persist + refetch). `PermRole.key` toegevoegd (uit `WorkspaceRole.key`). **E2E:** role-create→reviewer(1)→role-update→reviewer(2). ✓
+- **7a.4 — save-integration composites:** de Conductor persisteert nu `fields`/`mcp` (readIntegrationFields/readMcp; update via `{set}`). **E2E:** Sentry-integratie met field + mcp.command persist. ✓
+- **7a.5 — GitLab-token-encryptie:** `server/crypto/secretBox.ts` (AES-256-GCM, key uit `WORKSPACES_ENC_KEY`, `v1:iv:tag:ct`-envelope, `plain:`-fallback+warning zonder key). Conductor gitlab-settings encrypt on write. ADR `0004` + `.env.local_template` + unit-test (7 asserts: round-trip/tamper/fallback). ✓
+
+**Commits:** `5768373` (7b.1), `8e89fdc` (7b.2), `5b9af1e` (7a.3+7a.4), `31b94c5` (7a.5), + 2 lint-fixes.
+
+**NOG OPEN in 7a (bewust niet nu):**
+- **7a.2 — Pipeline-config-persist** (de core surface): de volledige `PipelineStageCfg` uit de DB-composites in de snapshot brengen (9 composite-subtypes, cast-vrije union-narrowing) + Pipeline.tsx van `STAGE_CONFIGS` af + save-stage-config volledig. Groot + kwaliteitsgevoelig → **beter met verse context** (aanbevolen als eerste taak volgende sessie).
+- **7a.1 (notifications/usage/spend/terminals live) + 7a.6 (sessions-UI):** grotendeels **Fase-2-gated** — er zijn in Fase 1 nog geen data-producers (pipeline-events/AI-usage/pty/session-list). Live plumbing zou lege data tonen; heeft pas zin met de Fase-2-engine.
