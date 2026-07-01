@@ -96,9 +96,10 @@ export const RBAC_CAPABILITIES = [
 
 export type Capability = (typeof RBAC_CAPABILITIES)[number];
 
-//? The op→capability map (`OP_CAPABILITY`) + `CAP` indices are the RUNTIME RBAC
-//? source and live in `server/control/rbac.ts` (the generated server bundle stubs
+//? The runtime RBAC gate (`hasCapability` + `CAP`) lives in `server/control/rbac.ts`
+//? — each per-action `_api` route calls it (the generated server bundle stubs
 //? non-`_api` `src/` runtime imports to undefined; type imports here erase fine).
+//? `OP_CAPABILITY` there is the consolidated reference matrix of every op's capability.
 
 //? Destructive/irreversible ops that require an explicit user confirm BEFORE the
 //? control-API request is even sent (V1_SCOPE §3.3 confirm-on-important).

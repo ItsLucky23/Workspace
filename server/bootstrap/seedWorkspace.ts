@@ -14,6 +14,7 @@ import {
   MEMBERS, NOTIFICATIONS, PROJECTS, SKILLS, SPRINTS, STAGE_CONFIGS, TICKETS,
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
+import { createDefaultPipeline } from './defaultPipeline';
 
 const OWNER_PERMS = [true, true, true, true, true, true, true, true];
 const ADMIN_PERMS = [true, true, true, true, true, false, false, false];
@@ -32,9 +33,9 @@ function slugify(name: string): string {
 //? project, the default pipeline stages (so the board has columns + quick-add's
 //? `unrefined` stage exists) and a disabled default budget. NO demo tickets/members
 //? — this is the real onboarding "create a workspace" path (the Conductor calls it
-//? for the `create-workspace` op). See [[lesson-0002]]: `STAGE_CONFIGS` is a `src/`
-//? runtime import that the PROD server bundle stubs — move the default pipeline into
-//? `server/` before a production build so create-workspace still gets its stages.
+//? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
+//? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
+//? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
 export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   const ws = await prisma.workspace.create({
@@ -52,19 +53,10 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   await prisma.workspaceMember.create({ data: { workspaceId, userId: ownerId, roleKey: 'owner' } });
 
   const project = await prisma.project.create({ data: { workspaceId, name, gitlabPath: '' } });
-  for (const s of STAGE_CONFIGS) {
-    await prisma.pipelineStage.create({
-      data: {
-        workspaceId, projectId: project.id, key: s.id, kind: s.kind, name: s.name, order: s.order,
-        aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? null,
-        roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
-        customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
-        skillKeys: s.skillKeys, sourceIds: s.sourceIds,
-        commands: s.commands, tools: s.tools, statuses: s.statuses, processes: s.processes,
-        visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, network: s.network, hooks: s.hooks,
-      },
-    });
-  }
+  //? Server-owned default pipeline (lesson-0002 FIXED): no `src/` import, so this
+  //? seeds real stages in a production bundle too (the old `STAGE_CONFIGS` loop
+  //? stubbed to a no-op in prod → blank board).
+  await createDefaultPipeline(prisma, workspaceId, project.id);
 
   await prisma.workspaceBudget.create({
     data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },

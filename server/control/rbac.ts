@@ -1,11 +1,15 @@
 //? Workspaces — server-side control-API RBAC (the runtime capability map).
 //?
 //? These RUNTIME values live under `server/` because the generated server route
-//? bundle stubs non-`_api`/`_sync` `src/` imports to undefined (so importing
-//? OP_CAPABILITY from `src/workspaces/_functions/controlApi` yields undefined in a
-//? route at runtime). `controlApi.ts` keeps the TYPES + the client-facing
-//? CONFIRM_REQUIRED (type imports erase, so those resolve fine). Keep the capability
-//? mapping here in lockstep with the ControlOp union.
+//? bundle stubs non-`_api`/`_sync` `src/` imports to undefined. `controlApi.ts` keeps
+//? the TYPES + the client-facing CONFIRM_REQUIRED (type imports erase, so those
+//? resolve fine).
+//?
+//? Post-Fase-0: the RUNTIME RBAC gate is `hasCapability` + `CAP` (each per-action
+//? `_api` route calls `hasCapability(..., CAP.<x>)`). `OP_CAPABILITY` below is now a
+//? REFERENCE map — the consolidated view of the whole B-28 matrix (kept in lockstep
+//? with what the routes hardcode) — NOT the live source; editing it alone changes
+//? nothing at runtime.
 
 import type { PrismaClient } from '@prisma/client';
 
@@ -36,7 +40,9 @@ export const CAP = {
   ownerActions: 7,
 } as const;
 
-//? Which capability index a control-API op requires (`null` = login-only own-resource).
+//? Which capability index each op requires (`null` = login-only own-resource) — the
+//? consolidated B-28 reference matrix (see header note; the per-action routes are the
+//? runtime source). Includes ops not yet client-wired (pause/kill/… = Fase 2).
 export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'quick-add': CAP.workTickets,
   'ticket-edit': CAP.workTickets,

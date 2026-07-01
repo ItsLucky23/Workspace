@@ -405,3 +405,13 @@
 **Files:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/Shell.tsx`, `server/orchestrator/conductor.ts`, `tests/integration/notificationProducer.test.mts` (nieuw).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, notificationProducer.test 4/4 (assign → notificatie voor assignee + body bevat key; zelf-assign → géén notificatie).
+
+## 2026-07-02 01:57 — /loop lesson-0002 (prod-fix: default-pipeline naar server/) + Fase-2 doc-cleanup
+
+**Gedaan:**
+1. **lesson-0002 OPGELOST (prod-correctness).** `createBlankWorkspace` seedde de pipeline via een `src/`-import (`STAGE_CONFIGS`) die de PROD server-bundle stubt → 0 stages → blanco board in prod. Nieuwe `server/bootstrap/defaultPipeline.ts` (`createDefaultPipeline`): self-contained server-owned 7-stage default-pipeline (unrefined/refined/plan/impl/test/review/final, zinnige model-tiers, geen demo-specifieke commands/prompts). `createBlankWorkspace` gebruikt die nu; `seedDemoWorkspace` (test-only) houdt de `STAGE_CONFIGS`-src-import. Tegelijk een nettere default voor echte workspaces dan de demo-config.
+2. **Fase-2 doc-cleanup.** `OP_CAPABILITY` (server/control/rbac.ts) werd alleen door de verwijderde `control_v1` gebruikt. Behouden als **gedocumenteerde referentie-matrix** (de geconsolideerde B-28 view; deleten zou de RBAC-waarheid over 20 routes verspreiden) en de nu-stale comments in rbac.ts + controlApi.ts gecorrigeerd: de runtime-RBAC is `hasCapability` + `CAP` (elke route), niet `OP_CAPABILITY`.
+
+**Files:** `server/bootstrap/defaultPipeline.ts` (nieuw), `server/bootstrap/seedWorkspace.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, createWorkspace.test 9/9 (nieuwe default-pipeline seedt correct: unrefined bestaat, quick-add landt op unrefined, project gekoppeld).
