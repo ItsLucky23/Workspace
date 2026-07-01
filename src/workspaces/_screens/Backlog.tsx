@@ -17,34 +17,32 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { SPRING_SOFT } from '../_components/motion';
 import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, WsButton } from '../_components/primitives';
-import { MEMBERS, SPRINTS, STAGES, TICKETS, ticketAssignee, ticketCreator, ticketLinkedMembers } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Ticket } from '../_data/types';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
-const stageName = (id: string) => STAGES.find((s) => s.id === id)?.name ?? id;
 const LAST = ['2m', '14m', '1h', '2h', '3h', '5h', '1d', '2d', '3d', '4d', '6d', '1w'];
 
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket } = useWorkspaces();
+  const { openTicket, tickets, members, sprints } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(SPRINTS.map((s) => [s.id, true])));
+  const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(sprints.map((s) => [s.id, true])));
 
-  const filtered = useMemo(() => TICKETS.filter((t) => {
+  const filtered = useMemo(() => tickets.filter((t) => {
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;
     if (quick === 'unrefined' && t.stageId !== 'unrefined') return false;
     if (quick === 'needs-input' && t.status !== 'needs-input') return false;
     if (quick === 'done' && t.status !== 'done') return false;
-    if (person !== 'all' && ticketCreator(t) !== person && ticketAssignee(t) !== person) return false;
+    if (person !== 'all' && t.creatorId !== person && t.assigneeId !== person) return false;
     return true;
-  }), [q, quick, person]);
+  }), [tickets, q, quick, person]);
 
-  const groups = useMemo(() => SPRINTS.map((s) => ({ sprint: s, rows: filtered.filter((t) => (t.sprintId ?? 'backlog') === s.id) })), [filtered]);
+  const groups = useMemo(() => sprints.map((s) => ({ sprint: s, rows: filtered.filter((t) => (t.sprintId ?? 'backlog') === s.id) })), [filtered, sprints]);
 
   const toggleRow = (id: string) => { setSelected((prev) => {
     const n = new Set(prev);
@@ -54,7 +52,7 @@ export default function Backlog() {
 
   const personItems = [
     { id: 'all', value: 'all', item: translate({ key: 'workspaces.backlog.allPeople' }) },
-    ...Object.values(MEMBERS).map((m) => ({ id: m.id, value: m.id, item: m.name })),
+    ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
   ];
 
   return (
@@ -62,7 +60,7 @@ export default function Backlog() {
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.backlog.title' })}</h1>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted hidden sm:inline">{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(TICKETS.length) }] })}</span>
+          <span className="text-sm text-muted hidden sm:inline">{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
           <WsButton variant={selectMode ? 'primary' : 'secondary'} icon="circle-check" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); }}>{selectMode ? translate({ key: 'workspaces.backlog.done' }) : translate({ key: 'workspaces.backlog.select' })}</WsButton>
         </div>
       </div>
@@ -141,7 +139,9 @@ function Row({ ticket, index, selectMode, selected, onToggle, onOpen }: {
   ticket: Ticket; index: number; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
 }) {
   const translate = useTranslator();
-  const linked = ticketLinkedMembers(ticket);
+  const { stages, ticketMembers } = useWorkspaces();
+  const stageName = (id: string) => stages.find((s) => s.id === id)?.name ?? id;
+  const linked = ticketMembers(ticket);
   return (
     <div onClick={onOpen} className={`flex items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
       {selectMode && (

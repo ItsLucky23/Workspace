@@ -14,7 +14,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
-import { INTEGRATION_TYPES, INVITES, MEMBERS, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
+import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { IntegrationField, IntegrationTool, Member } from '../_data/types';
 
@@ -28,8 +28,7 @@ function removeMenu(member: Member, translate: ReturnType<typeof useTranslator>)
 
 function MembersTab() {
   const translate = useTranslator();
-  const { memberRoles, setMemberRole, permRoles, activeWorkspace } = useWorkspaces();
-  const members = Object.values(MEMBERS);
+  const { memberRoles, setMemberRole, permRoles, activeWorkspace, members } = useWorkspaces();
   //? You assign any non-Owner role; ownership changes via the danger zone only.
   const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.name, value: r.name, item: r.name }));
 
@@ -132,6 +131,7 @@ function PermissionsTab() {
 
 function InvitesTab() {
   const translate = useTranslator();
+  const { invites } = useWorkspaces();
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ function InvitesTab() {
         <WsButton icon="plus">{translate({ key: 'workspaces.workspaceSettings.inviteMembers' })}</WsButton>
       </div>
       <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-        {INVITES.map((i) => (
+        {invites.map((i) => (
           <div key={i.id} className="flex items-center gap-3 px-4 py-3">
             <span className="w-9 h-9 rounded-full bg-container2 text-muted flex items-center justify-center"><Icon name="plus" /></span>
             <div className="flex-1 min-w-0">
@@ -149,7 +149,7 @@ function InvitesTab() {
             <button type="button" className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.workspaceSettings.revoke' })}</button>
           </div>
         ))}
-        {INVITES.length === 0 && <div className="px-4 py-6 text-sm text-muted text-center">{translate({ key: 'workspaces.workspaceSettings.noPendingInvites' })}</div>}
+        {invites.length === 0 && <div className="px-4 py-6 text-sm text-muted text-center">{translate({ key: 'workspaces.workspaceSettings.noPendingInvites' })}</div>}
       </div>
     </div>
   );

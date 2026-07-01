@@ -9,7 +9,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble } from '../_components/primitives';
-import { MEMBERS, SPEND_7D, TICKETS, USAGE_ROWS, ticketAssignee, ticketCreator } from '../_data/seed';
+import { SPEND_7D, USAGE_ROWS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../_data/types';
 
@@ -26,24 +26,24 @@ function Card({ title, desc, children, className }: { title: string; desc?: stri
 }
 
 export default function Usage() {
-  const { openTicket } = useWorkspaces();
+  const { openTicket, tickets, membersById } = useWorkspaces();
   const translate = useTranslator();
   const maxDay = Math.max(...SPEND_7D.map((d) => d.cost));
 
   const byMember = useMemo(() => {
     const map = new Map<string, Ticket[]>();
-    for (const t of TICKETS) {
-      const handler = ticketAssignee(t) ?? ticketCreator(t);
+    for (const t of tickets) {
+      const handler = t.assigneeId ?? t.creatorId;
       if (!handler) continue;
       const list = map.get(handler) ?? [];
       list.push(t);
       map.set(handler, list);
     }
     return [...map.entries()]
-      .map(([uid, tickets]) => ({ member: MEMBERS[uid], tickets }))
+      .map(([uid, ticketList]) => ({ member: membersById[uid], tickets: ticketList }))
       .filter((x): x is { member: Member; tickets: Ticket[] } => Boolean(x.member))
       .toSorted((a, b) => b.tickets.length - a.tickets.length);
-  }, []);
+  }, [tickets, membersById]);
 
   return (
     <div className="flex flex-col h-full min-h-0">

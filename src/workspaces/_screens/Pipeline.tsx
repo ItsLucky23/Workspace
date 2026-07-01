@@ -17,7 +17,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import { IconButton, InfoDot, Segmented, Tabs, Toggle, WsButton, type TabDef } from '../_components/primitives';
-import { CARRY_VARS, COMMAND_CATALOG, DOCS, HOOK_CATALOG, NETWORK_CATEGORIES, SKILLS, STAGE_CONFIGS } from '../_data/seed';
+import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES, STAGE_CONFIGS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, StageWarning, ToolTier } from '../_data/types';
 
@@ -95,12 +95,13 @@ function GeneralTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Context & Skills */
 function ContextTab({ s, update }: TabProps) {
   const translate = useTranslator();
+  const { docs, skills } = useWorkspaces();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.contextDocs' })} hint={translate({ key: 'workspaces.pipeline.contextDocsHint' })} />
         <div className="flex flex-col gap-1.5">
-          {DOCS.map((d) => {
+          {docs.map((d) => {
             const on = s.sourceIds.includes(d.id);
             return (
               <button key={d.id} type="button" onClick={() => { update({ sourceIds: toggleKey(s.sourceIds, d.id) }); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
@@ -115,7 +116,7 @@ function ContextTab({ s, update }: TabProps) {
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
         <div className="flex flex-col gap-1.5">
-          {SKILLS.map((sk) => {
+          {skills.map((sk) => {
             const on = s.skillKeys.includes(sk.id);
             return (
               <div key={sk.id} className={`flex items-start gap-3 rounded-xl border px-3 py-2 ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border'}`}>

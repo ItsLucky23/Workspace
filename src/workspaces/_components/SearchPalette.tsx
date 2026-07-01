@@ -12,7 +12,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import Icon, { type IconName } from './Icon';
 import { SPRING_POP } from './motion';
 import { StatusPill } from './primitives';
-import { DOCS, TICKETS } from '../_data/seed';
 import { useWorkspaces, type WsView } from '../_shell/WorkspacesContext';
 import type { Ticket } from '../_data/types';
 
@@ -48,9 +47,9 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
   }, [open, onClose]);
 
   const query = q.trim().toLowerCase();
-  const tickets = useMemo(() => (query ? TICKETS.filter((t) => `${t.id} ${t.title}`.toLowerCase().includes(query)).slice(0, 8) : []), [query]);
-  const docs = useMemo(() => (query ? DOCS.filter((d) => `${d.name} ${d.summary}`.toLowerCase().includes(query)).slice(0, 5) : []), [query]);
-  const recentTickets = ctx.recent.map((id) => TICKETS.find((t) => t.id === id)).filter((t): t is Ticket => t !== undefined);
+  const tickets = useMemo(() => (query ? ctx.tickets.filter((t) => `${t.id} ${t.title}`.toLowerCase().includes(query)).slice(0, 8) : []), [query, ctx.tickets]);
+  const docs = useMemo(() => (query ? ctx.docs.filter((d) => `${d.name} ${d.summary}`.toLowerCase().includes(query)).slice(0, 5) : []), [query, ctx.docs]);
+  const recentTickets = ctx.recent.map((id) => ctx.tickets.find((t) => t.id === id)).filter((t): t is Ticket => t !== undefined);
 
   const go = (view: WsView) => { ctx.navigate(view); onClose(); };
   const openTicket = (id: string) => { ctx.openTicket(id); onClose(); };

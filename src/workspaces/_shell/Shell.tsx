@@ -13,17 +13,14 @@ import { motion } from 'motion/react';
 import Icon, { type IconName } from '../_components/Icon';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
-import { MEMBERS, NOTIFICATIONS, TICKETS } from '../_data/seed';
+import { NOTIFICATIONS } from '../_data/seed';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
 import type { AiSuggestion, ChatMessage } from '../_data/types';
 
-// Status lookup so the tab bar can colour its dots without re-deriving ticket logic.
-const TICKET_STATUS_LOOKUP: Record<string, string> = Object.fromEntries(TICKETS.map((t) => [t.id, t.status]));
-
 //? The CSS color token for a ticket's live status dot.
-function statusColor(id: string): string {
+function statusColor(status: string | undefined): string {
   let tint: string;
-  switch (TICKET_STATUS_LOOKUP[id]) {
+  switch (status) {
     case 'busy': { tint = 'primary'; break; }
     case 'done': { tint = 'correct'; break; }
     case 'needs-input':
@@ -106,13 +103,13 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 
 /* ----------------------------------------------------------------- top bar */
 export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNotifications: () => void }) {
-  const { navigate, theme, setTheme, currentUser, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace } = useWorkspaces();
+  const { navigate, theme, setTheme, currentUser, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members } = useWorkspaces();
   const translate = useTranslator();
   const [wsOpen, setWsOpen] = useState(false);
   const [avOpen, setAvOpen] = useState(false);
   const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => { setWsOpen(false); });
   const avRef = useClickAway<HTMLDivElement>(avOpen, () => { setAvOpen(false); });
-  const presence = [MEMBERS.sanne, MEMBERS.tom, MEMBERS.mathijs];
+  const presence = members.slice(0, 3);
   const unread = NOTIFICATIONS.filter((n) => !n.read).length;
   const openCreate = () => { setWsOpen(false); void menuHandler.open(<CreateWorkspaceForm onCreate={createWorkspace} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
@@ -182,8 +179,10 @@ export function TopBar({ onCmdK, onNotifications }: { onCmdK: () => void; onNoti
 
 /* ----------------------------------------------------------------- tab bar */
 export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
-  const { view, navigate, openTabs, closeTab, suggestions } = useWorkspaces();
+  const { view, navigate, openTabs, closeTab, suggestions, tickets } = useWorkspaces();
   const translate = useTranslator();
+  //? Status lookup so the tab bar can colour its dots without re-deriving ticket logic.
+  const statusLookup: Record<string, string> = Object.fromEntries(tickets.map((t) => [t.id, t.status]));
 
   return (
     <div className="hidden md:flex items-center gap-2 h-11 px-3 border-b border-divider bg-background">
@@ -195,7 +194,7 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
         {openTabs.map((id) => (
           <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
             {view === id && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
-            <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(id) }} />
+            <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(statusLookup[id]) }} />
             <span className="relative z-10">{id}</span>
             <button type="button" onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
           </div>

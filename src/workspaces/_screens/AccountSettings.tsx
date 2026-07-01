@@ -12,7 +12,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
-import { MEMBERS, SESSIONS, SSH_KEY_TO_USER } from '../_data/seed';
+import { SESSIONS, SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { SshKeyEntry } from '../_data/types';
 
@@ -47,6 +47,7 @@ function resolveUser(text: string): string | null {
 
 function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
   const translate = useTranslator();
+  const { membersById } = useWorkspaces();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
@@ -57,7 +58,7 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
   const submit = (raw: string, keyName: string) => {
     const userId = resolveUser(raw);
     if (!userId) { setError(translate({ key: 'workspaces.account.keyNotFound' })); return; }
-    onAdd({ id: `k-${raw.trim()}-${userId}`, name: keyName || translate({ key: 'workspaces.account.defaultKeyName', params: [{ key: 'name', value: MEMBERS[userId]?.name ?? userId }] }), type: 'ed25519', fingerprint: `SHA256:${raw.trim().slice(0, 6)}…`, added: 'just now', lastUsed: '—', userId });
+    onAdd({ id: `k-${raw.trim()}-${userId}`, name: keyName || translate({ key: 'workspaces.account.defaultKeyName', params: [{ key: 'name', value: membersById[userId]?.name ?? userId }] }), type: 'ed25519', fingerprint: `SHA256:${raw.trim().slice(0, 6)}…`, added: 'just now', lastUsed: '—', userId });
     setOpen(false); setName(''); setValue(''); setError('');
   };
 
@@ -99,9 +100,9 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById } = useWorkspaces();
   const [push, setPush] = useState(false);
-  const sshUser = sshUserId ? MEMBERS[sshUserId] : null;
+  const sshUser = sshUserId ? membersById[sshUserId] : null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -154,7 +155,7 @@ export default function AccountSettings() {
                 <Row key={k.id}>
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-title">{k.name} <span className="text-xs text-muted font-mono">· {k.type}</span> {k.userId === sshUserId && <span className="ml-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.account.active' })}</span>}</div>
-                    <div className="text-xs text-muted font-mono truncate">{translate({ key: 'workspaces.account.keyMeta', params: [{ key: 'fingerprint', value: k.fingerprint }, { key: 'added', value: k.added }, { key: 'name', value: MEMBERS[k.userId]?.name ?? k.userId }] })}</div>
+                    <div className="text-xs text-muted font-mono truncate">{translate({ key: 'workspaces.account.keyMeta', params: [{ key: 'fingerprint', value: k.fingerprint }, { key: 'added', value: k.added }, { key: 'name', value: membersById[k.userId]?.name ?? k.userId }] })}</div>
                   </div>
                   <button type="button" onClick={() => { removeSshKey(k.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.account.remove' })}</button>
                 </Row>

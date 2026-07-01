@@ -9,9 +9,8 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, EmptyState, Segmented } from '../_components/primitives';
-import { EVENTS, MEMBERS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { ActivityEvent } from '../_data/types';
+import type { ActivityEvent, Member } from '../_data/types';
 
 type Filter = 'all' | 'ai' | 'people' | 'merges';
 
@@ -34,25 +33,25 @@ function matches(e: ActivityEvent, f: Filter): boolean {
   return e.actor !== 'ai' && e.actor !== 'mr';
 }
 
-function ActorBadge({ actor }: { actor: string }) {
+function ActorBadge({ actor, membersById }: { actor: string; membersById: Record<string, Member> }) {
   if (actor === 'ai') return <span className="w-7 h-7 rounded-full bg-primary/12 text-primary flex items-center justify-center shrink-0"><Icon name="robot" className="text-xs" /></span>;
   if (actor === 'mr') return <span className="w-7 h-7 rounded-full bg-correct/15 text-correct flex items-center justify-center shrink-0"><Icon name="code-merge" className="text-xs" /></span>;
-  const member = MEMBERS[actor];
+  const member = membersById[actor];
   if (member) return <div className="w-7 h-7 shrink-0"><AvatarBubble user={member} size={28} /></div>;
   return <span className="w-7 h-7 rounded-full bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="user" className="text-xs" /></span>;
 }
 
-function actorName(actor: string, translate: ReturnType<typeof useTranslator>): string {
+function actorName(actor: string, translate: ReturnType<typeof useTranslator>, membersById: Record<string, Member>): string {
   if (actor === 'ai') return translate({ key: 'workspaces.activity.actorAgent' });
   if (actor === 'mr') return 'GitLab';
-  return MEMBERS[actor]?.name ?? actor;
+  return membersById[actor]?.name ?? actor;
 }
 
 export default function Activity() {
   const translate = useTranslator();
-  const { openTicket } = useWorkspaces();
+  const { openTicket, activityEvents, membersById } = useWorkspaces();
   const [filter, setFilter] = useState<Filter>('all');
-  const events = useMemo(() => EVENTS.filter((e) => matches(e, filter)), [filter]);
+  const events = useMemo(() => activityEvents.filter((e) => matches(e, filter)), [activityEvents, filter]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -73,12 +72,12 @@ export default function Activity() {
           {events.map((e, i) => (
             <div key={i} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <ActorBadge actor={e.actor} />
+                <ActorBadge actor={e.actor} membersById={membersById} />
                 {i < events.length - 1 && <span className="w-px flex-1 bg-divider my-1" />}
               </div>
               <div className="pb-5 min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-title">{actorName(e.actor, translate)}</span>
+                  <span className="text-sm font-medium text-title">{actorName(e.actor, translate, membersById)}</span>
                   <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${EVENT_TINT[e.type]}`}>{translate({ key: EVENT_LABEL[e.type] })}</span>
                   <button type="button" onClick={() => { openTicket(e.ticketId); }} className="font-mono text-xs text-primary hover:underline cursor-pointer">{e.ticketId}</button>
                   <span className="text-xs text-muted">· {e.time}</span>

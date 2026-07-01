@@ -210,6 +210,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       tickets: snap.tickets,
       members: snap.members,
       membersById,
+      ticketMembers: (ticket) => {
+        const ids = [ticket.creatorId, ticket.assigneeId, ...ticket.viewers].filter((x): x is string => x !== undefined && x !== '');
+        return [...new Set(ids)].map((id) => membersById[id]).filter((m): m is Member => m !== undefined);
+      },
       stages: snap.stages,
       sprints: snap.sprints,
       budget: snap.budget,

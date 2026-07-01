@@ -82,7 +82,11 @@ export interface WorkspacesCtx {
   refetch: () => void;                 // re-pull the snapshot (after a control-API write)
   tickets: Ticket[];                   // was TICKETS
   members: Member[];                   // was Object.values(MEMBERS)
-  membersById: Record<string, Member>; // was MEMBERS
+  membersById: Record<string, Member>; // was MEMBERS (keyed by user id)
+  //? Resolve a ticket's people (creator + assignee + viewers) to Member objects via
+  //? the live members — replaces the seed `ticketLinkedMembers(t)` helper (which keyed
+  //? on the dummy MEMBERS map; real tickets carry real user ids).
+  ticketMembers: (ticket: Ticket) => Member[];
   stages: PipelineStage[];             // was STAGES (board meta; full editor config still on seed)
   sprints: Sprint[];                   // was SPRINTS
   budget: WorkspaceBudget | null;      // was BUDGET

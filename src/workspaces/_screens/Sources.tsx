@@ -13,8 +13,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
 import { Sheet } from '../_components/motion';
 import { EmptyState, Tabs, Toggle, WsButton, type TabDef } from '../_components/primitives';
-import { DOCS, SKILLS } from '../_data/seed';
 import type { InfoDoc, SkillEntry } from '../_data/types';
+import { useWorkspaces } from '../_shell/WorkspacesContext';
 
 const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   generated: 'bg-primary/12 text-primary',
@@ -145,13 +145,14 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
 
 export default function Sources() {
   const translate = useTranslator();
+  const { docs, skills: initialSkills } = useWorkspaces();
   const [tab, setTab] = useState('docs');
-  const [skills, setSkills] = useState(SKILLS);
+  const [skills, setSkills] = useState(initialSkills);
   const [preview, setPreview] = useState<InfoDoc | null>(null);
 
   const tabs: TabDef[] = [
-    { id: 'docs', label: translate({ key: 'workspaces.sources.tabDocs' }), icon: 'file-lines', count: DOCS.length },
-    { id: 'skills', label: translate({ key: 'workspaces.sources.tabSkills' }), icon: 'robot', count: SKILLS.length },
+    { id: 'docs', label: translate({ key: 'workspaces.sources.tabDocs' }), icon: 'file-lines', count: docs.length },
+    { id: 'skills', label: translate({ key: 'workspaces.sources.tabSkills' }), icon: 'robot', count: skills.length },
   ];
 
   return (
@@ -169,9 +170,9 @@ export default function Sources() {
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
         {tab === 'docs' && (
-          DOCS.length === 0
+          docs.length === 0
             ? <EmptyState icon="file-lines" title={translate({ key: 'workspaces.sources.emptyDocsTitle' })} />
-            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{DOCS.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} />)}</div>
+            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} />)}</div>
         )}
         {tab === 'skills' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">

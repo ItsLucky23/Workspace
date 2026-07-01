@@ -20,7 +20,6 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { SPRING_SOFT } from '../_components/motion';
 import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, type PopMenuItem } from '../_components/primitives';
-import { SPRINTS, STAGES, TICKETS, ticketLinkedMembers } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { PipelineStage, Ticket } from '../_data/types';
 
@@ -30,8 +29,8 @@ type Columns = Record<string, Ticket[]>;
 //? Apply the AI-driven stage overrides (from the Workspace-AI chat) on top of
 //? the seed stage, so a "move DEV-#### to …" lands the card in a new column and
 //? the shared layoutId animates it there.
-function buildColumns(tickets: Ticket[], overrides: Record<string, string>): Columns {
-  const cols: Columns = Object.fromEntries(STAGES.map((s) => [s.id, [] as Ticket[]]));
+function buildColumns(tickets: Ticket[], stages: PipelineStage[], overrides: Record<string, string>): Columns {
+  const cols: Columns = Object.fromEntries(stages.map((s) => [s.id, [] as Ticket[]]));
   for (const t of tickets) {
     const stage = overrides[t.id] ?? t.stageId;
     cols[stage].push(t);
@@ -59,7 +58,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
 function KanbanCard({ ticket }: { ticket: Ticket }) {
   const ctx = useWorkspaces();
   const translate = useTranslator();
-  const linked = ticketLinkedMembers(ticket);
+  const linked = ctx.ticketMembers(ticket);
   const stop = { onClick: (e: React.MouseEvent) => { e.stopPropagation(); } };
   const downAt = useRef(0);
   const menuClosedAt = useRef(0);
@@ -139,7 +138,7 @@ function KanbanColumn({ stage, tickets }: { stage: PipelineStage; tickets: Ticke
 function BoardHeader({ isMobile }: { isMobile: boolean }) {
   const ctx = useWorkspaces();
   const translate = useTranslator();
-  const sprintItems = SPRINTS.map((s) => {
+  const sprintItems = ctx.sprints.map((s) => {
     let suffix = '';
     if (s.start) suffix = s.daysLeft ? ` · ${translate({ key: 'workspaces.board.daysLeft', params: [{ key: 'n', value: String(s.daysLeft) }] })}` : ` · ${s.start}–${s.end ?? ''}`;
     return { id: s.id, value: s.id, item: `${s.name}${suffix}` };
@@ -169,13 +168,14 @@ function BoardHeader({ isMobile }: { isMobile: boolean }) {
 
 function BoardMobile({ columns }: { columns: Columns }) {
   const translate = useTranslator();
-  const [active, setActive] = useState<string>(STAGES.find((s) => columns[s.id].length)?.id ?? STAGES[0].id);
-  const stage = STAGES.find((s) => s.id === active)!;
+  const { stages } = useWorkspaces();
+  const [active, setActive] = useState<string>(stages.find((s) => columns[s.id].length)?.id ?? stages[0].id);
+  const stage = stages.find((s) => s.id === active)!;
   const list = columns[active];
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto ws-no-scrollbar">
-        {STAGES.map((s) => (
+        {stages.map((s) => (
           <button key={s.id} type="button" onClick={() => { setActive(s.id); }}
             className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${s.id === active ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}>
             {s.name}<span className={`rounded-full px-1.5 text-xs ${s.id === active ? 'bg-white/20' : 'bg-container1'}`}>{columns[s.id].length}</span>
@@ -191,8 +191,8 @@ function BoardMobile({ columns }: { columns: Columns }) {
 }
 
 export default function Board() {
-  const { isMobile, stageOverrides } = useWorkspaces();
-  const columns = useMemo(() => buildColumns(TICKETS, stageOverrides), [stageOverrides]);
+  const { isMobile, stageOverrides, tickets, stages } = useWorkspaces();
+  const columns = useMemo(() => buildColumns(tickets, stages, stageOverrides), [tickets, stages, stageOverrides]);
 
   if (isMobile) {
     return (
@@ -209,7 +209,7 @@ export default function Board() {
       <div className="flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6">
         <LayoutGroup>
           <div className="flex gap-3 h-full">
-            {STAGES.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id]} />)}
+            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id]} />)}
             {/* trailing space so the last column isn't flush against the AI panel / viewport edge */}
             <div className="w-2 shrink-0" aria-hidden />
           </div>

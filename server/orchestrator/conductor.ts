@@ -32,6 +32,49 @@ function str(o: Record<string, unknown>, k: string): string | undefined {
 function bool(o: Record<string, unknown>, k: string): boolean {
   return o[k] === true;
 }
+function num(o: Record<string, unknown>, k: string): number | undefined {
+  const v = o[k];
+  return typeof v === 'number' ? v : undefined;
+}
+function strArr(o: Record<string, unknown>, k: string): string[] {
+  const v = o[k];
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+function boolArr(o: Record<string, unknown>, k: string): boolean[] {
+  const v = o[k];
+  return Array.isArray(v) ? v.map((x) => x === true) : [];
+}
+
+//? Workspace teardown — delete every tenant-scoped row, then the workspace (04b §11d).
+//? Live-container teardown (07 §A) precedes this in Fase 2; there are none in Fase 1.
+async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
+  await prisma.ticketEvent.deleteMany({ where: { workspaceId } });
+  await prisma.ticket.deleteMany({ where: { workspaceId } });
+  await prisma.ticketLink.deleteMany({ where: { workspaceId } });
+  await prisma.ticketReference.deleteMany({ where: { workspaceId } });
+  await prisma.sprint.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceSuggestion.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceNote.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceBudget.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceSignal.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceTrigger.deleteMany({ where: { workspaceId } });
+  await prisma.carryOver.deleteMany({ where: { workspaceId } });
+  await prisma.handoff.deleteMany({ where: { workspaceId } });
+  await prisma.questionSet.deleteMany({ where: { workspaceId } });
+  await prisma.agentSession.deleteMany({ where: { workspaceId } });
+  await prisma.spendRecord.deleteMany({ where: { workspaceId } });
+  await prisma.notification.deleteMany({ where: { workspaceId } });
+  await prisma.infoSource.deleteMany({ where: { workspaceId } });
+  await prisma.ragEntry.deleteMany({ where: { workspaceId } });
+  await prisma.envVar.deleteMany({ where: { workspaceId } });
+  await prisma.integrationTool.deleteMany({ where: { workspaceId } });
+  await prisma.invite.deleteMany({ where: { workspaceId } });
+  await prisma.pipelineStage.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
+  await prisma.project.deleteMany({ where: { workspaceId } });
+  await prisma.workspace.delete({ where: { id: workspaceId } });
+}
 
 //? The default RBAC perms for the seeded built-in roles (positional over
 //? RBAC_CAPABILITIES; Owner is all-true). Mirrors seed DEFAULT_PERM_ROLES.
@@ -124,6 +167,188 @@ async function executeAction(action: ControlAction): Promise<void> {
       const name = str(payload, 'name');
       if (!name) return;
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { name } });
+      return;
+    }
+    // ---- tickets / board ----
+    case 'quick-add': {
+      const title = str(payload, 'title');
+      if (!title) return;
+      const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId } });
+      if (!project) return;
+      const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
+      const number = (last?.number ?? 1239) + 1;
+      await prisma.ticket.create({
+        data: {
+          workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+          title, description: str(payload, 'description') ?? null, stageId: str(payload, 'stageId') ?? 'unrefined',
+          status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId, sprintId: str(payload, 'sprintId') ?? null,
+        },
+      });
+      return;
+    }
+    case 'archive': {
+      const key = str(target, 'ticketId');
+      if (!key) return;
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { archived: true } });
+      return;
+    }
+    case 'bulk-archive': {
+      const keys = strArr(target, 'ticketIds');
+      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { archived: true } });
+      return;
+    }
+    case 'bulk-move': {
+      const keys = strArr(target, 'ticketIds'); const stageId = str(payload, 'stageId');
+      if (keys.length > 0 && stageId) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
+      return;
+    }
+    case 'bulk-status': {
+      const keys = strArr(target, 'ticketIds'); const status = str(payload, 'status');
+      if (keys.length > 0 && status) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { status } });
+      return;
+    }
+    case 'bulk-assign': {
+      const keys = strArr(target, 'ticketIds');
+      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { assigneeId: str(payload, 'assigneeId') ?? null } });
+      return;
+    }
+    case 'bulk-sprint': {
+      const keys = strArr(target, 'ticketIds');
+      if (keys.length > 0) await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { sprintId: str(payload, 'sprintId') ?? null } });
+      return;
+    }
+    // ---- sprints ----
+    case 'sprint-create': {
+      const name = str(payload, 'name');
+      if (name) await prisma.sprint.create({ data: { workspaceId: action.workspaceId, name, active: bool(payload, 'active') } });
+      return;
+    }
+    case 'sprint-edit': {
+      const sprintId = str(target, 'sprintId'); const name = str(payload, 'name');
+      if (!sprintId) return;
+      await prisma.sprint.updateMany({ where: { workspaceId: action.workspaceId, id: sprintId }, data: { ...(name ? { name } : {}), active: bool(payload, 'active') } });
+      return;
+    }
+    // ---- members / RBAC / workspace lifecycle ----
+    case 'remove-member': {
+      const memberId = str(target, 'memberId');
+      if (memberId) await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+      return;
+    }
+    case 'transfer-ownership': {
+      const memberId = str(target, 'memberId');
+      if (!memberId) return;
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ownerId: memberId } });
+      await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
+      await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { roleKey: 'admin' } });
+      return;
+    }
+    case 'delete-workspace': {
+      await cascadeDeleteWorkspace(action.workspaceId);
+      return;
+    }
+    case 'role-create': {
+      const key = str(payload, 'key'); const label = str(payload, 'label') ?? key;
+      if (!key || !label) return;
+      await prisma.workspaceRole.create({ data: { workspaceId: action.workspaceId, key, label, perms: boolArr(payload, 'perms'), builtIn: false } });
+      return;
+    }
+    case 'role-update': {
+      const key = str(target, 'roleKey') ?? str(payload, 'key');
+      if (!key) return;
+      const label = str(payload, 'label');
+      const data: { label?: string; perms?: boolean[] } = {};
+      if (label) data.label = label;
+      if (Array.isArray(payload.perms)) data.perms = boolArr(payload, 'perms');
+      await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
+      return;
+    }
+    // ---- invites ----
+    case 'invite': {
+      const email = str(payload, 'email');
+      if (email) await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+      return;
+    }
+    case 'revoke-invite': {
+      const inviteId = str(target, 'inviteId');
+      if (inviteId) await prisma.invite.updateMany({ where: { workspaceId: action.workspaceId, id: inviteId }, data: { status: 'revoked' } });
+      return;
+    }
+    case 'accept-invite': {
+      const token = str(target, 'inviteToken');
+      if (!token) return;
+      const inv = await prisma.invite.findFirst({ where: { token, status: 'pending' } });
+      if (!inv) return;
+      await prisma.workspaceMember.create({ data: { workspaceId: inv.workspaceId, userId, roleKey: inv.roleKey } });
+      await prisma.invite.update({ where: { id: inv.id }, data: { status: 'accepted', acceptedAt: new Date() } });
+      return;
+    }
+    // ---- settings ----
+    case 'save-integration': {
+      const name = str(payload, 'name');
+      const integrationId = str(target, 'integrationId') ?? str(payload, 'id');
+      if (!name) return;
+      const type = str(payload, 'type') ?? 'custom';
+      await (integrationId
+        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type } })
+        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields: [], mcp: { enabled: false, command: '' } } }));
+      return;
+    }
+    case 'remove-integration': {
+      const integrationId = str(target, 'integrationId');
+      if (integrationId) await prisma.integrationTool.deleteMany({ where: { workspaceId: action.workspaceId, id: integrationId } });
+      return;
+    }
+    case 'gitlab-settings': {
+      const gitlabUrl = str(payload, 'baseUrl') ?? str(payload, 'url'); const token = str(payload, 'token');
+      //? Token stored as-is for Fase 1 (should be encrypted — B-07; app-owned encryption is a later slice).
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: token } : {}) } });
+      return;
+    }
+    case 'gitlab-verify':
+    case 'gitlab-resync': {
+      //? Verify = read-only; resync = kick a GitLab sync (Fase 2 engine). No-op write in Fase 1.
+      return;
+    }
+    case 'raise-cap':
+    case 'edit-budget': {
+      const cap = num(payload, 'cap') ?? num(payload, 'newCap');
+      if (cap === undefined) return;
+      const budget = await prisma.workspaceBudget.findFirst({ where: { workspaceId: action.workspaceId } });
+      if (!budget) return;
+      const data: { cap: number; alertPct?: number } = { cap };
+      const alertPct = num(payload, 'alertPct');
+      if (alertPct !== undefined) data.alertPct = alertPct;
+      await prisma.workspaceBudget.update({ where: { id: budget.id }, data });
+      return;
+    }
+    case 'resume-spend': {
+      await prisma.workspaceBudget.updateMany({ where: { workspaceId: action.workspaceId }, data: { spent: 0, windowStartAt: new Date() } });
+      return;
+    }
+    case 'skill-toggle': {
+      const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
+      if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });
+      return;
+    }
+    case 'save-stage-config': {
+      const stageId = str(target, 'stageId') ?? str(payload, 'id');
+      if (!stageId) return;
+      const data: Record<string, unknown> = {};
+      const name = str(payload, 'name'); if (name) data.name = name;
+      if ('aiEnabled' in payload) data.aiEnabled = bool(payload, 'aiEnabled');
+      const ci = str(payload, 'customInstructions'); if (ci !== undefined) data.customInstructions = ci;
+      if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: stageId }, data });
+      return;
+    }
+    // ---- notifications ----
+    case 'mark-read': {
+      if (target.all === true) {
+        await prisma.notification.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { read: true } });
+      } else {
+        const notificationId = str(target, 'notificationId');
+        if (notificationId) await prisma.notification.updateMany({ where: { workspaceId: action.workspaceId, id: notificationId }, data: { read: true } });
+      }
       return;
     }
     default: {

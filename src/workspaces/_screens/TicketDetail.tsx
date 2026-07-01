@@ -14,14 +14,14 @@ import FileDiffViewer from '../_components/FileDiffViewer';
 import Icon from '../_components/Icon';
 import XtermTerminal from '../_components/XtermTerminal';
 import { AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../_components/primitives';
-import { EVENTS, MEMBERS, STAGES, TERMINALS, TICKETS, ticketLinkedMembers } from '../_data/seed';
+import { TERMINALS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { ActivityEvent, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../_data/types';
+import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../_data/types';
 
 export default function TicketDetail({ id }: { id: string }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
-  const ticket = TICKETS.find((t) => t.id === id);
+  const ticket = ctx.tickets.find((t) => t.id === id);
   const [tab, setTab] = useState('overview');
 
   const TABS: TabDef[] = [
@@ -38,8 +38,8 @@ export default function TicketDetail({ id }: { id: string }) {
   //? Status is AI-owned — the user can't change it (it'd be wrong to flip
   //? "needs input" to "busy"). Shown read-only; the user's lever is replying.
   const status = ticket.status;
-  const stage = STAGES.find((s) => s.id === ticket.stageId);
-  const nextStage = STAGES.find((s) => s.order === (stage?.order ?? -1) + 1);
+  const stage = ctx.stages.find((s) => s.id === ticket.stageId);
+  const nextStage = ctx.stages.find((s) => s.order === (stage?.order ?? -1) + 1);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -67,7 +67,7 @@ export default function TicketDetail({ id }: { id: string }) {
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
           {tab === 'terminal' && <TerminalTab ticketId={ticket.id} />}
           {tab === 'files' && <FilesTab files={ticket.files ?? []} />}
-          {tab === 'activity' && <ActivityTab events={EVENTS.filter((e) => e.ticketId === ticket.id)} />}
+          {tab === 'activity' && <ActivityTab events={ctx.activityEvents.filter((e) => e.ticketId === ticket.id)} />}
           {tab === 'links' && <LinksTab links={ticket.links ?? []} onOpen={ctx.openTicket} />}
           {tab === 'history' && <HistoryTab history={ticket.history ?? []} />}
         </div>
@@ -79,7 +79,7 @@ export default function TicketDetail({ id }: { id: string }) {
 function TicketHeader({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
-  const linked = ticketLinkedMembers(ticket);
+  const linked = ctx.ticketMembers(ticket);
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-5 pb-3">
       <div className="flex items-start justify-between gap-3">
@@ -229,7 +229,7 @@ function FilesTab({ files }: { files: TicketFile[] }) {
   );
 }
 
-const ACTOR_GLYPH = (actor: string) => (actor === 'ai' ? '🤖' : (actor === 'mr' ? '🔀' : (MEMBERS[actor]?.name[0] ?? '·')));
+const ACTOR_GLYPH = (actor: string, membersById: Record<string, Member>) => (actor === 'ai' ? '🤖' : (actor === 'mr' ? '🔀' : (membersById[actor]?.name[0] ?? '·')));
 const EVENT_TINT: Record<ActivityEvent['type'], string> = {
   command: 'bg-container2 text-common',
   'file-change': 'bg-primary/12 text-primary',
@@ -241,12 +241,13 @@ const EVENT_TINT: Record<ActivityEvent['type'], string> = {
 
 function ActivityTab({ events }: { events: ActivityEvent[] }) {
   const translate = useTranslator();
+  const ctx = useWorkspaces();
   if (events.length === 0) return <EmptyState icon="wave-square" title={translate({ key: 'workspaces.ticket.noActivity' })} />;
   return (
     <div className="flex flex-col gap-2">
       {events.map((e, i) => (
         <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-container2/50 transition-colors">
-          <span className="w-6 h-6 rounded-full bg-container2 text-xs flex items-center justify-center shrink-0">{ACTOR_GLYPH(e.actor)}</span>
+          <span className="w-6 h-6 rounded-full bg-container2 text-xs flex items-center justify-center shrink-0">{ACTOR_GLYPH(e.actor, ctx.membersById)}</span>
           <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${EVENT_TINT[e.type]}`}>{e.type}</span>
           <span className="text-sm text-common flex-1 min-w-0 truncate">{e.text}</span>
           <span className="text-xs text-muted font-mono shrink-0">{e.time}</span>

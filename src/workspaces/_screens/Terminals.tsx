@@ -14,7 +14,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
 import XtermTerminal from '../_components/XtermTerminal';
 import { EmptyState, PopMenu, Segmented, StatusPill } from '../_components/primitives';
-import { MEMBERS, TERMINALS } from '../_data/seed';
+import { TERMINALS } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Terminal, TicketStatus } from '../_data/types';
 
@@ -90,10 +90,10 @@ function SshLocked({ onGoToSettings }: { onGoToSettings: () => void }) {
 
 export default function Terminals() {
   const translate = useTranslator();
-  const { sshUserId, navigate } = useWorkspaces();
+  const { sshUserId, navigate, membersById } = useWorkspaces();
   const [layout, setLayout] = useState<Layout>('grid');
   const [activeTab, setActiveTab] = useState(TERMINALS[0]?.ticketId ?? '');
-  const sshUserName = sshUserId ? (MEMBERS[sshUserId]?.name ?? sshUserId) : '';
+  const sshUserName = sshUserId ? (membersById[sshUserId]?.name ?? sshUserId) : '';
   const unlocked = sshUserId !== null;
 
   return (
