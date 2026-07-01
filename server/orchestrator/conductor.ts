@@ -46,7 +46,8 @@ function boolArr(o: Record<string, unknown>, k: string): boolean[] {
   return Array.isArray(v) ? v.map((x) => x === true) : [];
 }
 function asRec(v: unknown): Record<string, unknown> {
-  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return {};
+  return v as Record<string, unknown>;
 }
 //? Coerce the client's integration `fields`/`mcp` payload into the Prisma composite shapes.
 function readIntegrationFields(v: unknown): { id: string; label: string; placeholder?: string; envVarId?: string }[] {
