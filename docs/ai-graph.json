@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 81,
-    "edges": 138,
+    "nodes": 79,
+    "edges": 135,
     "symbols": 76,
     "callEdges": 26
   },
@@ -294,11 +294,6 @@
       "route": null
     },
     {
-      "id": "workspaces/_components/TerminalView.tsx",
-      "kind": "other",
-      "route": null
-    },
-    {
       "id": "workspaces/_components/XtermTerminal.tsx",
       "kind": "other",
       "route": null
@@ -315,11 +310,6 @@
     },
     {
       "id": "workspaces/_functions/controlApi.ts",
-      "kind": "other",
-      "route": null
-    },
-    {
-      "id": "workspaces/_screens/Placeholder.tsx",
       "kind": "other",
       "route": null
     },
@@ -590,18 +580,6 @@
     {
       "from": "workspaces/_components/SearchPalette.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
-    },
-    {
-      "from": "workspaces/_components/TerminalView.tsx",
-      "to": "workspaces/_data/types.ts"
-    },
-    {
-      "from": "workspaces/_screens/Placeholder.tsx",
-      "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/_screens/Placeholder.tsx",
-      "to": "workspaces/_components/primitives.tsx"
     },
     {
       "from": "workspaces/_shell/MobileChrome.tsx",
@@ -975,7 +953,6 @@
       "settings/page.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
-      "workspaces/_screens/Placeholder.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -1119,7 +1096,6 @@
       "main.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
-      "workspaces/_screens/Placeholder.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -1141,7 +1117,6 @@
       "main.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
-      "workspaces/_screens/Placeholder.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -1161,7 +1136,6 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/SearchPalette.tsx",
-      "workspaces/_screens/Placeholder.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -1203,9 +1177,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/SearchPalette.tsx",
-      "workspaces/_components/TerminalView.tsx",
       "workspaces/_components/primitives.tsx",
-      "workspaces/_screens/Placeholder.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -1289,32 +1261,26 @@
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 22,
-      "directDependents": 16
+      "dependents": 20,
+      "directDependents": 15
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 20,
+      "dependents": 19,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 20,
-      "directDependents": 17
+      "dependents": 19,
+      "directDependents": 16
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 19,
-      "directDependents": 7
-    },
-    {
-      "id": "workspaces/_components/primitives.tsx",
-      "kind": "other",
       "dependents": 18,
-      "directDependents": 14
+      "directDependents": 7
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
@@ -1333,6 +1299,12 @@
       "kind": "helper",
       "dependents": 17,
       "directDependents": 11
+    },
+    {
+      "id": "workspaces/_components/primitives.tsx",
+      "kind": "other",
+      "dependents": 17,
+      "directDependents": 13
     },
     {
       "id": "workspaces/_data/seed.ts",

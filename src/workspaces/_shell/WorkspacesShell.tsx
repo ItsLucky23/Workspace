@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 
-import { AIPanel, MobileBottomBar, NavRail, TopBar } from './Shell';
+import { AIPanel, MobileBottomBar, NavRail, TabBar, TopBar } from './Shell';
 import { MobileHeader } from './MobileChrome';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
@@ -45,6 +45,8 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
           <TopBar onCmdK={openSearch} />
           <div className="flex-1 flex min-h-0">
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+              {/* open-ticket tabs — inside the content column so they don't overlap the AI panel */}
+              <TabBar />
               {/* contextual back row — only when a reference was followed */}
               <AnimatePresence initial={false}>
                 {ctx.canGoBack && (

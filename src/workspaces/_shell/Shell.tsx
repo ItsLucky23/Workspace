@@ -228,19 +228,19 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
 }
 
 /* ----------------------------------------------------------------- tab bar */
-export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
-  const { view, navigate, openTabs, closeTab, suggestions, tickets } = useWorkspaces();
-  const translate = useTranslator();
+//? Open-ticket tabs only (no board/AI buttons — those live in the nav rail). Lives
+//? INSIDE the content column, so it spans only the content width and butts up against
+//? the AI panel's left edge instead of running over it. Hidden when nothing is open.
+export function TabBar() {
+  const { view, navigate, openTabs, closeTab, tickets } = useWorkspaces();
   //? Status lookup so the tab bar can colour its dots without re-deriving ticket logic.
   const statusLookup: Record<string, string> = Object.fromEntries(tickets.map((t) => [t.id, t.status]));
 
+  if (openTabs.length === 0) return null;
+
   return (
-    <div className="hidden md:flex items-center gap-2 h-11 px-3 border-b border-divider bg-background">
+    <div className="hidden md:flex items-center gap-1 h-11 px-3 border-b border-divider bg-background shrink-0">
       <div className="flex-1 flex items-center gap-1 overflow-x-auto ws-no-scrollbar">
-        <button type="button" onClick={() => { navigate('board'); }} className={`relative flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${view === 'board' ? 'text-title' : 'text-muted hover:text-common'}`}>
-          {view === 'board' && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
-          <span className="relative z-10 inline-flex items-center gap-2"><Icon name="table-columns" /> {translate({ key: 'workspaces.shell.board' })}</span>
-        </button>
         {openTabs.map((id) => (
           <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
             {view === id && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
@@ -250,10 +250,6 @@ export function TabBar({ onAiToggle }: { onAiToggle: () => void }) {
           </div>
         ))}
       </div>
-      <button type="button" onClick={onAiToggle} className="flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 transition-colors cursor-pointer">
-        <Icon name="robot" className="text-primary" /> {translate({ key: 'workspaces.shell.workspaceAi' })}
-        {suggestions.length > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-title-primary text-xs font-semibold flex items-center justify-center">{suggestions.length}</span>}
-      </button>
     </div>
   );
 }

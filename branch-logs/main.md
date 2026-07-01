@@ -222,3 +222,15 @@
 **Verificatie:** `tsc --noEmit` **0 errors**, `npm run build` groen, `ai:lint` schoon, eslint (verplaatste files) alleen pre-existing warnings, **`test:ws` 7/8** (Mongo-directe files groen).
 
 **Geflagd (niet gefixt):** (a) `test:ws`'s `httpControl` e2e faalt op quick-add-persist — maar die test de **live :80 server (main-checkout)**, niet deze worktree; los van deze refactor (mogelijk de eerder-geflagde async-ack of stale server). (b) Dode files zonder importers: `_components/TerminalView.tsx` + `_screens/Placeholder.tsx`. (c) Open-ticket-tabjes verdwenen mee met de 2e navbar (eerdere tweak).
+
+## 2026-07-02 — Dode files weg + 2e navbar terug (alleen open-tickets, binnen content-kolom)
+
+**User prompt:** verwijder dode code/files; breng de 2e navbar terug voor de per-ticket preview maar laat 'm aansluiten op de AI-chat rechts (2e topbar ín de content-window, niet eroverheen); alleen open-tickets in die balk, geen andere knoppen; los daarna alle conflicts met main op en zet alle code op main zodat ik lokaal kan pullen + runnen.
+
+**Gedaan:**
+1. **Dode files verwijderd** (nul importers, bevestigd): `src/workspaces/_components/TerminalView.tsx` + `src/workspaces/_screens/Placeholder.tsx` (`_screens/` is nu leeg).
+2. **TabBar terug, gestript + herpositioneerd** (`Shell.tsx` + `WorkspacesShell.tsx`): alleen open-ticket-tabs (Board-tab + Workspace-AI-toggle eruit — die zitten in de NavRail), verbergt zichzelf als er niks open is. Gerenderd ÍN de content-kolom (boven de back-row/children) i.p.v. full-width boven de rij → spant alleen de content-breedte en sluit aan op de linkerrand van de AI-chat i.p.v. eroverheen te lopen. `TabBar` heeft geen props meer (`onAiToggle` weg).
+
+**Files:** `src/workspaces/_shell/Shell.tsx`, `src/workspaces/_shell/WorkspacesShell.tsx`, verwijderd: `_components/TerminalView.tsx` + `_screens/Placeholder.tsx`.
+
+**Verificatie:** `tsc` 0, `build` groen, `ai:lint` schoon, eslint alleen pre-existing warnings.
