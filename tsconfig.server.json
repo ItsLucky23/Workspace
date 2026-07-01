@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "jsx": "preserve"
+  },
+  "include": [
+    "server",
+    "config.ts",
+    "deploy.config.ts",
+    "services.config.ts",
+    "luckystack",
+    "src/**/_api/**/*",
+    "src/**/_sync/**/*",
+    "src/**/_server/**/*",
+    "src/**/*_server.ts",
+    "src/**/*_server.tsx"
+  ]
+}

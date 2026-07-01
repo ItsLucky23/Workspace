@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "luckystack": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@luckystack/mcp@^0.3.0"
+      ]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@^0.0.29"
+      ]
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@^0.5.0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,2031 @@
+{
+  "version": 2,
+  "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
+  "counts": {
+    "nodes": 94,
+    "edges": 65,
+    "symbols": 126,
+    "callEdges": 30
+  },
+  "nodes": [
+    {
+      "id": "_api/logout_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_api/logout_v1.ts",
+      "kind": "api",
+      "route": null
+    },
+    {
+      "id": "_api/session_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_api/session_v1.ts",
+      "kind": "api",
+      "route": null
+    },
+    {
+      "id": "_components/Avatar.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/ConfirmMenu.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/Dropdown.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/dropdownInternals.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/ErrorPage.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Checkbox.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/DatePicker.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/dateUtils.ts",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/fieldShell.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/floatingLayer.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Popover.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/TextField.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/inputs/Toggle.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/LoginForm.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/MenuHandler.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/MultiSelectDropdown.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/Navbar.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/TemplateProvider.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_functions/confetti.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_functions/icon.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_functions/menuHandler.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_functions/sentry.ts",
+      "kind": "helper",
+      "route": null
+    },
+    {
+      "id": "_providers/SessionProvider.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/_socketSetup.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/apiRequest.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/offlineQueue.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/socketInitializer.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "_sockets/syncRequest.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "admin/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "billing/_api/listInvoices_v1.ts",
+      "kind": "api",
+      "route": "api/billing/listInvoices/v1"
+    },
+    {
+      "id": "docs/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "login/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "main.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "playground/_api/echo_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_api/echo_v1.ts",
+      "kind": "api",
+      "route": "api/playground/echo/v1"
+    },
+    {
+      "id": "playground/_api/spam_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_api/spam_v1.ts",
+      "kind": "api",
+      "route": "api/playground/spam/v1"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.ts",
+      "kind": "api",
+      "route": "api/playground/streamCounter/v1"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_api/testEmail_v1.ts",
+      "kind": "api",
+      "route": "api/playground/testEmail/v1"
+    },
+    {
+      "id": "playground/_api/throwError_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_api/throwError_v1.ts",
+      "kind": "api",
+      "route": "api/playground/throwError/v1"
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/playground/echo/v1"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/playground/streamBroadcast/v1"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/playground/streamProgress/v1"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/playground/streamToToken/v1"
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/playground/throwSync/v1"
+    },
+    {
+      "id": "playground/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "register/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts",
+      "kind": "api",
+      "route": "api/reset-password/confirmReset/v1"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts",
+      "kind": "api",
+      "route": "api/reset-password/sendReset/v1"
+    },
+    {
+      "id": "reset-password/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts",
+      "kind": "api",
+      "route": "api/settings/changePassword/v1"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts",
+      "kind": "api",
+      "route": "api/settings/confirmEmailChange/v1"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts",
+      "kind": "api",
+      "route": "api/settings/deleteAccount/v1"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts",
+      "kind": "api",
+      "route": "api/settings/listSessions/v1"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts",
+      "kind": "api",
+      "route": "api/settings/requestEmailChange/v1"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts",
+      "kind": "api",
+      "route": "api/settings/revokeSession/v1"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts",
+      "kind": "api",
+      "route": "api/settings/signOutEverywhere/v1"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts",
+      "kind": "api",
+      "route": "api/settings/updatePreferences/v1"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts",
+      "kind": "api",
+      "route": "api/settings/updateUser/v1"
+    },
+    {
+      "id": "settings/_components/DangerSection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/PasswordSection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/PreferencesSection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/PreferenceToggle.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/ProfileSection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/Section.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/_components/SessionsSection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "settings/confirm-email/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "settings/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "vehicles/_api/listVehicles_v1.ts",
+      "kind": "api",
+      "route": "api/vehicles/listVehicles/v1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "_components/Dropdown.tsx",
+      "to": "_components/dropdownInternals.tsx"
+    },
+    {
+      "from": "_components/inputs/Checkbox.tsx",
+      "to": "_components/inputs/fieldShell.tsx"
+    },
+    {
+      "from": "_components/inputs/DatePicker.tsx",
+      "to": "_components/inputs/floatingLayer.tsx"
+    },
+    {
+      "from": "_components/inputs/DatePicker.tsx",
+      "to": "_components/inputs/TextField.tsx"
+    },
+    {
+      "from": "_components/inputs/Toggle.tsx",
+      "to": "_components/inputs/fieldShell.tsx"
+    },
+    {
+      "from": "_components/MenuHandler.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "_components/MultiSelectDropdown.tsx",
+      "to": "_components/dropdownInternals.tsx"
+    },
+    {
+      "from": "_components/Navbar.tsx",
+      "to": "_components/Avatar.tsx"
+    },
+    {
+      "from": "_components/Navbar.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "_components/TemplateProvider.tsx",
+      "to": "_components/Navbar.tsx"
+    },
+    {
+      "from": "_components/TemplateProvider.tsx",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "_functions/menuHandler.ts",
+      "to": "_components/ConfirmMenu.tsx"
+    },
+    {
+      "from": "_functions/menuHandler.ts",
+      "to": "_components/MenuHandler.tsx"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx",
+      "to": "_functions/sentry.ts"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "_providers/SessionProvider.tsx",
+      "to": "_sockets/socketInitializer.ts"
+    },
+    {
+      "from": "_sockets/_socketSetup.ts",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "_sockets/_socketSetup.ts",
+      "to": "_sockets/offlineQueue.ts"
+    },
+    {
+      "from": "_sockets/_socketSetup.ts",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "_sockets/socketInitializer.ts",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/socketInitializer.ts"
+    },
+    {
+      "from": "docs/page.tsx",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "login/page.tsx",
+      "to": "_components/LoginForm.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/ErrorPage.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/MenuHandler.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_components/TemplateProvider.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_functions/sentry.ts"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_providers/SessionProvider.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "page.tsx",
+      "to": "_providers/SessionProvider.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/Avatar.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/Dropdown.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/inputs/Checkbox.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/inputs/DatePicker.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/inputs/Popover.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/inputs/TextField.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/inputs/Toggle.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_components/MultiSelectDropdown.tsx"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_sockets/socketInitializer.ts"
+    },
+    {
+      "from": "playground/page.tsx",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "register/page.tsx",
+      "to": "_components/LoginForm.tsx"
+    },
+    {
+      "from": "reset-password/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.ts",
+      "to": "settings/_api/listSessions_v1.ts"
+    },
+    {
+      "from": "settings/_components/DangerSection.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "settings/_components/DangerSection.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/_components/DangerSection.tsx",
+      "to": "settings/_components/Section.tsx"
+    },
+    {
+      "from": "settings/_components/PasswordSection.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/_components/PasswordSection.tsx",
+      "to": "settings/_components/Section.tsx"
+    },
+    {
+      "from": "settings/_components/PreferencesSection.tsx",
+      "to": "settings/_components/PreferenceToggle.tsx"
+    },
+    {
+      "from": "settings/_components/PreferencesSection.tsx",
+      "to": "settings/_components/Section.tsx"
+    },
+    {
+      "from": "settings/_components/ProfileSection.tsx",
+      "to": "_components/Avatar.tsx"
+    },
+    {
+      "from": "settings/_components/ProfileSection.tsx",
+      "to": "_components/Dropdown.tsx"
+    },
+    {
+      "from": "settings/_components/ProfileSection.tsx",
+      "to": "settings/_components/Section.tsx"
+    },
+    {
+      "from": "settings/_components/SessionsSection.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/_components/SessionsSection.tsx",
+      "to": "settings/_components/Section.tsx"
+    },
+    {
+      "from": "settings/confirm-email/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "settings/_components/DangerSection.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "settings/_components/PasswordSection.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "settings/_components/PreferencesSection.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "settings/_components/ProfileSection.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "settings/_components/SessionsSection.tsx"
+    }
+  ],
+  "blastRadius": {
+    "_components/Avatar.tsx": [
+      "_components/Navbar.tsx",
+      "_components/TemplateProvider.tsx",
+      "main.tsx",
+      "playground/page.tsx",
+      "settings/_components/ProfileSection.tsx",
+      "settings/page.tsx"
+    ],
+    "_components/ConfirmMenu.tsx": [
+      "_components/MenuHandler.tsx",
+      "_functions/menuHandler.ts",
+      "main.tsx",
+      "playground/page.tsx",
+      "settings/_components/DangerSection.tsx",
+      "settings/page.tsx"
+    ],
+    "_components/Dropdown.tsx": [
+      "playground/page.tsx",
+      "settings/_components/ProfileSection.tsx",
+      "settings/page.tsx"
+    ],
+    "_components/dropdownInternals.tsx": [
+      "_components/Dropdown.tsx",
+      "_components/MultiSelectDropdown.tsx",
+      "playground/page.tsx",
+      "settings/_components/ProfileSection.tsx",
+      "settings/page.tsx"
+    ],
+    "_components/ErrorPage.tsx": [
+      "main.tsx"
+    ],
+    "_components/inputs/Checkbox.tsx": [
+      "playground/page.tsx"
+    ],
+    "_components/inputs/DatePicker.tsx": [
+      "playground/page.tsx"
+    ],
+    "_components/inputs/fieldShell.tsx": [
+      "_components/inputs/Checkbox.tsx",
+      "_components/inputs/Toggle.tsx",
+      "playground/page.tsx"
+    ],
+    "_components/inputs/floatingLayer.tsx": [
+      "_components/inputs/DatePicker.tsx",
+      "playground/page.tsx"
+    ],
+    "_components/inputs/Popover.tsx": [
+      "playground/page.tsx"
+    ],
+    "_components/inputs/TextField.tsx": [
+      "_components/inputs/DatePicker.tsx",
+      "playground/page.tsx"
+    ],
+    "_components/inputs/Toggle.tsx": [
+      "playground/page.tsx"
+    ],
+    "_components/LoginForm.tsx": [
+      "login/page.tsx",
+      "register/page.tsx"
+    ],
+    "_components/MenuHandler.tsx": [
+      "_functions/menuHandler.ts",
+      "main.tsx"
+    ],
+    "_components/MultiSelectDropdown.tsx": [
+      "playground/page.tsx"
+    ],
+    "_components/Navbar.tsx": [
+      "_components/TemplateProvider.tsx",
+      "main.tsx"
+    ],
+    "_components/TemplateProvider.tsx": [
+      "main.tsx"
+    ],
+    "_functions/menuHandler.ts": [
+      "_components/MenuHandler.tsx",
+      "_functions/menuHandler.ts",
+      "main.tsx",
+      "playground/page.tsx",
+      "settings/_components/DangerSection.tsx",
+      "settings/page.tsx"
+    ],
+    "_functions/sentry.ts": [
+      "_providers/SessionProvider.tsx",
+      "main.tsx",
+      "page.tsx"
+    ],
+    "_providers/SessionProvider.tsx": [
+      "main.tsx",
+      "page.tsx"
+    ],
+    "_providers/socketStatusProvider.tsx": [
+      "_components/TemplateProvider.tsx",
+      "_providers/SessionProvider.tsx",
+      "_sockets/_socketSetup.ts",
+      "_sockets/socketInitializer.ts",
+      "docs/page.tsx",
+      "main.tsx",
+      "page.tsx",
+      "playground/page.tsx"
+    ],
+    "_sockets/apiRequest.ts": [
+      "_components/Navbar.tsx",
+      "_components/TemplateProvider.tsx",
+      "_providers/SessionProvider.tsx",
+      "docs/page.tsx",
+      "main.tsx",
+      "page.tsx",
+      "playground/page.tsx",
+      "reset-password/page.tsx",
+      "settings/_components/DangerSection.tsx",
+      "settings/_components/PasswordSection.tsx",
+      "settings/_components/SessionsSection.tsx",
+      "settings/confirm-email/page.tsx",
+      "settings/page.tsx"
+    ],
+    "_sockets/offlineQueue.ts": [
+      "_sockets/_socketSetup.ts"
+    ],
+    "_sockets/socketInitializer.ts": [
+      "_providers/SessionProvider.tsx",
+      "docs/page.tsx",
+      "main.tsx",
+      "page.tsx",
+      "playground/page.tsx"
+    ],
+    "_sockets/syncRequest.ts": [
+      "_sockets/_socketSetup.ts",
+      "docs/page.tsx",
+      "playground/page.tsx"
+    ],
+    "settings/_api/listSessions_v1.ts": [
+      "settings/_api/revokeSession_v1.ts"
+    ],
+    "settings/_components/DangerSection.tsx": [
+      "settings/page.tsx"
+    ],
+    "settings/_components/PasswordSection.tsx": [
+      "settings/page.tsx"
+    ],
+    "settings/_components/PreferencesSection.tsx": [
+      "settings/page.tsx"
+    ],
+    "settings/_components/PreferenceToggle.tsx": [
+      "settings/_components/PreferencesSection.tsx",
+      "settings/page.tsx"
+    ],
+    "settings/_components/ProfileSection.tsx": [
+      "settings/page.tsx"
+    ],
+    "settings/_components/Section.tsx": [
+      "settings/_components/DangerSection.tsx",
+      "settings/_components/PasswordSection.tsx",
+      "settings/_components/PreferencesSection.tsx",
+      "settings/_components/ProfileSection.tsx",
+      "settings/_components/SessionsSection.tsx",
+      "settings/page.tsx"
+    ],
+    "settings/_components/SessionsSection.tsx": [
+      "settings/page.tsx"
+    ]
+  },
+  "godNodes": [
+    {
+      "id": "_sockets/apiRequest.ts",
+      "kind": "other",
+      "dependents": 13,
+      "directDependents": 10
+    },
+    {
+      "id": "_providers/socketStatusProvider.tsx",
+      "kind": "other",
+      "dependents": 8,
+      "directDependents": 4
+    },
+    {
+      "id": "_components/Avatar.tsx",
+      "kind": "component",
+      "dependents": 6,
+      "directDependents": 3
+    },
+    {
+      "id": "_components/ConfirmMenu.tsx",
+      "kind": "component",
+      "dependents": 6,
+      "directDependents": 1
+    },
+    {
+      "id": "_functions/menuHandler.ts",
+      "kind": "helper",
+      "dependents": 6,
+      "directDependents": 3
+    },
+    {
+      "id": "settings/_components/Section.tsx",
+      "kind": "other",
+      "dependents": 6,
+      "directDependents": 5
+    },
+    {
+      "id": "_components/dropdownInternals.tsx",
+      "kind": "component",
+      "dependents": 5,
+      "directDependents": 2
+    },
+    {
+      "id": "_sockets/socketInitializer.ts",
+      "kind": "other",
+      "dependents": 5,
+      "directDependents": 3
+    },
+    {
+      "id": "_components/Dropdown.tsx",
+      "kind": "component",
+      "dependents": 3,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/inputs/fieldShell.tsx",
+      "kind": "component",
+      "dependents": 3,
+      "directDependents": 2
+    },
+    {
+      "id": "_functions/sentry.ts",
+      "kind": "helper",
+      "dependents": 3,
+      "directDependents": 2
+    },
+    {
+      "id": "_sockets/syncRequest.ts",
+      "kind": "other",
+      "dependents": 3,
+      "directDependents": 3
+    },
+    {
+      "id": "_components/inputs/floatingLayer.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/TextField.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/LoginForm.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/MenuHandler.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "_components/Navbar.tsx",
+      "kind": "component",
+      "dependents": 2,
+      "directDependents": 1
+    },
+    {
+      "id": "_providers/SessionProvider.tsx",
+      "kind": "other",
+      "dependents": 2,
+      "directDependents": 2
+    },
+    {
+      "id": "settings/_components/PreferenceToggle.tsx",
+      "kind": "other",
+      "dependents": 2,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/ErrorPage.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/Checkbox.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/DatePicker.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/Popover.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/inputs/Toggle.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    },
+    {
+      "id": "_components/MultiSelectDropdown.tsx",
+      "kind": "component",
+      "dependents": 1,
+      "directDependents": 1
+    }
+  ],
+  "symbols": [
+    {
+      "id": "_api/logout_v1.tests.ts::<module>",
+      "file": "_api/logout_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/logout_v1.tests.ts::run",
+      "file": "_api/logout_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "_api/logout_v1.ts::<module>",
+      "file": "_api/logout_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/logout_v1.ts::main",
+      "file": "_api/logout_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "_api/session_v1.tests.ts::<module>",
+      "file": "_api/session_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/session_v1.tests.ts::run",
+      "file": "_api/session_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "_api/session_v1.ts::<module>",
+      "file": "_api/session_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/session_v1.ts::main",
+      "file": "_api/session_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "billing/_api/listInvoices_v1.ts::<module>",
+      "file": "billing/_api/listInvoices_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "billing/_api/listInvoices_v1.ts::main",
+      "file": "billing/_api/listInvoices_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_api/echo_v1.tests.ts::<module>",
+      "file": "playground/_api/echo_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/echo_v1.tests.ts::run",
+      "file": "playground/_api/echo_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_api/echo_v1.ts::<module>",
+      "file": "playground/_api/echo_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/echo_v1.ts::main",
+      "file": "playground/_api/echo_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_api/spam_v1.tests.ts::<module>",
+      "file": "playground/_api/spam_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/spam_v1.tests.ts::run",
+      "file": "playground/_api/spam_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_api/spam_v1.ts::<module>",
+      "file": "playground/_api/spam_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/spam_v1.ts::main",
+      "file": "playground/_api/spam_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.tests.ts::<module>",
+      "file": "playground/_api/streamCounter_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.tests.ts::run",
+      "file": "playground/_api/streamCounter_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.ts::<module>",
+      "file": "playground/_api/streamCounter_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.ts::main",
+      "file": "playground/_api/streamCounter_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_api/streamCounter_v1.ts::stream",
+      "file": "playground/_api/streamCounter_v1.ts",
+      "name": "stream",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.tests.ts::<module>",
+      "file": "playground/_api/testEmail_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.tests.ts::run",
+      "file": "playground/_api/testEmail_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.ts::<module>",
+      "file": "playground/_api/testEmail_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.ts::main",
+      "file": "playground/_api/testEmail_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.ts::renderEmailLayout",
+      "file": "playground/_api/testEmail_v1.ts",
+      "name": "renderEmailLayout",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_api/testEmail_v1.ts::sendEmail",
+      "file": "playground/_api/testEmail_v1.ts",
+      "name": "sendEmail",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_api/throwError_v1.tests.ts::<module>",
+      "file": "playground/_api/throwError_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/throwError_v1.tests.ts::run",
+      "file": "playground/_api/throwError_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_api/throwError_v1.ts::<module>",
+      "file": "playground/_api/throwError_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_api/throwError_v1.ts::main",
+      "file": "playground/_api/throwError_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.tests.ts::<module>",
+      "file": "playground/_sync/echo_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.tests.ts::run",
+      "file": "playground/_sync/echo_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.ts::<module>",
+      "file": "playground/_sync/echo_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/echo_server_v1.ts::main",
+      "file": "playground/_sync/echo_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.tests.ts::<module>",
+      "file": "playground/_sync/streamBroadcast_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.tests.ts::run",
+      "file": "playground/_sync/streamBroadcast_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.ts::<module>",
+      "file": "playground/_sync/streamBroadcast_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.ts::broadcastStream",
+      "file": "playground/_sync/streamBroadcast_server_v1.ts",
+      "name": "broadcastStream",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.ts::main",
+      "file": "playground/_sync/streamBroadcast_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/streamBroadcast_server_v1.ts::tokenize",
+      "file": "playground/_sync/streamBroadcast_server_v1.ts",
+      "name": "tokenize",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.tests.ts::<module>",
+      "file": "playground/_sync/streamProgress_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.tests.ts::run",
+      "file": "playground/_sync/streamProgress_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.ts::<module>",
+      "file": "playground/_sync/streamProgress_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.ts::main",
+      "file": "playground/_sync/streamProgress_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/streamProgress_server_v1.ts::stream",
+      "file": "playground/_sync/streamProgress_server_v1.ts",
+      "name": "stream",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.tests.ts::<module>",
+      "file": "playground/_sync/streamToToken_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.tests.ts::run",
+      "file": "playground/_sync/streamToToken_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.ts::<module>",
+      "file": "playground/_sync/streamToToken_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.ts::main",
+      "file": "playground/_sync/streamToToken_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "playground/_sync/streamToToken_server_v1.ts::streamTo",
+      "file": "playground/_sync/streamToToken_server_v1.ts",
+      "name": "streamTo",
+      "kind": "fn"
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.tests.ts::<module>",
+      "file": "playground/_sync/throwSync_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.tests.ts::run",
+      "file": "playground/_sync/throwSync_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.ts::<module>",
+      "file": "playground/_sync/throwSync_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "playground/_sync/throwSync_server_v1.ts::main",
+      "file": "playground/_sync/throwSync_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::<module>",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::cleanupUser",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "cleanupUser",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::run",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::seedCredentialsUser",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "seedCredentialsUser",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts::<module>",
+      "file": "reset-password/_api/confirmReset_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.ts::main",
+      "file": "reset-password/_api/confirmReset_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts::<module>",
+      "file": "reset-password/_api/sendReset_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts::countPwresetTokens",
+      "file": "reset-password/_api/sendReset_v1.tests.ts",
+      "name": "countPwresetTokens",
+      "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts::run",
+      "file": "reset-password/_api/sendReset_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts::<module>",
+      "file": "reset-password/_api/sendReset_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.ts::main",
+      "file": "reset-password/_api/sendReset_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts::<module>",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts::run",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts::seedCredentialsUser",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "seedCredentialsUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts::updatePasswordHash",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "updatePasswordHash",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts::<module>",
+      "file": "settings/_api/changePassword_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.ts::main",
+      "file": "settings/_api/changePassword_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::<module>",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::createEmailChangeToken",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "createEmailChangeToken",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::run",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::seedUser",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "seedUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::uniqueEmail",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts::<module>",
+      "file": "settings/_api/confirmEmailChange_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.ts::main",
+      "file": "settings/_api/confirmEmailChange_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::<module>",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::activeUsersKeyFor",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "activeUsersKeyFor",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::getSession",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "getSession",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::run",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::seedCredentialsUser",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "seedCredentialsUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::updatePasswordHash",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "updatePasswordHash",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts::<module>",
+      "file": "settings/_api/deleteAccount_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.ts::main",
+      "file": "settings/_api/deleteAccount_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts::<module>",
+      "file": "settings/_api/listSessions_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts::handleOf",
+      "file": "settings/_api/listSessions_v1.tests.ts",
+      "name": "handleOf",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts::run",
+      "file": "settings/_api/listSessions_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::<module>",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::main",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.ts::sessionHandle",
+      "file": "settings/_api/listSessions_v1.ts",
+      "name": "sessionHandle",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts::<module>",
+      "file": "settings/_api/requestEmailChange_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts::run",
+      "file": "settings/_api/requestEmailChange_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts::uniqueEmail",
+      "file": "settings/_api/requestEmailChange_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts::<module>",
+      "file": "settings/_api/requestEmailChange_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.ts::main",
+      "file": "settings/_api/requestEmailChange_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::<module>",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::getSession",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "getSession",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::handleOf",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "handleOf",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::run",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts::<module>",
+      "file": "settings/_api/revokeSession_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.ts::main",
+      "file": "settings/_api/revokeSession_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::<module>",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::getSession",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "getSession",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::run",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::seedUser",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "seedUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts::<module>",
+      "file": "settings/_api/signOutEverywhere_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.ts::main",
+      "file": "settings/_api/signOutEverywhere_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.tests.ts::<module>",
+      "file": "settings/_api/updatePreferences_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.tests.ts::run",
+      "file": "settings/_api/updatePreferences_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.tests.ts::seedUser",
+      "file": "settings/_api/updatePreferences_v1.tests.ts",
+      "name": "seedUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts::<module>",
+      "file": "settings/_api/updatePreferences_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.ts::main",
+      "file": "settings/_api/updatePreferences_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::<module>",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::getSession",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "getSession",
+      "kind": "fn"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::run",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::seedUser",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "seedUser",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::<module>",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::encodeAndSave",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "encodeAndSave",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.ts::main",
+      "file": "settings/_api/updateUser_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "vehicles/_api/listVehicles_v1.ts::<module>",
+      "file": "vehicles/_api/listVehicles_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "vehicles/_api/listVehicles_v1.ts::main",
+      "file": "vehicles/_api/listVehicles_v1.ts",
+      "name": "main",
+      "kind": "function"
+    }
+  ],
+  "callEdges": [
+    {
+      "from": "playground/_api/streamCounter_v1.ts::main",
+      "to": "playground/_api/streamCounter_v1.ts::stream"
+    },
+    {
+      "from": "playground/_api/testEmail_v1.ts::main",
+      "to": "playground/_api/testEmail_v1.ts::renderEmailLayout"
+    },
+    {
+      "from": "playground/_api/testEmail_v1.ts::main",
+      "to": "playground/_api/testEmail_v1.ts::sendEmail"
+    },
+    {
+      "from": "playground/_sync/streamBroadcast_server_v1.ts::main",
+      "to": "playground/_sync/streamBroadcast_server_v1.ts::broadcastStream"
+    },
+    {
+      "from": "playground/_sync/streamBroadcast_server_v1.ts::main",
+      "to": "playground/_sync/streamBroadcast_server_v1.ts::tokenize"
+    },
+    {
+      "from": "playground/_sync/streamProgress_server_v1.ts::main",
+      "to": "playground/_sync/streamProgress_server_v1.ts::stream"
+    },
+    {
+      "from": "playground/_sync/streamToToken_server_v1.ts::main",
+      "to": "playground/_sync/streamToToken_server_v1.ts::streamTo"
+    },
+    {
+      "from": "reset-password/_api/confirmReset_v1.tests.ts::run",
+      "to": "reset-password/_api/confirmReset_v1.tests.ts::cleanupUser"
+    },
+    {
+      "from": "reset-password/_api/confirmReset_v1.tests.ts::run",
+      "to": "reset-password/_api/confirmReset_v1.tests.ts::seedCredentialsUser"
+    },
+    {
+      "from": "reset-password/_api/sendReset_v1.tests.ts::run",
+      "to": "reset-password/_api/sendReset_v1.tests.ts::countPwresetTokens"
+    },
+    {
+      "from": "settings/_api/changePassword_v1.tests.ts::run",
+      "to": "settings/_api/changePassword_v1.tests.ts::seedCredentialsUser"
+    },
+    {
+      "from": "settings/_api/changePassword_v1.tests.ts::seedCredentialsUser",
+      "to": "settings/_api/changePassword_v1.tests.ts::updatePasswordHash"
+    },
+    {
+      "from": "settings/_api/confirmEmailChange_v1.tests.ts::run",
+      "to": "settings/_api/confirmEmailChange_v1.tests.ts::createEmailChangeToken"
+    },
+    {
+      "from": "settings/_api/confirmEmailChange_v1.tests.ts::run",
+      "to": "settings/_api/confirmEmailChange_v1.tests.ts::seedUser"
+    },
+    {
+      "from": "settings/_api/confirmEmailChange_v1.tests.ts::run",
+      "to": "settings/_api/confirmEmailChange_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "settings/_api/deleteAccount_v1.tests.ts::run",
+      "to": "settings/_api/deleteAccount_v1.tests.ts::activeUsersKeyFor"
+    },
+    {
+      "from": "settings/_api/deleteAccount_v1.tests.ts::run",
+      "to": "settings/_api/deleteAccount_v1.tests.ts::getSession"
+    },
+    {
+      "from": "settings/_api/deleteAccount_v1.tests.ts::run",
+      "to": "settings/_api/deleteAccount_v1.tests.ts::seedCredentialsUser"
+    },
+    {
+      "from": "settings/_api/deleteAccount_v1.tests.ts::seedCredentialsUser",
+      "to": "settings/_api/deleteAccount_v1.tests.ts::updatePasswordHash"
+    },
+    {
+      "from": "settings/_api/listSessions_v1.tests.ts::run",
+      "to": "settings/_api/listSessions_v1.tests.ts::handleOf"
+    },
+    {
+      "from": "settings/_api/listSessions_v1.ts::main",
+      "to": "settings/_api/listSessions_v1.ts::sessionHandle"
+    },
+    {
+      "from": "settings/_api/requestEmailChange_v1.tests.ts::run",
+      "to": "settings/_api/requestEmailChange_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.tests.ts::run",
+      "to": "settings/_api/revokeSession_v1.tests.ts::getSession"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.tests.ts::run",
+      "to": "settings/_api/revokeSession_v1.tests.ts::handleOf"
+    },
+    {
+      "from": "settings/_api/revokeSession_v1.ts::main",
+      "to": "settings/_api/listSessions_v1.ts::sessionHandle"
+    },
+    {
+      "from": "settings/_api/signOutEverywhere_v1.tests.ts::run",
+      "to": "settings/_api/signOutEverywhere_v1.tests.ts::getSession"
+    },
+    {
+      "from": "settings/_api/signOutEverywhere_v1.tests.ts::run",
+      "to": "settings/_api/signOutEverywhere_v1.tests.ts::seedUser"
+    },
+    {
+      "from": "settings/_api/updatePreferences_v1.tests.ts::run",
+      "to": "settings/_api/updatePreferences_v1.tests.ts::seedUser"
+    },
+    {
+      "from": "settings/_api/updateUser_v1.tests.ts::run",
+      "to": "settings/_api/updateUser_v1.tests.ts::getSession"
+    },
+    {
+      "from": "settings/_api/updateUser_v1.tests.ts::run",
+      "to": "settings/_api/updateUser_v1.tests.ts::seedUser"
+    }
+  ],
+  "symbolBlastRadius": {
+    "playground/_api/streamCounter_v1.ts::stream": [
+      "playground/_api/streamCounter_v1.ts::main"
+    ],
+    "playground/_api/testEmail_v1.ts::renderEmailLayout": [
+      "playground/_api/testEmail_v1.ts::main"
+    ],
+    "playground/_api/testEmail_v1.ts::sendEmail": [
+      "playground/_api/testEmail_v1.ts::main"
+    ],
+    "playground/_sync/streamBroadcast_server_v1.ts::broadcastStream": [
+      "playground/_sync/streamBroadcast_server_v1.ts::main"
+    ],
+    "playground/_sync/streamBroadcast_server_v1.ts::tokenize": [
+      "playground/_sync/streamBroadcast_server_v1.ts::main"
+    ],
+    "playground/_sync/streamProgress_server_v1.ts::stream": [
+      "playground/_sync/streamProgress_server_v1.ts::main"
+    ],
+    "playground/_sync/streamToToken_server_v1.ts::streamTo": [
+      "playground/_sync/streamToToken_server_v1.ts::main"
+    ],
+    "reset-password/_api/confirmReset_v1.tests.ts::cleanupUser": [
+      "reset-password/_api/confirmReset_v1.tests.ts::run"
+    ],
+    "reset-password/_api/confirmReset_v1.tests.ts::seedCredentialsUser": [
+      "reset-password/_api/confirmReset_v1.tests.ts::run"
+    ],
+    "reset-password/_api/sendReset_v1.tests.ts::countPwresetTokens": [
+      "reset-password/_api/sendReset_v1.tests.ts::run"
+    ],
+    "settings/_api/changePassword_v1.tests.ts::seedCredentialsUser": [
+      "settings/_api/changePassword_v1.tests.ts::run"
+    ],
+    "settings/_api/changePassword_v1.tests.ts::updatePasswordHash": [
+      "settings/_api/changePassword_v1.tests.ts::run",
+      "settings/_api/changePassword_v1.tests.ts::seedCredentialsUser"
+    ],
+    "settings/_api/confirmEmailChange_v1.tests.ts::createEmailChangeToken": [
+      "settings/_api/confirmEmailChange_v1.tests.ts::run"
+    ],
+    "settings/_api/confirmEmailChange_v1.tests.ts::seedUser": [
+      "settings/_api/confirmEmailChange_v1.tests.ts::run"
+    ],
+    "settings/_api/confirmEmailChange_v1.tests.ts::uniqueEmail": [
+      "settings/_api/confirmEmailChange_v1.tests.ts::run"
+    ],
+    "settings/_api/deleteAccount_v1.tests.ts::activeUsersKeyFor": [
+      "settings/_api/deleteAccount_v1.tests.ts::run"
+    ],
+    "settings/_api/deleteAccount_v1.tests.ts::getSession": [
+      "settings/_api/deleteAccount_v1.tests.ts::run"
+    ],
+    "settings/_api/deleteAccount_v1.tests.ts::seedCredentialsUser": [
+      "settings/_api/deleteAccount_v1.tests.ts::run"
+    ],
+    "settings/_api/deleteAccount_v1.tests.ts::updatePasswordHash": [
+      "settings/_api/deleteAccount_v1.tests.ts::run",
+      "settings/_api/deleteAccount_v1.tests.ts::seedCredentialsUser"
+    ],
+    "settings/_api/listSessions_v1.tests.ts::handleOf": [
+      "settings/_api/listSessions_v1.tests.ts::run"
+    ],
+    "settings/_api/listSessions_v1.ts::sessionHandle": [
+      "settings/_api/listSessions_v1.ts::main",
+      "settings/_api/revokeSession_v1.ts::main"
+    ],
+    "settings/_api/requestEmailChange_v1.tests.ts::uniqueEmail": [
+      "settings/_api/requestEmailChange_v1.tests.ts::run"
+    ],
+    "settings/_api/revokeSession_v1.tests.ts::getSession": [
+      "settings/_api/revokeSession_v1.tests.ts::run"
+    ],
+    "settings/_api/revokeSession_v1.tests.ts::handleOf": [
+      "settings/_api/revokeSession_v1.tests.ts::run"
+    ],
+    "settings/_api/signOutEverywhere_v1.tests.ts::getSession": [
+      "settings/_api/signOutEverywhere_v1.tests.ts::run"
+    ],
+    "settings/_api/signOutEverywhere_v1.tests.ts::seedUser": [
+      "settings/_api/signOutEverywhere_v1.tests.ts::run"
+    ],
+    "settings/_api/updatePreferences_v1.tests.ts::seedUser": [
+      "settings/_api/updatePreferences_v1.tests.ts::run"
+    ],
+    "settings/_api/updateUser_v1.tests.ts::getSession": [
+      "settings/_api/updateUser_v1.tests.ts::run"
+    ],
+    "settings/_api/updateUser_v1.tests.ts::seedUser": [
+      "settings/_api/updateUser_v1.tests.ts::run"
+    ]
+  }
+}

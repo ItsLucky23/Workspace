@@ -1,0 +1,8 @@
+{
+  "id": "why-cors-failclosed",
+  "prompt": "Why is CORS fail-closed by default in this project? Can I relax it for local dev?",
+  "expects": {
+    "usesAnyTool": ["get_decision", "list_decisions"],
+    "citedAdr": "0007"
+  }
+}

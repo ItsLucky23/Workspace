@@ -1,0 +1,8 @@
+{
+  "$comment": "Config for the AI-context doc generators (ai:project-index, ai:product, ...). 'docs.sharding' controls whether the read-whole markdown indexes stay ONE root file or split per top-level src folder. The dependency graph + the @luckystack/mcp server are NOT affected (they are queried, not read whole). 'auto' = single root file until a top-folder exceeds 'shardThreshold' entries, then emit per-folder detail + a thin root overview that links them. Override with 'single' (always one file) or 'per-folder' (always split). 'docs.stalenessThreshold' = how many commits a hand-written doc (one carrying an `<!-- @covers … -->` marker) may fall behind its code before `npm run ai:doc-staleness` reports it (report-only). The AI reads this and explains/flips it on request — see CLAUDE.md.",
+  "docs": {
+    "sharding": "auto",
+    "shardThreshold": 150,
+    "stalenessThreshold": 5
+  }
+}

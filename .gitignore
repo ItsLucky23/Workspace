@@ -1,0 +1,26 @@
+node_modules
+dist
+.eslintcache
+
+# Local env: .env holds only non-secret config and IS committed.
+# .env.local holds secrets (DATABASE_URL, OAuth keys, etc.) and is NOT committed.
+# .env.local
+
+# @luckystack/secret-manager shared bearer token (single-line file, never commit).
+.secret-manager-token
+
+# Generated artifacts.
+src/_sockets/apiTypes.generated.ts
+src/_sockets/apiInputSchemas.generated.ts
+src/docs/apiDocs.generated.json
+server/prod/generatedApis*.ts
+
+# `luckystack check-env` / `check-i18n` scan reports.
+dump/
+
+# AI browser-testing artifacts (agent-browser / Playwright / Chrome DevTools MCP).
+.agent-browser/
+.playwright-mcp/
+test-results/
+playwright-report/
+.claude/settings.local.json

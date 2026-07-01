@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-07-01T07:58:42.703Z",
+  "totalRoutes": 13,
+  "fallbackCount": 1,
+  "fallbacks": [
+    {
+      "route": "system/session@v1",
+      "kind": "api",
+      "field": "output",
+      "fallback": "{\n  status: 'success';\n  result: null\n} | {\n  status: 'success';\n  result: {\n   ",
+      "reason": "zod-any-fallback"
+    }
+  ]
+}

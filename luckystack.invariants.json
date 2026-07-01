@@ -1,0 +1,5 @@
+{
+  "$comment": "Config for scripts/lintInvariants.mjs (npm run ai:lint). Rules in 'block' fail the commit; everything else is report-only (warn). Per-line escape hatch: `// luckystack-allow <rule>: <reason>`. Available rules: no-as-any, no-arbitrary-color, i18n-jsx, doc-coverage (new route needs summary+@docs owner / new page needs //? intent — diff-scoped to ADDED files).",
+  "block": [],
+  "warn": ["no-as-any", "no-arbitrary-color", "i18n-jsx", "doc-coverage"]
+}

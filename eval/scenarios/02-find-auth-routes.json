@@ -1,0 +1,8 @@
+{
+  "id": "find-auth-routes",
+  "prompt": "Which API/sync routes in this project require login / touch authentication?",
+  "expects": {
+    "usesAnyTool": ["find_route", "blast_radius"],
+    "citedRoutesNonEmpty": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "add-auth-route",
+  "prompt": "Add a new authenticated API route under an existing page that returns the current user's profile. Rate-limit it.",
+  "expects": {
+    "usesAnyTool": ["get_capability", "get_example", "find_route"],
+    "reusedHelper": true,
+    "addedTest": true,
+    "stayedInParity": true
+  }
+}

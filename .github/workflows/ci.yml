@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        # Use npm install rather than npm ci because the scaffold ships no
+        # package-lock.json — the lockfile is created on the user's first
+        # `npm install` and should be committed before CI runs. Once the
+        # lockfile is committed, switch this line to: npm ci --prefer-offline
+        run: npm install
+
+      - name: Generate type artifacts
+        run: npm run generateArtifacts
+
+      - name: Verify artifacts exist
+        run: |
+          test -s src/_sockets/apiTypes.generated.ts
+          test -s src/docs/apiDocs.generated.json
+          ls server/prod/generatedApis.*.ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test sweep
+        run: npm run test
+
+      - name: E2E (if installed)
+        run: |
+          if [ -f "node_modules/@playwright/test/package.json" ]; then
+            npx playwright install --with-deps chromium
+            npm run test:e2e
+          else
+            echo "Skipping e2e — @playwright/test not installed."
+          fi
+        continue-on-error: true

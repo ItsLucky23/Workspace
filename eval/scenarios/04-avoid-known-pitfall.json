@@ -1,0 +1,8 @@
+{
+  "id": "avoid-known-pitfall",
+  "prompt": "I'm about to import a node:* server module into a client component to reuse a helper. Is that safe here?",
+  "expects": {
+    "usesAnyTool": ["find_lesson", "get_capability"],
+    "reusedHelper": false
+  }
+}

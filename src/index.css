@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/*
+ * COLOR PALETTE
+ *
+ * Every color used in the UI is defined here as a CSS variable. Tailwind 4
+ * picks up `--color-<name>` automatically and exposes utilities like
+ * `bg-container1`, `text-muted`, `border-primary-border`, etc.
+ *
+ * Editing rules:
+ *   - Add a new token only if it captures a *role* (purpose), not a specific
+ *     hex value. Roles are reusable; raw colors aren't.
+ *   - Every token defined in `@theme` must also appear in `.dark` (and vice
+ *     versa) so dark-mode is always consistent.
+ *   - The `*-primary` / `*-secondary` suffix is for text-on-coloured-button
+ *     overlays — title-primary is the text color you put ON TOP of the
+ *     primary button background.
+ *
+ * Token roles (in display order):
+ *   background        — page background.
+ *   container1/2      — surface layers (cards, dropdowns, panels). 1 sits on
+ *                       the page; 2 sits on container1.
+ *   container*-hover  — hover state of the same surface.
+ *   container*-border — border for the same surface.
+ *   title             — high-contrast headings + emphasized text.
+ *   common            — body text. Slightly de-emphasized vs. title.
+ *   muted             — captions, tertiary metadata, "X items" counters.
+ *   disabled          — text/icon for disabled inputs and buttons.
+ *   overlay           — semi-transparent backdrop behind modals/menus.
+ *   focus-ring        — outline color used by the focus-ring utility.
+ *   divider           — hairline separator (lighter than container border).
+ *   primary / secondary  — accent colors. Usually buttons + active links.
+ *   title-primary     — text on the primary button background.
+ *   common-primary    — secondary text on the primary button background.
+ *   correct / warning / wrong — semantic feedback colors.
+ */
+
+@theme {
+  --color-background: #F5F5F5;
+
+  --color-container1: #FFFFFF;
+  --color-container1-hover: #F9F9F9;
+  --color-container1-border: #E5E5E5;
+
+  --color-container2: #EFEFEF;
+  --color-container2-hover: #E5E5E5;
+  --color-container2-border: #DCDCDC;
+
+  --color-title: #1E1F21;
+  --color-common: #454648;
+  --color-muted: #6B7280;
+  --color-disabled: #9CA3AF;
+
+  --color-overlay: rgba(15, 23, 42, 0.45);
+  --color-focus-ring: #3B82F6;
+  --color-divider: #E5E7EB;
+
+  /* color to layer over the primary color */
+  --color-title-primary: #FFFFFF;
+  --color-common-primary: #DBEAFE;
+
+  --color-title-secondary: #FFFFFF;
+  --color-common-secondary: #DBEAFE;
+
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-border: #1D4ED8;
+
+  --color-secondary: #3B82F6;
+  --color-secondary-hover: #2563EB;
+  --color-secondary-border: #1D4ED8;
+
+  --color-correct: oklch(72.3% 0.219 149.579);
+  --color-correct-hover: oklch(62.7% 0.194 149.214);
+
+  --color-warning: oklch(79.5% 0.184 86.047);
+  --color-warning-hover: oklch(68.1% 0.162 75.834);
+
+  --color-wrong: oklch(63.7% 0.237 25.331);
+  --color-wrong-hover: oklch(57.7% 0.245 27.325);
+}
+
+.dark {
+  --color-background: #0B0F19;
+
+  --color-container1: #111827;
+  --color-container1-hover: #1E293B;
+  --color-container1-border: #1E293B;
+
+  --color-container2: #1E293B;
+  --color-container2-hover: #334155;
+  --color-container2-border: #334155;
+
+  --color-title: #F1F5F9;
+  --color-common: #CBD5E1;
+  --color-muted: #94A3B8;
+  --color-disabled: #475569;
+
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-focus-ring: #60A5FA;
+  --color-divider: #1E293B;
+
+  /* color to layer over the primary color */
+  --color-title-primary: #FFFFFF;
+  --color-common-primary: #DBEAFE;
+
+  --color-title-secondary: #FFFFFF;
+  --color-common-secondary: #DBEAFE;
+
+  --color-primary: #3B82F6;
+  --color-primary-hover: #60A5FA;
+  --color-primary-border: #1E40AF;
+
+  --color-secondary: #3B82F6;
+  --color-secondary-hover: #60A5FA;
+  --color-secondary-border: #1E40AF;
+
+  --color-correct: oklch(72.3% 0.219 149.579);
+  --color-correct-hover: oklch(62.7% 0.194 149.214);
+
+  --color-warning: oklch(79.5% 0.184 86.047);
+  --color-warning-hover: oklch(68.1% 0.162 75.834);
+
+  --color-wrong: oklch(63.7% 0.237 25.331);
+  --color-wrong-hover: oklch(57.7% 0.245 27.325);
+}
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  /* Default text/background pull from the theme tokens above so any page that
+     doesn't set its own colors (e.g. a bare `plain` page) is readable. The
+     `.dark` block overrides these same vars, so this adapts to dark mode too.
+     (Replaces the leftover Vite default of white-on-white, which rendered
+     unstyled pages — like the dashboard — as invisible text.) */
+  color: var(--color-common);
+  background-color: var(--color-background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@layer utilities {
+  .h-safe {
+    height: calc(var(--vh, 1vh) * 100);
+  }
+}

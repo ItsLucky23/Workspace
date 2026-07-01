@@ -1,0 +1,59 @@
+// Prisma schema — recommended User model for LuckyStack's `defaultPrismaUserAdapter`.
+// If your app's User model deviates, call `registerUserAdapter()` in
+// `luckystack/server/index.ts` with a custom adapter instead of editing the framework.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Set during scaffold via `npx create-luckystack-app` interactive prompts.
+  // To switch providers later, edit `provider` here and update DATABASE_URL.
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum LANGUAGE {
+  en
+  nl
+  de
+  fr
+}
+
+enum THEME {
+  light
+  dark
+}
+
+enum PROVIDERS {
+  credentials
+  google
+  github
+  discord
+  facebook
+  microsoft
+}
+
+model User {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  email           String
+  password        String?
+  provider        PROVIDERS @default(credentials)
+
+  name            String?
+  avatar          String    @default("")
+  avatarFallback  String    @default("")
+  admin           Boolean   @default(false)
+
+  language        LANGUAGE  @default(en)
+  theme           THEME     @default(light)
+
+  //? Free-form per-user settings (notification opt-ins, etc.). Read/written by
+  //? the settings/updatePreferences route and surfaced on the session.
+  preferences     Json?
+
+  @@unique([email, provider])
+}

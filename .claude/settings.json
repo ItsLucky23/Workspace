@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(agent-browser:*)",
+      "mcp__playwright",
+      "mcp__chrome-devtools"
+    ]
+  }
+}

@@ -1,0 +1,156 @@
+stages:
+  - prepare
+  - lint
+  - build
+  - test
+  - deploy
+
+variables:
+  NODE_IMAGE: node:22-alpine
+  NPM_CONFIG_CACHE: .npm
+  PIPELINE_RUN_LINT: "true"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 0. PREPARE STAGE
+#    Generates type artifacts once and exposes them to later jobs.
+# ─────────────────────────────────────────────────────────────────────────────
+prepare_artifacts:
+  stage: prepare
+  image: $NODE_IMAGE
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - node_modules/
+        - .npm/
+  script:
+    # Use npm install rather than npm ci because the scaffold ships no
+    # package-lock.json — the lockfile is created on the user's first
+    # `npm install` and should be committed before CI runs. Once the
+    # lockfile is committed, switch this line to: npm ci --prefer-offline
+    - npm install
+    - npm run generateArtifacts
+    - test -s src/_sockets/apiTypes.generated.ts
+    - test -s src/docs/apiDocs.generated.json
+    - ls server/prod/generatedApis.*.ts >/dev/null
+  artifacts:
+    name: "generated-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - src/_sockets/apiTypes.generated.ts
+      - src/docs/apiDocs.generated.json
+      - server/prod/generatedApis.*.ts
+    expire_in: 1 week
+  rules:
+    - if: '$PIPELINE_RUN_LINT == "true"'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. LINT STAGE
+# ─────────────────────────────────────────────────────────────────────────────
+lint:
+  stage: lint
+  image: $NODE_IMAGE
+  needs:
+    - job: prepare_artifacts
+      artifacts: true
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - node_modules/
+        - .npm/
+  script:
+    # See prepare_artifacts: npm install because the scaffold ships no
+    # lockfile. Switch to `npm ci --prefer-offline` once it is committed.
+    - npm install
+    - npm run lint
+  rules:
+    - if: '$PIPELINE_RUN_LINT == "true"'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. BUILD STAGE
+# ─────────────────────────────────────────────────────────────────────────────
+build:
+  stage: build
+  image: $NODE_IMAGE
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - node_modules/
+        - .npm/
+  script:
+    # See prepare_artifacts: npm install because the scaffold ships no
+    # lockfile. Switch to `npm ci --prefer-offline` once it is committed.
+    - npm install
+    - npm run build
+  artifacts:
+    name: "dist-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - dist/
+    expire_in: 1 week
+  rules:
+    - when: on_success
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. TEST STAGE
+#    Runs the test-runner sweep + E2E (when @playwright/test installed).
+# ─────────────────────────────────────────────────────────────────────────────
+test:sweep:
+  stage: test
+  image: $NODE_IMAGE
+  needs:
+    - job: build
+      artifacts: true
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - node_modules/
+        - .npm/
+  script:
+    # See prepare_artifacts: npm install because the scaffold ships no
+    # lockfile. Switch to `npm ci --prefer-offline` once it is committed.
+    - npm install
+    - npm run test
+
+test:e2e:
+  stage: test
+  image: $NODE_IMAGE
+  needs:
+    - job: build
+      artifacts: true
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - node_modules/
+        - .npm/
+  script:
+    # See prepare_artifacts: npm install because the scaffold ships no
+    # lockfile. Switch to `npm ci --prefer-offline` once it is committed.
+    - npm install
+    - if [ -f "node_modules/@playwright/test/package.json" ]; then npm run test:e2e; else echo "Skipping e2e — @playwright/test not installed."; fi
+  allow_failure: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. DEPLOY STAGE (scaffold — wire your SSH keys + server vars in GitLab CI/CD)
+#    See docs/HOSTING.md for the full SSH-based deploy flow used in the
+#    LuckyStack reference repo.
+# ─────────────────────────────────────────────────────────────────────────────
+# deploy_to_staging:
+#   stage: deploy
+#   environment:
+#     name: staging
+#     url: $STAGING_ENV_URL
+#   dependencies:
+#     - build
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#   script:
+#     - echo "Deploy implementation lives in your project — see docs/HOSTING.md"

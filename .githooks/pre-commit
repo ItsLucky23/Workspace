@@ -1,0 +1,40 @@
+#!/bin/sh
+#? Auto-installed by create-luckystack-app. Regenerates LuckyStack's AI snapshot
+#? files so they stay in sync with this commit, then stages them. The generators
+#? are deterministic (no timestamps), so a no-op commit leaves them unchanged.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[pre-commit] npm not on PATH — skipping AI snapshot regeneration."
+  exit 0
+fi
+#? Skip gracefully before the first `npm install` so the very first commit on
+#? a fresh scaffold isn't hard-blocked. `set -e` is armed below, after the
+#? guards, so failures in the generators DO abort the commit.
+if [ ! -d node_modules ]; then
+  echo "[pre-commit] node_modules not found — skipping AI snapshot regeneration (run npm install first)."
+  exit 0
+fi
+set -e
+echo "[pre-commit] Checking CLAUDE.md invariants on staged changes..."
+npm run ai:lint --silent
+echo "[pre-commit] Regenerating docs/AI_CAPABILITIES.md..."
+npm run ai:capabilities --silent
+echo "[pre-commit] Regenerating docs/AI_PROJECT_INDEX.md..."
+npm run ai:project-index --silent
+echo "[pre-commit] Regenerating docs/AI_DECISIONS_INDEX.md..."
+npm run ai:decisions --silent
+echo "[pre-commit] Regenerating docs/AI_LESSONS_INDEX.md..."
+npm run ai:lessons --silent
+echo "[pre-commit] Regenerating docs/AI_EXAMPLES_INDEX.md..."
+npm run ai:examples --silent
+echo "[pre-commit] Regenerating docs/AI_RUNBOOKS.md..."
+npm run ai:runbooks --silent
+echo "[pre-commit] Regenerating docs/AI_PRODUCT_OVERVIEW.md..."
+npm run ai:product --silent
+echo "[pre-commit] Regenerating docs/ai-graph.json..."
+npm run ai:graph --silent
+echo "[pre-commit] Regenerating docs/AI_CONTEXT_BUDGET.md..."
+npm run ai:context-budget --silent
+echo "[pre-commit] Checking hand-written doc staleness (report-only)..."
+npm run ai:doc-staleness --silent || true
+git add docs/AI_CAPABILITIES.md docs/AI_PROJECT_INDEX.md docs/AI_DECISIONS_INDEX.md docs/AI_LESSONS_INDEX.md docs/AI_EXAMPLES_INDEX.md docs/AI_RUNBOOKS.md docs/AI_PRODUCT_OVERVIEW.md docs/ai-graph.json docs/AI_CONTEXT_BUDGET.md
+git add docs/ai-product 2>/dev/null || true
