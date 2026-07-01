@@ -244,7 +244,7 @@ export function TabBar() {
       <div className="flex-1 flex items-center gap-1 overflow-x-auto ws-no-scrollbar">
         {openTabs.map((id) => (
           <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
-            {view === id && <motion.span layoutId="wsActiveTab" className="absolute inset-0 rounded-lg bg-container1 shadow-sm" transition={SPRING_SOFT} />}
+            {view === id && <span className="absolute inset-0 rounded-lg bg-container1 shadow-sm" />}
             <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(statusLookup[id]) }} />
             <span className="relative z-10">{id}</span>
             <button type="button" onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
@@ -264,7 +264,7 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void })
   const [name, setName] = useState('');
   const submit = () => { const n = name.trim(); if (!n) return; onCreate(n); void menuHandler.close(); };
   return (
-    <div className="w-full flex flex-col gap-3">
+    <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createWorkspace' })}</div>
       <span className="text-sm text-muted -mt-2">{translate({ key: 'workspaces.shell.createWorkspaceSubtitle' })}</span>
       <input

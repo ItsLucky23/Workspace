@@ -13,10 +13,8 @@ import { useTranslator } from '@luckystack/core/client';
 
 import BaseAvatar from 'src/_components/Avatar';
 
-import { motion } from 'motion/react';
-
 import Icon, { type IconName } from './Icon';
-import { Popover, SPRING_SOFT } from './motion';
+import { Popover } from './motion';
 import type { Member, TicketStatus } from '../_data/types';
 
 /* ----------------------------------------------------------------- click-away */
@@ -157,7 +155,7 @@ export function Tabs({ tabs, active, onChange }: { tabs: TabDef[]; active: strin
             {t.icon && <Icon name={t.icon} />}
             {t.label}
             {t.count != null && <span className="rounded-full bg-container2 px-1.5 text-xs text-muted">{t.count}</span>}
-            {on && <motion.span layoutId="wsTabsUnderline" className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-primary" transition={SPRING_SOFT} />}
+            {on && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-primary" />}
           </button>
         );
       })}

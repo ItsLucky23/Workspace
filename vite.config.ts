@@ -106,5 +106,13 @@ export default defineConfig(({ mode }) => {
         '/socket.io': entry({ ws: true }),
       },
     },
+    optimizeDeps: {
+      include: [
+        'framer-motion',
+        'motion',
+        '@xterm/xterm',
+        '@fortawesome/fontawesome-svg-core',
+      ]
+    }
   };
 });

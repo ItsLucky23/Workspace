@@ -25,6 +25,13 @@ export const auth: AuthProps = {
   additional: []
 };
 
+//? The devkit's `validateInputByType` recurses the DECLARED data TYPE, and the
+//? `SessionLayout['theme' | 'language']` refs above pull in a type graph deeper
+//? than its hard depth-64 limit → every call fails with `input nesting exceeds
+//? the maximum depth of 64` before `main` runs. `relaxed` skips that type-shape
+//? gate (the handler still guards every field itself). See lessons/0001.
+export const validation = 'relaxed' as const;
+
 export interface ApiParams {
   data: {
     name?: string;

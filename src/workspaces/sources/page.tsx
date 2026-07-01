@@ -84,20 +84,6 @@ function DetailHead({ title }: { title: string }) {
 
 const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBackground: true, background: 'bg-container1', size: 'md' });
 
-function HealthBanner() {
-  const translate = useTranslator();
-  return (
-    <div className="mx-4 md:mx-6 rounded-xl border border-warning/40 bg-warning/10 p-3 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5 text-sm min-w-0 flex-1">
-        <Icon name="triangle-exclamation" className="text-warning shrink-0" />
-        <span className="text-title font-medium shrink-0">{translate({ key: 'workspaces.sources.ragBehind' })}</span>
-        <span className="text-muted truncate">{translate({ key: 'workspaces.sources.ragBehindHint' })}</span>
-      </div>
-      <WsButton variant="secondary" icon="wave-square" onClick={noop}>{translate({ key: 'workspaces.sources.reindex' })}</WsButton>
-    </div>
-  );
-}
-
 function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
   const translate = useTranslator();
   return (
@@ -165,8 +151,6 @@ export default function Sources() {
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
         {tab === 'docs' && <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
       </div>
-
-      <HealthBanner />
 
       <div className="px-4 md:px-6 mt-3">
         <Tabs tabs={tabs} active={tab} onChange={setTab} />

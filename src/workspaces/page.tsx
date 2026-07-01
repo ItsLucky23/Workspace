@@ -1,15 +1,14 @@
 //? Workspaces — the scrum board. Kanban across the 7 pipeline stages.
 //?
 //? Stage transitions are AI-driven (the user does NOT drag tickets); cards are
-//? click-to-open. Cards carry motion `layout` + `layoutId`, wrapped in a
-//? LayoutGroup, so that when the AI moves a ticket between columns (future:
-//? from the Workspace-AI chat) the card animates smoothly to its new spot.
+//? click-to-open. (Cards were previously wrapped in a motion `LayoutGroup` with
+//? shared `layoutId` for AI-move glides, but that shared-layout projection crashes
+//? React 19's reconciler on route unmount — "removeChild is not a child" — so it
+//? was removed; a future AI-move animation must use a non-layout technique.)
 //? Columns are derived from dummy data for now. Desktop-first; mobile shows
 //? read-only stage-segments.
 
 import { useMemo, useRef, useState } from 'react';
-
-import { LayoutGroup, motion } from 'motion/react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -18,7 +17,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from './_components/Icon';
-import { Popover, SPRING_SOFT } from './_components/motion';
+import { Popover } from './_components/motion';
 import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, useClickAway, type PopMenuItem } from './_components/primitives';
 import { useWorkspaces } from './_shell/WorkspacesContext';
 import type { PipelineStage, Ticket, TicketStatus } from './_data/types';
@@ -94,10 +93,7 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
     ctx.openTicket(ticket.id);
   };
   return (
-    <motion.div
-      layout
-      layoutId={ticket.id}
-      transition={SPRING_SOFT}
+    <div
       role="button" tabIndex={0}
       onPointerDown={() => { downAt.current = Date.now(); }}
       onClick={handleClick}
@@ -132,7 +128,7 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -172,7 +168,7 @@ function NewTicketForm({ stages, onCreate }: { stages: PipelineStage[]; onCreate
     void menuHandler.close();
   };
   return (
-    <div className="w-full flex flex-col gap-3">
+    <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
       <input
         value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
@@ -354,13 +350,11 @@ export default function Board() {
     <div className="flex flex-col h-full min-h-0">
       <BoardHeader isMobile={false} sprintFilter={sprintFilter} onSprintFilterChange={setSprintFilter} filters={filters} onFiltersChange={setFilters} />
       <div className="flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6">
-        <LayoutGroup>
-          <div className="flex gap-3 h-full">
-            {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id] ?? []} />)}
-            {/* trailing space so the last column isn't flush against the AI panel / viewport edge */}
-            <div className="w-2 shrink-0" aria-hidden />
-          </div>
-        </LayoutGroup>
+        <div className="flex gap-3 h-full">
+          {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id] ?? []} />)}
+          {/* trailing space so the last column isn't flush against the AI panel / viewport edge */}
+          <div className="w-2 shrink-0" aria-hidden />
+        </div>
       </div>
     </div>
   );

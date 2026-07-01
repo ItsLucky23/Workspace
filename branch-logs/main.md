@@ -252,3 +252,19 @@
 **Files:** `tsconfig.server.json`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/page.tsx`, `src/workspaces/activity/page.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/workspaces/board/[ticketId]/DiffView.tsx`, `src/workspaces/pipeline/page.tsx`, `src/workspaces/_components/primitives.tsx`, `src/workspaces/_components/motion.tsx`, `src/workspaces/_shell/Shell.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`.
 
 **Verificatie:** server-tsc **0** (was 14), frontend-tsc **0**, eslint **0 warnings / 0 errors** (was 20 warnings), `ai:lint` schoon, `npm run build` groen, `test:ws` **8/8 (226 asserts)** tegen de :80-server.
+
+## 2026-07-02 — React-19 removeChild-crash fix + create-menu padding + 2 bugs (theme-save, stale RAG-banner)
+
+**User prompt:** (a) crash `removeChild is not a child` op elke workspaces/*-pagina na een ticketbezoek + create-menus zonder padding; (b) losse problemen — o.a. theme/language-save faalt (`input nesting exceeds depth 64`) en een stale "RAG-index loopt 3 commits achter"-melding.
+
+**Gedaan:**
+1. **removeChild-crash:** de 3 framer-motion `layoutId` shared-layout-animaties verwijderd (board-cards `layout layoutId` + `LayoutGroup`, Tabs-underline, TabBar active-pill). motion-12 + React-19.2 projecteert die op unmount tijdens route-wissel → `removeChild`; één fout corrumpeert de fiber-tree → fout op élke volgende pagina. Vervangen door statische highlights; overige motion (AI-panel, chat, sheets, popovers) intact. Imports opgeschoond, header-comment bijgewerkt.
+2. **create-menu padding:** `NewTicketForm` + `CreateWorkspaceForm` roots misten `p-*` (de MenuHandler-frame levert bewust geen padding; `ConfirmMenu` doet `p-6`, sources-details `p-5`) → `p-5` toegevoegd.
+3. **[bug 8] theme/language-save:** `settings/updateUser` miste `export const validation = 'relaxed'`; de devkit-validator recurseert het `SessionLayout`-type voorbij depth-64 (lesson 0001) → elke call faalde. Relaxed toegevoegd.
+4. **[bug 6] stale RAG-banner:** de hardcoded "RAG-index loopt 3 commits achter op main" HealthBanner verwijderd (geen echte indexer in V1; misleidende dummy).
+
+**Files:** `src/workspaces/page.tsx`, `_components/primitives.tsx`, `_shell/Shell.tsx`, `sources/page.tsx`, `src/settings/_api/updateUser_v1.ts`.
+
+**Verificatie:** frontend-tsc 0, server-tsc 0, eslint 0/0, build groen. Crash-fix nog niet in-browser geverifieerd (hypothese-gedreven maar hoog-confidence + groen).
+
+**Nog missende settings-validation (geflagd, niet gefixt):** `updatePreferences/listSessions/revokeSession/deleteAccount/signOutEverywhere` missen óók `validation='relaxed'` — latente depth-64-bug als hun data-type diep is.
