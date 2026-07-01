@@ -7,7 +7,22 @@
 //? CONFIRM_REQUIRED (type imports erase, so those resolve fine). Keep the capability
 //? mapping here in lockstep with the ControlOp union.
 
+import type { PrismaClient } from '@prisma/client';
+
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
+
+//? Shared RBAC gate for the per-action typed `_api` routes (the Fase-0 write-path
+//? split). `cap === null` = a login-only own-resource op (no capability needed).
+//? Otherwise the caller must be a member whose `WorkspaceRole.perms[cap]` is true.
+//? Mirrors the inline check the old single control route did (control_v1.ts) so
+//? every per-action route enforces the SAME B-28 matrix without duplicating logic.
+export async function hasCapability(prisma: PrismaClient, workspaceId: string, userId: string, cap: number | null): Promise<boolean> {
+  if (cap === null) return true;
+  const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
+  if (!member) return false;
+  const role = await prisma.workspaceRole.findFirst({ where: { workspaceId, key: member.roleKey } });
+  return role?.perms[cap] === true;
+}
 
 //? Positional capability indices over RBAC_CAPABILITIES (B-28; mirrors seed).
 export const CAP = {

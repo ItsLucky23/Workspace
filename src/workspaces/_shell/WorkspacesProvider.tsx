@@ -114,9 +114,28 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => { refetch(); }, [refetch]);
 
   //? A control-API write: enqueue → the Conductor persists → refetch the snapshot.
+  //? Legacy generic path (still used by the not-yet-migrated ops). Fase-0 migrates
+  //? each op to its OWN typed `_api` route (see quickAdd/sprintCreate below); once
+  //? every op has moved, this + the `workspaces/control` route are removed.
   const control = useCallback((op: ControlOp, target: Record<string, unknown>, payload: Record<string, unknown>) => {
     void (async () => {
       await apiRequest({ name: 'workspaces/control', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', op, target, payload, clientRequestId: nextReqId() } });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+
+  //? Per-action TYPED writes (Fase-0 split). Each calls its op's own `_api` route
+  //? with a fully-typed payload — the generated type-map types the call end-to-end
+  //? (no `Record<string, unknown>` envelope), then refetches like `control`.
+  const quickAddApi = useCallback((input: { title: string }) => {
+    void (async () => {
+      await apiRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', title: input.title, clientRequestId: nextReqId() } });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+  const sprintCreateApi = useCallback((sprintName: string) => {
+    void (async () => {
+      await apiRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', name: sprintName, active: false, clientRequestId: nextReqId() } });
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
@@ -224,7 +243,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createWorkspace: (name) => { control('create-workspace', {}, { name }); },
       myInvites: snap.myInvites,
       acceptInvite: (token) => { control('accept-invite', { inviteToken: token }, {}); },
-      sprintCreate: (name) => { control('sprint-create', {}, { name, active: false }); },
+      sprintCreate: sprintCreateApi,
       renameWorkspace: (name) => { control('rename-workspace', {}, { name }); },
       deleteWorkspace: () => {
         control('delete-workspace', {}, {});
@@ -269,7 +288,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
-      quickAdd: (input) => { control('quick-add', {}, { ...input }); },
+      quickAdd: quickAddApi,
       archiveTicket: (id) => { control('archive', { ticketId: id }, {}); },
       bulkMove: (ids, stageId) => { control('bulk-move', { ticketIds: ids }, { stageId }); },
       bulkStatus: (ids, status) => { control('bulk-status', { ticketIds: ids }, { status }); },
@@ -298,7 +317,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       invites: snap.invites,
       activityEvents: snap.events,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, control, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, control, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -9,13 +9,14 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (3)
+## Decisions (4)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | Embed per-stage config as composite types, keep loose ObjectId refs, and omit the framework-provided identity models in the Workspaces V1 Prisma schema | 🟢 accepted | workspaces, data-model, prisma, mongodb, lane-b | — | `docs/decisions/0001-workspaces-v1-schema-shape.md` |
 | 0002 | In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2 | 🟢 accepted | workspaces, control-api, conductor, fase-1, orchestrator | — | `docs/decisions/0002-fase1-inprocess-conductor.md` |
 | 0004 | App-owned AES-256-GCM encryption for per-workspace secrets | 🟢 accepted | security, secrets, workspaces, gitlab | — | `docs/decisions/0004-app-owned-secret-encryption.md` |
+| 0005 | The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session | 🟢 accepted | workspaces, control-api, typed-routes, fase-0, transport | — | `docs/decisions/0005-per-action-typed-api-write-routes.md` |
 
 ## Summaries
 
@@ -43,9 +44,19 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 
 → `docs/decisions/0004-app-owned-secret-encryption.md`
 
+### 0005 — The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session
+
+**0005** · accepted · tags: workspaces, control-api, typed-routes, fase-0, transport · 2026-07-02
+
+*Split the write path into one typed `_api` route per action** (`quickAdd_v1`, `sprintCreate_v1`, …), each with a fully-typed `ApiParams.data` payload, so the generated type-map types the client's `apiRequest({ name: 'workspaces/<op>', … })` call end-to-end. Each route stays thin: validate → `hasCapability` RBAC (the shared B-28 gate extracted to `server/control/rbac.ts`) → **enqueue onto the existing serial Conductor** (preserving serial write-ordering + the `WorkspaceSignal` event-recorder). The `WorkspacesCtx` interface is unchanged (it already exposes typed helpers like `quickAdd`/`sprintCreate`), so only each helper's implementation in `WorkspacesProvider` moves from the generic `control()` to its typed route — **no consumer/page changes**. Migration is incremental + always-green: the legacy `workspaces/control` route keeps serving not-yet-migrated ops until every op has moved, then it (and the generic `control()` client helper) are removed.
+
+→ `docs/decisions/0005-per-action-typed-api-write-routes.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
 > Add the tag atop a file that embodies a deliberate decision so a future change can't undo it blindly.
 
-_(none yet — tag a file with `//? @adr NNNN` to record which decision governs it.)_
+| File | ADR | Decision |
+| --- | --- | --- |
+| `scripts/prismaWithSecrets.ts` | 0017 | _(unknown ADR — tag references a missing decision file)_ |

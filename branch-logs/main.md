@@ -326,3 +326,16 @@
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration-tests 5/5 files (createWorkspace 9/9, snapshot 21/21, tenant 22/22). E2e (httpControl) NIET gedraaid — vereist herstart van de user's :80 met verse code (assertions aangepast: 2 seed-tickets + quick-add = 3).
 
 **Nog te doen deze loop:** Fase 0 (per-actie getypte `_sync`/`_api` rewrite + event-recorder), item 10 (1 account per e-mail — schema `@@unique([email,provider])`→`[email]` + auth-linking, vereist `prisma db push`), item 7-sprint-create verifiëren, Fase 2 cleanup, Fase 3 features.
+
+## 2026-07-02 00:51 — /loop item 10 (1 account/e-mail) + Fase-0 START (per-actie getypte `_api`-routes: canonieke slice)
+
+**Gedaan:**
+1. **[item 10]** `auth.providerAccountStrategy: 'unified'` in `config.ts` → login/register resolvet een bestaande user by-email over ALLE providers heen (default-adapter `findByEmailAnyProvider`), dus google + email+password op hetzelfde adres delen 1 `User`. App-laag; geen `prisma db push` nodig. Schema-tightening (`@@unique([email,provider])`→`[email]`) als optionele dev-actie geflagd in de config-comment.
+2. **[Fase 0 — ADR 0005]** Bewuste, geflagde afwijking van "gebruik `_sync` voor writes": write-laag → **per-actie getypte `_api`-routes** i.p.v. `_sync`. Reden: `_sync`/room-transport is niet browser-verifieerbaar deze onbemande sessie + client `joinRoom`-API onduidelijk + `requireRoomMembership` default true; de bewezen `apiRequest`-transport lost item 9's kern (getypte payloads per actie, geen `Record<string,unknown>` client-side) volledig op en is met integration-tests verifieerbaar. Realtime-`_sync`-deltalaag uitgesteld tot browser-testbare sessie.
+3. **Canonieke slice gebouwd + bewezen:** `hasCapability` RBAC-gate (gedeeld, geëxtraheerd uit `control_v1`) in `server/control/rbac.ts`; `src/workspaces/_api/quickAdd_v1.ts` + `sprintCreate_v1.ts` (thin: validate + RBAC + enqueue naar de bestaande seriële Conductor — seriële ordening + `WorkspaceSignal`-event-recorder behouden); `WorkspacesProvider` `quickAdd`/`sprintCreate` omgezet naar de getypte routes (ctx-interface + alle consumers ONGEWIJZIGD). Legacy `control`-route blijft de nog-niet-gemigreerde ops bedienen tot alles over is.
+
+**Files:** `config.ts`, `server/control/rbac.ts`, `src/workspaces/_api/{quickAdd_v1.ts,sprintCreate_v1.ts}` (nieuw), `src/workspaces/_shell/WorkspacesProvider.tsx`, `docs/decisions/0005-*.md` (nieuw), `tests/integration/rbac.test.mts` (nieuw), generated apiTypes/apiDocs.
+
+**Verificatie:** front-tsc 0 (bewijst end-to-end client-typing van de nieuwe routes = item-9-proof), server-tsc 0, eslint 0/0, ai:lint schoon, build groen, rbac.test 7/7 + createWorkspace 9/9. De 1 "degraded type extraction" is `system/session` (framework, pre-existing), niet mijn routes.
+
+**Volgende slices (fan-out, workflow):** resterende ~37 ops → eigen getypte `_api`-route + provider-helper (tickets/board bulk-*, members/RBAC, settings/env/integrations/gitlab/budget, stage-config, notifications, suggestions, invite), daarna `control_v1` + generieke `control()` verwijderen. Optioneel per-op `TicketEvent`-enrichment (activity feed) + realtime-`_sync`-laag (browser-gated).

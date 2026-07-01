@@ -150,6 +150,15 @@ registerProjectConfig({
     //? Email+password auth. Set `false` for an OAuth-only app — the login form
     //? hides the email/password fields and the credentials route rejects.
     credentials: true,
+    //? ONE account per email address (item 10): with `'unified'` the login/register
+    //? flow resolves an existing user by email across ALL providers (via the default
+    //? adapter's `findByEmailAnyProvider`), so signing in with Google and with
+    //? email+password on the same address share ONE `User` — instead of `'per-provider'`
+    //? which mints a separate account per provider. NOTE: this prevents NEW duplicates
+    //? at the app layer; the DB still allows them via `@@unique([email, provider])`.
+    //? To also enforce it at the schema level, tighten that to `@@unique([email])`
+    //? and `prisma db push` (a dev action — only safe once no duplicate emails exist).
+    providerAccountStrategy: 'unified',
   },
 });
 
