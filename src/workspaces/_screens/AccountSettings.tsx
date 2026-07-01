@@ -4,17 +4,25 @@
 //? (or a dropped ~/.ssh/config containing it) maps to an SSH identity:
 //? 123 → test, 456 → mathijs. Dummy data; desktop-first.
 
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
-import { SESSIONS, SSH_KEY_TO_USER } from '../_data/seed';
+import { SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { SshKeyEntry } from '../_data/types';
+
+//? Real session shape from `settings/listSessions` (framework auth session, not
+//? [control-API] tenant data) — handle/expiry only, no device/location metadata.
+interface AccountSession {
+  handle: string;
+  expiresInSeconds: number | null;
+  isCurrent: boolean;
+}
 
 //? An example file path shown in the SSH drop-zone — code, not translatable copy.
 const SSH_CONFIG_PATH = '~/.ssh/config';
@@ -101,8 +109,44 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
 export default function AccountSettings() {
   const translate = useTranslator();
   const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById } = useWorkspaces();
+  //? Fase 2: no backend persistence for web-push subscription yet — client-only toggle.
   const [push, setPush] = useState(false);
   const sshUser = sshUserId ? membersById[sshUserId] : null;
+
+  const [sessions, setSessions] = useState<AccountSession[]>([]);
+  const refreshSessions = useCallback(() => {
+    void (async () => {
+      const response = await apiRequest({ name: 'settings/listSessions', version: 'v1', data: {} });
+      if (response.status === 'success') setSessions(response.result.sessions);
+    })();
+  }, []);
+  useEffect(() => { refreshSessions(); }, [refreshSessions]);
+
+  const revokeSession = (handle: string) => {
+    void (async () => {
+      const response = await apiRequest({ name: 'settings/revokeSession', version: 'v1', data: { handle } });
+      if (response.status === 'success') { notify.success({ key: 'workspaces.account.sessionRevoked' }); refreshSessions(); }
+      else notify.error({ key: response.errorCode });
+    })();
+  };
+  //? Keeps the caller's own session alive — server-side "sign out OTHER devices" (see settings/_api/signOutEverywhere_v1.ts).
+  const revokeAllOtherSessions = () => {
+    void (async () => {
+      const response = await apiRequest({ name: 'settings/signOutEverywhere', version: 'v1', data: {} });
+      if (response.status === 'success') { notify.success({ key: 'workspaces.account.revokeAllDone' }); refreshSessions(); }
+      else notify.error({ key: response.errorCode });
+    })();
+  };
+
+  //? Client-side export of the visible profile — no server round-trip needed.
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(currentUser, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `account-${currentUser.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -118,13 +162,15 @@ export default function AccountSettings() {
                 <div className="text-sm font-semibold text-title">{currentUser.name}</div>
                 <div className="text-sm text-muted">{currentUser.email}</div>
               </div>
-              <WsButton variant="secondary">{translate({ key: 'workspaces.account.edit' })}</WsButton>
+              {/* Fase 2: profile editing (name/avatar) has no update route wired yet */}
+              <WsButton variant="secondary" onClick={() => { /* Fase 2: profile editing */ }}>{translate({ key: 'workspaces.account.edit' })}</WsButton>
             </div>
             <div className="mt-4 flex flex-col gap-1">
               <Row>
                 <span className="text-sm text-common">{translate({ key: 'workspaces.account.theme' })}</span>
                 <Segmented value={theme} onChange={setTheme} options={[{ id: 'light', label: <><Icon name="sun" /> {translate({ key: 'workspaces.account.light' })}</> }, { id: 'dark', label: <><Icon name="moon" /> {translate({ key: 'workspaces.account.dark' })}</> }]} />
               </Row>
+              {/* Fase 2: language switching is display-only here — no per-account language write yet */}
               <Row>
                 <span className="text-sm text-common">{translate({ key: 'workspaces.account.language' })}</span>
                 <span className="text-sm text-title">{translate({ key: 'workspaces.account.english' })}</span>
@@ -137,9 +183,10 @@ export default function AccountSettings() {
               <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.gitlab' })}</span>
               <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>
             </Row>
+            {/* Fase 2: GitHub is out of V1 scope (single-forge invariant — GitLab only) */}
             <Row>
               <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}</span>
-              <WsButton variant="secondary">{translate({ key: 'workspaces.account.connect' })}</WsButton>
+              <WsButton variant="secondary" onClick={() => { /* Fase 2: GitHub connect — out of V1 scope */ }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
             </Row>
           </Card>
 
@@ -165,21 +212,42 @@ export default function AccountSettings() {
             <div className="mt-3"><AddKeyForm onAdd={addSshKey} /></div>
           </Card>
 
-          <Card title={translate({ key: 'workspaces.account.sessionsTitle' })} desc={translate({ key: 'workspaces.account.sessionsDesc' })} right={<button type="button" onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.account.revokeAllTitle' }), content: translate({ key: 'workspaces.account.revokeAllContent' }) })} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revokeAllOthers' })}</button>}>
+          <Card
+            title={translate({ key: 'workspaces.account.sessionsTitle' })}
+            desc={translate({ key: 'workspaces.account.sessionsDesc' })}
+            right={
+              <button
+                type="button"
+                onClick={() => {
+                  void menuHandler.confirm({ title: translate({ key: 'workspaces.account.revokeAllTitle' }), content: translate({ key: 'workspaces.account.revokeAllContent' }) })
+                    .then((ok) => { if (ok) revokeAllOtherSessions(); });
+                }}
+                className="text-xs text-wrong hover:underline cursor-pointer"
+              >
+                {translate({ key: 'workspaces.account.revokeAllOthers' })}
+              </button>
+            }
+          >
             <div className="flex flex-col">
-              {SESSIONS.map((s) => (
-                <Row key={s.id}>
+              {sessions.map((s) => (
+                <Row key={s.handle}>
                   <div>
-                    <div className="text-sm font-medium text-title">{s.device} {s.current && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.account.thisDevice' })}</span>}</div>
-                    <div className="text-xs text-muted">{s.location} · {s.lastActive}</div>
+                    <div className="text-sm font-medium text-title font-mono">
+                      ...{s.handle.slice(-8)} {s.isCurrent && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-sans">{translate({ key: 'workspaces.account.thisDevice' })}</span>}
+                    </div>
+                    {s.expiresInSeconds !== null && (
+                      <div className="text-xs text-muted">{translate({ key: 'workspaces.account.sessionExpiresIn', params: [{ key: 'hours', value: String(Math.round(s.expiresInSeconds / 3600)) }] })}</div>
+                    )}
                   </div>
-                  {!s.current && <button type="button" className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revoke' })}</button>}
+                  {!s.isCurrent && <button type="button" onClick={() => { revokeSession(s.handle); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revoke' })}</button>}
                 </Row>
               ))}
+              {sessions.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noSessions' })}</div>}
             </div>
           </Card>
 
           <Card title={translate({ key: 'workspaces.account.notificationsTitle' })} desc={translate({ key: 'workspaces.account.notificationsDesc' })}>
+            {/* Fase 2: web-push subscription is client-only — no push-subscription route wired yet */}
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
               <Toggle on={push} onChange={setPush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
@@ -189,7 +257,7 @@ export default function AccountSettings() {
           <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.downloadData' })}</span>
-              <WsButton variant="secondary" icon="up-right-from-square">{translate({ key: 'workspaces.account.export' })}</WsButton>
+              <WsButton variant="secondary" icon="up-right-from-square" onClick={exportData}>{translate({ key: 'workspaces.account.export' })}</WsButton>
             </Row>
           </Card>
         </div>

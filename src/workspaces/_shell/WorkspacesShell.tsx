@@ -15,9 +15,9 @@ import SearchPalette from '../_components/SearchPalette';
 import Icon from '../_components/Icon';
 import { useTranslator } from '@luckystack/core/client';
 
-//? Intentional no-op for handlers whose feature lands in Fase 2 (the notifications
-//? panel + the mobile FAB action). Module-scoped so it's a stable prop reference.
-const noop = (): void => { /* Fase 2: notifications panel / mobile FAB */ };
+//? Intentional no-op for handlers whose feature lands in Fase 2 (the mobile FAB
+//? action). Module-scoped so it's a stable prop reference.
+const noop = (): void => { /* Fase 2: mobile FAB */ };
 
 export function WorkspacesShell({ children }: { children: React.ReactNode }) {
   const translate = useTranslator();
@@ -42,7 +42,7 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
         <NavRail expanded={expanded} setExpanded={setExpanded} />
         <div className="flex-1 flex flex-col min-w-0">
           <MobileHeader onCmdK={openSearch} />
-          <TopBar onCmdK={openSearch} onNotifications={noop} />
+          <TopBar onCmdK={openSearch} />
           <TabBar onAiToggle={ctx.toggleAi} />
           <div className="flex-1 flex min-h-0">
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">

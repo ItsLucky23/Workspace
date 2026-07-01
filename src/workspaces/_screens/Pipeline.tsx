@@ -5,7 +5,7 @@
 //? same config drives Node, .NET, Go, … projects. See handoff/DATAMODEL.md §2 +
 //? CLAUDE_SETTINGS_MAP.md. Local state for the prototype.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -17,7 +17,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import { IconButton, InfoDot, Segmented, Tabs, Toggle, WsButton, type TabDef } from '../_components/primitives';
-import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES, STAGE_CONFIGS } from '../_data/seed';
+import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, StageWarning, ToolTier } from '../_data/types';
 
@@ -556,14 +556,22 @@ function HooksTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- main */
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace } = useWorkspaces();
-  const [stages, setStages] = useState<PipelineStageCfg[]>(STAGE_CONFIGS);
-  const [selectedId, setSelectedId] = useState<string>(STAGE_CONFIGS[0]?.id ?? '');
+  const { activeWorkspace, stageConfigs, saveStageConfig } = useWorkspaces();
+  const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
+  const [selectedId, setSelectedId] = useState<string>(stageConfigs[0]?.id ?? '');
   const [tab, setTab] = useState('general');
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
+  //? Re-seed the editable copy whenever the live snapshot loads/changes (initial
+  //? load + after a save round-trips through the Conductor + refetch).
+  useEffect(() => {
+    setStages(stageConfigs);
+    setSelectedId((prev) => (stageConfigs.some((st) => st.id === prev) ? prev : stageConfigs[0]?.id ?? ''));
+  }, [stageConfigs]);
+
   const s = stages.find((x) => x.id === selectedId) ?? stages[0];
   const update = (patch: Partial<PipelineStageCfg>) => { setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st))); };
+  const save = () => { if (s) saveStageConfig(s); };
 
   const move = (dir: -1 | 1) => { setStages((p) => {
     const i = p.findIndex((x) => x.id === selectedId);
@@ -692,6 +700,7 @@ export default function Pipeline() {
             <input value={s.name} onChange={(e) => { update({ name: e.target.value }); }} className="text-base font-semibold text-title bg-transparent focus:outline-none border-b border-transparent focus:border-primary min-w-0 flex-1" />
             <div className="flex items-center gap-2 shrink-0">
               <Toggle on={s.aiEnabled} onChange={(v) => { update({ aiEnabled: v }); }} label={s.aiEnabled ? translate({ key: 'workspaces.pipeline.aiOn' }) : translate({ key: 'workspaces.pipeline.noAi' })} />
+              <WsButton variant="secondary" icon="check" onClick={save}>{translate({ key: 'workspaces.pipeline.saveStage' })}</WsButton>
               <IconButton icon="angle-left" title={translate({ key: 'workspaces.pipeline.moveEarlier' })} onClick={() => { move(-1); }} />
               <IconButton icon="angle-right" title={translate({ key: 'workspaces.pipeline.moveLater' })} onClick={() => { move(1); }} />
               <IconButton icon="trash" title={translate({ key: 'workspaces.pipeline.deleteStage' })} onClick={removeStage} className="hover:text-wrong" />

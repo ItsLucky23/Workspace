@@ -418,9 +418,9 @@ const ADMIN_PERMS = [true, true, true, true, true, false, false, false];
 const MEMBER_PERMS = [true, false, false, false, false, false, false, false];
 
 export const DEFAULT_PERM_ROLES: PermRole[] = [
-  { name: 'Owner', locked: true, perms: RBAC_CAPABILITIES.map(() => true) },
-  { name: 'Admin', perms: ADMIN_PERMS },
-  { name: 'Member', perms: MEMBER_PERMS },
+  { key: 'owner', name: 'Owner', locked: true, perms: RBAC_CAPABILITIES.map(() => true) },
+  { key: 'admin', name: 'Admin', perms: ADMIN_PERMS },
+  { key: 'member', name: 'Member', perms: MEMBER_PERMS },
 ];
 
 //? Workspace-AI seed conversation.

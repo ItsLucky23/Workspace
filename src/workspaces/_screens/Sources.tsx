@@ -16,6 +16,9 @@ import { EmptyState, Tabs, Toggle, WsButton, type TabDef } from '../_components/
 import type { InfoDoc, SkillEntry } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 
+//? Fase 2: no upload/reindex/regenerate ops exist yet (frozen 7+6 control-API surface).
+const noop = (): void => { /* Fase 2 */ };
+
 const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   generated: 'bg-primary/12 text-primary',
   git: 'bg-container2 text-muted',
@@ -90,7 +93,7 @@ function HealthBanner() {
         <span className="text-title font-medium shrink-0">{translate({ key: 'workspaces.sources.ragBehind' })}</span>
         <span className="text-muted truncate">{translate({ key: 'workspaces.sources.ragBehindHint' })}</span>
       </div>
-      <WsButton variant="secondary" icon="wave-square">{translate({ key: 'workspaces.sources.reindex' })}</WsButton>
+      <WsButton variant="secondary" icon="wave-square" onClick={noop}>{translate({ key: 'workspaces.sources.reindex' })}</WsButton>
     </div>
   );
 }
@@ -117,7 +120,7 @@ function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
       )}
       <div className="flex items-center gap-3 mt-1">
         <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> {translate({ key: 'workspaces.sources.preview' })}</button>
-        {doc.source !== 'uploaded' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> {translate({ key: 'workspaces.sources.regenerate' })}</button>}
+        {doc.source !== 'uploaded' && <button type="button" onClick={noop} className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> {translate({ key: 'workspaces.sources.regenerate' })}</button>}
         <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer ml-auto">{translate({ key: 'workspaces.sources.details' })}</button>
       </div>
     </div>
@@ -137,7 +140,7 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
         <div className="text-xs text-muted truncate">{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
       <button type="button" onClick={() => { openDetail(<SkillDetail skill={skill} />); }} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.details' })}</button>
-      {skill.kind === 'frozen' && <button type="button" className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.reindex' })}</button>}
+      {skill.kind === 'frozen' && <button type="button" onClick={noop} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.reindex' })}</button>}
       <Toggle on={skill.on} onChange={onToggle} />
     </div>
   );
@@ -145,9 +148,8 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills: initialSkills } = useWorkspaces();
+  const { docs, skills, toggleSkill } = useWorkspaces();
   const [tab, setTab] = useState('docs');
-  const [skills, setSkills] = useState(initialSkills);
   const [preview, setPreview] = useState<InfoDoc | null>(null);
 
   const tabs: TabDef[] = [
@@ -159,7 +161,7 @@ export default function Sources() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
-        {tab === 'docs' && <WsButton variant="secondary" icon="plus">{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
+        {tab === 'docs' && <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
       </div>
 
       <HealthBanner />
@@ -177,7 +179,7 @@ export default function Sources() {
         {tab === 'skills' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {skills.map((s) => (
-              <SkillRow key={s.id} skill={s} onToggle={() => { setSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, on: !x.on } : x))); }} />
+              <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} />
             ))}
           </div>
         )}

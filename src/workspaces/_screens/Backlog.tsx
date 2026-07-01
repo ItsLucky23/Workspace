@@ -15,17 +15,17 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
-import { SPRING_SOFT } from '../_components/motion';
-import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, WsButton } from '../_components/primitives';
+import { Popover, SPRING_SOFT } from '../_components/motion';
+import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, useClickAway, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { Ticket } from '../_data/types';
+import type { Ticket, TicketStatus } from '../_data/types';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
 const LAST = ['2m', '14m', '1h', '2h', '3h', '5h', '1d', '2d', '3d', '4d', '6d', '1w'];
 
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
@@ -54,6 +54,23 @@ export default function Backlog() {
     { id: 'all', value: 'all', item: translate({ key: 'workspaces.backlog.allPeople' }) },
     ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
   ];
+
+  //? Bulk action bar (13) — picker items resolve against the current `selected`
+  //? set, then apply the [control-API] bulk op + reset the selection.
+  const selectedIds = [...selected];
+  const finishBulk = () => { setSelected(new Set()); setSelectMode(false); };
+  const statusOptions: { value: TicketStatus; label: string }[] = [
+    { value: 'idle', label: translate({ key: 'workspaces.common.statusIdle' }) },
+    { value: 'needs-input', label: translate({ key: 'workspaces.common.statusNeedsInput' }) },
+    { value: 'busy', label: translate({ key: 'workspaces.common.statusBusy' }) },
+    { value: 'done', label: translate({ key: 'workspaces.common.statusDone' }) },
+    { value: 'paused', label: translate({ key: 'workspaces.common.statusPaused' }) },
+    { value: 'stuck', label: translate({ key: 'workspaces.common.statusStuck' }) },
+  ];
+  const moveItems: PickerItem[] = stages.map((s) => ({ label: s.name, onClick: () => { bulkMove(selectedIds, s.id); finishBulk(); } }));
+  const statusItems: PickerItem[] = statusOptions.map((s) => ({ label: s.label, onClick: () => { bulkStatus(selectedIds, s.value); finishBulk(); } }));
+  const assignItems: PickerItem[] = members.map((m) => ({ label: m.name, onClick: () => { bulkAssign(selectedIds, m.id); finishBulk(); } }));
+  const sprintItems: PickerItem[] = sprints.map((s) => ({ label: s.name, onClick: () => { bulkSprint(selectedIds, s.id); finishBulk(); } }));
 
   return (
     <div className="relative flex flex-col h-full min-h-0">
@@ -123,11 +140,14 @@ export default function Backlog() {
         <div className="absolute left-1/2 -translate-x-1/2 bottom-4 z-20 flex items-center gap-1 rounded-2xl border border-container1-border bg-container1 shadow-lg px-2 py-1.5">
           <span className="px-2 text-sm text-title">{translate({ key: 'workspaces.backlog.selectedCount', params: [{ key: 'count', value: String(selected.size) }] })}</span>
           <div className="w-px h-5 bg-divider mx-1" />
-          <BarBtn icon="diagram-project" label={translate({ key: 'workspaces.backlog.move' })} />
-          <BarBtn icon="circle-check" label={translate({ key: 'workspaces.backlog.status' })} />
-          <BarBtn icon="users" label={translate({ key: 'workspaces.backlog.assign' })} />
-          <BarBtn icon="calendar-day" label={translate({ key: 'workspaces.backlog.sprint' })} />
-          <BarBtn icon="box-archive" label={translate({ key: 'workspaces.backlog.archive' })} danger onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.backlog.archiveConfirmTitle', params: [{ key: 'count', value: String(selected.size) }] }), content: translate({ key: 'workspaces.backlog.archiveConfirmContent' }) }).then(() => { setSelected(new Set()); })} />
+          <BulkPickerButton icon="diagram-project" label={translate({ key: 'workspaces.backlog.move' })} items={moveItems} />
+          <BulkPickerButton icon="circle-check" label={translate({ key: 'workspaces.backlog.status' })} items={statusItems} />
+          <BulkPickerButton icon="users" label={translate({ key: 'workspaces.backlog.assign' })} items={assignItems} />
+          <BulkPickerButton icon="calendar-day" label={translate({ key: 'workspaces.backlog.sprint' })} items={sprintItems} />
+          <BarBtn
+            icon="box-archive" label={translate({ key: 'workspaces.backlog.archive' })} danger
+            onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.backlog.archiveConfirmTitle', params: [{ key: 'count', value: String(selected.size) }] }), content: translate({ key: 'workspaces.backlog.archiveConfirmContent' }) }).then((ok) => { if (ok) { bulkArchive(selectedIds); finishBulk(); } }); }}
+          />
           <button type="button" onClick={() => { setSelected(new Set()); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1"><Icon name="xmark" /></button>
         </div>
       )}
@@ -167,5 +187,26 @@ function BarBtn({ icon, label, danger, onClick }: { icon: Parameters<typeof Icon
     <button type="button" onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 h-8 text-sm cursor-pointer transition-colors ${danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}>
       <Icon name={icon} /> {label}
     </button>
+  );
+}
+
+//? A bulk-bar button (13) that opens a click-away popover of choices instead of
+//? navigating — used for the Move/Status/Assign/Sprint pickers. Opens upward
+//? since the bar sits pinned to the bottom of the screen.
+interface PickerItem { label: string; onClick: () => void }
+function BulkPickerButton({ icon, label, items }: { icon: Parameters<typeof Icon>[0]['name']; label: string; items: PickerItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
+  return (
+    <div className="relative" ref={ref}>
+      <BarBtn icon={icon} label={label} onClick={() => { setOpen((o) => !o); }} />
+      <Popover open={open} className="absolute z-30 bottom-full left-0 mb-1 min-w-[180px] max-h-64 overflow-auto rounded-xl border border-container1-border bg-container1 p-1 shadow-lg">
+        {items.map((it) => (
+          <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }} className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer text-left truncate">
+            {it.label}
+          </button>
+        ))}
+      </Popover>
+    </div>
   );
 }

@@ -11,14 +11,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { apiRequest, useSession, useTheme } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useSession, useTheme } from '@luckystack/core/client';
 
+import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
-import { INITIAL_CHAT, NOTIFICATIONS, SSH_KEYS } from '../_data/seed';
+import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type { ControlOp } from '../_functions/controlApi';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, PermRole, PipelineStage, SkillEntry, Sprint, SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
+  Member, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -40,10 +42,13 @@ interface Snap {
   integrations: IntegrationTool[];
   invites: InviteEntry[];
   events: ActivityEvent[];
+  notifications: NotificationItem[];
+  stageConfigs: PipelineStageCfg[];
 }
 const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
+  notifications: [], stageConfigs: [],
 };
 
 function pathForView(view: WsView): string {
@@ -145,6 +150,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 
+  //? Framework logout, not a [control-API] op: no client-side logout helper is
+  //? exported by @luckystack/core/client or @luckystack/login, so this expires
+  //? the session cookie over HTTP (mirrors socketInitializer.ts's server-emitted
+  //? logout flow) and redirects. Redirects regardless of the request outcome —
+  //? the session is already invalidated server-side once the request is sent.
+  const signOut = useCallback(() => {
+    void (async () => {
+      await tryCatch(() => fetch(`${backendUrl}/auth/logout`, { method: 'POST', credentials: 'include' }));
+      globalThis.location.href = loginPageUrl;
+    })();
+  }, []);
+
   const ctx = useMemo<WorkspacesCtx>(() => {
     const push = (v: WsView) => { if (v !== view) setNavStack((s) => [...s, view]); };
     const activeWorkspace = snap.workspaces.find((w) => w.id === snap.activeWorkspaceId) ?? snap.workspaces.at(0) ?? { id: '', name: 'Loading…', slug: '', ownerId: '', role: 'member' as const };
@@ -177,7 +194,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       setTheme,
       suggestions: activeSuggestions,
       dismissSuggestion: (id) => { setLocalSuggestionsDismissed((prev) => [...prev, id]); },
-      unreadNotifications: NOTIFICATIONS.filter((n) => !n.read).length,
+      acceptSuggestion: (id) => {
+        control('accept-suggestion', { suggestionId: id }, {});
+        setLocalSuggestionsDismissed((prev) => [...prev, id]);
+      },
+      notifications: snap.notifications,
+      unreadNotifications: snap.notifications.filter((n) => !n.read).length,
+      markNotificationRead: (id) => { control('mark-read', { notificationId: id }, {}); },
+      markAllNotificationsRead: () => { control('mark-read', { all: true }, {}); },
       currentUser,
       sshKeys,
       sshUserId,
@@ -191,6 +215,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
       createWorkspace: (name) => { control('create-workspace', {}, { name }); },
+      renameWorkspace: (name) => { control('rename-workspace', {}, { name }); },
+      deleteWorkspace: () => {
+        control('delete-workspace', {}, {});
+        setWantWorkspaceId(undefined);
+        setLoading(true);
+      },
+      saveGitlab: (baseUrl, token) => {
+        control('gitlab-settings', {}, token ? { baseUrl, token } : { baseUrl });
+      },
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {
         const role = snap.roles[ri];
@@ -207,6 +240,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.role])),
       setMemberRole: (mid, role) => { control('change-role', { memberId: mid }, { roleKey: role }); },
+      inviteMember: (email, roleKey) => { control('invite', {}, { email, roleKey }); },
+      revokeInvite: (inviteId) => { control('revoke-invite', { inviteId }, {}); },
+      removeMember: (memberId) => { control('remove-member', { memberId }, {}); },
+      transferOwnership: (memberId) => { control('transfer-ownership', { memberId }, {}); },
       envVars: snap.envVars,
       saveEnvVar: (v) => { control('save-env', {}, { key: v.key, value: v.value, secret: v.secret }); },
       removeEnvVar: (id) => { control('remove-env', { envId: id }, {}); },
@@ -222,6 +259,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
+      quickAdd: (input) => { control('quick-add', {}, { ...input }); },
+      archiveTicket: (id) => { control('archive', { ticketId: id }, {}); },
+      bulkMove: (ids, stageId) => { control('bulk-move', { ticketIds: ids }, { stageId }); },
+      bulkStatus: (ids, status) => { control('bulk-status', { ticketIds: ids }, { status }); },
+      bulkAssign: (ids, assigneeId) => { control('bulk-assign', { ticketIds: ids }, { assigneeId }); },
+      bulkSprint: (ids, sprintId) => { control('bulk-sprint', { ticketIds: ids }, { sprintId }); },
+      bulkArchive: (ids) => { control('bulk-archive', { ticketIds: ids }, {}); },
+      toggleSkill: (id, on) => { control('skill-toggle', { sourceId: id }, { on }); },
+      stageConfigs: snap.stageConfigs,
+      saveStageConfig: (cfg) => { control('save-stage-config', { stageId: cfg.id }, { ...cfg }); },
+      signOut,
       // live tenant data
       loading,
       refetch,
@@ -240,7 +288,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       invites: snap.invites,
       activityEvents: snap.events,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, control, membersById, stageOverrides, loading, refetch]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, control, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

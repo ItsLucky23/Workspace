@@ -7,7 +7,8 @@ import { createContext, use } from 'react';
 
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, PermRole, PipelineStage, SkillEntry, Sprint, SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
+  Member, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
 export type WsView =
@@ -34,7 +35,12 @@ export interface WorkspacesCtx {
   setTheme: (t: 'light' | 'dark') => void;
   suggestions: AiSuggestion[];
   dismissSuggestion: (id: string) => void;
+  acceptSuggestion: (id: string) => void;
+  //? Current user's notifications (newest first), from the live snapshot.
+  notifications: NotificationItem[];
   unreadNotifications: number;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   currentUser: Member;   // the account you're using the app as
   //? SSH keys live on the account (Account settings) and are what unlock + drive
   //? the terminals. The active SSH identity = the most recent key's mapped user
@@ -55,6 +61,9 @@ export interface WorkspacesCtx {
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
   createWorkspace: (name: string) => void;
+  renameWorkspace: (name: string) => void;
+  deleteWorkspace: () => void;
+  saveGitlab: (baseUrl: string, token: string) => void;
   //? Editable per-workspace RBAC + each member's assigned role. Held here so the
   //? edits persist across tab/route changes (would persist server-side for real).
   permRoles: PermRole[];
@@ -62,6 +71,11 @@ export interface WorkspacesCtx {
   addRole: (name: string) => void;
   memberRoles: Record<string, string>;
   setMemberRole: (memberId: string, role: string) => void;
+  //? Members / invites lifecycle (16 members & RBAC).
+  inviteMember: (email: string, roleKey: string) => void;
+  revokeInvite: (inviteId: string) => void;
+  removeMember: (memberId: string) => void;
+  transferOwnership: (memberId: string) => void;
   //? Workspace env vars + configured integration tools (the Pipeline selects from these).
   envVars: EnvVar[];
   saveEnvVar: (v: EnvVar) => void;
@@ -73,6 +87,21 @@ export interface WorkspacesCtx {
   //? Workspace-AI chat can move a ticket and the board animates it.
   stageOverrides: Record<string, string>;        // ticketId → stage id (free string, 04b §12)
   moveTicket: (id: string, stage: string) => void;
+  //? Ticket/board writes (12/13) — the [control-API] `quick-add`/`archive`/`bulk-*` ops.
+  quickAdd: (input: { title: string; stageId?: string; description?: string; sprintId?: string }) => void;
+  archiveTicket: (id: string) => void;
+  bulkMove: (ids: string[], stageId: string) => void;
+  bulkStatus: (ids: string[], status: string) => void;
+  bulkAssign: (ids: string[], assigneeId: string) => void;
+  bulkSprint: (ids: string[], sprintId: string) => void;
+  bulkArchive: (ids: string[]) => void;
+  //? Sources — enable/disable a skill (Fase 2 covers reindex/add/remove).
+  toggleSkill: (id: string, on: boolean) => void;
+  //? Pipeline (7a.2) — full per-stage config from the DB composites.
+  stageConfigs: PipelineStageCfg[];
+  saveStageConfig: (cfg: PipelineStageCfg) => void;
+  //? Sign out of the framework session (not a [control-API] op).
+  signOut: () => void;
 
   //? ----- live tenant data (from the `workspaces/snapshot` read; MIGRATION §4) -----
   //? These replace the screens' old direct `_data/seed` DATA imports. Static
