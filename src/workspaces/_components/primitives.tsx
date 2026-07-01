@@ -6,6 +6,7 @@
 //? theme tokens only — no arbitrary hex. Overlays close on outside-click +
 //? Escape; transforms respect `prefers-reduced-motion` via `motion-reduce:`.
 
+/* eslint-disable react-refresh/only-export-components -- shared primitives module: the useClickAway hook is intentionally co-located with the primitives that use it (dev-only fast-refresh rule; these aren't route components) */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
@@ -255,9 +256,11 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', triggerClas
       <Popover open={open} className={`absolute z-30 mt-1 min-w-[190px] rounded-xl border border-container1-border bg-container1 p-1 shadow-lg ${align === 'right' ? 'right-0' : 'left-0'}`}>
         {items.map((it, i) =>
           it.divider ? (
+            // eslint-disable-next-line react-x/no-array-index-key -- static menu; dividers carry no stable id, so the positional index is the item identity
             <div key={i} className="my-1 h-px bg-divider" />
           ) : (
             <button
+              // eslint-disable-next-line react-x/no-array-index-key -- static menu; positional index is the item identity
               key={i} type="button"
               onClick={(e) => { e.stopPropagation(); change(false); it.onClick?.(); }}
               className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors cursor-pointer ${it.danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}

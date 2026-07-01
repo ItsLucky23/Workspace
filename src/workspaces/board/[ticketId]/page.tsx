@@ -263,8 +263,8 @@ function ActivityTab({ events }: { events: ActivityEvent[] }) {
   if (events.length === 0) return <EmptyState icon="wave-square" title={translate({ key: 'workspaces.ticket.noActivity' })} />;
   return (
     <div className="flex flex-col gap-2">
-      {events.map((e, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-container2/50 transition-colors">
+      {events.map((e) => (
+        <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-container2/50 transition-colors">
           <span className="w-6 h-6 rounded-full bg-container2 text-xs flex items-center justify-center shrink-0">{ACTOR_GLYPH(e.actor, ctx.membersById)}</span>
           <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${EVENT_TINT[e.type]}`}>{e.type}</span>
           <span className="text-sm text-common flex-1 min-w-0 truncate">{e.text}</span>
@@ -326,6 +326,7 @@ function HistoryTab({ history }: { history: StageHistoryEntry[] }) {
   return (
     <div className="flex flex-col">
       {history.map((h, i) => (
+        // eslint-disable-next-line react-x/no-array-index-key -- append-only ordered history; a stage can recur, so the positional index is the entry identity
         <div key={i} className="flex gap-3">
           <div className="flex flex-col items-center">
             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${h.done ? 'bg-correct/15 text-correct' : 'bg-primary/12 text-primary'}`}>

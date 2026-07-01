@@ -72,7 +72,7 @@ export default function Activity() {
         <div className="max-w-3xl mx-auto w-full">
           {events.length === 0 && <EmptyState icon="wave-square" title={translate({ key: 'workspaces.activity.emptyTitle' })} sub={translate({ key: 'workspaces.activity.emptySub' })} />}
           {events.map((e, i) => (
-            <div key={i} className="flex gap-3">
+            <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className="flex gap-3">
               <div className="flex flex-col items-center">
                 <ActorBadge actor={e.actor} membersById={membersById} />
                 {i < events.length - 1 && <span className="w-px flex-1 bg-divider my-1" />}

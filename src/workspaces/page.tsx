@@ -290,8 +290,9 @@ function BoardMobile({ columns }: { columns: Columns }) {
   const translate = useTranslator();
   const { stages } = useWorkspaces();
   const [active, setActive] = useState<string>(stages.find((s) => columns[s.id]?.length)?.id ?? stages[0]?.id ?? '');
-  const stage = stages.find((s) => s.id === active)!;
+  const stage = stages.find((s) => s.id === active);
   const list = columns[active] ?? [];
+  if (!stage) return null;
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto ws-no-scrollbar">

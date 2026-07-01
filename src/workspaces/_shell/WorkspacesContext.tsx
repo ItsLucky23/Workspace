@@ -3,6 +3,7 @@
 //? helpers, so any screen/card deep in the tree can drive the shell without
 //? prop-drilling. State lives in `page.tsx`; this just types + exposes it.
 
+/* eslint-disable react-refresh/only-export-components -- context module: the Provider is co-exported with the useWorkspaces hook + isTicketView guard by design (dev-only fast-refresh rule) */
 import { createContext, use } from 'react';
 
 import type {

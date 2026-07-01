@@ -23,6 +23,7 @@ export default function DiffView({ lines, className }: { lines: DiffLine[]; clas
   return (
     <div className={`rounded-xl border border-container1-border overflow-hidden font-mono text-xs leading-relaxed ${className ?? ''}`}>
       {lines.map((l, i) => (
+        // eslint-disable-next-line react-x/no-array-index-key -- a diff is a static, non-reordering render and can contain identical lines, so the positional index IS the row identity
         <div key={i} className={`flex ${ROW[l.kind]}`}>
           <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-disabled select-none">{l.kind === 'add' ? '' : (l.oldNo ?? '')}</span>
           <span className="w-10 shrink-0 text-right pr-2 py-0.5 text-disabled select-none border-r border-divider">{l.kind === 'del' ? '' : (l.newNo ?? '')}</span>

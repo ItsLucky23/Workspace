@@ -5,6 +5,7 @@
 //? handled globally by <MotionConfig reducedMotion="user"> at the app root
 //? (page.tsx), so individual call-sites don't need to branch.
 
+/* eslint-disable react-refresh/only-export-components -- shared motion module: the spring presets are intentionally co-located with the primitives that consume them (dev-only fast-refresh rule; these aren't route components) */
 import { AnimatePresence, motion, type Transition } from 'motion/react';
 import type { CSSProperties, ReactNode } from 'react';
 

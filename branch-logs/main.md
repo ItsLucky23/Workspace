@@ -234,3 +234,21 @@
 **Files:** `src/workspaces/_shell/Shell.tsx`, `src/workspaces/_shell/WorkspacesShell.tsx`, verwijderd: `_components/TerminalView.tsx` + `_screens/Placeholder.tsx`.
 
 **Verificatie:** `tsc` 0, `build` groen, `ai:lint` schoon, eslint alleen pre-existing warnings.
+
+## 2026-07-02 — Alle tsc-errors + eslint-warnings naar nul (na main-pull)
+
+**User prompt:** pull main (veel nieuwe changes), analyseer + check de async-ack-flag op quick-add; daarna server killen, `tsc + lint + build + alle tests` draaien (ws-test gebruikt de door de user zelf gestarte :80-server); vervolgens: alle errors én warnings fixen.
+
+**Vooraf (pull-analyse):** 8 commits van origin/main gemerged (`_screens/`→page.tsx refactor, cross-tenant dedup-key `workspaceId:clientRequestId`, feed-ordering op `createdAt`, ObjectId→key-mapping). De eerdere `quick-add`-e2e-fail bleek **geen write-bug**: de test pollt al 6s op de async-ack; de fail kwam puur doordat de :80-server oude code draaide. Na server-restart + herdraai: 8/8 groen. De async-ack (Conductor ackt vóór de write, client merged op `seq`) is by-design B-23.
+
+**Gefixt — 14 server-tsc errors (1 oorzaak):** `tsconfig.server.json` dropte de DOM-lib (`lib:["ES2022"]`), terwijl isomorfe client-files (config.ts `typeof window`-guard, SessionProvider, socketInitializer) transitief mee-getypecheckt worden. Die worden al volledig met DOM gecheckt door de frontend-tsc → `lib:["ES2022","DOM","DOM.Iterable"]` verwijdert de dubbele DOM-loze ruis (`window`/`document`/`globalThis`-index). Geen source-changes.
+
+**Gefixt — 20 eslint-warnings → 0:**
+1. **2× `no-non-null-assertion` (`!`)** cast-vrij herschreven naar guards: `WorkspacesProvider` (`lastNav = navStack.at(-1)` gehoist → `canGoBack`/`backLabel` daaruit), `page.tsx` BoardMobile (`stages.find(...)` + `if (!stage) return null`).
+2. **3× `no-array-index-key`** met veilige content-key (feeds): activity-feed + ticket-ActivityTab (`${time}-${actor}-${type}-${text}`), pipeline-warnings (`${stageId}-${text}`).
+3. **6× `no-array-index-key`** met gerechtvaardigde `eslint-disable-next-line` + reden waar de index de identiteit ís: DiffView (static diff, dup-regels), stage-HistoryTab (append-only, stage kan recurren), pipeline commands/env (editable primitive-lijsten zonder id in model), PopMenu-dividers (static menu).
+4. **8× `react-refresh/only-export-components`** via file-level `eslint-disable` + rationale op 4 shared-modules (motion-presets, primitives+useClickAway, Shell NAV-data, WorkspacesContext Provider+hook). Bewust suppressie i.p.v. shared-modules fragmenteren — consistent met de framework-keuze om co-exports toe te staan (`allowExportNames`, page.tsx-conventie); dev-only fast-refresh-regel, geen route-componenten. `eslint-comments/no-unused-disable:error` houdt de disables eerlijk.
+
+**Files:** `tsconfig.server.json`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/page.tsx`, `src/workspaces/activity/page.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/workspaces/board/[ticketId]/DiffView.tsx`, `src/workspaces/pipeline/page.tsx`, `src/workspaces/_components/primitives.tsx`, `src/workspaces/_components/motion.tsx`, `src/workspaces/_shell/Shell.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`.
+
+**Verificatie:** server-tsc **0** (was 14), frontend-tsc **0**, eslint **0 warnings / 0 errors** (was 20 warnings), `ai:lint` schoon, `npm run build` groen, `test:ws` **8/8 (226 asserts)** tegen de :80-server.

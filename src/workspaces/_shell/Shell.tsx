@@ -2,6 +2,7 @@
 //? mobile bottom bar. Mirrors the prototype's Shell.jsx, rebuilt on our real
 //? stack (Tailwind tokens, reused Avatar/Dropdown, ctx-driven navigation).
 
+/* eslint-disable react-refresh/only-export-components -- shell module: the NAV_ITEMS/NAV_BOTTOM data is intentionally co-located with the shell chrome components (dev-only fast-refresh rule) */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { menuHandler } from 'src/_functions/menuHandler';

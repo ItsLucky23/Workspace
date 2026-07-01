@@ -170,6 +170,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const ctx = useMemo<WorkspacesCtx>(() => {
     const push = (v: WsView) => { if (v !== view) setNavStack((s) => [...s, view]); };
     const activeWorkspace = snap.workspaces.find((w) => w.id === snap.activeWorkspaceId) ?? snap.workspaces.at(0) ?? { id: '', name: 'Loading…', slug: '', ownerId: '', role: 'member' as const };
+    const lastNav = navStack.at(-1);
     return {
       view,
       navigate: (v) => { void navigate(pathForView(v)); },
@@ -180,8 +181,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setNavStack((s) => s.slice(0, -1));
         void navigate(pathForView(prev));
       },
-      canGoBack: navStack.length > 0,
-      backLabel: navStack.length > 0 ? viewLabel(navStack.at(-1)!) : null,
+      canGoBack: lastNav !== undefined,
+      backLabel: lastNav === undefined ? null : viewLabel(lastNav),
       openTabs,
       openTicket: (id) => {
         setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));

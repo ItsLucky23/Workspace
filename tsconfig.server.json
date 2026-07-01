@@ -3,7 +3,11 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    //? DOM is included because a few isomorphic client files (config.ts's
+    //? `typeof window` guard, SessionProvider, socketInitializer) are pulled into
+    //? this program transitively; they're already fully checked by the frontend
+    //? tsconfig with DOM, so matching lib here removes the duplicate DOM-less noise.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "preserve"
   },
   "include": [

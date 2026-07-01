@@ -334,6 +334,7 @@ function ProcessTab({ s, update }: TabProps) {
           <div className="pl-8 flex flex-col gap-1.5">
             <div className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.commandsInOrder' })}</div>
             {p.commands.map((cmd, ci) => (
+              // eslint-disable-next-line react-x/no-array-index-key -- editable string[] with no per-row id in the model; index is the row identity
               <div key={ci} className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-mono w-4 shrink-0 text-right">{ci + 1}</span>
                 <input value={cmd} onChange={(e) => { setProc(p.id, { commands: p.commands.map((c, j) => (j === ci ? e.target.value : c)) }); }} className={`flex-1 min-w-0 font-mono ${inputCls}`} placeholder="cd packages/api && dotnet run" />
@@ -346,6 +347,7 @@ function ProcessTab({ s, update }: TabProps) {
           <div className="pl-8 flex flex-col gap-1.5">
             <div className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.environmentVariables' })}</div>
             {p.env.map((ev, ei) => (
+              // eslint-disable-next-line react-x/no-array-index-key -- editable {key,value}[] with no per-row id in the model; index is the row identity
               <div key={ei} className="flex items-center gap-2">
                 <input value={ev.key} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, key: e.target.value } : x)) }); }} placeholder="KEY" className={`w-40 shrink-0 font-mono ${inputCls}`} />
                 <span className="text-muted">{translate({ key: 'workspaces.pipeline.equals' })}</span>
@@ -684,7 +686,7 @@ export default function Pipeline() {
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden shrink-0">
               <div className="flex flex-col gap-2">
                 {warnings.map((w, i) => (
-                  <div key={i} className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 ${w.severity === 'warn' ? 'border-warning/40 bg-warning/10' : 'border-container1-border bg-container2/40'}`}>
+                  <div key={`${w.stageId}-${w.text}`} className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 ${w.severity === 'warn' ? 'border-warning/40 bg-warning/10' : 'border-container1-border bg-container2/40'}`}>
                     <Icon name={w.severity === 'warn' ? 'triangle-exclamation' : 'circle-question'} className={`mt-0.5 shrink-0 ${w.severity === 'warn' ? 'text-warning' : 'text-muted'}`} />
                     <span className="flex-1 text-sm text-common">{w.text}</span>
                     <button type="button" onClick={() => { setSelectedId(w.stageId); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.pipeline.goToStage' })}</button>
