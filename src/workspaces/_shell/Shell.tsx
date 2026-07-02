@@ -15,7 +15,7 @@ import Icon, { type IconName } from '../_components/Icon';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
-import type { AiSuggestion, ChatMessage, NotificationItem } from '../_data/types';
+import type { AiSuggestion, ChatMessage, ChatProposal, NotificationItem } from '../_data/types';
 
 //? The CSS color token for a ticket's live status dot.
 function statusColor(status: string | undefined): string {
@@ -338,18 +338,33 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
   return { shown, typing: shown.length < text.length };
 }
 
-function ChatBubble({ m }: { m: ChatMessage }) {
+function ChatBubble({ m, onAccept }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void }) {
+  const translate = useTranslator();
   const mine = m.role === 'user';
-  const animate = !mine && !typedMessages.has(m.id);
+  const animate = !mine && !typedMessages.has(m.id) && !m.pending;
   const { shown, typing } = useTypewriter(m.text, animate);
   useEffect(() => { if (!typing) typedMessages.add(m.id); }, [typing, m.id]);
+  const p = m.proposal;
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING_SOFT} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      {!mine && <span className="w-6 h-6 shrink-0 mr-2 rounded-md bg-primary/12 text-primary text-xs flex items-center justify-center self-end"><Icon name="robot" /></span>}
-      <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${mine ? 'bg-primary text-title-primary' : 'bg-container2 text-common'}`}>
-        {mine ? m.text : shown}
-        {typing && <span className="ml-0.5 inline-block w-1.5 h-3.5 align-[-2px] bg-current opacity-50 motion-safe:animate-pulse" />}
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING_SOFT} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+      <div className={`flex w-full ${mine ? 'justify-end' : 'justify-start'}`}>
+        {!mine && <span className="w-6 h-6 shrink-0 mr-2 rounded-md bg-primary/12 text-primary text-xs flex items-center justify-center self-end"><Icon name="robot" /></span>}
+        <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${mine ? 'bg-primary text-title-primary' : 'bg-container2 text-common'}`}>
+          {m.pending
+            ? <span className="inline-flex gap-1 py-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-current opacity-40 motion-safe:animate-pulse" style={{ animationDelay: `${String(i * 150)}ms` }} />)}</span>
+            : (mine ? m.text : shown)}
+          {typing && <span className="ml-0.5 inline-block w-1.5 h-3.5 align-[-2px] bg-current opacity-50 motion-safe:animate-pulse" />}
+        </div>
       </div>
+      {p && (
+        <div className="mt-1.5 ml-8 max-w-[80%] rounded-xl border border-primary-border bg-primary/8 p-2.5 flex items-center gap-2">
+          <Icon name="wand-magic-sparkles" className="text-primary shrink-0" />
+          <span className="text-xs text-title flex-1 min-w-0">{p.summary}</span>
+          {m.accepted
+            ? <span className="text-xs text-correct inline-flex items-center gap-1 shrink-0"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
+            : <button type="button" onClick={() => { onAccept(m.id, p); }} className="shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiAccept' })}</button>}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -359,7 +374,7 @@ function ChatBubble({ m }: { m: ChatMessage }) {
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions'>('chat');
   const [draft, setDraft] = useState('');
@@ -417,7 +432,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         {tab === 'chat' ? (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-              {chat.map((m) => <ChatBubble key={m.id} m={m} />)}
+              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} />)}
             </div>
             <div className="border-t border-divider p-3 flex items-center gap-2">
               <input

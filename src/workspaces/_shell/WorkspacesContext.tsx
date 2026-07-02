@@ -7,7 +7,7 @@
 import { createContext, use } from 'react';
 
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
@@ -56,6 +56,7 @@ export interface WorkspacesCtx {
   toggleAi: () => void;
   chat: ChatMessage[];
   sendChat: (text: string) => void;
+  acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
   //? Workspaces: one project = one workspace. Switch the active one or create a
   //? new (still-simple) workspace. Dummy data shared across them for now.
   workspaces: Workspace[];

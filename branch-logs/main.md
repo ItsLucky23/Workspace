@@ -666,3 +666,14 @@ De marquee — nu Docker draait. Lane-F P1-scope (L1 + provisioning-skeleton):
 - **Uitgesteld/geflagd (P2+, niet stil weggelaten):** auth-projectie (§2), egress-proxy (§6), Caddy-net (§5), CapacityManager (§8), in-container pty-agent (§9), L2 per-project images (§1.2).
 
 **Geverifieerd (echt, tegen de octocat-repo):** L1 gebouwd (claude 2.1.198/node22/git/node-pty/agent OK); container gelaunched → `/work` op branch **DEV-ctr1** (niet detached), `git status` werkt (geen dangling gitdir), README **agent-owned**; hardening-flags allemaal correct via `docker inspect`; idempotent (re-launch = zelfde container); teardown verwijdert container+volume. front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **13/13**.
+
+## 2026-07-02 — Runtime fase 4: Workspace-AI-chat (natuurlijke taal → propose → accept → Conductor)
+
+Jouw #1-wens, op de AI-provider-laag (fase 2a):
+- **`server/ai/workspaceChat.ts`** — `interpretChat`: laadt de echte tickets/stages/members, bouwt een system-prompt met de toegestane ops, draait `runAiCompletion('workspace-chat', …)`, en par-set/**valideert** de AI-JSON tegen de echte state (alleen bestaande tickets/stages/members → anders reply-only). Ops V1: `bulk-move` (ticket vooruittrekken), `assign`, `add-comment`. De AI schrijft NOOIT zelf.
+- **`_api/aiChat_v1.ts`** — membership-gated, rate-limit 20, per-user request/response (`_api`, geen room-broadcast). Retourneert `{ reply, proposal? }`.
+- **Client**: `sendChat` echt gekoppeld (user-turn + pending-bubble → reply + gevalideerde proposal-card); `acceptChatProposal` dispatcht via dezelfde `_sync`-routes als de handmatige UI (dus onder Conductor + OP_CAPABILITY RBAC). `ChatBubble` rendert thinking-dots + proposal-card met Accept/Done. `ChatProposal`/`ChatMessage` uitgebreid. 3 locale-keys ×4.
+- **Browser-geverifieerd (echte claude-turn):** "Move DEV-3 to refined" → *"I'll move DEV-3 (RT-LIVE-EDITED) from Unrefined to Refined. Please confirm."* + proposal-card → Accept → DEV-3 **unrefined→refined** in DB (via Conductor). Server-interpret ook los bewezen (vraag → reply-only; move → gevalideerde proposal).
+- **Geflagd:** aiChat-route mist nog een business-logic-test met gemockte AI (de echte turn is te traag/niet-CI-veilig) — auto-sweep dekt contract/auth.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.

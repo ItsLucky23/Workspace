@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { apiRequest, tryCatch, useSession, useTheme } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useSession, useTheme, useTranslator } from '@luckystack/core/client';
 
 import { joinRoom, leaveRoom } from 'src/_sockets/socketInitializer';
 import { syncRequest, useSyncEvents } from 'src/_sockets/syncRequest';
@@ -20,7 +20,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
@@ -430,13 +430,43 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   const membersById = useMemo(() => Object.fromEntries(snap.members.map((m) => [m.id, m])), [snap.members]);
 
+  const translate = useTranslator();
+
+  //? Send a chat message to the live Workspace-AI: echo the user turn + a pending AI
+  //? bubble immediately, then resolve it with the AI's reply and (if any) a VALIDATED
+  //? action proposal the user can accept. The AI never writes — acceptChatProposal does.
   const sendChat = useCallback((text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    const workspaceId = snap.activeWorkspaceId;
+    if (!trimmed || !workspaceId) return;
     const stamp = String(reqCounter + 1); reqCounter += 1;
-    const reply = 'Noted — the live Workspace-AI lands with the pipeline engine (Fase 2). For now I can only chat.';
-    setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: `a${stamp}`, role: 'ai', text: reply }]);
-  }, []);
+    const aiId = `a${stamp}`;
+    setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed } }));
+      setChat((prev) => prev.map((m) => {
+        if (m.id !== aiId) return m;
+        if (error || res?.status !== 'success' || res.result.error) {
+          return { ...m, pending: false, text: translate({ key: 'workspaces.shell.aiError' }) };
+        }
+        const { reply, proposal } = res.result;
+        return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}) };
+      }));
+    })();
+  }, [snap.activeWorkspaceId, translate]);
+
+  //? Accept an AI proposal → dispatch the matching control-op via the same `_sync` routes
+  //? the manual UI uses (so execution stays under the Conductor + OP_CAPABILITY RBAC) and
+  //? mark the bubble consumed so its Accept button can't re-fire.
+  const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
+    const room = snap.activeWorkspaceId;
+    if (room) {
+      if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, clientRequestId: nextReqId() }, receiver: room });
+      else if (p.op === 'assign' && p.ticketKeys && p.assigneeId) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
+      else if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
+    }
+    setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
+  }, [snap.activeWorkspaceId]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 
@@ -503,6 +533,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleAi: () => { setAiOpen((o) => !o); },
       chat,
       sendChat,
+      acceptChatProposal,
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
@@ -594,7 +625,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, snap, afterWrite, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -421,11 +421,25 @@ export interface WorkspaceRole {
 }
 
 //? Workspace-AI chat message (dummy, client-only for the prototype).
+//? A control-op the Workspace-AI proposes for the user to CONFIRM (the AI never writes;
+//? an accepted proposal dispatches the matching control-op under the normal RBAC).
+export interface ChatProposal {
+  op: 'bulk-move' | 'assign' | 'add-comment';
+  summary: string;          // human-readable ("Move DEV-3 → Review")
+  ticketKeys?: string[];
+  stageId?: string;
+  assigneeId?: string;
+  body?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
   questionSetId?: string; // renders a QuestionSet card inline in the Assistant chat (ERRATA E4)
+  proposal?: ChatProposal; // an AI action proposal rendered with an Accept button
+  pending?: boolean;       // the AI turn is in flight (renders a thinking indicator)
+  accepted?: boolean;      // the proposal has been dispatched (Accept consumed)
 }
 
 //? ---------------------------------------------------------------- carry-forward + questions
