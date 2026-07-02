@@ -132,6 +132,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     return () => { void leaveRoom(room); };
   }, [snap.activeWorkspaceId]);
 
+  //? Shared realtime reducer: UPSERT the broadcast ticket(s) by id (an archive is
+  //? just an upsert with `archived:true` — the board/backlog derive visibility from
+  //? it). Every ticket-mutation `_sync` event routes its delta through here.
+  const mergeTickets = useCallback((incoming: Ticket[]) => {
+    if (incoming.length === 0) return;
+    setSnap((s) => {
+      const byId = new Map(s.tickets.map((t) => [t.id, t]));
+      for (const t of incoming) byId.set(t.id, t);
+      return { ...s, tickets: [...byId.values()] };
+    });
+  }, []);
+
   //? quick-add delta → merge the new ticket (dedupe by id, since the sender also
   //? receives its own broadcast). No refetch.
   useEffect(() => upsertSyncEventCallback({
@@ -142,6 +154,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       setSnap((s) => (s.tickets.some((t) => t.id === ticket.id) ? s : { ...s, tickets: [...s.tickets, ticket] }));
     },
   }), [upsertSyncEventCallback]);
+
+  //? archive / ticket-edit deltas → upsert the affected ticket(s). No refetch.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/archive', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/ticketEdit', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
 
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
@@ -312,10 +334,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
       quickAdd: quickAddApi,
-      editTicket: (id, patch) => { afterWrite(apiRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId: id, ...patch, clientRequestId: nextReqId() } })); },
+      //? Realtime writes — per-action `_sync` event → delta broadcast → client merge.
+      editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
       addComment: (ticketId, body) => { afterWrite(apiRequest({ name: 'workspaces/addComment', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId, body, clientRequestId: nextReqId() } })); },
-      //? Board/ticket writes — each on its OWN typed `_api` route (Fase-0 split).
-      archiveTicket: (id) => { void (async () => { await apiRequest({ name: 'workspaces/archive', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId: id, clientRequestId: nextReqId() } }); refetch(); })(); },
+      archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
       bulkMove: (ids, stageId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, stageId, clientRequestId: nextReqId() } }); refetch(); })(); },
       bulkStatus: (ids, status) => { void (async () => { await apiRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, status, clientRequestId: nextReqId() } }); refetch(); })(); },
       bulkAssign: (ids, assigneeId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, assigneeId, clientRequestId: nextReqId() } }); refetch(); })(); },

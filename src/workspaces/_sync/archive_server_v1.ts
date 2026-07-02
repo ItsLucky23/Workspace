@@ -1,0 +1,27 @@
+//? Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on
+//? the serial Conductor, then broadcast the affected ticket(s) to the workspace room;
+//? every client upserts by id (an archive is an upsert — the board/backlog hide
+//? `archived` rows). No refetch. See dispatchSync.ts for the shared plumbing.
+
+import { AuthProps, SessionLayout } from '../../../config';
+import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';
+import { dispatchControlSync } from '../../../server/control/dispatchSync';
+import { ticketListDelta } from '../../../server/read/mappers';
+
+export const auth: AuthProps = { login: true, additional: [] };
+
+export interface SyncParams {
+  clientInput: { ticketId: string; clientRequestId: string };
+  user: SessionLayout;
+  functions: Functions;
+  roomCode: string;
+}
+
+export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
+  const res = await dispatchControlSync({
+    op: 'archive', roomCode, userId: user.id, prisma: functions.db.prisma,
+    target: { ticketId: clientInput.ticketId }, clientRequestId: clientInput.clientRequestId,
+  });
+  if (!res.ok) return { status: 'error', errorCode: res.errorCode };
+  return { status: 'success', tickets: ticketListDelta(res.result) };
+};

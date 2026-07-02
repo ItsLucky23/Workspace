@@ -504,3 +504,14 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 11/11 (write-logica ongewijzigd). **Live browser-verificatie vereist een :80-herstart met deze code** (dan test ik met agent-browser: ticket in tab A → verschijnt live in tab B zonder refresh).
 
 **Volgende:** zelfde patroon voor archive/ticket-edit/bulk-*/sprint-create/add-comment (delta's: ticket/ticketId/ticketIds/sprint/note), daarna de members/settings-ops; legacy `_api`+refetch vervalt per gemigreerde op.
+
+## 2026-07-02 — Realtime m1 fan-out (1): delta-infra + archive/ticket-edit via _sync
+
+**Gedaan:**
+- **Delta-infra** (`96c857c`): `mappers.ts` → `ticketListDelta` / `sprintDelta` / `noteDelta` + gedeelde `formatTime` (snapshot importeert 'm nu, DRY). Nieuwe `server/control/dispatchSync.ts` = gedeelde RBAC (`OP_CAPABILITY`) + enqueue + delta-plumbing zodat elke `_sync`-route een dunne shell is (aparte events per actie, DRY plumbing). Conductor: ticket-mutatie-ops (archive/ticket-edit/bulk-*) + add-comment + sprint-create geven nu hun affected rows/created row terug als delta.
+- **archive + ticket-edit → `_sync`**: `src/workspaces/_sync/{archive,ticketEdit}_server_v1.ts` (delegeren aan `dispatchControlSync`, broadcasten `tickets: Ticket[]`). Client: gedeelde `mergeTickets`-reducer (upsert by id — archive = upsert met archived:true, board/backlog filteren op archived) + `upsertSyncEventCallback` per event; `editTicket`/`archiveTicket` schrijven via `syncRequest` (geen refetch). Legacy `_api/{archive,ticketEdit}_v1.ts` verwijderd.
+- **Test:** `tests/integration/realtimeDelta.test.mts` (10 asserts: quick-add/edit/archive/sprint-create/add-comment delta-shapes via de echte Conductor + mappers).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+**Volgende:** bulk-move/status/assign/sprint/archive → `_sync` (delta `tickets: Ticket[]`), daarna add-comment + sprint-create → `_sync`, daarna members/settings-ops. Live browser-verificatie op :80 zodra herstart.
