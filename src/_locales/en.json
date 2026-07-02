@@ -729,6 +729,9 @@
       "tabSkills": "Skills / MCP",
       "title": "Sources",
       "uploadSpec": "Upload spec",
+      "scanRepo": "Scan repository",
+      "aiEditable": "AI-editable",
+      "aiEditableHint": "Allow the AI to edit this doc during the pipeline",
       "emptyDocsTitle": "No context docs yet"
     },
     "board": {

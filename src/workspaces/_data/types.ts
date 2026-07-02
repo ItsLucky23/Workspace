@@ -323,6 +323,7 @@ export interface InfoDoc {
   pendingBranches?: string[]; // branches whose changes aren't in this file yet
   usedByStages?: string[];   // stage names that load this doc
   content: string;           // markdown/text shown in the read-only preview
+  aiEditable: boolean;       // may the AI edit this doc? (docs-init per-file gate; backed by InfoSource.enabled)
 }
 
 export interface SkillEntry {

@@ -84,7 +84,7 @@ function DetailHead({ title }: { title: string }) {
 
 const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBackground: true, background: 'bg-container1', size: 'md' });
 
-function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
+function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: () => void; onToggleAiEditable: () => void }) {
   const translate = useTranslator();
   return (
     <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
@@ -107,7 +107,11 @@ function DocCard({ doc, onOpen }: { doc: InfoDoc; onOpen: () => void }) {
       <div className="flex items-center gap-3 mt-1">
         <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> {translate({ key: 'workspaces.sources.preview' })}</button>
         {doc.source !== 'uploaded' && <button type="button" onClick={noop} className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> {translate({ key: 'workspaces.sources.regenerate' })}</button>}
-        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer ml-auto">{translate({ key: 'workspaces.sources.details' })}</button>
+        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer">{translate({ key: 'workspaces.sources.details' })}</button>
+        <div className="flex items-center gap-1.5 ml-auto" title={translate({ key: 'workspaces.sources.aiEditableHint' })}>
+          <span className="text-[11px] text-muted">{translate({ key: 'workspaces.sources.aiEditable' })}</span>
+          <Toggle on={doc.aiEditable} onChange={onToggleAiEditable} />
+        </div>
       </div>
     </div>
   );
@@ -136,7 +140,7 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill } = useWorkspaces();
+  const { docs, skills, toggleSkill, scanDocs, repo } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
 
@@ -149,7 +153,12 @@ export default function Sources() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
-        {tab === 'docs' && <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
+        {tab === 'docs' && (
+          <div className="flex items-center gap-2">
+            {repo.linked && <WsButton variant="secondary" icon="magnifying-glass" onClick={() => { scanDocs(); }}>{translate({ key: 'workspaces.sources.scanRepo' })}</WsButton>}
+            <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
+          </div>
+        )}
       </div>
 
       <div className="px-4 md:px-6 mt-3">
@@ -160,7 +169,7 @@ export default function Sources() {
         {tab === 'docs' && (
           docs.length === 0
             ? <EmptyState icon="file-lines" title={translate({ key: 'workspaces.sources.emptyDocsTitle' })} />
-            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} />)}</div>
+            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onToggleAiEditable={() => { toggleSkill(d.id, !d.aiEditable); }} />)}</div>
         )}
         {tab === 'skills' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">

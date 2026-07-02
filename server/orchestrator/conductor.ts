@@ -18,7 +18,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
-import { cloneRepo, addWorktree, isLinked } from '../git/repoStore';
+import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -587,6 +587,22 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Persist the CLEAN url on the workspace's project (token is never stored here).
       await prisma.project.updateMany({ where: { workspaceId: action.workspaceId }, data: { gitUrl } });
       return status;
+    }
+    case 'scan-docs': {
+      //? Docs-init scan (register-flow step D): find the linked repo's doc files and
+      //? register each as a context-doc InfoSource. `enabled` doubles as the per-file
+      //? aiEditable gate — DEFAULT OFF (the AI may not edit a doc until the user allows).
+      //? Re-scan updates existing docs' content without flipping their aiEditable state.
+      const found = await listRepoDocs(action.workspaceId);
+      for (const doc of found) {
+        const summary = doc.content.split('\n').map((l) => l.trim()).find((l) => l.length > 0)?.slice(0, 140) ?? '';
+        const existing = await prisma.infoSource.findFirst({ where: { workspaceId: action.workspaceId, mode: 'context-doc', name: doc.path } });
+        await (existing
+          ? prisma.infoSource.update({ where: { id: existing.id }, data: { content: doc.content, summary, note: 'scanned' } })
+          : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'git', name: doc.path, content: doc.content, summary, note: 'scanned', enabled: false, usedByStages: [] } }));
+      }
+      //? Return the workspace's full context-doc set as the delta (client replaces list).
+      return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
     }
     case 'raise-cap':
     case 'edit-budget': {

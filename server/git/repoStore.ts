@@ -66,6 +66,34 @@ function withAuth(gitUrl: string, token: string | undefined): string {
   return `https://${user}:${token}@${rest}`;
 }
 
+//? A documentation file discovered in the linked repo (docs-init scan). Read straight
+//? from the bare clone via `git show` — no working checkout needed.
+export interface RepoDoc { path: string; content: string }
+
+function isDocPath(p: string): boolean {
+  const lower = p.toLowerCase();
+  return /\.(?:md|mdx|markdown|rst|txt|adoc)$/.test(lower)
+    || lower.startsWith('docs/')
+    || /(?:^|\/)(?:readme|changelog|contributing|license|architecture)(?:$|\.)/.test(lower);
+}
+
+//? Scan the linked repo (default-branch HEAD) for documentation files — the docs-init
+//? corpus the AI later reads/edits. Lists paths via `git ls-tree` and reads each body
+//? via `git show HEAD:<path>` (bounded: ≤200 files, ≤20k chars each). Returns [] if no
+//? repo is linked.
+export async function listRepoDocs(workspaceId: string): Promise<RepoDoc[]> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return [];
+  const listing = await git(['--git-dir', bare, 'ls-tree', '-r', 'HEAD', '--name-only']).catch(() => '');
+  const paths = listing.split('\n').map((p) => p.trim()).filter((p) => p.length > 0 && isDocPath(p)).slice(0, 200);
+  const docs: RepoDoc[] = [];
+  for (const p of paths) {
+    const content = await git(['--git-dir', bare, 'show', `HEAD:${p}`]).catch(() => '');
+    docs.push({ path: p, content: content.slice(0, 20_000) });
+  }
+  return docs;
+}
+
 //? Read the current bare-repo status from disk (for the snapshot). `linked` reflects
 //? whether the bare clone exists; branch/head are the current default-branch pointer.
 export async function repoStatus(workspaceId: string, gitUrl: string | undefined): Promise<RepoStatus> {

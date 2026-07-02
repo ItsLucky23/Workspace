@@ -15,7 +15,7 @@ import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/cli
 
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
-import { formatTime, toTicket } from './mappers';
+import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
@@ -30,7 +30,6 @@ const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key 
 const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s === 'test' || s === 'review' || s === 'final' ? s : 'code');
 const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' ? s : 'maintenance');
 const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' ? s : 'ai-message');
-const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
 const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' ? s : 'container-failure');
 const asCommandMode = (s: string): CommandMode => (s === 'allow' || s === 'deny' ? s : 'ask');
@@ -198,9 +197,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
-    const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => ({
-      id: s.id, name: s.name, source: asDocSource(s.source), updated: '', note: s.note ?? '', summary: s.summary ?? '', usedByStages: s.usedByStages, content: s.content ?? '',
-    }));
+    const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));
     const skills: SkillEntry[] = sourceRows.filter((s) => s.mode === 'skill').map((s) => ({
       id: s.id, name: s.name, kind: asSkillKind(s.kind), status: s.summary ?? '', model: s.model ?? undefined, on: s.enabled, description: s.summary ?? undefined, usedByStages: s.usedByStages,
     }));

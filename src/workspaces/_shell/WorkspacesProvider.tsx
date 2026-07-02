@@ -328,7 +328,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
       const { sourceId, on } = serverOutput;
-      setSnap((s) => ({ ...s, skills: s.skills.map((sk) => (sk.id === sourceId ? { ...sk, on } : sk)) }));
+      //? An InfoSource id may be a skill (SkillEntry.on) or a context-doc (aiEditable) —
+      //? both back onto `enabled`, so update whichever list holds it.
+      setSnap((s) => ({
+        ...s,
+        skills: s.skills.map((sk) => (sk.id === sourceId ? { ...sk, on } : sk)),
+        docs: s.docs.map((d) => (d.id === sourceId ? { ...d, aiEditable: on } : d)),
+      }));
     },
   }), [upsertSyncEventCallback]);
   useEffect(() => upsertSyncEventCallback({
@@ -347,6 +353,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (serverOutput.status !== 'success' || !serverOutput.repo) return;
       const repo = serverOutput.repo;
       setSnap((s) => ({ ...s, repo }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? scan-docs delta → replace the workspace's context-doc list (docs-init).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/scanDocs', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const docs = serverOutput.docs;
+      setSnap((s) => ({ ...s, docs }));
     },
   }), [upsertSyncEventCallback]);
 
@@ -508,6 +524,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { gitUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
+      },
+      scanDocs: () => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/scanDocs', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room });
       },
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {

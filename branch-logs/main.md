@@ -633,3 +633,14 @@ Docker-vrije runtime-rung, bouwt op de bare clone:
 - **Geverifieerd** tegen de echte octocat bare clone: `DEV-wttest`-worktree + branch @ 7fd1a60, README aanwezig, idempotent. Geen db push (branch/commitHash bestonden).
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12. (De `docker run` die de worktree mount = fase 2, wacht op Docker.)
+
+## 2026-07-02 — Runtime fase 1c: docs-init scan (register-flow step D)
+
+Docker-vrij, claude-vrij, meteen bruikbaar:
+- **`repoStore.listRepoDocs`**: scant de gelinkte repo (default-branch HEAD) op doc-bestanden via `git ls-tree`/`git show` (geen checkout nodig; ≤200 files, ≤20k/stuk; md/rst/txt/adoc + docs/ + README/CHANGELOG/…).
+- **`scan-docs` control-op** (editPipeline) + `_sync/scanDocs`: registreert elk doc als een `context-doc` `InfoSource`; `enabled` doet dienst als de **per-file aiEditable-gate — DEFAULT OFF** (AI mag niet bewerken tot de user het aanzet). Re-scan update content zonder de gate te flippen. Broadcast de volledige doc-lijst (client vervangt).
+- **`toInfoDoc`/`docListDelta` mappers** (aiEditable ← enabled), gedeeld met de snapshot; `InfoDoc.aiEditable` toegevoegd. Skill-toggle-callback updatet nu ook docs (aiEditable), zodat de toggle in Sources realtime werkt.
+- **UI**: Sources-view krijgt een "Scan repository"-knop (als repo gelinkt) + per-doc AI-editable-toggle.
+- **Browser-geverifieerd**: octocat README gescand → verschijnt live als context-doc, DB `README(aiEditable=false)` (default off). Geen db push (enabled hergebruikt).
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12. (AI die NIEUWE docs genereert = latere laag, vergt de claude-runtime.)

@@ -71,6 +71,7 @@ export interface WorkspacesCtx {
   saveGitlab: (baseUrl: string, token: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
+  scanDocs: () => void;
   //? Editable per-workspace RBAC + each member's assigned role. Held here so the
   //? edits persist across tab/route changes (would persist server-side for real).
   permRoles: PermRole[];

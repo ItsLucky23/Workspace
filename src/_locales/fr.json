@@ -729,6 +729,9 @@
       "tabSkills": "Skills / MCP",
       "title": "Sources",
       "uploadSpec": "Téléverser une spec",
+      "scanRepo": "Analyser le dépôt",
+      "aiEditable": "Modifiable par l'IA",
+      "aiEditableHint": "Autoriser l'IA à modifier ce document pendant le pipeline",
       "emptyDocsTitle": "Aucun document de contexte pour l’instant"
     },
     "board": {

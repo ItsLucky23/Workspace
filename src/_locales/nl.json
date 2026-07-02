@@ -729,6 +729,9 @@
       "tabSkills": "Skills / MCP",
       "title": "Bronnen",
       "uploadSpec": "Spec uploaden",
+      "scanRepo": "Repository scannen",
+      "aiEditable": "AI-bewerkbaar",
+      "aiEditableHint": "Sta toe dat de AI dit doc bewerkt tijdens de pipeline",
       "emptyDocsTitle": "Nog geen contextdocs"
     },
     "board": {

@@ -4,9 +4,30 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource } from '@prisma/client';
 
-import type { EnvVar, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import type { EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+
+const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
+
+//? Map an InfoSource row (mode='context-doc') → the frontend `InfoDoc`. `aiEditable` is
+//? backed by `enabled` (reused for docs: on = the AI may edit this file). Shared by the
+//? snapshot AND the scan-docs `_sync` route so a live doc delta matches the snapshot.
+export function toInfoDoc(s: DbInfoSource): InfoDoc {
+  return {
+    id: s.id, name: s.name, source: asDocSource(s.source), updated: '', note: s.note ?? '',
+    summary: s.summary ?? '', usedByStages: s.usedByStages, content: s.content ?? '', aiEditable: s.enabled,
+  };
+}
+
+//? Narrow the scan-docs op result (the workspace's context-doc InfoSource rows) to the
+//? frontend `InfoDoc[]` delta the `_sync` route broadcasts (client replaces the list).
+export function docListDelta(result: unknown): InfoDoc[] {
+  return Array.isArray(result) ? result.filter((r): r is DbInfoSource => isDbInfoSource(r)).map((r) => toInfoDoc(r)) : [];
+}
+function isDbInfoSource(v: unknown): v is DbInfoSource {
+  return v !== null && typeof v === 'object' && 'mode' in v && 'name' in v && 'enabled' in v;
+}
 
 //? DB roleKey → the frontend `Role` union (ternary narrowing, no `as`). Mirrors
 //? `asRole` in buildSnapshot so a live member/invite delta matches the snapshot.

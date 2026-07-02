@@ -325,31 +325,31 @@ export const TERMINALS: Terminal[] = [
 
 export const DOCS: InfoDoc[] = [
   {
-    id: 'summary', name: 'project-summary', source: 'generated', updated: '2h ago', note: 'frozen @ abc123',
+    id: 'summary', name: 'project-summary', source: 'generated', updated: '2h ago', note: 'frozen @ abc123', aiEditable: true,
     summary: 'High-level orientation: what the project is, its architecture (web-app + orchestrator), and the house conventions. Always loaded first.',
     pendingBranches: ['DEV-1245', 'DEV-1249'], usedByStages: ['Refined', 'Plan', 'Implementatie'],
     content: '# Project summary\n\nLuckyStack is a socket-first fullstack framework (React 19 + raw Node + Socket.io). Workspaces orchestrates AI-driven development: tickets flow through a configurable pipeline, each running in its own container with a live terminal.\n\n## Architecture\n- web-app (this UI) — board, terminals, sources, presence\n- orchestrator — containers, worktrees, ~20 Claude-CLI processes, RAG indexer\n\n## Conventions\nSee `conventions` doc. DB schema in `db-schema`.',
   },
   {
-    id: 'conventions', name: 'conventions', source: 'git', updated: '1d ago', note: 'frozen @ abc123',
+    id: 'conventions', name: 'conventions', source: 'git', updated: '1d ago', note: 'frozen @ abc123', aiEditable: false,
     summary: 'Coding house-style: token-only colors, mandatory i18n, custom tryCatch, surgical changes. The rules the agent must follow when writing code.',
     usedByStages: ['Implementatie', 'Test', 'Review'],
     content: '# Conventions\n\n- Tailwind colors come ONLY from the theme tokens.\n- i18n via useTranslator for user-facing text.\n- Custom tryCatch everywhere — never raw try/catch.\n- Surgical changes; every changed line traces to the request.',
   },
   {
-    id: 'glossary', name: 'glossary', source: 'git', updated: '3d ago', note: 'frozen @ abc123',
+    id: 'glossary', name: 'glossary', source: 'git', updated: '3d ago', note: 'frozen @ abc123', aiEditable: false,
     summary: 'Domain terms: stage vs status, worktree, RAG snapshot, commit-hash freezing. Disambiguates the project vocabulary.',
     usedByStages: ['Refined', 'Review'],
     content: '# Glossary\n\n- **Stage** — a pipeline step (board column).\n- **Status** — ticket state within a stage (pill).\n- **Worktree** — per-ticket git checkout on a DEV-#### branch.\n- **RAG snapshot** — embeddings frozen on a commit hash.',
   },
   {
-    id: 'dbschema', name: 'db-schema', source: 'generated', updated: '2h ago', note: 'frozen @ abc123',
+    id: 'dbschema', name: 'db-schema', source: 'generated', updated: '2h ago', note: 'frozen @ abc123', aiEditable: true,
     summary: 'Generated Prisma model excerpt (Ticket, TicketEvent, …). Lets the agent reason about the data shape without reading the whole schema.',
     pendingBranches: ['DEV-1249'], usedByStages: ['Plan', 'Implementatie'],
     content: '# DB schema (excerpt)\n\nmodel Ticket {\n  id String @id\n  stageId String\n  statusKey String\n  branch String?\n  commitHash String?\n}\n\nmodel TicketEvent { id; ticketId; seq Int; type; payload Json }',
   },
   {
-    id: 'authspec', name: 'Auth redesign.md', source: 'uploaded', updated: '5d ago', note: 'spec',
+    id: 'authspec', name: 'Auth redesign.md', source: 'uploaded', updated: '5d ago', note: 'spec', aiEditable: false,
     summary: 'Uploaded spec: OAuth = login, SSH key = terminal capability gate. The design decision behind the auth flow.',
     usedByStages: ['Plan'],
     content: '# Auth redesign\n\nOAuth = primary login/identity. A linked SSH public key is required to open terminals (capability-gate on the /pty namespace). Private key stays client-side; server verifies against the public half.',

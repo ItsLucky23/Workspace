@@ -729,6 +729,9 @@
       "tabSkills": "Skills / MCP",
       "title": "Quellen",
       "uploadSpec": "Spec hochladen",
+      "scanRepo": "Repository scannen",
+      "aiEditable": "KI-bearbeitbar",
+      "aiEditableHint": "Der KI erlauben, dieses Dokument in der Pipeline zu bearbeiten",
       "emptyDocsTitle": "Noch keine Kontext-Docs"
     },
     "board": {
