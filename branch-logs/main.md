@@ -578,3 +578,12 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Realtime-plumbing bevestigd WERKEND**: de client merge-callback vuurt live op de broadcast (`[quickAdd cb FIRED]` gelogd); write persisteert; alleen de delta was null door de stale server. Na een **backend-herstart** (developer-actie — classifier blokkeert dat ik jouw `:80`-proces kill) laadt de huidige code en is de live-test groen.
 
 **Lesson 0006** vastgelegd (sync strict-default + integration-tests bypassen de transport → browser/socket-test nodig). **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.
+
+## 2026-07-02 — Browser-test-fixes batch 1: echte timestamps + stage-meta + logged-out redirect
+
+Na een uitgebreide adversariële browser-testronde (2 clients, verse server) fixes:
+- **Echte ticket-timestamps**: `toTicket` zet nu `lastActivityAt` (⤳ createdAt fallback); backlog-rij toont een echte relatieve tijd (`relativeTime`, "now/5m/3h/2d/1w") i.p.v. de hardcoded mock-array `LAST`.
+- **Stage-config-meta dynamisch**: ticket-detail toonde statisch "AI-driven · RAG…" ook op een No-AI stage; nu afgeleid van de echte `stageConfig` (aiEnabled → AI-driven/No AI + skillKeys/sources).
+- **Logged-out redirect**: uitgelogde bezoeker op /workspaces werd de onboarding getoond; provider redirect nu bij `auth.required` naar de login-pagina.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.

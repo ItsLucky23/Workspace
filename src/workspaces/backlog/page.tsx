@@ -21,7 +21,24 @@ import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Sprint, Ticket, TicketStatus } from '../_data/types';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
-const LAST = ['2m', '14m', '1h', '2h', '3h', '5h', '1d', '2d', '3d', '4d', '6d', '1w'];
+
+//? Compact relative time ("just now" / "5m" / "3h" / "2d" / "1w") from an ISO
+//? timestamp — the REAL ticket recency (`lastActivityAt`, falling back to createdAt),
+//? replacing the former hardcoded mock array that showed fake times per row index.
+function relativeTime(iso: string | undefined): string {
+  if (!iso) return '';
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return '';
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (secs < 45) return 'now';
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${String(mins)}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${String(hours)}h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${String(days)}d`;
+  return `${String(Math.round(days / 7))}w`;
+}
 
 export const template = 'workspaces';
 
@@ -214,8 +231,8 @@ export default function Backlog() {
                       className="overflow-hidden border-t border-divider"
                     >
                       {rows.length === 0 && <div className="px-4 py-4 text-sm text-muted text-center">{translate({ key: 'workspaces.backlog.noTickets' })}</div>}
-                      {rows.map((t, i) => (
-                        <Row key={t.id} ticket={t} index={i} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
+                      {rows.map((t) => (
+                        <Row key={t.id} ticket={t} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
                       ))}
                       <button type="button" onClick={() => { openNewTicket(sprint.id === 'backlog' ? undefined : sprint.id); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors">
@@ -249,8 +266,8 @@ export default function Backlog() {
   );
 }
 
-function Row({ ticket, index, selectMode, selected, onToggle, onOpen }: {
-  ticket: Ticket; index: number; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
+function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
+  ticket: Ticket; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
 }) {
   const translate = useTranslator();
   const { stages, ticketMembers } = useWorkspaces();
@@ -271,7 +288,7 @@ function Row({ ticket, index, selectMode, selected, onToggle, onOpen }: {
       <span className="hidden lg:block text-xs text-common w-28 shrink-0 truncate">{stageName(ticket.stageId)}</span>
       <span className="hidden md:flex w-28 shrink-0">{ticket.status === 'idle' ? <span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.noAi' })}</span> : <StatusPill status={ticket.status} />}</span>
       <span className="hidden sm:flex w-16 shrink-0 justify-end" title={translate({ key: 'workspaces.backlog.creatorAssignee' })}>{linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className="text-xs text-muted">—</span>}</span>
-      <span className="text-xs text-muted w-10 shrink-0 text-right">{LAST[index % LAST.length]}</span>
+      <span className="text-xs text-muted w-10 shrink-0 text-right">{relativeTime(ticket.lastActivityAt)}</span>
     </div>
   );
 }

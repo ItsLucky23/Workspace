@@ -42,6 +42,9 @@ export function toTicket(t: DbTicket): Ticket {
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
     viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
+    //? Real recency for the backlog/board time column (was a hardcoded mock array).
+    //? `lastActivityAt` is denormalized from the latest TicketEvent; fall back to createdAt.
+    lastActivityAt: (t.lastActivityAt ?? t.createdAt).toISOString(),
   };
 }
 

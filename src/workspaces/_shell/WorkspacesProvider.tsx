@@ -110,6 +110,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const refetch = useCallback(() => {
     void (async () => {
       const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wantWorkspaceId } });
+      //? Not logged in → go to the login page instead of leaking the onboarding UI
+      //? (a logged-out visitor otherwise sees the "Create a workspace" form + only
+      //? gets "you need to be logged in" after acting).
+      if (res.status === 'error' && res.errorCode === 'auth.required') { globalThis.location.href = loginPageUrl; return; }
       if (res.status === 'success') setSnap(res.result);
       setLoading(false);
     })();

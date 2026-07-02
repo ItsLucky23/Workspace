@@ -197,6 +197,10 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
   const [desc, setDesc] = useState(ticket.description ?? '');
   useEffect(() => { setDesc(ticket.description ?? ''); }, [ticket.description]);
   const commitDesc = () => { if (desc !== (ticket.description ?? '')) ctx.editTicket(ticket.id, { description: desc }); };
+  //? The REAL stage config for this ticket's stage (was a static "AI-driven · RAG…"
+  //? string that contradicted a No-AI stage). Drives the aiEnabled label + skills.
+  const stageCfg = ctx.stageConfigs.find((s) => s.id === ticket.stageId);
+  const stageSkills = stageCfg ? [...stageCfg.skillKeys, ...(stageCfg.sourceIds.length > 0 ? [String(stageCfg.sourceIds.length) + ' sources'] : [])] : [];
   return (
     <div className="flex flex-col gap-4">
       <Card title={translate({ key: 'workspaces.ticket.description' })}>
@@ -217,7 +221,7 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
         <div className="flex items-center gap-2 text-sm text-common">
           <Icon name="diagram-project" className="text-muted" />
           <span className="text-title font-medium">{stage ?? '—'}</span>
-          <span className="text-muted">{translate({ key: 'workspaces.ticket.stageConfigMeta' })}</span>
+          <span className="text-muted">· {stageCfg?.aiEnabled === true ? translate({ key: 'workspaces.board.aiDrivenStage' }) : translate({ key: 'workspaces.board.noAi' })}{stageSkills.length > 0 ? ` · ${stageSkills.join(', ')}` : ''}</span>
         </div>
       </Card>
       <CommentsThread ticketId={ticket.id} />
