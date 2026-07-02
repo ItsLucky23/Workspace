@@ -698,3 +698,14 @@ De page-helft van fase 5 — running ticket-containers zichtbaar als echte termi
 - **Geverifieerd**: `listWorkspaceContainers` retourneert de live DEV-3-container; backend-PTY + route + wiring compileren groen. **Page-render-browser-test env-geblokkeerd**: de workspaces-vite-client is van :5173 verdrongen door een ander project van de user ("The Long Way Round") — mijn `:80`-supervisor-tree-kill nam waarschijnlijk de client mee; te herstellen door de workspaces-client opnieuw te starten (conflict met het andere project op :5173 oplossen).
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+## 2026-07-02 — Runtime fase 6a: AI-Dockerfile-generatie (register-flow C, stap 1)
+
+Op de AI-provider-laag, direct `_api` (geen Conductor — een ~1-2min AI-turn mag de serial writer niet blokkeren):
+- **`repoStore.repoManifests`**: scant de gelinkte repo op toolchain-manifests (package.json/lockfiles/requirements/go.mod/Cargo.toml/pom/… ) + een bounded file-tree, via `git ls-tree`/`git show` (geen checkout).
+- **`server/ai/dockerfileGen.ts`**: `generateDockerfile` → `runAiCompletion('dockerfile-generate', …)` met de manifests als context + een system-prompt die dwingt: `FROM workspaces/base:0.1.0`, en de base al node22/git/gh/db-clients/claude/node-pty/agent levert (nooit herinstalleren, alleen project-specifiek toevoegen). **Valideert** dat de eerste `FROM` de L1-base is (Q-CT-DOCKERFILE-TRUST — geen willekeurige FROM) → slaat de **draft** op in `data/workspaces/<id>/draft.Dockerfile` + zet `Project.dockerfilePath`.
+- **`_api/generateDockerfile_v1.ts`**: workspaceSettings-gated (`hasCapability`), rate-limit 6.
+- **Geverifieerd (echte AI-turn tegen octocat)**: 31.6s → `FROM workspaces/base:0.1.0` + comment *"Base image already provides everything… no additions required"* — AI herkende correct dat de base volstaat (geen toolchain in de repo), valideerde, sloeg op.
+- **Volgende (register-flow C):** Monaco-review-UI (browser) · L2 `docker build` van de draft (P2) · commit `.workspaces/Dockerfile` naar de repo.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.

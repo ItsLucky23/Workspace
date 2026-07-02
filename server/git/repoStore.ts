@@ -94,6 +94,35 @@ export async function listRepoDocs(workspaceId: string): Promise<RepoDoc[]> {
   return docs;
 }
 
+//? The manifest files that tell an AI what toolchain a repo needs (for Dockerfile
+//? generation, register-flow C). Read straight from the bare clone.
+const MANIFEST_FILES = new Set([
+  'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', '.nvmrc', '.tool-versions',
+  'requirements.txt', 'pipfile', 'pyproject.toml', 'go.mod', 'cargo.toml', 'pom.xml',
+  'build.gradle', 'gemfile', 'composer.json', 'dockerfile', '.workspaces/dockerfile',
+]);
+
+export interface RepoManifests { tree: string[]; manifests: { path: string; content: string }[] }
+
+//? Scan the linked repo for its toolchain manifests + a bounded file tree — the context
+//? an AI needs to author a project-appropriate `.workspaces/Dockerfile`. Reads via
+//? `git ls-tree`/`git show` (no checkout). Returns empty when no repo is linked.
+export async function repoManifests(workspaceId: string): Promise<RepoManifests> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return { tree: [], manifests: [] };
+  const listing = await git(['--git-dir', bare, 'ls-tree', '-r', 'HEAD', '--name-only']).catch(() => '');
+  const paths = listing.split('\n').map((p) => p.trim()).filter((p) => p.length > 0);
+  const tree = paths.slice(0, 300);
+  const manifests: { path: string; content: string }[] = [];
+  for (const p of paths) {
+    if (!MANIFEST_FILES.has(p.toLowerCase())) continue;
+    const content = await git(['--git-dir', bare, 'show', `HEAD:${p}`]).catch(() => '');
+    manifests.push({ path: p, content: content.slice(0, 8000) });
+    if (manifests.length >= 12) break;
+  }
+  return { tree, manifests };
+}
+
 //? Read the current bare-repo status from disk (for the snapshot). `linked` reflects
 //? whether the bare clone exists; branch/head are the current default-branch pointer.
 export async function repoStatus(workspaceId: string, gitUrl: string | undefined): Promise<RepoStatus> {
