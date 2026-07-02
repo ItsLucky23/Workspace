@@ -337,7 +337,8 @@ async function executeAction(action: ControlAction): Promise<void> {
       const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId } });
       if (!project) return;
       const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
-      const number = (last?.number ?? 1239) + 1;
+      //? DEV-#### numbering starts at DEV-1 and auto-increments per workspace (Q6).
+      const number = (last?.number ?? 0) + 1;
       const created = await prisma.ticket.create({
         data: {
           workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
