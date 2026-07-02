@@ -19,6 +19,7 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
+import { dockerAvailable, launchTicketContainer } from '../container/runtime';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -253,12 +254,29 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
   if (keys.length === 0 || !isLinked(workspaceId)) return;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
+  const activated: { key: string; branch: string }[] = [];
   for (const key of keys) {
     const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true } });
     if (t?.branch) continue;
     const [error, wt] = await tryCatch(() => addWorktree(workspaceId, key));
     if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
-    if (wt) await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } });
+    if (wt) { await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } }); activated.push({ key, branch: wt.branch }); }
+  }
+  //? Provision each activated ticket's container OFF the serial chain (07b §0/§4): docker
+  //? clone+run is slow and the authoritative stage move must return fast for realtime.
+  //? Best-effort — the git/worktree layer is already durable; the container is a
+  //? re-runnable convenience (idempotent by name), never blocks or fails the move.
+  if (activated.length > 0) void provisionContainers(workspaceId, activated);
+}
+
+//? Fire-and-forget container provisioning for freshly-activated tickets. Gated on the
+//? Docker daemon (a host without Docker still gets the full git/worktree layer). Errors
+//? are logged, never surfaced into the stage move.
+async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[]): Promise<void> {
+  if (!(await dockerAvailable())) return;
+  for (const { key, branch } of activated) {
+    const [error] = await tryCatch(() => launchTicketContainer({ workspaceId, ticketKey: key, branch }));
+    if (error) console.error(`[conductor] launchTicketContainer ${key} failed:`, error.message);
   }
 }
 

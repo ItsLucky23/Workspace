@@ -656,3 +656,13 @@ Fundament voor ALLE AI-features (jouw eis: elke AI-plek kiesbaar tussen Claude C
 - **ADR 0007** (rejected: direct-claude-hardcoden, één centrale runAI-branch, DB-config-nu).
 
 **Geverifieerd:** `runAiCompletion('workspace-chat','reply pong')` → **ok, claude-cli, 15.5s, "pong"** (echte PTY-turn); `availableProviders` → claude:true, gemini:false. Unit-test 10/10 (defaults/overrides/availability-gating, CI-veilig zonder claude-turn). front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **13/13**.
+
+## 2026-07-02 — Runtime fase 3: container-spine (L1 base-image + per-ticket hardened container)
+
+De marquee — nu Docker draait. Lane-F P1-scope (L1 + provisioning-skeleton):
+- **`docker/base.Dockerfile`** (L1 `workspaces/base:0.1.0`, 07b §1.1): node:22-bookworm-slim (glibc), git/gh/curl, db-clients (psql/mysql/mongosh/redis), **claude CLI gepind 2.1.198** (label `org.workspaces.cli-version`), **node-pty** prebuilt (native build op image-time), non-root **`agent`** (uid 10001). `git config --system safe.directory '*'` gebakken (dubious-ownership fix — `-c` wordt door git genegeerd, alleen system-config telt).
+- **`server/container/runtime.ts`**: `launchTicketContainer` — per §4 (Q-CT-WORKTREE) GEEN host-worktree-bind-mount (dangling gitdir-footgun) maar `git clone --branch DEV-#### --single-branch` uit de RO-gemounte bare mirror in een **container-owned volume**, als `agent` (agent-owned checkout). Idempotent op naam (geen schema-wijziging). §7-hardening: `--user agent --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 --memory 3g --cpus 2 --restart unless-stopped`. `teardownTicketContainer` + `dockerAvailable`-gate.
+- **Conductor**: `provisionContainers` — bij aiEnabled-activatie fire-and-forget (OFF de serial chain; docker clone+run is traag, de stage-move moet snel terug), best-effort, gated op Docker.
+- **Uitgesteld/geflagd (P2+, niet stil weggelaten):** auth-projectie (§2), egress-proxy (§6), Caddy-net (§5), CapacityManager (§8), in-container pty-agent (§9), L2 per-project images (§1.2).
+
+**Geverifieerd (echt, tegen de octocat-repo):** L1 gebouwd (claude 2.1.198/node22/git/node-pty/agent OK); container gelaunched → `/work` op branch **DEV-ctr1** (niet detached), `git status` werkt (geen dangling gitdir), README **agent-owned**; hardening-flags allemaal correct via `docker inspect`; idempotent (re-launch = zelfde container); teardown verwijdert container+volume. front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **13/13**.
