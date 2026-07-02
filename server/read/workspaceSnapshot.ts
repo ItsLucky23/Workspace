@@ -15,7 +15,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
-import { toTicket } from './mappers';
+import { formatTime, toTicket } from './mappers';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -38,9 +38,6 @@ const asStatusKind = (s: string): StageStatusCfg['kind'] => (s === 'base' ? s : 
 const asNetworkMode = (s: string): NetworkMode => (s === 'blacklist' ? s : 'whitelist');
 const asModelTier = (s: string): StageModelTier => (s === 'haiku' || s === 'opus' ? s : 'sonnet');
 const asEffort = (s: string): StageEffort => (s === 'low' || s === 'high' || s === 'xhigh' || s === 'max' ? s : 'medium');
-
-//? Formats a `Date` to a short local `HH:MM` string for feed/notification timestamps.
-const formatTime = (d: Date): string => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 //? `Notification.deepLink` is a nullable Prisma `Json` column; narrow it cast-free via
 //? the TS 4.9+ `in`-operator narrowing on `unknown` (no `as`).

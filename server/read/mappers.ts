@@ -4,12 +4,17 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote } from '@prisma/client';
 
-import type { Ticket, TicketStatus } from '../../src/workspaces/_data/types';
+import type { Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
 
 const asStatus = (s: string): TicketStatus =>
   (s === 'needs-input' || s === 'busy' || s === 'done' || s === 'paused' || s === 'stuck' ? s : 'idle');
+
+//? The clock-time renderer for activity/notification/note timestamps (HH:MM). Lives
+//? here so both the snapshot AND the realtime `_sync` deltas render a note's `time`
+//? identically — a live comment must match the shape the initial snapshot emits.
+export const formatTime = (d: Date): string => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 //? Runtime guard: is this the Conductor's op-result a Prisma Ticket row? Lets the
 //? realtime `_sync` routes narrow the (deliberately `unknown`) op result to a typed
@@ -34,4 +39,34 @@ export function toTicket(t: DbTicket): Ticket {
     viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
   };
+}
+
+//? A ticket-MUTATION op (archive/ticket-edit/bulk-*) returns the affected rows from
+//? the Conductor; narrow that (deliberately `unknown`) result to a `Ticket[]` delta
+//? the `_sync` route broadcasts. The client UPSERTS these by id (the board/backlog
+//? derive visibility from `archived`, so an archive is just an upsert). No cast.
+export function ticketListDelta(result: unknown): Ticket[] {
+  return Array.isArray(result) ? result.filter((r): r is DbTicket => isDbTicket(r)).map((r) => toTicket(r)) : [];
+}
+
+function isDbSprint(v: unknown): v is DbSprint {
+  return v !== null && typeof v === 'object' && 'id' in v && 'name' in v && 'active' in v && !('stageId' in v);
+}
+
+//? Narrow the sprint-create op result to the frontend `Sprint` delta. A freshly
+//? created sprint has no tickets yet (ticketCount 0) and no derived dates. Mirrors
+//? the sprint mapping in `buildSnapshot`.
+export function sprintDelta(result: unknown): Sprint | null {
+  return isDbSprint(result) ? { id: result.id, name: result.name, start: null, end: null, active: result.active, ticketCount: 0, daysLeft: null } : null;
+}
+
+function isDbNote(v: unknown): v is DbNote {
+  return v !== null && typeof v === 'object' && 'id' in v && 'body' in v && 'authorKind' in v;
+}
+
+//? Narrow the add-comment op result to the frontend `TicketNote` delta. The row's
+//? `ticketId` is an ObjectId; the frontend keys notes by the DEV-#### `ticketKey`
+//? (which the `_sync` route knows — it operated on it). Mirrors `buildSnapshot`.
+export function noteDelta(result: unknown, ticketKey: string): TicketNote | null {
+  return isDbNote(result) ? { id: result.id, ticketId: ticketKey, author: result.authorId ?? '', body: result.body, time: formatTime(result.createdAt) } : null;
 }
