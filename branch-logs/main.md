@@ -415,3 +415,11 @@
 **Files:** `server/bootstrap/defaultPipeline.ts` (nieuw), `server/bootstrap/seedWorkspace.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`.
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, createWorkspace.test 9/9 (nieuwe default-pipeline seedt correct: unrefined bestaat, quick-add landt op unrefined, project gekoppeld).
+
+## 2026-07-02 02:15 — /loop Fase-3: ⌘K-palette "New ticket" gefixt (dode knop → quickAdd-form)
+
+**Gedaan:** de enige echt-dode knop in `SearchPalette` — de "New ticket"-quickaction riep alleen `onClose` aan. Nu opent 'ie een titel-only `NewTicketPrompt` (via `menuHandler.open`, buiten de provider dus `quickAdd` als prop; mirror van board's NewTicketForm + Shell's CreateWorkspaceForm) → `quickAdd({title})` → ticket op unrefined. Hergebruikt bestaande i18n-keys (`board.newTicketTitle(+Placeholder)`, `shell.cancel/create`), geen nieuwe keys.
+
+**Verificatie:** front-tsc 0, eslint 0/0, ai:lint schoon, build groen. (Geen server-change → `quickAdd`-pad al gedekt door createWorkspace.test.) De rest van "palette-acties" (arbitraire op-dispatch met confirm-on-important) is bewust NIET gebouwd — dat is power-user/speculatief; beter met user-feedback over welke acties gewenst zijn.
+
+**Files:** `src/workspaces/_components/SearchPalette.tsx`.

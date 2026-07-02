@@ -5,17 +5,45 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { menuHandler } from 'src/_functions/menuHandler';
+
 import { useTranslator } from '@luckystack/core/client';
 
 import { AnimatePresence, motion } from 'motion/react';
 
 import Icon, { type IconName } from './Icon';
 import { SPRING_POP } from './motion';
-import { StatusPill } from './primitives';
+import { StatusPill, WsButton } from './primitives';
 import { useWorkspaces, type WsView } from '../_shell/WorkspacesContext';
 import type { Ticket } from '../_data/types';
 
 interface QuickAction { label: string; icon: IconName; run: () => void }
+
+//? Title-only new-ticket prompt opened from the palette (⌘K → New ticket). Rendered
+//? via `menuHandler.open` OUTSIDE the provider tree, so it receives `quickAdd` as a
+//? prop (mirrors the board's NewTicketForm + Shell's CreateWorkspaceForm). New tickets
+//? always enter at `unrefined` (server-enforced), so a title is the only input.
+function NewTicketPrompt({ onCreate }: { onCreate: (input: { title: string }) => void }) {
+  const translate = useTranslator();
+  const [title, setTitle] = useState('');
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  const submit = () => { const t = title.trim(); if (!t) return; onCreate({ title: t }); void menuHandler.close(); };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
+      <input
+        ref={ref} value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.board.newTicketTitlePlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
 
 function Section({ title }: { title: string }) {
   return <div className="px-2.5 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted">{title}</div>;
@@ -55,7 +83,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
   const openTicket = (id: string) => { ctx.openTicket(id); onClose(); };
 
   const actions: QuickAction[] = [
-    { label: translate({ key: 'workspaces.search.newTicket' }), icon: 'plus', run: onClose },
+    { label: translate({ key: 'workspaces.search.newTicket' }), icon: 'plus', run: () => { onClose(); void menuHandler.open(<NewTicketPrompt onCreate={ctx.quickAdd} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { label: translate({ key: 'workspaces.search.goToBoard' }), icon: 'table-columns', run: () => { go('board'); } },
     { label: translate({ key: 'workspaces.search.backlog' }), icon: 'list-check', run: () => { go('backlog'); } },
     { label: translate({ key: 'workspaces.search.terminals' }), icon: 'terminal', run: () => { go('terminals'); } },
