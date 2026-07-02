@@ -13,6 +13,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { apiRequest, tryCatch, useSession, useTheme } from '@luckystack/core/client';
 
+import { joinRoom, leaveRoom } from 'src/_sockets/socketInitializer';
+import { syncRequest, useSyncEvents } from 'src/_sockets/syncRequest';
+
 import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
@@ -113,15 +116,40 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, [wantWorkspaceId]);
   useEffect(() => { refetch(); }, [refetch]);
 
-  //? Per-action TYPED writes (Fase-0 split). Each calls its op's own `_api` route
-  //? with a fully-typed payload — the generated type-map types the call end-to-end
-  //? (no `Record<string, unknown>` envelope), then refetches like `control`.
+  //? ----- Realtime (milestone 1) -----------------------------------------------
+  //? Writes go through per-action `_sync` events that broadcast their delta to the
+  //? workspace room; every client (incl. the sender) MERGES the delta into local
+  //? state via `upsertSyncEventCallback` — no refetch. The initial load stays a
+  //? snapshot `apiRequest` (above); after that it's live deltas.
+  const { upsertSyncEventCallback } = useSyncEvents();
+
+  //? Join the active workspace's realtime room (room code = workspaceId) so our
+  //? writes broadcast here and other members' writes arrive live. Re-join on switch.
+  useEffect(() => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void joinRoom(room);
+    return () => { void leaveRoom(room); };
+  }, [snap.activeWorkspaceId]);
+
+  //? quick-add delta → merge the new ticket (dedupe by id, since the sender also
+  //? receives its own broadcast). No refetch.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/quickAdd', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.ticket) return;
+      const ticket = serverOutput.ticket;
+      setSnap((s) => (s.tickets.some((t) => t.id === ticket.id) ? s : { ...s, tickets: [...s.tickets, ticket] }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
+  //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
-    void (async () => {
-      await apiRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', title: input.title, ...(input.sprintId ? { sprintId: input.sprintId } : {}), clientRequestId: nextReqId() } });
-      refetch();
-    })();
-  }, [snap.activeWorkspaceId, refetch]);
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: input.title, ...(input.sprintId ? { sprintId: input.sprintId } : {}), clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     void (async () => {
       await apiRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', name: sprintName, active: false, clientRequestId: nextReqId() } });

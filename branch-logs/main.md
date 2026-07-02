@@ -492,3 +492,15 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Nog te bouwen (milestone 1 vervolg):** getypte serial-writer (`onChain<T>`, geen `as`-casts), per-actie `_sync`-write-routes (quick-add/archive/bulk-*/…) die de delta broadcasten, client: `joinRoom(workspace)` + `upsertSyncEventCallback` merge-reducers + write via `syncRequest` (geen refetch). Browser-getest via agent-browser/playwright op de :80.
 
 **Verificatie:** front-tsc 0, server-tsc 0 (foundation).
+
+## 2026-07-02 — Realtime milestone 1: quick-add via _sync (proof) + client merge (geen refetch)
+
+**Gedaan:** eerste realtime write-op end-to-end, het bewezen patroon voor de rest:
+- `src/workspaces/_sync/quickAdd_server_v1.ts`: `_sync`-route (room = workspaceId), validate + `hasCapability` + `enqueueControlAction` (seriële Conductor, ongewijzigde write) → broadcast de **created ticket-delta** naar de room.
+- `server/read/mappers.ts`: `isDbTicket` type-guard + `ticketDelta(unknown)` → narrowt de Conductor-`result` naar een frontend-`Ticket` **zonder `as`-cast**.
+- `WorkspacesProvider`: `joinRoom(workspaceId)` op actieve-workspace; `upsertSyncEventCallback('workspaces/quickAdd')` merget de ticket in local state (dedupe op id); `quickAdd` schrijft via `syncRequest` (geen refetch). Sender krijgt zijn eigen broadcast → UI updatet voor iedereen.
+- `_api/quickAdd_v1.ts` verwijderd (gemigreerd naar `_sync`).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 11/11 (write-logica ongewijzigd). **Live browser-verificatie vereist een :80-herstart met deze code** (dan test ik met agent-browser: ticket in tab A → verschijnt live in tab B zonder refresh).
+
+**Volgende:** zelfde patroon voor archive/ticket-edit/bulk-*/sprint-create/add-comment (delta's: ticket/ticketId/ticketIds/sprint/note), daarna de members/settings-ops; legacy `_api`+refetch vervalt per gemigreerde op.

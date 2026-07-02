@@ -190,7 +190,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         hooks: asHooks(s.hooks),
         wipLimit: s.wipLimit ?? undefined,
       })),
-      tickets: ticketRows.map(toTicket),
+      tickets: ticketRows.map((t) => toTicket(t)),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.value, secret: e.secret })),
