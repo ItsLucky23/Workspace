@@ -555,3 +555,16 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Milestone 1 (realtime) = KLAAR** voor alle workspace-gescopete writes. Bewust op `_api`+refetch gelaten (GEFLAGD, geen room / user-scoped / login-level): `markRead` (per-user notificaties — room-broadcast zou andermans notificaties markeren), `deleteWorkspace` (verwijdert de hele workspace + navigeert weg), `createWorkspace` + `acceptInvite` (login-level, nog geen room; muteren de workspace-LIJST).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — P0.5 CLI-spike harness (unblokt lane B/C/F) + gate-flag
+
+**GEFLAGD (fundamentele blocker, Rule 3b):** de loop-bouwvolgorde 3-6 (container-runtime, register docker-image-generatie, pipeline-terminals, AI-in-terminal) = **P1 lane F**, en die is **HARD-gated achter de P0.5 CLI-spike** (`src/workspaces/_docs/P0_CLI_SPIKE.md` + `STAP1_SPIKE_CHECKLIST.md`). Die spike is **NOG NIET GEDRAAID** (`SPIKE_RESULTS.md` bestaat niet) en moet door een **mens** tegen een ingelogde host: bewijst dat een interactieve `claude`-PTY op het **Max-abonnement** bilt (niet de metered pool), dat `type:http`-hooks interactief vuren, en dat `--resume` + managed token projection werken. Billing/PTY RED → **escaleren, nooit terugvallen op headless**. Autonoom/blind lane F bouwen zou de LOCKED docs schenden ("building on sand") → daarom NIET gedaan.
+
+**Wél gebouwd (de legitieme P0.5-stap die de docs zelf eisen — "P0.5 vóór P1"):** de spike-harness die JIJ draait:
+- `scripts/spike/hookCapture.mts` — dependency-vrije `type:http`-hook capture endpoint (token-gated), print welke events vuurden + of een payload een usage-veld had (Spike B/D). Geverifieerd: goede token → gelogd + usage gedetecteerd; slechte token → 401.
+- `scripts/spike/runSpike.mts` — node-pty runner die `claude` spawnt met een **geschoonde env** (ANTHROPIC_*/bedrock/vertex gestript, Spike A) in een temp-project met een `.claude/settings.json` vol `type:http`-hooks → de capture endpoint. `--dry` rendert config + plan zonder claude te spawnen (veilig geverifieerd). **Echte run = de gated, mens-only billing-actie** — ik heb 'm NIET uitgevoerd.
+- Lesson `docs/lessons/0005-container-runtime-gated-by-p05-spike.md`.
+
+**Draai zelf (op de echte server-OS, ingelogde `claude`):** terminal 1 `npx tsx scripts/spike/hookCapture.mts`; terminal 2 `npx tsx scripts/spike/runSpike.mts`; check `claude /usage` vóór/na (Spike A billing) + de hook-summary (Spike B/D); vul `src/workspaces/_docs/SPIKE_RESULTS.md` (template = P0_CLI_SPIKE.md §6). Alle gating-rijen GROEN → lane F/register/containers open.
+
+**Verificatie (harness):** `--dry` groen, hook-capture start + token-gate groen, build groen. (De billing/PTY-rijen kan alleen jij verifiëren.)

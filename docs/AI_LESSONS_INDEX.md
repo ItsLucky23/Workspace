@@ -9,13 +9,15 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (3)
+## Lessons (5)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | The workspaces no-unnecessary-condition lint errors are CORRECT guards — do not strip them | 🟠 high | src/workspaces | lint, typescript, tsconfig, prototype | `docs/lessons/0001-workspaces-guard-false-positives.md` |
 | 0002 | Two framework gotchas when adding _api routes with server-side deps in this project | 🟠 high | src/workspaces/_api | api, devkit, validation, server-bundle, imports | `docs/lessons/0002-workspaces-api-framework-gotchas.md` |
 | 0003 | tenantDb's $extends must inject workspaceId even when the query has no `where` (no-arg findMany leaked cross-tenant) | 🔴 critical | server/tenant | multi-tenancy, security, prisma, tests | `docs/lessons/0003-tenantdb-no-arg-findmany-leak.md` |
+| 0004 | Login-only control-ops (create-workspace / accept-invite) were silently dropped by the workspace-scoped signal append (workspaceId '' is an invalid ObjectId) | 🟠 high | server/orchestrator | conductor, control-api, onboarding, prisma, objectid | `docs/lessons/0004-login-only-ops-signal-append.md` |
+| 0005 | Do not build the container runtime / register docker-image / pipeline-terminals autonomously — lane F is HARD-gated behind the human-run P0.5 CLI spike | 🟠 high | server/orchestrator | containers, p0.5-spike, billing, pty, gate, lane-f, autonomy | `docs/lessons/0005-container-runtime-gated-by-p05-spike.md` |
 
 ## Takeaways
 
@@ -42,3 +44,19 @@
 **For every non-create tenant operation, force `where.workspaceId` — create the `where` if none exists.** Only `create`/`createMany` inject into `data`; `upsert` needs BOTH (`where` + `create`). The fix: ```ts if (operation === 'create') { a.data = { ...data, workspaceId }; return query(args); } if (operation === 'createMany') { /* map rows + workspaceId */ return query(args); } const where = a.where; a.where = where && typeof where === 'object' ? { ...where, workspaceId } : { workspaceId }; if (operation === 'upsert') a.create = { ...a.create, workspaceId }; ``` **Always test tenant isolation with ≥2 workspaces and a NO-ARG read.** A single-tenant test can never catch a scoping leak. `tests/integration/tenant.test.mts` now asserts a bare `findMany()` inside `runInTenant(wsA)` returns only wsA's rows. General: prefer verifying an isolation *guarantee* over the happy path — the happy path passed for months here while the guarantee was broken.
 
 → `docs/lessons/0003-tenantdb-no-arg-findmany-leak.md`
+
+### 0004 — Login-only control-ops (create-workspace / accept-invite) were silently dropped by the workspace-scoped signal append (workspaceId '' is an invalid ObjectId)
+
+**0004** · high · server/orchestrator · tags: conductor, control-api, onboarding, prisma, objectid · 2026-07-01
+
+**Login-only ops must not append a per-workspace signal.** `enqueueControlAction` now branches on `!action.workspaceId`: it runs the op on the chain with no signal and no tenant scope (these ops use the plain client). See `server/orchestrator/conductor.ts`. **Never pass `''` to an `@db.ObjectId` field** — it is not "empty/null", it is a malformed id and throws. Guard or omit. **A fire-and-forget `.catch` that only logs will hide dropped writes.** When an op "succeeds" but nothing persists, suspect a swallowed error on the async chain — and validate write-ops with a **code-direct integration test**, not only the live-server e2e (a hot-reloaded dev server can mask or fake the result).
+
+→ `docs/lessons/0004-login-only-ops-signal-append.md`
+
+### 0005 — Do not build the container runtime / register docker-image / pipeline-terminals autonomously — lane F is HARD-gated behind the human-run P0.5 CLI spike
+
+**0005** · high · server/orchestrator · tags: containers, p0.5-spike, billing, pty, gate, lane-f, autonomy · 2026-07-02
+
+**Never build lane B/C/F autonomously until `src/workspaces/_docs/SPIKE_RESULTS.md` exists with GREEN gating rows.** Check for it first. The safe, high-value autonomous move toward the runtime is to build the **spike harness** the gate itself mandates (P0.5 is "the last P0 artifact, run before P1"), then hand off for the human to run it. Done here: `scripts/spike/hookCapture.mts` (`npm run spike:hooks`) + `scripts/spike/runSpike.mts` (`npm run spike:cli`, `--dry` to review). Running `spike:cli` for real is the gated, human-only action. Lanes A (data), D (Conductor against contracts), E (client wiring) + the realtime `_sync` layer are NOT gated — they build against frozen contracts. That is where autonomous loop effort belongs until the spike is GREEN.
+
+→ `docs/lessons/0005-container-runtime-gated-by-p05-spike.md`
