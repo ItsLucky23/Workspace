@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (7)
+## Lessons (8)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,7 @@
 | 0005 | Do not build the container runtime / register docker-image / pipeline-terminals autonomously — lane F is HARD-gated behind the human-run P0.5 CLI spike | 🟠 high | server/orchestrator | containers, p0.5-spike, billing, pty, gate, lane-f, autonomy | `docs/lessons/0005-container-runtime-gated-by-p05-spike.md` |
 | 0006 | _sync routes default to STRICT input validation and reject valid input with sync.invalidInputType — set `validation = 'relaxed'` (and browser/socket-test, integration tests bypass the transport) | 🟠 high | src/workspaces/_sync | sync, validation, realtime, transport, testing, browser | `docs/lessons/0006-sync-routes-default-strict-validation.md` |
 | 0007 | luckystack-dev does not reliably hot-reload server-side code — a child-restart can respawn STALE code; only a full supervisor-tree restart loads server edits | 🟠 high | dev-workflow | dev-server, hot-reload, conductor, sync, testing, restart | `docs/lessons/0007-dev-server-server-code-no-hot-reload.md` |
+| 0008 | The claude-cli provider runs in a scratch cwd — AI-gen prompts must be pure-context | 🟡 medium | ai-provider, docs-gen, dockerfile-gen | ai, claude-cli, prompt | `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md` |
 
 ## Takeaways
 
@@ -78,3 +79,11 @@ _(no How-to-avoid / Lesson section found — fill it in)_
 **After ANY `server/**` or `_sync`/`_api` edit, do a FULL backend restart** before browser-testing: find the `@luckystack/devkit .../supervisor.js` process, kill its tree (`taskkill //PID <supervisor> //T //F` on Windows), then `npm run server` fresh. A child-only kill is NOT enough. **When a server-side change "doesn't take", suspect stale code first.** Drop a temporary `console.log` in the handler; if it never prints on a request that the route logs as handled, the process is stale → full restart. Client (`vite`) HMR is reliable; this only bites SERVER code. Frontend-only fixes can be verified without a restart; server-behavior fixes cannot.
 
 → `docs/lessons/0007-dev-server-server-code-no-hot-reload.md`
+
+### 0008 — The claude-cli provider runs in a scratch cwd — AI-gen prompts must be pure-context
+
+**0008** · medium · ai-provider, docs-gen, dockerfile-gen · tags: ai, claude-cli, prompt · 2026-07-02
+
+Any feature that drives `claude-cli` with repo context in the PROMPT (docs-gen, dockerfile-gen, workspace-chat, …) must tell the model explicitly: > "Base your answer ONLY on the files listed below. Do NOT read the filesystem or run any > tools — your working directory is empty; the repo content is provided inline here."
+
+→ `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md`

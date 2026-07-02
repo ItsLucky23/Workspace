@@ -709,3 +709,12 @@ Op de AI-provider-laag, direct `_api` (geen Conductor — een ~1-2min AI-turn ma
 - **Volgende (register-flow C):** Monaco-review-UI (browser) · L2 `docker build` van de draft (P2) · commit `.workspaces/Dockerfile` naar de repo.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+## 2026-07-02 — Runtime fase 6b: AI docs-generate (register-flow D, AI-helft)
+
+Waar docs-scan bestaande repo-docs registreert, laat dit de AI een project-summary schrijven:
+- **`server/ai/docsGen.ts`**: `generateProjectDoc` → `runAiCompletion('docs-generate', …)` met repo-manifests + file-tree als context → persisteert als `generated` context-doc `InfoSource` (aiEditable aan; verschijnt in Sources). Direct `_api` (`generateDocs_v1.ts`, editPipeline-gated, rate-limit 6).
+- **Lesson 0008 gevonden + gefixt**: de claude-cli-provider draait in een **scratch-cwd**, niet de repo → de agent keek naar het lege werkdir en narreerde de mismatch. Fix: beide gen-prompts (docs + dockerfile) zeggen nu expliciet *"gebruik ALLEEN de meegegeven files, inspecteer het filesystem niet"*. Output daarna schoon.
+- **Geverifieerd (echte AI-turn tegen octocat)**: schone `# Project Summary` (feitelijk correct: octocat heeft alleen een lege README), gepersisteerd als generated InfoSource.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.

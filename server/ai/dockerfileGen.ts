@@ -36,6 +36,7 @@ export async function generateDockerfile(prisma: PrismaClient, workspaceId: stri
   if (ctx.tree.length === 0) return { ok: false, dockerfile: '', error: 'repo.notLinked' };
   const system = [
     'You author a .workspaces/Dockerfile so a project\'s per-ticket container has the right toolchain.',
+    'Base your answer ONLY on the files listed below. Do NOT read the filesystem or run any tools — your working directory is empty; the repo content is provided inline here.',
     `The Dockerfile MUST begin exactly with: FROM ${BASE_IMAGE}`,
     'That base ALREADY provides: Debian bookworm (glibc), Node 22, git, gh, curl, the DB clients (psql/mysql/mongosh/redis-cli), the Claude CLI, node-pty, and a non-root `agent` user (uid 10001, WORKDIR /work). NEVER reinstall any of these.',
     'Add ONLY what THIS project needs beyond the base (an extra language runtime, system libs, a dependency pre-install). Install system packages as root, then drop back to `USER agent`. If the base already suffices, output just the FROM line plus a one-line comment.',
