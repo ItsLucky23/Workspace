@@ -596,3 +596,10 @@ Na een uitgebreide adversariële browser-testronde (2 clients, verse server) fix
 **KRITIEKE DX-VONDST:** luckystack-dev herlaadt server-side code (conductor, `_sync`-routes) NIET betrouwbaar — een child-restart respawnt soms STALE code. Alleen een **volledige supervisor-tree-restart** (kill supervisor.js + kinderen → `npm run server` vers) laadt nieuwe server-code gegarandeerd. Dit kostte 2× verwarring (realtime, assignee). Zie lesson 0007.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.
+
+## 2026-07-02 — Browser-test-fixes batch 3: taal-switcher in account-menu + lesson 0007
+
+- **Taal-switcher** (EN/NL/DE/FR) toegevoegd aan het account-dropdown (naast Theme): `useUpdateLanguage` (live) + persist naar de sessie via `settings/updateUser` (een language-source leest `session.language` en zou anders de client-state overschrijven). Browser-geverifieerd: NL → menu wordt Nederlands ("Uitloggen"/"Thema"). (Er bestond al een switcher in de Account-settings-pagina; dit is de snelle toegang.)
+- **Lesson 0007**: luckystack-dev herlaadt server-side code niet betrouwbaar (child-restart = stale); volledige supervisor-tree-restart nodig.
+
+**Verificatie:** front-tsc 0, eslint 0/0, ai:lint schoon, build groen.

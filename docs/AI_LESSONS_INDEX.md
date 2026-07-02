@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (6)
+## Lessons (7)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -19,6 +19,7 @@
 | 0004 | Login-only control-ops (create-workspace / accept-invite) were silently dropped by the workspace-scoped signal append (workspaceId '' is an invalid ObjectId) | 🟠 high | server/orchestrator | conductor, control-api, onboarding, prisma, objectid | `docs/lessons/0004-login-only-ops-signal-append.md` |
 | 0005 | Do not build the container runtime / register docker-image / pipeline-terminals autonomously — lane F is HARD-gated behind the human-run P0.5 CLI spike | 🟠 high | server/orchestrator | containers, p0.5-spike, billing, pty, gate, lane-f, autonomy | `docs/lessons/0005-container-runtime-gated-by-p05-spike.md` |
 | 0006 | _sync routes default to STRICT input validation and reject valid input with sync.invalidInputType — set `validation = 'relaxed'` (and browser/socket-test, integration tests bypass the transport) | 🟠 high | src/workspaces/_sync | sync, validation, realtime, transport, testing, browser | `docs/lessons/0006-sync-routes-default-strict-validation.md` |
+| 0007 | luckystack-dev does not reliably hot-reload server-side code — a child-restart can respawn STALE code; only a full supervisor-tree restart loads server edits | 🟠 high | dev-workflow | dev-server, hot-reload, conductor, sync, testing, restart | `docs/lessons/0007-dev-server-server-code-no-hot-reload.md` |
 
 ## Takeaways
 
@@ -69,3 +70,11 @@
 **Every `_sync` write route sets `export const validation = 'relaxed' as const;`** (mirrors the `_api` convention). The RBAC + Conductor remain the real validators. **Verify realtime with a browser (agent-browser) or a socket-level test, never only the code-direct integration suite** — the latter can't see the transport. The realtime broadcast→callback plumbing itself is confirmed working (the client merge-callback fires with the broadcast `serverOutput`). After server-side sync/route/Conductor edits, **restart the `:80` backend** (it is a developer-managed action) so the current code + regenerated sync maps load; a stale server yields flaky `invalidInputType` / null deltas.
 
 → `docs/lessons/0006-sync-routes-default-strict-validation.md`
+
+### 0007 — luckystack-dev does not reliably hot-reload server-side code — a child-restart can respawn STALE code; only a full supervisor-tree restart loads server edits
+
+**0007** · high · dev-workflow · tags: dev-server, hot-reload, conductor, sync, testing, restart · 2026-07-02
+
+**After ANY `server/**` or `_sync`/`_api` edit, do a FULL backend restart** before browser-testing: find the `@luckystack/devkit .../supervisor.js` process, kill its tree (`taskkill //PID <supervisor> //T //F` on Windows), then `npm run server` fresh. A child-only kill is NOT enough. **When a server-side change "doesn't take", suspect stale code first.** Drop a temporary `console.log` in the handler; if it never prints on a request that the route logs as handled, the process is stale → full restart. Client (`vite`) HMR is reliable; this only bites SERVER code. Frontend-only fixes can be verified without a restart; server-behavior fixes cannot.
+
+→ `docs/lessons/0007-dev-server-server-code-no-hot-reload.md`

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
 
 import { motion } from 'motion/react';
 
@@ -69,6 +69,8 @@ const roleChip = (role: string) => (
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
   const { view, navigate, suggestions, currentUser, aiOpen, toggleAi, theme, setTheme, signOut } = useWorkspaces();
   const translate = useTranslator();
+  const updateLanguage = useUpdateLanguage();
+  const activeLang = getActiveLanguage();
   const [userOpen, setUserOpen] = useState(false);
   const userRef = useClickAway<HTMLDivElement>(userOpen, () => { setUserOpen(false); });
 
@@ -129,6 +131,24 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
             <div className="my-1 h-px bg-divider" />
             <button type="button" onClick={() => { setUserOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
             <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
+            <div className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-common">
+              <Icon name="language" className="w-4 text-center" />
+              <div className="flex items-center gap-1">
+                {(['en', 'nl', 'de', 'fr'] as const).map((code) => (
+                  <button
+                    key={code} type="button"
+                    onClick={() => {
+                      //? Live client switch + persist to the session (a language source
+                      //? reads session.language and would otherwise override the client
+                      //? state on the next render). Mirrors the Account-settings switcher.
+                      updateLanguage(code);
+                      void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { language: code } });
+                    }}
+                    className={`rounded-md px-1.5 py-0.5 text-xs uppercase cursor-pointer transition-colors ${activeLang === code ? 'bg-primary text-common-primary' : 'text-muted hover:bg-container2 hover:text-common'}`}
+                  >{code}</button>
+                ))}
+              </div>
+            </div>
             <div className="my-1 h-px bg-divider" />
             <button type="button" onClick={() => { setUserOpen(false); signOut(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.signOut' })}</button>
           </Popover>
