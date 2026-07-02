@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (5)
+## Decisions (6)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -18,6 +18,7 @@
 | 0004 | App-owned AES-256-GCM encryption for per-workspace secrets | 🟢 accepted | security, secrets, workspaces, gitlab | — | `docs/decisions/0004-app-owned-secret-encryption.md` |
 | 0005 | The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session | ⚪ superseded | workspaces, control-api, typed-routes, fase-0, transport | — | `docs/decisions/0005-per-action-typed-api-write-routes.md` |
 | 0006 | In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch) | 🟢 accepted | workspaces, realtime, sync, transport, control-api | per-action-typed-api-write-routes | `docs/decisions/0006-realtime-sync-delta-transport.md` |
+| 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one | 🟢 accepted | ai, architecture, orchestrator, extensibility | — | `docs/decisions/0007-pluggable-ai-provider-layer.md` |
 
 ## Summaries
 
@@ -60,6 +61,14 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 *Every in-workspace write is a per-action `_sync` event that broadcasts its DELTA to the workspace room (room code = workspaceId); every client — including the sender — merges the delta into local state via `upsertSyncEventCallback`. No refetch.**
 
 → `docs/decisions/0006-realtime-sync-delta-transport.md`
+
+### 0007 — Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one
+
+**0007** · accepted · tags: ai, architecture, orchestrator, extensibility · 2026-07-02
+
+Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the shared contract: `AiProviderId`, `AiFeature`, `AiProvider` (`available()` + `complete()`), and the request/result shapes. **`providers/*`** — one standalone handler per backend: `claude-cli` (drives the interactive PTY in a scrubbed env → Max subscription, reading the final message off the Stop hook via `--settings`, never `-p/--print`) and `gemini-api` (headless Generative Language API call, gated on `GEMINI_API_KEY`). **`assignments.ts`** — the single feature→provider map, with a `resolveAssignment` seam that a per-workspace/user override (a future picker UI backed by a DB setting) plugs into without touching feature code. **`registry.ts`** — `runAiCompletion(feature, req, overrides?)`: resolves the assigned provider, gates on `available()`, and dispatches. This is the ONLY entry point features import; no feature names a provider.
+
+→ `docs/decisions/0007-pluggable-ai-provider-layer.md`
 
 ## Code governed by decisions
 

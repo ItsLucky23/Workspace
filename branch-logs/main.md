@@ -644,3 +644,15 @@ Docker-vrij, claude-vrij, meteen bruikbaar:
 - **Browser-geverifieerd**: octocat README gescand → verschijnt live als context-doc, DB `README(aiEditable=false)` (default off). Geen db push (enabled hergebruikt).
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12. (AI die NIEUWE docs genereert = latere laag, vergt de claude-runtime.)
+
+## 2026-07-02 — Runtime fase 2a: generieke AI-provider-laag (per-feature kiesbare AI)
+
+Fundament voor ALLE AI-features (jouw eis: elke AI-plek kiesbaar tussen Claude CLI / Gemini API / …). Onder `server/ai/`:
+- **`types.ts`** — contract: `AiProvider` (`available`/`complete`), `AiFeature` (workspace-chat, docs-generate, dockerfile-generate, pipeline-agent, conflict-resolve), request/result.
+- **`providers/claudeCli.ts`** — drijft de interactieve `claude`-PTY (scrubbed env → Max-abonnement, NOOIT `-p`), leest het eindbericht van de Stop-hook via `--settings` (geen worktree-vervuiling). Best-effort cleanup (Windows EBUSY-fix). `claudeStopCapture.mjs` = stdin→file capture-helper.
+- **`providers/geminiApi.ts`** — headless Generative Language API, gated op `GEMINI_API_KEY` (andere billing-driver, mag headless).
+- **`assignments.ts`** — feature→provider default-map + `resolveAssignment(overrides)`-seam (per-workspace picker later).
+- **`registry.ts`** — `runAiCompletion(feature, req, overrides?)`: resolve → available-gate → dispatch. Enige entry-point; geen feature hardcodeert een provider.
+- **ADR 0007** (rejected: direct-claude-hardcoden, één centrale runAI-branch, DB-config-nu).
+
+**Geverifieerd:** `runAiCompletion('workspace-chat','reply pong')` → **ok, claude-cli, 15.5s, "pong"** (echte PTY-turn); `availableProviders` → claude:true, gemini:false. Unit-test 10/10 (defaults/overrides/availability-gating, CI-veilig zonder claude-turn). front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **13/13**.
