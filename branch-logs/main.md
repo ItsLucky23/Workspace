@@ -438,3 +438,30 @@
 **Files:** `src/workspaces/_data/types.ts`, `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_api/addComment_v1.ts` (nieuw), `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{WorkspacesProvider.tsx,WorkspacesContext.tsx}`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/addComment.test.mts` (nieuw).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **10/10 files** (addComment.test 6/6: persist WorkspaceNote, body/authorKind/author correct, lege comment genegeerd).
+
+## 2026-07-02 02:28 — /loop AFGEROND — eindsamenvatting + handoff
+
+De onbemande /loop-sessie is netjes afgerond: al het veilig-onbemand-bouwbare hoog-waarde werk is klaar, geverifieerd en gecommit. **11 commits** (70ab0a4→4f91697), niets gepusht (jij pusht zelf), working tree schoon.
+
+### Wat is gebouwd (alles groen: front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 10/10 test-files)
+- **Fase 1 — alle 11 punten:** redirect→/workspaces, socket-status-card onder-midden, leftbar user-dropdown (account/theme/uitloggen) i.p.v. topbar-knoppen, logo-clip-fix, onboarding loading-gate, terminals empty-state, create-workspace→createBlankWorkspace (project+pipeline), accept-invite-400-fix, lichte seed (1 sprint/2 tickets), item 10 (unified account-per-email via `auth.providerAccountStrategy`).
+- **Fase 0 (item 9):** hele write-path (~28 ops) → per-actie getypte `_api`-routes; `Record<string,unknown>` weg aan de client-grens; gedeelde `hasCapability` RBAC-gate; `control`-route + generieke `control()` verwijderd. ADR 0005 (bewuste keuze `_api` i.p.v. `_sync`: sync/room niet browser-verifieerbaar onbemand).
+- **Fase 3 features:** Activity-feed producer (`recordTicketEvent` per ticket-op → feed echt), ticket-edit (inline titel/beschrijving), Notification-producer (assignment → bel echt, nieuw 'assignment'-type), ticket-comments (WorkspaceNote + thread/composer in ticket-detail), palette "New ticket"-fix.
+- **Hardening:** lesson-0002 opgelost (server-owned `createDefaultPipeline` — prod krijgt nu echte stages), Fase-2 doc-cleanup (OP_CAPABILITY = referentie-matrix).
+- **Nieuwe integration-tests:** rbac, activityFeed, ticketEdit, notificationProducer, addComment (allemaal code-direct tegen Mongo, betrouwbaar).
+
+### Belangrijke bevinding
+De `FUNCTIONALITY_AUDIT_2026-07-02.md` was **STALE** — de write-laag (Board/Backlog/Sources/WorkspaceSettings/Pipeline) was al bedraad (fixes in 0dace22/41a8935 vóór deze loop). 4 verificatie-agents + tsc bevestigden dit; mijn Fase-0-migratie behield alle wiring.
+
+### Wat JIJ moet doen bij het wakker worden
+1. **Herstart de `:80`-dev-server met verse code** (server-start is een developer-actie). Dan: test de app end-to-end — getypte writes, activity-feed, assignment-notificaties, ticket-edit, ticket-comments.
+2. **De e2e (`httpControl`) draait pas groen ná de herstart** (assertions aangepast op 2 seed-tickets).
+3. **DB-wipe → test onboarding**: create-workspace (schone default-pipeline + 1 sprint/2 tickets), invite-email via Resend, accept-invite (join-flow).
+4. **Push** wanneer je tevreden bent (ik heb bewust niet gepusht).
+
+### Geflagd — wacht op jou (NIET onbemand gedaan)
+- **ticket-priority** + **notification-preferences**: vergen een Prisma-schemawijziging + `prisma db push`. Risico onbemand: (a) een *required* veld breekt reads van bestaande tickets, (b) je live `:80`-server desynct van de client tot herstart. Zeg of ik ze mag doen → dan als *optionele* velden + jij herstart de server.
+- **realtime-`_sync`-deltalaag**: browser-gated (client room-join + merge niet onbemand verifieerbaar). Additief bovenop de huidige refetch-op-write.
+
+### Optionele kleine follow-ups (lage prioriteit)
+Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notification-triggers (needs-input/merge = Fase-2-producers), conductor `executeAction` per-op typen (interne cleanup).
