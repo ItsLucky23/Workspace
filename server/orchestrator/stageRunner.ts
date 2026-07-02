@@ -5,9 +5,12 @@
 //? the Conductor serial chain (the turn is minutes-long). The container-auth spike (07b §2)
 //? proved container-claude authenticates via the projected creds — this is that engine.
 
+import { copyFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { homedir } from 'node:os';
 import * as pty from 'node-pty';
 import type { Prisma } from '@prisma/client';
-import { tryCatch, getPrismaClient } from '@luckystack/core';
+import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
 import { renderStage, type StageArtifacts } from './renderStage';
 import { toStageConfig } from '../read/workspaceSnapshot';
@@ -43,11 +46,27 @@ export async function materializeStageConfig(container: string, artifacts: Stage
 //? Copy the RO-projected subscription creds into a writable, agent-owned ~/.claude (0600)
 //? so the CLI's permission check passes (the RO Windows mount is 0777) and no container
 //? ever writes the shared source. Also clears any stale turn-capture. Idempotent.
+//? The managed-token refresh loop, on-demand (07b §2.2): the projected token is short-lived
+//? and the HOST's `claude` keeps its own copy fresh, so re-copy the live host creds into the
+//? RO-mounted projection dir before each turn. Without this, container-claude hits
+//? "Not logged in" once the initial copy expires (~hours). Best-effort, host-side.
+function refreshProjectedAuth(): void {
+  const authDir = process.env.WS_AUTH_DIR ?? path.join(process.cwd(), 'data', '_auth');
+  const hostCreds = path.join(homedir(), '.claude', '.credentials.json');
+  if (existsSync(hostCreds) && existsSync(authDir)) {
+    tryCatchSync(() => { copyFileSync(hostCreds, path.join(authDir, '.credentials.json')); });
+  }
+}
+
 async function projectAuth(container: string): Promise<void> {
   //? FIXED path (matches the container's CLAUDE_CONFIG_DIR env) — never `~` (docker exec
   //? sets no HOME, so `~` would resolve wrong and claude would fall into the login flow).
+  //? Also give the worktree a git identity (local, agent-owned) so a code stage's
+  //? `git commit` succeeds instead of hanging on "who are you".
   await docker(['exec', container, 'sh', '-c',
-    'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; rm -f ' + CAPTURE + '; true']);
+    'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; '
+    + 'git -C /work config user.name "Workspaces AI" 2>/dev/null; git -C /work config user.email "ai@workspaces.local" 2>/dev/null; '
+    + 'rm -f ' + CAPTURE + '; true']);
 }
 
 //? Drive ONE interactive `claude` turn inside the container and return its final message.
@@ -57,6 +76,7 @@ async function projectAuth(container: string): Promise<void> {
 //? `docker exec` exits and the PTY closes naturally.
 export async function driveContainerTurn(container: string, kickoff: string, timeoutMs = 240_000): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
+  refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
   await projectAuth(container);
 
   //? bypassPermissions: the agent runs autonomously INSIDE the hardened, isolated,

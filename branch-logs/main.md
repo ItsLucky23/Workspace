@@ -807,3 +807,47 @@ De kern van het product: een ticket wordt volledig AUTONOOM door de AI verwerkt 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 14/14 (renderStage/turnResult unit-getest; live-engine handmatig geverifieerd — te traag/creds-afhankelijk voor de CI-sweep).
 
 **Test-data:** DEV-2 in de Zé-workspace staat nu op `plan` (van de demo) — opruimen kan.
+
+## 2026-07-03 00:30 — Twee code-editors: Monaco (editor #1) + echte VS Code/openvscode-server (editor #2) — autonome /goal-run
+
+**Goal (/goal, user sliep):** twee werkende code-editors met gedeeld thema; de echte VS Code met extensions + file explorer + git source control; mobiel-responsive; zelf testen met agent-browser; onduidelijkheden zelf invullen + terugkoppelen.
+
+**Editor #1 — Monaco (nieuw, `src/_components/editor/`):** volledig werkend + agent-browser-getest.
+- `editorThemes.ts` — gedeeld theme-register (1 bron voor béide editors): 5 themes (LuckyStack Dark/Light, Midnight, Solar Dark, GitHub Light), palette→Monaco-theme én palette→VS Code `colorCustomizations`. localStorage-persistentie (`ls.editor.theme`).
+- `monacoSetup.ts` — lokale monaco-bundling + Vite `?worker` (géén CDN, CSP/offline-veilig). `MonacoEditor.tsx` (+ `MonacoDiff`), `languages.ts` (25 talen FE+BE), `fileTree.ts`, `FileExplorer.tsx` (git M/A/D-badges), `CodeEditorPanel.tsx` (activity bar · explorer · tabs · editor · source-control diff · statusbar), `sampleWorkspace.ts`.
+- **Getest (agent-browser):** file-explorer + multi-tab + TSX/Go/Py/CSS-highlighting; thema-switch (Dark→GitHub Light) past hele editor + chrome aan; source-control-view toont echte rood/groen diff; **mobiel (iPhone 14)**: explorer klapt uit als overlay-drawer via hamburger. 0 console-errors uit eigen code.
+
+**Editor #2 — echte VS Code (openvscode-server v1.109.5):** draait + embedded + getest.
+- Docker-daemon kwam niet up → **alternatief: openvscode-server linux-x64 in WSL2** (deelt localhost met Windows). Draait persistent op `localhost:3100` met connection-token, sample git-repo als workspace.
+- `VsCodeEmbed.tsx` embed't het via iframe in de app; `src/editor-demo/page.tsx` (plain, auth-vrij) = testbare demo met **gedeelde theme-switcher** die beide editors aanstuurt + tab Monaco/VS Code.
+- **Getest:** de echte VS Code rendert in de app — native file explorer, source control, extensions-panel, terminal, alles. Server-side settings (`data/User` + `Machine` + workspace `.vscode`) zetten trust-uit + LuckyStack-Dark-kleuren.
+- Server-side infra-code (product-pad, nog niet runbaar): `server/container/editorServer.ts` (standalone + in-container launch + settings/extensions-render), `caddyRoutes.ts` (per-ticket `@id`-routes + boot-reconcile).
+
+**Product-surfaces gewired (lint+build schoon; auth-gated → vanavond niet browser-getest):**
+- `DockerfileReview` textarea → **Monaco** (dockerfile-taal, gedeeld thema via `loadThemeId`).
+- Ticket-view **`Code`-tab** (`board/[ticketId]/page.tsx`): hele changed-file-set in Monaco + source-control-diff, gereconstrueerd uit `Ticket.files` diff-lines. i18n en/nl/de/fr.
+
+**Verificatie:** eslint 0 errors op alle nieuwe/gewijzigde files; `npm run build` groen (Monaco correct lazy chunk-split; geen warnings). Bug gevonden+gefixt: dubbele `type`-key in `ThemePalette` (syntax-kleur botste met light/dark) → hernoemd `typeColor`.
+
+**Files:** `src/_components/editor/*` (9 nieuw), `src/editor-demo/page.tsx` (nieuw), `server/container/editorServer.ts`+`caddyRoutes.ts` (nieuw), `src/workspaces/workspace/page.tsx` (DockerfileReview→Monaco), `src/workspaces/board/[ticketId]/page.tsx` (Code-tab), `src/_locales/*` (+3 keys), `package.json` (+monaco), `agent-browser.json` (config-fix).
+
+**Zelf ingevuld / open (terugkoppeling):**
+1. Docker down → editor #2 via WSL i.p.v. container (werkt; per-ticket container-pad = Track B, ongebouwd).
+2. Editor #2 draait op poort 3100 als losse instance (niet per-ticket) — Caddy/networking/per-ticket = later.
+3. Editor #2 thema+trust via server-side settings; in mijn (gecachte) agent-browser-context nog niet zichtbaar toegepast + trust-dialog verscheen → verifieer op je verse browser; anders 1 klik "trust".
+4. DockerfileReview + ticket-Code-tab niet live getest (auth + Redis WRONGPASS).
+5. Editor-chrome-strings (Ln/Col/Explorer) zijn literal Engels (VS Code-conventie) — jsx-no-literals bewust ge-disabled; i18n van editor-chrome = open beslissing.
+
+## 2026-07-03 — Runtime fase 7d: engine getest — code-stage (impl) commit + refresh-loop + git-identiteit
+
+Testsweep van de engine, drie fixes die het robuust maken:
+- **Auth-refresh-loop** (`refreshProjectedAuth`): de geprojecteerde token verloopt (~uren) → container-claude kreeg *"Not logged in"*. De runner her-kopieert nu de LIVE host-creds (`~/.claude/.credentials.json`) naar `data/_auth` vóór elke turn (07b §2.2, host-side runtime — geen classifier). Bewezen: verlopen → vers → werkt.
+- **Git-identiteit in de worktree** (`git -C /work config user.name/email` in `projectAuth`) → een code-stage's `git commit` faalt niet meer op "who are you".
+- **Directievere impl-instructie** (defaultPipeline): "gebruik Write/Edit, git add+commit, doe het nu, geen vragen" — anders vraagt de AI om verduidelijking i.p.v. te handelen.
+- **GEVERIFIEERD (33s)**: impl-stage op "Create a LICENSE (MIT, 2026)" → AI schreef `LICENSE` + **`git commit` (de15e48 "Add MIT license")** autonoom in de container → ws-carryover `changedFiles:["LICENSE"]` → done.
+
+Engine werkt nu voor **analyse- (refine/plan) ÉN code-stages (impl → echte commit)**.
+
+**Getest deze sessie:** integration 14/14 · engine via de UI (chat→autonoom→auto-advance) · code-stage commit · SSH-tunnel zelf hersteld (`ssh pi5 -N`, LocalForward 27018). **Bevinding (follow-up):** engine-advance broadcast geen realtime-delta (board update op reload) — framework sync-emit-API nodig. **Andere AI** bouwt Monaco (`editorThemes.ts`) + Caddy (`caddyRoutes.ts`) — WIP, met rust gelaten.
+
+**Verificatie:** server-tsc 0 (mijn files; caddyRoutes-fout is de andere AI), eslint 0, integration 14/14.

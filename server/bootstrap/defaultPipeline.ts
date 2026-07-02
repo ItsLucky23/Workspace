@@ -60,7 +60,7 @@ const DEFAULT_STAGES: DefaultStage[] = [
   {
     key: 'impl', kind: 'code', name: 'Implementation', order: 3, aiEnabled: true, model: 'sonnet', effort: 'high', maxTurns: 30,
     systemPrompt: 'You are a senior engineer implementing a ticket in this repository.',
-    customInstructions: 'Follow the plan. Make the change in the working tree with surgical, well-scoped edits, then commit on the current branch. Do NOT push.',
+    customInstructions: 'Follow the plan. Make the change now with the Write/Edit tools (surgical, well-scoped edits), then run git add + git commit on the current branch with a clear message. Do NOT push. Make reasonable assumptions where small details are missing and act — do NOT ask questions unless you are genuinely blocked.',
     promptTemplate: 'Implement the plan.\n\nPlan:\n{{summary}}\n\nFiles flagged by planning: {{changedFiles}}',
     definitionOfDone: 'The change is implemented and committed on the ticket branch; the touched files are listed.',
   },
