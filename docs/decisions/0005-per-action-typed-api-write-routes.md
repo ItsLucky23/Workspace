@@ -1,7 +1,8 @@
 ---
 name: per-action-typed-api-write-routes
 title: The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session
-status: accepted
+status: superseded
+superseded_by: [realtime-sync-delta-transport]
 date: 2026-07-02
 deciders: [ItsLucky23, AI]
 tags: [workspaces, control-api, typed-routes, fase-0, transport]

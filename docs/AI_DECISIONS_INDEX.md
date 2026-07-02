@@ -9,14 +9,15 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (4)
+## Decisions (5)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | Embed per-stage config as composite types, keep loose ObjectId refs, and omit the framework-provided identity models in the Workspaces V1 Prisma schema | 🟢 accepted | workspaces, data-model, prisma, mongodb, lane-b | — | `docs/decisions/0001-workspaces-v1-schema-shape.md` |
 | 0002 | In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2 | 🟢 accepted | workspaces, control-api, conductor, fase-1, orchestrator | — | `docs/decisions/0002-fase1-inprocess-conductor.md` |
 | 0004 | App-owned AES-256-GCM encryption for per-workspace secrets | 🟢 accepted | security, secrets, workspaces, gitlab | — | `docs/decisions/0004-app-owned-secret-encryption.md` |
-| 0005 | The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session | 🟢 accepted | workspaces, control-api, typed-routes, fase-0, transport | — | `docs/decisions/0005-per-action-typed-api-write-routes.md` |
+| 0005 | The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session | ⚪ superseded | workspaces, control-api, typed-routes, fase-0, transport | — | `docs/decisions/0005-per-action-typed-api-write-routes.md` |
+| 0006 | In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch) | 🟢 accepted | workspaces, realtime, sync, transport, control-api | per-action-typed-api-write-routes | `docs/decisions/0006-realtime-sync-delta-transport.md` |
 
 ## Summaries
 
@@ -46,11 +47,19 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 
 ### 0005 — The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session
 
-**0005** · accepted · tags: workspaces, control-api, typed-routes, fase-0, transport · 2026-07-02
+**0005** · superseded · tags: workspaces, control-api, typed-routes, fase-0, transport · 2026-07-02
 
 *Split the write path into one typed `_api` route per action** (`quickAdd_v1`, `sprintCreate_v1`, …), each with a fully-typed `ApiParams.data` payload, so the generated type-map types the client's `apiRequest({ name: 'workspaces/<op>', … })` call end-to-end. Each route stays thin: validate → `hasCapability` RBAC (the shared B-28 gate extracted to `server/control/rbac.ts`) → **enqueue onto the existing serial Conductor** (preserving serial write-ordering + the `WorkspaceSignal` event-recorder). The `WorkspacesCtx` interface is unchanged (it already exposes typed helpers like `quickAdd`/`sprintCreate`), so only each helper's implementation in `WorkspacesProvider` moves from the generic `control()` to its typed route — **no consumer/page changes**. Migration is incremental + always-green: the legacy `workspaces/control` route keeps serving not-yet-migrated ops until every op has moved, then it (and the generic `control()` client helper) are removed.
 
 → `docs/decisions/0005-per-action-typed-api-write-routes.md`
+
+### 0006 — In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch)
+
+**0006** · accepted · tags: workspaces, realtime, sync, transport, control-api · 2026-07-02
+
+*Every in-workspace write is a per-action `_sync` event that broadcasts its DELTA to the workspace room (room code = workspaceId); every client — including the sender — merges the delta into local state via `upsertSyncEventCallback`. No refetch.**
+
+→ `docs/decisions/0006-realtime-sync-delta-transport.md`
 
 ## Code governed by decisions
 
