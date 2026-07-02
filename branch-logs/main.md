@@ -623,3 +623,13 @@ Eerste runtime-brok nu de P0.5-gate open is. Een git-repo koppelen aan een works
 - **Bekend**: de realtime-delta miste vlak na een backend-restart (10s-clone blokkeert de serial chain → fetchSockets-timeout); reload toont het correct. Follow-up: clone async off-chain + progress-delta.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12** (realtimeDelta 16 asserts incl. link-repo).
+
+## 2026-07-02 — Runtime fase 1b: git-worktree per ticket bij aiEnabled-activatie (07 §A stap 3+5)
+
+Docker-vrije runtime-rung, bouwt op de bare clone:
+- **`repoStore.addWorktree(ws, ticketKey)`**: snijdt de ticket's `DEV-####`-worktree uit de bare clone naar `data/workspaces/<id>/worktrees/<key>`, met de default-branch-HEAD als **frozen commitHash** (DH5). Idempotent (re-activatie hergebruikt de durabele branch). `isLinked` helper.
+- **Conductor**: `activateWorktreesForStage` — bij bulk-move naar een **aiEnabled**-stage krijgt elk ticket (zonder branch) zijn worktree + `Ticket.branch`/`commitHash` gezet. Best-effort (git-fout logt, faalt de move niet), no-op zonder repo of niet-AI-stage. Ticket-delta draagt de branch al.
+- **Spec-fork geflagd**: docs (07 §A) maken de worktree bij **activatie** (aiEnabled-stage-entry, verse frozen baseline), niet bij ticket-create zoals eerder genoemd — docs gevolgd.
+- **Geverifieerd** tegen de echte octocat bare clone: `DEV-wttest`-worktree + branch @ 7fd1a60, README aanwezig, idempotent. Geen db push (branch/commitHash bestonden).
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12. (De `docker run` die de worktree mount = fase 2, wacht op Docker.)

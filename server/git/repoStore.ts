@@ -15,12 +15,25 @@ import path from 'node:path';
 
 export interface RepoStatus { linked: boolean; gitUrl?: string; branch?: string; head?: string }
 
+//? The DEV-#### git-worktree a ticket edits in, cut from the bare clone at activation
+//? (07 §A step 3+5): its branch + the FROZEN baseline commitHash (DH5). `path` is the
+//? on-disk checkout the container later mounts.
+export interface WorktreeInfo { branch: string; commitHash: string; path: string }
+
 //? Root for all linked clones. Under the project cwd, gitignored (`data/`).
 export function workspaceDataDir(workspaceId: string): string {
   return path.join(process.cwd(), 'data', 'workspaces', workspaceId);
 }
 function bareRepoPath(workspaceId: string): string {
   return path.join(workspaceDataDir(workspaceId), 'repo.git');
+}
+function worktreePath(workspaceId: string, ticketKey: string): string {
+  return path.join(workspaceDataDir(workspaceId), 'worktrees', ticketKey);
+}
+
+//? Is a bare clone present for this workspace? (worktrees require a linked repo.)
+export function isLinked(workspaceId: string): boolean {
+  return existsSync(bareRepoPath(workspaceId));
 }
 
 //? Run a git command, capturing stdout. Rejects with a token-scrubbed message on
@@ -80,4 +93,28 @@ export async function cloneRepo(input: { workspaceId: string; gitUrl: string; to
   //? the token is re-injected transiently per fetch (a later slice re-supplies it).
   await git(['--git-dir', bare, 'remote', 'set-url', 'origin', gitUrl]).catch(() => '');
   return repoStatus(workspaceId, gitUrl);
+}
+
+//? Add the ticket's `DEV-####` worktree off the bare clone (07 §A step 5), freezing the
+//? default-branch HEAD as the ticket's baseline commit (DH5, step 3). Idempotent: an
+//? existing worktree is returned as-is; a re-activation reuses the durable branch. The
+//? branch name IS the ticket key (`DEV-<number>`). Returns null if no repo is linked.
+export async function addWorktree(workspaceId: string, ticketKey: string): Promise<WorktreeInfo | null> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return null;
+  const wt = worktreePath(workspaceId, ticketKey);
+  //? Already checked out → return its current branch + commit (idempotent re-activation).
+  if (existsSync(wt)) {
+    const commitHash = await git(['-C', wt, 'rev-parse', 'HEAD']).catch(() => '');
+    return { branch: ticketKey, commitHash, path: wt };
+  }
+  //? Freeze the baseline = current default-branch HEAD of the bare clone.
+  const commitHash = await git(['--git-dir', bare, 'rev-parse', 'HEAD']);
+  mkdirSync(path.dirname(wt), { recursive: true });
+  //? New branch at the frozen commit, unless the durable branch already exists (re-link).
+  const branchExists = await git(['--git-dir', bare, 'rev-parse', '--verify', '--quiet', `refs/heads/${ticketKey}`]).then(() => true).catch(() => false);
+  await (branchExists
+    ? git(['--git-dir', bare, 'worktree', 'add', wt, ticketKey])
+    : git(['--git-dir', bare, 'worktree', 'add', '-b', ticketKey, wt, commitHash]));
+  return { branch: ticketKey, commitHash, path: wt };
 }

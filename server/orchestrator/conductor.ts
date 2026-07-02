@@ -18,7 +18,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
-import { cloneRepo } from '../git/repoStore';
+import { cloneRepo, addWorktree, isLinked } from '../git/repoStore';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -243,6 +243,25 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
   if (error) console.error('[conductor] notifyAssignment failed:', error);
 }
 
+//? Activation (07 §A step 3+5): when ticket(s) enter an `aiEnabled` stage, cut each
+//? one's `DEV-####` git-worktree off the bare clone + freeze the baseline `commitHash`
+//? (DH5). Docker-free — the container that mounts the worktree is a later slice. Skips
+//? tickets that already have a branch (a re-move never re-freezes) and no-ops when no
+//? repo is linked or the target stage is not AI-enabled. Best-effort per ticket: a git
+//? failure is logged, never fails the authoritative stage move.
+async function activateWorktreesForStage(workspaceId: string, keys: string[], stageId: string): Promise<void> {
+  if (keys.length === 0 || !isLinked(workspaceId)) return;
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageId }, select: { aiEnabled: true } });
+  if (stage?.aiEnabled !== true) return;
+  for (const key of keys) {
+    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true } });
+    if (t?.branch) continue;
+    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, key));
+    if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
+    if (wt) await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } });
+  }
+}
+
 //? The single-writer serial chain — each action awaits the previous one, so there
 //? is never a concurrent authoritative write in this process.
 let chain: Promise<unknown> = Promise.resolve();
@@ -413,6 +432,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (keys.length === 0 || !stageId) return [];
       await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
       for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `moved to ${stageId}`);
+      //? Entering an aiEnabled stage → cut each ticket's DEV-#### worktree (07 §A step 5).
+      await activateWorktreesForStage(action.workspaceId, keys, stageId);
       return ticketRowsForKeys(action.workspaceId, keys);
     }
     case 'bulk-status': {
