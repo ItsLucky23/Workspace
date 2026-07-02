@@ -480,3 +480,15 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Files:** `Shell.tsx`, `conductor.ts`, `WorkspacesContext.tsx`, `WorkspacesProvider.tsx`, `_api/quickAdd_v1.ts`, `backlog/page.tsx`, `board/[ticketId]/page.tsx`, `_locales/{en,nl,de,fr}.json` (3 keys), `tests/integration/quickAddSprint.test.mts` (nieuw).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **11/11 files** (quickAddSprint 5/5: sprint-ticket + backlog-ticket).
+
+## 2026-07-02 — Realtime (milestone 1) — foundation + DEV-1 numbering (na detail-Q&A)
+
+**Context:** user koos volledige realtime in V1 — per-actie `_sync`-events die de **delta** dragen, clients **mergen** (geen refetch). Plus DEV-1 nummering, en de bevestigde bouwvolgorde (realtime → register/repo-link → container-runtime → pipeline-terminals → AI-in-terminal → docs-sync).
+
+**Gedaan:**
+- **DEV-#### begint bij DEV-1** (was 1240): seed + conductor quick-add. (commit cbcdef7)
+- **Realtime-foundation:** `server/read/mappers.ts` (`toTicket` — Prisma-row → frontend-Ticket, herbruikt door de snapshot ÉN straks de sync-routes zodat een live-delta identiek merge't aan de eerste load). `workspaceSnapshot` gebruikt nu `toTicket` (DRY; `asStatus`/`TicketStatus` verhuisd). Conductor: `executeAction` geeft nu de delta terug (quick-add → created row) en `enqueueControlAction` returnt `{ signalSeq, result }` — de haak waarop de `_sync`-routes de broadcast-delta bouwen.
+
+**Nog te bouwen (milestone 1 vervolg):** getypte serial-writer (`onChain<T>`, geen `as`-casts), per-actie `_sync`-write-routes (quick-add/archive/bulk-*/…) die de delta broadcasten, client: `joinRoom(workspace)` + `upsertSyncEventCallback` merge-reducers + write via `syncRequest` (geen refetch). Browser-getest via agent-browser/playwright op de :80.
+
+**Verificatie:** front-tsc 0, server-tsc 0 (foundation).

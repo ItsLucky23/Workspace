@@ -15,17 +15,17 @@ import type { PrismaClient } from '@prisma/client';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
+import { toTicket } from './mappers';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
-  StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, TicketStatus, ToolTier, Workspace, WorkspaceBudget,
+  StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
 } from '../../src/workspaces/_data/types';
 
 //? DB-string → typed-union narrowers (ternary narrowing, no `as`): in the true
 //? branch of the `===` chain TS narrows the string to the compared literals.
 const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key : 'member');
-const asStatus = (s: string): TicketStatus => (s === 'needs-input' || s === 'busy' || s === 'done' || s === 'paused' || s === 'stuck' ? s : 'idle');
 const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s === 'test' || s === 'review' || s === 'final' ? s : 'code');
 const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' ? s : 'maintenance');
 const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' ? s : 'ai-message');
@@ -190,12 +190,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         hooks: asHooks(s.hooks),
         wipLimit: s.wipLimit ?? undefined,
       })),
-      tickets: ticketRows.map((t): Ticket => ({
-        id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
-        stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
-        viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
-        sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
-      })),
+      tickets: ticketRows.map(toTicket),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.value, secret: e.secret })),

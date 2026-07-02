@@ -242,7 +242,7 @@ let chain: Promise<unknown> = Promise.resolve();
 //? Idempotency: a repeated clientRequestId is dropped (dedup) — see §6.4.
 const seenRequestIds = new Set<string>();
 
-export async function enqueueControlAction(action: ControlAction): Promise<{ signalSeq: number }> {
+export async function enqueueControlAction(action: ControlAction): Promise<{ signalSeq: number; result?: unknown }> {
   //? Dedup key is namespaced by workspace so a clientRequestId collision across
   //? tenants (or a client that reused an id) can never suppress a real write in a
   //? DIFFERENT workspace. Idempotent re-sends of the SAME action still dedup.
@@ -259,7 +259,8 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   //? dropping the op). Run them on the serial chain WITHOUT a signal (they use the
   //? plain client, so they need no tenant scope either).
   if (!action.workspaceId) {
-    const link = chain.then(() => executeAction(action)).catch((error: unknown) => {
+    let result: unknown;
+    const link = chain.then(async () => { result = await executeAction(action); }).catch((error: unknown) => {
       console.error(`[conductor] action ${action.op} failed:`, error);
     });
     chain = link;
@@ -268,7 +269,7 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
     //? half the time"). Serial ordering is preserved: `link` resolves after all
     //? prior queued actions + this one.
     await link;
-    return { signalSeq: -1 };
+    return { signalSeq: -1, result };
   }
 
   const signalSeq = await nextSignalSeq(action.workspaceId);
@@ -276,28 +277,29 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   //? Append the durable (append-only, B-O6) signal, then run the write — both
   //? inside the serial chain so there is never a concurrent authoritative write.
   const signalPayload = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
+  let result: unknown;
   const link = chain.then(async () => {
     await runInTenant(action.workspaceId, async () => {
       await prisma.workspaceSignal.create({
         data: { workspaceId: action.workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
       });
-      await executeAction(action);
+      result = await executeAction(action);
     });
   }).catch((error: unknown) => {
     console.error(`[conductor] action ${action.op} failed:`, error);
   });
   chain = link;
-  //? AWAIT completion so the route responds only AFTER the write lands → the client's
-  //? refetch is reliable (fixes the "updates only half the time" race).
+  //? AWAIT completion so the route responds only AFTER the write lands, and so the
+  //? realtime `_sync` route can broadcast the write's delta (`result`). Serial-safe.
   await link;
 
-  return { signalSeq };
+  return { signalSeq, result };
 }
 
 //? The op dispatch. Runs INSIDE runInTenant(workspaceId). Fase 1 implements the
 //? self-contained non-AI writes; the rest are scaffolded (logged no-op) until their
 //? slice lands (member/settings/board breadth + the Fase-2 AI-session ops).
-async function executeAction(action: ControlAction): Promise<void> {
+async function executeAction(action: ControlAction): Promise<unknown> {
   const { op, payload, target, userId } = action;
   switch (op) {
     case 'change-role': {
@@ -350,7 +352,8 @@ async function executeAction(action: ControlAction): Promise<void> {
         },
       });
       await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket');
-      return;
+      //? Return the created row so realtime `_sync` write routes can broadcast the delta.
+      return created;
     }
     case 'ticket-edit': {
       const key = str(target, 'ticketId');
