@@ -30,6 +30,17 @@ export interface Member {
   role: Role;             // WorkspaceMember.role
 }
 
+//? The linked-repo status for the active workspace (register-flow step A). `linked`
+//? reflects whether a bare clone exists under data/workspaces/<id>/; branch/head are
+//? the current baseline pointer; `error` carries a (token-scrubbed) clone failure.
+export interface RepoInfo {
+  linked: boolean;
+  gitUrl?: string;
+  branch?: string;
+  head?: string;
+  error?: string;
+}
+
 export interface Workspace {
   id: string;
   name: string;

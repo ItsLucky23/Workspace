@@ -16,11 +16,12 @@ import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/cli
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { formatTime, toTicket } from './mappers';
+import { repoStatus } from '../git/repoStore';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
-  StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
+  RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
 } from '../../src/workspaces/_data/types';
 
 //? DB-string → typed-union narrowers (ternary narrowing, no `as`): in the true
@@ -123,6 +124,8 @@ export interface WorkspaceSnapshot {
   events: ActivityEvent[];
   notifications: NotificationItem[];
   notes: TicketNote[];
+  //? Register-flow step A: the active workspace's linked-repo status (on-disk bare clone).
+  repo: RepoInfo;
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -130,7 +133,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
+  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false },
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -202,6 +205,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       id: s.id, name: s.name, kind: asSkillKind(s.kind), status: s.summary ?? '', model: s.model ?? undefined, on: s.enabled, description: s.summary ?? undefined, usedByStages: s.usedByStages,
     }));
 
+    //? Register-flow step A: the linked-repo status (on-disk bare clone under
+    //? data/workspaces/<id>/), keyed off the project's stored (clean) gitUrl.
+    const projectRow = await tenantDb.project.findFirst();
+    const repo = await repoStatus(activeWorkspaceId, projectRow?.gitUrl ?? undefined);
+
     return {
       workspaces, activeWorkspaceId, members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
@@ -225,6 +233,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: n.id, ticketId: n.ticketId ? (ticketKeyById.get(n.ticketId) ?? n.ticketId) : '',
         author: n.authorId ?? '', body: n.body, time: formatTime(n.createdAt),
       })),
+      repo,
       myInvites,
     };
   });

@@ -73,6 +73,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'gitlab-settings': CAP.workspaceSettings,
   'gitlab-verify': CAP.workspaceSettings,
   'gitlab-resync': CAP.workspaceSettings,
+  'link-repo': CAP.workspaceSettings,
   'raise-cap': CAP.workspaceSettings,
   'edit-budget': CAP.workspaceSettings,
   'resume-spend': CAP.workspaceSettings,

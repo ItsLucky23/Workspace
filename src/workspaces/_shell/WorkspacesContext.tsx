@@ -8,7 +8,7 @@ import { createContext, use } from 'react';
 
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
@@ -69,6 +69,8 @@ export interface WorkspacesCtx {
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string) => void;
+  repo: RepoInfo;
+  linkRepo: (gitUrl: string, token?: string) => void;
   //? Editable per-workspace RBAC + each member's assigned role. Held here so the
   //? edits persist across tab/route changes (would persist server-side for real).
   permRoles: PermRole[];

@@ -5,7 +5,7 @@
 //? client merges — the contract the realtime board relies on (no refetch).
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
-import { ticketListDelta, sprintDelta, noteDelta } from '../../server/read/mappers';
+import { ticketListDelta, sprintDelta, noteDelta, repoDelta } from '../../server/read/mappers';
 
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
@@ -44,6 +44,12 @@ try {
   const mvList = ticketListDelta(mv.result);
   eq(mvList[0]?.stageId, 'coding', 'bulk-move delta carries the new stageId');
   eq(mvList[0]?.id, key, 'bulk-move delta keeps the DEV key as id');
+
+  // link-repo with an invalid URL → a scrubbed error delta (no clone), repoDelta maps it
+  const badRepo = await enqueueControlAction({ workspaceId, op: 'link-repo', target: {}, payload: { gitUrl: 'not-a-valid-url' }, userId: owner.id, clientRequestId: `d-repo-${String(stamp)}` });
+  const repo = repoDelta(badRepo.result);
+  eq(repo?.linked, false, 'link-repo with a bad url returns not-linked');
+  assert((repo?.error ?? '').length > 0, 'link-repo failure carries a (scrubbed) error message');
 
   // sprint-create returns the created sprint → sprintDelta
   const sp = await enqueueControlAction({ workspaceId, op: 'sprint-create', target: {}, payload: { name: 'Delta sprint', active: false }, userId: owner.id, clientRequestId: `d-sp-${String(stamp)}` });

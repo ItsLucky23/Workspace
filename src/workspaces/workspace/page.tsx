@@ -361,6 +361,55 @@ function GitLabTab() {
   );
 }
 
+//? Register-flow step A — link a git repo. Clones it (bare) into data/workspaces/<id>/
+//? server-side; the status card reflects the on-disk linked branch/head (or a scrubbed
+//? clone error). Token is write-only (never pre-filled). Realtime via the linkRepo op.
+function RepositoryTab() {
+  const translate = useTranslator();
+  const { repo, linkRepo } = useWorkspaces();
+  const [gitUrl, setGitUrl] = useState(repo.gitUrl ?? '');
+  const [token, setToken] = useState('');
+  const [linking, setLinking] = useState(false);
+  useEffect(() => { setGitUrl(repo.gitUrl ?? ''); }, [repo.gitUrl]);
+  //? A repo delta (linked or error) ends the in-flight link.
+  useEffect(() => { setLinking(false); }, [repo]);
+  const submit = () => {
+    const u = gitUrl.trim();
+    if (u.length === 0) return;
+    setLinking(true);
+    linkRepo(u, token.trim().length > 0 ? token.trim() : undefined);
+    setToken('');
+  };
+  return (
+    <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabRepository' })}</div>
+      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.repoDescription' })}</div>
+      {repo.linked && (
+        <div className="rounded-lg border border-correct-border bg-correct/10 px-3 py-2 text-sm text-common flex items-center gap-2">
+          <Icon name="circle-check" className="text-correct" />
+          <span>{translate({ key: 'workspaces.workspaceSettings.repoLinked', params: [{ key: 'branch', value: repo.branch ?? '—' }, { key: 'head', value: repo.head ?? '—' }] })}</span>
+        </div>
+      )}
+      {repo.error !== undefined && (
+        <div className="rounded-lg border border-wrong-border bg-wrong/10 px-3 py-2 text-sm text-wrong flex items-center gap-2">
+          <Icon name="triangle-exclamation" /> <span>{repo.error}</span>
+        </div>
+      )}
+      <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.repoUrl' })}</span>
+      <input value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.repoUrlPlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.accessToken' })}</span>
+      <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <div>
+        <WsButton icon={linking ? 'spinner' : 'link'} disabled={linking} onClick={submit}>
+          {translate({ key: linking ? 'workspaces.workspaceSettings.repoLinking' : (repo.linked ? 'workspaces.workspaceSettings.repoRelink' : 'workspaces.workspaceSettings.repoLinkBtn') })}
+        </WsButton>
+      </div>
+    </div>
+  );
+}
+
 function DangerTab() {
   const translate = useTranslator();
   const { activeWorkspace, members, transferOwnership, deleteWorkspace } = useWorkspaces();
@@ -427,6 +476,7 @@ export default function WorkspaceSettings() {
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
     { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
+    { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' },
     { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' },
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
   ];
@@ -466,6 +516,7 @@ export default function WorkspaceSettings() {
         {tab === 'env' && <EnvTab />}
         {tab === 'integrations' && <IntegrationsTab />}
         {tab === 'invites' && <InvitesTab />}
+        {tab === 'repository' && <RepositoryTab />}
         {tab === 'gitlab' && <GitLabTab key={activeWorkspace.id} />}
         {tab === 'danger' && <DangerTab />}
       </div>

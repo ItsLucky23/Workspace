@@ -28,3 +28,6 @@ test-results/
 playwright-report/
 .claude/settings.local.json
 .claude/worktrees/
+
+# Workspaces linked-repo clones (never commit cloned project code)
+data/

@@ -18,6 +18,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
+import { cloneRepo } from '../git/repoStore';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -552,6 +553,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'gitlab-resync': {
       //? Verify = read-only; resync = kick a GitLab sync (Fase 2 engine). No-op write in Fase 1.
       return;
+    }
+    case 'link-repo': {
+      //? Register-flow step A: bare-clone the linked repo into data/workspaces/<id>/
+      //? (the baseline the runtime cuts DEV-#### worktrees from). Clone runs on the
+      //? serial chain (link is rare); a failed clone returns an error delta, not a throw.
+      const gitUrl = str(payload, 'gitUrl');
+      if (!gitUrl) return { linked: false, error: 'sync.invalidRequest' };
+      const token = str(payload, 'token');
+      const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, gitUrl, ...(token ? { token } : {}) }));
+      if (error) return { linked: false, gitUrl, error: error.message };
+      //? Persist the CLEAN url on the workspace's project (token is never stored here).
+      await prisma.project.updateMany({ where: { workspaceId: action.workspaceId }, data: { gitUrl } });
+      return status;
     }
     case 'raise-cap':
     case 'edit-budget': {

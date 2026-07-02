@@ -6,7 +6,7 @@
 
 import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite } from '@prisma/client';
 
-import type { EnvVar, IntegrationTool, InviteEntry, PermRole, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import type { EnvVar, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
 
 //? DB roleKey → the frontend `Role` union (ternary narrowing, no `as`). Mirrors
 //? `asRole` in buildSnapshot so a live member/invite delta matches the snapshot.
@@ -105,6 +105,19 @@ function isDbInvite(v: unknown): v is DbInvite {
 //? by id). Mirrors the invite mapping in the snapshot (only pending invites show).
 export function inviteDelta(result: unknown): InviteEntry | null {
   return isDbInvite(result) ? { id: result.id, email: result.email, role: asRole(result.roleKey), sent: 'pending' } : null;
+}
+
+//? Narrow the link-repo op result (a plain RepoStatus/error object, not a Prisma row)
+//? to the frontend `RepoInfo` delta. Cast-free: read each field via typeof guards.
+export function repoDelta(result: unknown): RepoInfo | null {
+  if (result === null || typeof result !== 'object') return null;
+  const r = result as Record<string, unknown>;
+  const out: RepoInfo = { linked: r.linked === true };
+  if (typeof r.gitUrl === 'string') out.gitUrl = r.gitUrl;
+  if (typeof r.branch === 'string') out.branch = r.branch;
+  if (typeof r.head === 'string') out.head = r.head;
+  if (typeof r.error === 'string') out.error = r.error;
+  return out;
 }
 
 function isDbIntegration(v: unknown): v is DbIntegration {

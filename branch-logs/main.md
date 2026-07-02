@@ -611,3 +611,15 @@ Autonoom gedraaid op de Max-subscription (via Claude Code) met `scripts/spike/ho
 - **B1/B2/B4 hooks GREEN**: `type:http`-hooks vuren interactief voor UserPromptSubmit/PreToolUse/PostToolUse/Stop; `Stop` draagt `last_assistant_message` + `session_id` (turn-end-signaal). CLI-versie **2.1.198** gepind.
 - **Notes**: SessionStart alleen via `type:command` (http-variant vuurde niet); geen `usage`-veld in payloads → budget via labeled char/byte-schatting (doc §4, non-blocking). Elke payload draagt `session_id` + `transcript_path` (→ `--resume`).
 - **Gate OPEN**: P1 lanes B/C/F unblocked. C (/clear-rotatie) + E (crash-resume + RO-cred-mount) nog NOT-RUN → verifiëren vóór hun sub-features, geen blocker voor de lane-F provisioning-skeleton. Lesson 0005 bijgewerkt (Resolution).
+
+## 2026-07-02 — Runtime fase 1: repo linken → git clone (register-flow step A)
+
+Eerste runtime-brok nu de P0.5-gate open is. Een git-repo koppelen aan een workspace:
+- **`server/git/repoStore.ts`**: bare-clone naar `data/workspaces/<id>/repo.git` (de baseline waar de runtime straks DEV-####-worktrees uit snijdt, GIT_STRATEGY §0/§1). Token per-host geïnjecteerd (GitHub x-access-token / GitLab oauth2), NOOIT gelogd/gepersisteerd (alleen de clean gitUrl op Project). Fouten token-scrubbed.
+- **`link-repo` control-op** (+ OP_CAPABILITY workspaceSettings): conductor cloned + zet Project.gitUrl; faalt → error-delta (geen throw). `_sync/linkRepo_server_v1.ts` broadcast de repo-status. `mappers.repoDelta` (cast-vrij).
+- **Snapshot** leest de on-disk repo-status (`repoStatus`) → nieuw `repo`-veld (RepoInfo).
+- **UI**: nieuwe "Repository"-tab in Workspace-settings (URL + token + Link, status-kaart met branch@head of scrubbed error). `WsButton` kreeg een `disabled`-prop. Locale-keys ×4. `data/` gegitignored.
+- **Browser-geverifieerd**: octocat/Hello-World gelinkt → bare repo op disk (master @ 7fd1a60), snapshot toont "Linked · master @ …", RBAC: member → auth.forbidden, owner → ok.
+- **Bekend**: de realtime-delta miste vlak na een backend-restart (10s-clone blokkeert de serial chain → fetchSockets-timeout); reload toont het correct. Follow-up: clone async off-chain + progress-delta.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12** (realtimeDelta 16 asserts incl. link-repo).

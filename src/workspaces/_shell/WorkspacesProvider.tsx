@@ -21,7 +21,7 @@ import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
-  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
+  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
@@ -48,11 +48,12 @@ interface Snap {
   stageConfigs: PipelineStageCfg[];
   myInvites: MyInvite[];
   notes: TicketNote[];
+  repo: RepoInfo;
 }
 const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], myInvites: [], notes: [],
+  notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
 };
 
 function pathForView(view: WsView): string {
@@ -339,6 +340,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? link-repo delta → set the workspace's repo status (register-flow step A).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/linkRepo', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.repo) return;
+      const repo = serverOutput.repo;
+      setSnap((s) => ({ ...s, repo }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? stage-config delta → upsert by id (pipeline settings realtime; no refetch).
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/saveStageConfig', version: 'v1',
@@ -492,6 +503,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveGitlab: (baseUrl, token) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
+      },
+      repo: snap.repo,
+      linkRepo: (gitUrl, token) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { gitUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {

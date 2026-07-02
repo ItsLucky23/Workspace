@@ -115,13 +115,13 @@ const BTN_VARIANT: Record<BtnVariant, string> = {
   ghost: 'text-common hover:bg-container2',
   danger: 'bg-wrong text-white hover:bg-wrong-hover',
 };
-export function WsButton({ variant = 'primary', icon, children, onClick, title, type = 'button', className = '' }: {
-  variant?: BtnVariant; icon?: IconName; children?: ReactNode; onClick?: () => void; title?: string; type?: 'button' | 'submit'; className?: string;
+export function WsButton({ variant = 'primary', icon, children, onClick, title, type = 'button', className = '', disabled = false }: {
+  variant?: BtnVariant; icon?: IconName; children?: ReactNode; onClick?: () => void; title?: string; type?: 'button' | 'submit'; className?: string; disabled?: boolean;
 }) {
   return (
     <button
-      type={type} onClick={onClick} title={title}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 ${BTN_VARIANT[variant]} ${className}`}
+      type={type} onClick={onClick} title={title} disabled={disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${BTN_VARIANT[variant]} ${className}`}
     >
       {icon && <Icon name={icon} />}
       {children}
