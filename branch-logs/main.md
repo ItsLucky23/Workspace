@@ -539,3 +539,11 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Gedaan:** `mappers`: `asRole` + `roleDelta` + `inviteDelta`. Conductor role-create/role-update/invite geven de row terug. 7 sync-routes: roleCreate/roleUpdate (broadcast `role`, upsert by key), changeRole (echo `{memberId, role}`), removeMember (echo removed id), transferOwnership (echo `{newOwnerId, previousOwnerId}` → client zet owner/admin + workspace.ownerId), invite (broadcast `invite`), revokeInvite (echo revoked id → client dropt uit pending). Client: 8 merge-callbacks + dispatchers via `syncRequest` (optimistische setSnap voor addRole/togglePerm vervalt). Legacy `_api` (7) verwijderd.
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — Realtime m1 fan-out (6): rename/gitlab/skill-toggle/accept-suggestion via _sync
+
+**Gedaan:** renameWorkspace (echo `{workspaceId,name}` → client update workspaces[].name), skillToggle (echo `{sourceId,on}`), acceptSuggestion (echo `{acceptedSuggestionId}` → drop uit open-suggesties; lokale dismiss blijft voor instant feedback sender), gitlabSettings (write-only: geen snapshot-delta, dus geen merge-callback — enkel de zinloze refetch weg). Client: 3 merge-callbacks + 4 dispatchers via `syncRequest`. Legacy `_api` (4) verwijderd.
+
+**Resterend op `_api`+refetch (bewust):** `saveStageConfig` (volgt met geëxtraheerde stage-mapper), en `markRead`/`createWorkspace`/`acceptInvite`/`deleteWorkspace` — user-scoped of login-level/geen room → GEFLAGD (zie onder).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.

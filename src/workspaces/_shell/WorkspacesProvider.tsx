@@ -309,6 +309,32 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? workspace rename / skill toggle / suggestion accept deltas (no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/renameWorkspace', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const { workspaceId, name } = serverOutput;
+      setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === workspaceId ? { ...w, name } : w)) }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/skillToggle', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const { sourceId, on } = serverOutput;
+      setSnap((s) => ({ ...s, skills: s.skills.map((sk) => (sk.id === sourceId ? { ...sk, on } : sk)) }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/acceptSuggestion', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const id = serverOutput.acceptedSuggestionId;
+      setSnap((s) => ({ ...s, suggestions: s.suggestions.filter((sug) => sug.id !== id) }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -408,7 +434,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       suggestions: activeSuggestions,
       dismissSuggestion: (id) => { setLocalSuggestionsDismissed((prev) => [...prev, id]); },
       acceptSuggestion: (id) => {
-        afterWrite(apiRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', suggestionId: id, clientRequestId: nextReqId() } }));
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, clientRequestId: nextReqId() }, receiver: room });
         setLocalSuggestionsDismissed((prev) => [...prev, id]);
       },
       notifications: snap.notifications,
@@ -431,14 +458,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       myInvites: snap.myInvites,
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
-      renameWorkspace: (name) => { afterWrite(apiRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', name, clientRequestId: nextReqId() } })); },
+      renameWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }); },
       deleteWorkspace: () => {
         afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', clientRequestId: nextReqId() } }));
         setWantWorkspaceId(undefined);
         setLoading(true);
       },
       saveGitlab: (baseUrl, token) => {
-        afterWrite(apiRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', baseUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() } }));
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {
@@ -482,7 +510,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       bulkAssign: (ids, assigneeId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: ids, assigneeId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkSprint: (ids, sprintId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { ticketIds: ids, sprintId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkArchive: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
-      toggleSkill: (id, on) => { afterWrite(apiRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', sourceId: id, on, clientRequestId: nextReqId() } })); },
+      toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { afterWrite(apiRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', stageId: cfg.id, cfg, clientRequestId: nextReqId() } })); },
       signOut,
