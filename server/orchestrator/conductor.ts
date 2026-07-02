@@ -323,10 +323,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const value = str(payload, 'value') ?? '';
       const secret = bool(payload, 'secret');
       const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key } });
-      await (existing
+      //? Return the upserted row so the realtime `_sync` route broadcasts the delta.
+      return existing
         ? prisma.envVar.update({ where: { id: existing.id }, data: { value, secret } })
-        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value, secret } }));
-      return;
+        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value, secret } });
     }
     case 'remove-env': {
       const envId = str(target, 'envId');
@@ -525,10 +525,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const type = str(payload, 'type') ?? 'custom';
       const fields = readIntegrationFields(payload.fields);
       const mcp = readMcp(payload.mcp);
-      await (integrationId
-        ? prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type, fields: { set: fields }, mcp: { set: mcp } } })
-        : prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields, mcp } }));
-      return;
+      if (integrationId) {
+        await prisma.integrationTool.updateMany({ where: { workspaceId: action.workspaceId, id: integrationId }, data: { name, type, fields: { set: fields }, mcp: { set: mcp } } });
+        //? Return the updated row so the realtime `_sync` route broadcasts the delta.
+        return prisma.integrationTool.findFirst({ where: { workspaceId: action.workspaceId, id: integrationId } });
+      }
+      return prisma.integrationTool.create({ data: { workspaceId: action.workspaceId, name, type, fields, mcp } });
     }
     case 'remove-integration': {
       const integrationId = str(target, 'integrationId');

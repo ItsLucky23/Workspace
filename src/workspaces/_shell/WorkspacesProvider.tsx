@@ -207,6 +207,42 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? env-var deltas → upsert / drop by id (settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveEnv', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.envVar) return;
+      const envVar = serverOutput.envVar;
+      setSnap((s) => ({ ...s, envVars: s.envVars.some((e) => e.id === envVar.id) ? s.envVars.map((e) => (e.id === envVar.id ? envVar : e)) : [...s.envVars, envVar] }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/removeEnv', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const id = serverOutput.removedEnvId;
+      setSnap((s) => ({ ...s, envVars: s.envVars.filter((e) => e.id !== id) }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? integration-tool deltas → upsert / drop by id (settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveIntegration', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.integration) return;
+      const integration = serverOutput.integration;
+      setSnap((s) => ({ ...s, integrations: s.integrations.some((x) => x.id === integration.id) ? s.integrations.map((x) => (x.id === integration.id ? integration : x)) : [...s.integrations, integration] }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/removeIntegration', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const id = serverOutput.removedIntegrationId;
+      setSnap((s) => ({ ...s, integrations: s.integrations.filter((x) => x.id !== id) }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -359,18 +395,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       removeMember: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/removeMember', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
       transferOwnership: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
       envVars: snap.envVars,
-      saveEnvVar: (v) => { afterWrite(apiRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() } })); },
-      removeEnvVar: (id) => { afterWrite(apiRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', envId: id, clientRequestId: nextReqId() } })); },
+      saveEnvVar: (v) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() }, receiver: room }); },
+      removeEnvVar: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { envId: id, clientRequestId: nextReqId() }, receiver: room }); },
       integrationTools: snap.integrations,
       saveIntegrationTool: (t) => {
+        const room = snap.activeWorkspaceId;
         const known = snap.integrations.some((x) => x.id === t.id);
-        setSnap((s) => ({ ...s, integrations: known ? s.integrations.map((x) => (x.id === t.id ? t : x)) : [...s.integrations, t] }));
-        afterWrite(apiRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() } }));
+        if (room) void syncRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() }, receiver: room });
       },
-      removeIntegrationTool: (id) => {
-        setSnap((s) => ({ ...s, integrations: s.integrations.filter((x) => x.id !== id) }));
-        afterWrite(apiRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', integrationId: id, clientRequestId: nextReqId() } }));
-      },
+      removeIntegrationTool: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { integrationId: id, clientRequestId: nextReqId() }, receiver: room }); },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
       quickAdd: quickAddApi,

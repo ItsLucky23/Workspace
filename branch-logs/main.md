@@ -527,3 +527,9 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Gedaan:** add-comment → `_sync` (broadcast `note`, client merget in `notes` dedupe by id) en sprint-create → `_sync` (broadcast `sprint`, client merget in `sprints`). `sprintCreateApi` + `addComment` dispatchers via `syncRequest` (geen refetch). Legacy `_api/{addComment,sprintCreate}_v1.ts` verwijderd. Hiermee zijn ALLE board/ticket/sprint/comment-writes realtime; alleen members/settings-ops resten op `_api`+refetch.
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — Realtime m1 fan-out (4): env-vars + integration-tools via _sync
+
+**Gedaan:** settings-realtime start. `mappers`: `envDelta` / `integrationDelta`. Conductor save-env + save-integration geven nu de upserted row terug. Sync-routes `_sync/{saveEnv,removeEnv,saveIntegration,removeIntegration}_server_v1.ts` (create/update broadcast de row, delete echo't de removed id). Client: 4 merge-callbacks (upsert/drop by id) + dispatchers via `syncRequest`; de optimistische local setSnap voor integrations vervalt (merge-callback = enige bron). Legacy `_api` (4) verwijderd.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.

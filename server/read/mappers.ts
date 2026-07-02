@@ -4,9 +4,9 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration } from '@prisma/client';
 
-import type { Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import type { EnvVar, IntegrationTool, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
 
 const asStatus = (s: string): TicketStatus =>
   (s === 'needs-input' || s === 'busy' || s === 'done' || s === 'paused' || s === 'stuck' ? s : 'idle');
@@ -69,4 +69,28 @@ function isDbNote(v: unknown): v is DbNote {
 //? (which the `_sync` route knows — it operated on it). Mirrors `buildSnapshot`.
 export function noteDelta(result: unknown, ticketKey: string): TicketNote | null {
   return isDbNote(result) ? { id: result.id, ticketId: ticketKey, author: result.authorId ?? '', body: result.body, time: formatTime(result.createdAt) } : null;
+}
+
+function isDbEnvVar(v: unknown): v is DbEnvVar {
+  return v !== null && typeof v === 'object' && 'id' in v && 'key' in v && 'value' in v && 'secret' in v;
+}
+
+//? Narrow the save-env op result to the frontend `EnvVar` delta (client upserts by id).
+export function envDelta(result: unknown): EnvVar | null {
+  return isDbEnvVar(result) ? { id: result.id, key: result.key, value: result.value, secret: result.secret } : null;
+}
+
+function isDbIntegration(v: unknown): v is DbIntegration {
+  return v !== null && typeof v === 'object' && 'id' in v && 'name' in v && 'fields' in v && 'mcp' in v;
+}
+
+//? Narrow the save-integration op result to the frontend `IntegrationTool` delta.
+//? Mirrors the integration mapping in `buildSnapshot`.
+export function integrationDelta(result: unknown): IntegrationTool | null {
+  if (!isDbIntegration(result)) return null;
+  return {
+    id: result.id, name: result.name, type: result.type,
+    fields: result.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })),
+    mcp: result.mcp,
+  };
 }
