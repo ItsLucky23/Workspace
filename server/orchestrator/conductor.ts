@@ -274,8 +274,11 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? are logged, never surfaced into the stage move.
 async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[]): Promise<void> {
   if (!(await dockerAvailable())) return;
+  //? Prefer the project's built L2 image (Q-CT-IMAGESEL) when it has one, else the L1 base.
+  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
+  const image = project?.baseImageRef ?? undefined;
   for (const { key, branch } of activated) {
-    const [error] = await tryCatch(() => launchTicketContainer({ workspaceId, ticketKey: key, branch }));
+    const [error] = await tryCatch(() => launchTicketContainer({ workspaceId, ticketKey: key, branch, ...(image ? { image } : {}) }));
     if (error) console.error(`[conductor] launchTicketContainer ${key} failed:`, error.message);
   }
 }

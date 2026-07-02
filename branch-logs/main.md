@@ -722,3 +722,15 @@ Waar docs-scan bestaande repo-docs registreert, laat dit de AI een project-summa
 ## 2026-07-02 — ADR 0009: register-flow AI-operaties
 
 Legt de drie cross-cutting keuzes van fase 6a/6b vast: (1) AI-ops zijn **directe `_api`-routes, geen Conductor-control-ops** (een trage turn mag de serial writer niet blokkeren; alleen het *resultaat* dat state muteert gaat via een control-op); (2) gegenereerde artefacten zijn een **reviewbare draft, nooit auto-applied** (Dockerfile → gevalideerd tegen L1-base → draft; docs → `generated` InfoSource); (3) **pure-context prompting** (provider draait in scratch-cwd → repo inline meegeven, filesystem verbieden; lesson 0008). Rejected alternatives + deferred slices (L2-build, Monaco, repo-commit) genoteerd.
+
+## 2026-07-02 — Runtime fase 6c: L2 per-project image-build (register-flow C, stap 3)
+
+Op basis van de parallelle research-agent-spec:
+- **`server/container/imageBuild.ts`**: `buildProjectImage` → content-hash-tag `workspaces/proj-<projectId>:<hash>` (SHA-256 over draft-Dockerfile-bytes + lockfile-bytes), `docker image inspect`-skip (cache), `docker build` uit een minimale temp-context (alleen de Dockerfile, nooit de repo.git-sibling), her-valideert `FROM workspaces/base`, zet `Project.baseImageRef` (enige schrijver daarvan). Pre-warm dependency-layer DEFERRED (§1.2/§8.4).
+- **`_api/buildProjectImage_v1.ts`**: workspaceSettings-gated (Admin), rate-limit 6, local-daemon-only.
+- **`runtime.ts`**: `docker()` geëxporteerd; `launchTicketContainer` kiest nu `image ?? BASE_IMAGE`. **Conductor** `provisionContainers` resolvet `Project.baseImageRef` → containers draaien de L2-image.
+- **Geverifieerd (echt)**: octocat-draft → image `workspaces/proj-…:3399a0a2` in 3.4s; idempotente cache-hit 1.07s (zelfde tag); `baseImageRef` gezet.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+**Volgende = de kritieke gate:** container-auth-spike (mount subscription-creds RO → draait container-claude op het abonnement?), dan de stage-runner engine (renderStage → stageRunner → conductor-wiring).

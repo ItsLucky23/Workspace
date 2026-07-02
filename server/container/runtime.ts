@@ -20,8 +20,9 @@ export const DOCKER_BIN = process.env.WS_DOCKER_BIN ?? 'docker';
 interface DockerResult { code: number; out: string; err: string }
 
 //? Run `docker` capturing stdout/stderr. NEVER rejects on a non-zero exit — the caller
-//? branches on `code` so partial-launch rollback (§8.3) stays explicit.
-function docker(args: string[]): Promise<DockerResult> {
+//? branches on `code` so partial-launch rollback (§8.3) stays explicit. Exported so the
+//? L2 image-build + terminal bridge share ONE Windows-safe spawn path.
+export function docker(args: string[]): Promise<DockerResult> {
   return new Promise((resolve) => {
     const proc = spawn(DOCKER_BIN, args, { windowsHide: true });
     let out = '';
@@ -56,8 +57,10 @@ export async function dockerAvailable(): Promise<boolean> {
 //? then clones the frozen `DEV-####` branch into `/work` AS the agent user (so the
 //? checkout is agent-owned). Rolls back the volume/container on a partial failure (§8.3).
 //? Returns null when no repo is linked (no mirror to clone).
-export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string }): Promise<ContainerInfo | null> {
+export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string }): Promise<ContainerInfo | null> {
   const { workspaceId, ticketKey, branch } = args;
+  //? Prefer the project's L2 image (Q-CT-IMAGESEL) when the caller resolved one, else L1.
+  const image = args.image ?? BASE_IMAGE;
   const mirror = bareMirrorPath(workspaceId);
   if (!existsSync(mirror)) return null;
   const name = containerName(workspaceId, ticketKey);
@@ -80,7 +83,7 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     '--pids-limit', '512', '--memory', '3g', '--memory-swap', '3g', '--cpus', '2',
     '--restart', 'unless-stopped',
     '--label', `org.workspaces.workspace=${workspaceId}`, '--label', `org.workspaces.ticket=${ticketKey}`,
-    BASE_IMAGE,
+    image,
   ]);
   if (run.code !== 0) {
     await docker(['volume', 'rm', '-f', volume]);
