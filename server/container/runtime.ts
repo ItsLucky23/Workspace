@@ -102,6 +102,18 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
   return { containerId, name, volume };
 }
 
+//? List a workspace's RUNNING ticket containers (by label) → their ticket + container
+//? name, so the terminals page can render one live shell per active ticket. [] when
+//? Docker is down or nothing is running.
+export async function listWorkspaceContainers(workspaceId: string): Promise<{ ticketKey: string; container: string }[]> {
+  const r = await docker(['ps', '--filter', `label=org.workspaces.workspace=${workspaceId}`, '--format', '{{.Names}}\t{{.Label "org.workspaces.ticket"}}']);
+  if (r.code !== 0 || r.out.length === 0) return [];
+  return r.out.split('\n').map((line) => {
+    const [container, ticketKey] = line.split('\t');
+    return { container: (container ?? '').trim(), ticketKey: (ticketKey ?? '').trim() };
+  }).filter((c) => c.container.length > 0 && c.ticketKey.length > 0);
+}
+
 //? Is `name` one of OUR containers (carries the workspace label)? The terminal bridge
 //? MUST gate `docker exec` on this — it must never exec into an arbitrary host container.
 export async function isWorkspacesContainer(name: string): Promise<boolean> {

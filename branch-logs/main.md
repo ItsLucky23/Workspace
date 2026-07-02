@@ -688,3 +688,13 @@ De payoff van de container-spine begint — echte shells IN de ticket-container 
 - **Volgende slice**: terminals-page wiring — running containers (`docker ps` op label) → `Terminal[]` in de snapshot, zodat de page per ticket een container-terminal toont (nu nog `const terminals = []`).
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+## 2026-07-02 — Runtime fase 5b: terminals-page toont live container-terminals
+
+De page-helft van fase 5 — running ticket-containers zichtbaar als echte terminals:
+- **`runtime.listWorkspaceContainers`**: `docker ps` op het `org.workspaces.workspace`-label → `[{ticketKey, container}]`.
+- **`_api/containerTerminals_v1.ts`**: membership-gated, retourneert de running containers.
+- **terminals/page.tsx**: haalt de lijst op (5s-poll → een container die bij stage-activatie opspint verschijnt vanzelf) → bouwt `Terminal[]` (`container`-veld). De **SSH-gate is losgekoppeld** voor container-terminals (die gate is legacy voor het dev-host-shell-model; een container-shell is geïsoleerd). `Terminal` kreeg een `container?`-veld → doorgegeven aan `XtermTerminal`.
+- **Geverifieerd**: `listWorkspaceContainers` retourneert de live DEV-3-container; backend-PTY + route + wiring compileren groen. **Page-render-browser-test env-geblokkeerd**: de workspaces-vite-client is van :5173 verdrongen door een ander project van de user ("The Long Way Round") — mijn `:80`-supervisor-tree-kill nam waarschijnlijk de client mee; te herstellen door de workspaces-client opnieuw te starten (conflict met het andere project op :5173 oplossen).
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.

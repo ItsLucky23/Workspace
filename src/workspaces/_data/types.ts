@@ -280,6 +280,7 @@ export interface Terminal {
   ticketId: string;
   stage: string;
   processes: TerminalProcess[];
+  container?: string;   // the L3 container name — routes the PTY to `docker exec` (07b §9)
 }
 
 //? The ONE canonical runtime row (04b §7) — the orchestrator's durable runtime fact

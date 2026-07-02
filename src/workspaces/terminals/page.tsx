@@ -5,9 +5,9 @@
 //? (123 → test, 456 → mathijs) drives the terminals and is shown per panel.
 //? Terminals are grouped per ticket; process sub-tabs switch instances.
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -32,11 +32,6 @@ let rememberedGridHeight = 460;
 const MIN_PANEL_HEIGHT = 220;
 const MAX_PANEL_HEIGHT = 900;
 
-//? There are no live terminals until the PTY/container backend (Fase 2) surfaces
-//? real `AgentSession` rows in the workspace snapshot. Until then this page renders
-//? its (unlocked) empty state instead of the old prototype dummy terminals — item 6.
-//? Swap this for the snapshot-derived terminal list when that lane lands.
-const terminals: Terminal[] = [];
 
 function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
@@ -100,7 +95,7 @@ function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, o
           <PopMenu items={menuItems} triggerClass="w-7 h-7 flex items-center justify-center rounded-lg text-terminal-muted hover:bg-white/10 hover:text-terminal-text cursor-pointer" />
         </div>
       </div>
-      <XtermTerminal key={sessionId} sessionId={sessionId} className="flex-1 min-h-0" />
+      <XtermTerminal key={sessionId} sessionId={sessionId} className="flex-1 min-h-0" container={terminal.container} />
       <div className="flex items-center justify-between bg-terminal-surface border-t border-white/5 px-3 h-7 shrink-0 text-[11px] font-mono text-terminal-muted">
         <span>{sshUser}@{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
         <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-terminal-green" /> {translate({ key: 'workspaces.terminals.live' })}</span>
@@ -139,12 +134,32 @@ export const template = 'workspaces';
 
 export default function Terminals() {
   const translate = useTranslator();
-  const { sshUserId, navigate, membersById } = useWorkspaces();
+  const { sshUserId, navigate, membersById, activeWorkspace } = useWorkspaces();
   const [layout, setLayout] = useState<Layout>('grid');
-  const [activeTab, setActiveTab] = useState(terminals[0]?.ticketId ?? '');
+  const [activeTab, setActiveTab] = useState('');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   const sshUserName = sshUserId ? (membersById[sshUserId]?.name ?? sshUserId) : '';
   const unlocked = sshUserId !== null;
+
+  //? Live container terminals: one shell per RUNNING ticket container (docker exec via
+  //? the ws-term relay). Polled so a container that spins up on stage-activation appears
+  //? without a manual refresh. These need NO SSH key — that gate is for the legacy
+  //? dev host-shell model; a container shell is isolated.
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/containerTerminals', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
+      if (cancelled || error || res?.status !== 'success') return;
+      setTerminals(res.result.containers.map((c) => ({
+        ticketId: c.ticketKey, stage: 'container', container: c.container,
+        processes: [{ name: 'shell', status: 'idle' as const, cwd: '/work', exit: '', lines: [] }],
+      })));
+    };
+    void load();
+    const timer = setInterval(() => { void load(); }, 5000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [activeWorkspace.id]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -153,7 +168,7 @@ export default function Terminals() {
           <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.terminals.title' })}</h1>
           {unlocked && <span className="inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common"><Icon name="user" /> {translate({ key: 'workspaces.terminals.sshLabel', params: [{ key: 'name', value: sshUserName }] })}</span>}
         </div>
-        {unlocked && terminals.length > 0 && (
+        {terminals.length > 0 && (
           <Segmented<Layout>
             value={layout}
             onChange={setLayout}
@@ -162,13 +177,13 @@ export default function Terminals() {
         )}
       </div>
 
-      {!unlocked && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
+      {!unlocked && terminals.length === 0 && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
 
       {unlocked && terminals.length === 0 && (
         <EmptyState icon="terminal" title={translate({ key: 'workspaces.terminals.emptyTitle' })} sub={translate({ key: 'workspaces.terminals.emptySub' })} />
       )}
 
-      {unlocked && terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
+      {terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
         <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
           {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
             <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
@@ -176,7 +191,7 @@ export default function Terminals() {
         </div>
       )}
 
-      {unlocked && terminals.length > 0 && layout === 'grid' && maximizedId === null && (
+      {terminals.length > 0 && layout === 'grid' && maximizedId === null && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {terminals.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
@@ -184,7 +199,7 @@ export default function Terminals() {
         </div>
       )}
 
-      {unlocked && terminals.length > 0 && layout === 'tabs' && (
+      {terminals.length > 0 && layout === 'tabs' && (
         <div className="flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6">
           <div className="flex items-center gap-1 mb-3 overflow-x-auto ws-no-scrollbar">
             {terminals.map((t) => (
