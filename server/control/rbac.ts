@@ -46,6 +46,7 @@ export const CAP = {
 export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'quick-add': CAP.workTickets,
   'ticket-edit': CAP.workTickets,
+  'add-comment': CAP.workTickets,
   archive: CAP.workTickets,
   'bulk-move': CAP.workTickets,
   'bulk-status': CAP.workTickets,

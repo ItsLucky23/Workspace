@@ -354,6 +354,16 @@ async function executeAction(action: ControlAction): Promise<void> {
       if (edited) await recordTicketEvent(action.workspaceId, edited.id, 'comment', userId, 'edited the ticket');
       return;
     }
+    case 'add-comment': {
+      const key = str(target, 'ticketId');
+      const body = str(payload, 'body');
+      if (!key || !body || body.trim().length === 0) return;
+      const [commented] = await ticketIdsForKeys(action.workspaceId, [key]);
+      if (!commented) return;
+      await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: commented.id, authorKind: 'user', authorId: userId, body } });
+      await recordTicketEvent(action.workspaceId, commented.id, 'comment', userId, 'commented on the ticket');
+      return;
+    }
     case 'archive': {
       const key = str(target, 'ticketId');
       if (!key) return;

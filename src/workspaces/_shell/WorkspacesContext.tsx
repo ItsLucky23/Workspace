@@ -9,7 +9,7 @@ import { createContext, use } from 'react';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, Workspace, WorkspaceBudget,
+  SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
 export type WsView =
@@ -99,6 +99,8 @@ export interface WorkspacesCtx {
   //? Edit a ticket's title / description / labels (stage + assignee changes reuse
   //? bulkMove / bulkAssign on a single ticket). Only the given fields are written.
   editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[] }) => void;
+  //? Add a user comment (WorkspaceNote) to a ticket. Read them back via `ticketNotes`.
+  addComment: (ticketId: string, body: string) => void;
   archiveTicket: (id: string) => void;
   bulkMove: (ids: string[], stageId: string) => void;
   bulkStatus: (ids: string[], status: string) => void;
@@ -133,6 +135,7 @@ export interface WorkspacesCtx {
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES
   activityEvents: ActivityEvent[];     // was EVENTS
+  ticketNotes: TicketNote[];           // user comments on tickets (WorkspaceNote projection)
 }
 
 export const isTicketView = (v: string): boolean => v.startsWith('DEV-');

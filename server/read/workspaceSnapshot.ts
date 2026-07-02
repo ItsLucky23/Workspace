@@ -19,7 +19,7 @@ import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
-  StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketStatus, ToolTier, Workspace, WorkspaceBudget,
+  StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, TicketStatus, ToolTier, Workspace, WorkspaceBudget,
 } from '../../src/workspaces/_data/types';
 
 //? DB-string → typed-union narrowers (ternary narrowing, no `as`): in the true
@@ -80,6 +80,7 @@ export interface WorkspaceSnapshot {
   invites: InviteEntry[];
   events: ActivityEvent[];
   notifications: NotificationItem[];
+  notes: TicketNote[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -87,7 +88,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [],
+  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -111,7 +112,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
@@ -128,6 +129,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? the @@index([workspaceId, createdAt]) exists for exactly this feed.
       tenantDb.ticketEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
       tenantDb.notification.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 }),
+      //? Ticket comments (WorkspaceNote) — the ticket-detail comment thread filters
+      //? this by ticketId. Bounded recent window, newest first.
+      tenantDb.workspaceNote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -204,6 +208,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       notifications: notificationRows.map((n): NotificationItem => ({
         id: n.id, type: asNotifType(n.type), title: n.title, body: n.body, ticketId: n.ticketId ?? undefined,
         deepLink: asDeepLink(n.deepLink), time: formatTime(n.createdAt), read: n.read,
+      })),
+      notes: noteRows.map((n): TicketNote => ({
+        id: n.id, ticketId: n.ticketId ? (ticketKeyById.get(n.ticketId) ?? n.ticketId) : '',
+        author: n.authorId ?? '', body: n.body, time: formatTime(n.createdAt),
       })),
       myInvites,
     };

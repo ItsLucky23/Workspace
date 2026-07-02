@@ -13,7 +13,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import FileDiffViewer from './FileDiffViewer';
 import Icon from '../../_components/Icon';
 import XtermTerminal from '../../_components/XtermTerminal';
-import { AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../../_components/primitives';
+import { AvatarBubble, AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../../_components/primitives';
 import { TERMINALS } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../../_data/types';
@@ -221,6 +221,7 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
           <span className="text-muted">{translate({ key: 'workspaces.ticket.stageConfigMeta' })}</span>
         </div>
       </Card>
+      <CommentsThread ticketId={ticket.id} />
       <div className="flex items-center gap-2">
         <WsButton
           variant="danger" icon="box-archive"
@@ -233,6 +234,58 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
         </WsButton>
       </div>
     </div>
+  );
+}
+
+//? Comments thread + composer, scoped to one ticket. Notes arrive newest-first
+//? from the snapshot; rendered oldest→newest so the thread reads top-to-bottom.
+//? Non-user / unknown authors fall back to a generic label + initials avatar.
+function CommentsThread({ ticketId }: { ticketId: string }) {
+  const translate = useTranslator();
+  const ctx = useWorkspaces();
+  const [draft, setDraft] = useState('');
+  const notes = ctx.ticketNotes.filter((n) => n.ticketId === ticketId).toReversed();
+
+  const submit = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    ctx.addComment(ticketId, trimmed);
+    setDraft('');
+  };
+
+  return (
+    <Card title={translate({ key: 'workspaces.ticket.comments' })}>
+      <div className="flex flex-col gap-3">
+        {notes.length === 0
+          ? <div className="text-sm text-muted">{translate({ key: 'workspaces.ticket.noComments' })}</div>
+          : notes.map((n) => {
+            const author = ctx.membersById[n.author];
+            const name = author?.name ?? translate({ key: 'workspaces.ticket.commentSystemAuthor' });
+            return (
+              <div key={n.id} className="flex items-start gap-2.5">
+                <AvatarBubble user={author ?? { name }} size={28} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-title">{name}</span>
+                    <span className="text-xs text-muted font-mono">{n.time}</span>
+                  </div>
+                  <p className="text-sm text-common leading-relaxed mt-0.5 whitespace-pre-wrap break-words">{n.body}</p>
+                </div>
+              </div>
+            );
+          })}
+        <div className="flex items-end gap-2 pt-1">
+          <textarea
+            value={draft} onChange={(e) => { setDraft(e.target.value); }}
+            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit(); } }}
+            placeholder={translate({ key: 'workspaces.ticket.addCommentPlaceholder' })}
+            rows={2}
+            className="flex-1 resize-y rounded-lg border border-container1-border bg-container2/50 px-3 py-2 text-sm text-common leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
+          />
+          <WsButton onClick={submit}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
+        </div>
+      </div>
+    </Card>
   );
 }
 

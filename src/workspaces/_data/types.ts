@@ -164,6 +164,16 @@ export interface Sprint {
 }
 
 //? The read-projection of `Notification` (04b §10). `deepLink` = the D65 navigate payload.
+//? A user (or assistant) comment on a ticket — a `WorkspaceNote` projection. `author`
+//? is the User.id ('' for a non-user author); the UI resolves it to a member.
+export interface TicketNote {
+  id: string;
+  ticketId: string;   // the DEV-#### key
+  author: string;     // User.id, or '' when authorKind !== 'user'
+  body: string;
+  time: string;
+}
+
 export interface NotificationItem {
   id: string;
   type: 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure' | 'assignment';

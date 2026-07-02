@@ -423,3 +423,18 @@
 **Verificatie:** front-tsc 0, eslint 0/0, ai:lint schoon, build groen. (Geen server-change → `quickAdd`-pad al gedekt door createWorkspace.test.) De rest van "palette-acties" (arbitraire op-dispatch met confirm-on-important) is bewust NIET gebouwd — dat is power-user/speculatief; beter met user-feedback over welke acties gewenst zijn.
 
 **Files:** `src/workspaces/_components/SearchPalette.tsx`.
+
+## 2026-07-02 02:25 — /loop Fase-3: ticket-comments (WorkspaceNote) — nieuwe feature
+
+**Gedaan:** ticket-detail was read-only qua discussie; nu kun je reageren. Via het bestaande `WorkspaceNote`-model (géén schemawijziging), volledig Fase-0 patroon:
+- `ControlOp` += `'add-comment'` + `OP_CAPABILITY` (workTickets).
+- Conductor-case `add-comment`: resolve key→ObjectId, `WorkspaceNote.create` (authorKind 'user', authorId=caller) + `recordTicketEvent` ('commented'). Lege body geweigerd.
+- `src/workspaces/_api/addComment_v1.ts` (getypte route).
+- Snapshot: nieuw `notes: TicketNote[]` (WorkspaceNote-projectie, ObjectId→key, recent 100). `TicketNote`-type in types.ts.
+- ctx: `addComment(ticketId, body)` (via `afterWrite`) + `ticketNotes` data (Snap + interface).
+- **UI (agent):** `CommentsThread` in de Overview-tab — thread (avatar+naam via membersById, body, tijd, oldest→newest via `.toReversed()`) + composer (textarea + Send, Ctrl/Cmd+Enter, leeg genegeerd, wist na versturen) + lege staat.
+- 4 nieuwe i18n-keys (`workspaces.ticket.comments/addCommentPlaceholder/noComments/commentSystemAuthor`) in en/nl/de/fr; `send` hergebruikt.
+
+**Files:** `src/workspaces/_data/types.ts`, `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_api/addComment_v1.ts` (nieuw), `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{WorkspacesProvider.tsx,WorkspacesContext.tsx}`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/addComment.test.mts` (nieuw).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **10/10 files** (addComment.test 6/6: persist WorkspaceNote, body/authorKind/author correct, lege comment genegeerd).
