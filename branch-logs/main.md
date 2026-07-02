@@ -718,3 +718,7 @@ Waar docs-scan bestaande repo-docs registreert, laat dit de AI een project-summa
 - **Geverifieerd (echte AI-turn tegen octocat)**: schone `# Project Summary` (feitelijk correct: octocat heeft alleen een lege README), gepersisteerd als generated InfoSource.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+## 2026-07-02 — ADR 0009: register-flow AI-operaties
+
+Legt de drie cross-cutting keuzes van fase 6a/6b vast: (1) AI-ops zijn **directe `_api`-routes, geen Conductor-control-ops** (een trage turn mag de serial writer niet blokkeren; alleen het *resultaat* dat state muteert gaat via een control-op); (2) gegenereerde artefacten zijn een **reviewbare draft, nooit auto-applied** (Dockerfile → gevalideerd tegen L1-base → draft; docs → `generated` InfoSource); (3) **pure-context prompting** (provider draait in scratch-cwd → repo inline meegeven, filesystem verbieden; lesson 0008). Rejected alternatives + deferred slices (L2-build, Monaco, repo-commit) genoteerd.

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (7)
+## Decisions (8)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,7 @@
 | 0006 | In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch) | 🟢 accepted | workspaces, realtime, sync, transport, control-api | per-action-typed-api-write-routes | `docs/decisions/0006-realtime-sync-delta-transport.md` |
 | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one | 🟢 accepted | ai, architecture, orchestrator, extensibility | — | `docs/decisions/0007-pluggable-ai-provider-layer.md` |
 | 0008 | Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning | 🟢 accepted | container, runtime, orchestrator, git, security | — | `docs/decisions/0008-container-runtime-model.md` |
+| 0009 | Register-flow AI operations — direct _api, draft-then-review, pure-context prompting | 🟢 accepted | ai, register-flow, dockerfile, docs, security | — | `docs/decisions/0009-register-flow-ai-operations.md` |
 
 ## Summaries
 
@@ -78,6 +79,14 @@ Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the
 **Worktree = `git clone --single-branch` into a container-owned volume, NOT a bind-mount of the host `git worktree` checkout** (`07b §4`, Q-CT-WORKTREE). A git worktree's `.git` is a *gitdir pointer* back to the main repo; bind-mounting only the worktree dir leaves a dangling pointer that breaks git on the first command inside the container. The clone is self-contained. The `DEV-####` branch (cut at the frozen commit in phase 1b) is the clone's `--branch`, so its tip IS the frozen commit — no detaching checkout. **`git config --system safe.directory '*'` is BAKED into L1.** The RO `/mirror` (host clone) is host-uid-owned; git's dubious-ownership guard refuses it. `-c safe.directory` is ignored by git for this key BY DESIGN — only system/global config is honored — so it must live in the image. **Name-based idempotency, no persistence yet.** A container is keyed by `ws-<safe(workspaceId)>-<safe(ticketKey)>`; re-activation reuses/ restarts the named container. V1 does NOT write an `AgentSession` row — the container name + docker labels (`org.workspaces.workspace` / `.ticket`) are the lookup, so no schema change. **Provisioning runs OFF the conductor serial chain** (fire-and-forget at aiEnabled activation). `docker` clone+run is ~10s; the authoritative stage move must return fast for the realtime board. Best-effort: a launch failure is logged, never fails the move. **`docker exec` for terminals in V1**, gated on the workspace label (never exec into a foreign container). The full in-container pty-agent (durable scrollback, crash-resume, `07b §9`) is deferred.
 
 → `docs/decisions/0008-container-runtime-model.md`
+
+### 0009 — Register-flow AI operations — direct _api, draft-then-review, pure-context prompting
+
+**0009** · accepted · tags: ai, register-flow, dockerfile, docs, security · 2026-07-02
+
+**AI operations are direct `_api` routes, NOT Conductor control-ops.** `generateDockerfile` / `generateProjectDoc` / `aiChat` each run a multi-second-to-minute AI turn. The Conductor is the single SERIAL writer for authoritative state; routing a 2-minute turn through it would stall every other write. So AI ops call the provider layer directly from an `_api` handler (capability-gated), and only their *result* — if it mutates state — goes through a normal control-op (e.g. the Workspace-AI chat's accepted proposal dispatches `bulk-move`). **Generated artifacts are a reviewable DRAFT, never auto-applied.** The Dockerfile is written to `data/workspaces/<id>/draft.Dockerfile` and validated to extend the L1 base (`FROM workspaces/base` only, Q-CT-DOCKERFILE-TRUST) — but NOT built or committed. The user reviews (Monaco slice) before it becomes the repo's `.workspaces/Dockerfile` and an L2 image. Docs land as `generated` InfoSources the user can see + toggle, not silent truth. **Pure-context prompting.** The `claude-cli` provider runs in a scratch cwd (not a repo checkout), so AI-gen prompts pass the repo content inline (manifests + file tree) and explicitly forbid filesystem/tool access ("use ONLY the provided files"). See lesson 0008.
+
+→ `docs/decisions/0009-register-flow-ai-operations.md`
 
 ## Code governed by decisions
 
