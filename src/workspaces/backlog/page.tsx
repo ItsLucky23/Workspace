@@ -12,13 +12,13 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import Dropdown from 'src/_components/dropdown/Dropdown';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, useClickAway, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { Ticket, TicketStatus } from '../_data/types';
+import type { Sprint, Ticket, TicketStatus } from '../_data/types';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
 const LAST = ['2m', '14m', '1h', '2h', '3h', '5h', '1d', '2d', '3d', '4d', '6d', '1w'];
@@ -50,9 +50,52 @@ function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
   );
 }
 
+//? Create-ticket menu (opened via menuHandler → `quick-add` op). Title auto-focuses;
+//? the sprint picker chooses the target sprint or "Backlog" (no sprint). New tickets
+//? always enter at `unrefined` (Conductor-enforced). `quickAdd` + `sprints` come in as
+//? props since the menu renders outside the Workspaces provider. `initialSprintId`
+//? preselects a sprint when opened from a sprint's own "add ticket" row.
+function NewBacklogTicketForm({ quickAdd, sprints, initialSprintId }: {
+  quickAdd: (input: { title: string; sprintId?: string }) => void;
+  sprints: Sprint[];
+  initialSprintId?: string;
+}) {
+  const translate = useTranslator();
+  const [title, setTitle] = useState('');
+  const [sprintId, setSprintId] = useState(initialSprintId ?? 'backlog');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  const sprintItems: DropdownItem[] = [
+    { id: 'backlog', value: 'backlog', item: translate({ key: 'workspaces.backlog.title' }) },
+    ...sprints.map((s) => ({ id: s.id, value: s.id, item: s.name })),
+  ];
+  const submit = () => {
+    const t = title.trim();
+    if (!t) return;
+    quickAdd({ title: t, sprintId: sprintId === 'backlog' ? undefined : sprintId });
+    void menuHandler.close();
+  };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.newTicket' })}</div>
+      <input
+        ref={inputRef}
+        value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.backlog.ticketTitlePlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <Dropdown size="md" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, quickAdd } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
@@ -60,6 +103,7 @@ export default function Backlog() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(sprints.map((s) => [s.id, true])));
   const openNewSprint = () => { void menuHandler.open(<SprintForm onCreate={sprintCreate} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  const openNewTicket = (initialSprintId?: string) => { void menuHandler.open(<NewBacklogTicketForm quickAdd={quickAdd} sprints={sprints} initialSprintId={initialSprintId} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const filtered = useMemo(() => tickets.filter((t) => {
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -70,7 +114,17 @@ export default function Backlog() {
     return true;
   }), [tickets, q, quick, person]);
 
-  const groups = useMemo(() => sprints.map((s) => ({ sprint: s, rows: filtered.filter((t) => (t.sprintId ?? 'backlog') === s.id) })), [filtered, sprints]);
+  //? Real sprint groups + a VIRTUAL "Backlog" group (id 'backlog') collecting tickets
+  //? with no sprint — without it those tickets match no real sprint row and vanish.
+  //? The virtual group's sprint has no start/end/active (guarded at the render site).
+  const groups = useMemo(() => {
+    const real = sprints.map((s) => ({ sprint: s, rows: filtered.filter((t) => t.sprintId === s.id) }));
+    const backlogGroup = {
+      sprint: { id: 'backlog', name: translate({ key: 'workspaces.backlog.title' }), start: null, end: null, active: false },
+      rows: filtered.filter((t) => !t.sprintId),
+    };
+    return [...real, backlogGroup];
+  }, [filtered, sprints, translate]);
 
   const toggleRow = (id: string) => { setSelected((prev) => {
     const n = new Set(prev);
@@ -112,6 +166,7 @@ export default function Backlog() {
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.backlog.title' })}</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted hidden sm:inline">{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
+          <WsButton icon="plus" onClick={() => { openNewTicket(); }}>{translate({ key: 'workspaces.backlog.newTicket' })}</WsButton>
           <WsButton variant="secondary" icon="plus" onClick={openNewSprint}>{translate({ key: 'workspaces.backlog.newSprint' })}</WsButton>
           <WsButton variant={selectMode ? 'primary' : 'secondary'} icon="circle-check" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); }}>{selectMode ? translate({ key: 'workspaces.backlog.done' }) : translate({ key: 'workspaces.backlog.select' })}</WsButton>
         </div>
@@ -162,6 +217,10 @@ export default function Backlog() {
                       {rows.map((t, i) => (
                         <Row key={t.id} ticket={t} index={i} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
                       ))}
+                      <button type="button" onClick={() => { openNewTicket(sprint.id === 'backlog' ? undefined : sprint.id); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors">
+                        <Icon name="plus" /> {translate({ key: 'workspaces.backlog.addTicket' })}
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>

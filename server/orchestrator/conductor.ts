@@ -259,9 +259,15 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   //? dropping the op). Run them on the serial chain WITHOUT a signal (they use the
   //? plain client, so they need no tenant scope either).
   if (!action.workspaceId) {
-    chain = chain.then(() => executeAction(action)).catch((error: unknown) => {
+    const link = chain.then(() => executeAction(action)).catch((error: unknown) => {
       console.error(`[conductor] action ${action.op} failed:`, error);
     });
+    chain = link;
+    //? AWAIT the write before returning so the caller's post-ack refetch reliably
+    //? sees it (the old fire-and-forget ack raced the async write → "updates only
+    //? half the time"). Serial ordering is preserved: `link` resolves after all
+    //? prior queued actions + this one.
+    await link;
     return { signalSeq: -1 };
   }
 
@@ -270,7 +276,7 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   //? Append the durable (append-only, B-O6) signal, then run the write — both
   //? inside the serial chain so there is never a concurrent authoritative write.
   const signalPayload = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
-  chain = chain.then(async () => {
+  const link = chain.then(async () => {
     await runInTenant(action.workspaceId, async () => {
       await prisma.workspaceSignal.create({
         data: { workspaceId: action.workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
@@ -280,6 +286,10 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   }).catch((error: unknown) => {
     console.error(`[conductor] action ${action.op} failed:`, error);
   });
+  chain = link;
+  //? AWAIT completion so the route responds only AFTER the write lands → the client's
+  //? refetch is reliable (fixes the "updates only half the time" race).
+  await link;
 
   return { signalSeq };
 }

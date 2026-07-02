@@ -465,3 +465,18 @@ De `FUNCTIONALITY_AUDIT_2026-07-02.md` was **STALE** — de write-laag (Board/Ba
 
 ### Optionele kleine follow-ups (lage prioriteit)
 Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notification-triggers (needs-input/merge = Fase-2-producers), conductor `executeAction` per-op typen (interne cleanup).
+
+## 2026-07-02 — user-feedback: 5 fixes (logo / write-reliability / backlog-add / terminals-pipeline+resizable)
+
+**User meldde 5 punten na testen (+ vroeg om een brede scope-vragenronde vóór de fixes — die is teruggegeven).**
+
+1. **[logo-clip]** De collapse/expand-toggle was een hover-swap op de "W" (buggy). Nu: een **altijd-zichtbare ronde pill-knop absoluut op de rail-rechterrand** (`-right-3 top-4`, border+shadow, half-overhangend); de "W" toont normaal in beide states, geen clipping. (`Shell.tsx` NavRail)
+2. **[write "werkt maar de helft"]** Root cause: `enqueueControlAction` ackte vóór de async write klaar was → client-refetch racete. Nu **wacht de route op de write** (`await link` op de seriële chain, beide branches) vóór het antwoordt → refetch is betrouwbaar. Seriële ordening behouden. (`conductor.ts`)
+3. **[backlog kan geen tickets aanmaken]** `quickAdd` uitgebreid met optionele `sprintId` (ctx + provider + `quickAdd_v1`-route; conductor las 'm al). Backlog: **virtuele "Backlog"-groep** (bug: un-sprinted tickets vielen buiten alle groepen → onzichtbaar), **globale "New ticket"-knop** (menu: titel + sprint-dropdown incl. Backlog), en **per-sprint "+ Add ticket"-knop** onderaan elke groep (Jira-stijl). (`backlog/page.tsx`)
+4+5. **[terminal op unrefined / niet resizable]** De ticket-detail `TerminalTab` las de dummy `TERMINALS`-seed → toonde altijd een terminal. Nu **pipeline-driven**: processen komen uit de stage-config (`ctx.stageConfigs[stage].processes`); stage zonder processen (bv. unrefined) → **lege staat, geen terminal**. Panel is nu **resizable** (drag-handle, module-level remembered height, clamp 220–900), zelfde patroon als de terminals-page. (`board/[ticketId]/page.tsx`)
+
+**Bewuste keuze:** echte multi-client `_sync`-realtime + de docker/worktree/container-PTY-runtime (de terminals-*overzichtspagina* is nog leeg) blijven Fase-2 — meegenomen in de brede vragenronde (scope-herijking na drift).
+
+**Files:** `Shell.tsx`, `conductor.ts`, `WorkspacesContext.tsx`, `WorkspacesProvider.tsx`, `_api/quickAdd_v1.ts`, `backlog/page.tsx`, `board/[ticketId]/page.tsx`, `_locales/{en,nl,de,fr}.json` (3 keys), `tests/integration/quickAddSprint.test.mts` (nieuw).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **11/11 files** (quickAddSprint 5/5: sprint-ticket + backlog-ticket).

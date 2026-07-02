@@ -92,28 +92,23 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
   };
 
   return (
-    <nav className={`hidden md:flex flex-col shrink-0 border-r border-divider bg-container1 transition-all duration-200 ${expanded ? 'w-60' : 'w-[68px]'}`}>
-      {/* Brand row. Collapsed: the "W" mark IS the expand toggle (centered, no
-          separate arrow) so the brand + arrow can never overlap/clip at 68px.
-          Expanded: brand + label on the left, the collapse arrow on the right. */}
-      <div className={`flex items-center gap-2 px-3 h-14 ${expanded ? 'justify-between' : 'justify-center'}`}>
-        {expanded ? (
-          <>
-            <div className="flex items-center gap-2 overflow-hidden">
-              <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
-              <span className="font-semibold text-title whitespace-nowrap">{translate({ key: 'workspaces.shell.brand' })}</span>
-            </div>
-            <button type="button" onClick={() => { setExpanded((e) => !e); }} title={translate({ key: 'workspaces.shell.collapse' })} className="text-muted hover:text-common cursor-pointer w-6 h-6 flex items-center justify-center">
-              <Icon name="angle-left" />
-            </button>
-          </>
-        ) : (
-          <button type="button" onClick={() => { setExpanded((e) => !e); }} title={translate({ key: 'workspaces.shell.expand' })} className="group relative w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0 cursor-pointer">
-            <span className="group-hover:opacity-0 transition-opacity">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
-            <Icon name="angle-right" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-        )}
+    <nav className={`relative hidden md:flex flex-col shrink-0 border-r border-divider bg-container1 transition-all duration-200 ${expanded ? 'w-60' : 'w-[68px]'}`}>
+      {/* Brand row — always the "W" mark (+ label when expanded). No clipping, no
+          hover-swap: the collapse/expand control is a separate always-visible pill
+          that hangs on the rail's right border (below). */}
+      <div className={`flex items-center gap-2 px-3 h-14 ${expanded ? '' : 'justify-center'}`}>
+        <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold shrink-0">{translate({ key: 'workspaces.shell.brandInitial' })}</span>
+        {expanded && <span className="font-semibold text-title whitespace-nowrap">{translate({ key: 'workspaces.shell.brand' })}</span>}
       </div>
+      {/* Collapse/expand toggle: an absolute pill anchored ON the rail's right border
+          line (half-overhanging via -right-3), always visible so it never looks buggy. */}
+      <button
+        type="button" onClick={() => { setExpanded((e) => !e); }}
+        title={translate({ key: expanded ? 'workspaces.shell.collapse' : 'workspaces.shell.expand' })}
+        className="absolute -right-3 top-4 z-10 w-6 h-6 rounded-full border border-container1-border bg-container1 text-muted hover:text-common hover:bg-container2 flex items-center justify-center shadow-sm cursor-pointer transition-colors"
+      >
+        <Icon name={expanded ? 'angle-left' : 'angle-right'} className="text-xs" />
+      </button>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2">{NAV_ITEMS.map((it) => renderItem(it))}</div>
       <div className="flex flex-col gap-1 px-2.5 py-3 border-t border-divider">
         {/* Only the Workspace-AI toggle lives here now; Account/Settings moved into

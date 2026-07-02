@@ -95,7 +95,7 @@ export interface WorkspacesCtx {
   //? Ticket/board writes (12/13) — the [control-API] `quick-add`/`archive`/`bulk-*` ops.
   //? New tickets always enter at `unrefined` (Conductor-enforced), so creation takes
   //? only a title — no stage/sprint choice at creation time.
-  quickAdd: (input: { title: string }) => void;
+  quickAdd: (input: { title: string; sprintId?: string }) => void;
   //? Edit a ticket's title / description / labels (stage + assignee changes reuse
   //? bulkMove / bulkAssign on a single ticket). Only the given fields are written.
   editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[] }) => void;

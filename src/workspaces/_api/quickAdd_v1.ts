@@ -28,6 +28,7 @@ export interface ApiParams {
     workspaceId: string;
     title: string;
     description?: string;
+    sprintId?: string;
     clientRequestId: string;
   };
   user: SessionLayout;
@@ -35,7 +36,7 @@ export interface ApiParams {
 }
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  const { workspaceId, title, description, clientRequestId } = data;
+  const { workspaceId, title, description, sprintId, clientRequestId } = data;
   if (!workspaceId || title.trim().length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
 
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
@@ -43,7 +44,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 
   const { signalSeq } = await enqueueControlAction({
     workspaceId, op: 'quick-add', target: {},
-    payload: { title, ...(description ? { description } : {}) },
+    payload: { title, ...(description ? { description } : {}), ...(sprintId ? { sprintId } : {}) },
     userId: user.id, clientRequestId,
   });
   return { status: 'success', result: { accepted: true, signalSeq } };

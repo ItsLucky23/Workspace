@@ -116,9 +116,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? Per-action TYPED writes (Fase-0 split). Each calls its op's own `_api` route
   //? with a fully-typed payload — the generated type-map types the call end-to-end
   //? (no `Record<string, unknown>` envelope), then refetches like `control`.
-  const quickAddApi = useCallback((input: { title: string }) => {
+  const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
     void (async () => {
-      await apiRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', title: input.title, clientRequestId: nextReqId() } });
+      await apiRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', title: input.title, ...(input.sprintId ? { sprintId: input.sprintId } : {}), clientRequestId: nextReqId() } });
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
