@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (5)
+## Lessons (6)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -18,6 +18,7 @@
 | 0003 | tenantDb's $extends must inject workspaceId even when the query has no `where` (no-arg findMany leaked cross-tenant) | 🔴 critical | server/tenant | multi-tenancy, security, prisma, tests | `docs/lessons/0003-tenantdb-no-arg-findmany-leak.md` |
 | 0004 | Login-only control-ops (create-workspace / accept-invite) were silently dropped by the workspace-scoped signal append (workspaceId '' is an invalid ObjectId) | 🟠 high | server/orchestrator | conductor, control-api, onboarding, prisma, objectid | `docs/lessons/0004-login-only-ops-signal-append.md` |
 | 0005 | Do not build the container runtime / register docker-image / pipeline-terminals autonomously — lane F is HARD-gated behind the human-run P0.5 CLI spike | 🟠 high | server/orchestrator | containers, p0.5-spike, billing, pty, gate, lane-f, autonomy | `docs/lessons/0005-container-runtime-gated-by-p05-spike.md` |
+| 0006 | _sync routes default to STRICT input validation and reject valid input with sync.invalidInputType — set `validation = 'relaxed'` (and browser/socket-test, integration tests bypass the transport) | 🟠 high | src/workspaces/_sync | sync, validation, realtime, transport, testing, browser | `docs/lessons/0006-sync-routes-default-strict-validation.md` |
 
 ## Takeaways
 
@@ -60,3 +61,11 @@
 **Never build lane B/C/F autonomously until `src/workspaces/_docs/SPIKE_RESULTS.md` exists with GREEN gating rows.** Check for it first. The safe, high-value autonomous move toward the runtime is to build the **spike harness** the gate itself mandates (P0.5 is "the last P0 artifact, run before P1"), then hand off for the human to run it. Done here: `scripts/spike/hookCapture.mts` (`npm run spike:hooks`) + `scripts/spike/runSpike.mts` (`npm run spike:cli`, `--dry` to review). Running `spike:cli` for real is the gated, human-only action. Lanes A (data), D (Conductor against contracts), E (client wiring) + the realtime `_sync` layer are NOT gated — they build against frozen contracts. That is where autonomous loop effort belongs until the spike is GREEN.
 
 → `docs/lessons/0005-container-runtime-gated-by-p05-spike.md`
+
+### 0006 — _sync routes default to STRICT input validation and reject valid input with sync.invalidInputType — set `validation = 'relaxed'` (and browser/socket-test, integration tests bypass the transport)
+
+**0006** · high · src/workspaces/_sync · tags: sync, validation, realtime, transport, testing, browser · 2026-07-02
+
+**Every `_sync` write route sets `export const validation = 'relaxed' as const;`** (mirrors the `_api` convention). The RBAC + Conductor remain the real validators. **Verify realtime with a browser (agent-browser) or a socket-level test, never only the code-direct integration suite** — the latter can't see the transport. The realtime broadcast→callback plumbing itself is confirmed working (the client merge-callback fires with the broadcast `serverOutput`). After server-side sync/route/Conductor edits, **restart the `:80` backend** (it is a developer-managed action) so the current code + regenerated sync maps load; a stale server yields flaky `invalidInputType` / null deltas.
+
+→ `docs/lessons/0006-sync-routes-default-strict-validation.md`

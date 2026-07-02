@@ -6,6 +6,7 @@ import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.ge
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
 import { ticketListDelta } from '../../../server/read/mappers';
 
+export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {

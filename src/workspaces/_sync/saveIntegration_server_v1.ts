@@ -9,6 +9,7 @@ import type { IntegrationTool } from '../_data/types';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
 import { integrationDelta } from '../../../server/read/mappers';
 
+export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {

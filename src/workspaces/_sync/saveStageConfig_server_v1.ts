@@ -10,6 +10,7 @@ import type { PipelineStageCfg } from '../_data/types';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
 import { stageConfigDelta } from '../../../server/read/workspaceSnapshot';
 
+export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {

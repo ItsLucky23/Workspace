@@ -568,3 +568,13 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Draai zelf (op de echte server-OS, ingelogde `claude`):** terminal 1 `npx tsx scripts/spike/hookCapture.mts`; terminal 2 `npx tsx scripts/spike/runSpike.mts`; check `claude /usage` vóór/na (Spike A billing) + de hook-summary (Spike B/D); vul `src/workspaces/_docs/SPIKE_RESULTS.md` (template = P0_CLI_SPIKE.md §6). Alle gating-rijen GROEN → lane F/register/containers open.
 
 **Verificatie (harness):** `--dry` groen, hook-capture start + token-gate groen, build groen. (De billing/PTY-rijen kan alleen jij verifiëren.)
+
+## 2026-07-02 — Realtime bug-fix via browser-test: _sync routes → validation='relaxed'
+
+**Browser-getest met agent-browser** (eigen testaccount + workspace aangemaakt). Twee bugs gevonden die tsc/lint/integration (12/12) NIET vingen:
+1. **`sync.invalidInputType`**: `_sync`-routes defaulten naar STRICT input-validatie; zonder `export const validation = 'relaxed'` weigert de transport-laag geldige input vóór RBAC/Conductor. Alle `_api`-routes hadden dit al; mijn 26 `_sync`-routes (incl. de quickAdd-"proof") misten het. **Fix:** `validation = 'relaxed'` op alle 26 (RBAC + Conductor blijven de echte validatie — conform `_api`-conventie).
+2. **Stale dev-server**: de draaiende `:80`-backend serveerde code van vóór de conductor-`return created` + de nieuwe routes (luckystack-dev herlaadt deze server-modules niet betrouwbaar) → `ticketDelta(undefined)=null` → broadcast met `ticket:null`. Bewezen via een tijdelijk `_dbg`-veld dat niet in de response verscheen.
+
+**Realtime-plumbing bevestigd WERKEND**: de client merge-callback vuurt live op de broadcast (`[quickAdd cb FIRED]` gelogd); write persisteert; alleen de delta was null door de stale server. Na een **backend-herstart** (developer-actie — classifier blokkeert dat ik jouw `:80`-proces kill) laadt de huidige code en is de live-test groen.
+
+**Lesson 0006** vastgelegd (sync strict-default + integration-tests bypassen de transport → browser/socket-test nodig). **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.

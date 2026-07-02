@@ -13,6 +13,7 @@ import { CAP, hasCapability } from '../../../server/control/rbac';
 import { enqueueControlAction } from '../../../server/orchestrator/conductor';
 import { ticketDelta } from '../../../server/read/mappers';
 
+export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
