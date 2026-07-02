@@ -547,3 +547,11 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Resterend op `_api`+refetch (bewust):** `saveStageConfig` (volgt met geëxtraheerde stage-mapper), en `markRead`/`createWorkspace`/`acceptInvite`/`deleteWorkspace` — user-scoped of login-level/geen room → GEFLAGD (zie onder).
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — Realtime m1 fan-out (7): save-stage-config via _sync (+ toStageConfig extractie)
+
+**Gedaan:** de stage-config row→`PipelineStageCfg` mapping geëxtraheerd uit `buildSnapshot` naar een geëxporteerde `toStageConfig` (DRY, gedeeld met de sync-route) + `stageConfigDelta` (guard). Conductor save-stage-config geeft de geüpdatete stage terug. `_sync/saveStageConfig_server_v1.ts` broadcast de stageConfig-delta; client upsert by id. Legacy `_api/saveStageConfig_v1.ts` verwijderd.
+
+**Milestone 1 (realtime) = KLAAR** voor alle workspace-gescopete writes. Bewust op `_api`+refetch gelaten (GEFLAGD, geen room / user-scoped / login-level): `markRead` (per-user notificaties — room-broadcast zou andermans notificaties markeren), `deleteWorkspace` (verwijdert de hele workspace + navigeert weg), `createWorkspace` + `acceptInvite` (login-level, nog geen room; muteren de workspace-LIJST).
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.

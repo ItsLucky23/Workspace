@@ -11,7 +11,7 @@
 //? (prompting, commands, tools, statuses, processes, model/network/hooks) — both are
 //? derived from the same `PipelineStage` rows.
 
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
@@ -58,6 +58,51 @@ const asHooks = (v: unknown): Record<string, boolean> => {
   for (const [key, val] of Object.entries(v)) { if (typeof val === 'boolean') out[key] = val; }
   return out;
 };
+
+//? Map a Prisma PipelineStage row → the frontend `PipelineStageCfg`. Shared by the
+//? snapshot AND the realtime `save-stage-config` `_sync` route so a live stage-config
+//? delta matches the initial-load shape exactly (no divergence, no refetch).
+export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
+  return {
+    id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
+    customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
+    systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
+    skillKeys: s.skillKeys, sourceIds: s.sourceIds,
+    commands: s.commands.map((c): StageCommandCfg => ({
+      id: c.id, pattern: c.pattern, mode: asCommandMode(c.mode), title: c.title ?? undefined, desc: c.desc ?? undefined, category: c.category ?? undefined,
+    })),
+    tools: s.tools.map((t): StageToolCfg => ({ toolId: t.toolId, tier: asToolTier(t.tier) })),
+    statuses: s.statuses.map((st): StageStatusCfg => ({ key: st.key, label: st.label, kind: asStatusKind(st.kind) })),
+    processes: s.processes.map((p): StageProcessCfg => ({
+      id: p.id, name: p.name, cwd: p.cwd,
+      env: p.env.map((e): StageEnvVar => ({ key: e.key, value: e.value })),
+      commands: p.commands,
+    })),
+    visibleStageIds: s.visibleStageIds,
+    modelCfg: {
+      autoEscalate: s.modelCfg.autoEscalate,
+      base: { model: asModelTier(s.modelCfg.base.model), effort: asEffort(s.modelCfg.base.effort), maxTurns: s.modelCfg.base.maxTurns },
+      rules: s.modelCfg.rules.map((r): ModelRule => ({ id: r.id, minScore: r.minScore, model: asModelTier(r.model), effort: asEffort(r.effort), maxTurns: r.maxTurns })),
+      contextBudgetTokens: s.modelCfg.contextBudgetTokens ?? undefined,
+    },
+    network: { enabled: s.network.enabled, mode: asNetworkMode(s.network.mode), categories: s.network.categories, domains: s.network.domains },
+    hooks: asHooks(s.hooks),
+    wipLimit: s.wipLimit ?? undefined,
+  };
+}
+
+//? Runtime guard: is the Conductor's save-stage-config op result a PipelineStage row?
+//? Narrows the (deliberately `unknown`) result to a typed `PipelineStageCfg` delta
+//? WITHOUT an `as`-cast (the strict no-assertion posture).
+function isDbPipelineStage(v: unknown): v is DbPipelineStage {
+  return v !== null && typeof v === 'object' && 'key' in v && 'kind' in v && 'modelCfg' in v && 'processes' in v;
+}
+
+//? Narrow the save-stage-config op result to the frontend `PipelineStageCfg` delta the
+//? realtime `_sync` route broadcasts (or null if the op no-oped).
+export function stageConfigDelta(result: unknown): PipelineStageCfg | null {
+  return isDbPipelineStage(result) ? toStageConfig(result) : null;
+}
 
 export interface WorkspaceSnapshot {
   workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role'>)[];
@@ -161,32 +206,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       workspaces, activeWorkspaceId, members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
-      stageConfigs: stageRows.map((s): PipelineStageCfg => ({
-        id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
-        customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
-        systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
-        skillKeys: s.skillKeys, sourceIds: s.sourceIds,
-        commands: s.commands.map((c): StageCommandCfg => ({
-          id: c.id, pattern: c.pattern, mode: asCommandMode(c.mode), title: c.title ?? undefined, desc: c.desc ?? undefined, category: c.category ?? undefined,
-        })),
-        tools: s.tools.map((t): StageToolCfg => ({ toolId: t.toolId, tier: asToolTier(t.tier) })),
-        statuses: s.statuses.map((st): StageStatusCfg => ({ key: st.key, label: st.label, kind: asStatusKind(st.kind) })),
-        processes: s.processes.map((p): StageProcessCfg => ({
-          id: p.id, name: p.name, cwd: p.cwd,
-          env: p.env.map((e): StageEnvVar => ({ key: e.key, value: e.value })),
-          commands: p.commands,
-        })),
-        visibleStageIds: s.visibleStageIds,
-        modelCfg: {
-          autoEscalate: s.modelCfg.autoEscalate,
-          base: { model: asModelTier(s.modelCfg.base.model), effort: asEffort(s.modelCfg.base.effort), maxTurns: s.modelCfg.base.maxTurns },
-          rules: s.modelCfg.rules.map((r): ModelRule => ({ id: r.id, minScore: r.minScore, model: asModelTier(r.model), effort: asEffort(r.effort), maxTurns: r.maxTurns })),
-          contextBudgetTokens: s.modelCfg.contextBudgetTokens ?? undefined,
-        },
-        network: { enabled: s.network.enabled, mode: asNetworkMode(s.network.mode), categories: s.network.categories, domains: s.network.domains },
-        hooks: asHooks(s.hooks),
-        wipLimit: s.wipLimit ?? undefined,
-      })),
+      stageConfigs: stageRows.map((s) => toStageConfig(s)),
       tickets: ticketRows.map((t) => toTicket(t)),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),

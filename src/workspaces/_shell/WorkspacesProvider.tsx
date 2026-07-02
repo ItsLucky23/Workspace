@@ -335,6 +335,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? stage-config delta → upsert by id (pipeline settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveStageConfig', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.stageConfig) return;
+      const cfg = serverOutput.stageConfig;
+      setSnap((s) => ({ ...s, stageConfigs: s.stageConfigs.some((c) => c.id === cfg.id) ? s.stageConfigs.map((c) => (c.id === cfg.id ? cfg : c)) : [...s.stageConfigs, cfg] }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -512,7 +522,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       bulkArchive: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
-      saveStageConfig: (cfg) => { afterWrite(apiRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', stageId: cfg.id, cfg, clientRequestId: nextReqId() } })); },
+      saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
       signOut,
       // live tenant data
       loading,

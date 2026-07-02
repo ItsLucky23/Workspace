@@ -595,7 +595,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (payload.hooks !== undefined) data.hooks = readHooks(payload.hooks);
       const wipLimit = num(payload, 'wipLimit'); if (wipLimit !== undefined) data.wipLimit = wipLimit;
       if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: stageId }, data });
-      return;
+      //? Return the updated stage so the realtime `_sync` route broadcasts the delta.
+      return prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key: stageId } });
     }
     // ---- suggestions ----
     case 'accept-suggestion': {
