@@ -187,6 +187,26 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
   }), [upsertSyncEventCallback, mergeTickets]);
 
+  //? add-comment delta → merge the new note into the ticket's thread (dedupe by id).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/addComment', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.note) return;
+      const note = serverOutput.note;
+      setSnap((s) => (s.notes.some((n) => n.id === note.id) ? s : { ...s, notes: [...s.notes, note] }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? sprint-create delta → merge the new sprint into the sprint list (dedupe by id).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/sprintCreate', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.sprint) return;
+      const sprint = serverOutput.sprint;
+      setSnap((s) => (s.sprints.some((sp) => sp.id === sprint.id) ? s : { ...s, sprints: [...s.sprints, sprint] }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -195,11 +215,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: input.title, ...(input.sprintId ? { sprintId: input.sprintId } : {}), clientRequestId: nextReqId() }, receiver: room });
   }, [snap.activeWorkspaceId]);
   const sprintCreateApi = useCallback((sprintName: string) => {
-    void (async () => {
-      await apiRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', name: sprintName, active: false, clientRequestId: nextReqId() } });
-      refetch();
-    })();
-  }, [snap.activeWorkspaceId, refetch]);
+    const room = snap.activeWorkspaceId;
+    if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
 
   //? Fire-and-refetch for the typed per-action writes: takes the (already typed)
   //? `apiRequest(...)` promise and refetches the snapshot once it settles. Takes a
@@ -358,7 +376,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       quickAdd: quickAddApi,
       //? Realtime writes — per-action `_sync` event → delta broadcast → client merge.
       editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
-      addComment: (ticketId, body) => { afterWrite(apiRequest({ name: 'workspaces/addComment', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId, body, clientRequestId: nextReqId() } })); },
+      addComment: (ticketId, body) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId, body, clientRequestId: nextReqId() }, receiver: room }); },
       archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
       bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkStatus: (ids, status) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds: ids, status, clientRequestId: nextReqId() }, receiver: room }); },

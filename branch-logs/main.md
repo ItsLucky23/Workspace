@@ -521,3 +521,9 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Gedaan:** de 5 bulk-ops gemigreerd naar per-actie `_sync`-events (`src/workspaces/_sync/bulk{Move,Status,Assign,Sprint,Archive}_server_v1.ts`), elk delegeert aan `dispatchControlSync` en broadcast `tickets: Ticket[]`. Client: 5 `upsertSyncEventCallback`-callbacks (gedeelde `mergeTickets`-reducer) + de 5 dispatchers schrijven nu via `syncRequest` (geen refetch). Legacy `_api/bulk*_v1.ts` (5) verwijderd. Delta-test uitgebreid met bulk-move.
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — Realtime m1 fan-out (3): add-comment + sprint-create via _sync
+
+**Gedaan:** add-comment → `_sync` (broadcast `note`, client merget in `notes` dedupe by id) en sprint-create → `_sync` (broadcast `sprint`, client merget in `sprints`). `sprintCreateApi` + `addComment` dispatchers via `syncRequest` (geen refetch). Legacy `_api/{addComment,sprintCreate}_v1.ts` verwijderd. Hiermee zijn ALLE board/ticket/sprint/comment-writes realtime; alleen members/settings-ops resten op `_api`+refetch.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
