@@ -58,7 +58,9 @@ const ensureRouting = (): void => {
   });
 };
 
-export default function XtermTerminal({ sessionId, className }: { sessionId: string; className?: string }) {
+//? `container` (a ticket's L3 container name) routes ws-term:start to a `docker exec`
+//? shell INSIDE that container (server validates it's ours); absent = the dev host shell.
+export default function XtermTerminal({ sessionId, className, container }: { sessionId: string; className?: string; container?: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export default function XtermTerminal({ sessionId, className }: { sessionId: str
       e.started = true;
       void getSocket().then((s) => {
         if (!s) { e.term.write(`${ESC}[33mNot connected to the backend socket — start the server and sign in.${ESC}[0m\r\n`); return; }
-        s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows });
+        s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, ...(container ? { container } : {}) });
       });
     }
 
@@ -107,7 +109,7 @@ export default function XtermTerminal({ sessionId, className }: { sessionId: str
       ro.disconnect();
       if (e.el.parentNode === host) e.el.remove();
     };
-  }, [sessionId]);
+  }, [sessionId, container]);
 
   return <div ref={mountRef} className={`bg-terminal-bg ${className ?? ''}`} />;
 }

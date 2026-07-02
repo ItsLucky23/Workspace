@@ -13,7 +13,9 @@ import { existsSync } from 'node:fs';
 import { workspaceDataDir } from '../git/repoStore';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
-const DOCKER_BIN = process.env.WS_DOCKER_BIN ?? 'docker';
+//? Exported so the terminal bridge spawns the SAME docker binary (Windows conpty can't
+//? resolve a bare `docker` — WS_DOCKER_BIN carries the full path there).
+export const DOCKER_BIN = process.env.WS_DOCKER_BIN ?? 'docker';
 
 interface DockerResult { code: number; out: string; err: string }
 
@@ -35,7 +37,7 @@ function docker(args: string[]): Promise<DockerResult> {
 function safe(s: string): string {
   return s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
 }
-function containerName(workspaceId: string, ticketKey: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}`; }
+export function containerName(workspaceId: string, ticketKey: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}`; }
 function volumeName(workspaceId: string, ticketKey: string): string { return `wsvol-${safe(workspaceId)}-${safe(ticketKey)}`; }
 function bareMirrorPath(workspaceId: string): string { return path.join(workspaceDataDir(workspaceId), 'repo.git'); }
 
@@ -98,6 +100,13 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     throw new Error(`worktree clone failed: ${clone.err}`);
   }
   return { containerId, name, volume };
+}
+
+//? Is `name` one of OUR containers (carries the workspace label)? The terminal bridge
+//? MUST gate `docker exec` on this — it must never exec into an arbitrary host container.
+export async function isWorkspacesContainer(name: string): Promise<boolean> {
+  const r = await docker(['inspect', '-f', '{{index .Config.Labels "org.workspaces.workspace"}}', name]);
+  return r.code === 0 && r.out.length > 0;
 }
 
 //? Remove the ticket's container + its worktree volume (ticket teardown, §4/§7).

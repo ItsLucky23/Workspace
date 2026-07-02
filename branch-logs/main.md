@@ -677,3 +677,14 @@ Jouw #1-wens, op de AI-provider-laag (fase 2a):
 - **Geflagd:** aiChat-route mist nog een business-logic-test met gemockte AI (de echte turn is te traag/niet-CI-veilig) — auto-sweep dekt contract/auth.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
+
+## 2026-07-02 — Runtime fase 5a: container-terminal-backend (docker exec PTY via de ws-term-relay)
+
+De payoff van de container-spine begint — echte shells IN de ticket-container (07b §9-relay, backend-helft):
+- **`server/hooks/workspacesTerminal.ts`**: `ws-term:start` accepteert nu een `container`-target → spawnt `docker exec -it <container> bash` via node-pty i.p.v. de dev-host-shell. Gedeelde `attach`-helper (out/exit-relay identiek). XtermTerminal-protocol byte-identiek.
+- **Security**: `isWorkspacesContainer` (uit `runtime.ts`) gate — exec ALLEEN in containers met het `org.workspaces.workspace`-label (nooit een willekeurige host-container). `containerName` + `DOCKER_BIN` geëxporteerd.
+- **Client**: `XtermTerminal` kreeg een `container`-prop → meegestuurd in `ws-term:start`.
+- **Geverifieerd (echt)**: `docker exec -it bash` via node-pty tegen een live ticket-container → shell als **agent** in **/work**: `whoami;pwd;ls` → `agent /work README`. Guard: non-workspaces-container → geweigerd.
+- **Volgende slice**: terminals-page wiring — running containers (`docker ps` op label) → `Terminal[]` in de snapshot, zodat de page per ticket een container-terminal toont (nu nog `const terminals = []`).
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.

@@ -10,8 +10,11 @@
 
 import { getLogger, registerSocketMiddleware } from '@luckystack/core';
 import * as pty from 'node-pty';
+import { DOCKER_BIN, isWorkspacesContainer } from '../container/runtime';
 
-interface TermMsg { id: string; cols?: number; rows?: number; data?: string }
+//? `container` targets a ticket's L3 container → the bridge execs a shell INTO it
+//? (07b §9 relay) instead of the local dev host-shell. Absent = the dev host shell.
+interface TermMsg { id: string; cols?: number; rows?: number; data?: string; container?: string }
 
 let registered = false;
 
@@ -33,22 +36,29 @@ export const registerWorkspacesTerminalHooks = (): void => {
   registerSocketMiddleware((socket, next) => {
     const sessions = new Map<string, pty.IPty>();
 
+    //? Wire a spawned PTY to this socket's ws-term relay (out/exit). Same for both the
+    //? dev host shell and a container exec — only the spawn differs.
+    const attach = (id: string, term: pty.IPty): void => {
+      sessions.set(id, term);
+      term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
+      term.onExit(({ exitCode }) => { socket.emit('ws-term:exit', { id, exitCode }); sessions.delete(id); });
+    };
+
     socket.on('ws-term:start', (payload: TermMsg) => {
       const { id } = payload;
       if (!id || sessions.has(id)) return;
-      const term = pty.spawn(shell, [], {
-        name: 'xterm-256color',
-        cols: payload.cols ?? 80,
-        rows: payload.rows ?? 24,
-        cwd: process.cwd(),
-        env: { ...baseEnv, TERM: 'xterm-256color' },
-      });
-      sessions.set(id, term);
-      term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
-      term.onExit(({ exitCode }) => {
-        socket.emit('ws-term:exit', { id, exitCode });
-        sessions.delete(id);
-      });
+      const opts = { name: 'xterm-256color', cols: payload.cols ?? 80, rows: payload.rows ?? 24, cwd: process.cwd(), env: { ...baseEnv, TERM: 'xterm-256color' } };
+      const target = payload.container?.trim();
+      if (target) {
+        //? Container terminal: exec a shell INTO the ticket's container — but ONLY after
+        //? confirming it's one of ours (never exec into an arbitrary host container).
+        void (async () => {
+          if (sessions.has(id) || !(await isWorkspacesContainer(target))) return;
+          attach(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts));
+        })();
+        return;
+      }
+      attach(id, pty.spawn(shell, [], opts));
     });
 
     socket.on('ws-term:input', (payload: TermMsg) => {
