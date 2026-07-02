@@ -19,7 +19,8 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
-import { dockerAvailable, launchTicketContainer } from '../container/runtime';
+import { dockerAvailable } from '../container/runtime';
+import { runStage } from './stageRunner';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -262,24 +263,22 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
     if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
     if (wt) { await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } }); activated.push({ key, branch: wt.branch }); }
   }
-  //? Provision each activated ticket's container OFF the serial chain (07b §0/§4): docker
-  //? clone+run is slow and the authoritative stage move must return fast for realtime.
-  //? Best-effort — the git/worktree layer is already durable; the container is a
-  //? re-runnable convenience (idempotent by name), never blocks or fails the move.
-  if (activated.length > 0) void provisionContainers(workspaceId, activated);
+  //? Run each activated ticket's stage OFF the serial chain (07b §0/§4): the autonomous
+  //? claude turn is minutes-long and the authoritative stage move must return fast for
+  //? realtime. Best-effort — the git/worktree layer is already durable.
+  if (activated.length > 0) void provisionContainers(workspaceId, activated, stageId);
 }
 
-//? Fire-and-forget container provisioning for freshly-activated tickets. Gated on the
-//? Docker daemon (a host without Docker still gets the full git/worktree layer). Errors
-//? are logged, never surfaced into the stage move.
-async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[]): Promise<void> {
+//? Fire-and-forget autonomous stage execution for freshly-activated tickets (07 §A step
+//? 6-7): launch the container + drive an in-container claude turn on the ticket. Gated on
+//? the Docker daemon (a host without Docker still gets the full git/worktree layer). Each
+//? ticket's turn runs concurrently; errors are logged, never surfaced into the stage move.
+async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string): Promise<void> {
   if (!(await dockerAvailable())) return;
-  //? Prefer the project's built L2 image (Q-CT-IMAGESEL) when it has one, else the L1 base.
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
-  const image = project?.baseImageRef ?? undefined;
-  for (const { key, branch } of activated) {
-    const [error] = await tryCatch(() => launchTicketContainer({ workspaceId, ticketKey: key, branch, ...(image ? { image } : {}) }));
-    if (error) console.error(`[conductor] launchTicketContainer ${key} failed:`, error.message);
+  for (const { key } of activated) {
+    void tryCatch(() => runStage(workspaceId, key, stageId)).then(([error]) => {
+      if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
+    });
   }
 }
 

@@ -50,3 +50,16 @@ be verified before their specific sub-features (resume, token-optimization, cont
 
 ## Escalations (RED-ESCALATE rows)
 None. The only RED (D1, no hook usage field) is explicitly non-blocking (labeled-estimate fallback).
+
+## UPDATE 2026-07-02 — Container-auth spike (Row E) → GREEN
+
+Verified live: an interactive `claude` PTY INSIDE an L3 container, with the host's
+one-time-login creds projected read-only (`data/_auth/.credentials.json` → copied to an
+agent-owned `CLAUDE_CONFIG_DIR=/home/agent/.claude`, 0600), authenticates on the Max
+**subscription** (clean container env, no `ANTHROPIC_*`, never `-p`) and runs a full turn.
+A ticket ran end-to-end through the `refined` stage: container → rendered `.claude` config →
+autonomous claude turn → `ws-carryover` emitted → Stop hook captured → CarryOver persisted →
+ticket auto-advanced to `plan` → AgentSession `stopped` (claudeSessionId captured for
+`--resume`). Gotchas that gated it: lesson 0009 (CLAUDE_CONFIG_DIR explicit, bypassPermissions,
+`sh -c` Stop hook). The one-time host login (no per-container email code) is confirmed
+sufficient — the refresh loop (re-project on token refresh) is the remaining prod hardening.

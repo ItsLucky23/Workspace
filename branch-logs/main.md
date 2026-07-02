@@ -754,3 +754,56 @@ Na 4 parallelle research-agents (auth §2 · render · run/completion · L2). De
 - De rest van de stageRunner (`docker exec claude` drijven + Stop-capture + parseTurnResult + carryOver + advance) wacht op de **container-auth-spike** (jouw credential-keuze) — dan bouw+verifieer ik 'm in één keer i.p.v. blind.
 
 **Verificatie:** server-tsc 0, eslint 0/0, build groen. (Geen nieuwe integration-test; materialisatie handmatig tegen een echte container geverifieerd.)
+
+## 2026-07-02 23:15 — Register-flow C: Dockerfile-draft review-UI (textarea, geen Monaco)
+
+**User-prompt:** een andere AI leverde een scripted taak om een Monaco-editor te bouwen voor het reviewen/bewerken van de gegenereerde `.workspaces/Dockerfile` vóór de build.
+
+**Rule 3b-flag → koers gewijzigd:** de repo heeft een vastgelegde beslissing (`_docs/CODE_EDITOR.md`, V1_SCOPE §2, ADR 0009) die Monaco expliciet DEGRADEERT ("Do NOT grow the Monaco prototype into the V1 editor"; de V1-editor is server-side VS Code in de container). De Dockerfile-review is echter een *ander, kleiner* oppervlak. Na overleg met de user 3 keuzes vastgelegd: (1) **monospace `<textarea>`, geen Monaco-dependency** (conform Rule 7b + de anti-Monaco spec); (2) **inline in de Repository-tab**; (3) **draft-save nu, commit-naar-repo als aparte follow-up slice** (de repo is een *bare* clone + er is geen push/forge-helper → commit+push is een eigen slice met ADR).
+
+**Wat ik deed:**
+- **`server/container/dockerfileDraft.ts`** (nieuw): `readDockerfileDraft` + `saveDockerfileDraft(workspaceId, content)` — lezen/valideren-schrijven van `data/workspaces/<id>/draft.Dockerfile` (dezelfde file die `buildProjectImage` van disk leest). Save her-valideert `extendsBase` (eerste FROM = L1-base) — de supply-chain-guard overleeft user-edits, niet alleen generatie.
+- **`_api/getDockerfile_v1.ts`** (nieuw): leest de persisted draft (workspaceSettings-gated, rate-limit 30) zodat een reload de draft toont zonder nieuwe AI-turn.
+- **`_api/saveDockerfile_v1.ts`** (nieuw): schrijft de bewerkte draft terug (workspaceSettings-gated, `extendsBase`-hervalidatie; weigert non-base FROM + lege draft).
+- **`src/workspaces/workspace/page.tsx`**: `DockerfileReview`-component (lokale state + `apiRequest` direct — de Dockerfile-ops zijn `_api`, niet sync). Generate → textarea → Save → Build image; build slaat eerst on-screen edits op. Ingebed inline onder de repo-link-kaart, alleen zichtbaar wanneer `repo.linked`. Icons uit de bestaande set (`wand-magic-sparkles`/`check`/`bolt`); busy-status via label + disabled.
+- **i18n**: ~21 keys in en/nl/de/fr (`workspaceSettings.dockerfile*`), incl. per-errorcode vertaalde meldingen.
+- **Tests**: `getDockerfile`/`saveDockerfile` per-route (happy-path + de invalid-base/empty afwijzing die de auto-sweep niet haalt), met volledige seed-teardown.
+
+**Files touched:** `server/container/dockerfileDraft.ts` (+), `src/workspaces/_api/getDockerfile_v1.ts` (+), `src/workspaces/_api/saveDockerfile_v1.ts` (+), `src/workspaces/_api/getDockerfile_v1.tests.ts` (+), `src/workspaces/_api/saveDockerfile_v1.tests.ts` (+), `src/workspaces/workspace/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, generated artifacts + AI-indexes.
+
+**Verificatie:** generateArtifacts ✓ (routes in de type-map, shapes matchen client), eslint 0/0, build groen, ai:lint schoon, ai:project-index/capabilities/graph ververst. **Tests niet groen te krijgen in deze omgeving** — de test-runner faalt systemisch op Redis `WRONGPASS` (saveSession → elke login-route in de sweep valt om); infra-issue, niet de code. User draait `npm run test -- --filter workspaces/saveDockerfile/v1` zodra Redis/Mongo met geldige `.env.local`-creds draaien.
+
+**Notes / open:**
+- **Follow-up slice (afgesproken):** `.workspaces/Dockerfile` committen naar de gelinkte repo — vereist een nieuwe commit/push-seam (temp-worktree off de bare clone + token-hersupply + create-MR-URL), vast te leggen als ADR, conform de push-on-approval grain. Build heeft dit NIET nodig (leest de draft van disk).
+- **Report (niet gefixt, Rule "Report Without Auto-Fixing"):** `extendsBase` staat nu 3× (dockerfileGen.ts, imageBuild.ts, dockerfileDraft.ts) — kandidaat om te dedupen naar het nieuwe `dockerfileDraft.ts`.
+- **Report:** RepositoryTab's `icon={linking ? 'spinner' : 'link'}` gebruikt 'spinner', dat niet in de Icon-map zit → valt stil terug op een vraagteken-icoon. Bestaand minpuntje, niet aangeraakt.
+
+## 2026-07-02 23:40 — Plan: hybride VS Code + Monaco editor (Lane D build-plan)
+
+**User-prompt:** een `/goal`-runbaar plan om Monaco "compleet" te integreren (per-ticket live changes editor, hele-repo-tab, editor voor o.a. docker-image, meerdere themes, multi-language, downloadbare extensions gelinkt aan je profiel over workspaces).
+
+**Rule 3b + 3 keuzes:** dit botst met de locked `CODE_EDITOR.md`/V1_SCOPE-beslissing, en de wensenlijst (echte extensions + multi-language + themes) is exact waarom die beslissing géén Monaco koos. Na feasibility-flag koos de user **hybride**: openvscode-server (echte VS Code) in de container voor de echte editor + **echte open-vsx extensions** aan het profiel; Monaco-lite voor lichte embedded surfaces. Resource +300–800MB/editor akkoord. → geen ADR-supersede; ik *implementeer* de vastgelegde beslissing.
+
+**Wat ik deed:** 4 parallelle research-agents de bouwstaat laten mappen (container/Caddy/networking · ticket-UI · control-plane/pause-resume · account/extensions/Monaco-ref). Bevinding: container-launch + exec staan, maar **Caddy-routing + networking + TLS + editor-server-lifecycle = niet gebouwd**; ticket-UI is **100% dummy**; stage-runner drijft claude wél in-container (auth-spike opgelost) maar is niet aan de conductor gekoppeld; pause/resume/kill + `--resume` = contract-only; `userEditable` onafgedwongen; `editorExtensions` + open-vsx = nul; Monaco geen dep van de hoofd-app.
+
+**Deliverable:** `src/workspaces/_docs/CODE_EDITOR_BUILD_PLAN.md` — gefaseerd, per-fase-verifieerbaar, met echte file/functie-ankers. Tracks: A Monaco-lite (onafhankelijk, snel) ∥ B container-infra (bake openvscode → networking → editor-lifecycle → Caddy → edge-auth) → C control-plane (stage-runner-wiring + AgentSession + pause/resume/kill + --resume + edit-lock) → D ticket-UI (real data → Changes-editor + Code-tab + fallback) → E account-extensions → F push-on-approval (subsumeert de eerdere Dockerfile-commit-follow-up). §7 = open beslissingen (TLS/dev-domein, vertical-slice-first, editorExtensions-opslag, marketplace).
+
+**Files touched:** `src/workspaces/_docs/CODE_EDITOR_BUILD_PLAN.md` (+), memory `workspaces-editor-plan`. Geen app-code gewijzigd.
+
+**Volgende:** user beslist §7 (m.n. vertical-slice-first + dev-TLS) OF ik start Track A (Monaco-lite quick wins, onafhankelijk van de infra).
+
+## 2026-07-02 — Runtime fase 7c: DE ENGINE WERKT — autonome stage-runner end-to-end 🎉
+
+De kern van het product: een ticket wordt volledig AUTONOOM door de AI verwerkt in een container.
+- **Container-auth-spike GESLAAGD** (Row E → GROEN): `claude` draait IN de container op het Max-abonnement via de RO-geprojecteerde one-time-login-creds. Geen per-container login/email.
+- **`stageRunner.ts` compleet**: `driveContainerTurn` (interactieve claude-PTY over `docker exec`, `--permission-mode bypassPermissions`, Stop-hook-capture → `/work/.claude/turn-stop.json`, `pkill` i.p.v. `term.kill()` tegen de conpty-crash) + `runStage` (render → materialize → **AgentSession** upsert → drive → `parseTurnResult` → **CarryOver** persist → **auto-advance** bij `!gateForApproval`).
+- **`renderStage`**: read-only-Bash/Glob/Grep in de allow (geen permission-hang), Stop-hook via `sh -c`, `definitionOfDone` in de stage-instructies (leeg ⇒ AI beslist zelf — jouw keuze).
+- **`runtime.ts`**: RO auth-mount (`/auth-ro`) + `CLAUDE_CONFIG_DIR=/home/agent/.claude` op de container. **Conductor** `provisionContainers` → `runStage` per ticket (off-chain) → ticket naar aiEnabled-stage slepen verwerkt het autonoom.
+- **`defaultPipeline.ts`**: 7 seed-stages met echte prompts (refine/plan/impl/test/review) + `definitionOfDone`. Schema: `PipelineStage.definitionOfDone` (optioneel).
+- **Lesson 0009** (CLAUDE_CONFIG_DIR expliciet · bypassPermissions · sh -c Stop-hook · geen term.kill op Windows).
+
+**GEVERIFIEERD (echt, 63s):** DEV-2 "Add a LICENSE (MIT)" → refined-stage → AI produceerde een echte scope + 5 acceptance-criteria → carryOver `refined→plan` (sessionId gezet) → ticket auto-doorgeschoven naar `plan` → AgentSession `stopped` (claudeSession + container getrackt).
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 14/14 (renderStage/turnResult unit-getest; live-engine handmatig geverifieerd — te traag/creds-afhankelijk voor de CI-sweep).
+
+**Test-data:** DEV-2 in de Zé-workspace staat nu op `plan` (van de demo) — opruimen kan.

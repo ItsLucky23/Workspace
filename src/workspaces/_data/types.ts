@@ -557,6 +557,7 @@ export interface PipelineStageCfg {
   aiEnabled: boolean;
   customInstructions: string;
   promptTemplate: string;            // carry-over template with {{chips}}
+  definitionOfDone?: string;         // optional "done when…"; empty ⇒ the AI judges completion itself
   // --- field sweep (04b §13) / V1_SCOPE §3.2 ---
   systemPrompt?: string;             // D2/D17 — layered base prompt, distinct from customInstructions
   roleKey?: string;                  // 04 §3 — the AgentRole plugin binding

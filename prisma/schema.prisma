@@ -342,6 +342,7 @@ model PipelineStage {
   systemPrompt       String            @default("")           // D2/D17 — layered base prompt
   customInstructions String            @default("")
   promptTemplate     String            @default("")           // carry-over template with {{chips}}
+  definitionOfDone   String            @default("")           // optional per-stage "done when…"; empty ⇒ the AI judges completion itself
 
   // --- V1_SCOPE §3.2 per-stage flow toggles ---
   userEditable       Boolean           @default(true)         // "may the user edit while this stage is active" (edit-lock)

@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (8)
+## Lessons (9)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -21,6 +21,7 @@
 | 0006 | _sync routes default to STRICT input validation and reject valid input with sync.invalidInputType — set `validation = 'relaxed'` (and browser/socket-test, integration tests bypass the transport) | 🟠 high | src/workspaces/_sync | sync, validation, realtime, transport, testing, browser | `docs/lessons/0006-sync-routes-default-strict-validation.md` |
 | 0007 | luckystack-dev does not reliably hot-reload server-side code — a child-restart can respawn STALE code; only a full supervisor-tree restart loads server edits | 🟠 high | dev-workflow | dev-server, hot-reload, conductor, sync, testing, restart | `docs/lessons/0007-dev-server-server-code-no-hot-reload.md` |
 | 0008 | The claude-cli provider runs in a scratch cwd — AI-gen prompts must be pure-context | 🟡 medium | ai-provider, docs-gen, dockerfile-gen | ai, claude-cli, prompt | `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md` |
+| 0009 | Driving claude autonomously in a container — CLAUDE_CONFIG_DIR, bypassPermissions, sh-c Stop hook | 🟠 high | orchestrator, stage-runner, container | claude-cli, docker, engine | `docs/lessons/0009-in-container-claude-drive-gotchas.md` |
 
 ## Takeaways
 
@@ -87,3 +88,11 @@ _(no How-to-avoid / Lesson section found — fill it in)_
 Any feature that drives `claude-cli` with repo context in the PROMPT (docs-gen, dockerfile-gen, workspace-chat, …) must tell the model explicitly: > "Base your answer ONLY on the files listed below. Do NOT read the filesystem or run any > tools — your working directory is empty; the repo content is provided inline here."
 
 → `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md`
+
+### 0009 — Driving claude autonomously in a container — CLAUDE_CONFIG_DIR, bypassPermissions, sh-c Stop hook
+
+**0009** · high · orchestrator, stage-runner, container · tags: claude-cli, docker, engine · 2026-07-02
+
+Any feature that drives an interactive `claude` over `docker exec` must: set `CLAUDE_CONFIG_DIR` explicitly (no `~`), pass `--permission-mode bypassPermissions` for autonomous (non-human) turns, and wrap redirecting hook commands in `sh -c`. Also: never `term.kill()` a node-pty on Windows (its conpty console-list agent can crash the host process) — `pkill` the process inside the container so the exec exits naturally. See `server/orchestrator/stageRunner.ts` + [[ai-provider-abstraction]].
+
+→ `docs/lessons/0009-in-container-claude-drive-gotchas.md`

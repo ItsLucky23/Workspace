@@ -74,10 +74,22 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     return { containerId: id.out, name, volume };
   }
 
+  //? RO subscription-auth projection (07b §2): mount the host's ONE-TIME login creds
+  //? read-only; the stage-runner copies them per-container into a writable agent-owned
+  //? ~/.claude before driving claude (so no container refreshes the shared file, and the
+  //? 0600 copy passes the CLI's permission check — the RO Windows mount is 0777).
+  const authDir = process.env.WS_AUTH_DIR ?? path.join(process.cwd(), 'data', '_auth');
+  //? Mount the creds RO + pin CLAUDE_CONFIG_DIR to a FIXED path (docker exec sets no HOME,
+  //? so `~/.claude` is ambiguous — the spike proved an explicit dir works). The stage-runner
+  //? copies the RO creds into this writable agent-owned dir before driving claude.
+  const authMount = existsSync(path.join(authDir, '.credentials.json'))
+    ? ['-v', `${authDir}:/auth-ro:ro`, '-e', 'CLAUDE_CONFIG_DIR=/home/agent/.claude']
+    : [];
+
   await docker(['volume', 'create', volume]);
   const run = await docker([
     'run', '-d', '--name', name, '--hostname', safe(ticketKey),
-    '-v', `${volume}:/work`, '-v', `${mirror}:/mirror:ro`,
+    '-v', `${volume}:/work`, '-v', `${mirror}:/mirror:ro`, ...authMount,
     //? §7 hardening — NEVER run without these.
     '--user', 'agent', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '512', '--memory', '3g', '--memory-swap', '3g', '--cpus', '2',
