@@ -786,6 +786,7 @@
       "newSprint": "Nieuwe sprint",
       "newTicket": "Nieuw ticket",
       "ticketTitlePlaceholder": "Tickettitel",
+      "labelsPlaceholder": "Labels (komma-gescheiden, optioneel)",
       "addTicket": "Ticket toevoegen",
       "sprintNamePlaceholder": "Sprintnaam…",
       "searchPlaceholder": "Tickets zoeken…",

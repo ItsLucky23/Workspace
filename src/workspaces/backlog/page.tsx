@@ -18,7 +18,7 @@ import Icon from '../_components/Icon';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, useClickAway, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { Sprint, Ticket, TicketStatus } from '../_data/types';
+import type { Member, Sprint, Ticket, TicketStatus } from '../_data/types';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
 
@@ -72,24 +72,39 @@ function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
 //? always enter at `unrefined` (Conductor-enforced). `quickAdd` + `sprints` come in as
 //? props since the menu renders outside the Workspaces provider. `initialSprintId`
 //? preselects a sprint when opened from a sprint's own "add ticket" row.
-function NewBacklogTicketForm({ quickAdd, sprints, initialSprintId }: {
-  quickAdd: (input: { title: string; sprintId?: string }) => void;
+function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprintId }: {
+  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => void;
   sprints: Sprint[];
+  members: Member[];
   initialSprintId?: string;
 }) {
   const translate = useTranslator();
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [labelsText, setLabelsText] = useState('');
   const [sprintId, setSprintId] = useState(initialSprintId ?? 'backlog');
+  const [assigneeId, setAssigneeId] = useState('unassigned');
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const sprintItems: DropdownItem[] = [
     { id: 'backlog', value: 'backlog', item: translate({ key: 'workspaces.backlog.title' }) },
     ...sprints.map((s) => ({ id: s.id, value: s.id, item: s.name })),
   ];
+  const assigneeItems: DropdownItem[] = [
+    { id: 'unassigned', value: 'unassigned', item: translate({ key: 'workspaces.board.unassigned' }) },
+    ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
+  ];
   const submit = () => {
     const t = title.trim();
     if (!t) return;
-    quickAdd({ title: t, sprintId: sprintId === 'backlog' ? undefined : sprintId });
+    const labels = labelsText.split(',').map((l) => l.trim()).filter((l) => l.length > 0);
+    quickAdd({
+      title: t,
+      sprintId: sprintId === 'backlog' ? undefined : sprintId,
+      ...(description.trim().length > 0 ? { description: description.trim() } : {}),
+      ...(labels.length > 0 ? { labels } : {}),
+      ...(assigneeId === 'unassigned' ? {} : { assigneeId }),
+    });
     void menuHandler.close();
   };
   return (
@@ -101,7 +116,21 @@ function NewBacklogTicketForm({ quickAdd, sprints, initialSprintId }: {
         placeholder={translate({ key: 'workspaces.backlog.ticketTitlePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
-      <Dropdown size="md" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
+      <textarea
+        value={description} onChange={(e) => { setDescription(e.target.value); }}
+        placeholder={translate({ key: 'workspaces.ticket.addDescriptionPlaceholder' })}
+        rows={3}
+        className="resize-y px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-common focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex gap-2">
+        <Dropdown size="md" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
+        <Dropdown size="md" value={assigneeItems.find((a) => a.id === assigneeId)} items={assigneeItems} onChange={(it) => { setAssigneeId(String(it.id)); }} />
+      </div>
+      <input
+        value={labelsText} onChange={(e) => { setLabelsText(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.backlog.labelsPlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
@@ -120,7 +149,7 @@ export default function Backlog() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(sprints.map((s) => [s.id, true])));
   const openNewSprint = () => { void menuHandler.open(<SprintForm onCreate={sprintCreate} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
-  const openNewTicket = (initialSprintId?: string) => { void menuHandler.open(<NewBacklogTicketForm quickAdd={quickAdd} sprints={sprints} initialSprintId={initialSprintId} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  const openNewTicket = (initialSprintId?: string) => { void menuHandler.open(<NewBacklogTicketForm quickAdd={quickAdd} sprints={sprints} members={members} initialSprintId={initialSprintId} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const filtered = useMemo(() => tickets.filter((t) => {
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;

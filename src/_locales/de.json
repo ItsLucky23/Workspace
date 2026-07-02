@@ -777,6 +777,7 @@
       "newSprint": "Neuer Sprint",
       "newTicket": "Neues Ticket",
       "ticketTitlePlaceholder": "Ticket-Titel",
+      "labelsPlaceholder": "Labels (kommagetrennt, optional)",
       "addTicket": "Ticket hinzufügen",
       "sprintNamePlaceholder": "Sprint-Name…",
       "searchPlaceholder": "Tickets suchen…",

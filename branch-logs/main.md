@@ -587,3 +587,12 @@ Na een uitgebreide adversariële browser-testronde (2 clients, verse server) fix
 - **Logged-out redirect**: uitgelogde bezoeker op /workspaces werd de onboarding getoond; provider redirect nu bij `auth.required` naar de login-pagina.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.
+
+## 2026-07-02 — Browser-test-fixes batch 2: quick-create verrijkt (omschrijving + assignee + labels)
+
+- **New-ticket-modal verrijkt**: naast titel + sprint nu ook optioneel omschrijving-veld, assignee-dropdown, en labels-input (komma-gescheiden). Conductor quick-add zet nu `assigneeId` (+ notify de assignee als ≠ maker); sync-route + provider + context dragen description/labels/assigneeId. Locale-key `labelsPlaceholder` in 4 locales. Delta-test uitgebreid (description + labels).
+- **Browser-geverifieerd** (2 clients, verse backend): ticket met omschrijving + assignee + labels → persisteert correct (DB-bevestigd).
+
+**KRITIEKE DX-VONDST:** luckystack-dev herlaadt server-side code (conductor, `_sync`-routes) NIET betrouwbaar — een child-restart respawnt soms STALE code. Alleen een **volledige supervisor-tree-restart** (kill supervisor.js + kinderen → `npm run server` vers) laadt nieuwe server-code gegarandeerd. Dit kostte 2× verwarring (realtime, assignee). Zie lesson 0007.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 12/12.

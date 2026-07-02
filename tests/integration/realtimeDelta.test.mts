@@ -20,11 +20,13 @@ try {
   workspaceId = created.workspaceId;
 
   // quick-add returns the created ticket row → ticketDelta narrows to a Ticket
-  const add = await enqueueControlAction({ workspaceId, op: 'quick-add', target: {}, payload: { title: 'Delta ticket' }, userId: owner.id, clientRequestId: `d-add-${String(stamp)}` });
+  const add = await enqueueControlAction({ workspaceId, op: 'quick-add', target: {}, payload: { title: 'Delta ticket', description: 'Delta desc', labels: ['bug', 'urgent'] }, userId: owner.id, clientRequestId: `d-add-${String(stamp)}` });
   const addedList = ticketListDelta(Array.isArray(add.result) ? add.result : [add.result]);
   assert(addedList.length === 1, 'quick-add op result maps to one ticket delta');
   const key = addedList[0]?.id ?? '';
   assert(key.startsWith('DEV-'), 'the ticket delta id is the DEV-#### key');
+  eq(addedList[0]?.description, 'Delta desc', 'quick-add persists the description');
+  eq(addedList[0]?.labels.join(','), 'bug,urgent', 'quick-add persists the labels');
 
   // ticket-edit returns the affected rows → ticketListDelta
   const edit = await enqueueControlAction({ workspaceId, op: 'ticket-edit', target: { ticketId: key }, payload: { title: 'Delta renamed' }, userId: owner.id, clientRequestId: `d-edit-${String(stamp)}` });

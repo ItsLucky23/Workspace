@@ -786,6 +786,7 @@
       "newSprint": "New sprint",
       "newTicket": "New ticket",
       "ticketTitlePlaceholder": "Ticket title",
+      "labelsPlaceholder": "Labels (comma-separated, optional)",
       "addTicket": "Add ticket",
       "sprintNamePlaceholder": "Sprint name…",
       "searchPlaceholder": "Search tickets…",

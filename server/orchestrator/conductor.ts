@@ -356,10 +356,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           //? Conductor (single writer) enforces this, so no client can place a
           //? ticket mid-pipeline regardless of what it sends. The AI moves it on.
           title, description: str(payload, 'description') ?? null, stageId: 'unrefined',
-          status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId, sprintId: str(payload, 'sprintId') ?? null,
+          status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId,
+          sprintId: str(payload, 'sprintId') ?? null, assigneeId: str(payload, 'assigneeId') ?? null,
         },
       });
       await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket');
+      //? Assigned to someone else at creation → notify them (mirrors bulk-assign).
+      const newAssignee = str(payload, 'assigneeId');
+      if (newAssignee && newAssignee !== userId) await notifyAssignment(action.workspaceId, newAssignee, created.id, created.key);
       //? Return the created row so realtime `_sync` write routes can broadcast the delta.
       return created;
     }
