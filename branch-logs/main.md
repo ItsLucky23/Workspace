@@ -746,3 +746,11 @@ Na 4 parallelle research-agents (auth §2 · render · run/completion · L2). De
 **GEBLOKKEERD (jouw keuze nodig):** de **container-auth-spike** — de auto-classifier weigerde (terecht) het kopiëren van je live `~/.claude/.credentials.json` in een projectie-dir. De hele engine hangt op container-claude-billing via die mount. Ik heb je expliciete toestemming nodig (of jij draait de spike-setup) vóór ik de `stageRunner` (claude-in-container) kan afmaken + verifiëren.
 
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 14/14.
+
+## 2026-07-02 — Runtime fase 7b: stage-config materialisatie in de container (credential-vrij)
+
+- **`server/orchestrator/stageRunner.ts`** (start): `materializeStageConfig(container, artifacts)` schrijft de rendered `.claude`-artefacten IN de container-volume via `docker exec` (base64-round-trip, shell-safe), label-gated, als `agent`. `/work/CLAUDE.md` + `/work/.claude/settings.json` + `/work/.claude/stage-instructions.txt` + `/work/.mcp.json`.
+- **Geverifieerd (echte container)**: render → materialize → files aanwezig + **agent-owned** (`# Plan stage — DEV-mat1`, settings.json owner=agent). De-risket de render→container-stap volledig.
+- De rest van de stageRunner (`docker exec claude` drijven + Stop-capture + parseTurnResult + carryOver + advance) wacht op de **container-auth-spike** (jouw credential-keuze) — dan bouw+verifieer ik 'm in één keer i.p.v. blind.
+
+**Verificatie:** server-tsc 0, eslint 0/0, build groen. (Geen nieuwe integration-test; materialisatie handmatig tegen een echte container geverifieerd.)
