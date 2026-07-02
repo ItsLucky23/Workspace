@@ -165,6 +165,28 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
   }), [upsertSyncEventCallback, mergeTickets]);
 
+  //? bulk-* deltas → upsert the affected tickets (each its own event; shared reducer).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/bulkMove', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/bulkStatus', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/bulkAssign', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/bulkSprint', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/bulkArchive', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -338,11 +360,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
       addComment: (ticketId, body) => { afterWrite(apiRequest({ name: 'workspaces/addComment', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketId, body, clientRequestId: nextReqId() } })); },
       archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
-      bulkMove: (ids, stageId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, stageId, clientRequestId: nextReqId() } }); refetch(); })(); },
-      bulkStatus: (ids, status) => { void (async () => { await apiRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, status, clientRequestId: nextReqId() } }); refetch(); })(); },
-      bulkAssign: (ids, assigneeId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, assigneeId, clientRequestId: nextReqId() } }); refetch(); })(); },
-      bulkSprint: (ids, sprintId) => { void (async () => { await apiRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, sprintId, clientRequestId: nextReqId() } }); refetch(); })(); },
-      bulkArchive: (ids) => { void (async () => { await apiRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', ticketIds: ids, clientRequestId: nextReqId() } }); refetch(); })(); },
+      bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, clientRequestId: nextReqId() }, receiver: room }); },
+      bulkStatus: (ids, status) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds: ids, status, clientRequestId: nextReqId() }, receiver: room }); },
+      bulkAssign: (ids, assigneeId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: ids, assigneeId, clientRequestId: nextReqId() }, receiver: room }); },
+      bulkSprint: (ids, sprintId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { ticketIds: ids, sprintId, clientRequestId: nextReqId() }, receiver: room }); },
+      bulkArchive: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
       toggleSkill: (id, on) => { afterWrite(apiRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', sourceId: id, on, clientRequestId: nextReqId() } })); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { afterWrite(apiRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', stageId: cfg.id, cfg, clientRequestId: nextReqId() } })); },

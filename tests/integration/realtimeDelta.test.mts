@@ -37,6 +37,12 @@ try {
   const archList = ticketListDelta(arch.result);
   eq(archList[0]?.archived, true, 'archive delta carries archived=true');
 
+  // bulk-move returns the affected rows → ticketListDelta (same path the bulk-* ops share)
+  const mv = await enqueueControlAction({ workspaceId, op: 'bulk-move', target: { ticketIds: [key] }, payload: { stageId: 'coding' }, userId: owner.id, clientRequestId: `d-mv-${String(stamp)}` });
+  const mvList = ticketListDelta(mv.result);
+  eq(mvList[0]?.stageId, 'coding', 'bulk-move delta carries the new stageId');
+  eq(mvList[0]?.id, key, 'bulk-move delta keeps the DEV key as id');
+
   // sprint-create returns the created sprint → sprintDelta
   const sp = await enqueueControlAction({ workspaceId, op: 'sprint-create', target: {}, payload: { name: 'Delta sprint', active: false }, userId: owner.id, clientRequestId: `d-sp-${String(stamp)}` });
   const sprint = sprintDelta(sp.result);

@@ -515,3 +515,9 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
 
 **Volgende:** bulk-move/status/assign/sprint/archive → `_sync` (delta `tickets: Ticket[]`), daarna add-comment + sprint-create → `_sync`, daarna members/settings-ops. Live browser-verificatie op :80 zodra herstart.
+
+## 2026-07-02 — Realtime m1 fan-out (2): bulk-move/status/assign/sprint/archive via _sync
+
+**Gedaan:** de 5 bulk-ops gemigreerd naar per-actie `_sync`-events (`src/workspaces/_sync/bulk{Move,Status,Assign,Sprint,Archive}_server_v1.ts`), elk delegeert aan `dispatchControlSync` en broadcast `tickets: Ticket[]`. Client: 5 `upsertSyncEventCallback`-callbacks (gedeelde `mergeTickets`-reducer) + de 5 dispatchers schrijven nu via `syncRequest` (geen refetch). Legacy `_api/bulk*_v1.ts` (5) verwijderd. Delta-test uitgebreid met bulk-move.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
