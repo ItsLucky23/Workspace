@@ -39,10 +39,27 @@ The runtime's core premises are empirical facts about the 2026 `claude` CLI that
 have never been measured; the architecture bet the whole engine on them, so the docs
 insert P0.5 as a gate a human must clear first.
 
-## How to avoid
+## Resolution (2026-07-02) — the gate is now OPEN
+
+The P0.5 spike WAS run (autonomously, on the user's Max subscription via Claude Code,
+using `scripts/spike/hookCapture.mts` + `runSpikeAuto.mts`). `src/workspaces/_docs/
+SPIKE_RESULTS.md` now exists with the gating rows GREEN:
+- **A1 billing GREEN** — a clean-env (`ANTHROPIC_*` stripped) interactive PTY turn ran on
+  the subscription.
+- **B1/B2/B4 hooks GREEN** — `type:http` hooks fire interactively for UserPromptSubmit/
+  PreToolUse/PostToolUse/Stop; `Stop` carries `last_assistant_message` + `session_id`.
+- Carried notes: render **SessionStart as `type:command`** (its http variant didn't fire);
+  no `usage` field in hook payloads → drive the budget off a **labeled char/byte estimate**.
+
+**Lane B/C/F are unblocked for build.** The deeper C (/clear id-rotation) and E
+(crash-resume + RO-credential mount) rows are still NOT-RUN — verify them before their
+specific sub-features (resume, token-optimization, container auth) ship, but they don't
+block starting lane F's provisioning skeleton.
+
+## How to avoid (historical)
 
 - **Never build lane B/C/F autonomously until `src/workspaces/_docs/SPIKE_RESULTS.md`
-  exists with GREEN gating rows.** Check for it first.
+  exists with GREEN gating rows.** (Now satisfied — see Resolution above.)
 - The safe, high-value autonomous move toward the runtime is to build the **spike
   harness** the gate itself mandates (P0.5 is "the last P0 artifact, run before P1"),
   then hand off for the human to run it. Done here: `scripts/spike/hookCapture.mts`

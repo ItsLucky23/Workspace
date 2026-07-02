@@ -603,3 +603,11 @@ Na een uitgebreide adversariële browser-testronde (2 clients, verse server) fix
 - **Lesson 0007**: luckystack-dev herlaadt server-side code niet betrouwbaar (child-restart = stale); volledige supervisor-tree-restart nodig.
 
 **Verificatie:** front-tsc 0, eslint 0/0, ai:lint schoon, build groen.
+
+## 2026-07-02 — P0.5 CLI-spike GEDRAAID → gate OPEN (billing + hooks GREEN)
+
+Autonoom gedraaid op de Max-subscription (via Claude Code) met `scripts/spike/hookCapture.mts` + nieuwe `scripts/spike/runSpikeAuto.mts` (node-pty driver: rendert `.claude/settings.json` met type:http + type:command hooks, auto-bevestigt de folder-trust-prompt, drijft één echte Bash-tool-turn). Resultaat in `src/workspaces/_docs/SPIKE_RESULTS.md`:
+- **A1 billing GREEN**: clean-env (ANTHROPIC_* gestript) interactieve PTY-turn draaide op het abonnement (geen API-key aanwezig → subscription).
+- **B1/B2/B4 hooks GREEN**: `type:http`-hooks vuren interactief voor UserPromptSubmit/PreToolUse/PostToolUse/Stop; `Stop` draagt `last_assistant_message` + `session_id` (turn-end-signaal). CLI-versie **2.1.198** gepind.
+- **Notes**: SessionStart alleen via `type:command` (http-variant vuurde niet); geen `usage`-veld in payloads → budget via labeled char/byte-schatting (doc §4, non-blocking). Elke payload draagt `session_id` + `transcript_path` (→ `--resume`).
+- **Gate OPEN**: P1 lanes B/C/F unblocked. C (/clear-rotatie) + E (crash-resume + RO-cred-mount) nog NOT-RUN → verifiëren vóór hun sub-features, geen blocker voor de lane-F provisioning-skeleton. Lesson 0005 bijgewerkt (Resolution).

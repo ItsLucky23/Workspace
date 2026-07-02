@@ -59,7 +59,7 @@
 
 **0005** · high · server/orchestrator · tags: containers, p0.5-spike, billing, pty, gate, lane-f, autonomy · 2026-07-02
 
-**Never build lane B/C/F autonomously until `src/workspaces/_docs/SPIKE_RESULTS.md` exists with GREEN gating rows.** Check for it first. The safe, high-value autonomous move toward the runtime is to build the **spike harness** the gate itself mandates (P0.5 is "the last P0 artifact, run before P1"), then hand off for the human to run it. Done here: `scripts/spike/hookCapture.mts` (`npm run spike:hooks`) + `scripts/spike/runSpike.mts` (`npm run spike:cli`, `--dry` to review). Running `spike:cli` for real is the gated, human-only action. Lanes A (data), D (Conductor against contracts), E (client wiring) + the realtime `_sync` layer are NOT gated — they build against frozen contracts. That is where autonomous loop effort belongs until the spike is GREEN.
+_(no How-to-avoid / Lesson section found — fill it in)_
 
 → `docs/lessons/0005-container-runtime-gated-by-p05-spike.md`
 
