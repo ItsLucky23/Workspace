@@ -243,6 +243,72 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? role deltas → upsert by key (settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/roleCreate', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.role) return;
+      const role = serverOutput.role;
+      setSnap((s) => ({ ...s, roles: s.roles.some((r) => r.key === role.key) ? s.roles.map((r) => (r.key === role.key ? role : r)) : [...s.roles, role] }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/roleUpdate', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.role) return;
+      const role = serverOutput.role;
+      setSnap((s) => ({ ...s, roles: s.roles.some((r) => r.key === role.key) ? s.roles.map((r) => (r.key === role.key ? role : r)) : [...s.roles, role] }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? member deltas → update role in place / drop / ownership transfer (no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/changeRole', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const { memberId, role } = serverOutput;
+      setSnap((s) => ({ ...s, members: s.members.map((m) => (m.id === memberId ? { ...m, role } : m)) }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/removeMember', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const id = serverOutput.removedMemberId;
+      setSnap((s) => ({ ...s, members: s.members.filter((m) => m.id !== id) }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/transferOwnership', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const { newOwnerId, previousOwnerId } = serverOutput;
+      setSnap((s) => ({
+        ...s,
+        members: s.members.map((m) => (m.id === newOwnerId ? { ...m, role: 'owner' } : (m.id === previousOwnerId ? { ...m, role: 'admin' } : m))),
+        workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, ownerId: newOwnerId } : w)),
+      }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? invite deltas → upsert by id / drop on revoke (settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/invite', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.invite) return;
+      const invite = serverOutput.invite;
+      setSnap((s) => ({ ...s, invites: s.invites.some((i) => i.id === invite.id) ? s.invites.map((i) => (i.id === invite.id ? invite : i)) : [...s.invites, invite] }));
+    },
+  }), [upsertSyncEventCallback]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/revokeInvite', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const id = serverOutput.revokedInviteId;
+      setSnap((s) => ({ ...s, invites: s.invites.filter((i) => i.id !== id) }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string }) => {
@@ -378,22 +444,22 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       togglePerm: (ri, ci) => {
         const role = snap.roles[ri];
         if (!role || role.locked === true) return;
+        const room = snap.activeWorkspaceId;
         const perms = role.perms.map((v, j) => (j === ci ? !v : v));
-        setSnap((s) => ({ ...s, roles: s.roles.map((r, i) => (i === ri ? { ...r, perms } : r)) }));
-        afterWrite(apiRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', roleKey: role.key, perms, clientRequestId: nextReqId() } }));
+        if (room) void syncRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { roleKey: role.key, perms, clientRequestId: nextReqId() }, receiver: room });
       },
       addRole: (name) => {
+        const room = snap.activeWorkspaceId;
         const key = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || `role-${String(snap.roles.length + 1)}`;
         const perms = (snap.roles[0]?.perms ?? []).map(() => false);
-        setSnap((s) => ({ ...s, roles: [...s.roles, { key, name, perms }] }));
-        afterWrite(apiRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', key, label: name, perms, clientRequestId: nextReqId() } }));
+        if (room) void syncRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { key, label: name, perms, clientRequestId: nextReqId() }, receiver: room });
       },
       memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.role])),
-      setMemberRole: (mid, role) => { afterWrite(apiRequest({ name: 'workspaces/changeRole', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId: mid, roleKey: role, clientRequestId: nextReqId() } })); },
-      inviteMember: (email, roleKey) => { afterWrite(apiRequest({ name: 'workspaces/invite', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', email, roleKey, clientRequestId: nextReqId() } })); },
-      revokeInvite: (inviteId) => { afterWrite(apiRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', inviteId, clientRequestId: nextReqId() } })); },
-      removeMember: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/removeMember', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
-      transferOwnership: (memberId) => { afterWrite(apiRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', memberId, clientRequestId: nextReqId() } })); },
+      setMemberRole: (mid, role) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/changeRole', version: 'v1', data: { memberId: mid, roleKey: role, clientRequestId: nextReqId() }, receiver: room }); },
+      inviteMember: (email, roleKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/invite', version: 'v1', data: { email, roleKey, clientRequestId: nextReqId() }, receiver: room }); },
+      revokeInvite: (inviteId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { inviteId, clientRequestId: nextReqId() }, receiver: room }); },
+      removeMember: (memberId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeMember', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room }); },
+      transferOwnership: (memberId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room }); },
       envVars: snap.envVars,
       saveEnvVar: (v) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() }, receiver: room }); },
       removeEnvVar: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { envId: id, clientRequestId: nextReqId() }, receiver: room }); },

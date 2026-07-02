@@ -4,9 +4,13 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite } from '@prisma/client';
 
-import type { EnvVar, IntegrationTool, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import type { EnvVar, IntegrationTool, InviteEntry, PermRole, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+
+//? DB roleKey → the frontend `Role` union (ternary narrowing, no `as`). Mirrors
+//? `asRole` in buildSnapshot so a live member/invite delta matches the snapshot.
+export const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key : 'member');
 
 const asStatus = (s: string): TicketStatus =>
   (s === 'needs-input' || s === 'busy' || s === 'done' || s === 'paused' || s === 'stuck' ? s : 'idle');
@@ -78,6 +82,26 @@ function isDbEnvVar(v: unknown): v is DbEnvVar {
 //? Narrow the save-env op result to the frontend `EnvVar` delta (client upserts by id).
 export function envDelta(result: unknown): EnvVar | null {
   return isDbEnvVar(result) ? { id: result.id, key: result.key, value: result.value, secret: result.secret } : null;
+}
+
+function isDbRole(v: unknown): v is DbRole {
+  return v !== null && typeof v === 'object' && 'key' in v && 'label' in v && 'perms' in v && 'builtIn' in v;
+}
+
+//? Narrow the role-create/role-update op result to the frontend `PermRole` delta
+//? (client upserts by key). `owner` is locked. Mirrors the role mapping in the snapshot.
+export function roleDelta(result: unknown): PermRole | null {
+  return isDbRole(result) ? { key: result.key, name: result.label, locked: result.key === 'owner', perms: result.perms } : null;
+}
+
+function isDbInvite(v: unknown): v is DbInvite {
+  return v !== null && typeof v === 'object' && 'id' in v && 'email' in v && 'roleKey' in v && 'status' in v;
+}
+
+//? Narrow the invite op result to the frontend `InviteEntry` delta (client upserts
+//? by id). Mirrors the invite mapping in the snapshot (only pending invites show).
+export function inviteDelta(result: unknown): InviteEntry | null {
+  return isDbInvite(result) ? { id: result.id, email: result.email, role: asRole(result.roleKey), sent: 'pending' } : null;
 }
 
 function isDbIntegration(v: unknown): v is DbIntegration {

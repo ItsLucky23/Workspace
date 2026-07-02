@@ -533,3 +533,9 @@ Card-provenance-peek (grotendeels gedekt door de Activity-tab), extra notificati
 **Gedaan:** settings-realtime start. `mappers`: `envDelta` / `integrationDelta`. Conductor save-env + save-integration geven nu de upserted row terug. Sync-routes `_sync/{saveEnv,removeEnv,saveIntegration,removeIntegration}_server_v1.ts` (create/update broadcast de row, delete echo't de removed id). Client: 4 merge-callbacks (upsert/drop by id) + dispatchers via `syncRequest`; de optimistische local setSnap voor integrations vervalt (merge-callback = enige bron). Legacy `_api` (4) verwijderd.
 
 **Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.
+
+## 2026-07-02 — Realtime m1 fan-out (5): members/roles/invites via _sync
+
+**Gedaan:** `mappers`: `asRole` + `roleDelta` + `inviteDelta`. Conductor role-create/role-update/invite geven de row terug. 7 sync-routes: roleCreate/roleUpdate (broadcast `role`, upsert by key), changeRole (echo `{memberId, role}`), removeMember (echo removed id), transferOwnership (echo `{newOwnerId, previousOwnerId}` → client zet owner/admin + workspace.ownerId), invite (broadcast `invite`), revokeInvite (echo revoked id → client dropt uit pending). Client: 8 merge-callbacks + dispatchers via `syncRequest` (optimistische setSnap voor addRole/togglePerm vervalt). Legacy `_api` (7) verwijderd.
+
+**Verificatie:** front-tsc 0, server-tsc 0, eslint 0/0, ai:lint schoon, build groen, integration **12/12**.

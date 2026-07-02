@@ -470,8 +470,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'role-create': {
       const key = str(payload, 'key'); const label = str(payload, 'label') ?? key;
       if (!key || !label) return;
-      await prisma.workspaceRole.create({ data: { workspaceId: action.workspaceId, key, label, perms: boolArr(payload, 'perms'), builtIn: false } });
-      return;
+      //? Return the created role so the realtime `_sync` route broadcasts the delta.
+      return prisma.workspaceRole.create({ data: { workspaceId: action.workspaceId, key, label, perms: boolArr(payload, 'perms'), builtIn: false } });
     }
     case 'role-update': {
       const key = str(target, 'roleKey') ?? str(payload, 'key');
@@ -481,7 +481,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (label) data.label = label;
       if (Array.isArray(payload.perms)) data.perms = boolArr(payload, 'perms');
       await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
-      return;
+      //? Return the updated role so the realtime `_sync` route broadcasts the delta.
+      return prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key } });
     }
     // ---- invites ----
     case 'create-workspace': {
@@ -494,14 +495,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     case 'invite': {
       const email = str(payload, 'email');
-      if (email) {
-        await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
-        //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
-        //? unconfigured) — never block or fail the authoritative write on delivery.
-        const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
-        void sendInviteEmail(email, ws?.name ?? 'a workspace');
-      }
-      return;
+      if (!email) return;
+      const invite = await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+      //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
+      //? unconfigured) — never block or fail the authoritative write on delivery.
+      const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
+      void sendInviteEmail(email, ws?.name ?? 'a workspace');
+      //? Return the created invite so the realtime `_sync` route broadcasts the delta.
+      return invite;
     }
     case 'revoke-invite': {
       const inviteId = str(target, 'inviteId');
