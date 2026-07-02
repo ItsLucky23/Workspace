@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (6)
+## Decisions (7)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -19,6 +19,7 @@
 | 0005 | The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session | ⚪ superseded | workspaces, control-api, typed-routes, fase-0, transport | — | `docs/decisions/0005-per-action-typed-api-write-routes.md` |
 | 0006 | In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch) | 🟢 accepted | workspaces, realtime, sync, transport, control-api | per-action-typed-api-write-routes | `docs/decisions/0006-realtime-sync-delta-transport.md` |
 | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one | 🟢 accepted | ai, architecture, orchestrator, extensibility | — | `docs/decisions/0007-pluggable-ai-provider-layer.md` |
+| 0008 | Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning | 🟢 accepted | container, runtime, orchestrator, git, security | — | `docs/decisions/0008-container-runtime-model.md` |
 
 ## Summaries
 
@@ -69,6 +70,14 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the shared contract: `AiProviderId`, `AiFeature`, `AiProvider` (`available()` + `complete()`), and the request/result shapes. **`providers/*`** — one standalone handler per backend: `claude-cli` (drives the interactive PTY in a scrubbed env → Max subscription, reading the final message off the Stop hook via `--settings`, never `-p/--print`) and `gemini-api` (headless Generative Language API call, gated on `GEMINI_API_KEY`). **`assignments.ts`** — the single feature→provider map, with a `resolveAssignment` seam that a per-workspace/user override (a future picker UI backed by a DB setting) plugs into without touching feature code. **`registry.ts`** — `runAiCompletion(feature, req, overrides?)`: resolves the assigned provider, gates on `available()`, and dispatches. This is the ONLY entry point features import; no feature names a provider.
 
 → `docs/decisions/0007-pluggable-ai-provider-layer.md`
+
+### 0008 — Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning
+
+**0008** · accepted · tags: container, runtime, orchestrator, git, security · 2026-07-02
+
+**Worktree = `git clone --single-branch` into a container-owned volume, NOT a bind-mount of the host `git worktree` checkout** (`07b §4`, Q-CT-WORKTREE). A git worktree's `.git` is a *gitdir pointer* back to the main repo; bind-mounting only the worktree dir leaves a dangling pointer that breaks git on the first command inside the container. The clone is self-contained. The `DEV-####` branch (cut at the frozen commit in phase 1b) is the clone's `--branch`, so its tip IS the frozen commit — no detaching checkout. **`git config --system safe.directory '*'` is BAKED into L1.** The RO `/mirror` (host clone) is host-uid-owned; git's dubious-ownership guard refuses it. `-c safe.directory` is ignored by git for this key BY DESIGN — only system/global config is honored — so it must live in the image. **Name-based idempotency, no persistence yet.** A container is keyed by `ws-<safe(workspaceId)>-<safe(ticketKey)>`; re-activation reuses/ restarts the named container. V1 does NOT write an `AgentSession` row — the container name + docker labels (`org.workspaces.workspace` / `.ticket`) are the lookup, so no schema change. **Provisioning runs OFF the conductor serial chain** (fire-and-forget at aiEnabled activation). `docker` clone+run is ~10s; the authoritative stage move must return fast for the realtime board. Best-effort: a launch failure is logged, never fails the move. **`docker exec` for terminals in V1**, gated on the workspace label (never exec into a foreign container). The full in-container pty-agent (durable scrollback, crash-resume, `07b §9`) is deferred.
+
+→ `docs/decisions/0008-container-runtime-model.md`
 
 ## Code governed by decisions
 
