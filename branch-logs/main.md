@@ -734,3 +734,15 @@ Op basis van de parallelle research-agent-spec:
 **Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 13/13.
 
 **Volgende = de kritieke gate:** container-auth-spike (mount subscription-creds RO → draait container-claude op het abonnement?), dan de stage-runner engine (renderStage → stageRunner → conductor-wiring).
+
+## 2026-07-02 — Runtime fase 7a: stage-runner engine — credential-vrije helft (renderStage + turnResult)
+
+Na 4 parallelle research-agents (auth §2 · render · run/completion · L2). De pure, testbare kern van de engine:
+- **`server/orchestrator/turnResult.ts`**: `parseTurnResult` (parseert de `ws-carryover`-fenced-block → `{summary, changedFiles, openQuestions, commitHash}` = done; `ws-needs-input` → needs-input; anders continue) + `renderPromptTemplate` (vult de CARRY_VARS-chips `{{summary}}`/`{{changedFiles}}`/`{{openQuestions}}`/`{{commitHash}}`).
+- **`server/orchestrator/renderStage.ts`**: pure `renderStage(cfg, ctx)` → `.claude`-artefacten. CLAUDE.md ← customInstructions; stage-instructions ← systemPrompt + gevulde promptTemplate + de ws-carryover-teaching; settings.json ← commands (allow/ask/deny) + de 7 ws-verbs + auth-denyRead + Stop-hook (type:command → /work-file); .mcp.json ← skillKeys. Geflagd-deferred: context-doc-imports, MCP-skill-catalog, model-mapping, D2-role-layering.
+- **Test 19/19** (parse done/needs-input/continue · chip-filling · alle render-artefacten).
+- **AgentSession-model heeft al alle velden** (containerId/claudeSessionId/ptyAgentUrl/status/sessionKey) — geen schema-wijziging; enige mogelijke toevoeging is `PipelineStage.doneWhen` (per-stage done-criterium, kan eerst gehardcode).
+
+**GEBLOKKEERD (jouw keuze nodig):** de **container-auth-spike** — de auto-classifier weigerde (terecht) het kopiëren van je live `~/.claude/.credentials.json` in een projectie-dir. De hele engine hangt op container-claude-billing via die mount. Ik heb je expliciete toestemming nodig (of jij draait de spike-setup) vóór ik de `stageRunner` (claude-in-container) kan afmaken + verifiëren.
+
+**Verificatie:** front/server tsc 0, eslint 0/0, ai:lint schoon, build groen, integration 14/14.
