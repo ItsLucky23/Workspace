@@ -1078,3 +1078,12 @@ Van "ingelogd?" naar "lid van dít workspace?" — sluit cross-workspace-toegang
 **Deel B** — `docs/WORKSPACES_MULTI_INSTANCE.md`: run-recipe voor N `system`-instances achter de reverse-proxy (sticky WS via ip_hash + `WS_MULTI_INSTANCE=1` + `WS_COOKIE_DOMAIN`). De correctheid zat in Deel A (ADR 0015); dit is config/ops.
 
 **Verificatie**: server-tsc 0, eslint 0, egressSpike groen. Env: WS_EGRESS, WS_EGRESS_ALLOW.
+
+## 2026-07-03 (parallel, vervolg 4) — Item 4 VISUEEL BEVESTIGD in de browser
+
+De hook eiste de visuele klik-door-de-app. Geleverd:
+- **`scripts/dev/editorScreenshot.mjs`** (Playwright, headless Chrome, `ignoreHTTPSErrors` — de interne *.localhost-CA is niet machine-trusted in dev, dus we slaan cert-verificatie over voor die ene capture i.p.v. de CA te installeren, wat de auto-mode terecht blokkeert).
+- **Bewijs**: `devLaunchEditor` → `https://vscode-dev-demo.localhost/?tkn=...` → in de browser rendert de **echte VS Code**: `.monaco-workbench` + activity-bar + status-bar aanwezig, titel `"… - OpenVSCode Server"`, en de **EXPLORER toont de geseede `WORK/src/README.md`**. Screenshot naar de gebruiker gestuurd.
+- Onderweg opgelost: openvscode's token-cookie is `Secure` (HTTPS verplicht; HTTP :8080-omweg verworpen + caddy.json teruggedraaid naar :443-only), agent-browser-daemon-bug omzeild door Playwright direct te gebruiken, en de Git-Bash-padmangling in de losse editor-restart.
+
+**Eindstand: alle 7 items end-to-end bewezen** — inclusief de klikbare editor per branch via het echte subdomein, visueel in de browser. Commits t/m deze (ItsLucky23, niet gepusht).
