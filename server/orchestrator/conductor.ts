@@ -19,6 +19,7 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
+import { indexWorkspace } from '../rag';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncGitlabIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
@@ -732,6 +733,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       }
       //? Return the workspace's full context-doc set as the delta (client replaces list).
       return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
+    }
+    case 'scan-index': {
+      //? RAG index (07 §D): read the linked repo's code, chunk + embed it, upsert the RagEntry
+      //? store. Returns the index result (files/chunks/commit/embedder) as the delta.
+      const proj = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId }, select: { id: true } });
+      return indexWorkspace(prisma, action.workspaceId, proj?.id ? { projectId: proj.id } : {});
     }
     case 'raise-cap':
     case 'edit-budget': {

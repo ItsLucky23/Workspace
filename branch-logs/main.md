@@ -1102,3 +1102,14 @@ De hook eiste de visuele klik-door-de-app. Geleverd:
 **Root-cause (engine-agent's `server/http/editorAuthCheck.ts`):** het doet `hasCapability(getPrismaClient(), …)` met de **base**-client, maar `WorkspaceMember`/`WorkspaceRole` zijn TENANT_MODELS (row-isolation via `tenantDb` + `runInTenant`). De base-client ziet de tenant-rows niet → lid krijgt 403. Bewijs dat het aan de client ligt: dezelfde `hasCapability` via `functions.db.prisma` (tenant) in `openEditor` laat de member wél door (gaf `notActivated`, niet `forbidden`); `session.id` = `W.ownerId` (klopt). Fix-pogingen in hun file (getPrismaClientFor → 500; runInTenant+tenantDb → 500 met empty-message error) teruggedraaid — de juiste tenant-resolutie in de raw custom-route is engine-agent-expertise. **GEFLAGD.** Tot dan: `WS_EDITOR_EDGE_AUTH` uit laten (membership-gate blokkeert dan iedereen).
 
 Mijn files: `editorSession.ts` (workspaceId) + `devLaunchEditor_v1.ts` (authWorkspaceId). Build groen, lint 0.
+
+## 2026-07-03 — RAG codebase-intelligentie (pijler 2 van het /goal, ADR 0017)
+
+De AI-stage-agent ziet nu de relevante code van zijn ticket (was: alleen wholesale context-docs).
+- **`server/rag/embed.ts`** — pluggable embeddings: Gemini als `GEMINI_API_KEY` gezet, anders een deterministische lokale embedder (hashed-token + char-trigram, L2-genormaliseerd) → werkt offline + in tests.
+- **`server/rag/index.ts`** — `indexWorkspace` (repo-code → chunk → embed → upsert `RagEntry`, frozen-per-commit) + `retrieve` (query-embed → cosine-scan → top-K).
+- **`repoStore.listRepoFiles`/`repoHead`** (uit de bare clone, incl. extensieloze README/LICENSE/Dockerfile).
+- **Injectie**: `stageRunner` retrievet top-6 voor het ticket → nieuwe "Relevant code"-sectie in `renderStage` CLAUDE.md.
+- **Trigger**: `scan-index` control-op + `_sync`-route + rbac (`editPipeline`).
+
+**Bewezen** (`ragSpike.mts` GROEN): embed-determinisme, cosine(self)=1, **ranking** (auth-query→auth.ts, db-query→db.ts), real-index + retrieve. server-tsc 0, eslint 0, ai:lint 0, integration 14/14. UI-knop (Sources) = volgende commit.

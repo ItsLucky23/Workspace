@@ -17,6 +17,7 @@ import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
+import { retrieve } from '../rag';
 import { killClaudeByContainer } from './agentControl';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
@@ -163,12 +164,17 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   });
   const contextDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));
 
+  //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
+  //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).
+  const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined));
+  const retrieved = ragErr || !hits ? [] : hits.map((h) => ({ filePath: h.filePath, content: h.content }));
+
   //? Prefer the project's built L2 image (idempotent — reuses a running container).
   const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
   const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs });
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
 
   //? The ONE runtime row for this worker session (04b §7) — created here (nothing else

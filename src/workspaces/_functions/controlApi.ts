@@ -35,7 +35,7 @@ export type ControlOp =
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration'
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'save-git-config'
-  | 'link-repo' | 'scan-docs'
+  | 'link-repo' | 'scan-docs' | 'scan-index'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config'
   // notifications (18)

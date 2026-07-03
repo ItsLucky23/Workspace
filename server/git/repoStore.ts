@@ -94,6 +94,40 @@ export async function listRepoDocs(workspaceId: string): Promise<RepoDoc[]> {
   return docs;
 }
 
+//? A code file read from the linked repo at a ref — the RAG-index input (07 §D).
+export interface RepoFile { path: string; content: string }
+
+//? Indexable source/config/doc extensions; vendored/build dirs are skipped.
+const CODE_EXT = /\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|rb|php|c|h|cpp|hpp|cs|swift|kt|scala|sh|sql|css|scss|html|vue|svelte|json|ya?ml|toml|md|mdx|txt)$/i;
+//? Well-known extension-less files worth indexing (README, LICENSE, Dockerfile, …).
+const KNOWN_NAMES = /(?:^|\/)(?:readme|license|licence|dockerfile|makefile|changelog|contributing)$/i;
+const SKIP_DIR = /(?:^|\/)(?:node_modules|\.git|dist|build|out|coverage|vendor|\.next|\.cache|__pycache__)\//;
+
+//? List + read indexable code files at `ref` (default HEAD; pass a commitHash to pin to a ticket's
+//? frozen baseline) straight from the bare clone — no checkout. Bounded (≤600 files, ≤60k chars).
+//? Returns [] when no repo is linked.
+export async function listRepoFiles(workspaceId: string, ref = 'HEAD'): Promise<RepoFile[]> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return [];
+  const listing = await git(['--git-dir', bare, 'ls-tree', '-r', ref, '--name-only']).catch(() => '');
+  const paths = listing.split('\n').map((p) => p.trim())
+    .filter((p) => p.length > 0 && (CODE_EXT.test(p) || KNOWN_NAMES.test(p)) && !SKIP_DIR.test(p))
+    .slice(0, 600);
+  const files: RepoFile[] = [];
+  for (const p of paths) {
+    const content = await git(['--git-dir', bare, 'show', `${ref}:${p}`]).catch(() => '');
+    if (content.length > 0) files.push({ path: p, content: content.slice(0, 60_000) });
+  }
+  return files;
+}
+
+//? The current HEAD commit of the bare clone (stamps a RAG index). '' when unlinked.
+export async function repoHead(workspaceId: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return '';
+  return git(['--git-dir', bare, 'rev-parse', 'HEAD']).catch(() => '');
+}
+
 //? The manifest files that tell an AI what toolchain a repo needs (for Dockerfile
 //? generation, register-flow C). Read straight from the bare clone.
 const MANIFEST_FILES = new Set([

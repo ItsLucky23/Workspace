@@ -17,6 +17,9 @@ export interface StageRenderCtx {
   //? workspace-wide workflow guidance (the starter-library snippets). Loaded by stageRunner
   //? (renderStage stays pure). Each is written inline so the in-container agent reads it.
   contextDocs?: { name: string; content: string }[];
+  //? RAG-retrieved code excerpts most relevant to this ticket (07 §D), injected so the agent
+  //? starts with the right files in view. Loaded by stageRunner (retrieval stays out of the renderer).
+  retrieved?: { filePath: string; content: string }[];
 }
 
 export interface StageArtifacts {
@@ -54,7 +57,12 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   const docsSection = docs.length > 0
     ? `\n\n---\n\n## Project & workflow guidance\n\nFollow the conventions in these workspace documents:\n\n${docs.map((d) => `### ${d.name}\n\n${d.content.trim().slice(0, 4000)}`).join('\n\n')}\n`
     : '';
-  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${cfg.customInstructions}\n${docsSection}`;
+  //? RAG: the code excerpts retrieved as most relevant to this ticket — a starting map for the agent.
+  const hits = (ctx.retrieved ?? []).filter((h) => h.content.trim().length > 0);
+  const retrievedSection = hits.length > 0
+    ? `\n\n---\n\n## Relevant code from the repository\n\nThese excerpts were retrieved as most relevant to this ticket. Use them as a starting map, then open the full files as needed:\n\n${hits.map((h) => `### ${h.filePath}\n\n\`\`\`\n${h.content.trim().slice(0, 1500)}\n\`\`\``).join('\n\n')}\n`
+    : '';
+  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${cfg.customInstructions}\n${docsSection}${retrievedSection}`;
 
   //? --append-system-prompt = the system layer + the carry-over-filled task, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).
