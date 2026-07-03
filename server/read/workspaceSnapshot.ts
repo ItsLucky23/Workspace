@@ -19,6 +19,7 @@ import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
+import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -131,6 +132,8 @@ export interface WorkspaceSnapshot {
   gitConfig: GitConfig;
   //? The active workspace's pause-all state (C2): when true the engine provisions no new turns.
   workspacePaused: boolean;
+  //? Cost/usage tracking (#16): real per-ticket token totals + 7-day activity from SpendRecord.
+  usage: WorkspaceUsage;
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -139,6 +142,7 @@ export interface WorkspaceSnapshot {
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
+  usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -162,7 +166,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
@@ -182,6 +186,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? Ticket comments (WorkspaceNote) — the ticket-detail comment thread filters
       //? this by ticketId. Bounded recent window, newest first.
       tenantDb.workspaceNote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
+      //? Cost/usage tracking (#16): recent SpendRecord rows → the Usage read (per-ticket tokens +
+      //? 7-day activity), replacing the seed dummies. Bounded newest-first window.
+      tenantDb.spendRecord.findMany({ orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true } }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -200,6 +207,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? their DEV-#### `key` (Ticket.id in the snapshot). Map ObjectId → key so
     //? open-ticket / activity-tab filters resolve; unknown ids pass through.
     const ticketKeyById = new Map(ticketRows.map((t) => [t.id, t.key]));
+
+    //? Cost/usage tracking (#16): aggregate the real SpendRecord rows into the Usage read + a
+    //? per-ticket token total for the board cost-chip (replaces the seed dummies + `costLabel` mock).
+    const usage = aggregateUsage(spendRows, ticketKeyById, Date.now());
+    const usageByKey = new Map(usage.byTicket.map((u) => [u.ticketKey, u]));
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
@@ -222,7 +234,14 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
-      tickets: ticketRows.map((t) => toTicket(t)),
+      tickets: ticketRows.map((t) => {
+        const mapped = toTicket(t);
+        //? Real per-ticket cost chip (#16): "<tokens> tok" when the ticket has run turns, else no chip.
+        const u = usageByKey.get(mapped.id);
+        if (u && u.tokensIn + u.tokensOut > 0) mapped.costLabel = `${String(u.tokensIn + u.tokensOut)} tok · ${String(u.turns)}×`;
+        return mapped;
+      }),
+      usage,
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),

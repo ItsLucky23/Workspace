@@ -8,8 +8,7 @@ import { useMemo } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
-import { AvatarBubble } from '../_components/primitives';
-import { SPEND_7D, USAGE_ROWS } from '../_data/seed';
+import { AvatarBubble, EmptyState } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../_data/types';
 
@@ -28,9 +27,10 @@ function Card({ title, desc, children, className }: { title: string; desc?: stri
 export const template = 'workspaces';
 
 export default function Usage() {
-  const { openTicket, tickets, membersById } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage } = useWorkspaces();
   const translate = useTranslator();
-  const maxDay = Math.max(...SPEND_7D.map((d) => d.cost));
+  //? Real 7-day token activity (#16); guard the divisor so an all-zero week doesn't divide by 0.
+  const maxDay = Math.max(1, ...usage.activity.map((d) => d.tokens));
 
   const byMember = useMemo(() => {
     const map = new Map<string, Ticket[]>();
@@ -58,10 +58,10 @@ export default function Usage() {
         <div className="flex flex-col gap-4">
           <Card title={translate({ key: 'workspaces.usage.activityTitle' })}>
             <div className="flex items-end gap-3 h-36">
-              {SPEND_7D.map((d) => (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="w-full flex items-end justify-center h-full">
-                    <div className="w-full max-w-16 rounded-t-lg bg-primary/70 hover:bg-primary transition-colors" style={{ height: `${String((d.cost / maxDay) * 100)}%` }} />
+              {usage.activity.map((d, i) => (
+                <div key={`${d.day}-${String(i)}`} className="flex-1 flex flex-col items-center gap-1.5">
+                  <div className="w-full flex items-end justify-center h-full" title={`${String(d.tokens)} ${translate({ key: 'workspaces.usage.tokens' })}`}>
+                    <div className="w-full max-w-16 rounded-t-lg bg-primary/70 hover:bg-primary transition-colors" style={{ height: `${String((d.tokens / maxDay) * 100)}%` }} />
                   </div>
                   <span className="text-xs text-muted">{d.day}</span>
                 </div>
@@ -71,26 +71,30 @@ export default function Usage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <Card title={translate({ key: 'workspaces.usage.byTicketTitle' })} desc={translate({ key: 'workspaces.usage.byTicketDesc' })}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted border-b border-divider">
-                    <th className="py-2 font-medium">{translate({ key: 'workspaces.usage.colTicket' })}</th>
-                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensIn' })}</th>
-                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensOut' })}</th>
-                    <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTime' })}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {USAGE_ROWS.map((r) => (
-                    <tr key={r.ticketId} className="border-b border-divider last:border-0 hover:bg-container2/40 cursor-pointer" onClick={() => { openTicket(r.ticketId); }}>
-                      <td className="py-2.5 font-mono text-xs text-primary">{r.ticketId}</td>
-                      <td className="py-2.5 text-right font-mono text-xs text-muted">{r.tokensIn}</td>
-                      <td className="py-2.5 text-right font-mono text-xs text-muted">{r.tokensOut}</td>
-                      <td className="py-2.5 text-right text-xs text-muted">{r.time}</td>
+              {usage.byTicket.length === 0 ? (
+                <EmptyState icon="chart-simple" title={translate({ key: 'workspaces.usage.emptyTitle' })} sub={translate({ key: 'workspaces.usage.emptySub' })} />
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted border-b border-divider">
+                      <th className="py-2 font-medium">{translate({ key: 'workspaces.usage.colTicket' })}</th>
+                      <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensIn' })}</th>
+                      <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTokensOut' })}</th>
+                      <th className="py-2 font-medium text-right">{translate({ key: 'workspaces.usage.colTurns' })}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {usage.byTicket.map((r) => (
+                      <tr key={r.ticketKey} className="border-b border-divider last:border-0 hover:bg-container2/40 cursor-pointer" onClick={() => { openTicket(r.ticketKey); }}>
+                        <td className="py-2.5 font-mono text-xs text-primary">{r.ticketKey}</td>
+                        <td className="py-2.5 text-right font-mono text-xs text-muted tabular-nums">{r.tokensIn}</td>
+                        <td className="py-2.5 text-right font-mono text-xs text-muted tabular-nums">{r.tokensOut}</td>
+                        <td className="py-2.5 text-right text-xs text-muted tabular-nums">{r.turns}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </Card>
 
             <Card title={translate({ key: 'workspaces.usage.byPersonTitle' })} desc={translate({ key: 'workspaces.usage.byPersonDesc' })}>

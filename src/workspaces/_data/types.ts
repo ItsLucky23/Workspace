@@ -178,6 +178,12 @@ export interface MrActionFields {
 }
 export type MrActionResult = { ok: true; outcome?: MrActionOutcome } | { ok: false; error: string };
 
+//? Cost/usage tracking (#16) — the real per-ticket token totals + 7-day activity the snapshot
+//? aggregates from SpendRecord (replaces the seed dummies). Token VOLUME, not money (Max subscription).
+export interface UsageByTicket { ticketKey: string; tokensIn: number; tokensOut: number; turns: number }
+export interface UsageDay { day: string; tokens: number }
+export interface WorkspaceUsage { byTicket: UsageByTicket[]; activity: UsageDay[]; totalTokens: number; totalTurns: number }
+
 //? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
 export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }
 

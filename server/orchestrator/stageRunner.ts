@@ -18,6 +18,7 @@ import { broadcastTicketDelta } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
+import { recordTurnSpend } from '../spend/record';
 import { killClaudeByContainer } from './agentControl';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
@@ -208,6 +209,14 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   }
   //? Capture the resumable claude session id off the Stop hook.
   if (drive.claudeSessionId) await prisma.agentSession.updateMany({ where: { id: session.id }, data: { claudeSessionId: drive.claudeSessionId } });
+
+  //? Cost/usage tracking (#16): record this turn's estimated token usage — input ≈ the rendered
+  //? CLAUDE.md + stage instructions, output ≈ the assistant message (the CLI exposes no usage field
+  //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
+  await tryCatch(() => recordTurnSpend(prisma, {
+    workspaceId, ticketId: ticket.id, stageId: stageKey, sessionKey,
+    model: cfg.modelCfg.base.model, inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
+  }));
 
   const result = await parseTurnResult(drive.message);
   if (result.kind === 'done') {

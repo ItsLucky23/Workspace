@@ -10,7 +10,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage,
 } from '../_data/types';
 
 export type WsView =
@@ -166,6 +166,7 @@ export interface WorkspacesCtx {
   stages: PipelineStage[];             // was STAGES (board meta; full editor config still on seed)
   sprints: Sprint[];                   // was SPRINTS
   budget: WorkspaceBudget | null;      // was BUDGET
+  usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES
