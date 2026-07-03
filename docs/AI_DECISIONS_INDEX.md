@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (25)
+## Decisions (26)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -38,6 +38,7 @@
 | 0024 | Close client gaps — needs-input answer-to-AI + realtime presence | 🟢 accepted | workspaces, client, needs-input, presence, realtime | — | `docs/decisions/0024-client-gaps-answer-input-presence.md` |
 | 0025 | Cost/usage tracking — record token estimates, display only (no hard stop) | 🟢 accepted | workspaces, usage, spend, tokens, observability | — | `docs/decisions/0025-cost-usage-tracking.md` |
 | 0026 | Observability — structured logging, metrics, health probes, flow insights | 🟢 accepted | workspaces, observability, metrics, logging, health, insights | — | `docs/decisions/0026-observability.md` |
+| 0027 | Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry | 🟢 accepted | workspaces, automation, triggers, plugins, agent-roles | — | `docs/decisions/0027-automation-plugin-engine.md` |
 
 ## Summaries
 
@@ -242,6 +243,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **Structured logging** (`server/obs/logger.ts`): a `LogContext` that emits ONE JSON object per line (`ts`, `level`, `msg`, + inherited context fields) through the framework logger, so logs are grep-/ship-able. `.child()` adds fields for a request/turn trail. `formatLogLine` is pure + tested. **Metrics** (`server/obs/metrics.ts` + `/metrics`): the runtime gauges in Prometheus text-exposition format — active/queued turns vs the cap (from the CapacityManager #12), busy worker sessions, resident containers, and this instance's leader state (#1/ADR 0015). Scrapeable by Prometheus/Grafana. `gatherMetrics` is best-effort (a down probe → 0, never throws). **Health probes** (`server/obs/endpoints.ts`): READINESS is ALREADY a framework endpoint — `config.http.readyEndpoint` (/readyz) checks bootUuid + Redis + Prisma, and `liveEndpoint` (/livez) is liveness. We DON'T duplicate them; we add **/healthz** (the liveness path the goal + most k8s charts expect, aliasing the framework's /livez) and **/metrics**. Registered pre-params so a probe needs no session. **Flow insights** (`server/obs/insights.ts`): a pure aggregate over tickets + usage → cycle time (mean createdAt→done for done tickets), 7-day throughput (tickets completed), and cost-per-ticket (mean tokens across tickets that ran turns). The snapshot emits `insights`; the Usage page renders three stat cards. Advisory — never gates anything. **Server lib bump** `tsconfig.server.json` ES2022 → ES2023 (node 22 supports it; matches the frontend). Fixes a LATENT #16 break — `record.ts` used `Array#toSorted` which ES2022's lib doesn't type (caught here; #16's eslint pass hadn't re-run server-tsc).
 
 → `docs/decisions/0026-observability.md`
+
+### 0027 — Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry
+
+**0027** · accepted · tags: workspaces, automation, triggers, plugins, agent-roles · 2026-07-03
+
+**`fireEvent`** (`server/automation/triggers.ts`): when the Conductor raises an engine event (`ticket.created` on quick-add, `stage.on_enter` on bulk-move), it finds the enabled triggers that match (`on` + a `match` facet: stageIds/statusKeys/projectIds), applies **debounce** (`debounceMs` vs `lastFiredAt`) + **cross-instance dedupe** (`dedupeKey` → a Redis once-claim, multi-instance- safe), and runs each through the executor's gate. Pure `matchesTrigger`/`passesDebounce` are unit- tested. Fired best-effort off the Conductor chain — a bad trigger can't break the event. **ActionExecutor** (`server/automation/executor.ts`) with an **APPROVAL GATE**: a trigger whose `requiresApproval` is set (or whose agent-role `mutates`) does NOT execute — it opens a `WorkspaceSuggestion` (type `automation`) carrying the action in `patch`; a human accepting it (`accept-suggestion` → `executeGatedAction`) runs it. This keeps the single-writer invariant (B-23): automation PROPOSES, the human consents, the Conductor executes. Concrete actions: notify · emit-signal · start-stage (moves the ticket; the #1 watchdog reprovisions it — no engine coupling) · invoke-agent-role. **Cron** (`server/automation/cron.ts`): a leader-gated per-minute scheduler with a pure 5-field `cronMatches` (`*`, `*/n`, `a-b`, `a,b`) firing `on:'cron'` triggers, with a per-minute guard. **AgentRole registry** (`server/automation/agentRoles.ts`): `registerAgentRole` / `getAgentRole` / `listAgentRoles` — the seam for plugging in additional NON-coding roles (a reviewer, a summariser). The code-writing agent stays the one built-in interactive-`claude` role (B-6). A role's output is recorded as a notification — the notification bell IS the ArtifactViewer. **Management:** `trigger-save`/`trigger-toggle`/`trigger-delete` control-ops (RBAC editPipeline) + a `triggerAction` sync route + the triggers in the snapshot + a compact `AutomationPanel` on the Pipeline page (list · enable/disable · delete · create with first-class notify/emit-signal/ start-stage fields). i18n en/nl/de/fr. Richer param editing is a follow-up.
+
+→ `docs/decisions/0027-automation-plugin-engine.md`
 
 ## Code governed by decisions
 

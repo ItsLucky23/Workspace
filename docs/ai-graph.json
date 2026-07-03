@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 142,
-    "edges": 172,
-    "symbols": 182,
+    "nodes": 144,
+    "edges": 178,
+    "symbols": 184,
     "callEdges": 32
   },
   "nodes": [
@@ -404,6 +404,11 @@
       "route": "api/workspaces/snapshot/v1"
     },
     {
+      "id": "workspaces/_components/AutomationPanel.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
       "route": null
@@ -657,6 +662,11 @@
       "id": "workspaces/_sync/transferOwnership_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/transferOwnership/v1"
+    },
+    {
+      "id": "workspaces/_sync/triggerAction_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/triggerAction/v1"
     },
     {
       "id": "workspaces/activity/page.tsx",
@@ -919,6 +929,26 @@
     {
       "from": "settings/page.tsx",
       "to": "_sockets/apiRequest.ts"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/_components/MrReviewPanel.tsx",
@@ -1258,6 +1288,10 @@
     },
     {
       "from": "workspaces/pipeline/page.tsx",
+      "to": "workspaces/_components/AutomationPanel.tsx"
+    },
+    {
+      "from": "workspaces/pipeline/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -1414,6 +1448,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "settings/page.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
@@ -1455,6 +1490,7 @@
     ],
     "_components/dropdown/Dropdown.tsx": [
       "settings/page.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/page.tsx",
@@ -1466,6 +1502,7 @@
       "_components/dropdown/Dropdown.tsx",
       "_components/dropdown/MultiSelectDropdown.tsx",
       "settings/page.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/page.tsx",
@@ -1622,9 +1659,13 @@
     "settings/_api/listSessions_v1.ts": [
       "settings/_api/revokeSession_v1.ts"
     ],
+    "workspaces/_components/AutomationPanel.tsx": [
+      "workspaces/pipeline/page.tsx"
+    ],
     "workspaces/_components/Icon.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
@@ -1648,6 +1689,7 @@
     "workspaces/_components/motion.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
@@ -1673,6 +1715,7 @@
     "workspaces/_components/primitives.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
@@ -1713,6 +1756,7 @@
     "workspaces/_data/types.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/primitives.tsx",
@@ -1767,6 +1811,7 @@
     "workspaces/_shell/WorkspacesContext.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
@@ -1812,38 +1857,38 @@
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 26,
-      "directDependents": 20
+      "dependents": 27,
+      "directDependents": 21
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 21,
+      "dependents": 22,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 21,
-      "directDependents": 18
+      "dependents": 22,
+      "directDependents": 19
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 20,
+      "dependents": 21,
       "directDependents": 7
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 20,
-      "directDependents": 17
+      "dependents": 21,
+      "directDependents": 18
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 19,
-      "directDependents": 15
+      "dependents": 20,
+      "directDependents": 16
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -1860,14 +1905,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 9,
+      "dependents": 10,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 7,
-      "directDependents": 7
+      "dependents": 8,
+      "directDependents": 8
     },
     {
       "id": "_components/editor/editorThemes.ts",
@@ -3050,6 +3095,18 @@
     {
       "id": "workspaces/_sync/transferOwnership_server_v1.ts::main",
       "file": "workspaces/_sync/transferOwnership_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/triggerAction_server_v1.ts::<module>",
+      "file": "workspaces/_sync/triggerAction_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/triggerAction_server_v1.ts::main",
+      "file": "workspaces/_sync/triggerAction_server_v1.ts",
       "name": "main",
       "kind": "function"
     }

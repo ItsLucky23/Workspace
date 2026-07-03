@@ -40,7 +40,7 @@
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 
-## Sync routes (34)
+## Sync routes (35)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -78,6 +78,7 @@
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
+| `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
 
 ## Ownership & coverage
 
@@ -85,9 +86,9 @@
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 62 |
+| _(unowned)_ | 63 |
 
-**Test coverage**: 3/62 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/63 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -141,7 +142,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/roleCreate/v1`
 - `sync/workspaces/roleUpdate/v1`
 - `sync/workspaces/saveEnv/v1`
-- … +9 more
+- … +10 more
 
 ## Pages (19)
 
