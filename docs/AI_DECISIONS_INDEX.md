@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (26)
+## Decisions (27)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -39,6 +39,7 @@
 | 0025 | Cost/usage tracking — record token estimates, display only (no hard stop) | 🟢 accepted | workspaces, usage, spend, tokens, observability | — | `docs/decisions/0025-cost-usage-tracking.md` |
 | 0026 | Observability — structured logging, metrics, health probes, flow insights | 🟢 accepted | workspaces, observability, metrics, logging, health, insights | — | `docs/decisions/0026-observability.md` |
 | 0027 | Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry | 🟢 accepted | workspaces, automation, triggers, plugins, agent-roles | — | `docs/decisions/0027-automation-plugin-engine.md` |
+| 0028 | Token self-handoff — controlled handoff → reset → reload on budget | 🟢 accepted | workspaces, tokens, context, handoff, orchestrator | — | `docs/decisions/0028-token-self-handoff.md` |
 
 ## Summaries
 
@@ -251,6 +252,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **`fireEvent`** (`server/automation/triggers.ts`): when the Conductor raises an engine event (`ticket.created` on quick-add, `stage.on_enter` on bulk-move), it finds the enabled triggers that match (`on` + a `match` facet: stageIds/statusKeys/projectIds), applies **debounce** (`debounceMs` vs `lastFiredAt`) + **cross-instance dedupe** (`dedupeKey` → a Redis once-claim, multi-instance- safe), and runs each through the executor's gate. Pure `matchesTrigger`/`passesDebounce` are unit- tested. Fired best-effort off the Conductor chain — a bad trigger can't break the event. **ActionExecutor** (`server/automation/executor.ts`) with an **APPROVAL GATE**: a trigger whose `requiresApproval` is set (or whose agent-role `mutates`) does NOT execute — it opens a `WorkspaceSuggestion` (type `automation`) carrying the action in `patch`; a human accepting it (`accept-suggestion` → `executeGatedAction`) runs it. This keeps the single-writer invariant (B-23): automation PROPOSES, the human consents, the Conductor executes. Concrete actions: notify · emit-signal · start-stage (moves the ticket; the #1 watchdog reprovisions it — no engine coupling) · invoke-agent-role. **Cron** (`server/automation/cron.ts`): a leader-gated per-minute scheduler with a pure 5-field `cronMatches` (`*`, `*/n`, `a-b`, `a,b`) firing `on:'cron'` triggers, with a per-minute guard. **AgentRole registry** (`server/automation/agentRoles.ts`): `registerAgentRole` / `getAgentRole` / `listAgentRoles` — the seam for plugging in additional NON-coding roles (a reviewer, a summariser). The code-writing agent stays the one built-in interactive-`claude` role (B-6). A role's output is recorded as a notification — the notification bell IS the ArtifactViewer. **Management:** `trigger-save`/`trigger-toggle`/`trigger-delete` control-ops (RBAC editPipeline) + a `triggerAction` sync route + the triggers in the snapshot + a compact `AutomationPanel` on the Pipeline page (list · enable/disable · delete · create with first-class notify/emit-signal/ start-stage fields). i18n en/nl/de/fr. Richer param editing is a follow-up.
 
 → `docs/decisions/0027-automation-plugin-engine.md`
+
+### 0028 — Token self-handoff — controlled handoff → reset → reload on budget
+
+**0028** · accepted · tags: workspaces, tokens, context, handoff, orchestrator · 2026-07-03
+
+**`server/orchestrator/handoff.ts`** (pure + persistence): `budgetForStage` (per-stage `modelCfg.contextBudgetTokens`, else `WS_TURN_TOKEN_BUDGET` default), `shouldHandoff`, `parseHandoff` (extracts the AI's ` ```ws-handoff ` JSON block, like ws-carryover), `recordHandoff` (persists a `Handoff` + RESETS `AgentSession.tokenEstimate` — the reset frees context), `latestHandoff` + `renderHandoffReload` (the reload text), and the editable `DEFAULT_HANDOFF_INSTRUCTION`. **Trigger** (`stageRunner.runStage`, after a turn that did NOT complete the stage — the session persists): if the running estimate (#16) crossed the budget, drive a handoff turn (the AI, with full context, writes its handoff), store it, and **clear `claudeSessionId`** so the next turn starts a FRESH claude session — this IS the `/clear`. No interactive slash-command needed. **Reload** (`renderStage`): when a session starts fresh (no `claudeSessionId`) and has a stored handoff, inject `renderHandoffReload(handoff)` as the opening context. A crash-resume (#1, which keeps `claudeSessionId`) continues the old transcript instead, so it skips the reload. **PreCompact backstop**: a `PreCompact` hook in the stage settings drops a marker when Claude is about to auto-compact; the trigger fires the handoff on that marker even under budget (reason `precompact`), then clears it. "Use whichever fires first" (doc 06 §4). **Config**: per-stage budget is `modelCfg.contextBudgetTokens` (already schema→save→snapshot plumbed) + a new editable input in the Pipeline "Model & Effort" tab (i18n en/nl/de/fr).
+
+→ `docs/decisions/0028-token-self-handoff.md`
 
 ## Code governed by decisions
 
