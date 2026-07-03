@@ -713,6 +713,7 @@
       "promoteConfirmContent": "Le transfert structuré de cette étape sera injecté comme prompt de démarrage de l’étape suivante.",
       "promoteTo": "Promouvoir vers {{stage}}",
       "creatorAssignee": "Créateur · assigné",
+      "viewingNow": "En train de regarder",
       "previewLive": "Aperçu · en direct",
       "openTerminal": "Ouvrir le terminal",
       "gitlab": "GitLab",

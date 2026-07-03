@@ -713,6 +713,7 @@
       "promoteConfirmContent": "De gestructureerde carry-over van deze stage wordt geïnjecteerd als startprompt van de volgende stage.",
       "promoteTo": "Promoveren naar {{stage}}",
       "creatorAssignee": "Aanmaker · toegewezene",
+      "viewingNow": "Nu aan het kijken",
       "previewLive": "Preview · live",
       "openTerminal": "Terminal openen",
       "gitlab": "GitLab",

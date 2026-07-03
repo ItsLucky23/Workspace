@@ -307,15 +307,15 @@ export const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
 //? already-branched tickets, so a resumed ticket is re-provisioned directly here.
-export async function reprovisionTicket(workspaceId: string, key: string, resume = false): Promise<void> {
+export async function reprovisionTicket(workspaceId: string, key: string, resume = false, resumePrompt?: string): Promise<void> {
   const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true } });
   if (!t?.branch) return;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: t.stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
-  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId, resume);
+  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId, resume, resumePrompt);
 }
 
-async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string, resume = false): Promise<void> {
+async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string, resume = false, resumePrompt?: string): Promise<void> {
   if (!(await dockerAvailable())) return;
   //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
@@ -351,7 +351,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
       await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
       try {
-        await runStage(workspaceId, key, stageId, { resume });
+        await runStage(workspaceId, key, stageId, { resume, ...(resumePrompt !== undefined ? { resumePrompt } : {}) });
       } finally {
         //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
         //? next parked turn in — the queue drains at the pace turns complete.
@@ -729,6 +729,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         await reprovisionTicket(action.workspaceId, key);
       }
       return;
+    }
+    case 'answer-input': {
+      //? #17: a human answers the ticket's open question. Record it as a comment (audit trail),
+      //? clear the needs-input banner, and RE-FIRE the parked turn with `--resume` + the answer as
+      //? the prompt (builds on #1's resume path). Only meaningful while the ticket is at needs-input.
+      const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
+      const answer = str(payload, 'answer');
+      if (!key || !answer || answer.trim().length === 0) return;
+      const [t] = await ticketIdsForKeys(action.workspaceId, [key]);
+      if (t) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${answer}` } });
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, status: 'idle' } });
+      if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question');
+      await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+      await reprovisionTicket(action.workspaceId, key, true, answer);
+      return ticketRowsForKeys(action.workspaceId, [key]);
     }
     case 'kill': {
       //? Stop the ticket's in-flight turn (procps-free) + mark its worker session stopped.

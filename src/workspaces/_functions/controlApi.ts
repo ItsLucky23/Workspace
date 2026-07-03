@@ -42,7 +42,7 @@ export type ControlOp =
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)
-  | 'pause' | 'resume' | 'kill' | 'pause-all' | 'resume-all'
+  | 'pause' | 'resume' | 'answer-input' | 'kill' | 'pause-all' | 'resume-all'
   | 'preview-up' | 'preview-down'
   | 'accept-suggestion';
 

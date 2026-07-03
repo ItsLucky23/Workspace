@@ -91,6 +91,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'mark-read': null,
   pause: CAP.workTickets,
   resume: CAP.workTickets,
+  'answer-input': CAP.workTickets,
   kill: CAP.demoteAdmin,
   'pause-all': CAP.demoteAdmin,
   'resume-all': CAP.demoteAdmin,

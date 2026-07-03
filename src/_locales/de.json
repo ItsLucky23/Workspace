@@ -713,6 +713,7 @@
       "promoteConfirmContent": "Der strukturierte Carry-over aus dieser Stage wird als Start-Prompt der nächsten Stage injiziert.",
       "promoteTo": "Zu {{stage}} befördern",
       "creatorAssignee": "Ersteller · Zuständiger",
+      "viewingNow": "Schaut gerade zu",
       "previewLive": "Vorschau · live",
       "openTerminal": "Terminal öffnen",
       "gitlab": "GitLab",

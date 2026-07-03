@@ -147,7 +147,7 @@ function envelopeJson(e: CarryOverEnvelope): Prisma.InputJsonObject {
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
 //? serial chain. `prisma` is passed in so this stays callable from the Conductor.
-export async function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { resume?: boolean } = {}): Promise<StageRunResult> {
+export async function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { resume?: boolean; resumePrompt?: string } = {}): Promise<StageRunResult> {
   const prisma = getPrismaClient();
   const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey } });
   const stageRow = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageKey } });
@@ -190,12 +190,17 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     update: { status: 'busy', containerId: container.containerId },
   });
 
-  //? Crash-recovery (#1): when resuming an interrupted turn AND the prior session left a resumable
-  //? claude session id, continue it with `--resume` + a nudge; otherwise start the stage fresh.
-  const resumeSessionId = opts.resume && session.claudeSessionId ? session.claudeSessionId : undefined;
-  const kickoff = resumeSessionId
-    ? 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.'
-    : 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
+  //? Resume (crash-recovery #1) or answer-a-question (#17): when a resumable claude session exists,
+  //? continue it with `--resume`. `resumePrompt` (a human's answer to the ticket's open question)
+  //? becomes the kickoff; otherwise a bare continue-nudge (#1) or a fresh-start (normal run).
+  const hasAnswer = opts.resumePrompt !== undefined;
+  const wantResume = (opts.resume === true || hasAnswer) && session.claudeSessionId !== null;
+  const resumeSessionId = wantResume ? (session.claudeSessionId ?? undefined) : undefined;
+  const kickoff = ((): string => {
+    if (hasAnswer) return `The human answered your open question:\n\n${String(opts.resumePrompt)}\n\nContinue this stage using that answer. When you are done, end your final message with the ws-carryover block exactly as instructed.`;
+    if (resumeSessionId) return 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.';
+    return 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
+  })();
   const drive = await driveContainerTurn(container.name, kickoff, resumeSessionId ? { resumeSessionId } : {});
   if (!drive.ok) {
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });

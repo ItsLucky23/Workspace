@@ -713,6 +713,7 @@
       "promoteConfirmContent": "The structured carry-over from this stage will be injected as the next stage’s start prompt.",
       "promoteTo": "Promote to {{stage}}",
       "creatorAssignee": "Creator · assignee",
+      "viewingNow": "Viewing now",
       "previewLive": "Preview · live",
       "openTerminal": "Open terminal",
       "gitlab": "GitLab",

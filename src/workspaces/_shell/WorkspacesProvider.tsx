@@ -119,6 +119,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? (BUILTIN_MR_REVIEW). Both are hydrated by their `_sync` delta callbacks below.
   const [ragIndex, setRagIndex] = useState<RagIndexStatus | null>(null);
   const [mrByBranch, setMrByBranch] = useState<Record<string, MrView>>({});
+  //? Realtime presence (#17): userId → who they're viewing + when last seen. Fed by the
+  //? `workspaces/presence` relay; a `tick` state prunes stale entries so a crashed viewer drops.
+  const [presence, setPresence] = useState<Record<string, { ticketKey: string; lastSeen: number }>>({});
+  const [, setPresenceTick] = useState(0);
 
   const refetch = useCallback(() => {
     void (async () => {
@@ -181,6 +185,41 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/ticketEdit', version: 'v1',
     callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
   }), [upsertSyncEventCallback, mergeTickets]);
+  //? answer-input (#17): the parked ticket's banner clears → merge the updated ticket.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/answerInput', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
+  //? presence (#17): update who's viewing what. A `viewing:false` (clean leave) removes the entry;
+  //? otherwise stamp lastSeen. Stale entries are pruned by the ticker below.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/presence', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const p = serverOutput.presence;
+      setPresence((prev) => {
+        if (p.viewing) return { ...prev, [p.userId]: { ticketKey: p.ticketKey, lastSeen: Date.now() } };
+        //? Clean leave → drop this user's entry (only if it was on this ticket). Rebuild without
+        //? the key (no `delete`) so the reducer stays pure.
+        if (prev[p.userId]?.ticketKey !== p.ticketKey) return prev;
+        return Object.fromEntries(Object.entries(prev).filter(([uid]) => uid !== p.userId));
+      });
+    },
+  }), [upsertSyncEventCallback]);
+  //? Prune presence entries older than 25s (a viewer whose heartbeat stopped) + tick a re-render.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const cutoff = Date.now() - 25_000;
+      setPresence((prev) => {
+        const next: typeof prev = {};
+        let changed = false;
+        for (const [uid, v] of Object.entries(prev)) { if (v.lastSeen >= cutoff) next[uid] = v; else changed = true; }
+        return changed ? next : prev;
+      });
+      setPresenceTick((n) => n + 1);
+    }, 8000);
+    return () => { clearInterval(t); };
+  }, []);
 
   //? bulk-* deltas → upsert the affected tickets (each its own event; shared reducer).
   useEffect(() => upsertSyncEventCallback({
@@ -455,6 +494,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
   }, [snap.activeWorkspaceId]);
+  //? Presence (#17): announce (or retract) that this user is viewing a ticket. The ticket detail
+  //? calls it on open + a heartbeat + on close; the relay re-broadcasts it to the room.
+  const setTicketPresence = useCallback((ticketKey: string, viewing: boolean) => {
+    const room = snap.activeWorkspaceId;
+    if (room) void syncRequest({ name: 'workspaces/presence', version: 'v1', data: { ticketKey, viewing, clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
 
   //? RAG reindex (07 §D) — mirror scanDocs: fire the scan-index sync; the delta callback
   //? above stores the returned status. Fire-and-forget.
@@ -691,6 +736,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Realtime writes — per-action `_sync` event → delta broadcast → client merge.
       editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
       addComment: (ticketId, body) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId, body, clientRequestId: nextReqId() }, receiver: room }); },
+      answerInput: (ticketId, answer) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, clientRequestId: nextReqId() }, receiver: room }); },
+      setTicketPresence,
+      viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
       bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkStatus: (ids, status) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds: ids, status, clientRequestId: nextReqId() }, receiver: room }); },
@@ -736,7 +784,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -115,6 +115,13 @@ export interface WorkspacesCtx {
   editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[]; priority?: TicketPriority }) => void;
   //? Add a user comment (WorkspaceNote) to a ticket. Read them back via `ticketNotes`.
   addComment: (ticketId: string, body: string) => void;
+  //? Answer the AI's open question on a ticket (#17): records the answer + re-fires the parked
+  //? turn with it. Clears the needs-input banner. `ticketId` is the DEV-#### key.
+  answerInput: (ticketId: string, answer: string) => void;
+  //? Realtime presence (#17): announce/retract that this user is viewing a ticket (open + heartbeat
+  //? + close), and read the OTHER users currently viewing a ticket (self excluded).
+  setTicketPresence: (ticketKey: string, viewing: boolean) => void;
+  viewersOf: (ticketKey: string) => string[];
   archiveTicket: (id: string) => void;
   bulkMove: (ids: string[], stageId: string) => void;
   bulkStatus: (ids: string[], status: string) => void;

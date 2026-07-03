@@ -62,7 +62,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
       <TicketHeader ticket={ticket} />
       <TicketControls ticket={ticket} />
 
-      {status === 'needs-input' && ticket.needsInput && <NeedsInputBanner question={ticket.needsInput} />}
+      {status === 'needs-input' && ticket.needsInput && <NeedsInputBanner question={ticket.needsInput} ticketKey={ticket.id} />}
       {status === 'done' && (
         <Banner
           tone="correct" icon="circle-check"
@@ -215,6 +215,15 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const linked = ctx.ticketMembers(ticket);
+  const { setTicketPresence } = ctx;
+  //? Realtime presence (#17): announce viewing on open + a heartbeat (< the 25s prune), retract on
+  //? close. `setTicketPresence` is a stable useCallback, so this doesn't re-fire on every render.
+  useEffect(() => {
+    setTicketPresence(ticket.id, true);
+    const hb = setInterval(() => { setTicketPresence(ticket.id, true); }, 12_000);
+    return () => { clearInterval(hb); setTicketPresence(ticket.id, false); };
+  }, [ticket.id, setTicketPresence]);
+  const viewers = ctx.viewersOf(ticket.id).map((uid) => ctx.membersById[uid]).filter((m): m is Member => m !== undefined);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(ticket.title);
   //? Focus the title input when edit mode opens (user-initiated, so a11y-safe —
@@ -254,7 +263,15 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
             </div>
           )}
         </div>
-        {linked.length > 0 && <div className="shrink-0 pt-1" title={translate({ key: 'workspaces.ticket.creatorAssignee' })}><AvatarStack users={linked} size={26} /></div>}
+        <div className="flex items-center gap-3 shrink-0 pt-1">
+          {viewers.length > 0 && (
+            <div className="flex items-center gap-1.5" title={translate({ key: 'workspaces.ticket.viewingNow' })}>
+              <span className="w-1.5 h-1.5 rounded-full bg-correct motion-safe:animate-pulse" />
+              <AvatarStack users={viewers} size={24} max={4} />
+            </div>
+          )}
+          {linked.length > 0 && <div title={translate({ key: 'workspaces.ticket.creatorAssignee' })}><AvatarStack users={linked} size={26} /></div>}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap mt-3">
@@ -299,19 +316,24 @@ function Banner({ tone, icon, title, action, children }: { tone: 'warning' | 'co
   );
 }
 
-function NeedsInputBanner({ question }: { question: string }) {
+function NeedsInputBanner({ question, ticketKey }: { question: string; ticketKey: string }) {
   const translate = useTranslator();
+  const { answerInput } = useWorkspaces();
   const [reply, setReply] = useState('');
+  //? Send the human's answer to the AI (#17): the Conductor records it + re-fires the parked turn
+  //? with `--resume`. Optimistically clear the input; the banner disappears when the ticket delta
+  //? (needsInput cleared) broadcasts back.
+  const send = () => { const a = reply.trim(); if (!a) return; answerInput(ticketKey, a); setReply(''); };
   return (
     <Banner tone="warning" icon="circle-question" title={translate({ key: 'workspaces.ticket.agentNeedsInput' })}>
       <p className="text-sm text-common mt-0.5">{question}</p>
       <div className="flex items-center gap-2 mt-2">
         <input
-          value={reply} onChange={(e) => { setReply(e.target.value); }}
+          value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
           placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
           className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
         />
-        <WsButton onClick={() => { /* Fase 2: no reply/send control-op yet — clears the input only */ setReply(''); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
+        <WsButton onClick={send}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
       </div>
     </Banner>
   );
