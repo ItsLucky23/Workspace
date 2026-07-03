@@ -1005,3 +1005,19 @@ De andere AI zet nu `forwardAuth: '<backend>:<port>'` op de editor-route → sub
 **Deployment-note** (in de endpoint-file): de sessie-cookie moet subdomein-scoped zijn (`Domain=.<baseDomain>`) anders bereikt 'ie het subdomein niet. **Follow-up**: per-workspace-membership (nu: elke ingelogde user) — vraagt een host→workspace-lookup die de proxy-laag kan meedragen.
 
 **Verificatie**: server-tsc 0, eslint 0, endpoint runtime 401.
+
+## 2026-07-03 (parallel, vervolg) — Items 4+5 verdiept met draaiende backend
+
+Backend gestart (`:80`, Redis via tunnel). Verder bewezen:
+- **Item 5 edge-auth — MECHANISME BEWEZEN.** `editorAuthCheck_v1` (GET, login-gated) geregistreerd → unauth **401**, bereikbaar vanuit de Caddy-container via `host.docker.internal:80`. Caddy `forward_auth` (exacte host) → **unauth request naar `vscode-authtest.localhost` door Caddy = 401 (geweigerd)**. Residuen (buiten editor-territory): wildcard `header_regexp`-matcher (fiddly), de sessie-cookie moet `*.<domein>` spannen voor de iframe (framework cookie-domein-config), en per-workspace-membership vereist de raw Host → `registerCustomRoute` (bootstrap-seam). Gedocumenteerd in HOSTING.md.
+- **Item 4 app-flow auth-keten — BEWEZEN via curl.** Register+login (dev staat localhost-origins toe) → sessie-cookie; `/auth/csrf` → CSRF-token; `openEditor` POST mét sessie+CSRF **bereikt de handler** (van `csrfMismatch` → `api.invalidRequest` bij lege ids → auth+CSRF+RBAC+guard passeren). De orchestratie erachter is al bewezen (`openEditorSpike`). Eén-call end-to-end vereist een geactiveerd ticket in een workspace; standalone-seeden faalt op de tenant-scoped ($extends) prisma + de first-login-seed draaide niet → dat is engine/framework-territory, niet mijn editor-laag.
+
+**Netto:** 5/7 volledig bewezen (1,2,3,6,7) + 2 (4,5) in delen bewezen met eerlijk-geflagde engine/framework-seams voor de laatste integratie. Commit e46b12a (editorAuthCheck). Alles ItsLucky23, niet gepusht.
+
+## 2026-07-03 (parallel, vervolg 2) — Edge-auth VOLLEDIG + item-4-onderdelen bewezen
+
+De andere agent leverde `ProxyRoute.forwardAuth` + `server/http/editorAuthCheck.ts` (`/editor-auth-check`, geregistreerd in de bootstrap) — de seams die ik flagde. Convergentie:
+- **Item 5 edge-auth — VOLLEDIG BEWEZEN.** `editorRoute` zet nu `forwardAuth` (env-gated `WS_EDITOR_EDGE_AUTH` → `host.docker.internal:80`). `scripts/spike/editorEdgeAuthSpike.mts` bewijst end-to-end via de echte proxy-forward_auth: **unauth editor-subdomein → 401 (geweigerd)**, **mét geldige sessie-cookie → 302 (toegestaan)**. Alleen ingelogde leden bereiken de editor. Opt-in want de sessie-cookie moet `Domain=.<baseDomein>` zijn (framework-config). Mijn redundante `_api editorAuthCheck` verwijderd (de raw `/editor-auth-check` is de forward_auth-target).
+- **Item 4 onderdelen allemaal bewezen** (met draaiende backend): (a) auth-keten → `openEditor` bereikt de handler (session+CSRF); (b) orchestratie → `openEditorSpike` (container+worktree+profiel+openvscode:3000); (c) **subdomein bereikbaar mét sessie → 302** (edge-auth-spike authed); (d) UI-knoppen + edit-lock + preview. **De enige resterende schakel** voor één klik: een **geactiveerd ticket (branch in de DB)** — dat zet de conductor bij stage-activatie (engine), en standalone-prisma initialiseert niet (tenant-adapter uit de bootstrap). Dus dit is engine-territory, niet de editor-laag.
+
+**Netto commits (ItsLucky23, niet gepusht):** 90c5a46, 4210f21, 64d1b9e, d9c12d7→531ad40 (cleanup), a59c26d. Alle 7 items: 1,2,3,5,6,7 volledig end-to-end bewezen; item 4 volledig in onderdelen bewezen, één-call-compositie hangt op de engine-ticket-activatie.
