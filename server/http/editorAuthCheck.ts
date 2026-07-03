@@ -10,13 +10,26 @@
 //? domain to the wildcard parent in production. Per-workspace membership (vs any logged-in user)
 //? is a follow-up — it needs a host→workspace lookup the proxy layer can carry.
 
-import { readSession } from '@luckystack/core';
+import { readSession, getPrismaClient } from '@luckystack/core';
 import { registerCustomRoute } from '@luckystack/server';
+
+import { getRouteWorkspace } from '../proxy/routeOwnership';
+import { hasCapability, CAP } from '../control/rbac';
 
 export const EDITOR_AUTH_PATH = '/editor-auth-check';
 
-//? Register the edge-auth subrequest handler (call once at boot). Runs pre-params (no route
-//? params needed) and only claims its own path, leaving the normal pipeline untouched otherwise.
+//? The original subdomain host the proxy forwarded (Caddy sets X-Forwarded-Host; nginx we set it),
+//? stripped of any port. Used to look up which workspace the subdomain serves.
+function originalHost(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const raw = req.headers['x-forwarded-host'] ?? req.headers.host ?? '';
+  return (Array.isArray(raw) ? (raw[0] ?? '') : raw).split(':')[0] ?? '';
+}
+
+//? Register the edge-auth subrequest handler (call once at boot). Runs pre-params and only claims
+//? its own path. Two gates: (1) a valid session (else 401); (2) if we know which workspace this
+//? subdomain serves (recorded in Redis at route-upsert), the user must be a MEMBER of it with the
+//? workTickets cap (else 403) — closing cross-workspace access. An unmapped host degrades to
+//? logged-in-only, so nothing breaks before the editor route carries its workspaceId.
 export function registerEditorAuthCheck(): void {
   registerCustomRoute(async (req, res, ctx) => {
     if (!(req.url ?? '').startsWith(EDITOR_AUTH_PATH)) return false;
@@ -26,6 +39,17 @@ export function registerEditorAuthCheck(): void {
       res.setHeader('Content-Type', 'text/plain');
       res.end('unauthorized');
       return true;
+    }
+    const host = originalHost(req);
+    const workspaceId = host.length > 0 ? await getRouteWorkspace(host) : null;
+    if (workspaceId !== null) {
+      const member = await hasCapability(getPrismaClient(), workspaceId, session.id, CAP.workTickets);
+      if (!member) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end('forbidden');
+        return true;
+      }
     }
     res.statusCode = 204;
     res.end();

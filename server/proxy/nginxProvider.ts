@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { tryCatchSync } from '@luckystack/core';
+import { setRouteWorkspace } from './routeOwnership';
 import type { ProxyProvider, ProxyResult, ProxyRoute } from './types';
 
 const CONF = process.env.WS_NGINX_CONF ?? '/etc/nginx/conf.d/workspaces-routes.conf';
@@ -53,6 +54,7 @@ function renderRoute(r: ProxyRoute): string {
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Cookie $http_cookie;
     }`;
   const authReq = r.forwardAuth === undefined ? '' : '\n        auth_request /editor-auth-check;';
@@ -121,6 +123,7 @@ export const nginxProvider: ProxyProvider = {
   //? Optimistic: mutate the desired set + schedule the coalesced reload. The route is live
   //? after the debounce window (≤~1s); callers needing a hard barrier call `reconcile`.
   upsertRoute(route: ProxyRoute): Promise<ProxyResult> {
+    if (route.workspaceId !== undefined) void setRouteWorkspace(route.host, route.workspaceId);
     routes.set(route.id, route);
     scheduleFlush();
     return Promise.resolve({ ok: true });

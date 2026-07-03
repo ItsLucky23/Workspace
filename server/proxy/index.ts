@@ -34,11 +34,13 @@ export function getProxyProvider(): ProxyProvider {
 //? `<containerName>:<port>` on the shared container network. `id` is the (unique) ticket key
 //? so upsert/remove/reconcile are idempotent per ticket. `port` is the in-container preview
 //? server (defaults to the Vite dev port, 07b §5.2).
-export function previewRoute(input: { ticketKey: string; branch: string; containerName: string; port?: number }): ProxyRoute {
+export function previewRoute(input: { ticketKey: string; branch: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
   return {
     id: input.ticketKey.toLowerCase(),
     host: `${deriveHostSlug(input.branch)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
+    //? Carry the workspace so edge-auth can verify membership on this preview subdomain.
+    ...(input.workspaceId !== undefined ? { workspaceId: input.workspaceId } : {}),
   };
 }
 

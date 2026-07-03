@@ -35,7 +35,7 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   const devCmd = (project?.devCommand ?? '').trim().length > 0 ? (project?.devCommand ?? '') : 'npm run dev';
   await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
 
-  const route = previewRoute({ ticketKey, branch: ticket.branch, containerName: container.name, port: PREVIEW_PORT });
+  const route = previewRoute({ ticketKey, branch: ticket.branch, containerName: container.name, port: PREVIEW_PORT, workspaceId });
   const proxied = await getProxyProvider().upsertRoute(route);
   const protocol = baseDomain() === 'localhost' ? 'http' : 'https';
   return {

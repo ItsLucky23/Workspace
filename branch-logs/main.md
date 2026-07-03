@@ -1056,3 +1056,15 @@ De engine multi-instance-VEILIG gemaakt (nog 1 instance draaiend; opschalen = la
 - **`attachSocketRedisAdapter`** gated achter `WS_MULTI_INSTANCE=1` (cross-instance realtime; alleen bij echt opschalen).
 
 **Verificatie**: server-tsc 0, eslint 0, integration 14/14 (nieuwe pad tegen echte Redis), **clusterSpike GROEN** — dedup-first-wins, same-workspace geserialiseerd (geen overlap), verschillende workspaces parallel. **Deel B** (N instances draaien + flag) = uitgesteld, puur config.
+
+## 2026-07-03 — Edge-auth per-workspace membership (punt 5, volledig)
+
+Van "ingelogd?" naar "lid van dít workspace?" — sluit cross-workspace-toegang tot editor/preview-subdomeinen:
+- **`server/proxy/routeOwnership.ts`** — Redis host→workspaceId-map (multi-instance-correct, TTL-refreshed), gevuld in `upsertRoute` van beide providers wanneer `ProxyRoute.workspaceId` gezet is.
+- **`editorAuthCheck`** — na de sessie-check: host (X-Forwarded-Host) → `getRouteWorkspace` → `hasCapability(prisma, ws, session.id, CAP.workTickets)` → 403 als geen lid. Onbekende host → degradeert naar logged-in-only (niks breekt).
+- **Host doorgegeven**: caddy `forward_auth` zet `X-Forwarded-Host`, nginx `auth_request` idem.
+- **Cookie-scoping**: `config.ts` `http.sessionCookieDomain` env-gated (`WS_COOKIE_DOMAIN=.workspace.keetlerop.nl` in prod) zodat de browser de sessie-cookie naar het subdomein stuurt.
+- **Preview-route (mijn)** geeft `workspaceId` mee → membership werkt meteen voor previews.
+
+**SEAM voor de andere AI**: zet `workspaceId` op de editor-`ProxyRoute` (editorSession) → dan geldt membership ook voor de editor (nu: logged-in-only tot dat gebeurt).
+**Verificatie**: server-tsc 0, front-tsc 0, eslint 0 (mijn files).

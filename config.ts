@@ -131,6 +131,11 @@ registerProjectConfig({
       //? that DO carry an `Origin` header (cross-origin browsers, OAuth
       //? callbacks). So you do NOT need to list every same-origin variant here.
     },
+    //? Share the session cookie across subdomains when set (edge-auth on the per-ticket
+    //? editor/preview subdomains needs the browser to send it to `vscode-<slug>.<domain>`). Set
+    //? WS_COOKIE_DOMAIN to the wildcard parent in prod, e.g. `.workspace.keetlerop.nl`. Unset =
+    //? host-only cookie (most secure), so single-origin dev is unchanged.
+    ...(env('WS_COOKIE_DOMAIN') ? { sessionCookieDomain: env('WS_COOKIE_DOMAIN') } : {}),
   },
   defaultLanguage: config.defaultLanguage,
   loginRedirectUrl: config.loginRedirectUrl,

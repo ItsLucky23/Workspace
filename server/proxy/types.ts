@@ -18,6 +18,10 @@ export interface ProxyRoute {
   //? `auth_request` subrequest to this backend `host:port` (the `/editor-auth-check` endpoint,
   //? server/http/editorAuthCheck.ts). A 2xx proceeds; anything else blocks. Unset ⇒ no edge-auth.
   forwardAuth?: string;
+  //? Edge-auth membership (Track B5): the workspace this route serves. Recorded host→workspaceId in
+  //? Redis on upsert so /editor-auth-check verifies the user is a MEMBER of THIS workspace, not just
+  //? logged-in. Unset ⇒ the check degrades to logged-in-only for this route.
+  workspaceId?: string;
 }
 
 export interface ProxyResult {

@@ -5,6 +5,7 @@
 
 import { tryCatch } from '@luckystack/core';
 import { EDITOR_AUTH_PATH } from '../http/editorAuthCheck';
+import { setRouteWorkspace } from './routeOwnership';
 import type { ProxyProvider, ProxyResult, ProxyRoute } from './types';
 
 const ADMIN = process.env.WS_CADDY_ADMIN ?? 'http://localhost:2019';
@@ -36,12 +37,15 @@ export const caddyProvider: ProxyProvider = {
   //? Upsert = delete-then-append (idempotent); Caddy has no atomic upsert-by-id for an
   //? array member, so we drop any same-id route first.
   async upsertRoute(route: ProxyRoute): Promise<ProxyResult> {
+    if (route.workspaceId !== undefined) await setRouteWorkspace(route.host, route.workspaceId);
     await this.removeRoute(route.id);
     //? Edge-auth (Track B5): prepend a forward_auth subrequest — a GET to the /editor-auth-check
     //? endpoint on the auth backend; a 2xx proceeds to the container, anything else blocks.
     const authHandler = route.forwardAuth === undefined ? [] : [{
       handler: 'reverse_proxy',
       rewrite: { method: 'GET', uri: EDITOR_AUTH_PATH },
+      //? Pass the ORIGINAL subdomain host so /editor-auth-check can resolve host→workspace.
+      headers: { request: { set: { 'X-Forwarded-Host': ['{http.request.host}'] } } },
       upstreams: [{ dial: route.forwardAuth }],
       handle_response: [{ match: { status_code: [2] }, routes: [] }],
     }];
