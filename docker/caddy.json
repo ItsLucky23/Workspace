@@ -4,8 +4,9 @@
     "http": {
       "servers": {
         "srv0": {
-          "listen": [":443"],
-          "routes": []
+          "listen": [":443", ":80"],
+          "routes": [],
+          "automatic_https": { "disable_redirects": true }
         }
       }
     },

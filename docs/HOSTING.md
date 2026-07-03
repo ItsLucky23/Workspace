@@ -133,3 +133,26 @@ Swap the `tls.automation` policy in `docker/caddy.json` for a DNS-01 wildcard is
 `WS_BASE_DOMAIN` (same shape as the preview wildcard in §2), bind the Admin API to a private
 interface, and set `admin.origins` to the backend's real host. Run Caddy on `workspaces-net` (e.g.
 via compose) with `:443` published.
+
+### Edge-auth on the editor subdomain (Track B5 — designed, needs 2 seams)
+
+The editor URL already carries a per-(user,ticket) openvscode **connection-token** minted by the
+login+RBAC-gated `openEditor` op (openvscode returns `403` without it), so a leaked subdomain alone
+is not an open editor. To ALSO gate the subdomain on the LuckyStack session (only logged-in workspace
+members reach it), add Caddy `forward_auth` in front of the editor `reverse_proxy`:
+
+```
+# per editor route, before reverse_proxy:
+forward_auth <backend>:<port> {
+  uri /editor-auth-check
+  copy_headers X-Editor-User
+}
+```
+
+The `/editor-auth-check` handler (login → `functions.session.getSession(cookie)` → 200; else 401;
+optional host→workspace membership check via the editor route map) is a `registerCustomRoute`
+handler. **Two wiring points live outside the editor/UI ownership and need the engine/proxy agent:**
+1. **Register** the handler in the server bootstrap (`registerCustomRoute(editorAuthCheck, { phase: 'pre-params' })` — `server.ts`/`server/bootstrap`).
+2. **Attach** `forward_auth` to the editor routes — the `ProxyRoute` interface (`server/proxy/types.ts`)
+   carries only `{ id, host, target }`; it needs an optional `forwardAuth` field so `caddyProvider`
+   emits the handler chain. Until then the connection-token is the edge layer.

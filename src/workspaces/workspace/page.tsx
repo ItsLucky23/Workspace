@@ -4,9 +4,15 @@
 //? RBAC matrix + member roles live in app context so edits survive tab/route
 //? changes. Dummy data; desktop-first.
 
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
+
+import { loadThemeId } from 'src/_components/editor/editorThemes';
+
+//? Lazy so Monaco (multi-MB) never lands in the workspace-settings route chunk — it loads
+//? only when the Dockerfile review card actually mounts.
+const LazyMonaco = lazy(() => import('src/_components/editor/MonacoEditor').then((m) => ({ default: m.MonacoEditor })));
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -16,7 +22,7 @@ import Icon from '../_components/Icon';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { EnvVar, IntegrationField, IntegrationTool, Member } from '../_data/types';
+import type { BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, Member, PushPolicy } from '../_data/types';
 
 const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -361,12 +367,236 @@ function GitLabTab() {
   );
 }
 
+//? Workflow tab (hosting-proxy plan) — the STRUCTURED git config (branch strategy → branch
+//? name + preview host, push policy) plus the starter-guidance toggles (curated conventions
+//? the AI follows in every stage). The freeform half (write-your-own) lives on the Sources page.
+function WorkflowTab() {
+  const translate = useTranslator();
+  const { gitConfig, saveGitConfig, docs, toggleSkill } = useWorkspaces();
+  const [cfg, setCfg] = useState<GitConfig>(gitConfig);
+  const patch = (p: Partial<GitConfig>) => { setCfg((c) => ({ ...c, ...p })); };
+  const starter = docs.filter((d) => d.note === 'starter');
+  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+
+  const strategyItems = [
+    { id: 'ticket-prefix', value: 'ticket-prefix', item: translate({ key: 'workspaces.workspaceSettings.branchStrategyTicketPrefix' }) },
+    { id: 'typed', value: 'typed', item: translate({ key: 'workspaces.workspaceSettings.branchStrategyTyped' }) },
+    { id: 'custom', value: 'custom', item: translate({ key: 'workspaces.workspaceSettings.branchStrategyCustom' }) },
+  ];
+  const pushItems = [
+    { id: 'local-only', value: 'local-only', item: translate({ key: 'workspaces.workspaceSettings.pushLocalOnly' }) },
+    { id: 'push', value: 'push', item: translate({ key: 'workspaces.workspaceSettings.pushPush' }) },
+    { id: 'merge-request', value: 'merge-request', item: translate({ key: 'workspaces.workspaceSettings.pushMergeRequest' }) },
+  ];
+  //? Live example of the branch the current strategy produces (also the preview subdomain).
+  const exType = cfg.defaultBranchType || 'feature';
+  const exampleBranch = cfg.branchStrategy === 'ticket-prefix'
+    ? 'DEV-1240'
+    : (cfg.branchStrategy === 'typed'
+      ? `${exType}/DEV-1240-add-login`
+      : cfg.branchTemplate.replaceAll('{{type}}', exType).replaceAll('{{prefix}}', 'DEV').replaceAll('{{key}}', 'DEV-1240').replaceAll('{{number}}', '1240').replaceAll('{{slug}}', 'add-login'));
+
+  return (
+    <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+      <div className="rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.workflowTitle' })}</div>
+        <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workflowDescription' })}</div>
+
+        <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.branchStrategy' })}</span>
+        <Dropdown size="sm" value={strategyItems.find((i) => i.id === cfg.branchStrategy)} items={strategyItems} onChange={(it) => { const v = String(it.id); if (v === 'ticket-prefix' || v === 'typed' || v === 'custom') patch({ branchStrategy: v satisfies BranchStrategyKind }); }} />
+
+        {cfg.branchStrategy !== 'ticket-prefix' && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.defaultBranchType' })}</span>
+            <input value={cfg.defaultBranchType} onChange={(e) => { patch({ defaultBranchType: e.target.value }); }} className={inputCls} />
+          </div>
+        )}
+        {cfg.branchStrategy === 'custom' && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.branchTemplate' })}</span>
+            <input value={cfg.branchTemplate} onChange={(e) => { patch({ branchTemplate: e.target.value }); }} className={`${inputCls} font-mono`} />
+          </div>
+        )}
+        <div className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.previewBranch' })}: <span className="font-mono text-title">{exampleBranch}</span></div>
+
+        <span className="text-xs text-muted mt-2">{translate({ key: 'workspaces.workspaceSettings.pushPolicy' })}</span>
+        <Dropdown size="sm" value={pushItems.find((i) => i.id === cfg.pushPolicy)} items={pushItems} onChange={(it) => { const v = String(it.id); if (v === 'local-only' || v === 'push' || v === 'merge-request') patch({ pushPolicy: v satisfies PushPolicy }); }} />
+
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.targetBranch' })}</span>
+        <input value={cfg.targetBranch} onChange={(e) => { patch({ targetBranch: e.target.value }); }} className={inputCls} />
+
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.protectedBranches' })}</span>
+        <input value={cfg.protectedBranches.join(', ')} onChange={(e) => { patch({ protectedBranches: e.target.value.split(',').map((s) => s.trim()).filter((s) => s.length > 0) }); }} className={inputCls} />
+
+        <label className="flex items-center gap-2 mt-1 cursor-pointer"><Toggle on={cfg.commitSigning} onChange={() => { patch({ commitSigning: !cfg.commitSigning }); }} /><span className="text-sm text-title">{translate({ key: 'workspaces.workspaceSettings.commitSigning' })}</span></label>
+
+        <div className="mt-1"><WsButton icon="check" onClick={() => { saveGitConfig(cfg); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton></div>
+      </div>
+
+      <div className="rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.starterTitle' })}</div>
+        <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.starterDescription' })}</div>
+        <div className="flex flex-col gap-2">
+          {starter.map((d) => (
+            <div key={d.id} className="flex items-center gap-3 rounded-lg border border-container1-border bg-container2/40 px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-title truncate">{d.name}</div>
+                <div className="text-xs text-muted truncate">{d.summary}</div>
+              </div>
+              <Toggle on={d.aiEditable} onChange={() => { toggleSkill(d.id, !d.aiEditable); }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//? Register-flow C — review + edit the AI-authored draft `.workspaces/Dockerfile` before the
+//? L2 image build. Generate (AI), edit in a monospace textarea, save the draft (the server
+//? re-validates it extends the L1 base), then build the project image. All three are direct
+//? `_api` ops (a slow AI turn / docker build must not block the serial writer), so this keeps
+//? LOCAL state, not the realtime snapshot. Committing the draft into the linked repo is a
+//? later slice.
+//
+//? Set the project's dev command (the command that starts the app inside the ticket container
+//? for the live preview flow). Empty clears it → falls back to package.json scripts.dev.
+function DevCommandCard({ workspaceId }: { workspaceId: string }) {
+  const translate = useTranslator();
+  const [cmd, setCmd] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const save = async (): Promise<void> => {
+    setSaving(true); setStatus(null);
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, devCommand: cmd } }));
+    setSaving(false);
+    if (err || res?.status !== 'success') { setStatus({ kind: 'err', text: translate({ key: 'workspaces.workspaceSettings.devCommandError' }) }); return; }
+    setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.devCommandSaved' }) });
+  };
+  return (
+    <div className="w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.devCommandTitle' })}</div>
+      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.devCommandDescription' })}</div>
+      {status !== null && (
+        <div className={`rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ${status.kind === 'ok' ? 'border-correct-border bg-correct/10 text-common' : 'border-wrong-border bg-wrong/10 text-wrong'}`}>
+          <Icon name={status.kind === 'ok' ? 'circle-check' : 'triangle-exclamation'} className={status.kind === 'ok' ? 'text-correct' : ''} /><span>{status.text}</span>
+        </div>
+      )}
+      <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <div><WsButton icon="check" disabled={saving} onClick={() => { void save(); }}>{translate({ key: saving ? 'workspaces.workspaceSettings.devCommandSaving' : 'workspaces.workspaceSettings.devCommandSave' })}</WsButton></div>
+    </div>
+  );
+}
+
+function DockerfileReview({ workspaceId }: { workspaceId: string }) {
+  const translate = useTranslator();
+  const [draft, setDraft] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState<'generate' | 'save' | 'build' | null>(null);
+  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  //? Map a server error code to a translated line (generic fallback keeps it i18n-safe).
+  const errText = (code: string | undefined): string => {
+    if (code?.startsWith('image.buildFailed')) return translate({ key: 'workspaces.workspaceSettings.dockerfileErrBuild' });
+    const map: Record<string, string> = {
+      'dockerfile.invalidBase': 'dockerfileErrInvalidBase',
+      'dockerfile.noDraft': 'dockerfileErrNoDraft',
+      'dockerfile.empty': 'dockerfileErrEmpty',
+      'repo.notLinked': 'dockerfileErrRepo',
+      'ai.turnFailed': 'dockerfileErrAi',
+      'docker.unavailable': 'dockerfileErrDocker',
+    };
+    return translate({ key: `workspaces.workspaceSettings.${map[code ?? ''] ?? 'dockerfileErrGeneric'}` });
+  };
+
+  //? Load the persisted draft on mount so edits survive a reload without a fresh AI turn.
+  //? The component is keyed by workspace, so `workspaceId` never changes during a mount —
+  //? no cancel guard is needed (the effect runs once per mounted workspace).
+  useEffect(() => {
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/getDockerfile', version: 'v1', data: { workspaceId } }));
+      if (!error && res?.status === 'success' && res.result.ok) setDraft(res.result.dockerfile);
+      setLoaded(true);
+    })();
+  }, [workspaceId]);
+
+  const generate = async (): Promise<void> => {
+    setBusy('generate'); setStatus(null);
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/generateDockerfile', version: 'v1', data: { workspaceId } }));
+    setBusy(null);
+    if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
+    if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
+    setDraft(res.result.dockerfile);
+  };
+
+  const save = async (): Promise<void> => {
+    setBusy('save'); setStatus(null);
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { workspaceId, dockerfile: draft } }));
+    setBusy(null);
+    if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
+    if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
+    setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.dockerfileSaved' }) });
+  };
+
+  const build = async (): Promise<void> => {
+    setBusy('build'); setStatus(null);
+    //? Save the on-screen edits first so the build reads exactly what the user sees.
+    const [saveErr, saveRes] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { workspaceId, dockerfile: draft } }));
+    if (saveErr || saveRes?.status !== 'success' || !saveRes.result.ok) {
+      setBusy(null);
+      const code = saveErr || saveRes?.status !== 'success' ? (saveRes?.status === 'error' ? saveRes.errorCode : undefined) : saveRes.result.error;
+      setStatus({ kind: 'err', text: errText(code) });
+      return;
+    }
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/buildProjectImage', version: 'v1', data: { workspaceId } }));
+    setBusy(null);
+    if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
+    if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
+    setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.dockerfileBuilt', params: [{ key: 'tag', value: res.result.tag ?? '—' }] }) });
+  };
+
+  const hasDraft = draft.trim().length > 0;
+  //? Shared editor theme: reuse the id the user picked in the code editors (localStorage),
+  //? falling back to the app's light/dark mode. Keeps this editor in step with the others.
+  const editorTheme = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
+  return (
+    <div className="w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.dockerfileTitle' })}</div>
+      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileDescription' })}</div>
+      {status !== null && (
+        <div className={`rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ${status.kind === 'ok' ? 'border-correct-border bg-correct/10 text-common' : 'border-wrong-border bg-wrong/10 text-wrong'}`}>
+          <Icon name={status.kind === 'ok' ? 'circle-check' : 'triangle-exclamation'} className={status.kind === 'ok' ? 'text-correct' : ''} />
+          <span>{status.text}</span>
+        </div>
+      )}
+      <div className="w-full h-72 rounded-lg border border-container1-border overflow-hidden">
+        <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileEmptyHint' })}</div>}>
+          <LazyMonaco value={draft} language="dockerfile" theme={editorTheme} onChange={setDraft} />
+        </Suspense>
+      </div>
+      {!hasDraft && loaded && <div className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileEmptyHint' })}</div>}
+      <div className="flex items-center gap-2">
+        <WsButton variant="secondary" icon="wand-magic-sparkles" disabled={busy !== null} onClick={() => { void generate(); }}>
+          {translate({ key: busy === 'generate' ? 'workspaces.workspaceSettings.dockerfileGenerating' : (hasDraft ? 'workspaces.workspaceSettings.dockerfileRegenerate' : 'workspaces.workspaceSettings.dockerfileGenerate') })}
+        </WsButton>
+        <WsButton icon="check" disabled={busy !== null || !hasDraft} onClick={() => { void save(); }}>
+          {translate({ key: busy === 'save' ? 'workspaces.workspaceSettings.dockerfileSaving' : 'workspaces.workspaceSettings.dockerfileSave' })}
+        </WsButton>
+        <WsButton icon="bolt" disabled={busy !== null || !hasDraft} onClick={() => { void build(); }}>
+          {translate({ key: busy === 'build' ? 'workspaces.workspaceSettings.dockerfileBuilding' : 'workspaces.workspaceSettings.dockerfileBuild' })}
+        </WsButton>
+      </div>
+    </div>
+  );
+}
+
 //? Register-flow step A — link a git repo. Clones it (bare) into data/workspaces/<id>/
 //? server-side; the status card reflects the on-disk linked branch/head (or a scrubbed
 //? clone error). Token is write-only (never pre-filled). Realtime via the linkRepo op.
 function RepositoryTab() {
   const translate = useTranslator();
-  const { repo, linkRepo } = useWorkspaces();
+  const { repo, linkRepo, activeWorkspace } = useWorkspaces();
   const [gitUrl, setGitUrl] = useState(repo.gitUrl ?? '');
   const [token, setToken] = useState('');
   const [linking, setLinking] = useState(false);
@@ -381,6 +611,7 @@ function RepositoryTab() {
     setToken('');
   };
   return (
+    <>
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabRepository' })}</div>
       <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.repoDescription' })}</div>
@@ -407,6 +638,9 @@ function RepositoryTab() {
         </WsButton>
       </div>
     </div>
+    {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div>}
+    {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DevCommandCard key={`dc-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /></div>}
+    </>
   );
 }
 
@@ -478,6 +712,7 @@ export default function WorkspaceSettings() {
     { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
     { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' },
     { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' },
+    { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' },
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
   ];
 
@@ -518,6 +753,7 @@ export default function WorkspaceSettings() {
         {tab === 'invites' && <InvitesTab />}
         {tab === 'repository' && <RepositoryTab />}
         {tab === 'gitlab' && <GitLabTab key={activeWorkspace.id} />}
+        {tab === 'workflow' && <WorkflowTab key={activeWorkspace.id} />}
         {tab === 'danger' && <DangerTab />}
       </div>
     </div>

@@ -56,6 +56,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
   return (
     <div className="flex flex-col h-full min-h-0">
       <TicketHeader ticket={ticket} />
+      <TicketControls ticket={ticket} />
 
       {status === 'needs-input' && ticket.needsInput && <NeedsInputBanner question={ticket.needsInput} />}
       {status === 'done' && (
@@ -164,6 +165,43 @@ function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; works
           <div className="h-full flex items-center justify-center text-sm text-muted">{translate({ key: launching ? 'workspaces.ticket.editorLaunching' : 'workspaces.ticket.editorLaunchHint' })}</div>
         ))}
       </div>
+    </div>
+  );
+}
+
+//? C2 agent controls + preview launcher on the ticket. Pause/resume/kill drive the engine's
+//? context-methods (the engine skips the auto-turn while a live editor is open — editGuard).
+//? Open preview starts the ticket's dev server (Project.devCommand) and surfaces the URL.
+function TicketControls({ ticket }: { ticket: Ticket }) {
+  const translate = useTranslator();
+  const ctx = useWorkspaces();
+  const [preview, setPreview] = useState<{ loading: boolean; url?: string; err?: boolean }>({ loading: false });
+
+  const kill = (): void => {
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.ticket.killConfirmTitle', params: [{ key: 'id', value: ticket.id }] }),
+      content: translate({ key: 'workspaces.ticket.killConfirmContent' }),
+    }).then((ok) => { if (ok) ctx.killTicket(ticket.id); });
+  };
+
+  const openPreview = async (): Promise<void> => {
+    setPreview({ loading: true });
+    const res = await ctx.openPreview(ticket.id);
+    if (res.ok && res.url) { setPreview({ loading: false, url: res.url }); globalThis.open(res.url, '_blank'); }
+    else setPreview({ loading: false, err: true });
+  };
+
+  return (
+    <div className="px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
+      <WsButton variant="ghost" icon="pause" disabled={ctx.workspacePaused} onClick={() => { ctx.pauseTicket(ticket.id); }}>{translate({ key: 'workspaces.ticket.pauseAgent' })}</WsButton>
+      <WsButton variant="ghost" icon="play" onClick={() => { ctx.resumeTicket(ticket.id); }}>{translate({ key: 'workspaces.ticket.resumeAgent' })}</WsButton>
+      <WsButton variant="danger" icon="ban" onClick={kill}>{translate({ key: 'workspaces.ticket.killAgent' })}</WsButton>
+      <span className="w-px h-6 bg-divider mx-1" />
+      <WsButton variant="secondary" icon="display" disabled={preview.loading} onClick={() => { void openPreview(); }}>
+        {translate({ key: preview.loading ? 'workspaces.ticket.previewOpening' : 'workspaces.ticket.openPreview' })}
+      </WsButton>
+      {preview.url !== undefined && <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-xs">{preview.url}</a>}
+      {preview.err === true && <span className="text-xs text-wrong">{translate({ key: 'workspaces.ticket.previewFailed' })}</span>}
     </div>
   );
 }
