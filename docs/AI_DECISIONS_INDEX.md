@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (30)
+## Decisions (31)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -43,6 +43,7 @@
 | 0029 | Forge-provider abstraction (GitLab + GitHub) + webhook ingest | 🟢 accepted | workspaces, forge, gitlab, github, webhook | — | `docs/decisions/0029-forge-provider-abstraction.md` |
 | 0030 | Editor loose ends — profile encryption-at-rest + Open VSX gallery | 🟢 accepted | workspaces, editor, security, encryption, open-vsx | — | `docs/decisions/0030-editor-loose-ends.md` |
 | 0031 | Multi-instance Deel B — coordination verified under concurrency + live 2-instance | 🟢 accepted | workspaces, multi-instance, cluster, leader-election, verification | — | `docs/decisions/0031-multi-instance-verification.md` |
+| 0032 | Self-host installer + DR — compose stack, bootstrap, runbook | 🟢 accepted | workspaces, self-host, deployment, docker-compose, disaster-recovery | — | `docs/decisions/0032-self-host-installer-dr.md` |
 
 ## Summaries
 
@@ -287,6 +288,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 Verify the coordination two ways, because the primitives are Redis atomics: N separate OS processes use the same Redis the same way a single process using the primitives concurrently does.
 
 → `docs/decisions/0031-multi-instance-verification.md`
+
+### 0032 — Self-host installer + DR — compose stack, bootstrap, runbook
+
+**0032** · accepted · tags: workspaces, self-host, deployment, docker-compose, disaster-recovery · 2026-07-03
+
+A self-contained `deploy/` stack + a DR runbook:
+
+→ `docs/decisions/0032-self-host-installer-dr.md`
 
 ## Code governed by decisions
 
