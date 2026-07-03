@@ -1,6 +1,9 @@
 {
   "allowedDomains": [
     "localhost",
-    "127.0.0.1"
-  ]
+    "127.0.0.1",
+    "*.localhost",
+    "vscode-dev-demo.localhost"
+  ],
+  "ignoreHttpsErrors": true
 }
