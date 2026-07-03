@@ -10,7 +10,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
 export type WsView =
@@ -109,10 +109,10 @@ export interface WorkspacesCtx {
   //? Ticket/board writes (12/13) — the [control-API] `quick-add`/`archive`/`bulk-*` ops.
   //? New tickets always enter at `unrefined` (Conductor-enforced), so creation takes
   //? only a title — no stage/sprint choice at creation time.
-  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => void;
-  //? Edit a ticket's title / description / labels (stage + assignee changes reuse
-  //? bulkMove / bulkAssign on a single ticket). Only the given fields are written.
-  editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[] }) => void;
+  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority }) => void;
+  //? Edit a ticket's title / description / labels / priority (stage + assignee changes
+  //? reuse bulkMove / bulkAssign on a single ticket). Only the given fields are written.
+  editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[]; priority?: TicketPriority }) => void;
   //? Add a user comment (WorkspaceNote) to a ticket. Read them back via `ticketNotes`.
   addComment: (ticketId: string, body: string) => void;
   archiveTicket: (id: string) => void;

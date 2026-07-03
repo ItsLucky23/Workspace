@@ -33,6 +33,7 @@ type Theme = typeof THEMES[number]['value'];
 interface UserPreferences {
   notifyOnNewSignIn?: boolean;
   notifyOnPasswordChange?: boolean;
+  notifyOnAssignment?: boolean; // Workspaces in-app assignment bell (#13) — opt-out, default on
 }
 
 interface ActiveSession {
@@ -251,8 +252,10 @@ export default function Home() {
   };
 
   // ------- preferences -------
-  const togglePreference = async (key: keyof UserPreferences) => {
-    const next = { ...preferences, [key]: !preferences[key] };
+  //? `current` is the effective checked value the toggle is showing (callers pass it so
+  //? an opt-OUT default-on preference like notifyOnAssignment flips correctly on first click).
+  const togglePreference = async (key: keyof UserPreferences, current: boolean) => {
+    const next = { ...preferences, [key]: !current };
     setPreferences(next);
     const response = await apiRequest({
       name: 'settings/updatePreferences',
@@ -502,12 +505,17 @@ export default function Home() {
           <PreferenceToggle
             label={translate({ key: 'settings.prefNotifySignIn' })}
             checked={preferences.notifyOnNewSignIn ?? false}
-            onToggle={() => void togglePreference('notifyOnNewSignIn')}
+            onToggle={() => void togglePreference('notifyOnNewSignIn', preferences.notifyOnNewSignIn ?? false)}
           />
           <PreferenceToggle
             label={translate({ key: 'settings.prefNotifyPassword' })}
             checked={preferences.notifyOnPasswordChange ?? false}
-            onToggle={() => void togglePreference('notifyOnPasswordChange')}
+            onToggle={() => void togglePreference('notifyOnPasswordChange', preferences.notifyOnPasswordChange ?? false)}
+          />
+          <PreferenceToggle
+            label={translate({ key: 'settings.prefNotifyAssignment' })}
+            checked={preferences.notifyOnAssignment ?? true}
+            onToggle={() => void togglePreference('notifyOnAssignment', preferences.notifyOnAssignment ?? true)}
           />
         </Section>
 

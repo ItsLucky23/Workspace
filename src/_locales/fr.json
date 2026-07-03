@@ -158,6 +158,7 @@
     "preferencesSection": "Préférences de notification",
     "prefNotifySignIn": "M'envoyer un e-mail lors d'une nouvelle connexion",
     "prefNotifyPassword": "M'envoyer un e-mail lors d'un changement de mot de passe",
+    "prefNotifyAssignment": "Me notifier dans l'application lorsqu'un ticket m'est attribué",
     "preferencesSaved": "Préférences enregistrées.",
     "dangerSection": "Zone de danger",
     "signOutEverywhere": "Se déconnecter partout",
@@ -841,6 +842,14 @@
       "commentOnLine": "Commenter cette ligne",
       "cancel": "Annuler",
       "aiAuthor": "IA"
+    },
+    "priority": {
+      "label": "Priorité",
+      "low": "Basse",
+      "normal": "Normale",
+      "high": "Haute",
+      "urgent": "Urgente",
+      "urgentHint": "Ignore la limite de capacité · nécessite toujours une approbation pour fusionner"
     },
     "board": {
       "openTicket": "Ouvrir le ticket",

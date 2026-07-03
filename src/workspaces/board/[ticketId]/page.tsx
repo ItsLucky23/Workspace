@@ -24,8 +24,10 @@ const LazyVsCodeEmbed = lazy(() => import('src/_components/editor/VsCodeEmbed').
 import Icon from '../../_components/Icon';
 import XtermTerminal from '../../_components/XtermTerminal';
 import { AvatarBubble, AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../../_components/primitives';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../../_data/types';
+import { PRIORITY_DOT, PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
 
 export const template = 'workspaces';
 
@@ -321,6 +323,7 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
   const [desc, setDesc] = useState(ticket.description ?? '');
   useEffect(() => { setDesc(ticket.description ?? ''); }, [ticket.description]);
   const commitDesc = () => { if (desc !== (ticket.description ?? '')) ctx.editTicket(ticket.id, { description: desc }); };
+  const priorityItems: DropdownItem[] = PRIORITY_ORDER.map((p) => ({ id: p, value: p, item: translate({ key: PRIORITY_LABEL_KEY[p] }) }));
   //? The REAL stage config for this ticket's stage (was a static "AI-driven · RAG…"
   //? string that contradicted a No-AI stage). Drives the aiEnabled label + skills.
   const stageCfg = ctx.stageConfigs.find((s) => s.id === ticket.stageId);
@@ -335,6 +338,23 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
           rows={4}
           className="w-full resize-y rounded-lg border border-container1-border bg-container2/50 px-3 py-2 text-sm text-common leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
         />
+      </Card>
+      <Card title={translate({ key: 'workspaces.priority.label' })}>
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${PRIORITY_DOT[ticket.priority ?? 'normal']}`} />
+          <Dropdown
+            size="sm"
+            items={priorityItems}
+            value={priorityItems.find((i) => i.id === (ticket.priority ?? 'normal'))}
+            onChange={(it) => {
+              const next = PRIORITY_ORDER.find((p) => p === it.id) ?? 'normal';
+              if (next !== (ticket.priority ?? 'normal')) ctx.editTicket(ticket.id, { priority: next });
+            }}
+          />
+          {(ticket.priority ?? 'normal') === 'urgent' && (
+            <span className="text-xs text-wrong">{translate({ key: 'workspaces.priority.urgentHint' })}</span>
+          )}
+        </div>
       </Card>
       {ticket.carryOver && (
         <Card title={translate({ key: 'workspaces.ticket.carryOverTitle' })}>

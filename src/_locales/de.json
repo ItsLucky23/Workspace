@@ -158,6 +158,7 @@
     "preferencesSection": "Benachrichtigungseinstellungen",
     "prefNotifySignIn": "E-Mail bei neuer Anmeldung senden",
     "prefNotifyPassword": "E-Mail bei Passwortänderung senden",
+    "prefNotifyAssignment": "Benachrichtige mich in der App, wenn mir ein Ticket zugewiesen wird",
     "preferencesSaved": "Einstellungen gespeichert.",
     "dangerSection": "Gefahrenzone",
     "signOutEverywhere": "Überall abmelden",
@@ -841,6 +842,14 @@
       "commentOnLine": "Zu dieser Zeile kommentieren",
       "cancel": "Abbrechen",
       "aiAuthor": "KI"
+    },
+    "priority": {
+      "label": "Priorität",
+      "low": "Niedrig",
+      "normal": "Normal",
+      "high": "Hoch",
+      "urgent": "Dringend",
+      "urgentHint": "Überspringt das Kapazitätslimit · benötigt weiterhin eine Freigabe zum Mergen"
     },
     "board": {
       "openTicket": "Ticket öffnen",

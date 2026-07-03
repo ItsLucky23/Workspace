@@ -12,19 +12,20 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { ticketId: string; title?: string; description?: string; labels?: string[]; clientRequestId: string };
+  clientInput: { ticketId: string; title?: string; description?: string; labels?: string[]; priority?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { ticketId, title, description, labels, clientRequestId } = clientInput;
+  const { ticketId, title, description, labels, priority, clientRequestId } = clientInput;
   if (title?.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
-  const payload: { title?: string; description?: string; labels?: string[] } = {};
+  const payload: { title?: string; description?: string; labels?: string[]; priority?: string } = {};
   if (title !== undefined) payload.title = title;
   if (description !== undefined) payload.description = description;
   if (labels !== undefined) payload.labels = labels;
+  if (priority !== undefined) payload.priority = priority;
 
   const res = await dispatchControlSync({
     op: 'ticket-edit', roomCode, userId: user.id, prisma: functions.db.prisma,

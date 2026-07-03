@@ -30,6 +30,7 @@ import { isEditorRunning } from './editGuard';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta } from '../read/broadcast';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
+import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
 //? the plain client with an EXPLICIT `workspaceId` (type-correct; Prisma's input
@@ -54,6 +55,12 @@ function num(o: Record<string, unknown>, k: string): number | undefined {
 function strArr(o: Record<string, unknown>, k: string): string[] {
   const v = o[k];
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+//? Narrow an untrusted payload value to a valid TicketPriority, or undefined if
+//? absent/invalid — the Conductor (single writer) never persists a bad priority.
+function asPriority(o: Record<string, unknown>, k: string): TicketPriority | undefined {
+  const v = o[k];
+  return typeof v === 'string' && (TICKET_PRIORITIES as readonly string[]).includes(v) ? (v as TicketPriority) : undefined;
 }
 function boolArr(o: Record<string, unknown>, k: string): boolean[] {
   const v = o[k];
@@ -242,6 +249,11 @@ async function ticketRowsForKeys(workspaceId: string, keys: string[]): Promise<D
 //? ObjectId, mirroring the seed shape.
 async function notifyAssignment(workspaceId: string, recipientUserId: string, ticketId: string, ticketKey: string): Promise<void> {
   const [error] = await tryCatch(async () => {
+    //? Respect the recipient's notification-preferences (User.preferences JSON, #13):
+    //? the in-app assignment bell is opt-OUT — fired unless the user turned it off.
+    const recipient = await prisma.user.findUnique({ where: { id: recipientUserId }, select: { preferences: true } });
+    const prefs = asRec(recipient?.preferences);
+    if (prefs.notifyOnAssignment === false) return;
     await prisma.notification.create({
       data: {
         workspaceId, userId: recipientUserId, type: 'assignment',
@@ -460,6 +472,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           //? ticket mid-pipeline regardless of what it sends. The AI moves it on.
           title, description: str(payload, 'description') ?? null, stageId: 'unrefined',
           status: 'idle', labels: strArr(payload, 'labels'), creatorId: userId,
+          priority: asPriority(payload, 'priority') ?? 'normal',
           sprintId: str(payload, 'sprintId') ?? null, assigneeId: str(payload, 'assigneeId') ?? null,
         },
       });
@@ -473,10 +486,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'ticket-edit': {
       const key = str(target, 'ticketId');
       if (!key) return;
-      const data: { title?: string; description?: string | null; labels?: string[] } = {};
+      const data: { title?: string; description?: string | null; labels?: string[]; priority?: TicketPriority } = {};
       const title = str(payload, 'title'); if (title !== undefined) data.title = title;
       if ('description' in payload) data.description = str(payload, 'description') ?? null;
       if (Array.isArray(payload.labels)) data.labels = strArr(payload, 'labels');
+      const priority = asPriority(payload, 'priority'); if (priority !== undefined) data.priority = priority;
       if (Object.keys(data).length === 0) return;
       await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
       const [edited] = await ticketIdsForKeys(action.workspaceId, [key]);

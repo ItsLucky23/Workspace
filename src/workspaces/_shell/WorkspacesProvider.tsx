@@ -23,7 +23,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -434,7 +434,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
-  const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => {
+  const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority }) => {
     const room = snap.activeWorkspaceId;
     if (!room) return;
     void syncRequest({
@@ -445,6 +445,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         ...(input.description === undefined ? {} : { description: input.description }),
         ...(input.labels && input.labels.length > 0 ? { labels: input.labels } : {}),
         ...(input.assigneeId ? { assigneeId: input.assigneeId } : {}),
+        ...(input.priority && input.priority !== 'normal' ? { priority: input.priority } : {}),
         clientRequestId: nextReqId(),
       },
       receiver: room,

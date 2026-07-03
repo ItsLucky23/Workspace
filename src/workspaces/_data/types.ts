@@ -97,6 +97,11 @@ export interface PipelineStage {
   avgTokensPerTurn?: number; // doc 05 (D4/D28) — rolling per-stage average feeding the estimate blend
 }
 
+//? Ticket priority. `urgent` is the hotfix/security tier: a #12 CapacityManager
+//? admits it past the workspace concurrency cap (it still needs approval to merge).
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+export const TICKET_PRIORITIES: readonly TicketPriority[] = ['low', 'normal', 'high', 'urgent'];
+
 export interface Ticket {
   id: string;            // ui-only display id, mirrors Ticket.prefix e.g. "DEV-1240"
   workspaceId: string;
@@ -122,6 +127,7 @@ export interface Ticket {
   sprintId?: string;
   carryOver?: string;
   needsInput?: string;
+  priority?: TicketPriority; // low|normal|high|urgent — `urgent` = hotfix/security tier (force-passes the capacity cap, #12)
   files?: TicketFile[];
   links?: TicketLink[];
   history?: StageHistoryEntry[];

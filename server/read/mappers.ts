@@ -6,8 +6,14 @@
 
 import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource } from '@prisma/client';
 
-import type { EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import type { EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
+import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
 import { decryptSecret } from '../crypto/secretBox';
+
+//? DB priority string → the frontend `TicketPriority` union (falls back to 'normal'
+//? for a legacy row written before the column existed). Mirrors buildSnapshot.
+const asPriority = (p: string | null | undefined): TicketPriority =>
+  ((TICKET_PRIORITIES as readonly string[]).includes(p ?? '') ? p : 'normal') as TicketPriority;
 
 const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
 
@@ -64,6 +70,7 @@ export function toTicket(t: DbTicket): Ticket {
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
     viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
+    priority: asPriority(t.priority),
     //? Real recency for the backlog/board time column (was a hardcoded mock array).
     //? `lastActivityAt` is denormalized from the latest TicketEvent; fall back to createdAt.
     lastActivityAt: (t.lastActivityAt ?? t.createdAt).toISOString(),

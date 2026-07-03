@@ -158,6 +158,7 @@
     "preferencesSection": "Notification preferences",
     "prefNotifySignIn": "Email me when a new sign-in happens",
     "prefNotifyPassword": "Email me when my password is changed",
+    "prefNotifyAssignment": "Notify me in-app when a ticket is assigned to me",
     "preferencesSaved": "Preferences saved.",
     "dangerSection": "Danger zone",
     "signOutEverywhere": "Sign out everywhere",
@@ -841,6 +842,14 @@
       "commentOnLine": "Comment on this line",
       "cancel": "Cancel",
       "aiAuthor": "AI"
+    },
+    "priority": {
+      "label": "Priority",
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent",
+      "urgentHint": "Skips the capacity cap · still needs approval to merge"
     },
     "board": {
       "openTicket": "Open ticket",

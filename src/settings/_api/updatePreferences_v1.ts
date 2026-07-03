@@ -12,6 +12,7 @@ export const auth: AuthProps = {
 export interface UserPreferences {
   notifyOnNewSignIn?: boolean;
   notifyOnPasswordChange?: boolean;
+  notifyOnAssignment?: boolean; // Workspaces in-app assignment bell (#13) — opt-out, default on
 }
 
 export interface ApiParams {
@@ -27,6 +28,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const sanitized: Record<string, boolean> = {};
   if (typeof incoming.notifyOnNewSignIn === 'boolean') sanitized.notifyOnNewSignIn = incoming.notifyOnNewSignIn;
   if (typeof incoming.notifyOnPasswordChange === 'boolean') sanitized.notifyOnPasswordChange = incoming.notifyOnPasswordChange;
+  if (typeof incoming.notifyOnAssignment === 'boolean') sanitized.notifyOnAssignment = incoming.notifyOnAssignment;
 
   const updated = await functions.db.prisma.user.update({
     where: { id: user.id },

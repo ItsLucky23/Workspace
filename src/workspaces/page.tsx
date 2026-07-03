@@ -20,7 +20,8 @@ import Icon from './_components/Icon';
 import { Popover } from './_components/motion';
 import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, useClickAway, type PopMenuItem } from './_components/primitives';
 import { useWorkspaces } from './_shell/WorkspacesContext';
-import type { PipelineStage, Ticket, TicketStatus } from './_data/types';
+import type { PipelineStage, Ticket, TicketPriority, TicketStatus } from './_data/types';
+import { PRIORITY_DOT, PRIORITY_LABEL_KEY, PRIORITY_ORDER, isBadgedPriority } from './_functions/priority';
 
 //? Filters applied client-side on top of the live snapshot (no control-API op — this
 //? is purely a view concern, nothing is persisted).
@@ -101,7 +102,15 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
       className="group relative rounded-xl border border-container1-border bg-container1 p-3 cursor-pointer transition-[border-color,box-shadow] duration-150 hover:border-container2-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-muted">{ticket.id}</span>
+        <span className="flex items-center gap-1.5 min-w-0">
+          {isBadgedPriority(ticket.priority) && (
+            <span
+              title={translate({ key: PRIORITY_LABEL_KEY[ticket.priority] })}
+              className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[ticket.priority]}`}
+            />
+          )}
+          <span className="font-mono text-xs text-muted">{ticket.id}</span>
+        </span>
         <div className="flex items-center gap-1" {...stop}>
           {ticket.status === 'idle'
             ? <span className="inline-flex items-center gap-1 text-xs text-muted"><Icon name="moon" /> {translate({ key: 'workspaces.board.noAi' })}</span>
@@ -194,15 +203,17 @@ function UnrefinedAddCard() {
 //? create callback as props instead of reading them from context.
 //? Creation takes only a title — every new ticket enters at `unrefined` (the
 //? Conductor enforces this). The title input auto-focuses on open.
-function NewTicketForm({ onCreate }: { onCreate: (input: { title: string }) => void }) {
+function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priority?: TicketPriority }) => void }) {
   const translate = useTranslator();
   const [title, setTitle] = useState('');
+  const [priority, setPriority] = useState<TicketPriority>('normal');
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
+  const priorityItems: DropdownItem[] = PRIORITY_ORDER.map((p) => ({ id: p, value: p, item: translate({ key: PRIORITY_LABEL_KEY[p] }) }));
   const submit = () => {
     const t = title.trim();
     if (!t) return;
-    onCreate({ title: t });
+    onCreate({ title: t, priority });
     void menuHandler.close();
   };
   return (
@@ -214,6 +225,13 @@ function NewTicketForm({ onCreate }: { onCreate: (input: { title: string }) => v
         placeholder={translate({ key: 'workspaces.board.newTicketTitlePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.priority.label' })}</span>
+        <Dropdown
+          size="sm" items={priorityItems} value={priorityItems.find((i) => i.id === priority)}
+          onChange={(it) => { setPriority(PRIORITY_ORDER.find((p) => p === it.id) ?? 'normal'); }}
+        />
+      </div>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

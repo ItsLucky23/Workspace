@@ -158,6 +158,7 @@
     "preferencesSection": "Notificatievoorkeuren",
     "prefNotifySignIn": "Stuur me een e-mail bij een nieuwe aanmelding",
     "prefNotifyPassword": "Stuur me een e-mail wanneer mijn wachtwoord wijzigt",
+    "prefNotifyAssignment": "Geef me een melding in de app wanneer een ticket aan mij wordt toegewezen",
     "preferencesSaved": "Voorkeuren opgeslagen.",
     "dangerSection": "Gevarenzone",
     "signOutEverywhere": "Overal uitloggen",
@@ -841,6 +842,14 @@
       "commentOnLine": "Reageer op deze regel",
       "cancel": "Annuleren",
       "aiAuthor": "AI"
+    },
+    "priority": {
+      "label": "Prioriteit",
+      "low": "Laag",
+      "normal": "Normaal",
+      "high": "Hoog",
+      "urgent": "Urgent",
+      "urgentHint": "Slaat de capaciteitslimiet over · vereist nog steeds goedkeuring om te mergen"
     },
     "board": {
       "openTicket": "Ticket openen",
