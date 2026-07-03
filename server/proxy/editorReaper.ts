@@ -8,6 +8,7 @@
 import { spawn } from 'node:child_process';
 
 import { DOCKER_BIN, docker } from '../container/runtime';
+import { isLeader } from '../orchestrator/cluster';
 import { getProxyProvider } from './index';
 
 const EDITOR_PORT = Number(process.env.WS_EDITOR_PORT ?? '3000');
@@ -77,5 +78,6 @@ export async function reapIdleEditors(now: number): Promise<{ reaped: string[] }
 
 //? Start the periodic reaper (called once at boot). Returns the timer so it can be cleared.
 export function startEditorReaper(): ReturnType<typeof setInterval> {
-  return setInterval(() => { void reapIdleEditors(Date.now()); }, INTERVAL_MS);
+  //? Only the leader instance reaps — otherwise N instances race on the same editors/routes.
+  return setInterval(() => { if (isLeader()) void reapIdleEditors(Date.now()); }, INTERVAL_MS);
 }

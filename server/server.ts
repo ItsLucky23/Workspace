@@ -40,11 +40,13 @@ import { ports } from '../config.ports';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { bootstrapLuckyStack } from '@luckystack/server';
+import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { startEditorReaper } from './proxy/editorReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { startGitlabSyncPoller } from './git/gitlabSync';
+import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
   //? Optional @luckystack/secret-manager (opt-in). Resolve `.env` pointers
@@ -106,12 +108,28 @@ import { startGitlabSyncPoller } from './git/gitlabSync';
 
   await server.listen();
 
+  //? Multi-instance coordination (Deel A): maintain the leadership lease so exactly one instance
+  //? runs the background loops (below) + so the per-workspace write-lease is exercised. Harmless
+  //? on a single instance (always the leader). See server/orchestrator/cluster.ts.
+  startLeaderElection();
+
+  //? Cross-instance realtime fan-out — only a real N-instance deploy needs it (adds Redis pub/sub),
+  //? so it is opt-in. With WS_MULTI_INSTANCE=1 a broadcast on one instance reaches sockets on the
+  //? others via the socket.io Redis adapter.
+  if ((process.env.WS_MULTI_INSTANCE ?? '') === '1') {
+    const io = getIoInstance();
+    if (io) {
+      attachSocketRedisAdapter(io);
+      console.log('[cluster] cross-instance socket adapter attached (WS_MULTI_INSTANCE=1).');
+    }
+  }
+
   //? Self-heal per-ticket proxy routes left dangling by a previous run (best-effort, does not
   //? block startup). Drops caddy `ws-route-*` entries whose upstream container is gone.
   void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
-  //? Periodically evict idle live editors + prune their routes (CapacityManager).
+  //? Periodically evict idle live editors + prune their routes (CapacityManager). Leader-gated.
   startEditorReaper();
-  //? Continuously sync GitLab issues → tickets for every workspace with a linked repo.
+  //? Continuously sync GitLab issues → tickets for every workspace with a linked repo. Leader-gated.
   startGitlabSyncPoller();
 })().catch((err) => {
   console.error('[server] failed to start:', err);

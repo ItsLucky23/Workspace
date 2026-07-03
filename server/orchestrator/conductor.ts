@@ -21,6 +21,7 @@ import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncGitlabIssues } from '../git/gitlabSync';
+import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { isEditorRunning } from './editGuard';
@@ -339,63 +340,63 @@ async function provisionContainers(workspaceId: string, activated: { key: string
   }
 }
 
-//? The single-writer serial chain — each action awaits the previous one, so there
-//? is never a concurrent authoritative write in this process.
-let chain: Promise<unknown> = Promise.resolve();
+//? The single-writer chains. Login-only ops share ONE global in-process chain; workspace-scoped
+//? ops each serialise on their OWN in-process chain (`wsChains`, one entry per workspace, so
+//? unrelated workspaces run in parallel — no head-of-line blocking) AND, inside it, hold the
+//? cross-instance workspace lease. Multi-instance-safe: see server/orchestrator/cluster.ts.
+let globalChain: Promise<unknown> = Promise.resolve();
+const wsChains = new Map<string, Promise<unknown>>();
 
 //? Enqueue a control action + return the allocated signal seq (the ack payload).
-//? Idempotency: a repeated clientRequestId is dropped (dedup) — see §6.4.
-const seenRequestIds = new Set<string>();
-
 export async function enqueueControlAction(action: ControlAction): Promise<{ signalSeq: number; result?: unknown }> {
-  //? Dedup key is namespaced by workspace so a clientRequestId collision across
-  //? tenants (or a client that reused an id) can never suppress a real write in a
-  //? DIFFERENT workspace. Idempotent re-sends of the SAME action still dedup.
+  //? Dedup key is namespaced by workspace so a clientRequestId collision across tenants (or a
+  //? reused id) can never suppress a real write in a DIFFERENT workspace. Cross-instance (survives
+  //? which instance the re-send lands on) + TTL-bounded, replacing the old in-process Set.
   const dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
-  if (seenRequestIds.has(dedupKey)) {
-    // Duplicate re-send — already enqueued; return a benign ack (no double write).
+  if (!(await claimActionOnce(dedupKey))) {
+    // Duplicate re-send — already claimed; return a benign ack (no double write).
     return { signalSeq: -1 };
   }
-  seenRequestIds.add(dedupKey);
 
-  //? Login-only ops (create-workspace / accept-invite) carry NO workspace yet: there
-  //? is no per-workspace audit log to append to, and `workspaceId: ''` is not a valid
-  //? ObjectId (the signal write would throw and the chain would swallow it, silently
-  //? dropping the op). Run them on the serial chain WITHOUT a signal (they use the
-  //? plain client, so they need no tenant scope either).
+  //? Login-only ops (create-workspace / accept-invite) carry NO workspace yet: there is no
+  //? per-workspace audit log to append to, and `workspaceId: ''` is not a valid ObjectId (the
+  //? signal write would throw and the chain would swallow it, silently dropping the op). Run them
+  //? on the global serial chain WITHOUT a signal or workspace-lease (independent rows; no tenant).
   if (!action.workspaceId) {
     let result: unknown;
-    const link = chain.then(async () => { result = await executeAction(action); }).catch((error: unknown) => {
+    const link = globalChain.then(async () => { result = await executeAction(action); }).catch((error: unknown) => {
       console.error(`[conductor] action ${action.op} failed:`, error);
     });
-    chain = link;
-    //? AWAIT the write before returning so the caller's post-ack refetch reliably
-    //? sees it (the old fire-and-forget ack raced the async write → "updates only
-    //? half the time"). Serial ordering is preserved: `link` resolves after all
-    //? prior queued actions + this one.
+    globalChain = link;
+    //? AWAIT the write before returning so the caller's post-ack refetch reliably sees it. Serial
+    //? ordering is preserved: `link` resolves after all prior queued global actions + this one.
     await link;
     return { signalSeq: -1, result };
   }
 
-  const signalSeq = await nextSignalSeq(action.workspaceId);
-
-  //? Append the durable (append-only, B-O6) signal, then run the write — both
-  //? inside the serial chain so there is never a concurrent authoritative write.
+  //? Workspace-scoped: queue on this workspace's in-process chain, and inside it hold the
+  //? cross-instance lease while allocating the seq, appending the durable (append-only, B-O6)
+  //? signal, and running the authoritative write — so there is never a concurrent authoritative
+  //? write for this workspace, on this instance OR another.
+  const workspaceId = action.workspaceId;
   const signalPayload = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
   let result: unknown;
-  const link = chain.then(async () => {
-    await runInTenant(action.workspaceId, async () => {
+  let signalSeq = -1;
+  const prev = wsChains.get(workspaceId) ?? Promise.resolve();
+  const link = prev.then(() => withWorkspaceLease(workspaceId, async () => {
+    signalSeq = await nextSignalSeq(workspaceId);
+    await runInTenant(workspaceId, async () => {
       await prisma.workspaceSignal.create({
-        data: { workspaceId: action.workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
+        data: { workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
       });
       result = await executeAction(action);
     });
-  }).catch((error: unknown) => {
+  })).catch((error: unknown) => {
     console.error(`[conductor] action ${action.op} failed:`, error);
   });
-  chain = link;
-  //? AWAIT completion so the route responds only AFTER the write lands, and so the
-  //? realtime `_sync` route can broadcast the write's delta (`result`). Serial-safe.
+  wsChains.set(workspaceId, link);
+  //? AWAIT completion so the route responds only AFTER the write lands, and so the realtime
+  //? `_sync` route can broadcast the write's delta (`result`). Serial-safe per workspace.
   await link;
 
   return { signalSeq, result };

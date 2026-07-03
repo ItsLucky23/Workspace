@@ -9,6 +9,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { decryptSecret } from '../crypto/secretBox';
 import { broadcastTicketDelta } from '../read/broadcast';
+import { isLeader } from '../orchestrator/cluster';
 
 const SYNC_INTERVAL_MS = Number(process.env.WS_GITLAB_SYNC_MIN ?? '5') * 60_000;
 
@@ -90,6 +91,8 @@ export function startGitlabSyncPoller(): void {
 }
 
 async function pollLinkedWorkspaces(): Promise<void> {
+  //? Only the leader instance polls — otherwise N instances each hammer the GitLab API.
+  if (!isLeader()) return;
   const prisma = getPrismaClient();
   const [err, workspaces] = await tryCatch(() => prisma.workspace.findMany({ where: { gitlabTokenEnc: { not: null }, gitlabUrl: { not: null } }, select: { id: true } }));
   if (err || workspaces === null) return;

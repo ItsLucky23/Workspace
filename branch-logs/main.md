@@ -1047,3 +1047,12 @@ De GitLab-loop dichtgemaakt (bovenop de ingestion uit ADR 0014):
 
 Multi-instance (uitgesteld — schaal), billing (later), egress-control + edge-auth-membership (vóór multi-tenant/klanten) blijven bewust open — gebruiker-beslist.
 **Verificatie**: server-tsc 0, eslint 0, integration 14/14. Env: WS_GITLAB_SYNC_MIN.
+
+## 2026-07-03 — Multi-instance safety Deel A (ADR 0015, gebruiker: "in 1 keer goed")
+
+De engine multi-instance-VEILIG gemaakt (nog 1 instance draaiend; opschalen = later config):
+- **`server/orchestrator/cluster.ts`** — 3 Redis-primitieven (altijd aan, verwaarloosbare kost bij 1 instance): **leader-election** (`isLeader` — poller + reaper gaten hierop, geen N× dubbel werk), **`withWorkspaceLease`** (per-workspace cross-instance mutual exclusion), **`claimActionOnce`** (cross-instance dedup, vervangt de lekkende in-process Set).
+- **Conductor** `enqueueControlAction` herschreven: globale `chain` → **per-workspace in-process chains** (geen head-of-line-blocking) + de per-workspace lease binnenin. `nextSignalSeq` was al `redis.incr` (atomisch) → onaangeraakt.
+- **`attachSocketRedisAdapter`** gated achter `WS_MULTI_INSTANCE=1` (cross-instance realtime; alleen bij echt opschalen).
+
+**Verificatie**: server-tsc 0, eslint 0, integration 14/14 (nieuwe pad tegen echte Redis), **clusterSpike GROEN** — dedup-first-wins, same-workspace geserialiseerd (geen overlap), verschillende workspaces parallel. **Deel B** (N instances draaien + flag) = uitgesteld, puur config.
