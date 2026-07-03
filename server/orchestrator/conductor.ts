@@ -27,6 +27,7 @@ import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { isEditorRunning } from './editGuard';
+import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta } from '../read/broadcast';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -302,9 +303,6 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? wipes a real AI open-question). One per defer reason.
 const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
 const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
-//? Host-wide cap on concurrent autonomous turns (CapacityManager). A soft cap: a burst may race
-//? past it, but steady-state honours it; a completing turn frees a slot (re-enter to run).
-const MAX_CONCURRENT_TURNS = Number(process.env.WS_MAX_CONCURRENT_TURNS ?? '4');
 
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
@@ -325,33 +323,57 @@ async function provisionContainers(workspaceId: string, activated: { key: string
   for (const { key } of activated) {
     void tryCatch(async () => {
       //? Pause (C2): a per-ticket pause skips just this ticket.
-      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { status: true } });
+      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { status: true, priority: true } });
       if (t?.status === 'paused') { console.log(`[conductor] runStage ${key}@${stageId} skipped — ticket paused`); return; }
-      //? CapacityManager: don't exceed the host-wide concurrent-turn budget. Deferred tickets
-      //? stay in-stage with a banner; a completing turn frees a slot (re-enter to run).
-      const busy = await prisma.agentSession.count({ where: { kind: 'worker', status: 'busy' } });
-      if (busy >= MAX_CONCURRENT_TURNS) {
-        console.log(`[conductor] runStage ${key}@${stageId} deferred — ${String(busy)}/${String(MAX_CONCURRENT_TURNS)} turns busy (capacity)`);
-        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: CAPACITY_DEFER_MSG } });
-        await broadcastTicketDelta(prisma, workspaceId, [key]);
-        return;
-      }
       //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in the
-      //? live VS Code — that races their worktree. Skip, set a ticket banner + broadcast it so the
-      //? UI shows WHY the AI didn't run; re-entering (editor closed) re-triggers it.
+      //? live VS Code — that races their worktree. Checked BEFORE reserving a capacity slot so an
+      //? edit-locked ticket never consumes the budget. Skip + banner + broadcast; re-entering
+      //? (editor closed) re-triggers it.
       if (await isEditorRunning(workspaceId, key)) {
         console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open (edit-lock)`);
         await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: EDITOR_DEFER_MSG } });
         await broadcastTicketDelta(prisma, workspaceId, [key]);
         return;
       }
+      //? CapacityManager (#12): ATOMIC admission — reserve a slot before the turn runs. An
+      //? `urgent` ticket (the hotfix/security tier) force-passes the cap (merge still needs
+      //? approval, ADR 0018). A rejected turn is parked on the FIFO queue + banner; a completing
+      //? turn releases its slot and drains the next parked turn (`drainCapacityQueue`).
+      const urgent = t?.priority === 'urgent';
+      const admitted = await acquireSlot(key, urgent, Date.now());
+      if (!admitted) {
+        const queued = await enqueueDeferred({ workspaceId, key, stageId });
+        console.log(`[conductor] runStage ${key}@${stageId} deferred — capacity full${queued ? ' (queued)' : ' (already queued)'}`);
+        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: CAPACITY_DEFER_MSG } });
+        await broadcastTicketDelta(prisma, workspaceId, [key]);
+        return;
+      }
       //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
       await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
-      await runStage(workspaceId, key, stageId);
+      try {
+        await runStage(workspaceId, key, stageId);
+      } finally {
+        //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
+        //? next parked turn in — the queue drains at the pace turns complete.
+        await releaseSlot(key);
+        void drainCapacityQueue();
+      }
     }).then(([error]) => {
       if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
     });
   }
+}
+
+//? Pull the next capacity-deferred turn off the FIFO queue and re-provision it at its CURRENT
+//? stage (it may have moved since it was parked). No-op when the queue is empty or the ticket is
+//? no longer activated (moved/archived). Called on every slot release, so the backlog drains
+//? one turn per completion without any polling.
+async function drainCapacityQueue(): Promise<void> {
+  const next = await dequeueDeferred();
+  if (!next) return;
+  const t = await prisma.ticket.findFirst({ where: { workspaceId: next.workspaceId, key: next.key }, select: { branch: true, stageId: true } });
+  if (!t?.branch) return;
+  void provisionContainers(next.workspaceId, [{ key: next.key, branch: t.branch }], t.stageId);
 }
 
 //? The single-writer chains. Login-only ops share ONE global in-process chain; workspace-scoped
