@@ -940,9 +940,11 @@ gaten opgepakt die niemand deed (Track C4 + reconcile). Alleen míjn files (cond
 hun editor-files zijn untracked/actief → niet aangeraakt.
 
 - **Edit-lock (`server/orchestrator/editGuard.ts`)** — de AI-engine en een mens' live editor delen
-  container + `/work`; tegelijk draaien = worktree-race. `isEditorRunning` (docker exec pgrep
-  openvscode) + engine-kant gewired in `conductor.provisionContainers`: **skip de auto-turn als er
-  een live editor open is** (+log). `ticketEditGuard` (userEditable + busy `worker` AgentSession)
+  container + `/work`; tegelijk draaien = worktree-race. `isEditorRunning` (LISTEN-socket op de
+  editor-poort 3000 via `/proc/net/tcp` — **procps-vrij**, want `pgrep`/`ps` zitten NIET in de
+  slim base-image; eerste `pgrep`-versie gaf daardoor altijd false, gefixt + spike-geverifieerd)
+  + engine-kant gewired in `conductor.provisionContainers`: **skip de auto-turn als er een live
+  editor open is** (+log). `ticketEditGuard` (userEditable + busy `worker` AgentSession)
   als kant-en-klare helper voor de editor-open-flow — **de andere AI hoeft 'm alleen aan te roepen
   in `openEditor`** (één regel, geflagd). Was C4 = "DATA ONLY, unenforced".
 - **Proxy boot-reconcile (`server/proxy/reconcileOnBoot.ts`, aangeroepen in `server.ts` na listen)**

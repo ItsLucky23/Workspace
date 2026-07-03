@@ -14,17 +14,23 @@ import { spawn } from 'node:child_process';
 import type { PrismaClient } from '@prisma/client';
 import { containerName, DOCKER_BIN } from '../container/runtime';
 
-//? Is a live openvscode-server process running inside the ticket's container? (⇒ a human is
-//? editing.) Best-effort: no container / docker down / not running all resolve to `false` —
-//? there is then nothing to protect and the engine proceeds normally.
+//? The in-container editor port (openvscode-server, editorServer.ts EDITOR_IN_CONTAINER_PORT).
+const EDITOR_PORT = Number(process.env.WS_EDITOR_PORT ?? '3000');
+
+//? Is the live editor (openvscode-server) serving inside the ticket's container? (⇒ a human is
+//? editing /work.) Detected by a socket on the editor port in the container's `/proc/net/tcp` —
+//? deliberately NOT `pgrep`/`ps` (procps is absent from the slim base image, so those always
+//? failed) and it never self-matches. Best-effort: no container / docker down / not serving all
+//? resolve to `false`, so the engine simply proceeds.
 export function isEditorRunning(workspaceId: string, ticketKey: string): Promise<boolean> {
   const name = containerName(workspaceId, ticketKey);
+  const hex = EDITOR_PORT.toString(16).toUpperCase().padStart(4, '0'); //? 3000 → '0BB8'
   return new Promise((resolve) => {
-    const proc = spawn(DOCKER_BIN, ['exec', name, 'pgrep', '-f', 'openvscode-server'], { windowsHide: true });
+    const proc = spawn(DOCKER_BIN, ['exec', name, 'sh', '-c', `grep -i ':${hex}' /proc/net/tcp /proc/net/tcp6 2>/dev/null`], { windowsHide: true });
     let out = '';
     proc.stdout.on('data', (d) => { out += String(d); });
     proc.on('error', () => { resolve(false); });
-    proc.on('close', (code) => { resolve(code === 0 && out.trim().length > 0); });
+    proc.on('close', () => { resolve(out.trim().length > 0); });
   });
 }
 
