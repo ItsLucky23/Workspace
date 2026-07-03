@@ -20,6 +20,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
+import { syncGitlabIssues } from '../git/gitlabSync';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { isEditorRunning } from './editGuard';
@@ -282,9 +283,13 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? 6-7): launch the container + drive an in-container claude turn on the ticket. Gated on
 //? the Docker daemon (a host without Docker still gets the full git/worktree layer). Each
 //? ticket's turn runs concurrently; errors are logged, never surfaced into the stage move.
-//? The ticket banner set when a turn is deferred because a human editor is open; matched
-//? exactly to clear it again (never wipes a real AI open-question).
+//? The ticket banners set when a turn is deferred; matched exactly to clear them again (never
+//? wipes a real AI open-question). One per defer reason.
 const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
+const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
+//? Host-wide cap on concurrent autonomous turns (CapacityManager). A soft cap: a burst may race
+//? past it, but steady-state honours it; a completing turn frees a slot (re-enter to run).
+const MAX_CONCURRENT_TURNS = Number(process.env.WS_MAX_CONCURRENT_TURNS ?? '4');
 
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
@@ -307,6 +312,15 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? Pause (C2): a per-ticket pause skips just this ticket.
       const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { status: true } });
       if (t?.status === 'paused') { console.log(`[conductor] runStage ${key}@${stageId} skipped — ticket paused`); return; }
+      //? CapacityManager: don't exceed the host-wide concurrent-turn budget. Deferred tickets
+      //? stay in-stage with a banner; a completing turn frees a slot (re-enter to run).
+      const busy = await prisma.agentSession.count({ where: { kind: 'worker', status: 'busy' } });
+      if (busy >= MAX_CONCURRENT_TURNS) {
+        console.log(`[conductor] runStage ${key}@${stageId} deferred — ${String(busy)}/${String(MAX_CONCURRENT_TURNS)} turns busy (capacity)`);
+        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: CAPACITY_DEFER_MSG } });
+        await broadcastTicketDelta(prisma, workspaceId, [key]);
+        return;
+      }
       //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in the
       //? live VS Code — that races their worktree. Skip, set a ticket banner + broadcast it so the
       //? UI shows WHY the AI didn't run; re-entering (editor closed) re-triggers it.
@@ -316,8 +330,8 @@ async function provisionContainers(workspaceId: string, activated: { key: string
         await broadcastTicketDelta(prisma, workspaceId, [key]);
         return;
       }
-      //? Editor gone → clear a prior defer banner (targeted; leaves real open-questions intact).
-      await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: EDITOR_DEFER_MSG }, data: { needsInput: null } });
+      //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
+      await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
       await runStage(workspaceId, key, stageId);
     }).then(([error]) => {
       if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
@@ -633,10 +647,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}) } });
       return;
     }
-    case 'gitlab-verify':
-    case 'gitlab-resync': {
-      //? Verify = read-only; resync = kick a GitLab sync (Fase 2 engine). No-op write in Fase 1.
+    case 'gitlab-verify': {
+      //? Read-only connectivity check (Fase 2 engine wires a real verify). No-op write.
       return;
+    }
+    case 'gitlab-resync': {
+      //? Pull the linked project's open GitLab issues + upsert them as tickets (ingestion), then
+      //? broadcast the touched tickets so the board updates live.
+      const res = await syncGitlabIssues(prisma, action.workspaceId);
+      if (res.ok && res.keys.length > 0) await broadcastTicketDelta(prisma, action.workspaceId, res.keys);
+      return res;
     }
     case 'save-git-config': {
       //? Persist the per-workspace git strategy + push policy (branchStrategy.ts). Normalize

@@ -1028,3 +1028,13 @@ De andere agent leverde `ProxyRoute.forwardAuth` + `server/http/editorAuthCheck.
 - **Browser-pixel**: geblokkeerd door (1) een agent-browser-daemon-bug (hangt/respawnt, negeert `--ignore-https-errors`), (2) de interne-CA-cert — de CA in de Windows-truststore installeren werd (terecht) door de auto-mode geweigerd (machine-trust-wijziging). `agent-browser.json` staat nu `*.localhost` + `ignoreHttpsErrors` toe. De gebruiker ziet de editor in de browser met `caddy trust` (of de warning accepteren).
 
 **Eindstand 7 items:** 1,2,3,5,6,7 volledig end-to-end bewezen; **item 4 app-flow bewezen door de backend tot het echte subdomein (302)** — alleen de visuele browser-render hangt op tooling + de gated CA-trust. Commits t/m 784fb9b (ItsLucky23, niet gepusht).
+
+## 2026-07-03 — Markt-hardening: GitLab-ingestion + CapacityManager + Sentry (ADR 0014)
+
+Batch richting markt-klaar, engine/proxy-kant:
+- **GitLab issue-ingestion** (`server/git/gitlabSync.ts` + `gitlab-resync`-op, was no-op): haalt open issues via de GitLab REST-API (forge-token-model) + upsert als tickets `DEV-<iid>` — nieuw → `unrefined`, bestaand → title/labels/desc ververst (pipeline-positie behouden) + broadcast. De ingestion-helft van de loop (webhook-continu-sync + push-back = Fase-2).
+- **CapacityManager**: `provisionContainers` defert een turn (banner + broadcast, blijft in-stage) bij `busy workers >= WS_MAX_CONCURRENT_TURNS` (default 4). Soft-cap (burst kan racen; steady-state gehonoreerd) — hard-cap vraagt atomic admission/queue (Fase-2).
+- **Sentry error-tracking**: geregistreerd bij boot als `SENTRY_DSN` gezet (`createSentryAdapter` + `registerErrorTracker`).
+- env-template: WS_MAX_CONCURRENT_TURNS, WS_EDITOR_IDLE_MIN, WS_REAP_INTERVAL_MIN, WS_PREVIEW_PORT, SENTRY_DSN.
+
+**Verificatie**: server/front-tsc 0, eslint 0, ai:lint 0, integration 14/14. **Nog open voor markt** (echte grote brokken): GitLab webhook-continu-sync + AI-state-push-back, per-workspace edge-auth-membership, egress-control (07b §6), multi-instance (Fase-2), billing-enforcement.

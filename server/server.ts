@@ -64,6 +64,14 @@ import { registerEditorAuthCheck } from './http/editorAuthCheck';
   // const StatsD = (await import('hot-shots')).default;
   // registerErrorTracker(createDatadogAdapter({ tracer, statsd: new StatsD() }));
 
+  //? Error tracking — activate the Sentry adapter when SENTRY_DSN is set (else it stays inactive
+  //? and errors just pass through). Captures across the server via the framework's error trackers.
+  if ((process.env.SENTRY_DSN ?? '').length > 0) {
+    const { createSentryAdapter, registerErrorTracker } = await import('@luckystack/error-tracking');
+    registerErrorTracker(createSentryAdapter());
+    console.log('[server] Sentry error-tracking active.');
+  }
+
   //? Minimal static-file fallbacks. Most apps will swap these out for
   //? Vite-built static handlers in production; the server just needs SOME
   //? handler if you serve any static asset alongside `/api` and `/sync`.
