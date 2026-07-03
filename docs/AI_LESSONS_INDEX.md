@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (9)
+## Lessons (10)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -22,6 +22,7 @@
 | 0007 | luckystack-dev does not reliably hot-reload server-side code — a child-restart can respawn STALE code; only a full supervisor-tree restart loads server edits | 🟠 high | dev-workflow | dev-server, hot-reload, conductor, sync, testing, restart | `docs/lessons/0007-dev-server-server-code-no-hot-reload.md` |
 | 0008 | The claude-cli provider runs in a scratch cwd — AI-gen prompts must be pure-context | 🟡 medium | ai-provider, docs-gen, dockerfile-gen | ai, claude-cli, prompt | `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md` |
 | 0009 | Driving claude autonomously in a container — CLAUDE_CONFIG_DIR, bypassPermissions, sh-c Stop hook | 🟠 high | orchestrator, stage-runner, container | claude-cli, docker, engine | `docs/lessons/0009-in-container-claude-drive-gotchas.md` |
+| 0010 | A static import at server.ts top can build the default Prisma client before secrets resolve | 🟠 high | server/boot, secret-manager, prisma | — | `docs/lessons/0010-static-import-breaks-secret-resolution-order.md` |
 
 ## Takeaways
 
@@ -96,3 +97,11 @@ Any feature that drives `claude-cli` with repo context in the PROMPT (docs-gen, 
 Any feature that drives an interactive `claude` over `docker exec` must: set `CLAUDE_CONFIG_DIR` explicitly (no `~`), pass `--permission-mode bypassPermissions` for autonomous (non-human) turns, and wrap redirecting hook commands in `sh -c`. Also: never `term.kill()` a node-pty on Windows (its conpty console-list agent can crash the host process) — `pkill` the process inside the container so the exec exits naturally. See `server/orchestrator/stageRunner.ts` + [[ai-provider-abstraction]].
 
 → `docs/lessons/0009-in-container-claude-drive-gotchas.md`
+
+### 0010 — A static import at server.ts top can build the default Prisma client before secrets resolve
+
+**0010** · high · server/boot, secret-manager, prisma · 2026-07-03
+
+Background-loop starters whose module graph reaches the Conductor (or any module-level `getPrismaClient()`) must be **dynamically imported** in `server.ts` AFTER `initSecretManager`: `const { startTicketWatchdog } = await import('./orchestrator/watchdog'); startTicketWatchdog();` — this is the same pattern the error-tracking adapters already use. Symptom → cause: "URL must start with mongo" from ONLY the background loops (not the routes) ⇒ a default client was constructed pre-secret-resolution ⇒ find the new static import that pulled the Conductor into the boot graph and make it dynamic. Related Mongo gotcha found the same day: `prisma.findMany({ where: { field: null } })` does NOT match documents where the optional field is unset — filter such fields in code, not the query.
+
+→ `docs/lessons/0010-static-import-breaks-secret-resolution-order.md`

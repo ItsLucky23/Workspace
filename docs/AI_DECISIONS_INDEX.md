@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (20)
+## Decisions (21)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -33,6 +33,7 @@
 | 0019 | Ticket priority (one field, `urgent` = hotfix tier) + notification preferences | 🟢 accepted | workspaces, schema, tickets, notifications, capacity | — | `docs/decisions/0019-ticket-priority-notification-preferences.md` |
 | 0020 | CapacityManager — atomic hard-cap admission queue + urgent force-through | 🟢 accepted | workspaces, orchestrator, capacity, concurrency, multi-instance, redis | — | `docs/decisions/0020-capacity-manager-hard-cap.md` |
 | 0021 | Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible) | 🟢 accepted | workspaces, mr-review, git, merge, approvals | — | `docs/decisions/0021-real-git-merge.md` |
+| 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | 🟢 accepted | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
 
 ## Summaries
 
@@ -197,6 +198,14 @@ A real admission-control module, `server/orchestrator/capacity.ts`, backed entir
 **`repoStore.mergeBranches(workspaceId, target, source, strategy)`** does a real merge in the per-workspace **bare clone** via a THROWAWAY merge-worktree (never a long-lived checkout): add a worktree on `target`, `git merge` (`--no-ff` / `--squash` / `--ff-only` per the MR's strategy), and on success the target ref advances. On conflict the merge is **aborted** (target untouched) and the conflicting files are returned. `revertMergeCommit` rolls a merge back with a history-preserving **git-revert** (auto `-m 1` for a real merge commit, plain revert for a squash), never a destructive reset. **Serial by the existing lease.** Merges run inside the Conductor's op switch, which already holds the per-workspace write-lease (ADR 0015), so two merges can't race the same target. No new lock. **`mergeMr` enforces the approval gate:** it requires ≥1 approval whose `headSha` equals the MR's current head (a *stale* approval — cast before the branch advanced — does not count). Only then does it call `mergeBranches`, record the merge commit sha (`MergeRequest.mergedSha`, new field) for rollback, and flip status. On conflict it flips status to `conflict` and returns the files. **`mr-rollback` control-op** (+ RBAC `workTickets`, + the `mrAction` route's action map) reverts a merged MR and reopens it for re-review — mirroring the existing mr-* ops, no new *verb* on the frozen AI channel. **UI:** the Merge button is disabled until a fresh approval exists (with a tooltip); a conflict shows a `conflict` status + a "Retry merge"; a merged MR shows a **Revert** button; the transient merge/rollback outcome (no-approval / conflict + files) is toasted via a non-persisted `actionResult` carried on the returned view. i18n en/nl/de/fr.
 
 → `docs/decisions/0021-real-git-merge.md`
+
+### 0022 — Crash-recovery watchdog — boot resume + stuck/idle detection
+
+**0022** · accepted · tags: workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance · 2026-07-03
+
+`server/orchestrator/watchdog.ts`, both entry points **leader-gated** (ADR 0015 — exactly one instance recovers):
+
+→ `docs/decisions/0022-crash-recovery-watchdog.md`
 
 ## Code governed by decisions
 
