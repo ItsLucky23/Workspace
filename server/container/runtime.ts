@@ -17,6 +17,9 @@ const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 //? Exported so the terminal bridge spawns the SAME docker binary (Windows conpty can't
 //? resolve a bare `docker` — WS_DOCKER_BIN carries the full path there).
 export const DOCKER_BIN = process.env.WS_DOCKER_BIN ?? 'docker';
+//? Port the in-container pty-agent (07b §9, #11) listens on; published to the host loopback per
+//? container. Matches PTY_AGENT_PORT in docker/pty-agent/agent.mjs.
+export const PTY_AGENT_PORT = Number(process.env.WS_PTY_AGENT_PORT ?? '7681');
 
 interface DockerResult { code: number; out: string; err: string }
 
@@ -98,6 +101,9 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     '--user', 'agent', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '512', '--memory', '3g', '--memory-swap', '3g', '--cpus', '2',
     '--restart', 'unless-stopped',
+    //? Publish the in-container pty-agent (07b §9, #11) to the host loopback on an ephemeral port;
+    //? the terminal bridge resolves it via `docker inspect` (ptyAgentClient.resolvePtyAgentPort).
+    '-p', `127.0.0.1::${String(PTY_AGENT_PORT)}`,
     ...egressLaunchArgs(),
     '--label', `org.workspaces.workspace=${workspaceId}`, '--label', `org.workspaces.ticket=${ticketKey}`,
     image,

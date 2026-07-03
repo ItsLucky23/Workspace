@@ -10,11 +10,18 @@
 
 import { getLogger, registerSocketMiddleware } from '@luckystack/core';
 import * as pty from 'node-pty';
-import { DOCKER_BIN, isWorkspacesContainer } from '../container/runtime';
+import { DOCKER_BIN, PTY_AGENT_PORT, docker, isWorkspacesContainer } from '../container/runtime';
+import { connectPtyAgent, resolvePtyAgentPort } from '../container/ptyAgentClient';
 
-//? `container` targets a ticket's L3 container → the bridge execs a shell INTO it
-//? (07b §9 relay) instead of the local dev host-shell. Absent = the dev host shell.
+//? `container` targets a ticket's L3 container → the bridge relays the ticket's in-container
+//? pty-agent (07b §9, durable scrollback + crash-resume) when one is published, else falls back
+//? to a host `docker exec` PTY. Absent = the local dev host-shell.
 interface TermMsg { id: string; cols?: number; rows?: number; data?: string; container?: string }
+
+//? A uniform terminal handle so a node-pty (host shell / docker exec) and the pty-agent relay wire
+//? to the ws-term:* socket identically.
+interface TermHandle { write: (data: string) => void; resize: (cols: number, rows: number) => void; kill: () => void }
+const fromPty = (term: pty.IPty): TermHandle => ({ write: (d) => { term.write(d); }, resize: (c, r) => { term.resize(c, r); }, kill: () => { term.kill(); } });
 
 let registered = false;
 
@@ -34,12 +41,11 @@ export const registerWorkspacesTerminalHooks = (): void => {
   );
 
   registerSocketMiddleware((socket, next) => {
-    const sessions = new Map<string, pty.IPty>();
+    const sessions = new Map<string, TermHandle>();
 
-    //? Wire a spawned PTY to this socket's ws-term relay (out/exit). Same for both the
-    //? dev host shell and a container exec — only the spawn differs.
-    const attach = (id: string, term: pty.IPty): void => {
-      sessions.set(id, term);
+    //? Wire a node-pty (host shell / docker exec) to this socket's ws-term relay (out/exit).
+    const attachPty = (id: string, term: pty.IPty): void => {
+      sessions.set(id, fromPty(term));
       term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
       term.onExit(({ exitCode }) => { socket.emit('ws-term:exit', { id, exitCode }); sessions.delete(id); });
     };
@@ -50,15 +56,27 @@ export const registerWorkspacesTerminalHooks = (): void => {
       const opts = { name: 'xterm-256color', cols: payload.cols ?? 80, rows: payload.rows ?? 24, cwd: process.cwd(), env: { ...baseEnv, TERM: 'xterm-256color' } };
       const target = payload.container?.trim();
       if (target) {
-        //? Container terminal: exec a shell INTO the ticket's container — but ONLY after
-        //? confirming it's one of ours (never exec into an arbitrary host container).
+        //? Container terminal: ONLY after confirming it's one of ours (never touch an arbitrary
+        //? host container). Prefer the durable in-container pty-agent (07b §9) — its scrollback
+        //? survives an orchestrator restart + reseeds on reconnect; fall back to a `docker exec`
+        //? PTY when no agent port is published (a container that predates the agent).
         void (async () => {
           if (sessions.has(id) || !(await isWorkspacesContainer(target))) return;
-          attach(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts));
+          const agentPort = await resolvePtyAgentPort(docker, target, PTY_AGENT_PORT);
+          if (agentPort !== null) {
+            const conn = connectPtyAgent('127.0.0.1', agentPort, {
+              onData: (data) => { socket.emit('ws-term:out', { id, data }); },
+              onExit: (exitCode) => { socket.emit('ws-term:exit', { id, exitCode }); sessions.delete(id); },
+              onError: () => { if (!sessions.has(id)) attachPty(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts)); },
+            });
+            if (!sessions.has(id)) { sessions.set(id, { write: conn.write, resize: conn.resize, kill: conn.close }); conn.resize(opts.cols, opts.rows); }
+            return;
+          }
+          attachPty(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts));
         })();
         return;
       }
-      attach(id, pty.spawn(shell, [], opts));
+      attachPty(id, pty.spawn(shell, [], opts));
     });
 
     socket.on('ws-term:input', (payload: TermMsg) => {

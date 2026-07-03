@@ -50,11 +50,19 @@ RUN curl -fsSL "https://github.com/gitpod-io/openvscode-server/releases/download
     && ln -s /opt/openvscode/bin/openvscode-server /usr/local/bin/openvscode-server
 LABEL org.workspaces.openvscode-version="${OVS_VERSION}"
 
+#? The in-container pty-agent (07b §9, #11): owns a shell PTY + a DURABLE scrollback ring persisted
+#? to the /work volume, so a terminal survives an orchestrator restart + reseeds on reconnect. Baked
+#? here (node-pty is the global install above, resolved via NODE_PATH). BUILD CONTEXT = REPO ROOT:
+#?   docker build -f docker/base.Dockerfile -t workspaces/base:0.1.0 .
+COPY docker/pty-agent/agent.mjs /opt/pty-agent/agent.mjs
+
 #? Non-root agent (07b §7): baked uid/gid; everything below runs as this user.
 RUN useradd --create-home --uid 10001 --shell /bin/bash agent
 USER agent
 WORKDIR /work
 
-#? Default: stay alive so the orchestrator can exec/attach PTYs per stage. Replaced by the
-#? pty-agent entrypoint once that program is baked in (07b §9).
-CMD ["sleep", "infinity"]
+#? Start the pty-agent in the background (it publishes its port; the orchestrator relays it), and
+#? keep the container alive with sleep so `docker exec` (claude turns, stage config) still works.
+#? The agent reloads its scrollback from /work/.pty on a container `--restart`. Env PTY_AGENT_PORT
+#? (default 7681) is published to the host loopback by `docker run -p 127.0.0.1::7681` (runtime.ts).
+CMD ["sh", "-c", "node /opt/pty-agent/agent.mjs & exec sleep infinity"]

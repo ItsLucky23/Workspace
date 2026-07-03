@@ -1205,3 +1205,19 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Bug gevonden + gefixt onderweg (lesson 0010):** een **statische** import van de watchdog in `server.ts` trok de Conductor's module-level `const prisma = getPrismaClient()` in de boot-graph VÓÓR `initSecretManager` → de default Prisma-client werd met de onopgeloste `DATABASE_URL`-pointer gebouwd → elke default-client-query faalde met *"URL must start with mongo"*. Fix: dynamic import ná secret-init. Idle-detectie had ook een Prisma+Mongo `{needsInput:null}`-quirk (matcht geen absent-velden) → in-code gefilterd via `isRealNeedsInput`.
 
 **Files touched:** `server/orchestrator/watchdog.ts` (nieuw), `server/orchestrator/conductor.ts`, `server/orchestrator/stageRunner.ts`, `server/server.ts`, `docs/decisions/0022-*.md`, `docs/lessons/0010-*.md` (nieuw), `tests/integration/watchdog.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #11: in-container pty-agent (durable scrollback, crash-resume) (ADR 0023)
+
+**User prompt:** /goal — item #11 (engine-volwassen-kern, 07b §9).
+
+**What I did:** Container-terminals waren een HOST `docker exec -it bash`-PTY (sterft met de backend, scrollback in host-geheugen). Nu een pty-agent-proces IN de container.
+- **`docker/pty-agent/agent.mjs`** (nieuw, gebakken in L1): spawnt een shell via de globale node-pty (`NODE_PATH`), houdt een byte-bounded **durable scrollback-ring** persisted naar een file op de `/work`-volume; line-JSON TCP-protocol. Op elke client-connect **replay** scrollback → dan live; meerdere clients delen de PTY; dode shell respawnt; op eigen startup **herlaadt** het de scrollback-file → overleeft container-`--restart` + orchestrator-crash.
+- **`server/container/ptyAgentClient.ts`** (nieuw): `connectPtyAgent` vertaalt agent-frames → `ws-term:*`-callbacks; `resolvePtyAgentPort` leest de gepubliceerde host-port via `docker inspect`.
+- **`runtime.ts`**: `launchTicketContainer` publiceert de agent-port (`-p 127.0.0.1::7681`); `PTY_AGENT_PORT`-const. **`base.Dockerfile`**: `COPY docker/pty-agent/agent.mjs` + CMD start de agent background + `sleep infinity` keepalive (claude-`docker exec` ongewijzigd).
+- **`workspacesTerminal.ts`**: container-terminal prefert de agent (durable), **fallback** naar `docker exec` als geen agent-port (pre-agent container) of relay-error — veilig op bestaande containers. XtermTerminal-client byte-identiek (geen frontend-change).
+
+**Verify:** server-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **25/25** (nieuw `ptyAgent.test.mts` **6/6**: draait de ECHTE agent lokaal door de ECHTE host-relay, geen Docker — live streaming, input, scrollback-**replay** op reconnect, én overleeft agent-restart via de volume-file = crash-resume). Backend clean-boot ("terminal PTY bridge registered").
+
+**Developer-actie (geflagd):** L1-rebuild om de agent in echte containers te activeren: `docker build -f docker/base.Dockerfile -t workspaces/base:0.1.0 .` (context = repo-root). Tot dan gebruiken containers de ongewijzigde `docker exec`-fallback. Claude-turn-PTY blijft op `docker exec` (crash-resume = ADR 0022 `--resume`); claude-driving onder de agent = latere slice.
+
+**Files touched:** `docker/pty-agent/agent.mjs` (nieuw), `docker/base.Dockerfile`, `server/container/ptyAgentClient.ts` (nieuw), `server/container/runtime.ts`, `server/hooks/workspacesTerminal.ts`, `docs/decisions/0023-*.md`, `tests/integration/ptyAgent.test.mts` (nieuw).
