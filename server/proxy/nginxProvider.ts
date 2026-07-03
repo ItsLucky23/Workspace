@@ -41,16 +41,28 @@ function run(cmd: string): Promise<{ ok: boolean; out: string }> {
 }
 
 //? One nginx `server` block per route — TLS-terminated with the wildcard cert, WebSocket-ready
-//? (Upgrade/Connection) so dev-server previews + HMR proxy correctly.
+//? (Upgrade/Connection) so dev-server previews + HMR proxy correctly. Edge-auth (Track B5): when
+//? `forwardAuth` is set, gate `location /` behind an `auth_request` subrequest to the
+//? /editor-auth-check endpoint (2xx proceeds, else 401).
 function renderRoute(r: ProxyRoute): string {
   const target = r.target.startsWith('http') ? r.target : `http://${r.target}`;
+  const authLoc = r.forwardAuth === undefined ? '' : `
+    location = /editor-auth-check {
+        internal;
+        proxy_pass http://${r.forwardAuth}/editor-auth-check;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header Cookie $http_cookie;
+    }`;
+  const authReq = r.forwardAuth === undefined ? '' : '\n        auth_request /editor-auth-check;';
   return `server {
     listen 443 ssl;
     http2 on;
     server_name ${r.host};
     ssl_certificate ${SSL_CERT};
-    ssl_certificate_key ${SSL_KEY};
-    location / {
+    ssl_certificate_key ${SSL_KEY};${authLoc}
+    location / {${authReq}
         proxy_pass ${target};
         proxy_http_version 1.1;
         proxy_set_header Host $host;

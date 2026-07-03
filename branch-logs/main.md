@@ -993,3 +993,15 @@ De control-plane-follow-ups uit ADR 0013, engine/conductor-kant:
 - **Pause-all realtime**: de `agentControl`-`_sync`-route retourneert `workspacePaused` voor pause-all/resume-all; nieuwe client-callback merget 't in `snap.workspacePaused` → banner update live i.p.v. op reload.
 
 **Verificatie**: server/front-tsc 0 (mijn files), eslint 0, ai:lint 0, integration 14/14. Geen overlap met de andere AI's `4210f21` (ticket-controls-UI + dev-command-UI — zij wireden de knoppen op míjn context-methods; de seams grijpen in elkaar). **Resterende verfijning**: een `lastActivity`-signaal van de editor-laag voor de eviction-reaper (nu connection-based, werkt zelfstandig).
+
+## 2026-07-03 — Edge-auth op editor/preview-subdomeinen (Track B5, de andere AI's geflagde 2 seams)
+
+De 2 seams die de andere AI's edge-auth (item 5) blokkeerden, engine/proxy-kant:
+- **`/editor-auth-check`-endpoint** (`server/http/editorAuthCheck.ts`, via `registerCustomRoute`): valideert de sessie (`readSession(ctx.token)`) → 204 (proceed) / 401 (block). Geregistreerd in `server.ts` bij boot. **Runtime-bewezen**: 401 zonder/met invalid sessie.
+- **`ProxyRoute.forwardAuth`-veld** + provider-support: `caddyProvider` prepend een `forward_auth`-handler (reverse_proxy → /editor-auth-check, 2xx=proceed); `nginxProvider` een `auth_request` + internal location. Unset ⇒ geen edge-auth (backward-compat).
+
+De andere AI zet nu `forwardAuth: '<backend>:<port>'` op de editor-route → subdomein is gated op de LuckyStack-sessie i.p.v. enkel de openvscode-token.
+
+**Deployment-note** (in de endpoint-file): de sessie-cookie moet subdomein-scoped zijn (`Domain=.<baseDomain>`) anders bereikt 'ie het subdomein niet. **Follow-up**: per-workspace-membership (nu: elke ingelogde user) — vraagt een host→workspace-lookup die de proxy-laag kan meedragen.
+
+**Verificatie**: server-tsc 0, eslint 0, endpoint runtime 401.

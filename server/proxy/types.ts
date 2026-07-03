@@ -14,6 +14,10 @@ export interface ProxyRoute {
   id: string;
   host: string;
   target: string;
+  //? Edge-auth (Track B5): when set, the proxy gates this route behind a `forward_auth`/
+  //? `auth_request` subrequest to this backend `host:port` (the `/editor-auth-check` endpoint,
+  //? server/http/editorAuthCheck.ts). A 2xx proceeds; anything else blocks. Unset ⇒ no edge-auth.
+  forwardAuth?: string;
 }
 
 export interface ProxyResult {

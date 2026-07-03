@@ -4,6 +4,7 @@
 //? only ever prunes OUR routes and never touches routes another driver owns on the same server.
 
 import { tryCatch } from '@luckystack/core';
+import { EDITOR_AUTH_PATH } from '../http/editorAuthCheck';
 import type { ProxyProvider, ProxyResult, ProxyRoute } from './types';
 
 const ADMIN = process.env.WS_CADDY_ADMIN ?? 'http://localhost:2019';
@@ -36,10 +37,18 @@ export const caddyProvider: ProxyProvider = {
   //? array member, so we drop any same-id route first.
   async upsertRoute(route: ProxyRoute): Promise<ProxyResult> {
     await this.removeRoute(route.id);
+    //? Edge-auth (Track B5): prepend a forward_auth subrequest — a GET to the /editor-auth-check
+    //? endpoint on the auth backend; a 2xx proceeds to the container, anything else blocks.
+    const authHandler = route.forwardAuth === undefined ? [] : [{
+      handler: 'reverse_proxy',
+      rewrite: { method: 'GET', uri: EDITOR_AUTH_PATH },
+      upstreams: [{ dial: route.forwardAuth }],
+      handle_response: [{ match: { status_code: [2] }, routes: [] }],
+    }];
     const body = {
       '@id': routeId(route.id),
       match: [{ host: [route.host] }],
-      handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: route.target }] }],
+      handle: [...authHandler, { handler: 'reverse_proxy', upstreams: [{ dial: route.target }] }],
       terminal: true,
     };
     const res = await caddy('POST', `/config/apps/http/servers/${SERVER}/routes`, body);
