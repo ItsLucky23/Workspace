@@ -1247,3 +1247,18 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, front-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **27/27** (nieuw `spend.test.mts` **17/17**: estTokens, aggregateUsage per-ticket-sums/ObjectId→key/dense-7d/zero-fill, recordTurnSpend persist + tokenEstimate-increment). **Browser**: Usage-page toont ECHTE per-ticket-data (DEV-1 2000/560/2×, DEV-2 600/150/1×) + activity-bars (heights 100%/66%/0%) uit ingevoerde rows — geen dummies, geen empty-state; daarna demo-rows opgeruimd.
 
 **Files touched:** `server/spend/record.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/workspaces/usage/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0025-*.md`, `tests/integration/spend.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #5: observability (logging + metrics + /healthz + insights) (ADR 0026)
+
+**User prompt:** /goal — item #5 (zwaardere brokken).
+
+**What I did:**
+- **Structured logging** (`server/obs/logger.ts`): `LogContext` emit één JSON-object per regel (ts/level/msg + geërfde context-fields) via de framework-logger; `.child()` voor een turn/request-trail. `formatLogLine` puur + getest.
+- **Metrics** (`server/obs/metrics.ts` + `/metrics`): Prometheus-text — active/queued turns vs cap (#12), busy sessies, resident containers, leader-state (#1). `gatherMetrics` best-effort.
+- **Health-probes** (`server/obs/endpoints.ts`): readiness is AL een framework-endpoint (`config.http.readyEndpoint` /readyz = bootUuid+redis+prisma, `liveEndpoint` /livez). Niet gedupliceerd — ik voeg **/healthz** (liveness-alias die de goal + k8s verwachten) + **/metrics** toe, pre-params (geen sessie nodig).
+- **Insights** (`server/obs/insights.ts`): pure aggregate over tickets + usage → cycle-time (createdAt→done), 7-daagse throughput, cost-per-ticket (gem. tokens). Snapshot emit `insights`; Usage-page rendert 3 stat-cards. i18n en/nl/de/fr.
+- **`tsconfig.server.json` lib ES2022→ES2023** (node22-compatibel, = frontend). Fixt een LATENTE #16-break: `record.ts` gebruikte `Array#toSorted` die de ES2022-lib niet typet (mijn #16-eslint-pass had server-tsc niet her-gedraaid).
+
+**Verify:** server-tsc 0, front-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **28/28** (nieuw `observability.test.mts` **18/18**: log-line-format, insights cycle/throughput/cost, Prometheus-render, gatherMetrics tegen echte Redis+Mongo). **Curl**: /healthz `{status:ok}` 200, /readyz (framework) 200 `{checks:{bootUuid,redis,prisma}}`, /metrics 6 gauges. **Browser**: Usage insight-cards tonen echte waarden (cycle **4h**, throughput **2**, cost/ticket). Backend clean-boot (1 instance na opruimen).
+
+**Files touched:** `server/obs/{logger,metrics,endpoints,insights}.ts` (nieuw), `server/orchestrator/capacity.ts` (queueLength), `server/read/workspaceSnapshot.ts`, `server/server.ts`, `tsconfig.server.json`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/workspaces/usage/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0026-*.md`, `tests/integration/observability.test.mts` (nieuw).

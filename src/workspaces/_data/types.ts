@@ -184,6 +184,12 @@ export interface UsageByTicket { ticketKey: string; tokensIn: number; tokensOut:
 export interface UsageDay { day: string; tokens: number }
 export interface WorkspaceUsage { byTicket: UsageByTicket[]; activity: UsageDay[]; totalTokens: number; totalTurns: number }
 
+//? Workspace flow insights (#5): cycle time, throughput, cost-per-ticket — the snapshot aggregates
+//? these from tickets + usage. Advisory; shown on the Usage page.
+export interface WorkspaceInsights {
+  avgCycleHours: number; throughput7d: number; avgTokensPerTicket: number; doneCount: number; openCount: number;
+}
+
 //? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
 export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }
 

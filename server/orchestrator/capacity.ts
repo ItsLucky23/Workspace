@@ -95,3 +95,9 @@ export async function activeCount(now: number): Promise<number> {
 }
 
 export const capacityLimit = (): number => MAX_CONCURRENT_TURNS;
+
+//? Number of turns parked on the deferred FIFO queue (observability #5 — the admission backlog).
+export async function queueLength(): Promise<number> {
+  const [error, n] = await tryCatch(() => redis.llen(queueKey()));
+  return error || typeof n !== 'number' ? 0 : n;
+}

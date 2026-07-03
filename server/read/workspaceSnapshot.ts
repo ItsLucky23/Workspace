@@ -20,6 +20,7 @@ import { repoStatus } from '../git/repoStore';
 import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
+import { computeInsights, type WorkspaceInsights } from '../obs/insights';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -134,6 +135,8 @@ export interface WorkspaceSnapshot {
   workspacePaused: boolean;
   //? Cost/usage tracking (#16): real per-ticket token totals + 7-day activity from SpendRecord.
   usage: WorkspaceUsage;
+  //? Flow insights (#5): cycle time / throughput / cost-per-ticket.
+  insights: WorkspaceInsights;
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -143,6 +146,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
+  insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -212,6 +216,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? per-ticket token total for the board cost-chip (replaces the seed dummies + `costLabel` mock).
     const usage = aggregateUsage(spendRows, ticketKeyById, Date.now());
     const usageByKey = new Map(usage.byTicket.map((u) => [u.ticketKey, u]));
+    //? Flow insights (#5): cycle time / throughput / cost-per-ticket from the tickets + usage.
+    const insights = computeInsights(ticketRows.map((t) => ({ status: t.status, archived: t.archived, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
@@ -241,7 +247,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         if (u && u.tokensIn + u.tokensOut > 0) mapped.costLabel = `${String(u.tokensIn + u.tokensOut)} tok · ${String(u.turns)}×`;
         return mapped;
       }),
-      usage,
+      usage, insights,
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),

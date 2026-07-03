@@ -26,8 +26,18 @@ function Card({ title, desc, children, className }: { title: string; desc?: stri
 
 export const template = 'workspaces';
 
+function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="text-xs text-muted">{label}</div>
+      <div className="text-2xl font-semibold text-title mt-1 tabular-nums">{value}</div>
+      <div className="text-xs text-muted mt-0.5">{hint}</div>
+    </div>
+  );
+}
+
 export default function Usage() {
-  const { openTicket, tickets, membersById, usage } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage, insights } = useWorkspaces();
   const translate = useTranslator();
   //? Real 7-day token activity (#16); guard the divisor so an all-zero week doesn't divide by 0.
   const maxDay = Math.max(1, ...usage.activity.map((d) => d.tokens));
@@ -56,6 +66,25 @@ export default function Usage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
         <div className="flex flex-col gap-4">
+          {/* Flow insights (#5): cycle time · throughput · cost per ticket */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard
+              label={translate({ key: 'workspaces.usage.insightCycle' })}
+              value={insights.avgCycleHours > 0 ? `${String(insights.avgCycleHours)} h` : '—'}
+              hint={translate({ key: 'workspaces.usage.insightCycleHint', params: [{ key: 'count', value: insights.doneCount }] })}
+            />
+            <StatCard
+              label={translate({ key: 'workspaces.usage.insightThroughput' })}
+              value={String(insights.throughput7d)}
+              hint={translate({ key: 'workspaces.usage.insightThroughputHint' })}
+            />
+            <StatCard
+              label={translate({ key: 'workspaces.usage.insightCost' })}
+              value={insights.avgTokensPerTicket > 0 ? String(insights.avgTokensPerTicket) : '—'}
+              hint={translate({ key: 'workspaces.usage.insightCostHint' })}
+            />
+          </div>
+
           <Card title={translate({ key: 'workspaces.usage.activityTitle' })}>
             <div className="flex items-end gap-3 h-36">
               {usage.activity.map((d, i) => (

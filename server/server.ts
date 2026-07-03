@@ -45,6 +45,7 @@ import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { startEditorReaper } from './proxy/editorReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
+import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { startLeaderElection } from './orchestrator/cluster';
 
@@ -95,6 +96,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Edge-auth subrequest endpoint for the editor/preview subdomains (Track B5) — must be
   //? registered before the server starts handling requests.
   registerEditorAuthCheck();
+  //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
+  //? Pre-params custom routes so probes don't require a session.
+  registerObservabilityEndpoints();
 
   const server = await bootstrapLuckyStack({
     //? Single-instance backend port from config.ports.ts. Sits BELOW a positional
