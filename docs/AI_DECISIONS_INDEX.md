@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (27)
+## Decisions (28)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -40,6 +40,7 @@
 | 0026 | Observability — structured logging, metrics, health probes, flow insights | 🟢 accepted | workspaces, observability, metrics, logging, health, insights | — | `docs/decisions/0026-observability.md` |
 | 0027 | Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry | 🟢 accepted | workspaces, automation, triggers, plugins, agent-roles | — | `docs/decisions/0027-automation-plugin-engine.md` |
 | 0028 | Token self-handoff — controlled handoff → reset → reload on budget | 🟢 accepted | workspaces, tokens, context, handoff, orchestrator | — | `docs/decisions/0028-token-self-handoff.md` |
+| 0029 | Forge-provider abstraction (GitLab + GitHub) + webhook ingest | 🟢 accepted | workspaces, forge, gitlab, github, webhook | — | `docs/decisions/0029-forge-provider-abstraction.md` |
 
 ## Summaries
 
@@ -260,6 +261,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **`server/orchestrator/handoff.ts`** (pure + persistence): `budgetForStage` (per-stage `modelCfg.contextBudgetTokens`, else `WS_TURN_TOKEN_BUDGET` default), `shouldHandoff`, `parseHandoff` (extracts the AI's ` ```ws-handoff ` JSON block, like ws-carryover), `recordHandoff` (persists a `Handoff` + RESETS `AgentSession.tokenEstimate` — the reset frees context), `latestHandoff` + `renderHandoffReload` (the reload text), and the editable `DEFAULT_HANDOFF_INSTRUCTION`. **Trigger** (`stageRunner.runStage`, after a turn that did NOT complete the stage — the session persists): if the running estimate (#16) crossed the budget, drive a handoff turn (the AI, with full context, writes its handoff), store it, and **clear `claudeSessionId`** so the next turn starts a FRESH claude session — this IS the `/clear`. No interactive slash-command needed. **Reload** (`renderStage`): when a session starts fresh (no `claudeSessionId`) and has a stored handoff, inject `renderHandoffReload(handoff)` as the opening context. A crash-resume (#1, which keeps `claudeSessionId`) continues the old transcript instead, so it skips the reload. **PreCompact backstop**: a `PreCompact` hook in the stage settings drops a marker when Claude is about to auto-compact; the trigger fires the handoff on that marker even under budget (reason `precompact`), then clears it. "Use whichever fires first" (doc 06 §4). **Config**: per-stage budget is `modelCfg.contextBudgetTokens` (already schema→save→snapshot plumbed) + a new editable input in the Pipeline "Model & Effort" tab (i18n en/nl/de/fr).
 
 → `docs/decisions/0028-token-self-handoff.md`
+
+### 0029 — Forge-provider abstraction (GitLab + GitHub) + webhook ingest
+
+**0029** · accepted · tags: workspaces, forge, gitlab, github, webhook · 2026-07-03
+
+**Forge-provider abstraction** (`server/git/forgeProvider.ts`): the REST call SHAPING is pure + per-provider (`buildOpenMrRequest` / `buildFindMrRequest` / `readMrUrl` / `isDuplicateStatus` for `gitlab` | `github`), so it is unit-testable without a network; `openForgeMergeRequest` is the one thin fetch wrapper. GitLab uses `/api/v4` + `PRIVATE-TOKEN` + `web_url` + 409-duplicate; GitHub uses `/repos/{owner}/{repo}/pulls` + `Bearer` + `html_url` + 422-duplicate. `forge.ts` resolves the provider from `Workspace.forgeType` and calls it — the engine code is now forge-agnostic. **Webhook ingest** (`server/git/webhookIngest.ts` + `webhookRoute.ts`): a pure `parseWebhookEvent` normalizes GitLab (`object_kind:'issue'`) AND GitHub (`X-GitHub-Event: issues`) issue events to one shape; `ingestIssueEvent` upserts the `DEV-<iid>` ticket (idempotent). Exposed at `POST /webhooks/forge/<workspaceId>` as a pre-params custom route with `registerOriginExemptPath` (a server-to-server POST has no Origin → the framework's step-1 origin gate would 403 it). **Security**: exemption is NOT auth — the handler requires a shared secret (`WS_WEBHOOK_SECRET`) in `X-Webhook-Secret` / `X-Gitlab-Token`. UNSET ⇒ the endpoint is DISABLED (503, fail-closed). Wrong secret ⇒ 401. On a dedicated `/webhooks/` prefix (never overlaps `/api`·`/auth`·`/sync`). **Config**: `Workspace.forgeType` (default `gitlab`) + a provider dropdown in the GitLab settings tab (i18n en/nl/de/fr), through the existing `gitlab-settings` control-op.
+
+→ `docs/decisions/0029-forge-provider-abstraction.md`
 
 ## Code governed by decisions
 
