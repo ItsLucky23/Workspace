@@ -34,11 +34,20 @@ export interface OpenEditorResult { ok: boolean; url?: string; host?: string; to
 //? The proxy route for a ticket's editor: a `vscode-<slug>` subdomain → the container's
 //? in-container editor port. `id` is `vscode-<ticketKey>` so it never collides with the
 //? preview route (`previewRoute` uses the bare ticket key).
+//? Edge-auth (Track B5): when enabled, `forwardAuth` makes the proxy prepend a forward_auth
+//? subrequest to the backend's `/editor-auth-check` (server/http/editorAuthCheck.ts) — only a
+//? logged-in session reaches the editor, not just the connection-token. Opt-in via
+//? `WS_EDITOR_EDGE_AUTH` because it REQUIRES the session cookie to be subdomain-scoped
+//? (`Domain=.<baseDomain>`), else the app's iframe can't send it. The auth backend dial defaults
+//? to `host.docker.internal:80` (the host backend, reachable from the Caddy container in dev).
+const EDGE_AUTH_BACKEND = process.env.WS_EDITOR_EDGE_AUTH === undefined ? undefined : (process.env.WS_EDITOR_AUTH_BACKEND ?? 'host.docker.internal:80');
+
 export function editorRoute(input: { ticketKey: string; branch: string; containerName: string }): ProxyRoute {
   return {
     id: `vscode-${input.ticketKey.toLowerCase()}`,
     host: `vscode-${deriveHostSlug(input.branch)}.${baseDomain()}`,
     target: `${input.containerName}:${String(EDITOR_IN_CONTAINER_PORT)}`,
+    ...(EDGE_AUTH_BACKEND === undefined ? {} : { forwardAuth: EDGE_AUTH_BACKEND }),
   };
 }
 
