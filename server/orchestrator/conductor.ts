@@ -301,21 +301,21 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? ticket's turn runs concurrently; errors are logged, never surfaced into the stage move.
 //? The ticket banners set when a turn is deferred; matched exactly to clear them again (never
 //? wipes a real AI open-question). One per defer reason.
-const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
-const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
+export const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
+export const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
 
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
 //? already-branched tickets, so a resumed ticket is re-provisioned directly here.
-async function reprovisionTicket(workspaceId: string, key: string): Promise<void> {
+export async function reprovisionTicket(workspaceId: string, key: string, resume = false): Promise<void> {
   const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true } });
   if (!t?.branch) return;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: t.stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
-  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId);
+  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId, resume);
 }
 
-async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string): Promise<void> {
+async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string, resume = false): Promise<void> {
   if (!(await dockerAvailable())) return;
   //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
@@ -351,7 +351,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
       await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
       try {
-        await runStage(workspaceId, key, stageId);
+        await runStage(workspaceId, key, stageId, { resume });
       } finally {
         //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
         //? next parked turn in — the queue drains at the pace turns complete.

@@ -79,7 +79,8 @@ async function projectAuth(container: string): Promise<void> {
 //? — NOT by parsing the PTY. We NEVER call `term.kill()` (its Windows conpty console-list
 //? agent can crash the host process); instead `pkill` claude inside the container so the
 //? `docker exec` exits and the PTY closes naturally.
-export async function driveContainerTurn(container: string, kickoff: string, timeoutMs = 240_000): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+  const timeoutMs = opts.timeoutMs ?? 240_000;
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
   refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
   await projectAuth(container);
@@ -88,7 +89,10 @@ export async function driveContainerTurn(container: string, kickoff: string, tim
   //? disposable container (cap-drop ALL, non-root, no host access) — the CONTAINER is the
   //? security boundary, so in-agent permission prompts only stall the turn. The stage
   //? instructions (+ the settings deny set as defense-in-depth) shape what it does.
-  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', container, 'claude', '--permission-mode', 'bypassPermissions', '--settings', '/work/.claude/settings.json', '--append-system-prompt-file', '/work/.claude/stage-instructions.txt'], {
+  //? `--resume <id>` continues an interrupted session verbatim (crash-recovery, #1) rather than
+  //? starting a fresh conversation — the CLI restores the transcript, so the kickoff just nudges it on.
+  const resumeArgs = opts.resumeSessionId ? ['--resume', opts.resumeSessionId] : [];
+  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', container, 'claude', ...resumeArgs, '--permission-mode', 'bypassPermissions', '--settings', '/work/.claude/settings.json', '--append-system-prompt-file', '/work/.claude/stage-instructions.txt'], {
     name: 'xterm-color', cols: 120, rows: 34, cwd: process.cwd(), env: process.env,
   });
   //? Object property (not a local) so TS doesn't treat the onExit-mutated flag as constant.
@@ -143,7 +147,7 @@ function envelopeJson(e: CarryOverEnvelope): Prisma.InputJsonObject {
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
 //? serial chain. `prisma` is passed in so this stays callable from the Conductor.
-export async function runStage(workspaceId: string, ticketKey: string, stageKey: string): Promise<StageRunResult> {
+export async function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { resume?: boolean } = {}): Promise<StageRunResult> {
   const prisma = getPrismaClient();
   const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey } });
   const stageRow = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageKey } });
@@ -186,8 +190,13 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     update: { status: 'busy', containerId: container.containerId },
   });
 
-  const kickoff = 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
-  const drive = await driveContainerTurn(container.name, kickoff);
+  //? Crash-recovery (#1): when resuming an interrupted turn AND the prior session left a resumable
+  //? claude session id, continue it with `--resume` + a nudge; otherwise start the stage fresh.
+  const resumeSessionId = opts.resume && session.claudeSessionId ? session.claudeSessionId : undefined;
+  const kickoff = resumeSessionId
+    ? 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.'
+    : 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
+  const drive = await driveContainerTurn(container.name, kickoff, resumeSessionId ? { resumeSessionId } : {});
   if (!drive.ok) {
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
     return { ok: false, error: drive.error ?? 'turn.failed' };

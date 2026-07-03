@@ -131,6 +131,12 @@ import { startLeaderElection } from './orchestrator/cluster';
   startEditorReaper();
   //? Continuously sync GitLab issues → tickets for every workspace with a linked repo. Leader-gated.
   startGitlabSyncPoller();
+  //? Crash-recovery (#1): reconcile interrupted turns on boot + periodically detect stuck/idle turns
+  //? and intervene. Leader-gated (multi-instance-safe). DYNAMIC import so the Conductor's module-level
+  //? `getPrismaClient()` is not pulled into the static graph BEFORE secrets are resolved above (else
+  //? the default client is built with the unresolved DATABASE_URL pointer).
+  const { startTicketWatchdog } = await import('./orchestrator/watchdog');
+  startTicketWatchdog();
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

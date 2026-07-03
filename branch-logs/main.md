@@ -1189,3 +1189,19 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** schema `prisma:db:push`+generate, `generateArtifacts` (mr-rollback in type-map). server-tsc 0, front-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **23/23** (nieuw `mergeReal.test.mts` **16/16** tegen een ECHTE bare-repo: clean merge advanced target, revert verwijdert weer, echt conflict → abort + files + target onaangeraakt, approval-gate blokkeert dan laat toe). Backend clean-boot; Review-tab rendert crash-vrij (empty-state bevestigd — merge-knop-states volledig gedekt door de integration-test; volledige knop-walkthrough vereist een branch-geactiveerd ticket/Docker).
 
 **Files touched:** `prisma/schema.prisma`, `server/git/repoStore.ts`, `server/mr/service.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/mrAction_server_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_components/MrReviewPanel.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0021-*.md`, `tests/integration/mergeReal.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #1: watchdog + resumeAll crash-recovery (ADR 0022, lesson 0010)
+
+**User prompt:** /goal — item #1 (engine-volwassen-kern).
+
+**What I did:** `server/orchestrator/watchdog.ts` (nieuw), beide entry-points **leader-gated**.
+- **`resumeEngineOnBoot`**: scant alle `busy` worker-sessies, classificeert (pure `classifyBusySession`): done/non-AI → **stop** (stale), paused/echte-vraag → **skip** (geparkeerd; defer-banner telt NIET als vraag), anders interrupted → **resume** (`claude --resume`) als container leeft, **reprovision** vers als container dood. `--resume` door-gethreaded via `reprovisionTicket → provisionContainers → runStage → driveContainerTurn` (nieuw `resumeSessionId`, hergebruikt de opgeslagen `claudeSessionId` + "continue"-nudge).
+- **`runWatchdogSweep`** (periodiek): **stuck** turn (busy-sessie ouder dan `WS_TURN_MAX_MS`, niet geparkeerd) → kill + reprovision; **idle** ticket (geactiveerd, AI-enabled non-gate stage, NOOIT een sessie op deze stage = dropped provisioning) → reprovision. Een stage die al een sessie produceerde blijft met rust (turn af/advanced/approval-gated). Rate-limit → turn eindigt → wordt idle → opgepakt op latere sweep.
+- **`server.ts`**: `startTicketWatchdog` **dynamisch geïmporteerd** ná `initSecretManager` (zie lesson 0010).
+- Conductor: `reprovisionTicket` geëxporteerd + `resume`-param; defer-banner-constants geëxporteerd.
+
+**Verify:** server-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **24/24** (nieuw `watchdog.test.mts` **22/22**: volledige classificatie-matrix, boot-reconciliatie met geïnjecteerde container-set — resume/reprovision/stop/skip-transities, stuck- én idle-detectie). Clean runtime-boot bevestigd (geen unresolved-URL-error na de dynamic-import-fix).
+
+**Bug gevonden + gefixt onderweg (lesson 0010):** een **statische** import van de watchdog in `server.ts` trok de Conductor's module-level `const prisma = getPrismaClient()` in de boot-graph VÓÓR `initSecretManager` → de default Prisma-client werd met de onopgeloste `DATABASE_URL`-pointer gebouwd → elke default-client-query faalde met *"URL must start with mongo"*. Fix: dynamic import ná secret-init. Idle-detectie had ook een Prisma+Mongo `{needsInput:null}`-quirk (matcht geen absent-velden) → in-code gefilterd via `isRealNeedsInput`.
+
+**Files touched:** `server/orchestrator/watchdog.ts` (nieuw), `server/orchestrator/conductor.ts`, `server/orchestrator/stageRunner.ts`, `server/server.ts`, `docs/decisions/0022-*.md`, `docs/lessons/0010-*.md` (nieuw), `tests/integration/watchdog.test.mts` (nieuw).
