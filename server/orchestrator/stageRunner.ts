@@ -148,12 +148,22 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const prior = await prisma.carryOver.findFirst({ where: { ticketId: ticket.id, toStageId: stageKey }, orderBy: { createdAt: 'desc' } });
   const carryOver = coerceEnvelope(prior?.envelope ?? null);
 
+  //? Context-docs injected into CLAUDE.md: enabled workspace-wide workflow guidance (the
+  //? starter-library snippets) + this stage's explicitly-selected sourceIds (skip the
+  //? `summary` pseudo-source + any non-ObjectId ids so the Mongo `in` filter stays valid).
+  const explicitIds = cfg.sourceIds.filter((id) => /^[a-fA-F0-9]{24}$/.test(id));
+  const docRows = await prisma.infoSource.findMany({
+    where: { workspaceId, mode: 'context-doc', OR: [{ source: 'starter', enabled: true }, ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : [])] },
+    select: { name: true, content: true }, take: 12,
+  });
+  const contextDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));
+
   //? Prefer the project's built L2 image (idempotent — reuses a running container).
   const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
   const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver });
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
 
   //? The ONE runtime row for this worker session (04b §7) — created here (nothing else

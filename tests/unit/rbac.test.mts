@@ -12,7 +12,7 @@ import { assert, eq, report } from '../_helpers.mts';
 //? a stray/renamed literal fails the compile). Kept in the doc-order of the union.
 const ALL_OPS: ControlOp[] = [
   // tickets / board
-  'quick-add', 'archive',
+  'quick-add', 'ticket-edit', 'add-comment', 'archive',
   'bulk-move', 'bulk-status', 'bulk-assign', 'bulk-sprint', 'bulk-archive',
   'sprint-create', 'sprint-edit',
   // members / RBAC / workspace lifecycle
@@ -21,7 +21,8 @@ const ALL_OPS: ControlOp[] = [
   'role-create', 'role-update',
   // workspace settings
   'save-env', 'remove-env', 'save-integration', 'remove-integration',
-  'gitlab-settings', 'gitlab-verify', 'gitlab-resync',
+  'gitlab-settings', 'gitlab-verify', 'gitlab-resync', 'save-git-config',
+  'link-repo', 'scan-docs',
   'raise-cap', 'edit-budget', 'resume-spend',
   'skill-toggle', 'save-stage-config',
   // notifications

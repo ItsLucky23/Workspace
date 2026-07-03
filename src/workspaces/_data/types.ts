@@ -41,6 +41,23 @@ export interface RepoInfo {
   error?: string;
 }
 
+//? ---------------------------------------------------------------- git workflow config
+//? Per-workspace git strategy + push policy (hosting-proxy plan). CODE acts on every field
+//? here (branch name + preview-host derivation, push behaviour) — the STRUCTURED half of git
+//? customization; freeform "how to commit" guidance lives in skills/context-docs, not here.
+//? Canonical logic + DEFAULT_GIT_CONFIG live in server/git/branchStrategy.ts.
+export type BranchStrategyKind = 'ticket-prefix' | 'typed' | 'custom';
+export type PushPolicy = 'local-only' | 'push' | 'merge-request';
+export interface GitConfig {
+  branchStrategy: BranchStrategyKind; // how a ticket maps to a branch name
+  defaultBranchType: string;          // 'typed'/'custom' fallback type (feature/hotfix/…)
+  branchTemplate: string;             // 'custom' template — {{type}} {{prefix}} {{key}} {{number}} {{slug}}
+  pushPolicy: PushPolicy;             // how committed work leaves the container
+  targetBranch: string;               // MR/push target, e.g. 'main'
+  protectedBranches: string[];        // never commit directly to these
+  commitSigning: boolean;             // git commit -S in the container
+}
+
 export interface Workspace {
   id: string;
   name: string;
@@ -54,6 +71,7 @@ export interface Workspace {
   assistantTokenBudget?: number;  // per-user-Assistant context budget → self-handoff
   reasonerTokenBudget?: number;   // optional future one-shot reasoner budget
   handoffInstruction?: string;    // editable self-handoff instruction template
+  gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
 }
 
 export interface Project {

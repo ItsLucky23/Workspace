@@ -851,3 +851,64 @@ Engine werkt nu voor **analyse- (refine/plan) ÉN code-stages (impl → echte co
 **Getest deze sessie:** integration 14/14 · engine via de UI (chat→autonoom→auto-advance) · code-stage commit · SSH-tunnel zelf hersteld (`ssh pi5 -N`, LocalForward 27018). **Bevinding (follow-up):** engine-advance broadcast geen realtime-delta (board update op reload) — framework sync-emit-API nodig. **Andere AI** bouwt Monaco (`editorThemes.ts`) + Caddy (`caddyRoutes.ts`) — WIP, met rust gelaten.
 
 **Verificatie:** server-tsc 0 (mijn files; caddyRoutes-fout is de andere AI), eslint 0, integration 14/14.
+
+## 2026-07-03 01:10 — Beslissing + code: per-container editor mét meereizend per-user profiel (ADR 0010)
+
+**User:** wil tóch de per-container-editor (openvscode in elke ticket-container) — is beter — maar dan met de storage (extensies + login-tokens) die elke keer meereist.
+
+**ADR 0010** vastgelegd: per-container editor over de centrale-editor-variant, mét een geprojecteerd per-user **profiel**. Mechanisme = **copy-in/out via `docker cp`** (geen live gedeelde volume — vermijdt corruptie bij twee gelijktijdige editors + geen wijziging aan het container-launch-pad nodig).
+
+**Code (nieuw/gewijzigd, lint-schoon, nog niet runbaar — Docker down):**
+- `server/container/editorProfile.ts` (nieuw): host-store `data/editor-profiles/<userId>/{user-data,extensions}` (user-data = settings + globalStorage + **secret storage** = de auth-tokens); `projectProfileIntoContainer` (copy-in vóór start) + `captureProfileFromContainer` (capture-back op install/login + sessie-eind); `editorProfileLaunchArgs` (--user-data-dir/--extensions-dir).
+- `server/container/editorServer.ts::startEditorInContainer`: projecteert nu het profiel in, schrijft settings in de profiel-user-data, installeert extensies in de profiel-dir, start openvscode met de profiel-dirs. Neemt `userId`.
+- **Copilot uit editor #2**: `defaultChatAgent` uit openvscode `product.json` verwijderd (backup `.bak`) → geen Copilot-login/branding meer; `chat.commandCenter.enabled:false`.
+
+**Security (in ADR geflagd):** het profiel draagt auth-tokens de container in (die ook repo-code + extensies draait) → ingeperkt door egress-allow-list + tenant-isolatie; secret-at-rest-hardening van de host-store = follow-up.
+
+**Verificatie:** eslint 0 op beide files; ai:decisions ververst (ADR 0010 in index). Niet end-to-end te draaien tot de container-spine live is (Docker + `runtime.ts`-launch-pad, deels de andere AI's gebied).
+
+## 2026-07-03 01:35 — ADR 0010 LIVE bewezen: editor-in-container + profiel-meereizen (echte Docker)
+
+Docker draait weer (29.6.1), base-image aanwezig, Redis/Mongo via user's SSH-tunnel, Caddy geïnstalleerd. Kern van ADR 0010 end-to-end getest met de ECHTE code:
+- **`workspaces/base-editor:test`** gebouwd (L1 base + openvscode gebakken) — `scratchpad/Dockerfile.editor`.
+- **`scripts/spike/editorProfileSpike.mts`**: container C1 → `startEditorInContainer` → openvscode bereikbaar (302); "login" gesimuleerd → `captureProfileFromContainer`; nieuwe container C2 → `projectProfileIntoContainer` → **de login-token uit C1 zit in C2**. Alle checks PASS.
+- Fix: `startEditorInContainer` bindt nu `--host 0.0.0.0` (i.p.v. 127.0.0.1) zodat de Caddy-route `<container>:3000` over workspaces-net kan dialen (nooit host-published).
+
+**Bewezen:** extensies + auth-tokens reizen mee over tickets via het per-user profiel (copy-in/out via `docker cp`). Nog te wiren voor de klikbare product-flow: per-ticket Caddy-route + editor-open control-op in de conductor + de UI-knop. ADR 0010 bijgewerkt (VERIFIED).
+
+## 2026-07-03 — Git/workflow config + pluggable reverse-proxy + starter-library (checklist)
+
+Bouwde de 3-delige checklist (proxy/branchStrategy/workflow) uit het pre-compact-gesprek. ADR 0011.
+
+**(1) branchStrategy + DNS-safe slug + git-config.** `server/git/branchStrategy.ts` (pure):
+`GitConfig` (branch-strategie ticket-prefix|typed|custom + push-policy + target/protected/signing),
+`resolveBranchName` (ticket→branch, één keer bij creatie, opgeslagen op `Ticket.branch`),
+`deriveHostSlug`/`previewHost` (branch→geldige RFC-1123 preview-subdomein). `Workspace.gitConfig Json?`.
+Gewired: `addWorktree(…, branchName)` + de resolver in `conductor.activateWorktreesForStage`.
+Save-flow: `save-git-config` op (controlApi/rbac/conductor) + `_sync/saveGitConfig` + provider/context +
+snapshot-projectie. Unit-test `tests/unit/branchStrategy.test.mts` (18 cases). **Ook**: `rbac.test`
+ALL_OPS gesynct (was al rood — miste add-comment/ticket-edit/link-repo/scan-docs; nu 121/0).
+
+**(2) proxy-provider-abstractie + setup-guide.** `server/proxy/`: `ProxyProvider`-interface +
+`caddyProvider` (Admin-API) + `nginxProvider` (**debounced graceful reload**, zero-downtime — statische
+wildcard-DNS, `nginx -t` vóór reload) + factory (`WS_PROXY`/`WS_BASE_DOMAIN`). `docs/HOSTING.md`
+(Caddy-vs-nginx + wildcard-TLS DNS-01 + verificatie) + `.env_template` proxy-vars. Andere AI's
+editor-specifieke `caddyRoutes.ts` met rust gelaten.
+
+**(3) Workflow-settings + starter-library.** Nieuwe "Workflow"-tab in `workspace/page.tsx` (git-config-form
+met live branch-voorbeeld + starter-guidance-toggles), i18n in 4 talen. `server/bootstrap/starterLibrary.ts`
+(5 curated conventies als disabled `source='starter'` context-docs). **Load-bearing wire gebouwd**: de
+deferred `sourceIds`→CLAUDE.md-injectie (`stageRunner` laadt enabled starter + per-stage sourceIds →
+`renderStage` inlinet ze) — context-docs bereiken nu écht de agent i.p.v. een dode toggle.
+
+**Files touched:** server/git/branchStrategy.ts (nieuw) · server/proxy/{types,caddyProvider,nginxProvider,index}.ts (nieuw) ·
+server/bootstrap/starterLibrary.ts (nieuw) · server/orchestrator/{renderStage,stageRunner,conductor}.ts ·
+server/read/workspaceSnapshot.ts · server/git/repoStore.ts · server/control/rbac.ts · prisma/schema.prisma ·
+src/workspaces/_data/types.ts · src/workspaces/_functions/controlApi.ts · src/workspaces/_sync/saveGitConfig_server_v1.ts (nieuw) ·
+src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx · src/workspaces/workspace/page.tsx ·
+src/workspaces/bootstrap/seedWorkspace.ts · src/_locales/{nl,en,de,fr}.json · docs/HOSTING.md (nieuw) ·
+docs/decisions/0011-*.md (nieuw) · tests/unit/{branchStrategy.test.mts (nieuw),rbac.test.mts}
+
+**Verificatie:** server-tsc 0 (mijn files; caddyRoutes-fouten = andere AI) · front-tsc 0 (mijn files) ·
+eslint 0 · ai:lint geen violations · unit-tests groen (branchStrategy 18/18, rbac 121/0) · integration groen.
+De enige suite-fail is `e2e/httpControl` = ECONNREFUSED :80 (backend gestopt voor prisma-regen, geen code-issue).

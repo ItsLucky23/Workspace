@@ -17,6 +17,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
+import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -125,6 +126,8 @@ export interface WorkspaceSnapshot {
   notes: TicketNote[];
   //? Register-flow step A: the active workspace's linked-repo status (on-disk bare clone).
   repo: RepoInfo;
+  //? The active workspace's git strategy + push policy (normalized; DEFAULT when unset).
+  gitConfig: GitConfig;
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -132,7 +135,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false },
+  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG,
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -206,6 +209,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? data/workspaces/<id>/), keyed off the project's stored (clean) gitUrl.
     const projectRow = await tenantDb.project.findFirst();
     const repo = await repoStatus(activeWorkspaceId, projectRow?.gitUrl ?? undefined);
+    //? The active workspace's git strategy (normalized; DEFAULT when the field is unset).
+    const gitConfig = normalizeGitConfig(workspaceRows.find((w) => w.id === activeWorkspaceId)?.gitConfig ?? null);
 
     return {
       workspaces, activeWorkspaceId, members, budget, docs, skills,
@@ -231,6 +236,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         author: n.authorId ?? '', body: n.body, time: formatTime(n.createdAt),
       })),
       repo,
+      gitConfig,
       myInvites,
     };
   });

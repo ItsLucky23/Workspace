@@ -71,6 +71,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'save-integration': CAP.workspaceSettings,
   'remove-integration': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,
+  'save-git-config': CAP.workspaceSettings,
   'gitlab-verify': CAP.workspaceSettings,
   'gitlab-resync': CAP.workspaceSettings,
   'link-repo': CAP.workspaceSettings,

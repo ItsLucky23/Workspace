@@ -13,6 +13,10 @@ export interface StageRenderCtx {
   ticketId: string;
   commitHash?: string;
   carryOver: CarryOverEnvelope | null;
+  //? Context-docs to inject into CLAUDE.md: the stage's `sourceIds` docs + any enabled
+  //? workspace-wide workflow guidance (the starter-library snippets). Loaded by stageRunner
+  //? (renderStage stays pure). Each is written inline so the in-container agent reads it.
+  contextDocs?: { name: string; content: string }[];
 }
 
 export interface StageArtifacts {
@@ -43,8 +47,14 @@ const READ_ONLY_BASH = [
 const STOP_HOOK_CMD = "sh -c 'cat > /work/.claude/turn-stop.json'";
 
 export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageArtifacts {
-  //? CLAUDE.md = the stage's task framing (customInstructions verbatim), per GOLDEN §4.
-  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${cfg.customInstructions}\n`;
+  //? CLAUDE.md = the stage's task framing (customInstructions verbatim, GOLDEN §4) + any
+  //? injected context-docs / workflow guidance (bounded inline, so the agent actually reads
+  //? the workspace conventions rather than them being a dead toggle).
+  const docs = (ctx.contextDocs ?? []).filter((d) => d.content.trim().length > 0);
+  const docsSection = docs.length > 0
+    ? `\n\n---\n\n## Project & workflow guidance\n\nFollow the conventions in these workspace documents:\n\n${docs.map((d) => `### ${d.name}\n\n${d.content.trim().slice(0, 4000)}`).join('\n\n')}\n`
+    : '';
+  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${cfg.customInstructions}\n${docsSection}`;
 
   //? --append-system-prompt = the system layer + the carry-over-filled task, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).

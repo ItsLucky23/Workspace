@@ -20,7 +20,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
@@ -49,11 +49,15 @@ interface Snap {
   myInvites: MyInvite[];
   notes: TicketNote[];
   repo: RepoInfo;
+  gitConfig: GitConfig;
 }
+//? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
+//? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
+  gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
 };
 
 function pathForView(view: WsView): string {
@@ -376,6 +380,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? git-config delta → replace snap.gitConfig (workspace settings realtime; no refetch).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveGitConfig', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const gitConfig = serverOutput.gitConfig;
+      setSnap((s) => ({ ...s, gitConfig }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => {
@@ -605,6 +619,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      gitConfig: snap.gitConfig,
+      saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
       signOut,
       // live tenant data
       loading,

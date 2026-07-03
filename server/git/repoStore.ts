@@ -152,26 +152,29 @@ export async function cloneRepo(input: { workspaceId: string; gitUrl: string; to
   return repoStatus(workspaceId, gitUrl);
 }
 
-//? Add the ticket's `DEV-####` worktree off the bare clone (07 §A step 5), freezing the
-//? default-branch HEAD as the ticket's baseline commit (DH5, step 3). Idempotent: an
-//? existing worktree is returned as-is; a re-activation reuses the durable branch. The
-//? branch name IS the ticket key (`DEV-<number>`). Returns null if no repo is linked.
-export async function addWorktree(workspaceId: string, ticketKey: string): Promise<WorktreeInfo | null> {
+//? Add the ticket's worktree off the bare clone (07 §A step 5), freezing the default-branch
+//? HEAD as the ticket's baseline commit (DH5, step 3). Idempotent: an existing worktree is
+//? returned as-is; a re-activation reuses the durable branch. The on-disk worktree dir is
+//? keyed by the (stable) ticket key, while the BRANCH name is `branchName` — the per-workspace
+//? branch-strategy result (server/git/branchStrategy.ts), defaulting to the ticket key for the
+//? legacy `ticket-prefix` behaviour. Returns null if no repo is linked.
+export async function addWorktree(workspaceId: string, ticketKey: string, branchName: string = ticketKey): Promise<WorktreeInfo | null> {
   const bare = bareRepoPath(workspaceId);
   if (!existsSync(bare)) return null;
   const wt = worktreePath(workspaceId, ticketKey);
   //? Already checked out → return its current branch + commit (idempotent re-activation).
   if (existsSync(wt)) {
     const commitHash = await git(['-C', wt, 'rev-parse', 'HEAD']).catch(() => '');
-    return { branch: ticketKey, commitHash, path: wt };
+    const branch = await git(['-C', wt, 'symbolic-ref', '--short', 'HEAD']).catch(() => branchName);
+    return { branch: branch || branchName, commitHash, path: wt };
   }
   //? Freeze the baseline = current default-branch HEAD of the bare clone.
   const commitHash = await git(['--git-dir', bare, 'rev-parse', 'HEAD']);
   mkdirSync(path.dirname(wt), { recursive: true });
   //? New branch at the frozen commit, unless the durable branch already exists (re-link).
-  const branchExists = await git(['--git-dir', bare, 'rev-parse', '--verify', '--quiet', `refs/heads/${ticketKey}`]).then(() => true).catch(() => false);
+  const branchExists = await git(['--git-dir', bare, 'rev-parse', '--verify', '--quiet', `refs/heads/${branchName}`]).then(() => true).catch(() => false);
   await (branchExists
-    ? git(['--git-dir', bare, 'worktree', 'add', wt, ticketKey])
-    : git(['--git-dir', bare, 'worktree', 'add', '-b', ticketKey, wt, commitHash]));
-  return { branch: ticketKey, commitHash, path: wt };
+    ? git(['--git-dir', bare, 'worktree', 'add', wt, branchName])
+    : git(['--git-dir', bare, 'worktree', 'add', '-b', branchName, wt, commitHash]));
+  return { branch: branchName, commitHash, path: wt };
 }

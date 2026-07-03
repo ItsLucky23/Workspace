@@ -19,6 +19,7 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
+import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -255,11 +256,16 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
   if (keys.length === 0 || !isLinked(workspaceId)) return;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
+  //? Resolve the branch NAME from the per-workspace strategy (branchStrategy.ts). Loaded once
+  //? per activation; the derived name is persisted on Ticket.branch so it's stable thereafter.
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } });
+  const gitCfg = normalizeGitConfig(ws?.gitConfig ?? null);
   const activated: { key: string; branch: string }[] = [];
   for (const key of keys) {
-    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true } });
+    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true, title: true, labels: true, number: true } });
     if (t?.branch) continue;
-    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, key));
+    const branchName = resolveBranchName(gitCfg, { key, title: t?.title, labels: t?.labels, number: t?.number });
+    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, key, branchName));
     if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
     if (wt) { await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } }); activated.push({ key, branch: wt.branch }); }
   }
@@ -594,6 +600,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'gitlab-resync': {
       //? Verify = read-only; resync = kick a GitLab sync (Fase 2 engine). No-op write in Fase 1.
       return;
+    }
+    case 'save-git-config': {
+      //? Persist the per-workspace git strategy + push policy (branchStrategy.ts). Normalize
+      //? the payload (fill any missing field with the default) before storing. Written as a
+      //? plain JSON literal (cast-free — an object literal satisfies Prisma's Json input type).
+      const cfg = normalizeGitConfig(payload.gitConfig ?? payload);
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { gitConfig: {
+        branchStrategy: cfg.branchStrategy, defaultBranchType: cfg.defaultBranchType,
+        branchTemplate: cfg.branchTemplate, pushPolicy: cfg.pushPolicy, targetBranch: cfg.targetBranch,
+        protectedBranches: cfg.protectedBranches, commitSigning: cfg.commitSigning,
+      } } });
+      return cfg;
     }
     case 'link-repo': {
       //? Register-flow step A: bare-clone the linked repo into data/workspaces/<id>/

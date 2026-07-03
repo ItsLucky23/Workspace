@@ -7,7 +7,7 @@
 import { createContext, use } from 'react';
 
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
@@ -116,6 +116,9 @@ export interface WorkspacesCtx {
   //? Pipeline (7a.2) — full per-stage config from the DB composites.
   stageConfigs: PipelineStageCfg[];
   saveStageConfig: (cfg: PipelineStageCfg) => void;
+  //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
+  gitConfig: GitConfig;
+  saveGitConfig: (cfg: GitConfig) => void;
   //? Sign out of the framework session (not a [control-API] op).
   signOut: () => void;
 

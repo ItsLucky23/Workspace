@@ -15,6 +15,7 @@ import {
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
 import { createDefaultPipeline } from './defaultPipeline';
+import { createStarterLibrary } from './starterLibrary';
 
 const OWNER_PERMS = [true, true, true, true, true, true, true, true];
 const ADMIN_PERMS = [true, true, true, true, true, false, false, false];
@@ -57,6 +58,9 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? seeds real stages in a production bundle too (the old `STAGE_CONFIGS` loop
   //? stubbed to a no-op in prod → blank board).
   await createDefaultPipeline(prisma, workspaceId, project.id);
+  //? Seed the curated starter-guidance library (all disabled; the user toggles them on from
+  //? the Workflow settings — the "nudge, not a blank page" for their own AI workflows).
+  await createStarterLibrary(prisma, workspaceId, project.id);
 
   await prisma.workspaceBudget.create({
     data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },
