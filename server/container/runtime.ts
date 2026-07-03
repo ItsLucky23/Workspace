@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { workspaceDataDir } from '../git/repoStore';
+import { ensureEgressInfra, egressLaunchArgs } from './egress';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 //? Exported so the terminal bridge spawns the SAME docker binary (Windows conpty can't
@@ -86,6 +87,9 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     ? ['-v', `${authDir}:/auth-ro:ro`, '-e', 'CLAUDE_CONFIG_DIR=/home/agent/.claude']
     : [];
 
+  //? Egress control (§6, opt-in WS_EGRESS=1): confine the worker to an allowlist proxy on an
+  //? internal network. Disabled ⇒ no infra + no extra args (full network, unchanged).
+  await ensureEgressInfra();
   await docker(['volume', 'create', volume]);
   const run = await docker([
     'run', '-d', '--name', name, '--hostname', safe(ticketKey),
@@ -94,6 +98,7 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     '--user', 'agent', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '512', '--memory', '3g', '--memory-swap', '3g', '--cpus', '2',
     '--restart', 'unless-stopped',
+    ...egressLaunchArgs(),
     '--label', `org.workspaces.workspace=${workspaceId}`, '--label', `org.workspaces.ticket=${ticketKey}`,
     image,
   ]);

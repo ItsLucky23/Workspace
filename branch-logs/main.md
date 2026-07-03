@@ -1068,3 +1068,13 @@ Van "ingelogd?" naar "lid van dít workspace?" — sluit cross-workspace-toegang
 
 **SEAM voor de andere AI**: zet `workspaceId` op de editor-`ProxyRoute` (editorSession) → dan geldt membership ook voor de editor (nu: logged-in-only tot dat gebeurt).
 **Verificatie**: server-tsc 0, front-tsc 0, eslint 0 (mijn files).
+
+## 2026-07-03 — Egress-control (punt 4) + Deel B multi-instance-run (docs)
+
+**Egress-control (ADR 0016)** — opt-in `WS_EGRESS=1` (default uit = huidig gedrag):
+- `server/container/egress.ts`: worker joint een `--internal` netwerk (geen route naar buiten) + routeert HTTP(S) via een allowlist-squid-proxy (npm/git/AI-API…, extendbaar via `WS_EGRESS_ALLOW`). `launchTicketContainer` roept `ensureEgressInfra()` + spread `egressLaunchArgs()`.
+- **Docker-bewezen** (`egressSpike.mts`): github.com → 200 via proxy · example.com → geblokkeerd · direct zonder proxy → geen route (isolatie).
+
+**Deel B** — `docs/WORKSPACES_MULTI_INSTANCE.md`: run-recipe voor N `system`-instances achter de reverse-proxy (sticky WS via ip_hash + `WS_MULTI_INSTANCE=1` + `WS_COOKIE_DOMAIN`). De correctheid zat in Deel A (ADR 0015); dit is config/ops.
+
+**Verificatie**: server-tsc 0, eslint 0, egressSpike groen. Env: WS_EGRESS, WS_EGRESS_ALLOW.
