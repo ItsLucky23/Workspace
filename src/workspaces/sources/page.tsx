@@ -4,7 +4,7 @@
 //? lots of content); Details opens a small CENTERED overlay via menuHandler
 //? (little data — no big sidebar). Dummy data; desktop-first.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -140,9 +140,12 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill, scanDocs, repo } = useWorkspaces();
+  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
+  const [reindexing, setReindexing] = useState(false);
+  //? Clear the pending state once the reindex delta lands (the RAG status updates).
+  useEffect(() => { setReindexing(false); }, [ragIndex]);
 
   const tabs: TabDef[] = [
     { id: 'docs', label: translate({ key: 'workspaces.sources.tabDocs' }), icon: 'file-lines', count: docs.length },
@@ -152,10 +155,26 @@ export default function Sources() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
+          {tab === 'docs' && (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted font-mono">
+              <Icon name="database" className="text-muted" />
+              {ragIndex && ragIndex.files > 0
+                ? (
+                  <>
+                    <span>{translate({ key: 'workspaces.sources.ragIndexed', params: [{ key: 'files', value: ragIndex.files }, { key: 'chunks', value: ragIndex.chunks }] })}</span>
+                    <span>· {translate({ key: 'workspaces.sources.ragEmbedder', params: [{ key: 'embedder', value: ragIndex.embedder || '—' }, { key: 'commit', value: ragIndex.commitHash ? ragIndex.commitHash.slice(0, 7) : '—' }] })}</span>
+                  </>
+                )
+                : <span>{translate({ key: 'workspaces.sources.ragNotIndexed' })}</span>}
+            </div>
+          )}
+        </div>
         {tab === 'docs' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {repo.linked && <WsButton variant="secondary" icon="magnifying-glass" onClick={() => { scanDocs(); }}>{translate({ key: 'workspaces.sources.scanRepo' })}</WsButton>}
+            {repo.linked && <WsButton variant="secondary" icon="database" disabled={reindexing} onClick={() => { setReindexing(true); scanIndex(); }}>{translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' })}</WsButton>}
             <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
           </div>
         )}

@@ -141,6 +141,37 @@ export interface TicketFile {
   diff?: DiffLine[]; // GitLab-MR-style inline diff for the preview
 }
 
+//? ----- Built-in MR review (BUILTIN_MR_REVIEW) -----
+//? Client mirror of `server/mr/service.ts` MrView (+ its diff shape). Kept in step
+//? with that server type structurally so the `workspaces/mrAction` sync payload
+//? drops straight in without a transform.
+export type MrDiffLineKind = 'add' | 'del' | 'ctx' | 'hunk';
+export interface MrDiffLine { kind: MrDiffLineKind; content: string; oldNo: number | null; newNo: number | null }
+export type MrFileStatus = 'added' | 'deleted' | 'modified' | 'renamed';
+export interface MrDiffFile {
+  path: string; oldPath: string | null; status: MrFileStatus;
+  additions: number; deletions: number; lines: MrDiffLine[]; truncated: boolean;
+}
+export interface MrDiff { files: MrDiffFile[]; additions: number; deletions: number; truncated: boolean }
+export interface MrComment { id: string; authorId: string | null; authorKind: string; body: string; createdAt: string }
+export interface MrThread {
+  id: string; filePath: string | null; line: number | null; side: string; resolved: boolean; comments: MrComment[];
+}
+export interface MrApproval { userId: string; stale: boolean; createdAt: string }
+export interface MrView {
+  id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
+  headSha: string | null; externalUrl: string | null; mergeStrategy: string;
+  diff: MrDiff; threads: MrThread[]; approvals: MrApproval[];
+}
+export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'resolve';
+export interface MrActionFields {
+  ticketKey: string; mrId?: string; body?: string; filePath?: string; line?: number; threadId?: string; side?: string; resolved?: boolean;
+}
+export type MrActionResult = { ok: true } | { ok: false; error: string };
+
+//? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
+export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }
+
 export interface TicketLink {
   id: string;            // related ticket id
   rel: 'relates to' | 'blocks' | 'duplicates';

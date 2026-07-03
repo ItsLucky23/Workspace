@@ -15,6 +15,7 @@ import type { EditorChange } from 'src/_components/editor/CodeEditorPanel';
 import type { EditorFile } from 'src/_components/editor/fileTree';
 
 import FileDiffViewer from './FileDiffViewer';
+import MrReviewPanel from '../../_components/MrReviewPanel';
 
 //? Lazy so Monaco (multi-MB) only loads when the Code tab is opened.
 const LazyCodeEditorPanel = lazy(() => import('src/_components/editor/CodeEditorPanel').then((m) => ({ default: m.CodeEditorPanel })));
@@ -40,6 +41,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
     { id: 'terminal', label: translate({ key: 'workspaces.ticket.tabTerminal' }), icon: 'terminal' },
     { id: 'files', label: translate({ key: 'workspaces.ticket.tabFiles' }), icon: 'diagram-project' },
     { id: 'code', label: translate({ key: 'workspaces.ticket.tabCode' }), icon: 'code-branch' },
+    { id: 'review', label: translate({ key: 'workspaces.ticket.tabReview' }), icon: 'code-merge' },
     { id: 'activity', label: translate({ key: 'workspaces.ticket.tabActivity' }), icon: 'wave-square' },
     { id: 'links', label: translate({ key: 'workspaces.ticket.tabLinks' }), icon: 'link' },
     { id: 'history', label: translate({ key: 'workspaces.ticket.tabHistory' }), icon: 'list-check' },
@@ -83,11 +85,12 @@ export default function TicketPage({ params }: { params: Record<string, string |
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
-        <div className={`mx-auto w-full ${tab === 'files' || tab === 'terminal' || tab === 'code' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+        <div className={`mx-auto w-full ${tab === 'files' || tab === 'terminal' || tab === 'code' || tab === 'review' ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
           {tab === 'terminal' && <TerminalTab ticketId={ticket.id} stageId={ticket.stageId} />}
           {tab === 'files' && <FilesTab files={ticket.files ?? []} />}
           {tab === 'code' && <CodeTab files={ticket.files ?? []} workspaceId={ctx.activeWorkspace.id} ticketKey={ticket.id} />}
+          {tab === 'review' && <MrReviewPanel ticket={ticket} />}
           {tab === 'activity' && <ActivityTab events={ctx.activityEvents.filter((e) => e.ticketId === ticket.id)} />}
           {tab === 'links' && <LinksTab links={ticket.links ?? []} onOpen={ctx.openTicket} />}
           {tab === 'history' && <HistoryTab history={ticket.history ?? []} />}

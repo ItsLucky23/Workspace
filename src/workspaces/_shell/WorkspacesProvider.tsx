@@ -21,7 +21,8 @@ import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
-  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
+  Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
@@ -113,6 +114,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [snap, setSnap] = useState<Snap>(EMPTY_SNAP);
   const [loading, setLoading] = useState(true);
   const [wantWorkspaceId, setWantWorkspaceId] = useState<string | undefined>();
+  //? Realtime side-channels not part of the snapshot: the RAG code-index status
+  //? (07 §D) and the built-in MR review views keyed by their source branch
+  //? (BUILTIN_MR_REVIEW). Both are hydrated by their `_sync` delta callbacks below.
+  const [ragIndex, setRagIndex] = useState<RagIndexStatus | null>(null);
+  const [mrByBranch, setMrByBranch] = useState<Record<string, MrView>>({});
 
   const refetch = useCallback(() => {
     void (async () => {
@@ -372,6 +378,29 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? scan-index delta → store the latest RAG code-index status (07 §D). Broadcast to the
+  //? whole room so every client shows the fresh files/chunks/commit/embedder.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/scanIndex', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      setRagIndex(serverOutput.ragIndex);
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? mr-action delta → upsert the fresh MR view keyed by its source branch
+  //? (BUILTIN_MR_REVIEW). The broadcast reaches everyone in the room; a client keys by
+  //? branch so a review it isn't looking at doesn't clobber the panel it is. A null `mr`
+  //? (ticket has no branch) carries no key, so nothing is stored.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/mrAction', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.mr) return;
+      const mr = serverOutput.mr;
+      setMrByBranch((m) => ({ ...m, [mr.sourceBranch]: mr }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? stage-config delta → upsert by id (pipeline settings realtime; no refetch).
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/saveStageConfig', version: 'v1',
@@ -424,6 +453,38 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
+
+  //? RAG reindex (07 §D) — mirror scanDocs: fire the scan-index sync; the delta callback
+  //? above stores the returned status. Fire-and-forget.
+  const scanIndexApi = useCallback(() => {
+    const room = snap.activeWorkspaceId;
+    if (room) void syncRequest({ name: 'workspaces/scanIndex', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
+
+  //? Built-in MR review (BUILTIN_MR_REVIEW) — fire an MR action into the room and resolve
+  //? with whether the sync succeeded (so the panel can show loading/error). The fresh MR
+  //? view lands in `mrByBranch` via the delta callback above.
+  const mrActionApi = useCallback(async (action: MrActionKind, fields: MrActionFields): Promise<MrActionResult> => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return { ok: false, error: 'mr.noRoom' };
+    const res = await syncRequest({
+      name: 'workspaces/mrAction', version: 'v1',
+      data: {
+        clientRequestId: nextReqId(), action, ticketKey: fields.ticketKey,
+        ...(fields.mrId ? { mrId: fields.mrId } : {}),
+        ...(fields.body === undefined ? {} : { body: fields.body }),
+        ...(fields.filePath ? { filePath: fields.filePath } : {}),
+        ...(fields.line === undefined ? {} : { line: fields.line }),
+        ...(fields.threadId ? { threadId: fields.threadId } : {}),
+        ...(fields.side ? { side: fields.side } : {}),
+        ...(fields.resolved === undefined ? {} : { resolved: fields.resolved }),
+      },
+      receiver: room,
+    });
+    if (res.status !== 'success') return { ok: false, error: res.errorCode };
+    if (res.result.status !== 'success') return { ok: false, error: res.result.errorCode };
+    return { ok: true };
   }, [snap.activeWorkspaceId]);
 
   //? Fire-and-refetch for the typed per-action writes: takes the (already typed)
@@ -587,6 +648,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/scanDocs', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room });
       },
+      scanIndex: scanIndexApi,
+      ragIndex,
+      mrAction: mrActionApi,
+      mrByBranch,
       permRoles: snap.roles,
       togglePerm: (ri, ci) => {
         const role = snap.roles[ri];
@@ -668,7 +733,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

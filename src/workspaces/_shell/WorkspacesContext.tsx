@@ -8,7 +8,8 @@ import { createContext, use } from 'react';
 
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
-  Member, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, RepoInfo, SkillEntry, Sprint,
+  Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, Workspace, WorkspaceBudget,
 } from '../_data/types';
 
@@ -73,6 +74,15 @@ export interface WorkspacesCtx {
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
+  //? RAG code index (07 §D) — trigger a reindex + the latest index status (null until scanned).
+  scanIndex: () => void;
+  ragIndex: RagIndexStatus | null;
+  //? Built-in MR review (BUILTIN_MR_REVIEW) — fire an MR action (open/refresh, comment, approve,
+  //? merge, resolve) and read the latest MR view keyed by source branch. `mrAction` resolves with
+  //? whether the sync succeeded so the panel can drive its loading/error state; the fresh MR view
+  //? arrives via the realtime delta and lands in `mrByBranch`.
+  mrAction: (action: MrActionKind, fields: MrActionFields) => Promise<MrActionResult>;
+  mrByBranch: Record<string, MrView>;
   //? Editable per-workspace RBAC + each member's assigned role. Held here so the
   //? edits persist across tab/route changes (would persist server-side for real).
   permRoles: PermRole[];

@@ -1123,3 +1123,14 @@ Volledige built-in merge-request-review (diff + threads + approvals + merge), ba
 - **Ops**: één `mrAction` `_sync`-route (`action` = create/comment/approve/merge/resolve) + 5 rbac-caps (`workTickets`) + ControlOp-union.
 
 **Bewezen** (`mrSpike.mts` GROEN): parser (+2/-1), comment→thread, approve→approval (niet-stale), approval STALE na head-advance, resolve. server-tsc 0, eslint 0. Frontend = volgende.
+
+## 2026-07-03 — MR-review frontend + RAG-reindex-knop (pijlers 2+3, UI-kant)
+
+De frontend voor de twee net-afgeronde backends (MR-review + RAG-index), client volledig gewired.
+- **`src/workspaces/_components/MrReviewPanel.tsx`** (nieuw) — built-in MR-review: unified diff (add/del/ctx-tinting via semantic tokens, old/new-gutters tabular-nums, hunk-separators, eigen `overflow-x`-scroll), **regel-geankerde threads** (hover-comment-affordance → composer → `action:'comment'` met filePath+line+side), MR-level discussie (filePath null), approvals-avatars met **stale→"needs re-review"**-markering, Approve/Merge (merge disabled tenzij status==='open'), forge-link bij externalUrl, empty/loading/error+retry.
+- Gemount als **"Review"-tab** in `board/[ticketId]/page.tsx` (chirurgisch, tussen Code en Activity); laadt de MR via `mrAction('create',{ticketKey})` on-tab-open.
+- **Sources-page**: "Reindex code"-knop (naast Scan repo, repo-linked-gated) + status-regel (files/chunks/embedder/commit) — spiegelt de scanDocs-wiring.
+- **Client-wiring** (`WorkspacesProvider`/`Context`): `scanIndex()` + `ragIndex`-state (delta-callback `workspaces/scanIndex`), `mrAction(action,fields)→Promise<MrActionResult>` + `mrByBranch`-state (delta-callback `workspaces/mrAction`, gekeyed op `sourceBranch` zodat een broadcast een panel dat een ander ticket toont niet clobbert). Client MrView-types in `_data/types.ts` (structureel gelijk aan `server/mr/service.ts`).
+- **i18n**: `workspaces.mr.*` + sources reindex-keys + `ticket.tabReview` in en/nl/de/fr.
+
+**Bewezen**: generateArtifacts (mrAction+scanIndex routes in type-map), front-tsc 0, server-tsc 0, eslint 0, ai:lint 0, build groen.
