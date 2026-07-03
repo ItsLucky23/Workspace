@@ -1321,3 +1321,15 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, eslint 0, ai:lint 0. Integration **32/32** (nieuw `editorProfileCrypto.test.mts` **11/11**: versleutelde round-trip, ciphertext≠plaintext, tamper/truncatie/verkeerde-key→null, no-key-fallback, Open VSX-gallery-env). Tar-in/out tegen een live container is Docker-gated (crypto + env-shaping headless bewezen).
 
 **Files touched:** `server/crypto/secretBox.ts` (binaire encrypt/decrypt), `server/container/editorProfile.ts` (versleutelde blobs), `server/container/editorServer.ts` (Open VSX), `docs/decisions/0030-*.md`, `tests/integration/editorProfileCrypto.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #15: multi-instance Deel B — coördinatie geverifieerd (ADR 0031)
+
+**User prompt:** /goal — item #15 (multi-instance Deel B: N instances + coördinatie verifiëren).
+
+**What I did:** Deel A (cluster.ts) was gebouwd maar nooit onder echte concurrency/N-instances geverifieerd. Deel B = die verificatie, twee manieren (de primitives zijn Redis-atomics → N processen = concurrency in één proces tegen dezelfde Redis).
+- **Headless concurrency-bewijs** (`tests/integration/multiInstance.test.mts`, 7/7): tegen echte Redis — (1) `withWorkspaceLease` serialiseert 5 gelijktijdige same-workspace critical sections (max concurrency 1); (2) verschillende workspaces draaien wél concurrent (max 2 → per-workspace, geen global lock); (3) `claimActionOnce`: precies 1 van 8 same-key claims wint, 3 distinct keys winnen allemaal; (4) leader-lease exclusief — 2e acquire → null, na release neemt ander over (failover).
+- **Live 2-instance-bewijs**: 2e backend op `:81` gestart tegen dezelfde Redis/Mongo terwijl `:80` draaide. Beide `/healthz` 200; de `/metrics`-gauge `workspaces_is_leader` = **1 op :80, 0 op :81**, alleen :80 logde "acquired leadership" → precies één leader over twee echte processen. Daarna teruggezet naar één schone :80-backend.
+
+**Verify:** Integration **33/33** (nieuw `multiInstance.test.mts` 7/7). Live: :80=leader(1), :81=follower(0). Geen productiecode-wijziging — dit is een verificatie-item (het bewijst Deel A).
+
+**Files touched:** `tests/integration/multiInstance.test.mts` (nieuw), `docs/decisions/0031-*.md`. (Geen server-code — Deel A bestond al.)
