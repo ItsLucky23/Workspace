@@ -22,6 +22,7 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
+import { isEditorRunning } from './editGuard';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -282,7 +283,16 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string): Promise<void> {
   if (!(await dockerAvailable())) return;
   for (const { key } of activated) {
-    void tryCatch(() => runStage(workspaceId, key, stageId)).then(([error]) => {
+    void tryCatch(async () => {
+      //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in
+      //? the live VS Code — that would race their worktree. Skip + log; re-entering the stage
+      //? (once the editor is closed) re-triggers it.
+      if (await isEditorRunning(workspaceId, key)) {
+        console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open on the container (edit-lock)`);
+        return;
+      }
+      await runStage(workspaceId, key, stageId);
+    }).then(([error]) => {
       if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
     });
   }

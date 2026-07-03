@@ -64,7 +64,10 @@ function renderRoute(r: ProxyRoute): string {
 }
 
 function renderConf(): string {
-  const blocks = [...routes.values()].toSorted((a, b) => a.id.localeCompare(b.id)).map((r) => renderRoute(r));
+  //? Deterministic order for a stable config file. `[...values()]` is a fresh copy, so the
+  //? in-place sort mutates nothing shared (the server TS lib predates `toSorted`).
+  // eslint-disable-next-line unicorn/no-array-sort
+  const blocks = [...routes.values()].sort((a, b) => a.id.localeCompare(b.id)).map((r) => renderRoute(r));
   return `# Managed by Workspaces — DO NOT EDIT BY HAND. Regenerated on every route change.\n${blocks.join('\n\n')}\n`;
 }
 

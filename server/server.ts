@@ -41,6 +41,8 @@ import { ports } from '../config.ports';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { bootstrapLuckyStack } from '@luckystack/server';
 
+import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
+
 (async () => {
   //? Optional @luckystack/secret-manager (opt-in). Resolve `.env` pointers
   //? (NAME=BASE_V<n>) against an external secret server before any framework
@@ -88,6 +90,10 @@ import { bootstrapLuckyStack } from '@luckystack/server';
   });
 
   await server.listen();
+
+  //? Self-heal per-ticket proxy routes left dangling by a previous run (best-effort, does not
+  //? block startup). Drops caddy `ws-route-*` entries whose upstream container is gone.
+  void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

@@ -912,3 +912,45 @@ docs/decisions/0011-*.md (nieuw) · tests/unit/{branchStrategy.test.mts (nieuw),
 **Verificatie:** server-tsc 0 (mijn files; caddyRoutes-fouten = andere AI) · front-tsc 0 (mijn files) ·
 eslint 0 · ai:lint geen violations · unit-tests groen (branchStrategy 18/18, rbac 121/0) · integration groen.
 De enige suite-fail is `e2e/httpControl` = ECONNREFUSED :80 (backend gestopt voor prisma-regen, geen code-issue).
+
+## 2026-07-03 03:10 — Per-container editor VOLLEDIG bewezen + product-wiring (Docker live)
+
+Docker up, Redis/Mongo via user's tunnel, Caddy geïnstalleerd. ADR 0010 end-to-end getest + het product-pad gebouwd (buiten de conductor om → geen conflict met de andere AI).
+
+**Bewezen (echte Docker, 2 spikes):**
+- `scripts/spike/editorProfileSpike.mts`: login uit container C1 → capture → nieuwe C2 → aanwezig (profiel reist mee).
+- `scripts/spike/openEditorSpike.mts`: de ECHTE `openEditorForTicket` → `launchTicketContainer` (hardened container + `DEV-9001` worktree) → proxy-net attach → profiel → **openvscode serveert op :3000 in de container (302)**. Alle checks PASS.
+- **Bug gevonden+gefixt:** hardened container dropt ALL caps (geen CAP_CHOWN) → `docker cp`+chown faalt. Fix: profiel **in/uit-streamen via `tar` door `docker exec` als agent-user** (agent-owned, geen chown).
+
+**Nieuw/gewijzigd:**
+- `server/container/editorSession.ts` (nieuw): `openEditorForTicket`/`closeEditorForTicket` + `editorRoute` — de volledige open-flow op de **andere AI's `server/proxy`-abstractie** (`getProxyProvider`). `caddyRoutes.ts` **verwijderd** (redundant).
+- `server/container/editorServer.ts`: `ensureOpenvscodeInContainer` (installeert on-demand als de image het niet bakt) + `--host 0.0.0.0` (Caddy-dial-by-name).
+- `server/container/editorProfile.ts`: tar-streaming transport.
+- `src/workspaces/_api/openEditor_v1.ts` (nieuw): login-gated `_api`-op (CAP.workTickets) → `openEditorForTicket`.
+- Ticket **`Code`-tab**: "Open live VS Code"-knop (Monaco-changes ↔ live container-editor via iframe) + i18n 4 talen.
+- **Dev-launcher** `npm run editor:launch` (`scripts/dev/launchEditor.mts`): start een container-editor met benoemd profiel — testbaar zonder de app. Draait nu op **http://localhost:3210/?tkn=dev**.
+- Image `workspaces/base-editor:test` (base + openvscode) — `scratchpad/Dockerfile.editor`.
+
+**Verificatie:** eslint 0 op alle nieuwe/gewijzigde files, `npm run build` groen, generateArtifacts (openEditor geregistreerd), ai:project-index/capabilities + ai:decisions (ADR 0010 VERIFIED) ververst. **Nog te draaien voor de klikbare app-flow:** een proxy (server/proxy) up op het gedeelde net + een geactiveerd ticket (gelinkte repo + branch).
+
+## 2026-07-03 — Edit-lock (engine↔editor) + proxy boot-reconcile (control-plane gaten, ADR 0012)
+
+Terwijl de andere AI de per-ticket VS Code + Caddy-routing bouwt, de cross-cutting control-plane
+gaten opgepakt die niemand deed (Track C4 + reconcile). Alleen míjn files (conductor/proxy/server);
+hun editor-files zijn untracked/actief → niet aangeraakt.
+
+- **Edit-lock (`server/orchestrator/editGuard.ts`)** — de AI-engine en een mens' live editor delen
+  container + `/work`; tegelijk draaien = worktree-race. `isEditorRunning` (docker exec pgrep
+  openvscode) + engine-kant gewired in `conductor.provisionContainers`: **skip de auto-turn als er
+  een live editor open is** (+log). `ticketEditGuard` (userEditable + busy `worker` AgentSession)
+  als kant-en-klare helper voor de editor-open-flow — **de andere AI hoeft 'm alleen aan te roepen
+  in `openEditor`** (één regel, geflagd). Was C4 = "DATA ONLY, unenforced".
+- **Proxy boot-reconcile (`server/proxy/reconcileOnBoot.ts`, aangeroepen in `server.ts` na listen)**
+  — dropt bij startup elke caddy `ws-route-*` waarvan de upstream-container weg is (stale routes na
+  restart self-healen). Caddy-gericht; nginx-include persisteert → follow-up.
+- **Bug gefixt**: `nginxProvider` gebruikte `toSorted` (bestaat niet in de server-TS-lib) — was per
+  ongeluk in `24a1018` beland (eslint-fix niet server-tsc-hertest). Nu `sort` op een verse kopie.
+
+**Verificatie:** server-tsc 0 (mijn files), eslint 0, integration 14/14. **Follow-ups (geflagd):**
+editor-side `ticketEditGuard`-aanroep in `openEditor`, "waiting: editor open"-UI, nginx-boot-reconcile,
+idle-editor-eviction (CapacityManager).
