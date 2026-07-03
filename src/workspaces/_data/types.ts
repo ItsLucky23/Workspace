@@ -72,6 +72,7 @@ export interface Workspace {
   reasonerTokenBudget?: number;   // optional future one-shot reasoner budget
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
+  forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
 }
 
 export interface Project {

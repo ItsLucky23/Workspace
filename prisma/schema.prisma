@@ -142,9 +142,11 @@ model Workspace {
   slug                  String
   ownerId               String   @db.ObjectId          // User.id (framework-global) — current owner (single-owner, D77)
 
-  // --- GitLab (the only V1 forge; B-07/B-29) ---
-  gitlabUrl             String?                          // the workspace's GitLab base url
-  gitlabTokenEnc        String?                          // ENCRYPTED per-workspace GitLab token (app-owned encryption v1)
+  // --- Forge (GitLab default; #10 adds GitHub). The gitlab* fields are the generic forge
+  //     base-url / token store despite their name (kept for back-compat). ---
+  forgeType             String   @default("gitlab")      // #10 'gitlab' | 'github' — which forge provider
+  gitlabUrl             String?                          // forge API base url (GitLab instance, or GitHub api base)
+  gitlabTokenEnc        String?                          // ENCRYPTED per-workspace forge token (app-owned encryption v1)
 
   // --- settings / field sweep (04b §13) ---
   timezone              String   @default("UTC")         // D55 — IANA tz; anchors cron + budget window reset + sprint dates

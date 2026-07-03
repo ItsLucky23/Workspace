@@ -47,6 +47,7 @@ import { startEditorReaper } from './proxy/editorReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
+import { registerForgeWebhook } from './git/webhookRoute';
 import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
@@ -99,6 +100,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
   //? Pre-params custom routes so probes don't require a session.
   registerObservabilityEndpoints();
+  //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
+  //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
+  registerForgeWebhook();
 
   const server = await bootstrapLuckyStack({
     //? Single-instance backend port from config.ports.ts. Sits BELOW a positional

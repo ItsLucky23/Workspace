@@ -11,6 +11,16 @@ import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig } from './branchStrategy';
 import { pushBranch } from './repoStore';
 import { postIssueComment } from './gitlabSync';
+import { openForgeMergeRequest, type ForgeType } from './forgeProvider';
+
+//? Narrow the workspace's stored forge type (defaults to gitlab for any legacy/blank value).
+const asForgeType = (s: string | null | undefined): ForgeType => (s === 'github' ? 'github' : 'gitlab');
+//? The default API base per provider when the workspace didn't set one (github.com's API host).
+const forgeBase = (type: ForgeType, gitlabUrl: string | null): string => {
+  const set = (gitlabUrl ?? '').replace(/\/+$/, '');
+  if (set.length > 0) return set;
+  return type === 'github' ? 'https://api.github.com' : '';
+};
 
 export interface ForgeResult { ok: boolean; pushed: boolean; mrUrl?: string; error?: string }
 
@@ -19,7 +29,7 @@ export interface ForgeResult { ok: boolean; pushed: boolean; mrUrl?: string; err
 //? target as the ticket branch is refused.
 export async function pushTicketWork(prisma: PrismaClient, workspaceId: string, ticketKey: string): Promise<ForgeResult> {
   const [ws, project, ticket] = await Promise.all([
-    prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitlabUrl: true, gitlabTokenEnc: true, gitConfig: true } }),
+    prisma.workspace.findUnique({ where: { id: workspaceId }, select: { forgeType: true, gitlabUrl: true, gitlabTokenEnc: true, gitConfig: true } }),
     prisma.project.findFirst({ where: { workspaceId }, select: { gitUrl: true, gitlabPath: true } }),
     prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true, title: true } }),
   ]);
@@ -37,42 +47,15 @@ export async function pushTicketWork(prisma: PrismaClient, workspaceId: string, 
   if (pushErr) return { ok: false, pushed: false, error: `forge.pushFailed: ${pushErr.message}` };
   if (cfg.pushPolicy === 'push') return { ok: true, pushed: true };
 
-  //? merge-request: open (or find an existing) MR via the GitLab REST API.
-  const base = (ws.gitlabUrl ?? '').replace(/\/+$/, '');
+  //? merge-request: open (or find an existing) MR/PR via the resolved forge provider (GitLab | GitHub).
+  const type = asForgeType(ws.forgeType);
+  const base = forgeBase(type, ws.gitlabUrl);
   const path = project.gitlabPath;
-  if (base.length === 0 || path.length === 0) return { ok: true, pushed: true, error: 'forge.noGitlabApi' };
-  const [mrErr, mrUrl] = await tryCatch(() => openMergeRequest({ base, path, token, source: branch, target: cfg.targetBranch, title: ticket.title }));
+  if (base.length === 0 || path.length === 0) return { ok: true, pushed: true, error: 'forge.noForgeApi' };
+  const [mrErr, mrUrl] = await tryCatch(() => openForgeMergeRequest(type, { base, path, token, source: branch, target: cfg.targetBranch, title: ticket.title }));
   if (mrErr || mrUrl === null) return { ok: true, pushed: true, error: `forge.mrFailed: ${mrErr?.message ?? 'unknown'}` };
   await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { mrUrl } });
   //? Push-back: report the MR on the source GitLab issue (best-effort, off the caller's path).
   void postIssueComment(prisma, workspaceId, ticketKey, `🤖 AI opened a merge request: ${mrUrl}`);
   return { ok: true, pushed: true, mrUrl };
-}
-
-interface MrInput { base: string; path: string; token: string; source: string; target: string; title: string }
-
-//? POST a new MR; on 409 (one already exists for this source branch) GET the open MR and reuse
-//? its url. Returns the web_url or null. `PRIVATE-TOKEN` keeps the token out of the url/argv.
-async function openMergeRequest(m: MrInput): Promise<string | null> {
-  const proj = encodeURIComponent(m.path);
-  //? External GitLab REST API (its own /api/v4) — not a framework `/api/*` route, so a raw fetch
-  //? is correct here; a json() throw is caught by the caller's tryCatch.
-  // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-  const res = await fetch(`${m.base}/api/v4/projects/${proj}/merge_requests`, {
-    method: 'POST',
-    headers: { 'PRIVATE-TOKEN': m.token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source_branch: m.source, target_branch: m.target, title: m.title }),
-  });
-  if (res.ok) {
-    const body = (await res.json()) as { web_url?: string };
-    return body.web_url ?? null;
-  }
-  if (res.status === 409) {
-    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-    const list = await fetch(`${m.base}/api/v4/projects/${proj}/merge_requests?state=opened&source_branch=${encodeURIComponent(m.source)}`, { headers: { 'PRIVATE-TOKEN': m.token } });
-    if (!list.ok) return null;
-    const arr = (await list.json()) as { web_url?: string }[];
-    return arr[0]?.web_url ?? null;
-  }
-  return null;
 }

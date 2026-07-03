@@ -1293,3 +1293,18 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. Integration **30/30** (nieuw `handoff.test.mts` **18/18**: budget/shouldHandoff/parseHandoff/renderHandoffReload puur + echte record→reset→reload). **Browser**: Context-budget-input rendert in Model&Effort + persisteert end-to-end (UI 80000 → save-stage-config → DB `modelCfg.contextBudgetTokens=80000`; test-waarde teruggezet). Live PTY-handoff-drive + `/clear`-reset is gewired maar draait alleen met Docker + een écht over-budget sessie.
 
 **Files touched:** `server/orchestrator/handoff.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `server/orchestrator/renderStage.ts`, `src/workspaces/pipeline/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0028-*.md`, `tests/integration/handoff.test.mts` (nieuw). (schema: geen netto-wijziging — redundant top-level veld toegevoegd+verwijderd.)
+
+## 2026-07-03 — /goal item #10: forge-provider abstractie (GitLab+GitHub) + webhook-ingest (ADR 0029)
+
+**User prompt:** /goal — item #10 (forge-uitbreiding).
+
+**What I did:** De GitLab-hardcoded forge generiek gemaakt + continue webhook-ingest.
+- **`server/git/forgeProvider.ts`** (nieuw): pure per-provider request-shaping (`buildOpenMrRequest`/`buildFindMrRequest`/`readMrUrl`/`isDuplicateStatus` voor gitlab|github) + `openForgeMergeRequest` (de enige fetch). GitLab: `/api/v4`+`PRIVATE-TOKEN`+`web_url`+409. GitHub: `/repos/{o}/{r}/pulls`+`Bearer`+`html_url`+422.
+- **`forge.ts`** gerefactored: resolvet de provider uit `Workspace.forgeType`, engine nu forge-agnostisch (oude hardcoded `openMergeRequest` verwijderd).
+- **Webhook-ingest** (`webhookIngest.ts` + `webhookRoute.ts`, nieuw): pure `parseWebhookEvent` normaliseert GitLab (`object_kind:issue`) én GitHub (`X-GitHub-Event:issues`) → één shape; `ingestIssueEvent` upsert `DEV-<iid>` (idempotent). `POST /webhooks/forge/<wsId>` als pre-params route + `registerOriginExemptPath` (server-to-server POST heeft geen Origin → framework 403't 'm anders). **Security**: shared-secret (`WS_WEBHOOK_SECRET`) in `X-Webhook-Secret`/`X-Gitlab-Token`; unset ⇒ 503 (fail-closed), fout ⇒ 401.
+- **Config**: `Workspace.forgeType` (default gitlab) + provider-dropdown in de GitLab-settings-tab (i18n en/nl/de/fr) via de bestaande `gitlab-settings`-op. `WS_WEBHOOK_SECRET` + budget-vars in `.env.local_template`.
+- **Built-in git-server = UITGESTELD** (eerlijke scope): git-HTTP-serving is een aparte infra-service, geen app-code-change. Follow-up binnen #10; de forge-abstractie is de naad.
+
+**Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. Integration **31/31** (nieuw `forge.test.mts` **26/26**: provider-shaping + webhook-parse + echte create→update-ingest). **Live**: `POST /webhooks/forge/<ws>` — fout secret → 401, correct → **200 + "ingested DEV-8888"** (echte upsert, opgeruimd). **Browser**: forge-provider-dropdown rendert in settings.
+
+**Files touched:** `server/git/forgeProvider.ts`+`webhookIngest.ts`+`webhookRoute.ts` (nieuw), `server/git/forge.ts`, `server/orchestrator/conductor.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/gitlabSettings_server_v1.ts`, `src/workspaces/workspace/page.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx`+`WorkspacesContext.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `.env.local_template`, `docs/decisions/0029-*.md`, `tests/integration/forge.test.mts` (nieuw). Schema: `Workspace.forgeType`.

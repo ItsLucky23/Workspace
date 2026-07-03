@@ -11,17 +11,17 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { baseUrl: string; token?: string; clientRequestId: string };
+  clientInput: { baseUrl: string; token?: string; forgeType?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { baseUrl, token, clientRequestId } = clientInput;
+  const { baseUrl, token, forgeType, clientRequestId } = clientInput;
   const res = await dispatchControlSync({
     op: 'gitlab-settings', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { baseUrl, ...(token ? { token } : {}) }, clientRequestId,
+    payload: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success' };

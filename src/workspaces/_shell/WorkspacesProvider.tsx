@@ -689,9 +689,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setWantWorkspaceId(undefined);
         setLoading(true);
       },
-      saveGitlab: (baseUrl, token) => {
+      saveGitlab: (baseUrl, token, forgeType) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
+        if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {

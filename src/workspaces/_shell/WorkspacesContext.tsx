@@ -70,7 +70,7 @@ export interface WorkspacesCtx {
   acceptInvite: (token: string) => void;
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
-  saveGitlab: (baseUrl: string, token: string) => void;
+  saveGitlab: (baseUrl: string, token: string, forgeType?: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;

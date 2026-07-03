@@ -694,8 +694,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     case 'gitlab-settings': {
       const gitlabUrl = str(payload, 'baseUrl') ?? str(payload, 'url'); const token = str(payload, 'token');
+      //? #10: the forge provider (gitlab | github). Anything else is coerced to gitlab (safe default).
+      const forgeRaw = str(payload, 'forgeType'); const forgeType = (forgeRaw === 'github' || forgeRaw === 'gitlab') ? forgeRaw : undefined;
       //? Token is app-encrypted at rest (B-07) — see server/crypto/secretBox.
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}) } });
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}), ...(forgeType ? { forgeType } : {}) } });
       return;
     }
     case 'gitlab-verify': {

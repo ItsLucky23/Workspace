@@ -343,14 +343,21 @@ function IntegrationsTab() {
 function GitLabTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveGitlab } = useWorkspaces();
+  const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
   const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.slug === 'youcomm-core' ? 'https://gitlab.youcomm.nl' : 'https://gitlab.com'));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
   //? value tells `saveGitlab` to keep the existing token unchanged.
   const [token, setToken] = useState('');
+  const forgeItems = [
+    { id: 'gitlab', value: 'gitlab', item: translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) },
+    { id: 'github', value: 'github', item: translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) },
+  ];
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabGitlab' })}</div>
       <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.gitlabDescription' })}</div>
+      <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.forgeProvider' })}</span>
+      <Dropdown size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { setForge(it.id === 'github' ? 'github' : 'gitlab'); if (it.id === 'github') setBaseUrl('https://api.github.com'); }} />
       <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.baseUrl' })}</span>
       <input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
@@ -361,7 +368,7 @@ function GitLabTab() {
         <WsButton variant="secondary" icon="circle-check" onClick={() => { /* Fase 2: live GitLab token verification round-trip via the orchestrator */ }}>{translate({ key: 'workspaces.workspaceSettings.verify' })}</WsButton>
       </div>
       <div>
-        <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+        <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
       </div>
     </div>
   );
