@@ -42,11 +42,14 @@ export interface OpenEditorResult { ok: boolean; url?: string; host?: string; to
 //? to `host.docker.internal:80` (the host backend, reachable from the Caddy container in dev).
 const EDGE_AUTH_BACKEND = process.env.WS_EDITOR_EDGE_AUTH === undefined ? undefined : (process.env.WS_EDITOR_AUTH_BACKEND ?? 'host.docker.internal:80');
 
-export function editorRoute(input: { ticketKey: string; branch: string; containerName: string }): ProxyRoute {
+export function editorRoute(input: { workspaceId: string; ticketKey: string; branch: string; containerName: string }): ProxyRoute {
   return {
     id: `vscode-${input.ticketKey.toLowerCase()}`,
     host: `vscode-${deriveHostSlug(input.branch)}.${baseDomain()}`,
     target: `${input.containerName}:${String(EDITOR_IN_CONTAINER_PORT)}`,
+    //? host→workspace for /editor-auth-check membership (the proxy writes it to the Redis map on
+    //? upsert). Without it the edge-auth degrades to logged-in-only (any member of any workspace).
+    workspaceId: input.workspaceId,
     ...(EDGE_AUTH_BACKEND === undefined ? {} : { forwardAuth: EDGE_AUTH_BACKEND }),
   };
 }
@@ -60,8 +63,8 @@ async function attachToProxyNet(name: string): Promise<void> {
 //? Upsert the ticket's editor route and build the reachable URL. Shared by the fresh-launch
 //? and reuse paths. Dev (`localhost`) serves plain http on Caddy :80; a real base domain uses
 //? https (:443, wildcard cert).
-async function finalizeEditor(ticketKey: string, branch: string, name: string, token: string): Promise<OpenEditorResult> {
-  const route = editorRoute({ ticketKey, branch, containerName: name });
+async function finalizeEditor(workspaceId: string, ticketKey: string, branch: string, name: string, token: string): Promise<OpenEditorResult> {
+  const route = editorRoute({ workspaceId, ticketKey, branch, containerName: name });
   const proxied = await getProxyProvider().upsertRoute(route);
   //? Caddy serves TLS on :443 (internal CA for *.localhost in dev, wildcard cert in prod), so the
   //? editor URL is always https. `npm run caddy:launch` never publishes :80 → no clash with the
@@ -88,7 +91,7 @@ export async function openEditorForTicket(input: {
   //? net + route (a reopen shouldn't launch a second openvscode or mint a new token).
   if (cached !== undefined && await isEditorRunning(input.workspaceId, input.ticketKey)) {
     await attachToProxyNet(name);
-    return finalizeEditor(input.ticketKey, input.branch, name, cached);
+    return finalizeEditor(input.workspaceId, input.ticketKey, input.branch, name, cached);
   }
 
   //? FRESH: ensure the ticket container (reuses if running; null ⇒ no linked repo).
@@ -108,7 +111,7 @@ export async function openEditorForTicket(input: {
   });
   if (started.error !== undefined) return { ok: false, error: started.error };
   editorTokens.set(key, token);
-  return finalizeEditor(input.ticketKey, input.branch, container.name, token);
+  return finalizeEditor(input.workspaceId, input.ticketKey, input.branch, container.name, token);
 }
 
 //? Close the editor for a ticket: capture the profile back (so this session's logins/extensions

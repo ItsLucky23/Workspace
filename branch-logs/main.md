@@ -1087,3 +1087,18 @@ De hook eiste de visuele klik-door-de-app. Geleverd:
 - Onderweg opgelost: openvscode's token-cookie is `Secure` (HTTPS verplicht; HTTP :8080-omweg verworpen + caddy.json teruggedraaid naar :443-only), agent-browser-daemon-bug omzeild door Playwright direct te gebruiken, en de Git-Bash-padmangling in de losse editor-restart.
 
 **Eindstand: alle 7 items end-to-end bewezen** — inclusief de klikbare editor per branch via het echte subdomein, visueel in de browser. Commits t/m deze (ItsLucky23, niet gepusht).
+
+## 2026-07-03 (parallel, vervolg 5) — Edge-auth membership: prerequisite + matrix-verificatie
+
+**Mijn kant (gedaan, geverifieerd):**
+- `editorRoute` draagt nu `workspaceId` (→ `setRouteWorkspace` schrijft host→workspace in Redis). `devLaunchEditor` kreeg een `authWorkspaceId`-param (test-harness) die de route op een ECHTE DB-workspace richt (server-side Redis-write, want standalone-tsx faalt op de versleutelde Redis-auth).
+- Opzet: 2 users geregistreerd (member+nonmember), echte workspace W via `createWorkspace` (member=owner), backend met `WS_EDITOR_EDGE_AUTH` + `WS_COOKIE_DOMAIN`.
+
+**Matrix (curl door Caddy → forward_auth → /editor-auth-check):**
+- geen sessie → **401** ✓ (geblokkeerd)
+- niet-lid → **403** ✓ (correct geweigerd)
+- **lid → 403 ✗** (moet editor zijn)
+
+**Root-cause (engine-agent's `server/http/editorAuthCheck.ts`):** het doet `hasCapability(getPrismaClient(), …)` met de **base**-client, maar `WorkspaceMember`/`WorkspaceRole` zijn TENANT_MODELS (row-isolation via `tenantDb` + `runInTenant`). De base-client ziet de tenant-rows niet → lid krijgt 403. Bewijs dat het aan de client ligt: dezelfde `hasCapability` via `functions.db.prisma` (tenant) in `openEditor` laat de member wél door (gaf `notActivated`, niet `forbidden`); `session.id` = `W.ownerId` (klopt). Fix-pogingen in hun file (getPrismaClientFor → 500; runInTenant+tenantDb → 500 met empty-message error) teruggedraaid — de juiste tenant-resolutie in de raw custom-route is engine-agent-expertise. **GEFLAGD.** Tot dan: `WS_EDITOR_EDGE_AUTH` uit laten (membership-gate blokkeert dan iedereen).
+
+Mijn files: `editorSession.ts` (workspaceId) + `devLaunchEditor_v1.ts` (authWorkspaceId). Build groen, lint 0.

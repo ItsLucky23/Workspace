@@ -10,7 +10,9 @@ import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { openEditorForTicket } from '../../../server/container/editorSession';
+import { openEditorForTicket, editorRoute } from '../../../server/container/editorSession';
+import { containerName } from '../../../server/container/runtime';
+import { getProxyProvider } from '../../../server/proxy';
 
 export const rateLimit: number | false = 6;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -18,7 +20,10 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: false, additional: [] };
 
 export interface ApiParams {
-  data: Record<string, never>;
+  //? authWorkspaceId: point the route's edge-auth at a REAL DB workspace (host→workspace Redis
+  //? map, written server-side with the right Redis auth) so /editor-auth-check does per-workspace
+  //? membership. The editor container itself stays the disk-only demo. Test-harness only.
+  data: { authWorkspaceId?: string };
   user: SessionLayout | null;
   functions: Functions;
 }
@@ -41,9 +46,14 @@ function ensureMirror(): void {
   rmSync(tmp, { recursive: true, force: true });
 }
 
-export const main = async (): Promise<ApiResponse> => {
+export const main = async ({ data }: ApiParams): Promise<ApiResponse> => {
   if (process.env.WS_DEV_EDITOR !== '1') return { status: 'error', errorCode: 'editor.devDisabled' };
   ensureMirror();
   const result = await openEditorForTicket({ workspaceId: WS, ticketKey: KEY, branch: KEY, userId: 'demo', image: 'workspaces/base:0.1.0' });
+  //? Re-point the route's edge-auth membership at a real workspace (server-side Redis write).
+  if (result.ok && typeof data.authWorkspaceId === 'string' && data.authWorkspaceId.length > 0) {
+    const route = editorRoute({ workspaceId: data.authWorkspaceId, ticketKey: KEY, branch: KEY, containerName: containerName(WS, KEY) });
+    await getProxyProvider().upsertRoute(route);
+  }
   return { status: 'success', result };
 };
