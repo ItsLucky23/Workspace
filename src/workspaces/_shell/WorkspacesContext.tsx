@@ -119,6 +119,17 @@ export interface WorkspacesCtx {
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;
+  //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.
+  pauseTicket: (ticketKey: string) => void;
+  resumeTicket: (ticketKey: string) => void;
+  killTicket: (ticketKey: string) => void;
+  pauseAll: () => void;
+  resumeAll: () => void;
+  //? Whether the workspace is pause-all'd (C2) — the engine provisions no new turns.
+  workspacePaused: boolean;
+  //? Preview flow (P4) — start the ticket's app dev-server + expose it (returns the URL); stop it.
+  openPreview: (ticketKey: string) => Promise<{ ok: boolean; url?: string; error?: string }>;
+  closePreview: (ticketKey: string) => void;
   //? Sign out of the framework session (not a [control-API] op).
   signOut: () => void;
 

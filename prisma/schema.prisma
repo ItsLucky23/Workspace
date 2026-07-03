@@ -158,6 +158,7 @@ model Workspace {
 
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)
+  paused                Boolean  @default(false)          // pause-all: when true the engine provisions NO new autonomous turns (C2)
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -238,6 +239,7 @@ model Project {
   generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
   dockerfilePath    String?                                    // optional per-project Dockerfile
+  devCommand        String?                                    // the command that starts the app's dev server in the ticket container (preview flow); default = package.json scripts.dev
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 

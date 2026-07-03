@@ -23,6 +23,8 @@ import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { isEditorRunning } from './editGuard';
+import { killTicketAgent } from './agentControl';
+import { broadcastTicketDelta } from '../read/broadcast';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
@@ -280,17 +282,31 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? 6-7): launch the container + drive an in-container claude turn on the ticket. Gated on
 //? the Docker daemon (a host without Docker still gets the full git/worktree layer). Each
 //? ticket's turn runs concurrently; errors are logged, never surfaced into the stage move.
+//? The ticket banner set when a turn is deferred because a human editor is open; matched
+//? exactly to clear it again (never wipes a real AI open-question).
+const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
+
 async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string): Promise<void> {
   if (!(await dockerAvailable())) return;
+  //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
+  if (ws?.paused === true) { console.log(`[conductor] provisioning skipped — workspace paused`); return; }
   for (const { key } of activated) {
     void tryCatch(async () => {
-      //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in
-      //? the live VS Code — that would race their worktree. Skip + log; re-entering the stage
-      //? (once the editor is closed) re-triggers it.
+      //? Pause (C2): a per-ticket pause skips just this ticket.
+      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { status: true } });
+      if (t?.status === 'paused') { console.log(`[conductor] runStage ${key}@${stageId} skipped — ticket paused`); return; }
+      //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in the
+      //? live VS Code — that races their worktree. Skip, set a ticket banner + broadcast it so the
+      //? UI shows WHY the AI didn't run; re-entering (editor closed) re-triggers it.
       if (await isEditorRunning(workspaceId, key)) {
-        console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open on the container (edit-lock)`);
+        console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open (edit-lock)`);
+        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: EDITOR_DEFER_MSG } });
+        await broadcastTicketDelta(prisma, workspaceId, [key]);
         return;
       }
+      //? Editor gone → clear a prior defer banner (targeted; leaves real open-questions intact).
+      await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: EDITOR_DEFER_MSG }, data: { needsInput: null } });
       await runStage(workspaceId, key, stageId);
     }).then(([error]) => {
       if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
@@ -622,6 +638,35 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         protectedBranches: cfg.protectedBranches, commitSigning: cfg.commitSigning,
       } } });
       return cfg;
+    }
+    // ---- agent controls (C2) ----
+    case 'pause': {
+      //? Per-ticket pause: skip further autonomous turns for this ticket (provisionContainers
+      //? respects status='paused'). Does not stop an in-flight turn — use 'kill' for that.
+      const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
+      if (key) { await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'paused' } }); await broadcastTicketDelta(prisma, action.workspaceId, [key]); }
+      return;
+    }
+    case 'resume': {
+      //? Clear a per-ticket pause. Re-running is by re-moving the ticket into an AI stage.
+      const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
+      if (key) { await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'idle' } }); await broadcastTicketDelta(prisma, action.workspaceId, [key]); }
+      return;
+    }
+    case 'kill': {
+      //? Stop the ticket's in-flight turn (procps-free) + mark its worker session stopped.
+      const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
+      if (key) { await killTicketAgent(prisma, action.workspaceId, key); await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'idle' } }); await broadcastTicketDelta(prisma, action.workspaceId, [key]); }
+      return;
+    }
+    case 'pause-all': {
+      //? Workspace-wide pause: the engine provisions NO new autonomous turns until resumed.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { paused: true } });
+      return;
+    }
+    case 'resume-all': {
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { paused: false } });
+      return;
     }
     case 'link-repo': {
       //? Register-flow step A: bare-clone the linked repo into data/workspaces/<id>/

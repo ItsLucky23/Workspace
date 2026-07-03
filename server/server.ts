@@ -42,6 +42,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { bootstrapLuckyStack } from '@luckystack/server';
 
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
+import { startEditorReaper } from './proxy/editorReaper';
 
 (async () => {
   //? Optional @luckystack/secret-manager (opt-in). Resolve `.env` pointers
@@ -94,6 +95,8 @@ import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
   //? Self-heal per-ticket proxy routes left dangling by a previous run (best-effort, does not
   //? block startup). Drops caddy `ws-route-*` entries whose upstream container is gone.
   void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
+  //? Periodically evict idle live editors + prune their routes (CapacityManager).
+  startEditorReaper();
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

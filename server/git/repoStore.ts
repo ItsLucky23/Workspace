@@ -178,3 +178,12 @@ export async function addWorktree(workspaceId: string, ticketKey: string, branch
     : git(['--git-dir', bare, 'worktree', 'add', '-b', branchName, wt, commitHash]));
   return { branch: branchName, commitHash, path: wt };
 }
+
+//? Push a ticket's branch to origin (push-on-approval, Track F). The token is injected ONLY
+//? into this git process via `withAuth` — never stored on the remote (origin keeps the clean
+//? url, like `cloneRepo`) and never logged (git errors are token-scrubbed). Pushes from the
+//? ticket's worktree, where the AI's commits live. Throws a scrubbed error on failure.
+export async function pushBranch(input: { workspaceId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
+  const wt = worktreePath(input.workspaceId, input.ticketKey);
+  await git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`]);
+}

@@ -1,0 +1,81 @@
+//? Editor eviction / CapacityManager (server-side). A periodic reaper that stops IDLE per-ticket
+//? live editors and prunes their proxy routes, so long-lived editor processes + routes don't
+//? accumulate. IDLE = openvscode-server is LISTENING on the editor port but has NO connected
+//? client (no ESTABLISHED socket), sustained for WS_EDITOR_IDLE_MIN. Self-contained: reads the
+//? container's /proc/net/tcp (procps-free) + the proxy abstraction. A live browser connection
+//? keeps the editor alive; a precise lastActivity signal from the editor layer can refine this.
+
+import { spawn } from 'node:child_process';
+
+import { DOCKER_BIN, docker } from '../container/runtime';
+import { getProxyProvider } from './index';
+
+const EDITOR_PORT = Number(process.env.WS_EDITOR_PORT ?? '3000');
+const IDLE_MS = Number(process.env.WS_EDITOR_IDLE_MIN ?? '30') * 60_000;
+const INTERVAL_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
+const HEX = EDITOR_PORT.toString(16).toUpperCase().padStart(4, '0'); //? 3000 → '0BB8'
+
+//? container name → epoch ms it was first seen idle (cleared when a client connects / editor stops).
+const idleSince = new Map<string, number>();
+
+//? Read the editor port's socket states from the container's /proc/net/tcp (procps-free).
+//? `listening` = a LISTEN (0A) socket on the port; `connected` = an ESTABLISHED (01) one.
+async function editorSockState(container: string): Promise<{ listening: boolean; connected: boolean }> {
+  const r = await docker(['exec', container, 'sh', '-c', `grep -i ':${HEX}' /proc/net/tcp /proc/net/tcp6 2>/dev/null`]);
+  let listening = false;
+  let connected = false;
+  for (const line of r.out.split('\n')) {
+    const p = line.trim().split(/\s+/);
+    const local = p[1] ?? '';
+    const st = (p[3] ?? '').toUpperCase();
+    if (!local.toUpperCase().endsWith(`:${HEX}`)) continue;
+    if (st === '0A') listening = true;
+    else if (st === '01') connected = true;
+  }
+  return { listening, connected };
+}
+
+//? Kill openvscode-server in the container (procps-free) — mirrors the claude kill in
+//? agentControl.ts but matches the editor process.
+function killEditor(container: string): Promise<void> {
+  const script = 'for d in /proc/[0-9]*; do if grep -qa openvscode "$d/cmdline" 2>/dev/null; then p="${d#/proc/}"; [ "$p" != "$$" ] && kill "$p" 2>/dev/null; fi; done; true';
+  return new Promise((resolve) => {
+    const proc = spawn(DOCKER_BIN, ['exec', container, 'sh', '-c', script], { windowsHide: true });
+    proc.on('error', () => { resolve(); });
+    proc.on('close', () => { resolve(); });
+  });
+}
+
+//? One reaper sweep: stop editors idle beyond the threshold + prune their routes. Best-effort.
+export async function reapIdleEditors(now: number): Promise<{ reaped: string[] }> {
+  const r = await docker(['ps', '--filter', 'label=org.workspaces.ticket', '--format', '{{.Names}}\t{{.Label "org.workspaces.ticket"}}']);
+  const rows = r.out.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+  const live = new Set<string>();
+  const reaped: string[] = [];
+  for (const row of rows) {
+    const [name, ticketKey] = row.split('\t');
+    if (!name || !ticketKey) continue;
+    live.add(name);
+    const { listening, connected } = await editorSockState(name);
+    if (!listening || connected) { idleSince.delete(name); continue; } //? no editor, or a client is connected → not idle
+    const since = idleSince.get(name) ?? now;
+    idleSince.set(name, since);
+    if (now - since >= IDLE_MS) {
+      await killEditor(name);
+      await getProxyProvider().removeRoute(`vscode-${ticketKey.toLowerCase()}`);
+      idleSince.delete(name);
+      reaped.push(name);
+    }
+  }
+  //? Forget containers that are gone (a restart of the same name resets its idle clock).
+  const stale: string[] = [];
+  for (const k of idleSince.keys()) { if (!live.has(k)) stale.push(k); }
+  for (const k of stale) idleSince.delete(k);
+  if (reaped.length > 0) console.log(`[editor-reaper] reaped ${String(reaped.length)} idle editor(s): ${reaped.join(', ')}`);
+  return { reaped };
+}
+
+//? Start the periodic reaper (called once at boot). Returns the timer so it can be cleared.
+export function startEditorReaper(): ReturnType<typeof setInterval> {
+  return setInterval(() => { void reapIdleEditors(Date.now()); }, INTERVAL_MS);
+}

@@ -50,6 +50,7 @@ interface Snap {
   notes: TicketNote[];
   repo: RepoInfo;
   gitConfig: GitConfig;
+  workspacePaused: boolean;
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -58,6 +59,7 @@ const EMPTY_SNAP: Snap = {
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
+  workspacePaused: false,
 };
 
 function pathForView(view: WsView): string {
@@ -621,6 +623,20 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      workspacePaused: snap.workspacePaused,
+      pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
+      resumeTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'resume', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
+      killTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'kill', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
+      pauseAll: () => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause-all', clientRequestId: nextReqId() }, receiver: room }); },
+      resumeAll: () => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'resume-all', clientRequestId: nextReqId() }, receiver: room }); },
+      openPreview: async (ticketKey) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return { ok: false };
+        const res = await apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: room, ticketKey } });
+        if (res.status !== 'success') return { ok: false, error: res.errorCode };
+        return res.result;
+      },
+      closePreview: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: room, ticketKey } }); },
       signOut,
       // live tenant data
       loading,

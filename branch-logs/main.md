@@ -956,3 +956,17 @@ hun editor-files zijn untracked/actief → niet aangeraakt.
 **Verificatie:** server-tsc 0 (mijn files), eslint 0, integration 14/14. **Follow-ups (geflagd):**
 editor-side `ticketEditGuard`-aanroep in `openEditor`, "waiting: editor open"-UI, nginx-boot-reconcile,
 idle-editor-eviction (CapacityManager).
+
+## 2026-07-03 — Engine control-plane compleet: push-on-approval + C2 + realtime-broadcast + preview + eviction (ADR 0013)
+
+De 6 control-plane/git-items uit de /goal-taakverdeling, engine/conductor/proxy-kant (parallel bouwde de andere AI de editor/Caddy/UI — geen overlap: 90c5a46 raakte geen van mijn files).
+
+1. **Push-on-approval (Track F)** `server/git/forge.ts` + `repoStore.pushBranch`: bij een done-turn die een gateForApproval/terminal stage verlaat + pushPolicy≠'local-only' → push de branch (token transient via withAuth, nooit opgeslagen/gelogd) + bij 'merge-request' open/vind een GitLab-MR tegen targetBranch; protectedBranches geweigerd; mrUrl op Ticket. Fire-and-forget uit stageRunner.
+2. **C2 pause/resume/kill/pause-all/resume-all**: conductor-cases + `agentControl.ts` (procps-vrije kill via /proc/[pid]/cmdline — ps/pgrep ontbreken in de image) + `Workspace.paused`/`Ticket.status='paused'` die `provisionContainers` respecteert. Eén `_sync/agentControl`-route + context-methods (pauseTicket/…/pauseAll). **Spike-bewezen**: kill stopt een fake-claude (count 1→0).
+3. **Edit-lock-signaal**: provisionContainers zet bij een editor-skip een ticket-banner + broadcast (nu zichtbaar i.p.v. enkel log).
+4. **Editor-eviction** `server/proxy/editorReaper.ts`: periodieke reaper stopt idle editors (LISTEN op :3000 zonder ESTABLISHED-client, >WS_EDITOR_IDLE_MIN) + pruned hun route; gestart in server.ts.
+5. **Realtime engine-advance** `server/read/broadcast.ts`: de auto-advance emit nu de `"sync"`-event met de bulkMove-envelope naar de workspace-room (getIoInstance/formatRoomName) → board update live, geen reload. Bewezen-mechaniek (agent-gemapt uit de bundle).
+6. **Preview-flow** `server/container/previewSession.ts` + openPreview/closePreview `_api` + context-method: start `Project.devCommand` (default npm run dev) in de container + expose via previewRoute → <slug>.<baseDomain>.
+
+**Schema (additief)**: Workspace.paused, Project.devCommand. **Snapshot**: workspacePaused + (eerder) gitConfig.
+**Verificatie**: server/front-tsc 0 (mijn files), eslint 0, ai:lint 0, integration 14/14, spikes editLockSpike + controlPlaneSpike groen (kill + forge-gating). **Follow-ups**: auto-re-trigger op resume, workspace-delta voor pause-all, lastActivity voor eviction, procps in de base-image (fixt ook de engine-pkill — andere AI's terrein).

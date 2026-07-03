@@ -14,6 +14,8 @@ import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
 import { renderStage, type StageArtifacts } from './renderStage';
 import { toStageConfig } from '../read/workspaceSnapshot';
+import { broadcastTicketDelta } from '../read/broadcast';
+import { pushTicketWork } from '../git/forge';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -195,6 +197,19 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     //? Advance the ticket to the next stage unless this stage is gated for human approval.
     if (nextStage && !stageRow.gateForApproval) {
       await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { stageId: nextStage.key } });
+    }
+    //? Realtime (item 5): the engine advance was silent before — broadcast the updated ticket so
+    //? every board reflects the move + carry-over live (no refetch).
+    await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
+    //? Push-on-approval (item 1, Track F): when the work is ready for a human — this stage gates
+    //? for approval, or it's the terminal stage — push + open an MR per pushPolicy. Fire-and-
+    //? forget so a slow/failed forge never delays or breaks the turn; re-broadcast once an MR lands.
+    if (stageRow.gateForApproval || !nextStage) {
+      void tryCatch(() => pushTicketWork(prisma, workspaceId, ticketKey)).then(([e, r]) => {
+        if (e) console.error(`[forge] ${ticketKey} failed:`, e.message);
+        else if (r && !r.ok) console.warn(`[forge] ${ticketKey}: ${r.error ?? ''}`);
+        else if (r?.mrUrl) { console.log(`[forge] ${ticketKey} MR: ${r.mrUrl}`); void broadcastTicketDelta(prisma, workspaceId, [ticketKey]); }
+      });
     }
     return { ok: true, kind: 'done', envelope: result.envelope, message: drive.message };
   }

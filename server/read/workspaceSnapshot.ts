@@ -128,6 +128,8 @@ export interface WorkspaceSnapshot {
   repo: RepoInfo;
   //? The active workspace's git strategy + push policy (normalized; DEFAULT when unset).
   gitConfig: GitConfig;
+  //? The active workspace's pause-all state (C2): when true the engine provisions no new turns.
+  workspacePaused: boolean;
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -135,7 +137,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG,
+  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -210,7 +212,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const projectRow = await tenantDb.project.findFirst();
     const repo = await repoStatus(activeWorkspaceId, projectRow?.gitUrl ?? undefined);
     //? The active workspace's git strategy (normalized; DEFAULT when the field is unset).
-    const gitConfig = normalizeGitConfig(workspaceRows.find((w) => w.id === activeWorkspaceId)?.gitConfig ?? null);
+    const activeWs = workspaceRows.find((w) => w.id === activeWorkspaceId);
+    const gitConfig = normalizeGitConfig(activeWs?.gitConfig ?? null);
+    const workspacePaused = activeWs?.paused === true;
 
     return {
       workspaces, activeWorkspaceId, members, budget, docs, skills,
@@ -237,6 +241,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       })),
       repo,
       gitConfig,
+      workspacePaused,
       myInvites,
     };
   });
