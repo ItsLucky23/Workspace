@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (8)
+## Decisions (18)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -21,6 +21,16 @@
 | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one | 🟢 accepted | ai, architecture, orchestrator, extensibility | — | `docs/decisions/0007-pluggable-ai-provider-layer.md` |
 | 0008 | Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning | 🟢 accepted | container, runtime, orchestrator, git, security | — | `docs/decisions/0008-container-runtime-model.md` |
 | 0009 | Register-flow AI operations — direct _api, draft-then-review, pure-context prompting | 🟢 accepted | ai, register-flow, dockerfile, docs, security | — | `docs/decisions/0009-register-flow-ai-operations.md` |
+| 0010 | Per-container VS Code editor with a projected per-user profile (extensions + auth) | 🟢 accepted | editor, container, extensions, auth, multi-tenancy | — | `docs/decisions/0010-per-container-editor-with-user-profile.md` |
+| 0011 | Git/workflow customization is split into structured per-workspace config vs skill/context-doc guidance, and the preview reverse-proxy is a pluggable Caddy/nginx provider | 🟢 accepted | git, hosting, proxy, workflow, config | — | `docs/decisions/0011-pluggable-proxy-and-git-workflow-config.md` |
+| 0012 | The AI engine and a human's live editor never run on a ticket's container at once (edit-lock), and stale proxy routes self-heal on boot | 🟢 accepted | editor, engine, concurrency, proxy, safety | — | `docs/decisions/0012-editor-engine-edit-lock-and-proxy-boot-reconcile.md` |
+| 0013 | Engine control-plane completion — push-on-approval, pause/kill controls, off-chain realtime broadcast, and preview exposure | 🟢 accepted | engine, git, control-plane, realtime, preview | — | `docs/decisions/0013-engine-control-plane-completion.md` |
+| 0014 | Market-hardening — GitLab issue ingestion, a concurrent-turn CapacityManager, edge-auth on subdomains, and Sentry error tracking | 🟢 accepted | gitlab, capacity, security, ops, market | — | `docs/decisions/0014-market-hardening-gitlab-ingestion-capacity-edge-auth.md` |
+| 0015 | Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup | 🟢 accepted | multi-instance, conductor, redis, scale, engine | — | `docs/decisions/0015-multi-instance-safety-deel-a.md` |
+| 0016 | Egress control on worker containers — an internal network + an allowlist forward proxy | 🟢 accepted | security, containers, egress, multi-tenant, market | — | `docs/decisions/0016-egress-control.md` |
+| 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context | 🟢 accepted | rag, ai, retrieval, orchestrator, engine | — | `docs/decisions/0017-rag-codebase-intelligence.md` |
+| 0018 | Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge | 🟢 accepted | mr, review, git, engine, frontend | — | `docs/decisions/0018-builtin-mr-review.md` |
+| 0019 | Ticket priority (one field, `urgent` = hotfix tier) + notification preferences | 🟢 accepted | workspaces, schema, tickets, notifications, capacity | — | `docs/decisions/0019-ticket-priority-notification-preferences.md` |
 
 ## Summaries
 
@@ -88,6 +98,88 @@ Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the
 
 → `docs/decisions/0009-register-flow-ai-operations.md`
 
+### 0010 — Per-container VS Code editor with a projected per-user profile (extensions + auth)
+
+**0010** · accepted · tags: editor, container, extensions, auth, multi-tenancy · 2026-07-03
+
+1. **The full editor runs per-ticket, INSIDE the ticket container** (openvscode-server on the fixed in-container port, exposed via the Caddy route — [0008], CODE_EDITOR §1). Not a central editor. 2. **A durable per-user editor PROFILE is projected into each editor session**, so extensions + auth follow the user. The profile is the openvscode `--user-data-dir` (settings, `globalStorage`, and the **secret storage** where extension auth tokens live) + the `--extensions-dir`. 3. **Projection is copy-in / capture-back via `docker cp`** at editor-session start/stop (NOT a live shared volume), because: the editor server starts via `docker exec` on an already-running container, so a volume mount (which is fixed at `docker run`) would force a change to the container-launch path; copy-in via `docker cp` keeps the whole mechanism in the editor layer with zero container-launch change; it avoids two concurrent editors (same user, two tickets) corrupting one shared user-data-dir — each session gets its own in-container copy, and changes are captured back to the per-user store on install/login events + session end. Store location: `data/editor-profiles/<userId>/{user-data,extensions}` (host, gitignored, tenant- scoped). Reuses the `runInTenant` boundary like every other orchestrator path.
+
+→ `docs/decisions/0010-per-container-editor-with-user-profile.md`
+
+### 0011 — Git/workflow customization is split into structured per-workspace config vs skill/context-doc guidance, and the preview reverse-proxy is a pluggable Caddy/nginx provider
+
+**0011** · accepted · tags: git, hosting, proxy, workflow, config · 2026-07-03
+
+*A. The line = "does CODE act on it, or does the AI just READ it?"** **Code acts → structured config.** A per-workspace `GitConfig` (`Workspace.gitConfig` JSON): `branchStrategy` (ticket-prefix | typed | custom template), `pushPolicy`, `targetBranch`, `protectedBranches`, `commitSigning`. `server/git/branchStrategy.ts` is the pure resolver: `resolveBranchName` (called once at branch creation, persisted on `Ticket.branch`) + `deriveHostSlug` (the same branch → a valid RFC-1123 preview subdomain). One source of truth, two consumers (git worktree/container naming + the proxy host). **AI reads → skill/context-doc guidance.** "How to commit / conventions" lives in the EXISTING InfoSource layer (context-docs + `sourceIds`/`enabled`), NOT in config. A curated *starter library** (`server/bootstrap/starterLibrary.ts`) seeds disabled `source='starter'` context-docs a user toggles on — "a nudge, not a blank page". The load-bearing wire that was deferred — injecting a stage's context-docs into `CLAUDE.md` — is now built (`stageRunner` loads enabled starter + per-stage `sourceIds` docs → `renderStage` inlines them).
+
+→ `docs/decisions/0011-pluggable-proxy-and-git-workflow-config.md`
+
+### 0012 — The AI engine and a human's live editor never run on a ticket's container at once (edit-lock), and stale proxy routes self-heal on boot
+
+**0012** · accepted · tags: editor, engine, concurrency, proxy, safety · 2026-07-03
+
+*A. Mutual edit-lock (`server/orchestrator/editGuard.ts`).** **Engine side (enforced, `conductor.provisionContainers`):** before auto-running a stage turn, `isEditorRunning(workspaceId, ticketKey)` checks for a live openvscode-server process in the container; if present, the turn is **skipped + logged** (re-entering the stage re-triggers it). The engine never clobbers a human's open session. **Editor side (`ticketEditGuard`, a helper the open-flow calls):** refuse to open the editor when the current stage is not `userEditable`, or the AI is mid-turn (a busy `worker` AgentSession on the ticket). Provided here; wired into the open-flow by the editor owner.
+
+→ `docs/decisions/0012-editor-engine-edit-lock-and-proxy-boot-reconcile.md`
+
+### 0013 — Engine control-plane completion — push-on-approval, pause/kill controls, off-chain realtime broadcast, and preview exposure
+
+**0013** · accepted · tags: engine, git, control-plane, realtime, preview · 2026-07-03
+
+*A. Push-on-approval (Track F) — `server/git/forge.ts`.** When a `done` turn leaves a stage that gates for approval OR is terminal, and the workspace `pushPolicy` ≠ `local-only`, push the ticket branch to origin and (for `merge-request`) open/find a GitLab MR against `targetBranch`. The GitLab token is decrypted ONLY in forge, injected transiently (git `withAuth` url + the MR `PRIVATE-TOKEN` header), never stored/logged; `protectedBranches` are refused. Fired fire-and-forget from the stage-runner so a slow/failed forge never breaks the turn.
+
+→ `docs/decisions/0013-engine-control-plane-completion.md`
+
+### 0014 — Market-hardening — GitLab issue ingestion, a concurrent-turn CapacityManager, edge-auth on subdomains, and Sentry error tracking
+
+**0014** · accepted · tags: gitlab, capacity, security, ops, market · 2026-07-03
+
+*A. GitLab issue ingestion — `server/git/gitlabSync.ts` + the `gitlab-resync` op.** Pull the linked project's open issues via the GitLab REST API (reusing the forge token model: decrypt only here, `PRIVATE-TOKEN` header) and upsert them as tickets keyed `DEV-<iid>`. NEW issues enter at `unrefined` (the AI moves them on); EXISTING tickets get title/labels/description refreshed WITHOUT touching their pipeline position. The op broadcasts the touched tickets so the board updates live. This is the ingestion half of the loop (a webhook-driven continuous sync + a push-back of AI state to GitLab remain Fase-2 follow-ups).
+
+→ `docs/decisions/0014-market-hardening-gitlab-ingestion-capacity-edge-auth.md`
+
+### 0015 — Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup
+
+**0015** · accepted · tags: multi-instance, conductor, redis, scale, engine · 2026-07-03
+
+New module `server/orchestrator/cluster.ts` with three Redis-backed primitives, all ALWAYS ON (uncontended cost on one instance is one `SET`/`DEL` per user-initiated action, so every path is exercised — no "untested when you scale" cliff):
+
+→ `docs/decisions/0015-multi-instance-safety-deel-a.md`
+
+### 0016 — Egress control on worker containers — an internal network + an allowlist forward proxy
+
+**0016** · accepted · tags: security, containers, egress, multi-tenant, market · 2026-07-03
+
+Opt-in egress control (`WS_EGRESS=1`, default OFF ⇒ current behaviour unchanged). New `server/container/egress.ts`; `launchTicketContainer` calls `ensureEgressInfra()` and adds `egressLaunchArgs()` when enabled:
+
+→ `docs/decisions/0016-egress-control.md`
+
+### 0017 — RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context
+
+**0017** · accepted · tags: rag, ai, retrieval, orchestrator, engine · 2026-07-03
+
+**Pluggable embeddings** (`server/rag/embed.ts`, mirroring the AI-provider abstraction, ADR 0007): Gemini's embeddings API when `GEMINI_API_KEY` is set, else a deterministic LOCAL embedder (hashed token + char-trigram bag, L2-normalised) so retrieval works fully offline and in tests. A lexical- semantic proxy that is genuinely useful for code (identifier/symbol overlap). The active embedder is fixed per deployment, so index-time and query-time vectors are always produced the same way; it is stamped via `embedTag()` so a later switch is detectable. **Indexer + retrieval** (`server/rag/index.ts`): `indexWorkspace` reads the linked repo's code at a commit (`repoStore.listRepoFiles`, from the bare clone, no checkout), chunks it line-aligned, embeds each chunk, and upserts `RagEntry` frozen-per-commit (re-index replaces that commit's rows). `retrieve` embeds a query and returns the top-K by an app-side cosine scan over the stored vectors. **Injection**: `stageRunner` retrieves the code most relevant to the ticket (title+description, scoped to the ticket's frozen `commitHash`) and feeds it to a new `renderStage` "Relevant code from the repository" section in `CLAUDE.md` — so the agent starts with the right files in view. **Trigger**: a `scan-index` control-op (mirrors `scan-docs`) + `_sync` route + `editPipeline` cap, so a user reindexes from the Sources page; the engine also retrieves automatically per turn.
+
+**Governs** (`//? @adr 0017`): `scripts/prismaWithSecrets.ts`
+
+→ `docs/decisions/0017-rag-codebase-intelligence.md`
+
+### 0018 — Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge
+
+**0018** · accepted · tags: mr, review, git, engine, frontend · 2026-07-03
+
+**Schema (ADR 0017 sibling migration)**: `MergeRequest` (per-ticket, per-workspace `number`, source/target branch, `headSha`, status, `externalUrl` when forge-backed) + `ReviewThread` (line-anchored `filePath`+`line`, or MR-level) + `ReviewComment` (user or `ai`) + `Approval` (bound to the head it was granted at). All tenant-scoped. **Diff** (`server/mr/diff.ts`): a bounded unified-diff parser turning `git diff target...source` (read from the bare clone, no checkout — `repoStore.branchDiff`) into per-file, line-numbered lines the frontend renders and threads anchor to. **Service** (`server/mr/service.ts`): `createMr` (idempotent open/refresh from a ticket's branch), `addReviewComment` (creates the thread if needed), `approveMr`, `resolveThread`, `mergeMr`, and `mrForTicket` (the full view: fresh diff + threads + approvals with **staleness computed against the current head**). **Ops**: one `mrAction` `_sync` route (`action` selects `mr-create|comment|approve|merge|resolve`), each returning the fresh MR view; `workTickets` cap. `mr-create` doubles as the tab's load+refresh.
+
+→ `docs/decisions/0018-builtin-mr-review.md`
+
+### 0019 — Ticket priority (one field, `urgent` = hotfix tier) + notification preferences
+
+**0019** · accepted · tags: workspaces, schema, tickets, notifications, capacity · 2026-07-03
+
+*One `Ticket.priority` string field** (`low | normal | high | urgent`, default `normal`), NOT a separate `priority` + `isHotfix` pair. `urgent` **is** the hotfix/security tier: #12's admission queue will admit an `urgent` ticket past the workspace concurrency cap (merge still gated on ≥1 approval, per ADR 0018).
+
+→ `docs/decisions/0019-ticket-priority-notification-preferences.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -95,4 +187,4 @@ Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the
 
 | File | ADR | Decision |
 | --- | --- | --- |
-| `scripts/prismaWithSecrets.ts` | 0017 | _(unknown ADR — tag references a missing decision file)_ |
+| `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |

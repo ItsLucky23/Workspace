@@ -10,29 +10,29 @@
 
 ### Installed `@luckystack/*` packages
 
-None detected in `node_modules/@luckystack/`. Either you are outside an installed project, or no framework packages are installed yet.
+Each row links to that package's CLAUDE.md (the canonical function INDEX) if it ships one. Consult the INDEX **before** writing any helper that touches that package's surface area.
+
+| Package | Version | One-liner | INDEX |
+| --- | --- | --- | --- |
+| `@luckystack/api` | 0.3.0 | Type-safe API request handlers for LuckyStack. WebSocket-first via socket.io, with HTTP fallback. File-based routing, generated route map, integrated rate limiting, validation, hooks, and error-tracking tracing. | [CLAUDE.md](../node_modules/@luckystack/api/CLAUDE.md) |
+| `@luckystack/cli` | 0.3.0 | LuckyStack project CLI. `npx luckystack add <feature>` installs an optional package AND injects the consumer-`src/` assets it needs (login pages, presence client mounts) that a plain `npm i` can't — the inverse of create-luckystack-app's optional-package pruner. | [CLAUDE.md](../node_modules/@luckystack/cli/CLAUDE.md) |
+| `@luckystack/core` | 0.3.0 | LuckyStack core: socket-first transport contracts, Redis adapter, project-config registry, hooks registry, response normalization, rate limiting, and shared session types. Foundation for every other @luckystack/* package. | [CLAUDE.md](../node_modules/@luckystack/core/CLAUDE.md) |
+| `@luckystack/devkit` | 0.3.0 | Dev-time tooling for LuckyStack: hot reload, route discovery, generated type-map emitter, Zod schema emitter, deploy-config validator CLI. Install as a devDependency in projects that build LuckyStack apps locally. | [CLAUDE.md](../node_modules/@luckystack/devkit/CLAUDE.md) |
+| `@luckystack/docs-ui` | 0.3.0 | Dev-only API docs UI for LuckyStack. Mounts a Swagger-style page at /_docs that reads `apiDocs.generated.json` and renders every API route, its inputs/outputs, auth, and rate-limit metadata. | [CLAUDE.md](../node_modules/@luckystack/docs-ui/CLAUDE.md) |
+| `@luckystack/email` | 0.3.0 | Pluggable transactional email for LuckyStack: Console (dev), Resend, and SMTP adapters with a registry-based plug-in pattern. Optional dep — install only when forgotPassword='framework' or you want to send transactional mail. | [CLAUDE.md](../node_modules/@luckystack/email/CLAUDE.md) |
+| `@luckystack/error-tracking` | 0.3.0 | Optional error-tracking integration for LuckyStack (currently Sentry-backed). Auto-wires error/performance capture into the framework's hook surface and request transports. No-op when DSN is missing. | [CLAUDE.md](../node_modules/@luckystack/error-tracking/CLAUDE.md) |
+| `@luckystack/login` | 0.3.0 | Authentication for LuckyStack: credentials + OAuth (Google/GitHub/Facebook/Discord), Redis-backed sessions, single-session enforcement, lifecycle hooks. Pairs with @luckystack/core. | [CLAUDE.md](../node_modules/@luckystack/login/CLAUDE.md) |
+| `@luckystack/mcp` | 0.3.0 | Read-only MCP server that exposes a LuckyStack project's committed AI context (decisions, dependency graph, routes, runbooks, capabilities) to Claude Code as queryable tools. | [CLAUDE.md](../node_modules/@luckystack/mcp/CLAUDE.md) |
+| `@luckystack/presence` | 0.3.0 | Presence and activity awareness for LuckyStack: AFK detection, room-peer notifications, lifecycle (connect / disconnect / reconnect), single-session enforcement integration. For multiplayer and collaborative apps. | [CLAUDE.md](../node_modules/@luckystack/presence/CLAUDE.md) |
+| `@luckystack/router` | 0.3.0 | Standalone HTTP + WebSocket load-balancer for multi-instance LuckyStack deployments. Redis-backed health, boot-UUID handshake, service-key-aware routing, optional dev->staging fallback. Optional package — only needed for horizontal scale or split-environment dev. | [CLAUDE.md](../node_modules/@luckystack/router/CLAUDE.md) |
+| `@luckystack/secret-manager` | 0.3.0 | Rotation-aware secret resolver client for LuckyStack. Commit `.env` pointers (e.g. OPENAI_KEY=OPENAI_AUTHORIZATION_KEY_V5) instead of real secrets; at boot this client resolves them against an external append-only secret-manager server and writes the real values into process.env. Supports local / remote / hybrid modes + opt-in dev hot reload. | [CLAUDE.md](../node_modules/@luckystack/secret-manager/CLAUDE.md) |
+| `@luckystack/server` | 0.3.0 | One-call server bootstrap for LuckyStack: HTTP + Socket.io + framework routes (api, sync, _health, /auth, uploads) wired together. Consumer's server.ts shrinks to ~20 lines. | [CLAUDE.md](../node_modules/@luckystack/server/CLAUDE.md) |
+| `@luckystack/sync` | 0.3.0 | Real-time sync transport for LuckyStack: type-safe room-based fanout, server + per-client validation, streaming, optimistic offline queue. Server entry plus a browser-safe ./client subpath. | [CLAUDE.md](../node_modules/@luckystack/sync/CLAUDE.md) |
+| `@luckystack/test-runner` | 0.3.0 | Generated-type-driven test layers for LuckyStack: contract smoke (Zod-valid input), auth enforcement, rate-limit, and crash-resistance fuzz. Walks every endpoint via the generated apiMethodMap. | [CLAUDE.md](../node_modules/@luckystack/test-runner/CLAUDE.md) |
 
 ### API routes (`_api/`)
 
-Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src/_sockets/apiTypes.generated.ts`. Files live at `src/<page>/_api/<name>_v<version>.ts`. Check here **before** authoring a new endpoint — the route might already exist. The `Tests` column shows whether a per-route business-logic test stub exists (`npm run scaffold:test <route>` to create one).
-
-| Route | Method | Rate limit | Has stream | Tests |
-| --- | --- | --- | --- | --- |
-| `reset-password/confirmReset/v1` | POST | 5 | — | — |
-| `reset-password/sendReset/v1` | POST | 5 | — | — |
-| `settings/changePassword/v1` | POST | 10 | — | — |
-| `settings/confirmEmailChange/v1` | POST | 10 | — | — |
-| `settings/deleteAccount/v1` | POST | 3 | — | — |
-| `settings/listSessions/v1` | POST | 30 | — | — |
-| `settings/requestEmailChange/v1` | POST | 5 | — | — |
-| `settings/revokeSession/v1` | POST | 20 | — | — |
-| `settings/signOutEverywhere/v1` | POST | 5 | — | — |
-| `settings/updatePreferences/v1` | POST | 30 | — | — |
-| `settings/updateUser/v1` | POST | 20 | — | — |
-| `system/logout/v1` | DELETE | 30 | — | — |
-| `system/session/v1` | POST | 60 | — | — |
-| `workspaces/control/v1` | POST | 30 | — | ✓ |
-| `workspaces/snapshot/v1` | POST | 60 | — | ✓ |
+No project API routes detected in the generated type map.
 
 ### Sync routes (`_sync/`)
 
@@ -44,17 +44,18 @@ Every entry below is callable inside an API or sync handler's `main({ data, user
 
 | Access path | Signature |
 | --- | --- |
-| `functions.db.prisma` | `(typeof import("@luckystack/core"))["prisma"]` |
+| `functions.db.prisma` | `typeof import('@luckystack/core')['prisma']` |
 | `functions.example.getServerTime` | `() => string` |
-| `functions.redis.redis` | `(typeof import("@luckystack/core"))["redis"]` |
-| `functions.redis.default` | `(typeof import("@luckystack/core"))["redis"]` |
-| `functions.session.saveSession` | `(typeof import("@luckystack/login"))["saveSession"]` |
-| `functions.session.getSession` | `(typeof import("@luckystack/login"))["getSession"]` |
-| `functions.session.deleteSession` | `(typeof import("@luckystack/login"))["deleteSession"]` |
-| `functions.session.getAllSessions` | `(typeof import("@luckystack/login"))["getAllSessions"]` |
-| `functions.session.revokeUserSessions` | `(typeof import("@luckystack/login"))["revokeUserSessions"]` |
-| `functions.sleep.default` | `(typeof import("@luckystack/core/client"))["sleep"]` |
-| `functions.sleep.sleep` | `(typeof import("@luckystack/core/client"))["sleep"]` |
+| `functions.redis.redis` | `typeof import('@luckystack/core')['redis']` |
+| `functions.redis.default` | `typeof import('@luckystack/core')['redis']` |
+| `functions.session.saveSession` | `typeof import('@luckystack/login')['saveSession']` |
+| `functions.session.getSession` | `typeof import('@luckystack/login')['getSession']` |
+| `functions.session.deleteSession` | `typeof import('@luckystack/login')['deleteSession']` |
+| `functions.session.getAllSessions` | `typeof import('@luckystack/login')['getAllSessions']` |
+| `functions.session.revokeUserSessions` | `typeof import('@luckystack/login')['revokeUserSessions']` |
+| `functions.sleep.default` | `typeof import('@luckystack/core/client')['sleep']` |
+| `functions.sleep.sleep` | `typeof import('@luckystack/core/client')['sleep']` |
+| `functions.tryCatch.tryCatch` | `<T, P>(func: (values: P) => Promise<T> \| T, params?: P, /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- any-compat param; unused in the client-safe variant. any comment (not //) so devkit's single-line type-map collapse can't comment out the rest of the signature. */ _context?: Record<string, unknown>) => Promise<[Error \| null, T \| null]>` |
 
 ### Server-function shims in `functions/` (source for the injection map)
 
@@ -92,6 +93,10 @@ Every entry below is callable inside an API or sync handler's `main({ data, user
 | `src/_components/dropdown/Dropdown.tsx` | `default: Dropdown` |
 | `src/_components/dropdown/MultiSelectDropdown.tsx` | `default: MultiSelectDropdown` |
 | `src/_components/dropdown/dropdownInternals.tsx` | `type DropdownDirection`, `interface DropdownItem`, `interface DropdownMenuController`, `DropdownMenuShell({ controller, size, className = "", menuClassName = "", showSearch = false, searchPlaceholder = "Search...", noResultsText = "No results", triggerLabel, hasSelection, filteredOptions, onActivate, initialFocusKey, ariaMultiselectable, children, }: DropdownMenuShellProps)`, `type DropdownSize`, `type DropdownValue`, `interface NormalizedOption`, `filterOptions(options: NormalizedOption[], searchValue: string): NormalizedOption[]`, `normalizeOptions(items: DropdownItem[]): NormalizedOption[]`, `useDropdownMenu({ showSearch }: UseDropdownMenuArgs): DropdownMenuController` |
+| `src/_components/editor/CodeEditorPanel.tsx` | `CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeChange, readOnly, showThemeSwitcher = true, title }: CodeEditorPanelProps)`, `interface CodeEditorPanelProps`, `interface EditorChange` |
+| `src/_components/editor/FileExplorer.tsx` | `FileExplorer({ tree, activePath, onOpen, palette, expanded, onToggleDir, status = EMPTY_STATUS }: FileExplorerProps)`, `type GitStatus` |
+| `src/_components/editor/MonacoEditor.tsx` | `MonacoDiff({ original, modified, language, theme, height = '100%', renderSideBySide = false }: MonacoDiffProps)`, `interface MonacoDiffProps`, `MonacoEditor({ value, language, theme, path, readOnly, minimap = true, height = '100%', onChange, onMount }: MonacoEditorProps)`, `interface MonacoEditorProps` |
+| `src/_components/editor/VsCodeEmbed.tsx` | `VsCodeEmbed({ theme, initialUrl }: VsCodeEmbedProps)`, `interface VsCodeEmbedProps` |
 | `src/_components/inputs/Checkbox.tsx` | `default: Checkbox` — `interface CheckboxProps` |
 | `src/_components/inputs/DatePicker.tsx` | `default: DatePicker` — `type DatePickerProps`, `interface DateRange` |
 | `src/_components/inputs/Popover.tsx` | `default: Popover` — `interface PopoverProps` |

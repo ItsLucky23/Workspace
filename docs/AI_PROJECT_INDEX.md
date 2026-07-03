@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (13)
+## API routes (28)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -22,12 +22,60 @@
 | `api/settings/signOutEverywhere/v1` | POST | login | 5 | — | **no** | — | — |
 | `api/settings/updatePreferences/v1` | POST | login | 30 | — | **no** | — | — |
 | `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
-| `api/workspaces/control/v1` | POST | login | 30 | — | yes | — | Workspaces — the [control-API] route (Fase 1 single dispatching handler). |
+| `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
+| `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
+| `api/workspaces/closePreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
+| `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | **no** | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
+| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | **no** | — | Workspaces — [create-workspace] typed per-action route (Fase-0 split). Login-only |
+| `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | **no** | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
+| `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | **no** | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
+| `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
+| `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
+| `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
+| `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
+| `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
+| `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
+| `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
+| `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 
-## Sync routes (0)
+## Sync routes (32)
 
-_(none)_
+| Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `sync/workspaces/acceptSuggestion/v1` | yes | — | login | — | **no** | — | Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI |
+| `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
+| `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
+| `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
+| `sync/workspaces/bulkArchive/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
+| `sync/workspaces/bulkAssign/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-assign] REALTIME write via `_sync`. (Re)assigns ticket(s), then |
+| `sync/workspaces/bulkMove/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-move] REALTIME write via `_sync`. Moves ticket(s) to a stage, |
+| `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
+| `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
+| `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
+| `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
+| `sync/workspaces/linkRepo/v1` | yes | — | login | — | **no** | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
+| `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
+| `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
+| `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
+| `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
+| `sync/workspaces/removeMember/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-member] REALTIME write via `_sync`. Removes a member, then |
+| `sync/workspaces/renameWorkspace/v1` | yes | — | login | — | **no** | — | Workspaces — [rename-workspace] REALTIME write via `_sync`. Renames the workspace, |
+| `sync/workspaces/revokeInvite/v1` | yes | — | login | — | **no** | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
+| `sync/workspaces/roleCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
+| `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
+| `sync/workspaces/saveEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
+| `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
+| `sync/workspaces/saveIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
+| `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
+| `sync/workspaces/scanDocs/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
+| `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
+| `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
+| `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
+| `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
 
 ## Ownership & coverage
 
@@ -35,9 +83,9 @@ _(none)_
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 13 |
+| _(unowned)_ | 60 |
 
-**Test coverage**: 2/13 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/60 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -52,14 +100,55 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/settings/signOutEverywhere/v1`
 - `api/settings/updatePreferences/v1`
 - `api/settings/updateUser/v1`
+- `api/workspaces/acceptInvite/v1`
+- `api/workspaces/aiChat/v1`
+- `api/workspaces/buildProjectImage/v1`
+- `api/workspaces/closePreview/v1`
+- `api/workspaces/containerTerminals/v1`
+- `api/workspaces/createWorkspace/v1`
+- `api/workspaces/deleteWorkspace/v1`
+- `api/workspaces/devLaunchEditor/v1`
+- `api/workspaces/generateDockerfile/v1`
+- `api/workspaces/generateDocs/v1`
+- `api/workspaces/markRead/v1`
+- `api/workspaces/openEditor/v1`
+- `api/workspaces/openPreview/v1`
+- `api/workspaces/saveDevCommand/v1`
+- `sync/workspaces/acceptSuggestion/v1`
+- `sync/workspaces/addComment/v1`
+- `sync/workspaces/agentControl/v1`
+- `sync/workspaces/archive/v1`
+- `sync/workspaces/bulkArchive/v1`
+- `sync/workspaces/bulkAssign/v1`
+- `sync/workspaces/bulkMove/v1`
+- `sync/workspaces/bulkSprint/v1`
+- `sync/workspaces/bulkStatus/v1`
+- `sync/workspaces/changeRole/v1`
+- `sync/workspaces/gitlabSettings/v1`
+- `sync/workspaces/invite/v1`
+- `sync/workspaces/linkRepo/v1`
+- `sync/workspaces/mrAction/v1`
+- `sync/workspaces/quickAdd/v1`
+- `sync/workspaces/removeEnv/v1`
+- `sync/workspaces/removeIntegration/v1`
+- `sync/workspaces/removeMember/v1`
+- `sync/workspaces/renameWorkspace/v1`
+- `sync/workspaces/revokeInvite/v1`
+- `sync/workspaces/roleCreate/v1`
+- `sync/workspaces/roleUpdate/v1`
+- `sync/workspaces/saveEnv/v1`
+- `sync/workspaces/saveGitConfig/v1`
+- `sync/workspaces/saveIntegration/v1`
+- … +7 more
 
-## Pages (18)
+## Pages (19)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
 | `/` | plain | yes | `page.tsx` | Root route (`/`). Sends visitors to the app's main surface — the dashboard |
 | `/dashboard` | plain | yes | `dashboard/page.tsx` | Sample page. The framework's file-based router maps this to `/dashboard`. |
 | `/docs` | plain | — | `docs/page.tsx` | — |
+| `/editor-demo` | plain | — | `editor-demo/page.tsx` | intent: Standalone demo + test harness for the two code editors (Monaco + real VS Code), |
 | `/login` | plain | — | `login/page.tsx` | — |
 | `/register` | plain | — | `register/page.tsx` | — |
 | `/reset-password` | plain | — | `reset-password/page.tsx` | — |
@@ -83,7 +172,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `confetti.ts` | `_functions/confetti.ts` | default | — |
 | `menuHandler.ts` | `_functions/menuHandler.ts` | menuHandler, setMenuHandlerRef | — |
 
-## Components — `src/_components/` (48 exports across 17 files)
+## Components — `src/_components/` (59 exports across 21 files)
 
 | File | Path | Exports | Summary |
 | --- | --- | --- | --- |
@@ -95,6 +184,10 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `Dropdown.tsx` | `_components/dropdown/Dropdown.tsx` | default | — |
 | `MultiSelectDropdown.tsx` | `_components/dropdown/MultiSelectDropdown.tsx` | default | — |
 | `dropdownInternals.tsx` | `_components/dropdown/dropdownInternals.tsx` | DropdownDirection, DropdownItem, DropdownMenuController, DropdownMenuShell, +6 | — |
+| `CodeEditorPanel.tsx` | `_components/editor/CodeEditorPanel.tsx` | CodeEditorPanel, CodeEditorPanelProps, EditorChange | The full Monaco editor experience (editor #1): a VS-Code-shaped shell — activity bar |
+| `FileExplorer.tsx` | `_components/editor/FileExplorer.tsx` | FileExplorer, GitStatus | Themed file tree for the Monaco editor. Expand/collapse dirs, language-colored file |
+| `MonacoEditor.tsx` | `_components/editor/MonacoEditor.tsx` | MonacoDiff, MonacoDiffProps, MonacoEditor, MonacoEditorProps | Thin wrappers around @monaco-editor/react that (a) force the locally-bundled monaco |
+| `VsCodeEmbed.tsx` | `_components/editor/VsCodeEmbed.tsx` | VsCodeEmbed, VsCodeEmbedProps | Editor #2 surface — embeds the real openvscode-server (browser VS Code) via an iframe. |
 | `Checkbox.tsx` | `_components/inputs/Checkbox.tsx` | CheckboxProps, default | — |
 | `DatePicker.tsx` | `_components/inputs/DatePicker.tsx` | DatePickerProps, DateRange, default | — |
 | `Popover.tsx` | `_components/inputs/Popover.tsx` | PopoverProps, default | — |
@@ -142,6 +235,17 @@ _(no cross-references detected)_
 | `normalizeOptions` | `_components/dropdown/dropdownInternals.tsx` |
 | `useDropdownMenu` | `_components/dropdown/dropdownInternals.tsx` |
 | `default` | `_components/dropdown/MultiSelectDropdown.tsx` |
+| `CodeEditorPanel` | `_components/editor/CodeEditorPanel.tsx` |
+| `CodeEditorPanelProps` | `_components/editor/CodeEditorPanel.tsx` |
+| `EditorChange` | `_components/editor/CodeEditorPanel.tsx` |
+| `FileExplorer` | `_components/editor/FileExplorer.tsx` |
+| `GitStatus` | `_components/editor/FileExplorer.tsx` |
+| `MonacoDiff` | `_components/editor/MonacoEditor.tsx` |
+| `MonacoDiffProps` | `_components/editor/MonacoEditor.tsx` |
+| `MonacoEditor` | `_components/editor/MonacoEditor.tsx` |
+| `MonacoEditorProps` | `_components/editor/MonacoEditor.tsx` |
+| `VsCodeEmbed` | `_components/editor/VsCodeEmbed.tsx` |
+| `VsCodeEmbedProps` | `_components/editor/VsCodeEmbed.tsx` |
 | `default` | `_components/ErrorPage.tsx` |
 | `CheckboxProps` | `_components/inputs/Checkbox.tsx` |
 | `default` | `_components/inputs/Checkbox.tsx` |
