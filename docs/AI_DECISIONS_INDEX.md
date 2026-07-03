@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (24)
+## Decisions (25)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -37,6 +37,7 @@
 | 0023 | In-container pty-agent — durable scrollback + crash-resume for container terminals | 🟢 accepted | workspaces, containers, terminal, pty, crash-resume | — | `docs/decisions/0023-in-container-pty-agent.md` |
 | 0024 | Close client gaps — needs-input answer-to-AI + realtime presence | 🟢 accepted | workspaces, client, needs-input, presence, realtime | — | `docs/decisions/0024-client-gaps-answer-input-presence.md` |
 | 0025 | Cost/usage tracking — record token estimates, display only (no hard stop) | 🟢 accepted | workspaces, usage, spend, tokens, observability | — | `docs/decisions/0025-cost-usage-tracking.md` |
+| 0026 | Observability — structured logging, metrics, health probes, flow insights | 🟢 accepted | workspaces, observability, metrics, logging, health, insights | — | `docs/decisions/0026-observability.md` |
 
 ## Summaries
 
@@ -233,6 +234,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **Record per turn.** `server/spend/record.ts` `recordTurnSpend` runs after every turn (best-effort, wrapped in `tryCatch` — advisory, never fails the turn): it estimates tokens from the CHAR count (input ≈ the rendered CLAUDE.md + stage instructions, output ≈ the assistant message — the Max subscription's CLI exposes no usage field, per the P0.5 spike), writes a `SpendRecord`, bumps the session's running `tokenEstimate` (feeds the #4 self-handoff), and increments the enabled budgets' rolling `spent` ONLY when a per-model price is set (0 on the subscription). **No enforcement / pause anywhere** — #16 is show-only. **Aggregate + display.** `aggregateUsage` (pure, unit-tested) rolls `SpendRecord` rows into per-ticket token totals + a dense 7-day activity series + workspace totals. The snapshot fetches the tenant-scoped rows and emits `usage`; the Usage page renders it (real bars + a real per-ticket table, replacing the dummies) and each board ticket gets a real `<tokens> tok · <turns>×` cost chip. Token VOLUME is the metric, not money (subscription). **Real usage/spend from #17 folded in here** (ADR 0024): display + recording belong together.
 
 → `docs/decisions/0025-cost-usage-tracking.md`
+
+### 0026 — Observability — structured logging, metrics, health probes, flow insights
+
+**0026** · accepted · tags: workspaces, observability, metrics, logging, health, insights · 2026-07-03
+
+**Structured logging** (`server/obs/logger.ts`): a `LogContext` that emits ONE JSON object per line (`ts`, `level`, `msg`, + inherited context fields) through the framework logger, so logs are grep-/ship-able. `.child()` adds fields for a request/turn trail. `formatLogLine` is pure + tested. **Metrics** (`server/obs/metrics.ts` + `/metrics`): the runtime gauges in Prometheus text-exposition format — active/queued turns vs the cap (from the CapacityManager #12), busy worker sessions, resident containers, and this instance's leader state (#1/ADR 0015). Scrapeable by Prometheus/Grafana. `gatherMetrics` is best-effort (a down probe → 0, never throws). **Health probes** (`server/obs/endpoints.ts`): READINESS is ALREADY a framework endpoint — `config.http.readyEndpoint` (/readyz) checks bootUuid + Redis + Prisma, and `liveEndpoint` (/livez) is liveness. We DON'T duplicate them; we add **/healthz** (the liveness path the goal + most k8s charts expect, aliasing the framework's /livez) and **/metrics**. Registered pre-params so a probe needs no session. **Flow insights** (`server/obs/insights.ts`): a pure aggregate over tickets + usage → cycle time (mean createdAt→done for done tickets), 7-day throughput (tickets completed), and cost-per-ticket (mean tokens across tickets that ran turns). The snapshot emits `insights`; the Usage page renders three stat cards. Advisory — never gates anything. **Server lib bump** `tsconfig.server.json` ES2022 → ES2023 (node 22 supports it; matches the frontend). Fixes a LATENT #16 break — `record.ts` used `Array#toSorted` which ES2022's lib doesn't type (caught here; #16's eslint pass hadn't re-run server-tsc).
+
+→ `docs/decisions/0026-observability.md`
 
 ## Code governed by decisions
 
