@@ -10,6 +10,7 @@ import type { PrismaClient } from '@prisma/client';
 import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig } from './branchStrategy';
 import { pushBranch } from './repoStore';
+import { postIssueComment } from './gitlabSync';
 
 export interface ForgeResult { ok: boolean; pushed: boolean; mrUrl?: string; error?: string }
 
@@ -43,6 +44,8 @@ export async function pushTicketWork(prisma: PrismaClient, workspaceId: string, 
   const [mrErr, mrUrl] = await tryCatch(() => openMergeRequest({ base, path, token, source: branch, target: cfg.targetBranch, title: ticket.title }));
   if (mrErr || mrUrl === null) return { ok: true, pushed: true, error: `forge.mrFailed: ${mrErr?.message ?? 'unknown'}` };
   await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { mrUrl } });
+  //? Push-back: report the MR on the source GitLab issue (best-effort, off the caller's path).
+  void postIssueComment(prisma, workspaceId, ticketKey, `🤖 AI opened a merge request: ${mrUrl}`);
   return { ok: true, pushed: true, mrUrl };
 }
 

@@ -44,6 +44,7 @@ import { bootstrapLuckyStack } from '@luckystack/server';
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { startEditorReaper } from './proxy/editorReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
+import { startGitlabSyncPoller } from './git/gitlabSync';
 
 (async () => {
   //? Optional @luckystack/secret-manager (opt-in). Resolve `.env` pointers
@@ -110,6 +111,8 @@ import { registerEditorAuthCheck } from './http/editorAuthCheck';
   void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
   //? Periodically evict idle live editors + prune their routes (CapacityManager).
   startEditorReaper();
+  //? Continuously sync GitLab issues → tickets for every workspace with a linked repo.
+  startGitlabSyncPoller();
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

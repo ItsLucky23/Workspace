@@ -1038,3 +1038,12 @@ Batch richting markt-klaar, engine/proxy-kant:
 - env-template: WS_MAX_CONCURRENT_TURNS, WS_EDITOR_IDLE_MIN, WS_REAP_INTERVAL_MIN, WS_PREVIEW_PORT, SENTRY_DSN.
 
 **Verificatie**: server/front-tsc 0, eslint 0, ai:lint 0, integration 14/14. **Nog open voor markt** (echte grote brokken): GitLab webhook-continu-sync + AI-state-push-back, per-workspace edge-auth-membership, egress-control (07b §6), multi-instance (Fase-2), billing-enforcement.
+
+## 2026-07-03 — GitLab continu-sync + push-back (item 3, gebruiker: belangrijk)
+
+De GitLab-loop dichtgemaakt (bovenop de ingestion uit ADR 0014):
+- **Continu-sync (poll)**: `startGitlabSyncPoller` (server.ts) synct elke `WS_GITLAB_SYNC_MIN` (default 5) alle workspaces met een gelinkte repo → issues upsert + broadcast. Geen webhook-infra nodig (webhook = latency-refinement, later).
+- **Push-back**: `postIssueComment` plaatst een GitLab-issue-comment — bij een MR (`forge`: "🤖 AI opened a merge request: <url>") en bij pipeline-voltooiing (`stageRunner`, terminal stage: "🤖 AI completed the pipeline"). Best-effort, token-safe (forge-model).
+
+Multi-instance (uitgesteld — schaal), billing (later), egress-control + edge-auth-membership (vóór multi-tenant/klanten) blijven bewust open — gebruiker-beslist.
+**Verificatie**: server-tsc 0, eslint 0, integration 14/14. Env: WS_GITLAB_SYNC_MIN.

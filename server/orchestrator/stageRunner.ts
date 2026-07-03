@@ -16,6 +16,7 @@ import { renderStage, type StageArtifacts } from './renderStage';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
+import { postIssueComment } from '../git/gitlabSync';
 import { killClaudeByContainer } from './agentControl';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
@@ -213,6 +214,8 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
         else if (r?.mrUrl) { console.log(`[forge] ${ticketKey} MR: ${r.mrUrl}`); void broadcastTicketDelta(prisma, workspaceId, [ticketKey]); }
       });
     }
+    //? Push-back on pipeline completion: report to the source GitLab issue (best-effort).
+    if (!nextStage) void postIssueComment(prisma, workspaceId, ticketKey, '🤖 AI completed the pipeline for this ticket.');
     return { ok: true, kind: 'done', envelope: result.envelope, message: drive.message };
   }
   //? needs-input → session parks busy (a human answers); continue → the turn just ended.
