@@ -18,6 +18,15 @@ import { projectProfileIntoContainer, editorProfileLaunchArgs, IN_CONTAINER_USER
 export const EDITOR_IMAGE = process.env.WS_EDITOR_IMAGE ?? 'gitpod/openvscode-server:latest';
 export const EDITOR_IN_CONTAINER_PORT = 3000;
 
+//? #14 Open VSX: openvscode-server defaults to the Microsoft marketplace, whose ToS forbids use by
+//? non-Microsoft VS Code builds. Point the extensions gallery at Open VSX (open-vsx.org) so
+//? `--install-extension` + the in-editor marketplace resolve from the licensing-correct registry.
+//? Overridable via WS_EXTENSIONS_GALLERY (e.g. a self-hosted Open VSX mirror). Shell-quoted for exec.
+const EXTENSIONS_GALLERY_JSON = process.env.WS_EXTENSIONS_GALLERY ?? '{"serviceUrl":"https://open-vsx.org/vscode/gallery","itemUrl":"https://open-vsx.org/vscode/item"}';
+export function openVsxEnvPrefix(): string {
+  return `EXTENSIONS_GALLERY='${EXTENSIONS_GALLERY_JSON.replaceAll("'", String.raw`'\''`)}' `;
+}
+
 export interface StandaloneEditorInfo {
   ok: boolean;
   url?: string;         // http://localhost:<port>/?tkn=<token>&folder=<folder>
@@ -131,16 +140,18 @@ export async function startEditorInContainer(input: { container: string; userId:
   const writeSettings = await docker(['exec', input.container, 'bash', '-lc',
     `mkdir -p ${IN_CONTAINER_USER_DATA}/Machine && echo ${b64} | base64 -d > ${IN_CONTAINER_USER_DATA}/Machine/settings.json`]);
   if (writeSettings.code !== 0) return { ok: false, error: `editor.settingsFailed: ${writeSettings.err.slice(0, 200)}` };
-  //? Install any extensions from the user's set into the PROFILE extensions dir (idempotent).
+  //? Install any extensions from the user's set into the PROFILE extensions dir (idempotent),
+  //? resolving from Open VSX (#14) rather than the Microsoft marketplace.
+  const gallery = openVsxEnvPrefix();
   for (const ext of input.extensions ?? []) {
-    await docker(['exec', input.container, 'bash', '-lc', `openvscode-server ${profileArgs} --install-extension ${ext} || true`]);
+    await docker(['exec', input.container, 'bash', '-lc', `${gallery}openvscode-server ${profileArgs} --install-extension ${ext} || true`]);
   }
   //? Start the server detached on the fixed internal port, pointed at the projected profile.
   //? Bind 0.0.0.0 so the Caddy route can dial `<container>:3000` over workspaces-net (the
   //? container is NEVER host-published; edge exposure is Caddy-only). 127.0.0.1 would be
   //? loopback-only inside the container and unreachable by Caddy.
   const start = await docker(['exec', '-d', input.container, 'bash', '-lc',
-    `openvscode-server --host 0.0.0.0 --port ${String(EDITOR_IN_CONTAINER_PORT)} --connection-token ${input.token} --default-folder ${workdir} ${profileArgs}`]);
+    `${gallery}openvscode-server --host 0.0.0.0 --port ${String(EDITOR_IN_CONTAINER_PORT)} --connection-token ${input.token} --default-folder ${workdir} ${profileArgs}`]);
   if (start.code !== 0) return { ok: false, error: `editor.startFailed: ${start.err.slice(0, 200)}` };
   return { ok: true };
 }

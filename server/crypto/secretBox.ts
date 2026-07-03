@@ -39,6 +39,45 @@ export function encryptSecret(plaintext: string): string {
   return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}`;
 }
 
+//? Encrypt a BINARY blob for at-rest storage (#14 editor-profile). Same key + AES-256-GCM as
+//? `encryptSecret`, but a compact binary envelope (no base64) for large blobs like a profile tar:
+//?   key set   → [0x01][12-byte iv][16-byte tag][ciphertext]
+//?   no key    → [0x00][plaintext]           (dev fallback, one-time warning)
+//? Never throws.
+export function encryptBuffer(plain: Buffer): Buffer {
+  const key = encryptionKey();
+  if (!key) {
+    if (!warnedNoKey) { console.warn('[secretBox] WORKSPACES_ENC_KEY not set — storing blobs UNENCRYPTED.'); warnedNoKey = true; }
+    return Buffer.concat([Buffer.from([0x00]), plain]);
+  }
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+  return Buffer.concat([Buffer.from([0x01]), iv, cipher.getAuthTag(), ciphertext]);
+}
+
+//? Decrypt a blob produced by `encryptBuffer`. Returns null on a malformed envelope, a missing key,
+//? or a failed auth-tag (tamper / wrong key).
+export function decryptBuffer(stored: Buffer): Buffer | null {
+  if (stored.length === 0) return null;
+  const version = stored[0];
+  if (version === 0x00) return stored.subarray(1);
+  if (version !== 0x01 || stored.length < 29) return null;
+  const key = encryptionKey();
+  if (!key) return null;
+  const iv = stored.subarray(1, 13);
+  const tag = stored.subarray(13, 29);
+  const ciphertext = stored.subarray(29);
+  // eslint-disable-next-line luckystack/no-raw-try-catch -- sync AES-GCM auth-tag verify; the custom tryCatch is async-only and a failed tag is expected control flow.
+  try {
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  } catch {
+    return null;
+  }
+}
+
 //? Decrypt a value produced by `encryptSecret`. Returns null on a malformed/missing
 //? key or a failed auth-tag check (tamper / wrong key).
 export function decryptSecret(stored: string): string | null {

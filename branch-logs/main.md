@@ -1308,3 +1308,16 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. Integration **31/31** (nieuw `forge.test.mts` **26/26**: provider-shaping + webhook-parse + echte create→update-ingest). **Live**: `POST /webhooks/forge/<ws>` — fout secret → 401, correct → **200 + "ingested DEV-8888"** (echte upsert, opgeruimd). **Browser**: forge-provider-dropdown rendert in settings.
 
 **Files touched:** `server/git/forgeProvider.ts`+`webhookIngest.ts`+`webhookRoute.ts` (nieuw), `server/git/forge.ts`, `server/orchestrator/conductor.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/gitlabSettings_server_v1.ts`, `src/workspaces/workspace/page.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx`+`WorkspacesContext.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `.env.local_template`, `docs/decisions/0029-*.md`, `tests/integration/forge.test.mts` (nieuw). Schema: `Workspace.forgeType`.
+
+## 2026-07-03 — /goal item #14: editor-losse-eindjes — profiel-encryptie-at-rest + Open VSX (ADR 0030)
+
+**User prompt:** /goal — item #14 (editor-losse-eindjes).
+
+**What I did:** Twee zelf-bevatte, botsingsvrije wins van de vier sub-taken.
+- **Editor-profiel encryptie-at-rest** (security-kern): het per-user profiel draagt openvscode's SECRET STORAGE (extensie-**auth-tokens**) en lag plaintext op disk (`data/editor-profiles/<userId>/`). Nu wordt elke helft (user-data, extensions) uit de container getard, **AES-256-GCM versleuteld** (`secretBox.encryptBuffer`, zelfde app-key als de GitLab-token-encryptie) en als `.tar.enc`-blob weggeschreven; volgende sessie decrypt + streamt terug in. Nieuwe binaire primitives `encryptBuffer`/`decryptBuffer` (envelope `[0x01][iv][tag][ct]`, `[0x00][plain]` dev-fallback). Blob die niet decrypt (tamper/rotated key) → luid overgeslagen, geen crash.
+- **Open VSX gallery**: openvscode-server wijst standaard naar de MS-marketplace (ToS verbiedt non-MS builds). De editor-start + `--install-extension` prefixen nu `EXTENSIONS_GALLERY={open-vsx.org}` (override `WS_EXTENSIONS_GALLERY`, shell-quoted).
+- **Uitgesteld (eerlijke scope)**: Dockerfile-commit-in-repo (raakt de git-repo-checkout+commit-flow, Docker/git-afhankelijk) + Monaco-i18n (overlapt de gelijktijdige editor-UI-stream → coördineren i.p.v. botsen).
+
+**Verify:** server-tsc 0, eslint 0, ai:lint 0. Integration **32/32** (nieuw `editorProfileCrypto.test.mts` **11/11**: versleutelde round-trip, ciphertext≠plaintext, tamper/truncatie/verkeerde-key→null, no-key-fallback, Open VSX-gallery-env). Tar-in/out tegen een live container is Docker-gated (crypto + env-shaping headless bewezen).
+
+**Files touched:** `server/crypto/secretBox.ts` (binaire encrypt/decrypt), `server/container/editorProfile.ts` (versleutelde blobs), `server/container/editorServer.ts` (Open VSX), `docs/decisions/0030-*.md`, `tests/integration/editorProfileCrypto.test.mts` (nieuw).
