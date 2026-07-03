@@ -16,6 +16,7 @@ import { renderStage, type StageArtifacts } from './renderStage';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
+import { killClaudeByContainer } from './agentControl';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -105,7 +106,8 @@ export async function driveContainerTurn(container: string, kickoff: string, tim
     if (r.code === 0 && r.out.length > 0) captured = r.out;
   }
   //? Stop claude IN the container → the docker-exec PTY exits on its own (no term.kill()).
-  await docker(['exec', container, 'sh', '-c', 'pkill -f claude 2>/dev/null; true']);
+  //? Procps-free (/proc walk): `pkill` silently no-op'd — ps/pgrep aren't in the base image.
+  await killClaudeByContainer(container);
   for (let i = 0; i < 12 && !state.exited; i++) await wait(300);
 
   if (captured.length === 0) return { ok: false, message: '', error: 'turn.timeout' };

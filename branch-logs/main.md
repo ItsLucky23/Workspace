@@ -970,3 +970,26 @@ De 6 control-plane/git-items uit de /goal-taakverdeling, engine/conductor/proxy-
 
 **Schema (additief)**: Workspace.paused, Project.devCommand. **Snapshot**: workspacePaused + (eerder) gitConfig.
 **Verificatie**: server/front-tsc 0 (mijn files), eslint 0, ai:lint 0, integration 14/14, spikes editLockSpike + controlPlaneSpike groen (kill + forge-gating). **Follow-ups**: auto-re-trigger op resume, workspace-delta voor pause-all, lastActivity voor eviction, procps in de base-image (fixt ook de engine-pkill — andere AI's terrein).
+
+## 2026-07-03 (parallel) — Editor/Caddy/UI-agent: items 1-7 (PROMPT 2)
+
+Parallel met de engine/conductor/proxy-agent (diens files niet aangeraakt; seams via interface). Commits 90c5a46 + 4210f21 (ItsLucky23, geen co-author, niet gepusht).
+
+1. **Caddy echte exposure — BEWEZEN.** `docker/caddy.json` (srv0 + admin :2019 + interne CA `*.localhost`) + `npm run caddy:launch`. `scripts/spike/caddyExposureSpike.mts`: editor bereikbaar via **`https://vscode-<slug>.localhost` (302)** door Caddy + **WebSocket → `101 Switching Protocols`**. Admin-gotcha: undici stuurt lege Origin → `admin.origins` moet `""`+`"null"` bevatten (+`enforce_origin:false`). :80 ook (dev plain-http iframe). Gedocumenteerd in HOSTING.md.
+2. **Edit-lock — WIRED.** `openEditor_v1` roept `ticketEditGuard` (andere agent's `editGuard.ts`) aan; weigert openen tijdens AI-turn / niet-userEditable stage.
+3. **Base-image — BEWEZEN.** `docker/base.Dockerfile` bakt openvscode-server + **procps** (fixt engine-`pkill`) + tar. Verse container: pgrep/ps/openvscode/tar direct aanwezig (geen on-demand download).
+4. **App-flow — WIRED + core BEWEZEN.** `openEditorForTicket` idempotent (reuse-cache: zelfde token/URL zolang de editor draait, via `isEditorRunning`; in-memory → geen schema-churn). `scripts/spike/openEditorSpike.mts` bewijst het volledige pad (launchTicketContainer + net + profiel + openvscode :3000 in de hardened container). UI: ticket **Code**-tab "Open live VS Code" + **TicketControls** (pause/resume/kill via context-methods). *Volledige klik-door-de-app vereist een geactiveerd ticket (gelinkte repo + branch) + login — flagged.*
+5. **Edge-auth — ONTWORPEN + gedocumenteerd + geflagd.** forward_auth-design in HOSTING.md; 2 seams buiten mijn territory: (a) `registerCustomRoute` in de bootstrap, (b) `ProxyRoute` uitbreiden met `forwardAuth`. De connection-token is de huidige edge-laag.
+6. **Preview-UI — GEBOUWD.** "Open preview"-knop (→ `openPreview` context-method, toont URL) + **DevCommandCard** + `saveDevCommand`-route (`Project.devCommand`).
+7. **Coördinatie — OK.** WorkflowTab + workflow/branchStrategy-locale-keys (andere agent) in mijn UI-files behouden + meegecommit.
+
+**Verificatie:** eslint 0 + ai:lint schoon op mijn files, `npm run build` groen, generateArtifacts (openEditor + saveDevCommand geregistreerd), 3 editor-spikes groen (profiel-carry, openEditor-orchestratie, Caddy-exposure). i18n en/nl/de/fr.
+
+## 2026-07-03 — Follow-ups: engine-pkill-fix + resume-re-trigger + pause-all realtime (ADR 0013 vervolg)
+
+De control-plane-follow-ups uit ADR 0013, engine/conductor-kant:
+- **Engine `pkill`-no-op gefixt**: `stageRunner.driveContainerTurn` gebruikte `pkill -f claude` (no-op — procps ontbreekt) → claude bleef per turn hangen. Nu `killClaudeByContainer` (procps-vrije /proc-kill, herbruikt uit `agentControl.ts`). De turn-cleanup werkt nu écht.
+- **Auto-re-trigger op `resume`**: `reprovisionTicket` her-vuurt de turn voor het ticket op z'n huidige stage (indien aiEnabled + geactiveerd) — `activateWorktreesForStage` skipt al-branched tickets, dus resume provisioneert nu direct. (resume-all blijft flag-clear; per-ticket resume her-triggert.)
+- **Pause-all realtime**: de `agentControl`-`_sync`-route retourneert `workspacePaused` voor pause-all/resume-all; nieuwe client-callback merget 't in `snap.workspacePaused` → banner update live i.p.v. op reload.
+
+**Verificatie**: server/front-tsc 0 (mijn files), eslint 0, ai:lint 0, integration 14/14. Geen overlap met de andere AI's `4210f21` (ticket-controls-UI + dev-command-UI — zij wireden de knoppen op míjn context-methods; de seams grijpen in elkaar). **Resterende verfijning**: een `lastActivity`-signaal van de editor-laag voor de eviction-reaper (nu connection-based, werkt zelfstandig).

@@ -392,6 +392,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? agent-control delta → reflect pause-all/resume-all on snap.workspacePaused live (ticket-
+  //? scoped pause/resume/kill broadcast their own ticket delta via the bulkMove callback).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/agentControl', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !('workspacePaused' in serverOutput)) return;
+      const workspacePaused = serverOutput.workspacePaused;
+      setSnap((s) => ({ ...s, workspacePaused }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => {

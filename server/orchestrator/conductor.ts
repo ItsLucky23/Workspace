@@ -286,6 +286,17 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? exactly to clear it again (never wipes a real AI open-question).
 const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
 
+//? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
+//? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
+//? already-branched tickets, so a resumed ticket is re-provisioned directly here.
+async function reprovisionTicket(workspaceId: string, key: string): Promise<void> {
+  const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true } });
+  if (!t?.branch) return;
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: t.stageId }, select: { aiEnabled: true } });
+  if (stage?.aiEnabled !== true) return;
+  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId);
+}
+
 async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string): Promise<void> {
   if (!(await dockerAvailable())) return;
   //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
@@ -648,9 +659,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return;
     }
     case 'resume': {
-      //? Clear a per-ticket pause. Re-running is by re-moving the ticket into an AI stage.
+      //? Clear a per-ticket pause + re-fire the turn if the current stage is aiEnabled.
       const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
-      if (key) { await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'idle' } }); await broadcastTicketDelta(prisma, action.workspaceId, [key]); }
+      if (key) {
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'idle' } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        await reprovisionTicket(action.workspaceId, key);
+      }
       return;
     }
     case 'kill': {

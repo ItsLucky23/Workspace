@@ -29,5 +29,9 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     ...(ticketKey ? { target: { ticketKey } } : {}), payload: {}, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
+  //? Broadcast the new pause-all state so every client updates its banner live; ticket-scoped
+  //? ops (pause/resume/kill) broadcast their own ticket delta from the Conductor.
+  if (op === 'pause-all') return { status: 'success', workspacePaused: true };
+  if (op === 'resume-all') return { status: 'success', workspacePaused: false };
   return { status: 'success' };
 };

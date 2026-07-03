@@ -14,13 +14,18 @@ import { containerName, DOCKER_BIN } from '../container/runtime';
 //? hits the turn. Transient greps that self-match are harmless (they exit immediately).
 const KILL_SCRIPT = 'for d in /proc/[0-9]*; do if grep -qa claude "$d/cmdline" 2>/dev/null; then p="${d#/proc/}"; [ "$p" != "$$" ] && kill "$p" 2>/dev/null; fi; done; true';
 
-export function killClaudeInContainer(workspaceId: string, ticketKey: string): Promise<boolean> {
-  const name = containerName(workspaceId, ticketKey);
+//? Low-level: kill claude in a container by NAME (also the engine's post-turn cleanup, replacing
+//? the `pkill -f claude` that silently no-op'd because procps is absent in the base image).
+export function killClaudeByContainer(container: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const proc = spawn(DOCKER_BIN, ['exec', name, 'sh', '-c', KILL_SCRIPT], { windowsHide: true });
+    const proc = spawn(DOCKER_BIN, ['exec', container, 'sh', '-c', KILL_SCRIPT], { windowsHide: true });
     proc.on('error', () => { resolve(false); });
     proc.on('close', (code) => { resolve(code === 0); });
   });
+}
+
+export function killClaudeInContainer(workspaceId: string, ticketKey: string): Promise<boolean> {
+  return killClaudeByContainer(containerName(workspaceId, ticketKey));
 }
 
 //? Human KILL of a ticket's in-flight turn: stop claude in the container + mark the busy worker
