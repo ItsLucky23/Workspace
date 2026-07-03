@@ -1,0 +1,20 @@
+{
+  "admin": { "listen": "0.0.0.0:2019", "enforce_origin": false, "origins": ["", "null", "localhost:2019", "127.0.0.1:2019", "ls-caddy:2019"] },
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": []
+        }
+      }
+    },
+    "tls": {
+      "automation": {
+        "policies": [
+          { "subjects": ["*.localhost"], "issuers": [{ "module": "internal" }] }
+        ]
+      }
+    }
+  }
+}

@@ -13,9 +13,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 #? node-gyp toolchain (node-pty native build at IMAGE time, never at container start) +
 #? git/gh clone/MR tooling + curl/ca-certs + the glibc DB clients (psql/mysql/redis).
+#? `procps` (ps/pgrep/pkill) is REQUIRED: the engine's kill (`pkill claude`) is a no-op without
+#? it (claude leaks per turn), and it aids editor process management. `tar` for profile streaming.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gnupg git build-essential python3 \
       postgresql-client default-mysql-client redis-tools \
+      procps tar \
     && rm -rf /var/lib/apt/lists/*
 
 #? gh (GitHub CLI) + mongosh via their signed apt repos, in one layer.
@@ -36,6 +39,16 @@ ENV NODE_PATH=/usr/local/lib/node_modules
 #? so git's dubious-ownership guard would refuse them. `safe.directory=*` is ONLY honored
 #? from system/global config (NOT `-c` — git ignores that by design), so it must be baked.
 RUN git config --system --add safe.directory '*'
+
+#? openvscode-server (real browser VS Code) baked in (Track B1 / ADR 0010) so the per-ticket
+#? editor starts instantly — no on-demand download. Pinned version; open-vsx marketplace.
+ARG OVS_VERSION=openvscode-server-v1.109.5
+RUN curl -fsSL "https://github.com/gitpod-io/openvscode-server/releases/download/${OVS_VERSION}/${OVS_VERSION}-linux-x64.tar.gz" -o /tmp/ovs.tar.gz \
+    && mkdir -p /opt/openvscode \
+    && tar -xzf /tmp/ovs.tar.gz -C /opt/openvscode --strip-components=1 \
+    && rm -f /tmp/ovs.tar.gz \
+    && ln -s /opt/openvscode/bin/openvscode-server /usr/local/bin/openvscode-server
+LABEL org.workspaces.openvscode-version="${OVS_VERSION}"
 
 #? Non-root agent (07b §7): baked uid/gid; everything below runs as this user.
 RUN useradd --create-home --uid 10001 --shell /bin/bash agent

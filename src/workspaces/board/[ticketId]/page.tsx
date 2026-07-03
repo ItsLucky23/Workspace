@@ -4,13 +4,22 @@
 //? Desktop-first; dummy data. Overlays (promote preview, teardown, reference
 //? picker) run through the shared `menuHandler.confirm`.
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
+import { loadThemeId } from 'src/_components/editor/editorThemes';
+import type { EditorChange } from 'src/_components/editor/CodeEditorPanel';
+import type { EditorFile } from 'src/_components/editor/fileTree';
+
 import FileDiffViewer from './FileDiffViewer';
+
+//? Lazy so Monaco (multi-MB) only loads when the Code tab is opened.
+const LazyCodeEditorPanel = lazy(() => import('src/_components/editor/CodeEditorPanel').then((m) => ({ default: m.CodeEditorPanel })));
+//? Lazy so the iframe host only loads when the user opens the live (container) editor.
+const LazyVsCodeEmbed = lazy(() => import('src/_components/editor/VsCodeEmbed').then((m) => ({ default: m.VsCodeEmbed })));
 import Icon from '../../_components/Icon';
 import XtermTerminal from '../../_components/XtermTerminal';
 import { AvatarBubble, AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../../_components/primitives';
@@ -30,6 +39,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
     { id: 'overview', label: translate({ key: 'workspaces.ticket.tabOverview' }), icon: 'file-lines' },
     { id: 'terminal', label: translate({ key: 'workspaces.ticket.tabTerminal' }), icon: 'terminal' },
     { id: 'files', label: translate({ key: 'workspaces.ticket.tabFiles' }), icon: 'diagram-project' },
+    { id: 'code', label: translate({ key: 'workspaces.ticket.tabCode' }), icon: 'code-branch' },
     { id: 'activity', label: translate({ key: 'workspaces.ticket.tabActivity' }), icon: 'wave-square' },
     { id: 'links', label: translate({ key: 'workspaces.ticket.tabLinks' }), icon: 'link' },
     { id: 'history', label: translate({ key: 'workspaces.ticket.tabHistory' }), icon: 'list-check' },
@@ -72,14 +82,87 @@ export default function TicketPage({ params }: { params: Record<string, string |
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
-        <div className={`mx-auto w-full ${tab === 'files' || tab === 'terminal' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+        <div className={`mx-auto w-full ${tab === 'files' || tab === 'terminal' || tab === 'code' ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
           {tab === 'terminal' && <TerminalTab ticketId={ticket.id} stageId={ticket.stageId} />}
           {tab === 'files' && <FilesTab files={ticket.files ?? []} />}
+          {tab === 'code' && <CodeTab files={ticket.files ?? []} workspaceId={ctx.activeWorkspace.id} ticketKey={ticket.id} />}
           {tab === 'activity' && <ActivityTab events={ctx.activityEvents.filter((e) => e.ticketId === ticket.id)} />}
           {tab === 'links' && <LinksTab links={ticket.links ?? []} onOpen={ctx.openTicket} />}
           {tab === 'history' && <HistoryTab history={ticket.history ?? []} />}
         </div>
+      </div>
+    </div>
+  );
+}
+
+//? Reconstruct editable file content + original/modified pairs from the ticket's changed
+//? files (the diff lines carry the new/old text). Feeds the in-ticket Monaco Code tab —
+//? the real mount point for the per-ticket editor; it upgrades to real git-backed content
+//? once the backend serves the worktree (Track D).
+function ticketFilesToEditor(files: TicketFile[]): { editorFiles: EditorFile[]; changes: EditorChange[] } {
+  const editorFiles: EditorFile[] = [];
+  const changes: EditorChange[] = [];
+  for (const f of files) {
+    const lines = f.diff ?? [];
+    const modified = lines.filter((l) => l.kind === 'add' || l.kind === 'ctx').map((l) => l.text).join('\n');
+    const original = lines.filter((l) => l.kind === 'del' || l.kind === 'ctx').map((l) => l.text).join('\n');
+    editorFiles.push({ path: f.path, content: modified });
+    const status: EditorChange['status'] = (f.del > 0 && f.add === 0) ? 'deleted' : (original.length === 0 ? 'added' : 'modified');
+    changes.push({ path: f.path, status, original, modified });
+  }
+  return { editorFiles, changes };
+}
+
+//? The per-ticket "Code" tab. Two modes:
+//?  - "changes" (Monaco): the changed-file set + source-control diff, themed with the shared
+//?    editor theme. Always available, no container needed.
+//?  - "live" (real VS Code): launches openvscode INSIDE the ticket container via `openEditor`
+//?    (ADR 0010) with the user's projected profile, and embeds it. Needs an activated ticket.
+function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; workspaceId: string; ticketKey: string }) {
+  const translate = useTranslator();
+  const theme = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
+  const { editorFiles, changes } = ticketFilesToEditor(files);
+  const [mode, setMode] = useState<'changes' | 'live'>('changes');
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const launch = async (): Promise<void> => {
+    setLaunching(true); setErr(null); setMode('live');
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/openEditor', version: 'v1', data: { workspaceId, ticketKey } }));
+    setLaunching(false);
+    if (error || res?.status !== 'success' || !res.result.ok || !res.result.url) {
+      const code = res?.status === 'error' ? res.errorCode : (res?.status === 'success' ? res.result.error : undefined);
+      setErr(code ?? 'editor.launchFailed');
+      return;
+    }
+    setLiveUrl(res.result.url);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 h-[70vh] min-h-[420px]">
+      <div className="flex items-center gap-2 shrink-0">
+        <WsButton variant={mode === 'changes' ? 'primary' : 'ghost'} onClick={() => { setMode('changes'); }}>{translate({ key: 'workspaces.ticket.codeChanges' })}</WsButton>
+        <WsButton variant={mode === 'live' ? 'primary' : 'ghost'} icon="code-branch" disabled={launching} onClick={() => { if (liveUrl) setMode('live'); else void launch(); }}>
+          {translate({ key: launching ? 'workspaces.ticket.editorLaunching' : 'workspaces.ticket.openLiveEditor' })}
+        </WsButton>
+        {err !== null && <span className="text-xs text-wrong">{translate({ key: err === 'editor.notActivated' ? 'workspaces.ticket.editorNotActivated' : 'workspaces.ticket.editorLaunchFailed' })}</span>}
+      </div>
+      <div className="flex-1 min-h-0">
+        {mode === 'changes' ? (
+          editorFiles.length === 0 ? <EmptyState icon="code-branch" title={translate({ key: 'workspaces.ticket.noCode' })} /> : (
+            <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-muted">{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>}>
+              <LazyCodeEditorPanel files={editorFiles} changes={changes} theme={theme} title={translate({ key: 'workspaces.ticket.tabCode' })} />
+            </Suspense>
+          )
+        ) : (liveUrl ? (
+          <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-muted">{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>}>
+            <LazyVsCodeEmbed theme={theme} initialUrl={liveUrl} />
+          </Suspense>
+        ) : (
+          <div className="h-full flex items-center justify-center text-sm text-muted">{translate({ key: launching ? 'workspaces.ticket.editorLaunching' : 'workspaces.ticket.editorLaunchHint' })}</div>
+        ))}
       </div>
     </div>
   );

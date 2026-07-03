@@ -96,3 +96,40 @@ do wildcards). Issue it via your DNS provider's API:
 
 The container runtime + engine work **without** any proxy configured — the proxy is only for the
 per-ticket live previews. If it's absent, previews are simply unavailable; nothing else breaks.
+
+---
+
+## 5. Per-ticket VS Code editor exposure (Caddy on `workspaces-net`)
+
+The per-ticket editor (openvscode-server, ADR 0010) is exposed exactly like previews: a
+`vscode-<slug>.<base>` subdomain the proxy routes to the ticket container's in-container editor
+port (3000). The backend adds/removes these routes dynamically via the proxy provider
+(`server/proxy`), so the proxy just needs to be running on the shared container network with its
+Admin API reachable.
+
+### Dev launch
+
+```
+npm run caddy:launch        # runs the `caddy:2` container on workspaces-net (:443 + admin :2019)
+```
+
+- Config: `docker/caddy.json` — an empty `srv0` server, the Admin API on `0.0.0.0:2019`, and
+  **internal-CA TLS for `*.localhost`** (so `https://vscode-<slug>.localhost` gets a cert with no
+  external domain). `curl -k` in dev, or install Caddy's root CA to silence the browser warning.
+- Backend seam: **`WS_CADDY_ADMIN=http://localhost:2019`** (the default). Editor containers are
+  attached to `workspaces-net` at open-time (`editorSession.attachToProxyNet`) so Caddy can dial
+  `<container>:3000` by name.
+- WebSockets: openvscode is WS-heavy; Caddy's `reverse_proxy` forwards `Upgrade` natively
+  (verified: `scripts/spike/caddyExposureSpike.mts` → `101 Switching Protocols`).
+
+> **Admin-API gotcha (non-loopback bind):** when the Admin API is published (not loopback), Caddy
+> enforces an origin allow-list. Node's `fetch` (undici, used by the backend) sends an **empty
+> `Origin` header**, so `admin.origins` MUST include `""` (and `"null"`) alongside the host:port
+> values, plus `"enforce_origin": false`. Without it every `POST` is `403 "origin ''"`.
+
+### Prod
+
+Swap the `tls.automation` policy in `docker/caddy.json` for a DNS-01 wildcard issuer on your real
+`WS_BASE_DOMAIN` (same shape as the preview wildcard in §2), bind the Admin API to a private
+interface, and set `admin.origins` to the backend's real host. Run Caddy on `workspaces-net` (e.g.
+via compose) with `:443` published.
