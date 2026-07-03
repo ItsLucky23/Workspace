@@ -31,3 +31,7 @@ playwright-report/
 
 # Workspaces linked-repo clones (never commit cloned project code)
 data/
+
+# #7 self-host stack: secrets + local backups (never commit)
+deploy/.env
+deploy/backups/

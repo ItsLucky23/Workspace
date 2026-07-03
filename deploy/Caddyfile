@@ -1,0 +1,28 @@
+# Workspaces reverse proxy (#7). Fronts the app and (via the Admin API) every per-ticket preview
+# subdomain the app adds at runtime. Replace `workspace.example.com` with your host and enable the
+# wildcard TLS block for real previews (needs a DNS-01 issuer for `*.workspace.example.com` — see
+# docs/HOSTING.md §2). The app talks to Caddy's Admin API at caddy:2019 to add/remove preview routes.
+
+{
+	# Admin API on the internal network so the app (WS_PROXY=caddy) can push per-ticket routes.
+	admin 0.0.0.0:2019
+}
+
+# Main app host. For local/testing this catch-all forwards everything to the app; swap it for your
+# real domain (and add the wildcard site below) in production.
+:80 {
+	reverse_proxy app:80
+}
+
+# --- Production: your real host + wildcard previews (uncomment + set your domain + DNS issuer) ---
+# workspace.example.com {
+# 	reverse_proxy app:80
+# }
+#
+# *.workspace.example.com {
+# 	# Per-ticket preview routes are injected by the app via the Admin API at runtime; this block
+# 	# just terminates the wildcard TLS. Requires a DNS-01 issuer plugin for the wildcard cert.
+# 	tls {
+# 		# dns <your-provider> <credentials>
+# 	}
+# }

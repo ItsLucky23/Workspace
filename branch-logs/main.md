@@ -1333,3 +1333,19 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** Integration **33/33** (nieuw `multiInstance.test.mts` 7/7). Live: :80=leader(1), :81=follower(0). Geen productiecode-wijziging — dit is een verificatie-item (het bewijst Deel A).
 
 **Files touched:** `tests/integration/multiInstance.test.mts` (nieuw), `docs/decisions/0031-*.md`. (Geen server-code — Deel A bestond al.)
+
+## 2026-07-03 — /goal item #7: self-host installer + DR (ADR 0032)
+
+**User prompt:** /goal — item #7 (self-host installer + DR; laatste, want een echte install verstoort de dev-setup).
+
+**What I did:** Een zelf-bevatte `deploy/`-stack + DR-runbook (er was alleen HOSTING.md, geen one-command install).
+- **`deploy/docker-compose.yml`**: hele product in één stack — `mongo` (single-node **replica set**, self-initializing via healthcheck, want Prisma vereist 'm voor transacties), `redis` (password+appendonly), `app` (uit `deploy/Dockerfile`, mount host **docker.sock** + `app-data`-volume, op `workspaces-net` om ticket-containers te launchen), `caddy` (reverse-proxy + admin-API voor preview-routes). `docker compose config` → **VALID** (4 services + networks).
+- **`deploy/Dockerfile`**: node:22 + Docker-CLI + npm ci + vite build + prisma generate + server op :80.
+- **`deploy/bootstrap.sh`**: idempotente from-scratch-installer — checkt docker/compose/openssl, genereert ontbrekende secrets in `deploy/.env` (nooit een bestaande overschrijven → veilig her-runbaar), bouwt de base-image, `compose up -d`, wacht op `/readyz`. `bash -n` OK.
+- **`deploy/Caddyfile` + `.env.example`**: werkende default + gedocumenteerde prod-host + wildcard-preview-TLS.
+- **`docs/DR_RUNBOOK.md`**: backup (mongodump + app-data-tar + Redis + secrets **off-host**), restore, full host-loss-DR, RPO/RTO. Kernregel: `WORKSPACES_ENC_KEY` is onvervangbaar — apart backuppen of encrypted secrets zijn onherstelbaar.
+- **Operator-gated**: de échte `bootstrap.sh`-run is NIET uitgevoerd (bouwt de app-image, eigen Mongo/Redis, bindt :80 via Caddy → botst met de live dev-backend + DB-tunnel — precies waarom #7 laatst is). Vereist een schone doel-host + jouw go-ahead; artefacten staan klaar + gevalideerd.
+
+**Verify:** `docker compose config` VALID (4 services), `bash -n bootstrap.sh` OK, runbook compleet. `deploy/.env` + `deploy/backups/` ge-gitignored.
+
+**Files touched:** `deploy/docker-compose.yml`+`Dockerfile`+`Caddyfile`+`.env.example`+`bootstrap.sh` (nieuw), `docs/DR_RUNBOOK.md` (nieuw), `docs/decisions/0032-*.md`, `.gitignore`.
