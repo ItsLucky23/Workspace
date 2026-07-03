@@ -837,3 +837,77 @@ model IntegrationTool {
 
   @@index([workspaceId])
 }
+
+// ============================================================================
+// Built-in merge-request review (BUILTIN_MR_REVIEW, tenant-scoped)
+// ============================================================================
+
+//? A merge request for a ticket's DEV-branch → target branch. The built-in review surface:
+//? line-anchored threads + approvals (stale on new head) + a merge action. Forge-backed when a
+//? GitLab MR exists (externalUrl), else the built-in record is the source of truth.
+model MergeRequest {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String    @db.ObjectId
+  projectId     String    @db.ObjectId
+  ticketId      String    @db.ObjectId
+  number        Int                                // per-workspace MR number
+  title         String
+  description   String?
+  sourceBranch  String
+  targetBranch  String
+  status        String    @default("open")         // 'open' | 'merged' | 'closed'
+  headSha       String?                            // latest source-branch commit; approvals stale when it changes
+  mergeStrategy String    @default("merge")         // 'merge' | 'squash' | 'ff'
+  externalUrl   String?                            // GitLab MR url when forge-backed
+  authorId      String?   @db.ObjectId
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  mergedAt      DateTime?
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, ticketId])
+  @@index([workspaceId, status])
+}
+
+//? A review thread on an MR: line-anchored (filePath+line) or MR-level (filePath null). Resolvable.
+model ReviewThread {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  mergeRequestId String   @db.ObjectId
+  filePath       String?                           // null = general (MR-level) thread
+  line           Int?                              // anchor line
+  side           String   @default("new")          // 'old' | 'new'
+  resolved       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([workspaceId, mergeRequestId])
+}
+
+//? A comment within a review thread. Author is a member or the AI reviewer.
+model ReviewComment {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  threadId       String   @db.ObjectId
+  mergeRequestId String   @db.ObjectId
+  authorId       String?  @db.ObjectId
+  authorKind     String   @default("user")         // 'user' | 'ai'
+  body           String
+  createdAt      DateTime @default(now())
+
+  @@index([workspaceId, threadId])
+  @@index([workspaceId, mergeRequestId])
+}
+
+//? An approval on an MR by a member. Invalidated (stale) when the MR head advances.
+model Approval {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  mergeRequestId String   @db.ObjectId
+  userId         String   @db.ObjectId
+  headSha        String?                           // the head the approval was granted at
+  stale          Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@unique([workspaceId, mergeRequestId, userId])
+  @@index([workspaceId, mergeRequestId])
+}

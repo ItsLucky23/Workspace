@@ -20,6 +20,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import { indexWorkspace } from '../rag';
+import { createMr, addReviewComment, approveMr, mergeMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncGitlabIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
@@ -739,6 +740,46 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? store. Returns the index result (files/chunks/commit/embedder) as the delta.
       const proj = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId }, select: { id: true } });
       return indexWorkspace(prisma, action.workspaceId, proj?.id ? { projectId: proj.id } : {});
+    }
+    case 'mr-create': {
+      //? Built-in MR review (BUILTIN_MR_REVIEW): open/refresh the MR for a ticket's branch, return
+      //? the fresh view (diff + threads + approvals) as the delta.
+      const ticketKey = str(payload, 'ticketKey');
+      if (!ticketKey) return;
+      await createMr(prisma, action.workspaceId, ticketKey, userId);
+      return mrForTicket(prisma, action.workspaceId, ticketKey);
+    }
+    case 'mr-comment': {
+      const ticketKey = str(payload, 'ticketKey');
+      const mrId = str(payload, 'mrId');
+      const body = str(payload, 'body');
+      if (!ticketKey || !mrId || !body) return;
+      await addReviewComment(prisma, action.workspaceId, {
+        mergeRequestId: mrId, threadId: str(payload, 'threadId'), filePath: str(payload, 'filePath') ?? null,
+        line: num(payload, 'line') ?? null, side: str(payload, 'side') ?? 'new', body, authorId: userId, authorKind: 'user',
+      });
+      return mrForTicket(prisma, action.workspaceId, ticketKey);
+    }
+    case 'mr-approve': {
+      const ticketKey = str(payload, 'ticketKey');
+      const mrId = str(payload, 'mrId');
+      if (!ticketKey || !mrId) return;
+      await approveMr(prisma, action.workspaceId, mrId, userId);
+      return mrForTicket(prisma, action.workspaceId, ticketKey);
+    }
+    case 'mr-merge': {
+      const ticketKey = str(payload, 'ticketKey');
+      const mrId = str(payload, 'mrId');
+      if (!ticketKey || !mrId) return;
+      await mergeMr(prisma, action.workspaceId, mrId);
+      return mrForTicket(prisma, action.workspaceId, ticketKey);
+    }
+    case 'mr-resolve': {
+      const ticketKey = str(payload, 'ticketKey');
+      const threadId = str(payload, 'threadId');
+      if (!ticketKey || !threadId) return;
+      await resolveThread(prisma, action.workspaceId, threadId, bool(payload, 'resolved'));
+      return mrForTicket(prisma, action.workspaceId, ticketKey);
     }
     case 'raise-cap':
     case 'edit-budget': {

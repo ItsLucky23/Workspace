@@ -1113,3 +1113,13 @@ De AI-stage-agent ziet nu de relevante code van zijn ticket (was: alleen wholesa
 - **Trigger**: `scan-index` control-op + `_sync`-route + rbac (`editPipeline`).
 
 **Bewezen** (`ragSpike.mts` GROEN): embed-determinisme, cosine(self)=1, **ranking** (auth-query→auth.ts, db-query→db.ts), real-index + retrieve. server-tsc 0, eslint 0, ai:lint 0, integration 14/14. UI-knop (Sources) = volgende commit.
+
+## 2026-07-03 — MR-review backend (pijler 3 van het /goal, ADR 0018)
+
+Volledige built-in merge-request-review (diff + threads + approvals + merge), backend:
+- **Schema** (0017-sibling): `MergeRequest` / `ReviewThread` / `ReviewComment` / `Approval` (tenant-scoped, db push + client-regen).
+- **`server/mr/diff.ts`** — bounded unified-diff-parser (`git diff target...source` uit de bare clone → files + genummerde regels waar threads op ankeren).
+- **`server/mr/service.ts`** — `createMr` (idempotent), `addReviewComment`, `approveMr`, `resolveThread`, `mergeMr`, `mrForTicket` (view met **staleness tegen de huidige head**).
+- **Ops**: één `mrAction` `_sync`-route (`action` = create/comment/approve/merge/resolve) + 5 rbac-caps (`workTickets`) + ControlOp-union.
+
+**Bewezen** (`mrSpike.mts` GROEN): parser (+2/-1), comment→thread, approve→approval (niet-stale), approval STALE na head-advance, resolve. server-tsc 0, eslint 0. Frontend = volgende.

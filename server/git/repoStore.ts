@@ -128,6 +128,21 @@ export async function repoHead(workspaceId: string): Promise<string> {
   return git(['--git-dir', bare, 'rev-parse', 'HEAD']).catch(() => '');
 }
 
+//? Unified diff of `source` against `target` (three-dot = changes on source since it forked) from
+//? the bare clone — the MR review diff. '' when unlinked or a ref is missing.
+export async function branchDiff(workspaceId: string, target: string, source: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return '';
+  return git(['--git-dir', bare, 'diff', `${target}...${source}`]).catch(() => '');
+}
+
+//? The commit sha at the tip of `branch` (the MR head — approvals stale when it changes). '' if missing.
+export async function branchHead(workspaceId: string, branch: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return '';
+  return git(['--git-dir', bare, 'rev-parse', branch]).catch(() => '');
+}
+
 //? The manifest files that tell an AI what toolchain a repo needs (for Dockerfile
 //? generation, register-flow C). Read straight from the bare clone.
 const MANIFEST_FILES = new Set([
