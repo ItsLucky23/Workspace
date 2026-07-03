@@ -30,7 +30,7 @@ if (ACTION === 'down') {
   docker(['rm', '-f', NAME]);
   const r = docker([
     'run', '-d', '--name', NAME, '--network', NET, '--restart', 'unless-stopped',
-    '-p', '443:443', '-p', '80:80', '-p', '2019:2019',
+    '-p', '443:443', '-p', '2019:2019',
     '-v', `${CONFIG}:/etc/caddy/config.json:ro`,
     'caddy:2', 'caddy', 'run', '--config', '/etc/caddy/config.json',
   ]);

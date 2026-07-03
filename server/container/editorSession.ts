@@ -54,10 +54,12 @@ async function attachToProxyNet(name: string): Promise<void> {
 async function finalizeEditor(ticketKey: string, branch: string, name: string, token: string): Promise<OpenEditorResult> {
   const route = editorRoute({ ticketKey, branch, containerName: name });
   const proxied = await getProxyProvider().upsertRoute(route);
-  const protocol = baseDomain() === 'localhost' ? 'http' : 'https';
+  //? Caddy serves TLS on :443 (internal CA for *.localhost in dev, wildcard cert in prod), so the
+  //? editor URL is always https. `npm run caddy:launch` never publishes :80 → no clash with the
+  //? backend's own port. Dev: `caddy trust` (or accept the warning) for the internal CA.
   return {
     ok: true, host: route.host, token,
-    url: `${protocol}://${route.host}/?tkn=${token}`,
+    url: `https://${route.host}/?tkn=${token}`,
     ...(proxied.ok ? {} : { error: `proxy.unreachable: ${proxied.error ?? ''}` }),
   };
 }
