@@ -1134,3 +1134,14 @@ De frontend voor de twee net-afgeronde backends (MR-review + RAG-index), client 
 - **i18n**: `workspaces.mr.*` + sources reindex-keys + `ticket.tabReview` in en/nl/de/fr.
 
 **Bewezen**: generateArtifacts (mrAction+scanIndex routes in type-map), front-tsc 0, server-tsc 0, eslint 0, ai:lint 0, build groen.
+
+## 2026-07-03 (parallel, vervolg 6) — CORRECTIE: edge-auth membership werkt volledig (geen bug)
+
+Mijn vorige entry claimde een bug in `editorAuthCheck` — **dat was fout** (misleid door een stale openvscode-token-403). Na grondige diagnostiek (base-client vindt member+role, `hasCapability` returnt **true**):
+
+**Edge-auth matrix — VOLLEDIG GROEN, met de ORIGINELE `editorAuthCheck` (base `getPrismaClient()`, geen wijziging nodig):**
+- `/editor-auth-check` direct: geen sessie → **401**, member → **204**, nonmember → **403**.
+- Door Caddy (forward_auth): geen sessie → **401**, member → **302 (editor bereikbaar)**, nonmember → **403**.
+- Browser (Playwright, ignoreHTTPSErrors): geen sessie → geblokkeerd ("unauthorized"); member is geautoriseerd (geen unauthorized). De volledige workbench-render mét edge-auth komt in headless niet af (openvscode-WebSocket/token-cookie dóór forward_auth = headless-quirk) — maar de member IS geautoriseerd (302) en de editor rendert bewezen zonder die laag (`editor_pw.png`).
+
+De root-cause van de eerdere member-403: het openvscode connection-token in `/tmp` was stale na container-herstarts; met een verse `devLaunchEditor` → member 302. Mijn `workspaceId`-op-de-route-prerequisite werkt correct (host→W Redis-map → per-workspace 403 voor niet-leden). `editorAuthCheck` blijft untouched. Nieuwe dev-tool: `scripts/dev/editorAuthMatrix.mjs`.
