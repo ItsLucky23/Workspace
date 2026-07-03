@@ -9,6 +9,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+const { decryptSecret } = await import('../../server/crypto/secretBox');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T>, timeoutMs = 4000, stepMs = 50): Promise<T | null> {
@@ -37,15 +38,13 @@ try {
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
 
-  //? save-env → payload { key, value, secret }. Assert an EnvVar row persisted.
-  //? NOTE: the conductor's save-env case stores `value` verbatim — it does NOT encrypt
-  //? (only gitlab-settings/token runs through encryptSecret). The schema comment says
-  //? "encrypted when secret", but that is not applied at this layer, so we assert the
-  //? value round-trips as sent + the `secret` flag persists.
+  //? save-env → payload { key, value, secret }. A SECRET value is ENCRYPTED at rest (encryptSecret,
+  //? same as the gitlab token) and decrypts back for display; the flag persists.
   await enqueueControlAction({ workspaceId: wsId, op: 'save-env', target: {}, payload: { key: 'API_TOKEN', value: 'super-secret-value', secret: true }, userId: owner.id, clientRequestId: `save-env-${String(stamp)}` });
   const env = await poll(() => prisma.envVar.findFirst({ where: { workspaceId: wsId, key: 'API_TOKEN' } }));
   assert(env !== null, 'save-env created an EnvVar row');
-  eq(env?.value ?? '', 'super-secret-value', 'save-env persisted the value');
+  assert((env?.value ?? '') !== 'super-secret-value', 'save-env stores the secret value ENCRYPTED (not plaintext)');
+  eq(decryptSecret(env?.value ?? ''), 'super-secret-value', 'the encrypted value decrypts back to the original');
   eq(env?.secret ?? false, true, 'save-env persisted the secret flag');
 
   //? remove-env → target.envId (the DB id). Assert the row is gone.

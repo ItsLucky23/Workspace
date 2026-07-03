@@ -16,6 +16,7 @@ import {
 } from '../../src/workspaces/_data/seed';
 import { createDefaultPipeline } from './defaultPipeline';
 import { createStarterLibrary } from './starterLibrary';
+import { encryptSecret } from '../crypto/secretBox';
 
 const OWNER_PERMS = [true, true, true, true, true, true, true, true];
 const ADMIN_PERMS = [true, true, true, true, true, false, false, false];
@@ -204,7 +205,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
   }
 
   for (const e of ENV_VARS) {
-    await prisma.envVar.create({ data: { workspaceId, key: e.key, value: e.value, secret: e.secret } });
+    await prisma.envVar.create({ data: { workspaceId, key: e.key, value: e.secret ? encryptSecret(e.value) : e.value, secret: e.secret } });
   }
 
   for (const it of INTEGRATION_TOOLS) {

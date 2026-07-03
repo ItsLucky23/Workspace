@@ -422,11 +422,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!key) return;
       const value = str(payload, 'value') ?? '';
       const secret = bool(payload, 'secret');
+      //? Secret values are ENCRYPTED at rest (B-07, same crypto as the GitLab token); non-secrets
+      //? stay plaintext (readable config). The read paths (snapshot + envDelta) decrypt for display.
+      const stored = secret ? encryptSecret(value) : value;
       const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key } });
       //? Return the upserted row so the realtime `_sync` route broadcasts the delta.
       return existing
-        ? prisma.envVar.update({ where: { id: existing.id }, data: { value, secret } })
-        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value, secret } });
+        ? prisma.envVar.update({ where: { id: existing.id }, data: { value: stored, secret } })
+        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } });
     }
     case 'remove-env': {
       const envId = str(target, 'envId');

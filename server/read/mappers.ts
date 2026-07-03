@@ -7,6 +7,7 @@
 import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource } from '@prisma/client';
 
 import type { EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketStatus } from '../../src/workspaces/_data/types';
+import { decryptSecret } from '../crypto/secretBox';
 
 const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
 
@@ -103,9 +104,12 @@ function isDbEnvVar(v: unknown): v is DbEnvVar {
   return v !== null && typeof v === 'object' && 'id' in v && 'key' in v && 'value' in v && 'secret' in v;
 }
 
-//? Narrow the save-env op result to the frontend `EnvVar` delta (client upserts by id).
+//? Narrow the save-env op result to the frontend `EnvVar` delta (client upserts by id). Secret
+//? values are decrypted for display (falls back to the raw value for legacy plaintext rows).
 export function envDelta(result: unknown): EnvVar | null {
-  return isDbEnvVar(result) ? { id: result.id, key: result.key, value: result.value, secret: result.secret } : null;
+  if (!isDbEnvVar(result)) return null;
+  const value = result.secret ? (decryptSecret(result.value) ?? result.value) : result.value;
+  return { id: result.id, key: result.key, value, secret: result.secret };
 }
 
 function isDbRole(v: unknown): v is DbRole {
