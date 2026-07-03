@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 142,
-    "edges": 173,
+    "edges": 172,
     "symbols": 182,
     "callEdges": 32
   },
@@ -1366,10 +1366,6 @@
     },
     {
       "from": "workspaces/usage/page.tsx",
-      "to": "workspaces/_data/seed.ts"
-    },
-    {
-      "from": "workspaces/usage/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -1712,7 +1708,6 @@
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/pipeline/page.tsx",
       "workspaces/settings/page.tsx",
-      "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/types.ts": [
@@ -1869,12 +1864,6 @@
       "directDependents": 2
     },
     {
-      "id": "workspaces/_data/seed.ts",
-      "kind": "other",
-      "dependents": 8,
-      "directDependents": 5
-    },
-    {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
       "dependents": 7,
@@ -1909,6 +1898,12 @@
       "kind": "other",
       "dependents": 7,
       "directDependents": 3
+    },
+    {
+      "id": "workspaces/_data/seed.ts",
+      "kind": "other",
+      "dependents": 7,
+      "directDependents": 4
     },
     {
       "id": "_sockets/socketInitializer.ts",

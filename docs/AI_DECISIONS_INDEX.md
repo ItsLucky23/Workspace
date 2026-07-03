@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (23)
+## Decisions (24)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -36,6 +36,7 @@
 | 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | 🟢 accepted | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
 | 0023 | In-container pty-agent — durable scrollback + crash-resume for container terminals | 🟢 accepted | workspaces, containers, terminal, pty, crash-resume | — | `docs/decisions/0023-in-container-pty-agent.md` |
 | 0024 | Close client gaps — needs-input answer-to-AI + realtime presence | 🟢 accepted | workspaces, client, needs-input, presence, realtime | — | `docs/decisions/0024-client-gaps-answer-input-presence.md` |
+| 0025 | Cost/usage tracking — record token estimates, display only (no hard stop) | 🟢 accepted | workspaces, usage, spend, tokens, observability | — | `docs/decisions/0025-cost-usage-tracking.md` |
 
 ## Summaries
 
@@ -224,6 +225,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **Answer-the-AI (`answer-input` control-op):** a human answer records the answer as a comment (audit trail), clears the needs-input banner, sets the ticket back to `idle`, and RE-FIRES the parked turn with `claude --resume` + the answer as the prompt — reusing #1's resume path (`resumePrompt` threads `reprovisionTicket → provisionContainers → runStage → driveContainerTurn`). A dedicated `_sync/answerInput` route (RBAC `workTickets`) + `ctx.answerInput` + a wired `NeedsInputBanner`. No new AI-channel verb — `answer-input` is a control-op like `resume`. **Realtime presence** via a PURE RELAY sync event (`_sync/presence`): a client viewing a ticket pings `{ticketKey, viewing}` on open + a 12s heartbeat + on close; the server echoes the authenticated* userId (never client-supplied) to the whole room. Clients keep a per-user `{ticketKey, lastSeen}` map, prune entries older than 25s, and render live viewer avatars on the ticket header (self excluded). No server state + no Conductor write (presence is ephemeral), so the socket layer's room fan-out (Redis adapter under `WS_MULTI_INSTANCE`) makes it multi-instance-safe for free. **Real usage/spend → deferred to #16.** The data does not exist yet: `SpendRecord` is written nowhere and `AgentSession.tokenEstimate` is unpopulated. #16 (kosten-tracking) is the very next item and BUILDS that recording. Displaying real figures is meaningless without the recording, and wiring an empty aggregate now would just show zeros and then be reworked. So the "echte usage/spend-cijfers" display is folded into #16 (recording + display together). Flagged per Rule 3b — a conscious relocation, not a silent drop.
 
 → `docs/decisions/0024-client-gaps-answer-input-presence.md`
+
+### 0025 — Cost/usage tracking — record token estimates, display only (no hard stop)
+
+**0025** · accepted · tags: workspaces, usage, spend, tokens, observability · 2026-07-03
+
+**Record per turn.** `server/spend/record.ts` `recordTurnSpend` runs after every turn (best-effort, wrapped in `tryCatch` — advisory, never fails the turn): it estimates tokens from the CHAR count (input ≈ the rendered CLAUDE.md + stage instructions, output ≈ the assistant message — the Max subscription's CLI exposes no usage field, per the P0.5 spike), writes a `SpendRecord`, bumps the session's running `tokenEstimate` (feeds the #4 self-handoff), and increments the enabled budgets' rolling `spent` ONLY when a per-model price is set (0 on the subscription). **No enforcement / pause anywhere** — #16 is show-only. **Aggregate + display.** `aggregateUsage` (pure, unit-tested) rolls `SpendRecord` rows into per-ticket token totals + a dense 7-day activity series + workspace totals. The snapshot fetches the tenant-scoped rows and emits `usage`; the Usage page renders it (real bars + a real per-ticket table, replacing the dummies) and each board ticket gets a real `<tokens> tok · <turns>×` cost chip. Token VOLUME is the metric, not money (subscription). **Real usage/spend from #17 folded in here** (ADR 0024): display + recording belong together.
+
+→ `docs/decisions/0025-cost-usage-tracking.md`
 
 ## Code governed by decisions
 
