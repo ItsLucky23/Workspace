@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (28)
+## Decisions (29)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -41,6 +41,7 @@
 | 0027 | Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry | 🟢 accepted | workspaces, automation, triggers, plugins, agent-roles | — | `docs/decisions/0027-automation-plugin-engine.md` |
 | 0028 | Token self-handoff — controlled handoff → reset → reload on budget | 🟢 accepted | workspaces, tokens, context, handoff, orchestrator | — | `docs/decisions/0028-token-self-handoff.md` |
 | 0029 | Forge-provider abstraction (GitLab + GitHub) + webhook ingest | 🟢 accepted | workspaces, forge, gitlab, github, webhook | — | `docs/decisions/0029-forge-provider-abstraction.md` |
+| 0030 | Editor loose ends — profile encryption-at-rest + Open VSX gallery | 🟢 accepted | workspaces, editor, security, encryption, open-vsx | — | `docs/decisions/0030-editor-loose-ends.md` |
 
 ## Summaries
 
@@ -269,6 +270,14 @@ A small **pty-agent process runs INSIDE each L3 container** and owns the shell P
 **Forge-provider abstraction** (`server/git/forgeProvider.ts`): the REST call SHAPING is pure + per-provider (`buildOpenMrRequest` / `buildFindMrRequest` / `readMrUrl` / `isDuplicateStatus` for `gitlab` | `github`), so it is unit-testable without a network; `openForgeMergeRequest` is the one thin fetch wrapper. GitLab uses `/api/v4` + `PRIVATE-TOKEN` + `web_url` + 409-duplicate; GitHub uses `/repos/{owner}/{repo}/pulls` + `Bearer` + `html_url` + 422-duplicate. `forge.ts` resolves the provider from `Workspace.forgeType` and calls it — the engine code is now forge-agnostic. **Webhook ingest** (`server/git/webhookIngest.ts` + `webhookRoute.ts`): a pure `parseWebhookEvent` normalizes GitLab (`object_kind:'issue'`) AND GitHub (`X-GitHub-Event: issues`) issue events to one shape; `ingestIssueEvent` upserts the `DEV-<iid>` ticket (idempotent). Exposed at `POST /webhooks/forge/<workspaceId>` as a pre-params custom route with `registerOriginExemptPath` (a server-to-server POST has no Origin → the framework's step-1 origin gate would 403 it). **Security**: exemption is NOT auth — the handler requires a shared secret (`WS_WEBHOOK_SECRET`) in `X-Webhook-Secret` / `X-Gitlab-Token`. UNSET ⇒ the endpoint is DISABLED (503, fail-closed). Wrong secret ⇒ 401. On a dedicated `/webhooks/` prefix (never overlaps `/api`·`/auth`·`/sync`). **Config**: `Workspace.forgeType` (default `gitlab`) + a provider dropdown in the GitLab settings tab (i18n en/nl/de/fr), through the existing `gitlab-settings` control-op.
 
 → `docs/decisions/0029-forge-provider-abstraction.md`
+
+### 0030 — Editor loose ends — profile encryption-at-rest + Open VSX gallery
+
+**0030** · accepted · tags: workspaces, editor, security, encryption, open-vsx · 2026-07-03
+
+**Editor-profile encryption-at-rest** (the security-critical one). The per-user editor profile carries openvscode's SECRET STORAGE — extension **auth tokens** — and was stored as loose plaintext files under `data/editor-profiles/<userId>/`. Now each half (user-data, extensions) is captured out of the container as a tar, **AES-256-GCM encrypted** (`secretBox.encryptBuffer`, same app key as the GitLab-token encryption), and written as a `.tar.enc` blob; on the next session it is decrypted + streamed back in. New binary primitives `encryptBuffer`/`decryptBuffer` (compact envelope `[0x01][iv][tag][ct]`, `[0x00][plain]` dev fallback) sit beside the existing string `encryptSecret`. A blob that fails to decrypt (tamper / rotated key) is skipped loudly, never crashes. **Open VSX gallery**. openvscode-server defaults to the Microsoft marketplace, whose ToS forbids non-MS builds. The editor launch + `--install-extension` now prepend `EXTENSIONS_GALLERY={open-vsx.org}` (overridable via `WS_EXTENSIONS_GALLERY`, shell-quoted) so extensions resolve from the licensing-correct Open VSX registry.
+
+→ `docs/decisions/0030-editor-loose-ends.md`
 
 ## Code governed by decisions
 
