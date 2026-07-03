@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (21)
+## Decisions (22)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -34,6 +34,7 @@
 | 0020 | CapacityManager — atomic hard-cap admission queue + urgent force-through | 🟢 accepted | workspaces, orchestrator, capacity, concurrency, multi-instance, redis | — | `docs/decisions/0020-capacity-manager-hard-cap.md` |
 | 0021 | Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible) | 🟢 accepted | workspaces, mr-review, git, merge, approvals | — | `docs/decisions/0021-real-git-merge.md` |
 | 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | 🟢 accepted | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
+| 0023 | In-container pty-agent — durable scrollback + crash-resume for container terminals | 🟢 accepted | workspaces, containers, terminal, pty, crash-resume | — | `docs/decisions/0023-in-container-pty-agent.md` |
 
 ## Summaries
 
@@ -206,6 +207,14 @@ A real admission-control module, `server/orchestrator/capacity.ts`, backed entir
 `server/orchestrator/watchdog.ts`, both entry points **leader-gated** (ADR 0015 — exactly one instance recovers):
 
 → `docs/decisions/0022-crash-recovery-watchdog.md`
+
+### 0023 — In-container pty-agent — durable scrollback + crash-resume for container terminals
+
+**0023** · accepted · tags: workspaces, containers, terminal, pty, crash-resume · 2026-07-03
+
+A small **pty-agent process runs INSIDE each L3 container** and owns the shell PTY + a **durable scrollback**; the orchestrator RELAYS it over the unchanged `ws-term:*` protocol, so the xterm client stays byte-identical.
+
+→ `docs/decisions/0023-in-container-pty-agent.md`
 
 ## Code governed by decisions
 
