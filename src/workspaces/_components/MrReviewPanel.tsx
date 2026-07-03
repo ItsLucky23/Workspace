@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import Icon from './Icon';
 import { AvatarBubble, EmptyState, WsButton } from './primitives';
@@ -73,19 +73,46 @@ export default function MrReviewPanel({ ticket }: { ticket: Ticket }) {
 function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
   const translate = useTranslator();
   const { mrAction, currentUser } = useWorkspaces();
-  const [busy, setBusy] = useState<null | 'approve' | 'merge'>(null);
+  const [busy, setBusy] = useState<null | 'approve' | 'merge' | 'rollback'>(null);
 
   const isOpen = mr.status === 'open';
   const isMerged = mr.status === 'merged';
+  const isConflict = mr.status === 'conflict';
   const alreadyApproved = mr.approvals.some((a) => a.userId === currentUser.id && !a.stale);
+  //? Merge gate (#9): the server requires ≥1 approval bound to the current head; mirror it in the UI
+  //? so Merge is disabled (with a hint) until someone has approved this exact head.
+  const hasFreshApproval = mr.approvals.some((a) => !a.stale);
 
-  const statusLabel = isMerged
-    ? translate({ key: 'workspaces.mr.statusMerged' })
-    : (isOpen ? translate({ key: 'workspaces.mr.statusOpen' }) : translate({ key: 'workspaces.mr.statusClosed' }));
-  const statusTint = isMerged ? 'bg-correct/15 text-correct' : (isOpen ? 'bg-primary/12 text-primary' : 'bg-container2 text-muted');
+  const statusKey = ((): string => {
+    if (isMerged) return 'workspaces.mr.statusMerged';
+    if (isConflict) return 'workspaces.mr.statusConflict';
+    if (isOpen) return 'workspaces.mr.statusOpen';
+    return 'workspaces.mr.statusClosed';
+  })();
+  const statusLabel = translate({ key: statusKey });
+  const statusTint = ((): string => {
+    if (isMerged) return 'bg-correct/15 text-correct';
+    if (isConflict) return 'bg-wrong/15 text-wrong';
+    if (isOpen) return 'bg-primary/12 text-primary';
+    return 'bg-container2 text-muted';
+  })();
+
+  //? Toast the transient merge/rollback outcome (no-approval / conflict + files) the server returns.
+  const reportOutcome = (r: { ok: boolean; outcome?: { ok: boolean; reason?: string; files?: string[] } }, successKey: string) => {
+    const outcome = r.ok ? r.outcome : undefined;
+    if (!r.ok) { notify.error({ key: 'workspaces.mr.actionFailed' }); return; }
+    if (outcome && !outcome.ok) {
+      if (outcome.reason === 'conflict') notify.error({ key: 'workspaces.mr.conflict', params: [{ key: 'files', value: (outcome.files ?? []).join(', ') || '—' }] });
+      else if (outcome.reason === 'no-approval') notify.error({ key: 'workspaces.mr.needsApproval' });
+      else notify.error({ key: 'workspaces.mr.mergeFailed' });
+      return;
+    }
+    notify.success({ key: successKey });
+  };
 
   const approve = () => { setBusy('approve'); void mrAction('approve', { ticketKey, mrId: mr.id }).then(() => { setBusy(null); }); };
-  const merge = () => { setBusy('merge'); void mrAction('merge', { ticketKey, mrId: mr.id }).then(() => { setBusy(null); }); };
+  const merge = () => { setBusy('merge'); void mrAction('merge', { ticketKey, mrId: mr.id }).then((r) => { setBusy(null); reportOutcome(r, 'workspaces.mr.mergedToast'); }); };
+  const rollback = () => { setBusy('rollback'); void mrAction('rollback', { ticketKey, mrId: mr.id }).then((r) => { setBusy(null); reportOutcome(r, 'workspaces.mr.revertedToast'); }); };
 
   const mrLevelThreads = mr.threads.filter((t) => t.filePath === null);
 
@@ -116,9 +143,22 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
               <WsButton variant="secondary" icon="circle-check" disabled={busy !== null || alreadyApproved} onClick={approve}>
                 {translate({ key: alreadyApproved ? 'workspaces.mr.approved' : 'workspaces.mr.approve' })}
               </WsButton>
-              <WsButton variant="primary" icon="code-merge" disabled={busy !== null || !isOpen} onClick={merge}>
-                {translate({ key: isMerged ? 'workspaces.mr.merged' : 'workspaces.mr.merge' })}
-              </WsButton>
+              {isMerged
+                ? (
+                  <WsButton variant="secondary" icon="rotate-left" disabled={busy !== null} onClick={rollback}>
+                    {translate({ key: 'workspaces.mr.revert' })}
+                  </WsButton>
+                )
+                : (
+                  <WsButton
+                    variant="primary" icon="code-merge"
+                    disabled={busy !== null || (!isOpen && !isConflict) || !hasFreshApproval}
+                    title={hasFreshApproval ? undefined : translate({ key: 'workspaces.mr.needsApproval' })}
+                    onClick={merge}
+                  >
+                    {translate({ key: isConflict ? 'workspaces.mr.retryMerge' : 'workspaces.mr.merge' })}
+                  </WsButton>
+                )}
             </div>
             {mr.externalUrl !== null && mr.externalUrl.length > 0 && (
               <a href={mr.externalUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">

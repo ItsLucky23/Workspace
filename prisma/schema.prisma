@@ -856,8 +856,9 @@ model MergeRequest {
   description   String?
   sourceBranch  String
   targetBranch  String
-  status        String    @default("open")         // 'open' | 'merged' | 'closed'
+  status        String    @default("open")         // 'open' | 'merged' | 'closed' | 'conflict'
   headSha       String?                            // latest source-branch commit; approvals stale when it changes
+  mergedSha     String?                            // the merge commit on the target (for a git-revert rollback, #9)
   mergeStrategy String    @default("merge")         // 'merge' | 'squash' | 'ff'
   externalUrl   String?                            // GitLab MR url when forge-backed
   authorId      String?   @db.ObjectId

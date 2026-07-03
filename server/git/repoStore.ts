@@ -13,6 +13,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
+import { tryCatch, tryCatchSync } from '@luckystack/core';
+
 export interface RepoStatus { linked: boolean; gitUrl?: string; branch?: string; head?: string }
 
 //? The DEV-#### git-worktree a ticket edits in, cut from the bare clone at activation
@@ -226,6 +228,89 @@ export async function addWorktree(workspaceId: string, ticketKey: string, branch
     ? git(['--git-dir', bare, 'worktree', 'add', wt, branchName])
     : git(['--git-dir', bare, 'worktree', 'add', '-b', branchName, wt, commitHash]));
   return { branch: branchName, commitHash, path: wt };
+}
+
+//? The outcome of a real branch merge (#9). `conflict` carries the unmerged files so the UI can
+//? surface them (and a future AI --resume can be handed them); `error` is a scrubbed git message.
+export type MergeOutcome =
+  | { ok: true; sha: string }
+  | { ok: false; conflict: true; files: string[] }
+  | { ok: false; conflict: false; error: string };
+
+const gitIdentity = ['-c', 'user.email=workspaces-bot@luckystack.local', '-c', 'user.name=Workspaces'];
+
+//? Really merge `source` into `target` in the bare clone via a THROWAWAY merge-worktree (never a
+//? long-lived checkout), honouring `strategy` ('merge' = --no-ff, 'squash', 'ff' = --ff-only). The
+//? caller serialises merges per-workspace (the conductor holds the write-lease), so two merges can't
+//? race the same target. On conflict the merge is ABORTED (target ref untouched) and the conflicting
+//? files returned. Returns the resulting merge commit sha on success. Idempotent about a stale
+//? merge-worktree left by a crash (removed first). Returns not-linked error if no repo is linked.
+export async function mergeBranches(workspaceId: string, target: string, source: string, strategy: string): Promise<MergeOutcome> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return { ok: false, conflict: false, error: 'not-linked' };
+  const mergeWt = path.join(workspaceDataDir(workspaceId), 'merge-wt');
+  await cleanupWorktree(bare, mergeWt);
+  const [error, result] = await tryCatch<MergeOutcome>(async () => {
+    await git(['--git-dir', bare, 'worktree', 'add', '--force', mergeWt, target]);
+    const args = ['-C', mergeWt, ...gitIdentity, 'merge', '--no-edit'];
+    if (strategy === 'squash') args.push('--squash');
+    else if (strategy === 'ff') args.push('--ff-only');
+    else args.push('--no-ff');
+    args.push(source);
+    const mergeErr = await git(args).then(() => null).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
+    if (mergeErr) {
+      const unmerged = await git(['-C', mergeWt, 'diff', '--name-only', '--diff-filter=U']).catch(() => '');
+      const files = unmerged.split('\n').map((f) => f.trim()).filter((f) => f.length > 0);
+      await git(['-C', mergeWt, 'merge', '--abort']).catch(() => '');
+      await git(['-C', mergeWt, 'reset', '--hard']).catch(() => '');
+      if (files.length > 0) return { ok: false, conflict: true, files };
+      return { ok: false, conflict: false, error: mergeErr.message };
+    }
+    //? `--squash` stages the changes but writes no commit — finalize it so the target advances.
+    if (strategy === 'squash') await git(['-C', mergeWt, ...gitIdentity, 'commit', '--no-edit', '-m', `Merge ${source} into ${target}`]);
+    const sha = await git(['-C', mergeWt, 'rev-parse', 'HEAD']);
+    return { ok: true, sha };
+  });
+  await cleanupWorktree(bare, mergeWt);
+  if (error || !result) return { ok: false, conflict: false, error: error ? scrub(error.message) : 'merge-failed' };
+  return result;
+}
+
+//? Roll a merge back by reverting its commit on `target` (a git-revert, so history is preserved —
+//? the opposite of a destructive reset). Handles both a real merge commit (2 parents → revert the
+//? first-parent mainline with `-m 1`) and a squash/ff commit (1 parent → plain revert). Runs in a
+//? throwaway worktree under the caller's lease. Returns the revert commit sha.
+export async function revertMergeCommit(workspaceId: string, target: string, sha: string): Promise<{ ok: true; sha: string } | { ok: false; error: string }> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return { ok: false, error: 'not-linked' };
+  const revertWt = path.join(workspaceDataDir(workspaceId), 'revert-wt');
+  await cleanupWorktree(bare, revertWt);
+  type RevertResult = { ok: true; sha: string } | { ok: false; error: string };
+  const [error, result] = await tryCatch<RevertResult>(async () => {
+    await git(['--git-dir', bare, 'worktree', 'add', '--force', revertWt, target]);
+    //? Parent count decides whether `-m 1` (mainline) is needed — a squash commit has one parent.
+    const revList = await git(['-C', revertWt, 'rev-list', '--parents', '-n', '1', sha]).catch(() => '');
+    const parents = revList.split(/\s+/).filter(Boolean);
+    const isMerge = parents.length > 2; // sha + 2 parents
+    const args = ['-C', revertWt, ...gitIdentity, 'revert', '--no-edit', ...(isMerge ? ['-m', '1'] : []), sha];
+    const revertErr = await git(args).then(() => null).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
+    if (revertErr) {
+      await git(['-C', revertWt, 'revert', '--abort']).catch(() => '');
+      return { ok: false, error: scrub(revertErr.message) };
+    }
+    const revSha = await git(['-C', revertWt, 'rev-parse', 'HEAD']);
+    return { ok: true, sha: revSha };
+  });
+  await cleanupWorktree(bare, revertWt);
+  if (error || !result) return { ok: false, error: error ? scrub(error.message) : 'revert-failed' };
+  return result;
+}
+
+//? Remove a throwaway merge/revert worktree (git registration + on-disk dir), best-effort.
+async function cleanupWorktree(bare: string, wt: string): Promise<void> {
+  await git(['--git-dir', bare, 'worktree', 'remove', '--force', wt]).catch(() => '');
+  if (existsSync(wt)) tryCatchSync(() => { rmSync(wt, { recursive: true, force: true }); });
+  await git(['--git-dir', bare, 'worktree', 'prune']).catch(() => '');
 }
 
 //? Push a ticket's branch to origin (push-on-approval, Track F). The token is injected ONLY

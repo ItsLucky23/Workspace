@@ -164,16 +164,19 @@ export interface MrThread {
   id: string; filePath: string | null; line: number | null; side: string; resolved: boolean; comments: MrComment[];
 }
 export interface MrApproval { userId: string; stale: boolean; createdAt: string }
+//? Transient outcome of a merge/rollback (not persisted) — the client toasts it. `reason` is one of
+//? no-approval | conflict | not-linked | nothing-to-merge | error; `files` lists conflicting paths.
+export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
-  diff: MrDiff; threads: MrThread[]; approvals: MrApproval[];
+  diff: MrDiff; threads: MrThread[]; approvals: MrApproval[]; actionResult?: MrActionOutcome;
 }
-export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'resolve';
+export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'rollback' | 'resolve';
 export interface MrActionFields {
   ticketKey: string; mrId?: string; body?: string; filePath?: string; line?: number; threadId?: string; side?: string; resolved?: boolean;
 }
-export type MrActionResult = { ok: true } | { ok: false; error: string };
+export type MrActionResult = { ok: true; outcome?: MrActionOutcome } | { ok: false; error: string };
 
 //? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
 export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }

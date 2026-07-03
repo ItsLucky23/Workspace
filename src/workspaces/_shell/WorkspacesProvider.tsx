@@ -485,7 +485,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     });
     if (res.status !== 'success') return { ok: false, error: res.errorCode };
     if (res.result.status !== 'success') return { ok: false, error: res.result.errorCode };
-    return { ok: true };
+    //? Carry the transient merge/rollback outcome (no-approval / conflict) off the returned view
+    //? so the panel can toast it — it isn't persisted, so it must be read from this response.
+    return { ok: true, outcome: res.result.mr?.actionResult };
   }, [snap.activeWorkspaceId]);
 
   //? Fire-and-refetch for the typed per-action writes: takes the (already typed)

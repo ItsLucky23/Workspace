@@ -36,7 +36,7 @@ export type ControlOp =
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'save-git-config'
   | 'link-repo' | 'scan-docs' | 'scan-index'
-  | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-resolve'
+  | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config'
   // notifications (18)

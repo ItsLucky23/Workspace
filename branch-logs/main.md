@@ -1174,3 +1174,18 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **22/22** (nieuw `capacity.test.mts` **16/16**: hard cap, urgent-bypass, deduped FIFO, release frees capacity, staleness-eviction; geen regressies). Backend herstart → clean runtime-boot (`capacity.ts` laadt, leadership acquired), app rendert gezond (board, socket connected). #12 = backend-only (defer-banner-UI bestond al), dus de integration-test ís de echte-flow-verificatie (browser-test zou de cap met echte Docker-turns moeten vullen = zwaar/flaky, geen nieuwe UI).
 
 **Files touched:** `server/orchestrator/capacity.ts` (nieuw), `server/orchestrator/conductor.ts`, `docs/decisions/0020-*.md`, `tests/integration/capacity.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #9: echte git-merge (approval-gated, conflict-safe, revertible) (ADR 0021)
+
+**User prompt:** /goal — item #9 (maakt de MR-review compleet).
+
+**What I did:** De built-in MR-review (ADR 0018) kon openen/diffen/commenten/approven, maar `mergeMr` was een **status-flip zonder git**. Nu een echte merge.
+- **`repoStore.ts`**: `mergeBranches(workspaceId, target, source, strategy)` — echte merge in de bare clone via een **throwaway merge-worktree** (`git merge` `--no-ff`/`--squash`/`--ff-only`); op conflict **abort** (target onaangeraakt) + conflicterende files terug. `revertMergeCommit` — history-preserving `git revert` (auto `-m 1` voor merge-commits, plain voor squash). Beide onder de caller's lease (serieel). tryCatch i.p.v. raw try/catch (eslint).
+- **`server/mr/service.ts`**: `mergeMr` vereist nu **≥1 non-stale approval** (approval.headSha == mr.headSha) → dan echte merge → `MergeRequest.mergedSha` (nieuw schema-veld) recorden + status='merged'; conflict → status='conflict' + files. `rollbackMr` — revert + reopen. `MrView.actionResult` (transient outcome).
+- **Control-plane**: nieuwe `mr-rollback`-op (conductor + rbac `workTickets` + `mrAction`-route action-map + ControlOp-union). `mr-merge`/`mr-rollback` attachen de outcome aan de view.
+- **Frontend `MrReviewPanel`**: Merge-knop disabled tot een verse approval (tooltip); conflict → `conflict`-status + "Retry merge"; merged → **Revert**-knop; outcome getoast (`i18nNotify`). i18n en/nl/de/fr (`workspaces.mr.statusConflict/revert/retryMerge/needsApproval/conflict/mergeFailed/actionFailed/mergedToast/revertedToast`). `mrActionApi` geeft de outcome door.
+- **Uitgesteld (geflagd):** conflict→AI `--resume` auto-resolve (vereist conflict-context-injectie in `renderStage`) — #9 levert het conflict-SAFE pad; de resume-turn is de volgende slice.
+
+**Verify:** schema `prisma:db:push`+generate, `generateArtifacts` (mr-rollback in type-map). server-tsc 0, front-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **23/23** (nieuw `mergeReal.test.mts` **16/16** tegen een ECHTE bare-repo: clean merge advanced target, revert verwijdert weer, echt conflict → abort + files + target onaangeraakt, approval-gate blokkeert dan laat toe). Backend clean-boot; Review-tab rendert crash-vrij (empty-state bevestigd — merge-knop-states volledig gedekt door de integration-test; volledige knop-walkthrough vereist een branch-geactiveerd ticket/Docker).
+
+**Files touched:** `prisma/schema.prisma`, `server/git/repoStore.ts`, `server/mr/service.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/mrAction_server_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_components/MrReviewPanel.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0021-*.md`, `tests/integration/mergeReal.test.mts` (nieuw).

@@ -20,7 +20,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import { indexWorkspace } from '../rag';
-import { createMr, addReviewComment, approveMr, mergeMr, resolveThread, mrForTicket } from '../mr/service';
+import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncGitlabIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
@@ -810,8 +810,20 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const ticketKey = str(payload, 'ticketKey');
       const mrId = str(payload, 'mrId');
       if (!ticketKey || !mrId) return;
-      await mergeMr(prisma, action.workspaceId, mrId);
-      return mrForTicket(prisma, action.workspaceId, ticketKey);
+      //? Real git-merge (#9), approval-gated. We run under the per-workspace write-lease (this whole
+      //? switch does), so merges are serial. Attach the outcome to the fresh view so the client can
+      //? toast success / no-approval / conflict.
+      const merge = await mergeMr(prisma, action.workspaceId, mrId);
+      const view = await mrForTicket(prisma, action.workspaceId, ticketKey);
+      return view ? { ...view, actionResult: { ok: merge.ok, ...(merge.ok ? {} : { reason: merge.reason, ...(merge.files ? { files: merge.files } : {}) }) } } : null;
+    }
+    case 'mr-rollback': {
+      const ticketKey = str(payload, 'ticketKey');
+      const mrId = str(payload, 'mrId');
+      if (!ticketKey || !mrId) return;
+      const revert = await rollbackMr(prisma, action.workspaceId, mrId);
+      const view = await mrForTicket(prisma, action.workspaceId, ticketKey);
+      return view ? { ...view, actionResult: { ok: revert.ok, ...(revert.ok ? {} : { reason: revert.reason }) } } : null;
     }
     case 'mr-resolve': {
       const ticketKey = str(payload, 'ticketKey');

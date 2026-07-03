@@ -7,18 +7,28 @@
 import type { PrismaClient, MergeRequest } from '@prisma/client';
 
 import { normalizeGitConfig } from '../git/branchStrategy';
-import { branchDiff, branchHead } from '../git/repoStore';
+import { branchDiff, branchHead, mergeBranches, revertMergeCommit } from '../git/repoStore';
 import { parseUnifiedDiff, type MrDiff } from './diff';
+
+//? The outcome of a merge/rollback attempt — the caller maps `reason` to a UI message. `conflict`
+//? carries the unmerged files. Never throws; the real git-merge is done under the caller's lease.
+export type MergeMrResult =
+  | { ok: true; sha?: string }
+  | { ok: false; reason: 'not-open' | 'no-approval' | 'conflict' | 'not-linked' | 'nothing-to-merge' | 'error'; files?: string[]; message?: string };
 
 export interface MrThreadView {
   id: string; filePath: string | null; line: number | null; side: string; resolved: boolean;
   comments: { id: string; authorId: string | null; authorKind: string; body: string; createdAt: string }[];
 }
 export interface MrApprovalView { userId: string; stale: boolean; createdAt: string }
+//? The transient outcome of a merge/rollback attached to the returned view so the client can toast
+//? success or the reason it was blocked (no-approval / conflict + files). Not persisted.
+export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
   diff: MrDiff; threads: MrThreadView[]; approvals: MrApprovalView[];
+  actionResult?: MrActionOutcome;
 }
 
 //? Open (or refresh) the MR for a ticket's branch → the workspace's target branch. Idempotent per
@@ -81,13 +91,46 @@ export async function resolveThread(prisma: PrismaClient, workspaceId: string, t
   return true;
 }
 
-//? Mark the MR merged. The built-in record is the decision of record; a forge-backed MR
-//? (externalUrl) is merged on the forge. Sets the ticket done when it has no next stage.
-export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRequestId: string): Promise<boolean> {
-  const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, id: mergeRequestId }, select: { id: true, status: true } });
-  if (mr?.status !== 'open') return false;
-  await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'merged', mergedAt: new Date() } });
-  return true;
+//? Really merge the MR (#9): require ≥1 NON-STALE approval (approving the current head), then merge
+//? the source branch into the target IN THE BARE CLONE via a merge-worktree. On conflict the target
+//? is untouched and the MR flips to 'conflict' (the UI surfaces the files; an AI --resume can pick it
+//? up). On success the merge commit sha is recorded for a later git-revert rollback. The caller (the
+//? Conductor) holds the per-workspace write-lease, so merges are serial. Idempotent: a non-open MR
+//? or a missing fresh approval is a no-op with a reason.
+export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRequestId: string): Promise<MergeMrResult> {
+  const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, id: mergeRequestId } });
+  if (mr?.status !== 'open') return { ok: false, reason: 'not-open' };
+  if (!mr.headSha) return { ok: false, reason: 'nothing-to-merge' };
+  //? Merge gate: at least one approval bound to the CURRENT head (a stale approval — cast before the
+  //? branch advanced — does not count). This is the "MERGE VEREIST ≥1 approval" invariant.
+  const approvals = await prisma.approval.findMany({ where: { workspaceId, mergeRequestId }, select: { headSha: true } });
+  const hasFreshApproval = approvals.some((a) => (a.headSha ?? '') === mr.headSha);
+  if (!hasFreshApproval) return { ok: false, reason: 'no-approval' };
+
+  const outcome = await mergeBranches(workspaceId, mr.targetBranch, mr.sourceBranch, mr.mergeStrategy);
+  if (!outcome.ok) {
+    if (outcome.conflict) {
+      await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'conflict' } });
+      return { ok: false, reason: 'conflict', files: outcome.files };
+    }
+    if (outcome.error === 'not-linked') return { ok: false, reason: 'not-linked' };
+    return { ok: false, reason: 'error', message: outcome.error };
+  }
+  await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'merged', mergedAt: new Date(), mergedSha: outcome.sha } });
+  return { ok: true, sha: outcome.sha };
+}
+
+//? Roll a merged MR back with a git-revert (#9) — reverts the recorded merge commit on the target
+//? (history-preserving, never a destructive reset) and reopens the MR so it can be re-reviewed. Runs
+//? under the caller's lease. No-op with a reason when the MR isn't a merged one we can revert.
+export async function rollbackMr(prisma: PrismaClient, workspaceId: string, mergeRequestId: string): Promise<MergeMrResult> {
+  const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, id: mergeRequestId } });
+  if (mr?.status !== 'merged' || !mr.mergedSha) return { ok: false, reason: 'not-open' };
+  const outcome = await revertMergeCommit(workspaceId, mr.targetBranch, mr.mergedSha);
+  if (!outcome.ok) return { ok: false, reason: outcome.error === 'not-linked' ? 'not-linked' : 'error', message: outcome.error };
+  //? Reopen for re-review; drop the recorded merge sha (the revert is now the target tip).
+  await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'open', mergedAt: null, mergedSha: null } });
+  return { ok: true, sha: outcome.sha };
 }
 
 //? The full MR view for the frontend: fresh diff + threads (with comments) + approvals (staleness
