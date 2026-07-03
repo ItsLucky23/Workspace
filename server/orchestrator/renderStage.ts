@@ -20,6 +20,9 @@ export interface StageRenderCtx {
   //? RAG-retrieved code excerpts most relevant to this ticket (07 §D), injected so the agent
   //? starts with the right files in view. Loaded by stageRunner (retrieval stays out of the renderer).
   retrieved?: { filePath: string; content: string }[];
+  //? #4 self-handoff RELOAD: when the session was reset for budget, the AI's own handoff summary,
+  //? injected as the opening context so a fresh session continues seamlessly.
+  handoffReload?: string;
 }
 
 export interface StageArtifacts {
@@ -48,6 +51,9 @@ const READ_ONLY_BASH = [
 //? `sh -c` so the `>` redirect works regardless of how the CLI executes the hook command.
 //? type:command (Stop is command-transport-reliable per the spike).
 const STOP_HOOK_CMD = "sh -c 'cat > /work/.claude/turn-stop.json'";
+//? #4 PreCompact backstop: when Claude is about to AUTO-compact (genuinely near the limit), drop a
+//? marker so the orchestrator does OUR controlled handoff instead of an opaque auto-compaction.
+const PRECOMPACT_HOOK_CMD = "sh -c 'touch /work/.claude/precompact-signal'";
 
 export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageArtifacts {
   //? CLAUDE.md = the stage's task framing (customInstructions verbatim, GOLDEN §4) + any
@@ -62,7 +68,11 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   const retrievedSection = hits.length > 0
     ? `\n\n---\n\n## Relevant code from the repository\n\nThese excerpts were retrieved as most relevant to this ticket. Use them as a starting map, then open the full files as needed:\n\n${hits.map((h) => `### ${h.filePath}\n\n\`\`\`\n${h.content.trim().slice(0, 1500)}\n\`\`\``).join('\n\n')}\n`
     : '';
-  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${cfg.customInstructions}\n${docsSection}${retrievedSection}`;
+  //? #4 self-handoff reload: the resumed session's own handoff, first so it frames everything below.
+  const reloadSection = (ctx.handoffReload ?? '').trim().length > 0
+    ? `## Resumed context (your own handoff)\n\n${(ctx.handoffReload ?? '').trim()}\n\n---\n\n`
+    : '';
+  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${reloadSection}${cfg.customInstructions}\n${docsSection}${retrievedSection}`;
 
   //? --append-system-prompt = the system layer + the carry-over-filled task, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).
@@ -87,7 +97,10 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   const deny = [...cfg.commands.filter((c) => c.mode === 'deny').map((c) => c.pattern), 'Read(/auth/**)', 'Bash(cat /auth/*:*)'];
   const settingsJson = JSON.stringify({
     permissions: { allow, ask, deny },
-    hooks: { Stop: [{ hooks: [{ type: 'command', command: STOP_HOOK_CMD }] }] },
+    hooks: {
+      Stop: [{ hooks: [{ type: 'command', command: STOP_HOOK_CMD }] }],
+      PreCompact: [{ hooks: [{ type: 'command', command: PRECOMPACT_HOOK_CMD }] }],
+    },
   }, null, 2);
 
   //? .mcp.json — one stdio server per enabled skill. The skill→command catalog is deferred;

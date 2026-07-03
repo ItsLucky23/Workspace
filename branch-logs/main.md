@@ -1278,3 +1278,18 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, front-tsc 0, `npx eslint` 0, `npm run ai:lint` 0. Integration **29/29** (nieuw `automation.test.mts` **21/21**: matching/debounce/cron pure, AgentRole-registry, echte pipeline: notify→notificatie, gated→suggestie zonder executie, accept→uitvoering). **Browser**: trigger aangemaakt via AutomationPanel (verschijnt in lijst, Ticket created→Notify); ticket-create via conductor → trigger vuurde → **2 notificaties** ("New ticket created!"). Volledige wiring bewezen; test-data opgeruimd.
 
 **Files touched:** `server/automation/{triggers,executor,cron,agentRoles}.ts` (nieuw), `server/orchestrator/conductor.ts`, `server/orchestrator/capacity.ts`, `server/control/rbac.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/triggerAction_server_v1.ts` (nieuw), `src/workspaces/_components/AutomationPanel.tsx` (nieuw), `src/workspaces/pipeline/page.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0027-*.md`, `tests/integration/automation.test.mts` (nieuw).
+
+## 2026-07-03 — /goal item #4: token self-handoff (budget → handoff → reset → reload) (ADR 0028)
+
+**User prompt:** /goal — item #4.
+
+**What I did:** Gecontroleerde handoff→reset→reload-cyclus (doc 06) i.p.v. Claude's opaque auto-compact.
+- **`server/orchestrator/handoff.ts`** (nieuw, puur + persist): `budgetForStage` (per-stage `modelCfg.contextBudgetTokens`, anders `WS_TURN_TOKEN_BUDGET`), `shouldHandoff`, `parseHandoff` (```ws-handoff-JSON-block, zoals ws-carryover), `recordHandoff` (persist `Handoff` + **reset** `AgentSession.tokenEstimate`), `latestHandoff` + `renderHandoffReload`, `DEFAULT_HANDOFF_INSTRUCTION`.
+- **Trigger** (`stageRunner.runStage`, na een turn die de stage NIET afrondde): estimate > budget → drive handoff-turn → parse → `recordHandoff` → **claudeSessionId wissen** (= de `/clear`; volgende turn is verse claude-sessie).
+- **Reload** (`renderStage`): verse sessie (geen claudeSessionId) + opgeslagen handoff → injecteer `renderHandoffReload` als opening-context. Crash-resume (#1, houdt claudeSessionId) slaat reload over.
+- **PreCompact-backstop**: `PreCompact`-hook in stage-settings dropt marker → trigger vuurt óók onder budget (reason 'precompact'), daarna marker wissen.
+- **Config-UI**: per-stage budget-input in de Pipeline "Model & Effort"-tab (config-plumbing bestond al: schema-composite → readModelCfg → toStageConfig → frontend). i18n en/nl/de/fr.
+
+**Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. Integration **30/30** (nieuw `handoff.test.mts` **18/18**: budget/shouldHandoff/parseHandoff/renderHandoffReload puur + echte record→reset→reload). **Browser**: Context-budget-input rendert in Model&Effort + persisteert end-to-end (UI 80000 → save-stage-config → DB `modelCfg.contextBudgetTokens=80000`; test-waarde teruggezet). Live PTY-handoff-drive + `/clear`-reset is gewired maar draait alleen met Docker + een écht over-budget sessie.
+
+**Files touched:** `server/orchestrator/handoff.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `server/orchestrator/renderStage.ts`, `src/workspaces/pipeline/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0028-*.md`, `tests/integration/handoff.test.mts` (nieuw). (schema: geen netto-wijziging — redundant top-level veld toegevoegd+verwijderd.)

@@ -471,6 +471,18 @@ function ModelTab({ s, update }: TabProps) {
           </div>
         </div>
       )}
+
+      {/* #4 self-handoff: per-stage token budget (blank = the worker default). */}
+      <div>
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.contextBudget' })} hint={translate({ key: 'workspaces.pipeline.contextBudgetHint' })} />
+        <input
+          type="number" min={0} step={10_000}
+          value={m.contextBudgetTokens ?? ''}
+          onChange={(e) => { const v = e.target.value.trim(); update({ modelCfg: { ...m, contextBudgetTokens: v === '' ? undefined : Number(v) } }); }}
+          placeholder={translate({ key: 'workspaces.pipeline.contextBudgetPlaceholder' })}
+          className={`w-44 ${inputCls}`}
+        />
+      </div>
     </div>
   );
 }

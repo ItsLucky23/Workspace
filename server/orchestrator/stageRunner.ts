@@ -19,6 +19,7 @@ import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { recordTurnSpend } from '../spend/record';
+import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
@@ -179,12 +180,22 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved });
+  const sessionKey = `worker:${ticket.id}:${stageKey}`;
+  //? #4 self-handoff RELOAD: a prior turn that crossed the token budget wrote a handoff + cleared
+  //? the session's claudeSessionId (a "/clear"). So when this session is starting FRESH (no
+  //? claudeSessionId) and has a stored handoff, inject it as the opening context. A crash-resume
+  //? (#1, which keeps claudeSessionId) continues the old transcript instead, so it skips this.
+  const priorSession = await prisma.agentSession.findFirst({ where: { workspaceId, sessionKey }, select: { claudeSessionId: true } });
+  const [, reloadHandoff] = priorSession?.claudeSessionId
+    ? [null, null]
+    : await tryCatch(() => latestHandoff(prisma, workspaceId, sessionKey));
+  const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
+
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}) });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
 
   //? The ONE runtime row for this worker session (04b §7) — created here (nothing else
   //? writes worker rows). Its id anchors the CarryOver; status is Conductor-owned.
-  const sessionKey = `worker:${ticket.id}:${stageKey}`;
   const session = await prisma.agentSession.upsert({
     where: { workspaceId_sessionKey: { workspaceId, sessionKey } },
     create: { workspaceId, ticketId: ticket.id, stageId: stageKey, kind: 'worker', sessionKey, status: 'busy', containerId: container.containerId, worktreePath: '/work', cliVersion: '2.1.198', model: cfg.modelCfg.base.model },
@@ -249,5 +260,28 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   }
   //? needs-input → session parks busy (a human answers); continue → the turn just ended.
   await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: result.kind === 'needs-input' ? 'busy' : 'stopped' } });
+
+  //? #4 self-handoff: the session PERSISTS (it didn't complete the stage), so if it crossed its
+  //? token budget, drive a controlled handoff NOW — ask the AI (with its full context) to write a
+  //? handoff, store it, and CLEAR claudeSessionId so the next turn starts fresh + reloads the
+  //? handoff (the "/clear" reset). Best-effort — a failed handoff just leaves the session as-is.
+  await tryCatch(async () => {
+    const budget = budgetForStage(stageRow.modelCfg.contextBudgetTokens);
+    const sess = await prisma.agentSession.findUnique({ where: { id: session.id }, select: { tokenEstimate: true, claudeSessionId: true } });
+    if (!sess?.claudeSessionId) return;
+    //? PreCompact backstop (#4): Claude signalled it is about to auto-compact → force our handoff.
+    const pcProbe = await docker(['exec', container.name, 'sh', '-c', 'test -f /work/.claude/precompact-signal && echo yes || echo no']);
+    const preCompact = pcProbe.out.trim() === 'yes';
+    if (!preCompact && !shouldHandoff(sess.tokenEstimate, budget)) return;
+    const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: sess.claudeSessionId });
+    const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
+    if (!body) return;
+    await recordHandoff(prisma, { workspaceId, sessionKey, ticketId: ticket.id, stageId: stageKey, body, reason: preCompact ? 'precompact' : 'budget' });
+    //? Reset: drop claudeSessionId → the next turn is a fresh claude session that reloads the handoff.
+    await prisma.agentSession.updateMany({ where: { id: session.id }, data: { claudeSessionId: null } });
+    await docker(['exec', container.name, 'sh', '-c', 'rm -f /work/.claude/precompact-signal']);
+    console.log(`[handoff] ${ticketKey}@${stageKey} token-optimized (${preCompact ? 'precompact' : `est ${String(sess.tokenEstimate)} ≥ ${String(budget)}`})`);
+  });
+
   return { ok: true, kind: result.kind, message: drive.message };
 }
