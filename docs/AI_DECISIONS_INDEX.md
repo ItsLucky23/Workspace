@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (18)
+## Decisions (19)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -31,6 +31,7 @@
 | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context | 🟢 accepted | rag, ai, retrieval, orchestrator, engine | — | `docs/decisions/0017-rag-codebase-intelligence.md` |
 | 0018 | Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge | 🟢 accepted | mr, review, git, engine, frontend | — | `docs/decisions/0018-builtin-mr-review.md` |
 | 0019 | Ticket priority (one field, `urgent` = hotfix tier) + notification preferences | 🟢 accepted | workspaces, schema, tickets, notifications, capacity | — | `docs/decisions/0019-ticket-priority-notification-preferences.md` |
+| 0020 | CapacityManager — atomic hard-cap admission queue + urgent force-through | 🟢 accepted | workspaces, orchestrator, capacity, concurrency, multi-instance, redis | — | `docs/decisions/0020-capacity-manager-hard-cap.md` |
 
 ## Summaries
 
@@ -179,6 +180,14 @@ Opt-in egress control (`WS_EGRESS=1`, default OFF ⇒ current behaviour unchange
 *One `Ticket.priority` string field** (`low | normal | high | urgent`, default `normal`), NOT a separate `priority` + `isHotfix` pair. `urgent` **is** the hotfix/security tier: #12's admission queue will admit an `urgent` ticket past the workspace concurrency cap (merge still gated on ≥1 approval, per ADR 0018).
 
 → `docs/decisions/0019-ticket-priority-notification-preferences.md`
+
+### 0020 — CapacityManager — atomic hard-cap admission queue + urgent force-through
+
+**0020** · accepted · tags: workspaces, orchestrator, capacity, concurrency, multi-instance, redis · 2026-07-03
+
+A real admission-control module, `server/orchestrator/capacity.ts`, backed entirely by shared Redis so it is **multi-instance-safe** (ADR 0015) — no per-instance in-memory counters.
+
+→ `docs/decisions/0020-capacity-manager-hard-cap.md`
 
 ## Code governed by decisions
 
