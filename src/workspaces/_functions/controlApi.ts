@@ -39,6 +39,7 @@ export type ControlOp =
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config'
+  | 'trigger-save' | 'trigger-toggle' | 'trigger-delete'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

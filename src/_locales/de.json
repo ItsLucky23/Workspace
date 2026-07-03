@@ -871,6 +871,19 @@
       "urgent": "Dringend",
       "urgentHint": "Überspringt das Kapazitätslimit · benötigt weiterhin eine Freigabe zum Mergen"
     },
+    "automation": {
+      "title": "Automatisierung", "subtitle": "Löse eine Aktion aus, wenn etwas passiert, oder nach Zeitplan.",
+      "add": "Neuer Trigger", "empty": "Noch keine Trigger. Erstelle einen, um Benachrichtigungen, Stage-Wechsel und mehr zu automatisieren.",
+      "enabled": "Ein", "disabled": "Aus", "needsApproval": "benötigt Freigabe", "delete": "Trigger löschen",
+      "namePlaceholder": "Triggername…", "whenLabel": "Wenn", "doLabel": "Tue",
+      "notifyTitlePlaceholder": "Benachrichtigungstitel…", "notifyBodyPlaceholder": "Benachrichtigungstext…",
+      "targetStage": "Ziel-Stage", "requireApproval": "Freigabe vor Ausführung verlangen", "create": "Erstellen",
+      "evTicketCreated": "Ticket erstellt", "evTicketMerged": "Ticket gemergt", "evStageEnter": "Stage betreten",
+      "evStageComplete": "Stage abgeschlossen", "evStageSignal": "Stage-Signal", "evStageApproval": "Stage-Freigabe",
+      "evSuggestionAccepted": "Vorschlag akzeptiert", "evCron": "Nach Zeitplan",
+      "acNotify": "Benachrichtigen", "acEmitSignal": "Signal senden", "acStartStage": "Zu Stage verschieben",
+      "acInvokeAi": "Workspace-KI fragen", "acInvokeRole": "Agent-Rolle ausführen", "acRunCommand": "Befehl ausführen"
+    },
     "board": {
       "openTicket": "Ticket öffnen",
       "openTerminal": "Terminal öffnen",

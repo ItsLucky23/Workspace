@@ -141,6 +141,10 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? the default client is built with the unresolved DATABASE_URL pointer).
   const { startTicketWatchdog } = await import('./orchestrator/watchdog');
   startTicketWatchdog();
+  //? Automation (#2): the leased per-minute cron scheduler fires `on:'cron'` WorkspaceTriggers.
+  //? Dynamic import (keeps the automation graph out of the pre-secret-resolution static graph).
+  const { startCronScheduler } = await import('./automation/cron');
+  startCronScheduler();
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

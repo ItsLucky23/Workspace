@@ -17,6 +17,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import { IconButton, InfoDot, Segmented, Tabs, Toggle, WsButton, type TabDef } from '../_components/primitives';
+import AutomationPanel from '../_components/AutomationPanel';
 import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, StageWarning, ToolTier } from '../_data/types';
@@ -728,6 +729,8 @@ export default function Pipeline() {
             {tab === 'hooks' && <HooksTab s={s} update={update} />}
           </div>
         </div>
+        {/* Automation triggers (#2) — self-contained; independent of the stage editor above. */}
+        <AutomationPanel />
       </div>
     </div>
   );

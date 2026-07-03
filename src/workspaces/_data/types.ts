@@ -684,6 +684,7 @@ export type TriggerEventKind =
 export type TriggerActionKind =
   | 'start-stage'
   | 'invoke-workspace-ai'
+  | 'invoke-agent-role'
   | 'run-command'
   | 'emit-signal'
   | 'notify';

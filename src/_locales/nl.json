@@ -871,6 +871,19 @@
       "urgent": "Urgent",
       "urgentHint": "Slaat de capaciteitslimiet over · vereist nog steeds goedkeuring om te mergen"
     },
+    "automation": {
+      "title": "Automatisering", "subtitle": "Vuur een actie af als er iets gebeurt, of op schema.",
+      "add": "Nieuwe trigger", "empty": "Nog geen triggers. Maak er een om meldingen, stage-verplaatsingen en meer te automatiseren.",
+      "enabled": "Aan", "disabled": "Uit", "needsApproval": "vereist goedkeuring", "delete": "Trigger verwijderen",
+      "namePlaceholder": "Triggernaam…", "whenLabel": "Wanneer", "doLabel": "Doe",
+      "notifyTitlePlaceholder": "Meldingstitel…", "notifyBodyPlaceholder": "Meldingstekst…",
+      "targetStage": "Doelstage", "requireApproval": "Goedkeuring vereisen vóór uitvoeren", "create": "Aanmaken",
+      "evTicketCreated": "Ticket aangemaakt", "evTicketMerged": "Ticket gemerged", "evStageEnter": "Stage betreden",
+      "evStageComplete": "Stage voltooid", "evStageSignal": "Stage-signaal", "evStageApproval": "Stage-goedkeuring",
+      "evSuggestionAccepted": "Suggestie geaccepteerd", "evCron": "Op schema",
+      "acNotify": "Melden", "acEmitSignal": "Signaal uitzenden", "acStartStage": "Naar stage verplaatsen",
+      "acInvokeAi": "Workspace-AI vragen", "acInvokeRole": "Agent-rol draaien", "acRunCommand": "Commando draaien"
+    },
     "board": {
       "openTicket": "Ticket openen",
       "openTerminal": "Terminal openen",

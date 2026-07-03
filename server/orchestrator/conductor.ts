@@ -12,7 +12,7 @@
 //? — the ControlRequest/ControlAck contract and this op-dispatch are unchanged.
 
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
-import type { Ticket as DbTicket } from '@prisma/client';
+import { Prisma, type Ticket as DbTicket } from '@prisma/client';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
@@ -30,6 +30,8 @@ import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta } from '../read/broadcast';
+import { fireEvent } from '../automation/triggers';
+import { executeGatedAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
 
@@ -70,6 +72,9 @@ function boolArr(o: Record<string, unknown>, k: string): boolean[] {
 function asRec(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 }
+//? Bridge a genuinely-JSON value to Prisma's Json WRITE type (read JsonValue vs write InputJsonValue
+//? split; not an `as any` escape — the value is already JSON).
+const asJsonValue = (v: unknown): Prisma.InputJsonValue => v ?? {};
 //? Coerce the client's integration `fields`/`mcp` payload into the Prisma composite shapes.
 function readIntegrationFields(v: unknown): { id: string; label: string; placeholder?: string; envVarId?: string }[] {
   if (!Array.isArray(v)) return [];
@@ -351,7 +356,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
       await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
       try {
-        await runStage(workspaceId, key, stageId, { resume, ...(resumePrompt !== undefined ? { resumePrompt } : {}) });
+        await runStage(workspaceId, key, stageId, { resume, ...(resumePrompt === undefined ? {} : { resumePrompt }) });
       } finally {
         //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
         //? next parked turn in — the queue drains at the pace turns complete.
@@ -502,6 +507,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Assigned to someone else at creation → notify them (mirrors bulk-assign).
       const newAssignee = str(payload, 'assigneeId');
       if (newAssignee && newAssignee !== userId) await notifyAssignment(action.workspaceId, newAssignee, created.id, created.key);
+      //? Automation (#2): a new ticket may fire `ticket.created` triggers (best-effort, off-chain).
+      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: project.id });
       //? Return the created row so realtime `_sync` write routes can broadcast the delta.
       return created;
     }
@@ -553,6 +560,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `moved to ${stageId}`);
       //? Entering an aiEnabled stage → cut each ticket's DEV-#### worktree (07 §A step 5).
       await activateWorktreesForStage(action.workspaceId, keys, stageId);
+      //? Automation (#2): each ticket entering the stage may fire `stage.on_enter` triggers.
+      for (const key of keys) void fireEvent(prisma, action.workspaceId, { on: 'stage.on_enter', ticketKey: key, stageId });
       return ticketRowsForKeys(action.workspaceId, keys);
     }
     case 'bulk-status': {
@@ -899,7 +908,40 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     // ---- suggestions ----
     case 'accept-suggestion': {
       const suggestionId = str(target, 'suggestionId');
-      if (suggestionId) await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId }, data: { status: 'accepted' } });
+      if (!suggestionId) return;
+      const suggestion = await prisma.workspaceSuggestion.findFirst({ where: { workspaceId: action.workspaceId, id: suggestionId }, select: { type: true, patch: true } });
+      await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId }, data: { status: 'accepted' } });
+      //? Automation (#2): accepting an 'automation' suggestion EXECUTES the gated action it carries
+      //? (the human consent the ActionExecutor's approval gate deferred to — B-23 single-writer).
+      if (suggestion?.type === 'automation') await executeGatedAction(prisma, action.workspaceId, suggestion.patch);
+      return;
+    }
+    // ---- automation triggers (#2) ----
+    case 'trigger-save': {
+      //? Create or update a WorkspaceTrigger. `on`/`action` are required; params/match are free JSON.
+      const on = str(payload, 'on'); const act = str(payload, 'action'); const name = str(payload, 'name');
+      if (!on || !act || !name) return;
+      const id = str(target, 'triggerId') ?? str(payload, 'id');
+      const data = {
+        name, on, action: act,
+        params: asJsonValue(asRec(payload.params)), match: asJsonValue(asRec(payload.match)),
+        cron: str(payload, 'cron') ?? null, requiresApproval: bool(payload, 'requiresApproval'),
+        ...(str(payload, 'dedupeKey') ? { dedupeKey: str(payload, 'dedupeKey') } : {}),
+        ...(num(payload, 'debounceMs') === undefined ? {} : { debounceMs: num(payload, 'debounceMs') }),
+      };
+      await (id
+        ? prisma.workspaceTrigger.updateMany({ where: { workspaceId: action.workspaceId, id }, data })
+        : prisma.workspaceTrigger.create({ data: { workspaceId: action.workspaceId, enabled: true, ...data } }));
+      return;
+    }
+    case 'trigger-toggle': {
+      const id = str(target, 'triggerId') ?? str(payload, 'id');
+      if (id) await prisma.workspaceTrigger.updateMany({ where: { workspaceId: action.workspaceId, id }, data: { enabled: bool(payload, 'enabled') } });
+      return;
+    }
+    case 'trigger-delete': {
+      const id = str(target, 'triggerId') ?? str(payload, 'id');
+      if (id) await prisma.workspaceTrigger.deleteMany({ where: { workspaceId: action.workspaceId, id } });
       return;
     }
     // ---- notifications ----

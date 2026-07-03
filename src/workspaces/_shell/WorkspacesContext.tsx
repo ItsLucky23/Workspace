@@ -10,7 +10,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
 } from '../_data/types';
 
 export type WsView =
@@ -168,6 +168,11 @@ export interface WorkspacesCtx {
   budget: WorkspaceBudget | null;      // was BUDGET
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
+  triggers: WorkspaceTrigger[];        // #2: automation triggers
+  //? #2 automation writes — create/update, enable/disable, delete a trigger (control-ops).
+  saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string }) => void;
+  toggleTrigger: (id: string, enabled: boolean) => void;
+  deleteTrigger: (id: string) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES

@@ -26,7 +26,14 @@ import type {
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
+  WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
 } from '../../src/workspaces/_data/types';
+
+//? DB-string → the trigger unions (fallback to a safe default so a stale row can't crash the snapshot).
+const TRIGGER_ONS: readonly TriggerEventKind[] = ['stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.created', 'ticket.merged', 'suggestion.accepted', 'cron'];
+const TRIGGER_ACTIONS: readonly TriggerActionKind[] = ['start-stage', 'invoke-workspace-ai', 'invoke-agent-role', 'run-command', 'emit-signal', 'notify'];
+const asTriggerOn = (s: string): TriggerEventKind => ((TRIGGER_ONS as readonly string[]).includes(s) ? s : 'ticket.created') as TriggerEventKind;
+const asTriggerAction = (s: string): TriggerActionKind => ((TRIGGER_ACTIONS as readonly string[]).includes(s) ? s : 'notify') as TriggerActionKind;
 
 //? DB-string → typed-union narrowers (ternary narrowing, no `as`): in the true
 //? branch of the `===` chain TS narrows the string to the compared literals.
@@ -137,6 +144,8 @@ export interface WorkspaceSnapshot {
   usage: WorkspaceUsage;
   //? Flow insights (#5): cycle time / throughput / cost-per-ticket.
   insights: WorkspaceInsights;
+  //? Automation (#2): the workspace's triggers.
+  triggers: WorkspaceTrigger[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -147,6 +156,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
+  triggers: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -170,7 +180,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
@@ -193,6 +203,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? Cost/usage tracking (#16): recent SpendRecord rows → the Usage read (per-ticket tokens +
       //? 7-day activity), replacing the seed dummies. Bounded newest-first window.
       tenantDb.spendRecord.findMany({ orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true } }),
+      //? Automation (#2): the workspace's WorkspaceTriggers (for the automation panel).
+      tenantDb.workspaceTrigger.findMany({ orderBy: { createdAt: 'desc' } }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -248,6 +260,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         return mapped;
       }),
       usage, insights,
+      triggers: triggerRows.map((t): WorkspaceTrigger => ({
+        id: t.id, workspaceId: t.workspaceId, enabled: t.enabled, name: t.name, on: asTriggerOn(t.on), action: asTriggerAction(t.action),
+        match: t.match, params: t.params, requiresApproval: t.requiresApproval,
+        ...(t.cron ? { cron: t.cron } : {}), ...(t.dedupeKey ? { dedupeKey: t.dedupeKey } : {}), ...(t.debounceMs === null ? {} : { debounceMs: t.debounceMs }),
+        ...(t.lastFiredAt ? { lastFiredAt: t.lastFiredAt.toISOString() } : {}),
+      })),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),

@@ -871,6 +871,19 @@
       "urgent": "Urgente",
       "urgentHint": "Ignore la limite de capacité · nécessite toujours une approbation pour fusionner"
     },
+    "automation": {
+      "title": "Automatisation", "subtitle": "Déclenche une action quand quelque chose se produit, ou selon un planning.",
+      "add": "Nouveau déclencheur", "empty": "Aucun déclencheur. Créez-en un pour automatiser notifications, changements d'étape et plus.",
+      "enabled": "Activé", "disabled": "Désactivé", "needsApproval": "nécessite approbation", "delete": "Supprimer le déclencheur",
+      "namePlaceholder": "Nom du déclencheur…", "whenLabel": "Quand", "doLabel": "Faire",
+      "notifyTitlePlaceholder": "Titre de la notification…", "notifyBodyPlaceholder": "Corps de la notification…",
+      "targetStage": "Étape cible", "requireApproval": "Exiger une approbation avant l'exécution", "create": "Créer",
+      "evTicketCreated": "Ticket créé", "evTicketMerged": "Ticket fusionné", "evStageEnter": "Étape entrée",
+      "evStageComplete": "Étape terminée", "evStageSignal": "Signal d'étape", "evStageApproval": "Approbation d'étape",
+      "evSuggestionAccepted": "Suggestion acceptée", "evCron": "Selon un planning",
+      "acNotify": "Notifier", "acEmitSignal": "Émettre un signal", "acStartStage": "Déplacer vers l'étape",
+      "acInvokeAi": "Demander à Workspace-AI", "acInvokeRole": "Exécuter un rôle d'agent", "acRunCommand": "Exécuter une commande"
+    },
     "board": {
       "openTicket": "Ouvrir le ticket",
       "openTerminal": "Ouvrir le terminal",

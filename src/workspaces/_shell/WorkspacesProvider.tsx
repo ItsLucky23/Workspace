@@ -23,7 +23,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -54,6 +54,7 @@ interface Snap {
   workspacePaused: boolean;
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
+  triggers: WorkspaceTrigger[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -65,6 +66,7 @@ const EMPTY_SNAP: Snap = {
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
+  triggers: [],
 };
 
 function pathForView(view: WsView): string {
@@ -784,6 +786,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       budget: snap.budget,
       usage: snap.usage,
       insights: snap.insights,
+      triggers: snap.triggers,
+      saveTrigger: (t) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-save', clientRequestId: nextReqId(), ...t }, receiver: room }).then(() => { refetch(); }); },
+      toggleTrigger: (id, enabled) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId: id, enabled, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       docs: snap.docs,
       skills: snap.skills,
       invites: snap.invites,
