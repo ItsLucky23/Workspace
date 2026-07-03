@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (22)
+## Decisions (23)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -35,6 +35,7 @@
 | 0021 | Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible) | 🟢 accepted | workspaces, mr-review, git, merge, approvals | — | `docs/decisions/0021-real-git-merge.md` |
 | 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | 🟢 accepted | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
 | 0023 | In-container pty-agent — durable scrollback + crash-resume for container terminals | 🟢 accepted | workspaces, containers, terminal, pty, crash-resume | — | `docs/decisions/0023-in-container-pty-agent.md` |
+| 0024 | Close client gaps — needs-input answer-to-AI + realtime presence | 🟢 accepted | workspaces, client, needs-input, presence, realtime | — | `docs/decisions/0024-client-gaps-answer-input-presence.md` |
 
 ## Summaries
 
@@ -215,6 +216,14 @@ A real admission-control module, `server/orchestrator/capacity.ts`, backed entir
 A small **pty-agent process runs INSIDE each L3 container** and owns the shell PTY + a **durable scrollback**; the orchestrator RELAYS it over the unchanged `ws-term:*` protocol, so the xterm client stays byte-identical.
 
 → `docs/decisions/0023-in-container-pty-agent.md`
+
+### 0024 — Close client gaps — needs-input answer-to-AI + realtime presence
+
+**0024** · accepted · tags: workspaces, client, needs-input, presence, realtime · 2026-07-03
+
+**Answer-the-AI (`answer-input` control-op):** a human answer records the answer as a comment (audit trail), clears the needs-input banner, sets the ticket back to `idle`, and RE-FIRES the parked turn with `claude --resume` + the answer as the prompt — reusing #1's resume path (`resumePrompt` threads `reprovisionTicket → provisionContainers → runStage → driveContainerTurn`). A dedicated `_sync/answerInput` route (RBAC `workTickets`) + `ctx.answerInput` + a wired `NeedsInputBanner`. No new AI-channel verb — `answer-input` is a control-op like `resume`. **Realtime presence** via a PURE RELAY sync event (`_sync/presence`): a client viewing a ticket pings `{ticketKey, viewing}` on open + a 12s heartbeat + on close; the server echoes the authenticated* userId (never client-supplied) to the whole room. Clients keep a per-user `{ticketKey, lastSeen}` map, prune entries older than 25s, and render live viewer avatars on the ticket header (self excluded). No server state + no Conductor write (presence is ephemeral), so the socket layer's room fan-out (Redis adapter under `WS_MULTI_INSTANCE`) makes it multi-instance-safe for free. **Real usage/spend → deferred to #16.** The data does not exist yet: `SpendRecord` is written nowhere and `AgentSession.tokenEstimate` is unpopulated. #16 (kosten-tracking) is the very next item and BUILDS that recording. Displaying real figures is meaningless without the recording, and wiring an empty aggregate now would just show zeros and then be reworked. So the "echte usage/spend-cijfers" display is folded into #16 (recording + display together). Flagged per Rule 3b — a conscious relocation, not a silent drop.
+
+→ `docs/decisions/0024-client-gaps-answer-input-presence.md`
 
 ## Code governed by decisions
 

@@ -40,13 +40,14 @@
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 
-## Sync routes (32)
+## Sync routes (34)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `sync/workspaces/acceptSuggestion/v1` | yes | — | login | — | **no** | — | Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI |
 | `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
 | `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
+| `sync/workspaces/answerInput/v1` | yes | — | login | — | **no** | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
 | `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
 | `sync/workspaces/bulkArchive/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
 | `sync/workspaces/bulkAssign/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-assign] REALTIME write via `_sync`. (Re)assigns ticket(s), then |
@@ -58,6 +59,7 @@
 | `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
 | `sync/workspaces/linkRepo/v1` | yes | — | login | — | **no** | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
+| `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
 | `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
 | `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
@@ -83,9 +85,9 @@
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 60 |
+| _(unowned)_ | 62 |
 
-**Test coverage**: 3/60 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/62 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -117,6 +119,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/agentControl/v1`
+- `sync/workspaces/answerInput/v1`
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
 - `sync/workspaces/bulkAssign/v1`
@@ -128,6 +131,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/invite/v1`
 - `sync/workspaces/linkRepo/v1`
 - `sync/workspaces/mrAction/v1`
+- `sync/workspaces/presence/v1`
 - `sync/workspaces/quickAdd/v1`
 - `sync/workspaces/removeEnv/v1`
 - `sync/workspaces/removeIntegration/v1`
@@ -137,9 +141,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/roleCreate/v1`
 - `sync/workspaces/roleUpdate/v1`
 - `sync/workspaces/saveEnv/v1`
-- `sync/workspaces/saveGitConfig/v1`
-- `sync/workspaces/saveIntegration/v1`
-- … +7 more
+- … +9 more
 
 ## Pages (19)
 
