@@ -1349,3 +1349,16 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** `docker compose config` VALID (4 services), `bash -n bootstrap.sh` OK, runbook compleet. `deploy/.env` + `deploy/backups/` ge-gitignored.
 
 **Files touched:** `deploy/docker-compose.yml`+`Dockerfile`+`Caddyfile`+`.env.example`+`bootstrap.sh` (nieuw), `docs/DR_RUNBOOK.md` (nieuw), `docs/decisions/0032-*.md`, `.gitignore`.
+
+## 2026-07-04 — Post-goal: validateType-bug gedocumenteerd + prefs-workaround + editorProfile DOCKER_BIN-fix (smoke-testing)
+
+**User prompt:** bug in detail voor de framework-repo + doe zelf de smoke-tests (Docker aan).
+
+**What I did:**
+- **`@luckystack/core@0.3.0` validateType-bug volledig gediagnosticeerd + gereproduceerd** → `docs/reports/LUCKYSTACK_CORE_VALIDATETYPE_BUG.md`. Root cause: `validateType` (dist/index.js:1733) recurseert oneindig op een geneste union — `splitTopLevel` splitst niet binnen `{}`/`()`/`[]`, dus een object met een geneste union-field (bv. een optionele boolean die de generator rendert als `?: undefined | false | true`) geeft `unionParts.length===1` → `validateType(parts[0]===type)` → dezelfde string → depth-64-error. Blokkeerde de notif-pref-SAVE (`updatePreferences`). Repro: 66 recursieve calls → `"input nesting exceeds the maximum depth of 64"`. Fix-voorstel + regressietest in het rapport.
+- **Consumer-workaround (unblokt #13 nu)**: `export const validation = 'relaxed'` op `updatePreferences_v1.ts` (de handler allow-list't al elke field naar boolean → veilig). **Browser-geverifieerd**: toggle "Notify me in-app when a ticket is assigned to me" → `notifyOnAssignment:false` persisteert nu in de DB (voorheen depth-64-fail).
+- **Latente bug gevonden via #14-smoke + gefixt**: `editorProfile.ts` hardcodde `spawn('docker', …)` i.p.v. de configureerbare `DOCKER_BIN` (`runtime.ts`, `WS_DOCKER_BIN ?? 'docker'`) — brak op een host waar docker niet als `docker` op de PATH staat. Nu `DOCKER_BIN`; `tarOutToBuffer` doet ook `mkdir -p` zodat een lege profiel-helft naar een lege tar gaat i.p.v. te falen. **Smoke tegen een echte container: PASS** — encrypted(v1)-blob, token NIET plaintext op disk, correct teruggezet na project-back. (Pre-existing: `editorServer.ts:41` hardcodt óók `'docker'` — gerapporteerd, niet van mij.)
+
+**Verify:** server/front-tsc 0, eslint 0, integration **33/33**. #14 encryptie-at-rest e2e bewezen tegen een echte container. #9 bleek al echt-git-getest (`mergeReal.test.mts`) → geen extra smoke nodig.
+
+**Files touched:** `docs/reports/LUCKYSTACK_CORE_VALIDATETYPE_BUG.md` (nieuw), `src/settings/_api/updatePreferences_v1.ts`, `server/container/editorProfile.ts`, `branch-logs/main.md`.

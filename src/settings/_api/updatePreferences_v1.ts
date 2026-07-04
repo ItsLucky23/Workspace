@@ -3,6 +3,12 @@ import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
+//? Workaround for a @luckystack/core@0.3.0 bug: the string `validateType` infinite-recurses on a
+//? nested union, and the generator renders each optional boolean here as `?: undefined | false | true`
+//? (a union nested in the object), so the default validator always fails with a depth-64 error and the
+//? save never lands. `relaxed` skips that validator; `main` below already allow-lists every field to a
+//? boolean, so this is safe. Remove once core is fixed (see docs/reports/LUCKYSTACK_CORE_VALIDATETYPE_BUG.md).
+export const validation = 'relaxed' as const;
 
 export const auth: AuthProps = {
   login: true,

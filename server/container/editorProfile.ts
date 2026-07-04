@@ -16,6 +16,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { workspaceDataDir } from '../git/repoStore';
 import { encryptBuffer, decryptBuffer } from '../crypto/secretBox';
+import { DOCKER_BIN } from './runtime';
 
 //? In-container profile root (agent uid 10001, WORKDIR /work — 07b §7).
 const IN_CONTAINER_ROOT = '/home/agent/.ls-editor';
@@ -51,7 +52,7 @@ export function editorProfileLaunchArgs(): string[] {
 }
 
 function dockerSync(args: string[]): { code: number; err: string } {
-  const r = spawnSync('docker', args, { encoding: 'utf8' });
+  const r = spawnSync(DOCKER_BIN, args, { encoding: 'utf8' });
   return { code: r.status ?? -1, err: r.stderr.trim() };
 }
 
@@ -59,7 +60,7 @@ function dockerSync(args: string[]): { code: number; err: string } {
 async function tarBufferInto(container: string, tar: Buffer, destDir: string): Promise<ProfileResult> {
   dockerSync(['exec', container, 'bash', '-lc', `mkdir -p ${destDir}`]);
   return new Promise((resolve) => {
-    const consumer = spawn('docker', ['exec', '-i', container, 'tar', '-C', destDir, '-xf', '-'], { windowsHide: true });
+    const consumer = spawn(DOCKER_BIN, ['exec', '-i', container, 'tar', '-C', destDir, '-xf', '-'], { windowsHide: true });
     let err = '';
     consumer.on('error', (e) => { resolve({ ok: false, error: `tar-dst: ${String(e)}` }); });
     consumer.stderr.on('data', (d) => { err += String(d); });
@@ -69,10 +70,13 @@ async function tarBufferInto(container: string, tar: Buffer, destDir: string): P
   });
 }
 
-//? Capture a container dir as a tar Buffer on the host (for encryption). Null on failure.
+//? Capture a container dir as a tar Buffer on the host (for encryption). Null on failure. Ensures the
+//? dir exists first so a fresh/empty profile half tars to an empty archive (success) rather than
+//? failing on a missing directory.
 async function tarOutToBuffer(container: string, srcDir: string): Promise<Buffer | null> {
+  dockerSync(['exec', container, 'bash', '-lc', `mkdir -p ${srcDir}`]);
   return new Promise((resolve) => {
-    const producer = spawn('docker', ['exec', container, 'tar', '-C', srcDir, '-cf', '-', '.'], { windowsHide: true });
+    const producer = spawn(DOCKER_BIN, ['exec', container, 'tar', '-C', srcDir, '-cf', '-', '.'], { windowsHide: true });
     const chunks: Buffer[] = [];
     producer.on('error', () => { resolve(null); });
     producer.stdout.on('data', (d: Buffer) => { chunks.push(d); });
