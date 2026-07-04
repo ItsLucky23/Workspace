@@ -18,7 +18,7 @@
 
 | # | Item | Commit | Status |
 |---|------|--------|--------|
-| 13 | Ticket-priority + notificatie-voorkeuren | `f5fa55e` | ✅ · ⚠️ save-prefs blokt op framework-bug (blocker 1) |
+| 13 | Ticket-priority + notificatie-voorkeuren | `f5fa55e` | ✅ **save-prefs werkt nu** (relaxed-workaround; framework-bug gerapporteerd) |
 | 12 | CapacityManager hard-cap + urgent-bypass | `d6e66a6` | ✅ logica getest · ⚠️ container-pad = Docker |
 | 9 | Echte git-merge (≥1 approval, conflict, revert) | `b3a7192` | ✅ logica getest · ⚠️ bare-repo = git/Docker |
 | 1 | Watchdog + resumeAll crash-recovery | `48462eb` | ✅ getest |
@@ -31,7 +31,7 @@
 | 10 | Forge-abstractie (GitLab+GitHub) + webhook-ingest | `ed25d7a` | ✅ getest + **live webhook 401/200** · git-server uitgesteld |
 | 14 | Editor: profiel-encryptie-at-rest + Open VSX | `cb82e76` | ✅ getest · Dockerfile-commit + Monaco-i18n uitgesteld |
 | 15 | Multi-instance Deel B (coördinatie verifiëren) | `b0ebf07` | ✅ getest + **live 2-instance, 1 leader** |
-| 7 | Self-host installer + DR (compose + bootstrap + runbook) | `8bbff2b` | ✅ artefacten gevalideerd · ⚠️ echte install = operator |
+| 7 | Self-host installer + DR (compose + bootstrap + runbook) | `8bbff2b` | ✅ **echte install gedraaid op lokale Docker — stack healthy, /readyz 200** |
 
 *(ADR's `docs/decisions/0019`–`0032`; volledige per-item details in `branch-logs/main.md`.)*
 
@@ -54,13 +54,19 @@ Logica getest; het container-/PTY-/bare-git-/install-pad draait pas met Docker u
 
 ---
 
-## ⚠️ Wat ik nog van JOU nodig heb
+## ✅ Sinds 2026-07-04 (Docker aan) — afgerond
 
-1. **Docker draaiend** (`WS_DOCKER_BIN` gezet) → dan smoke-test ik het container-/PTY-pad van #11/#4-live/#9/#12/#14.
-2. **Beslissing framework-bug (#13, blocker 1)** — notificatie-prefs *tonen* werkt, *opslaan* botst op een `@luckystack/core` union-recursie-bug (niet fixbaar vanuit deze consumer-repo, geen `packages/`). Fix in framework / consumer-workaround / laten liggen?
-3. **Forge-token** (test-GitHub/GitLab-org + PAT) → voor een echte forge-MR/PR-e2e van #10.
-4. **Doel-omgeving + go-ahead voor #7** — waar mag de echte `bootstrap.sh`-install draaien? (schone VM / pi5 / lokaal Docker). Verstoort de huidige dev-setup, dus expliciet met jouw akkoord.
-5. **Optioneel**: `SENTRY_DSN` (error-tracking nu inactief, benigne).
+- **Docker-smokes gedaan**: #14 encryptie-at-rest **PASS tegen een echte container** (encrypted blob, token niet plaintext op disk, correct teruggezet); #9 (`mergeReal.test.mts`) en #11 (`ptyAgent.test.mts`) bleken al met-echte-git resp. met-de-echte-agent getest → al bewezen.
+- **#7 echte install gedraaid** op lokale Docker → stack healthy, `/readyz` 200 (+ 5 install-hobbels gefixt).
+- **Blocker 1 (#13) opgelost**: relaxed-workaround → prefs-save persisteert nu (browser-geverifieerd). De framework-bug is volledig gediagnosticeerd in `docs/reports/LUCKYSTACK_CORE_VALIDATETYPE_BUG.md`.
+- **Latente bug gevonden + gefixt** via de #14-smoke: `editorProfile` hardcodde `docker` i.p.v. `WS_DOCKER_BIN`.
+
+## ⚠️ Wat nog bij JOU ligt
+
+1. **Framework-fix** — `@luckystack/core@0.3.0` `validateType`-recursie: fix in de framework-repo (rapport + fix-voorstel klaar). **NB:** latest op npm is **0.4.1** — mogelijk al gefixt; een upgrade kan de workaround overbodig maken.
+2. **Forge-token** (test-GitHub/GitLab-org + PAT) → voor een echte forge-MR/PR-e2e van #10.
+3. **Andere-AI opruiming** (hij vroeg 't): 2 test-users + "EdgeAuth Test WS" in de dev-DB + wat `WS_*`-vars in je (gitignored) `.env`. Zeg maar of ik die opruim.
+4. **Optioneel**: `SENTRY_DSN` (error-tracking nu inactief, benigne).
 
 ---
 

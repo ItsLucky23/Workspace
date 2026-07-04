@@ -52,9 +52,16 @@ A self-contained `deploy/` stack + a DR runbook:
 
 - A self-hoster runs `cd deploy && ./bootstrap.sh` and gets the full stack; DR is documented +
   testable.
-- Verified headless: `docker compose config` VALID (4 services), `bash -n bootstrap.sh` OK, the
-  runbook complete.
-- **OPERATOR-GATED (honest scope):** an actual from-scratch `bootstrap.sh` run was NOT executed here —
-  it builds the app image (minutes), brings up its own Mongo/Redis, and binds :80 via Caddy, which
-  would collide with the live dev backend + the dev DB tunnel (exactly why #7 is last). It needs a
-  clean target host + the operator's go-ahead; the artifacts are ready + validated for that run.
+- **ACTUALLY RUN (2026-07-04) on local Docker 29.6.1** — the app image builds (npm install +
+  node-pty compile + vite build + prisma generate) and the full stack comes up **healthy**: app +
+  mongo (single-node replica set, self-initializing) + redis, with `/healthz`+`/readyz`+`/livez` =
+  200 against its OWN fresh stores. The app is not host-published (only Caddy is), so it ran
+  ALONGSIDE the dev backend without colliding. Torn down after (`compose down -v`); dev intact.
+- Doing the real run surfaced + fixed 5 install issues the headless `config`/`-n` checks can't: a
+  missing `.dockerignore` (huge context), `npm ci`→`npm install` fallback (a Windows-generated
+  lockfile omits linux-only optional native deps like `@emnapi/*`), `build-essential`+`python3` (so
+  `node-pty` compiles), `NODE_OPTIONS` heap 4096 (the Vite build OOMs, exit 134), and
+  `workspaces-net` `external: true` + a bootstrap `docker network create` (the engine owns that
+  network). Verified headless too: `docker compose config` VALID, `bash -n bootstrap.sh` OK.
+- Caddy was NOT brought up in the test (it binds :80, colliding with the dev proxy); its config is
+  validated and documented. On a real host it comes up with the rest.
