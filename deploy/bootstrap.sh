@@ -51,11 +51,14 @@ if [ -f "../docker/base.Dockerfile" ]; then
   docker build -f ../docker/base.Dockerfile -t "${WS_BASE_IMAGE:-workspaces/base:0.1.0}" ../docker || die "base image build failed"
 fi
 
-# --- 4. bring up the stack ---
+# --- 4. the shared ticket-container network (external in compose; the app + ticket containers use it) ---
+docker network inspect workspaces-net >/dev/null 2>&1 || { log "creating the workspaces-net network"; docker network create workspaces-net >/dev/null; }
+
+# --- 5. bring up the stack ---
 log "building + starting the stack (this can take a few minutes on first run)…"
 docker compose up -d --build
 
-# --- 5. wait for readiness ---
+# --- 6. wait for readiness ---
 log "waiting for the app to become ready…"
 for i in $(seq 1 60); do
   if docker compose exec -T app node -e "fetch('http://127.0.0.1:80/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then

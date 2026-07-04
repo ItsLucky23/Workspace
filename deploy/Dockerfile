@@ -5,9 +5,10 @@
 
 FROM node:22-bookworm-slim
 
-# Docker CLI (the app shells out to it via WS_DOCKER_BIN to launch ticket containers) + git + curl.
+# Docker CLI (the app shells out to it via WS_DOCKER_BIN to launch ticket containers) + git + curl +
+# build tools (python3/build-essential) so native deps like node-pty compile during install.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl gnupg git \
+  && apt-get install -y --no-install-recommends ca-certificates curl gnupg git python3 build-essential \
   && install -m 0755 -d /etc/apt/keyrings \
   && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
   && chmod a+r /etc/apt/keyrings/docker.gpg \
@@ -18,12 +19,17 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Install deps first (layer-cached on unchanged lockfile).
+# Install deps first (layer-cached on unchanged lockfile). Prefer the reproducible `npm ci`, but fall
+# back to `npm install` when the lockfile is out of sync with the target platform — a package-lock.json
+# generated on a different OS (e.g. a Windows dev box) can omit linux-only optional native deps
+# (@emnapi/*, platform @rollup/* etc.), which `npm ci` refuses. `npm install` resolves them for linux.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund || (echo "lockfile out of sync for this platform — resolving with npm install" && npm install --no-audit --no-fund)
 
-# App source + build the frontend bundle the server serves.
+# App source + build the frontend bundle the server serves. Give V8 a bigger heap — the Vite/Rollup
+# build OOMs (exit 134) under the default limit on a modest builder.
 COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 # Prisma client for the runtime DB.

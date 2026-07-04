@@ -1,0 +1,14 @@
+# Keep the deploy/ image build context small + reproducible (#7). The Dockerfile runs `npm ci` +
+# `vite build` from a clean tree, so host node_modules/dist/data/secrets must NOT be copied in.
+node_modules
+dist
+.git
+.claude
+data
+deploy/.env
+deploy/backups
+backups
+**/*.log
+.eslintcache
+.env
+.env.local

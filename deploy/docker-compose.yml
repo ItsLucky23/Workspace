@@ -89,7 +89,10 @@ volumes:
 
 networks:
   internal:
-  # Shared with the per-ticket containers the app launches (WS_NET). External so the app's
-  # `docker run --network workspaces-net` and this stack agree on the same network.
+  # Shared with the per-ticket containers the app launches (WS_NET). `external: true` because the app
+  # (and its ticket containers) create/own this network at runtime — compose must attach to the
+  # EXISTING one, not try to manage a duplicate. Create it once with:
+  #   docker network create workspaces-net
   workspaces-net:
+    external: true
     name: workspaces-net

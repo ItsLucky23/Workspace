@@ -1362,3 +1362,19 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server/front-tsc 0, eslint 0, integration **33/33**. #14 encryptie-at-rest e2e bewezen tegen een echte container. #9 bleek al echt-git-getest (`mergeReal.test.mts`) → geen extra smoke nodig.
 
 **Files touched:** `docs/reports/LUCKYSTACK_CORE_VALIDATETYPE_BUG.md` (nieuw), `src/settings/_api/updatePreferences_v1.ts`, `server/container/editorProfile.ts`, `branch-logs/main.md`.
+
+## 2026-07-04 — #7 install ECHT gedraaid + geverifieerd op lokale Docker + hardening
+
+**User prompt:** doe de doel-host echte install op lokale Docker (Docker aan, geen projects actief, tunnel open).
+
+**What I did:** De `deploy/`-stack daadwerkelijk from-scratch opgebouwd + gedraaid op lokale Docker (29.6.1). Onderweg 5 echte install-hobbels gefixt (dit is precies waarvoor je een echte install-test doet):
+- **`.dockerignore`** (nieuw): build-context was gigantisch (node_modules/data/.git) → excludes.
+- **Dockerfile `npm ci` → `npm install`-fallback**: de op-Windows-gegenereerde `package-lock.json` mist linux-only optionele native deps (`@emnapi/*`) → `npm ci` weigert; fallback resolvet ze.
+- **Dockerfile `build-essential python3`**: `node-pty` (native) compileert niet zonder build-tools in `node:22-bookworm-slim`.
+- **Dockerfile `NODE_OPTIONS=--max-old-space-size=4096`**: de vite/rollup-build OOM'de (exit 134) onder de default heap.
+- **compose `workspaces-net` → `external: true`** + bootstrap `docker network create`: de engine/ticket-containers bezitten dat netwerk al → compose moet attachen, niet dupliceren.
+- Docker-Desktop-Windows-quirk (niet in de artefacten): de cred-helper `docker-credential-desktop` moet op de PATH staan bij het pullen.
+
+**Resultaat:** app-image **bouwt** (npm install + node-pty-compile + vite build + prisma generate, exit 0). Volledige stack **draait healthy**: `workspaces-app-1`, `-mongo-1` (single-node replica-set, self-init), `-redis-1` — `/healthz`+`/readyz`+`/livez` = **200** tegen z'n EIGEN verse mongo/redis (niet de dev-tunnel). App is niet host-published (alleen caddy) → verstoorde de dev-:80 niet. Daarna `compose down -v` opgeruimd; dev-:80 nog healthy, `workspaces-net` behouden.
+
+**Files touched:** `.dockerignore` (nieuw), `deploy/Dockerfile`, `deploy/docker-compose.yml`, `deploy/bootstrap.sh`.
