@@ -901,6 +901,42 @@
       "palette": "Palette", "typography": "Typography", "voice": "Voice", "taglines": "Taglines", "logoIdeas": "Logo ideas",
       "collapse": "Collapse", "expand": "Expand", "copyHtml": "Copy HTML"
     },
+    "designer": {
+      "title": "Designer",
+      "intro": "One place to keep your whole product UI consistent. Browse every component we ship, switch between design themes, and see everything re-render instantly so you can pick what fits.",
+      "themes": "Themes", "themesSub": "Pick one to preview — or make your own.",
+      "newTheme": "New theme", "generateAi": "Generate with AI", "aiSoon": "AI theme generation — coming in the next update", "soon": "Soon",
+      "light": "Light", "dark": "Dark", "editTokens": "Edit tokens", "duplicate": "Duplicate",
+      "livePreview": "Live preview — {{theme}} ({{mode}})",
+      "source": { "seed": "Built-in", "ai": "AI", "manual": "Custom" },
+      "sec": {
+        "buttons": "Buttons", "buttonsSub": "Primary actions, variants and icon buttons.",
+        "selects": "Dropdowns & selects", "selectsSub": "Single- and multi-select, with sizes and search.",
+        "inputs": "Inputs", "inputsSub": "Text, number, password, toggles, checkboxes and dates.",
+        "controls": "Controls", "controlsSub": "Segmented controls, toggles and tabs.",
+        "overlays": "Overlays", "overlaysSub": "Popovers, menus and confirm dialogs.",
+        "data": "Feedback & data", "dataSub": "Status pills, labels, avatars and empty states.",
+        "tokens": "Colour tokens", "tokensSub": "Every design token in this theme."
+      },
+      "confirmDemoTitle": "Delete this item?", "confirmDemoBody": "This is just a demo — nothing will actually be deleted.",
+      "openConfirm": "Open confirm", "infoDotBody": "A small hint that reveals more on hover.",
+      "emptyDemoTitle": "Nothing here yet", "emptyDemoSub": "This is how an empty state looks in the current theme.",
+      "editorTitle": "Edit tokens", "editorSub": "Editing the {{mode}} palette.",
+      "notHex": "Not a plain hex — edit the text field directly."
+    },
+    "interviewer": {
+      "title": "Interviewer",
+      "intro": "Ask anything about this codebase and think through new plans together. It has repo context, so ask how something works, what's worth improving, or to work out a plan.",
+      "startersTitle": "Try one of these to start:",
+      "starter": {
+        "explain": "Explain how the authentication flow works in this codebase.",
+        "improve": "What are the top things worth improving in this project?",
+        "plan": "Work out a plan for adding a new feature — ask me what it is first.",
+        "risks": "What are the biggest risks or fragile areas in this codebase?"
+      },
+      "placeholder": "Ask about your codebase, or describe a plan…",
+      "send": "Send", "error": "Something went wrong reaching the AI. Try again."
+    },
     "automation": {
       "title": "Automation", "subtitle": "Fire an action when something happens, or on a schedule.",
       "add": "New trigger", "empty": "No triggers yet. Create one to automate notifications, stage moves, and more.",

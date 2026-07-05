@@ -901,6 +901,42 @@
       "palette": "Palet", "typography": "Typografie", "voice": "Stem", "taglines": "Taglines", "logoIdeas": "Logo-ideeën",
       "collapse": "Inklappen", "expand": "Uitklappen", "copyHtml": "HTML kopiëren"
     },
+    "designer": {
+      "title": "Designer",
+      "intro": "Eén plek om je hele product-UI consistent te houden. Bekijk elk component dat we hebben, wissel tussen design-thema's, en zie alles direct hertekenen zodat je kunt kiezen wat past.",
+      "themes": "Thema's", "themesSub": "Kies er een om te previewen — of maak je eigen.",
+      "newTheme": "Nieuw thema", "generateAi": "Genereer met AI", "aiSoon": "AI-themagenerator — komt in de volgende update", "soon": "Binnenkort",
+      "light": "Licht", "dark": "Donker", "editTokens": "Tokens bewerken", "duplicate": "Dupliceren",
+      "livePreview": "Live preview — {{theme}} ({{mode}})",
+      "source": { "seed": "Ingebouwd", "ai": "AI", "manual": "Eigen" },
+      "sec": {
+        "buttons": "Knoppen", "buttonsSub": "Primaire acties, varianten en icoon-knoppen.",
+        "selects": "Dropdowns & selecties", "selectsSub": "Enkel- en multi-select, met maten en zoeken.",
+        "inputs": "Invoervelden", "inputsSub": "Tekst, getal, wachtwoord, toggles, checkboxes en datums.",
+        "controls": "Bediening", "controlsSub": "Segmented controls, toggles en tabs.",
+        "overlays": "Overlays", "overlaysSub": "Popovers, menu's en bevestigingsdialogen.",
+        "data": "Feedback & data", "dataSub": "Statuspills, labels, avatars en lege staten.",
+        "tokens": "Kleur-tokens", "tokensSub": "Elk design-token in dit thema."
+      },
+      "confirmDemoTitle": "Dit item verwijderen?", "confirmDemoBody": "Dit is maar een demo — er wordt niets echt verwijderd.",
+      "openConfirm": "Bevestiging openen", "infoDotBody": "Een kleine hint die meer toont bij hover.",
+      "emptyDemoTitle": "Nog niets hier", "emptyDemoSub": "Zo ziet een lege staat eruit in het huidige thema.",
+      "editorTitle": "Tokens bewerken", "editorSub": "Je bewerkt het {{mode}}-palet.",
+      "notHex": "Geen gewone hex — bewerk het tekstveld direct."
+    },
+    "interviewer": {
+      "title": "Interviewer",
+      "intro": "Vraag alles over deze codebase en werk samen nieuwe plannen uit. Hij heeft repo-context, dus vraag hoe iets werkt, wat beter kan, of om een plan uit te werken.",
+      "startersTitle": "Begin met een van deze:",
+      "starter": {
+        "explain": "Leg uit hoe de authenticatie-flow werkt in deze codebase.",
+        "improve": "Wat zijn de belangrijkste dingen die beter kunnen in dit project?",
+        "plan": "Werk een plan uit voor een nieuwe feature — vraag me eerst wat het is.",
+        "risks": "Wat zijn de grootste risico's of kwetsbare plekken in deze codebase?"
+      },
+      "placeholder": "Vraag iets over je codebase, of beschrijf een plan…",
+      "send": "Versturen", "error": "Er ging iets mis bij het bereiken van de AI. Probeer opnieuw."
+    },
     "automation": {
       "title": "Automatisering", "subtitle": "Vuur een actie af als er iets gebeurt, of op schema.",
       "add": "Nieuwe trigger", "empty": "Nog geen triggers. Maak er een om meldingen, stage-verplaatsingen en meer te automatiseren.",

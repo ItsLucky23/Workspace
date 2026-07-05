@@ -901,6 +901,42 @@
       "palette": "Palette", "typography": "Typografie", "voice": "Stimme", "taglines": "Taglines", "logoIdeas": "Logo-Ideen",
       "collapse": "Einklappen", "expand": "Ausklappen", "copyHtml": "HTML kopieren"
     },
+    "designer": {
+      "title": "Designer",
+      "intro": "Ein Ort, um deine gesamte Produkt-UI konsistent zu halten. Sieh dir jede Komponente an, wechsle zwischen Design-Themes und beobachte, wie alles sofort neu rendert, damit du wählen kannst, was passt.",
+      "themes": "Themes", "themesSub": "Wähle eins zur Vorschau — oder erstelle dein eigenes.",
+      "newTheme": "Neues Theme", "generateAi": "Mit KI generieren", "aiSoon": "KI-Theme-Generierung — kommt im nächsten Update", "soon": "Bald",
+      "light": "Hell", "dark": "Dunkel", "editTokens": "Tokens bearbeiten", "duplicate": "Duplizieren",
+      "livePreview": "Live-Vorschau — {{theme}} ({{mode}})",
+      "source": { "seed": "Integriert", "ai": "KI", "manual": "Eigen" },
+      "sec": {
+        "buttons": "Buttons", "buttonsSub": "Primäraktionen, Varianten und Icon-Buttons.",
+        "selects": "Dropdowns & Auswahl", "selectsSub": "Einzel- und Mehrfachauswahl, mit Größen und Suche.",
+        "inputs": "Eingaben", "inputsSub": "Text, Zahl, Passwort, Toggles, Checkboxen und Daten.",
+        "controls": "Steuerung", "controlsSub": "Segmented Controls, Toggles und Tabs.",
+        "overlays": "Overlays", "overlaysSub": "Popovers, Menüs und Bestätigungsdialoge.",
+        "data": "Feedback & Daten", "dataSub": "Status-Pills, Labels, Avatare und leere Zustände.",
+        "tokens": "Farb-Tokens", "tokensSub": "Jedes Design-Token in diesem Theme."
+      },
+      "confirmDemoTitle": "Dieses Element löschen?", "confirmDemoBody": "Nur eine Demo — es wird nichts wirklich gelöscht.",
+      "openConfirm": "Bestätigung öffnen", "infoDotBody": "Ein kleiner Hinweis, der beim Hover mehr zeigt.",
+      "emptyDemoTitle": "Noch nichts hier", "emptyDemoSub": "So sieht ein leerer Zustand im aktuellen Theme aus.",
+      "editorTitle": "Tokens bearbeiten", "editorSub": "Du bearbeitest die {{mode}}-Palette.",
+      "notHex": "Kein einfaches Hex — bearbeite das Textfeld direkt."
+    },
+    "interviewer": {
+      "title": "Interviewer",
+      "intro": "Frag alles über diese Codebase und entwickelt gemeinsam neue Pläne. Er hat Repo-Kontext — frag, wie etwas funktioniert, was sich verbessern lässt, oder lass einen Plan ausarbeiten.",
+      "startersTitle": "Starte mit einem davon:",
+      "starter": {
+        "explain": "Erkläre, wie der Authentifizierungs-Flow in dieser Codebase funktioniert.",
+        "improve": "Was sind die wichtigsten Dinge, die sich in diesem Projekt verbessern lassen?",
+        "plan": "Arbeite einen Plan für ein neues Feature aus — frag mich zuerst, welches.",
+        "risks": "Was sind die größten Risiken oder fragilen Stellen in dieser Codebase?"
+      },
+      "placeholder": "Frag etwas über deine Codebase oder beschreibe einen Plan…",
+      "send": "Senden", "error": "Beim Erreichen der KI ist etwas schiefgelaufen. Versuch es erneut."
+    },
     "automation": {
       "title": "Automatisierung", "subtitle": "Löse eine Aktion aus, wenn etwas passiert, oder nach Zeitplan.",
       "add": "Neuer Trigger", "empty": "Noch keine Trigger. Erstelle einen, um Benachrichtigungen, Stage-Wechsel und mehr zu automatisieren.",

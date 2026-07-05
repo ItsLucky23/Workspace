@@ -16,7 +16,8 @@ import type {
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'studio' | 'ai' | 'settings' | 'workspace'
+  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing'
+  | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 
 export interface WorkspacesCtx {

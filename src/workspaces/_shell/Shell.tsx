@@ -55,7 +55,9 @@ export const NAV_ITEMS: NavDef[] = [
   { id: 'sources', icon: 'book-open', label: 'Sources' },
   { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline' },
   { id: 'usage', icon: 'chart-column', label: 'Usage' },
-  { id: 'studio', icon: 'palette', label: 'Studio' },
+  { id: 'designer', icon: 'palette', label: 'Designer' },
+  { id: 'interviewer', icon: 'comments', label: 'Interviewer' },
+  { id: 'marketing', icon: 'bullhorn', label: 'Marketing' },
 ];
 export const NAV_BOTTOM: NavDef[] = [
   { id: 'ai', icon: 'robot', label: 'Workspace-AI' },

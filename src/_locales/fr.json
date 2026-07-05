@@ -901,6 +901,42 @@
       "palette": "Palette", "typography": "Typographie", "voice": "Voix", "taglines": "Slogans", "logoIdeas": "Idées de logo",
       "collapse": "Réduire", "expand": "Agrandir", "copyHtml": "Copier le HTML"
     },
+    "designer": {
+      "title": "Designer",
+      "intro": "Un seul endroit pour garder toute l'UI de votre produit cohérente. Parcourez chaque composant, changez de thème et voyez tout se redessiner instantanément pour choisir ce qui convient.",
+      "themes": "Thèmes", "themesSub": "Choisissez-en un à prévisualiser — ou créez le vôtre.",
+      "newTheme": "Nouveau thème", "generateAi": "Générer avec l'IA", "aiSoon": "Génération de thème par IA — bientôt disponible", "soon": "Bientôt",
+      "light": "Clair", "dark": "Sombre", "editTokens": "Modifier les tokens", "duplicate": "Dupliquer",
+      "livePreview": "Aperçu en direct — {{theme}} ({{mode}})",
+      "source": { "seed": "Intégré", "ai": "IA", "manual": "Perso" },
+      "sec": {
+        "buttons": "Boutons", "buttonsSub": "Actions principales, variantes et boutons-icônes.",
+        "selects": "Listes & sélections", "selectsSub": "Sélection simple et multiple, avec tailles et recherche.",
+        "inputs": "Champs", "inputsSub": "Texte, nombre, mot de passe, interrupteurs, cases et dates.",
+        "controls": "Contrôles", "controlsSub": "Contrôles segmentés, interrupteurs et onglets.",
+        "overlays": "Overlays", "overlaysSub": "Popovers, menus et dialogues de confirmation.",
+        "data": "Retours & données", "dataSub": "Pastilles de statut, libellés, avatars et états vides.",
+        "tokens": "Tokens de couleur", "tokensSub": "Chaque token de design de ce thème."
+      },
+      "confirmDemoTitle": "Supprimer cet élément ?", "confirmDemoBody": "Ce n'est qu'une démo — rien ne sera réellement supprimé.",
+      "openConfirm": "Ouvrir la confirmation", "infoDotBody": "Un petit indice qui en révèle plus au survol.",
+      "emptyDemoTitle": "Rien ici pour l'instant", "emptyDemoSub": "Voici à quoi ressemble un état vide dans le thème actuel.",
+      "editorTitle": "Modifier les tokens", "editorSub": "Vous modifiez la palette {{mode}}.",
+      "notHex": "Pas un hex simple — modifiez directement le champ texte."
+    },
+    "interviewer": {
+      "title": "Interviewer",
+      "intro": "Posez n'importe quelle question sur cette base de code et élaborez de nouveaux plans ensemble. Il a le contexte du dépôt : demandez comment ça marche, ce qui peut être amélioré, ou d'élaborer un plan.",
+      "startersTitle": "Commencez par l'une de celles-ci :",
+      "starter": {
+        "explain": "Expliquez comment fonctionne le flux d'authentification dans cette base de code.",
+        "improve": "Quelles sont les principales choses à améliorer dans ce projet ?",
+        "plan": "Élaborez un plan pour ajouter une nouvelle fonctionnalité — demandez-moi d'abord laquelle.",
+        "risks": "Quels sont les plus grands risques ou zones fragiles de cette base de code ?"
+      },
+      "placeholder": "Posez une question sur votre base de code, ou décrivez un plan…",
+      "send": "Envoyer", "error": "Un problème est survenu en contactant l'IA. Réessayez."
+    },
     "automation": {
       "title": "Automatisation", "subtitle": "Déclenche une action quand quelque chose se produit, ou selon un planning.",
       "add": "Nouveau déclencheur", "empty": "Aucun déclencheur. Créez-en un pour automatiser notifications, changements d'étape et plus.",
