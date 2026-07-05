@@ -660,6 +660,7 @@
       "create": "Créer",
       "chat": "Chat",
       "suggestions": "Suggestions",
+      "activity": "Activité", "activityHint": "Chaque action IA du workspace — le prompt + le raisonnement.", "noActivity": "Aucune activité IA pour l'instant.", "showDetails": "Afficher le prompt + le raisonnement", "hideDetails": "Masquer les détails", "ourPrompt": "Notre prompt", "reasoning": "Raisonnement / sortie IA",
       "dragToResize": "Glissez pour redimensionner",
       "askAiPlaceholder": "Demandez à l’IA de faire quelque chose…",
       "aiError": "L’IA est indisponible pour le moment. Réessayez.",

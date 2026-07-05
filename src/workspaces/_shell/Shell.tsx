@@ -15,7 +15,7 @@ import Icon, { type IconName } from '../_components/Icon';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
-import type { AiSuggestion, ChatMessage, ChatProposal, NotificationItem } from '../_data/types';
+import type { AiRun, AiSuggestion, ChatMessage, ChatProposal, NotificationItem } from '../_data/types';
 
 //? The CSS color token for a ticket's live status dot.
 function statusColor(status: string | undefined): string {
@@ -378,9 +378,9 @@ function ChatBubble({ m, onAccept }: { m: ChatMessage; onAccept: (id: string, p:
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, aiRuns } = useWorkspaces();
   const translate = useTranslator();
-  const [tab, setTab] = useState<'chat' | 'suggestions'>('chat');
+  const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
   const [width, setWidth] = useState(rememberedAiWidth);
   const [dragging, setDragging] = useState(false);
@@ -432,6 +432,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-1 px-3 h-11 border-b border-divider">
           <PanelTab label={translate({ key: 'workspaces.shell.chat' })} icon="comment" on={tab === 'chat'} onClick={() => { setTab('chat'); }} />
           <PanelTab label={translate({ key: 'workspaces.shell.suggestions' })} icon="robot" count={suggestions.length} on={tab === 'suggestions'} onClick={() => { setTab('suggestions'); }} />
+          <PanelTab label={translate({ key: 'workspaces.shell.activity' })} icon="wave-square" count={aiRuns.length} on={tab === 'activity'} onClick={() => { setTab('activity'); }} />
         </div>
         {tab === 'chat' ? (
           <>
@@ -447,7 +448,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
               <button type="button" onClick={send} title={translate({ key: 'workspaces.shell.send' })} className="w-9 h-9 shrink-0 rounded-xl bg-primary text-title-primary flex items-center justify-center cursor-pointer hover:bg-primary-hover"><Icon name="paper-plane" /></button>
             </div>
           </>
-        ) : (
+        ) : (tab === 'suggestions' ? (
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
             {suggestions.length === 0 && <div className="text-center text-sm text-muted py-12">{translate({ key: 'workspaces.shell.allCaughtUp' })}</div>}
             {suggestions.map((s) => (
@@ -458,9 +459,48 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
               />
             ))}
           </div>
-        )}
+        ) : (
+          <AiActivityFeed runs={aiRuns} />
+        ))}
       </div>
     </motion.aside>
+  );
+}
+
+//? The central AI-activity feed — every AI run (theme/design/interviewer/marketing/…) with its
+//? prompt (our side) + reasoning/output + status. Lives IN the Workspace-AI panel (no second AI window).
+function AiActivityFeed({ runs }: { runs: AiRun[] }) {
+  const translate = useTranslator();
+  if (runs.length === 0) return <div className="flex-1 overflow-y-auto p-3"><div className="text-center text-sm text-muted py-12">{translate({ key: 'workspaces.shell.noActivity' })}</div></div>;
+  return (
+    <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+      <div className="text-xs text-muted px-1 mb-1">{translate({ key: 'workspaces.shell.activityHint' })}</div>
+      {runs.map((r) => <AiRunCard key={r.id} run={r} />)}
+    </div>
+  );
+}
+
+function AiRunCard({ run }: { run: AiRun }) {
+  const translate = useTranslator();
+  const [open, setOpen] = useState(false);
+  const meta = `${new Date(run.createdAt).toLocaleTimeString()} · ${(run.ms / 1000).toFixed(1)}s · ${run.providerId}`;
+  return (
+    <div className="rounded-xl border border-container1-border bg-container2/40 p-3">
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${run.status === 'ok' ? 'bg-correct' : 'bg-wrong'}`} />
+        <span className="text-sm font-medium text-title truncate flex-1">{run.label}</span>
+      </div>
+      <div className="text-[11px] text-muted mt-0.5">{meta}</div>
+      <button type="button" onClick={() => { setOpen((o) => !o); }} className="text-[11px] text-primary hover:text-primary-hover cursor-pointer mt-1">{translate({ key: open ? 'workspaces.shell.hideDetails' : 'workspaces.shell.showDetails' })}</button>
+      {open && (
+        <div className="mt-2 flex flex-col gap-2">
+          <div><div className="text-[10px] uppercase tracking-wide text-muted mb-0.5">{translate({ key: 'workspaces.shell.ourPrompt' })}</div><div className="text-xs text-common whitespace-pre-wrap max-h-40 overflow-y-auto rounded-lg bg-container1 p-2">{run.prompt}</div></div>
+          {run.status === 'ok'
+            ? <div><div className="text-[10px] uppercase tracking-wide text-muted mb-0.5">{translate({ key: 'workspaces.shell.reasoning' })}</div><div className="text-xs text-common whitespace-pre-wrap max-h-60 overflow-y-auto rounded-lg bg-container1 p-2">{run.output}</div></div>
+            : <div className="text-xs text-wrong">{run.error ?? translate({ key: 'workspaces.shell.aiError' })}</div>}
+        </div>
+      )}
+    </div>
   );
 }
 

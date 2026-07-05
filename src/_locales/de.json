@@ -660,6 +660,7 @@
       "create": "Erstellen",
       "chat": "Chat",
       "suggestions": "Vorschläge",
+      "activity": "Aktivität", "activityHint": "Jede KI-Aktion im Workspace — Prompt + Reasoning.", "noActivity": "Noch keine KI-Aktivität.", "showDetails": "Prompt + Reasoning zeigen", "hideDetails": "Details verbergen", "ourPrompt": "Unser Prompt", "reasoning": "KI-Reasoning / Output",
       "dragToResize": "Zum Größenändern ziehen",
       "askAiPlaceholder": "Bitte die AI, etwas zu tun…",
       "aiError": "Die KI ist gerade nicht verfügbar. Bitte erneut versuchen.",

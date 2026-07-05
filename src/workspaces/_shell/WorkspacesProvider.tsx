@@ -24,7 +24,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioBrandLibrary,
+  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -57,6 +57,7 @@ interface Snap {
   insights: WorkspaceInsights;
   triggers: WorkspaceTrigger[];
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
+  aiRuns: AiRun[];
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
   studioBrand: StudioBrandLibrary | null;
@@ -73,6 +74,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
   agentRoles: [],
+  aiRuns: [],
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
@@ -799,6 +801,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       insights: snap.insights,
       triggers: snap.triggers,
       agentRoles: snap.agentRoles,
+      aiRuns: snap.aiRuns,
       studioBriefs: snap.studioBriefs,
       studioArtifacts: snap.studioArtifacts,
       studioBrand: snap.studioBrand,

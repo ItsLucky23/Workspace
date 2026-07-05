@@ -660,6 +660,7 @@
       "create": "Aanmaken",
       "chat": "Chat",
       "suggestions": "Suggesties",
+      "activity": "Activiteit", "activityHint": "Elke AI-actie in de workspace — de prompt + reasoning.", "noActivity": "Nog geen AI-activiteit.", "showDetails": "Toon prompt + reasoning", "hideDetails": "Verberg details", "ourPrompt": "Onze prompt", "reasoning": "AI-reasoning / output",
       "dragToResize": "Sleep om te vergroten/verkleinen",
       "askAiPlaceholder": "Vraag de AI iets te doen…",
       "aiError": "De AI is nu niet beschikbaar. Probeer het opnieuw.",

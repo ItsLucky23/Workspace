@@ -34,6 +34,10 @@ export interface AiCompletionRequest {
   system?: string;   //? optional system/context preamble
   cwd?: string;      //? working dir the AI runs in (e.g. a ticket worktree)
   timeoutMs?: number; //? hard cap for the turn (provider default when omitted)
+  //? Optional tagging so the run shows up in the workspace's central AI-activity feed (the
+  //? "Activity" tab of the Workspace-AI panel). No tenancy is enforced here — it's a display tag.
+  workspaceId?: string;
+  label?: string;    //? human label for the feed (e.g. "Theme: warm fintech")
 }
 
 export interface AiCompletionResult {

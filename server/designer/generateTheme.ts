@@ -111,9 +111,9 @@ export function parseTheme(text: string, fallbackName: string): GeneratedTheme {
 
 //? Generate a theme from a brief. Returns null on ANY provider error — including a thrown
 //? exception (a PTY spawn failure must surface as a clean handled error, never a 500).
-export async function generateTheme(brief: string): Promise<GeneratedTheme | null> {
+export async function generateTheme(brief: string, workspaceId?: string): Promise<GeneratedTheme | null> {
   const { system, prompt } = buildThemePrompt(brief);
-  const [error, res] = await tryCatch(() => runAiCompletion('designer-theme', { prompt, system, timeoutMs: 180_000 }));
+  const [error, res] = await tryCatch(() => runAiCompletion('designer-theme', { prompt, system, timeoutMs: 180_000, ...(workspaceId ? { workspaceId, label: `Theme · ${brief.slice(0, 40)}` } : {}) }));
   if (error || !res?.ok) return null;
   return parseTheme(res.text, 'AI theme');
 }

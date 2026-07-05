@@ -180,7 +180,7 @@ export async function generateArtifact(prisma: PrismaClient, input: { workspaceI
 
   //? Generous timeout — the interactive claude-cli PTY can be slow on longer (brand-seeded) prompts.
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
-  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000 });
+  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
   if (!completion.ok || completion.text.trim().length === 0) {
     const failed = await prisma.studioArtifact.create({
       data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' },

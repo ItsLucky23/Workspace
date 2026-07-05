@@ -753,6 +753,20 @@ export interface TicketSort {
 //? go-to-market strategy.
 export type StudioArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names' | 'thumbnail' | 'videoScript';
 
+//? A recorded AI run for the central activity feed (the "Activity" tab of the Workspace-AI panel).
+export interface AiRun {
+  id: string;
+  feature: string;
+  label: string;
+  prompt: string;
+  output: string;
+  providerId: string;
+  status: 'ok' | 'error';
+  error?: string;
+  createdAt: string;
+  ms: number;
+}
+
 //? The workspace's central brand library (ADR 0013 G-MKT-2) — one source of brand truth every
 //? Studio generation seeds from.
 export interface StudioBrandLibrary {

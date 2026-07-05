@@ -24,7 +24,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const member = await functions.db.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
   if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
 
-  const theme = await generateTheme(prompt.trim());
+  const theme = await generateTheme(prompt.trim(), workspaceId);
   if (!theme) return { status: 'error', errorCode: 'designer.generateFailed' };
   return { status: 'success', result: { name: theme.name, description: theme.description, light: theme.light, dark: theme.dark } };
 };

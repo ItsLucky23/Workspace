@@ -16,6 +16,7 @@ import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/cli
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
+import { listAiRuns } from '../ai/activity';
 import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { decryptSecret } from '../crypto/secretBox';
@@ -158,6 +159,9 @@ export interface WorkspaceSnapshot {
   triggers: WorkspaceTrigger[];
   //? Scheduled tasks: the agent roles a trigger can run (registered at boot; global, not per-workspace).
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
+  //? Central AI-activity feed (the "Activity" tab of the Workspace-AI panel): recent AI runs with
+  //? their prompt + output + status, so every AI-driven action is visible in one place.
+  aiRuns: { id: string; feature: string; label: string; prompt: string; output: string; providerId: string; status: 'ok' | 'error'; error?: string; createdAt: string; ms: number }[];
   //? Studio module: product briefs + their generated artifacts + the central brand library.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
@@ -174,6 +178,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
   agentRoles: [],
+  aiRuns: [],
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
@@ -291,6 +296,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(t.lastFiredAt ? { lastFiredAt: t.lastFiredAt.toISOString() } : {}),
       })),
       agentRoles: listAgentRoles(),
+      aiRuns: listAiRuns(activeWorkspaceId),
       studioBriefs: studioBriefRows.map((b): StudioBrief => ({
         id: b.id, workspaceId: b.workspaceId, name: b.name, productName: b.productName, audience: b.audience, tone: b.tone, goals: b.goals,
         ...(b.projectId ? { projectId: b.projectId } : {}), ...(b.notes ? { notes: b.notes } : {}), createdAt: b.createdAt.toISOString(),

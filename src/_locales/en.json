@@ -660,6 +660,7 @@
       "create": "Create",
       "chat": "Chat",
       "suggestions": "Suggestions",
+      "activity": "Activity", "activityHint": "Every AI action across the workspace — its prompt + reasoning.", "noActivity": "No AI activity yet.", "showDetails": "Show prompt + reasoning", "hideDetails": "Hide details", "ourPrompt": "Our prompt", "reasoning": "AI reasoning / output",
       "dragToResize": "Drag to resize",
       "askAiPlaceholder": "Ask the AI to do something…",
       "aiError": "The AI is unavailable right now. Please try again.",

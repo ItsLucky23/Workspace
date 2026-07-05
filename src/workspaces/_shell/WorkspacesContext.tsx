@@ -11,7 +11,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
+  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun,
 } from '../_data/types';
 
 export type WsView =
@@ -172,6 +172,7 @@ export interface WorkspacesCtx {
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
   triggers: WorkspaceTrigger[];        // #2: automation triggers
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[]; // schedulable roles
+  aiRuns: AiRun[];                     // central AI-activity feed (Workspace-AI panel "Activity" tab)
   //? Studio module — design + marketing tool.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];

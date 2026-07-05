@@ -5,6 +5,7 @@
 //? ./assignments. This is the ONLY module features import to reach an AI.
 
 import { resolveAssignment, defaultAssignments } from './assignments';
+import { recordAiRun } from './activity';
 import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
@@ -24,9 +25,16 @@ export async function runAiCompletion(
 ): Promise<AiCompletionResult> {
   const providerId = resolveAssignment(feature, overrides);
   const provider = PROVIDERS[providerId];
+  const startedAt = Date.now();
   const available = await provider.available();
-  if (!available) return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
-  return provider.complete(req);
+  if (!available) {
+    recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: '', providerId, status: 'error', error: 'ai.providerUnavailable', startedAt });
+    return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
+  }
+  const result = await provider.complete(req);
+  //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
+  recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
+  return result;
 }
 
 //? Which providers are usable right now (for a settings UI / health panel).

@@ -1512,3 +1512,20 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · `studio.test` **33/33** (nieuw: thumbnail-prompt vraagt HTML, videoScript-prompt vraagt scenes, parsers lezen hook/html). Live claude-cli-generatie van een thumbnail vereist een backend-herstart (server-module hot-reload niet; type-map wél live).
 
 **Files touched:** `server/studio/generate.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/studio/page.tsx` (VideoScriptPreview + KINDS), `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/studio.test.mts`.
+
+## 2026-07-05 21:00 — Centrale AI-activiteitslaag (alle AI-processen in het Workspace-AI-paneel)
+
+**User prompt:** "Ik wil alle AI's hun processen ergens inzien — terminal-view zoals bij de pipeline per ticket, óf (als het geen terminal is) de prompt van onze kant + reasoning, dus een chat-window met meer reasoning; alle AI-logica via de workspace-chat, geen dubbele AI-window/input-areas."
+
+**Interpretatie (Rule 3a — architectuur-fork geëxpliciteerd):** één centrale AI-activiteitslaag i.p.v. per-feature losse AI-vensters. De grote refactor (élke feature-trigger uit de chat sturen) is geflagd als vervolg; de losse Interviewer-chat vouw ik later in.
+
+**What I did:**
+- **`server/ai/activity.ts`** — een in-memory ring (laatste 80, per-workspace getagd) van AI-runs (feature, label, **onze prompt** + **reasoning/output** (getrunceerd), provider, status, duur). `recordAiRun` best-effort, gooit nooit.
+- **`runAiCompletion` logt elke run** (registry.ts) — dus ELKE AI-completion (theme/design/interviewer/marketing/chat) verschijnt automatisch. `AiCompletionRequest` kreeg optionele `workspaceId` + `label` (display-tag). De feature-calls (studio-generate, interviewer-role, theme-gen) taggen nu hun workspaceId + label.
+- **Snapshot** exposeert `aiRuns` (per-workspace, `listAiRuns`).
+- **UI**: een **"Activity"-tab in het bestaande Workspace-AI-paneel** (Shell.tsx `AiActivityFeed`/`AiRunCard`) — per run status-dot + label + provider/tijd/duur + uitklapbaar de **prompt van onze kant + de AI-reasoning/output**. Géén tweede AI-window. Container-agents tonen hun terminal elders (bestaat al per ticket); one-shot AI toont prompt+reasoning hier.
+- i18n en/nl/de/fr.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. Live-test na backend-herstart (nieuwe snapshot-field + recording).
+
+**Files touched:** `server/ai/{activity.ts (nieuw),registry.ts,types.ts}`, `server/{studio/generate,interviewer/role,designer/generateTheme}.ts`, `src/workspaces/_api/designerGenerateTheme_v1.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{Shell,WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`.

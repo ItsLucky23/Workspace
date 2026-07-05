@@ -28,7 +28,7 @@ export function registerInterviewerRole(): void {
     run: async (ctx) => {
       const focus = typeof ctx.params.focus === 'string' ? ctx.params.focus : '';
       const { system, prompt } = buildInterviewerPrompt(focus);
-      const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000 }));
+      const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: 'Interviewer · improvement ideas' }));
       if (error || !res?.ok || res.text.trim().length === 0) return { kind: 'interview-result', title: 'Interviewer', body: 'Could not generate ideas this run — try again.' };
       return { kind: 'interview-result', title: 'Ideas from the Interviewer', body: res.text.trim() };
     },
