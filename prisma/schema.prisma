@@ -646,6 +646,43 @@ model WorkspaceSignal {
   @@index([workspaceId, processedAt])
 }
 
+//? Studio module — a product/marketing BRIEF the AI designer/marketer roles work from.
+model StudioBrief {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  projectId   String?  @db.ObjectId                 // optional link to the project it markets
+  name        String                                 // the brief's own label (e.g. "Launch v1")
+  productName String                                 // what is being marketed
+  audience    String                                 // target audience
+  tone        String                                 // brand voice / tone (e.g. "bold, playful")
+  goals       String                                 // what the marketing should achieve
+  notes       String?                                // freeform extra context
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, createdAt])
+}
+
+//? Studio module — a generated ARTIFACT (a landing page, copy set, brand kit, or strategy)
+//? produced by an AI role from a brief. `content` is the structured, kind-specific payload the
+//? Studio UI renders + live-previews.
+model StudioArtifact {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  briefId     String   @db.ObjectId
+  kind        String                                 // 'landing' | 'copy' | 'brand' | 'strategy'
+  role        String                                 // 'designer' | 'marketer'
+  title       String
+  content     Json                                   // kind-specific: {html} | {items[]} | brand tokens | {markdown}
+  providerId  String?                                // which AI backend produced it
+  status      String   @default("ready")             // 'generating' | 'ready' | 'error'
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, briefId, createdAt])
+}
+
 //? The Assistant's propose-only output (B-23). 5-value `type` (04b §8, CANONICAL).
 //? `patch` carries the appliable config/automation patch — applied ONLY when the
 //? user accepts → Conductor executes. Prototype mirror: `AiSuggestion` (types.ts:101).

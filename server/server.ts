@@ -48,6 +48,7 @@ import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
+import { registerStudioRoles } from './studio/roles';
 import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
@@ -100,6 +101,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
   //? Pre-params custom routes so probes don't require a session.
   registerObservabilityEndpoints();
+  //? Studio module (#studio): register the designer + marketer AI roles into the AgentRole registry
+  //? so automation triggers can invoke them. Pure registry write — no DB at boot.
+  registerStudioRoles();
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
   //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
   registerForgeWebhook();

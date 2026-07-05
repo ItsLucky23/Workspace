@@ -24,6 +24,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
+  StudioBrief, StudioArtifact,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -55,6 +56,8 @@ interface Snap {
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
   triggers: WorkspaceTrigger[];
+  studioBriefs: StudioBrief[];
+  studioArtifacts: StudioArtifact[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -67,6 +70,8 @@ const EMPTY_SNAP: Snap = {
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
+  studioBriefs: [],
+  studioArtifacts: [],
 };
 
 function pathForView(view: WsView): string {
@@ -83,7 +88,7 @@ function viewFromPath(pathname: string): WsView {
 }
 const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',
-  sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', settings: 'Account', workspace: 'Workspace',
+  sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio', settings: 'Account', workspace: 'Workspace',
 };
 function viewLabel(view: WsView): string {
   return isTicketView(view) ? view : (VIEW_LABELS[view] ?? 'Board');
@@ -787,6 +792,21 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       usage: snap.usage,
       insights: snap.insights,
       triggers: snap.triggers,
+      studioBriefs: snap.studioBriefs,
+      studioArtifacts: snap.studioArtifacts,
+      saveBrief: async (b) => {
+        const ws = snap.activeWorkspaceId; if (!ws) return;
+        await apiRequest({ name: 'workspaces/studioSaveBrief', version: 'v1', data: { workspaceId: ws, ...b } });
+        refetch();
+      },
+      generateArtifact: async (briefId, kind) => {
+        const ws = snap.activeWorkspaceId; if (!ws) return { ok: false };
+        const res = await apiRequest({ name: 'workspaces/studioGenerate', version: 'v1', data: { workspaceId: ws, briefId, kind } });
+        refetch();
+        return { ok: res.status === 'success', ...(res.status === 'success' ? { artifactId: res.result.artifactId } : { error: res.errorCode }) };
+      },
+      deleteBrief: (briefId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, briefId } }).then(() => { refetch(); }); },
+      deleteArtifact: (artifactId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, artifactId } }).then(() => { refetch(); }); },
       saveTrigger: (t) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-save', clientRequestId: nextReqId(), ...t }, receiver: room }).then(() => { refetch(); }); },
       toggleTrigger: (id, enabled) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId: id, enabled, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

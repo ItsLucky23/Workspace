@@ -17,7 +17,11 @@ export type AiFeature =
   | 'docs-generate'
   | 'dockerfile-generate'
   | 'pipeline-agent'
-  | 'conflict-resolve';
+  | 'conflict-resolve'
+  //? Studio module (design + marketing). Two non-coding roles, each resolves to a provider
+  //? independently (so a design task can run on a different backend than a copy task).
+  | 'studio-designer'
+  | 'studio-marketer';
 
 export interface AiCompletionRequest {
   prompt: string;

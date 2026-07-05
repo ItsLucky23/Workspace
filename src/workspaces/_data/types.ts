@@ -747,3 +747,35 @@ export interface TicketSort {
   key: 'updated' | 'created' | 'title' | 'status';
   dir: 'asc' | 'desc';
 }
+
+//? Studio module — the design + marketing tool. A BRIEF describes the product; the AI designer/
+//? marketer roles generate ARTIFACTS from it. Kinds: landing page, marketing copy, brand kit,
+//? go-to-market strategy.
+export type StudioArtifactKind = 'landing' | 'copy' | 'brand' | 'strategy';
+
+export interface StudioBrief {
+  id: string;
+  workspaceId: string;
+  projectId?: string;
+  name: string;
+  productName: string;
+  audience: string;
+  tone: string;
+  goals: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface StudioArtifact {
+  id: string;
+  workspaceId: string;
+  briefId: string;
+  kind: StudioArtifactKind;
+  role: 'designer' | 'marketer';
+  title: string;
+  content: unknown;          // kind-specific: {html} | {sections[]} | brand tokens | {markdown}
+  providerId?: string;
+  status: 'generating' | 'ready' | 'error';
+  error?: string;
+  createdAt: string;
+}

@@ -877,6 +877,24 @@
       "urgent": "Urgent",
       "urgentHint": "Skips the capacity cap · still needs approval to merge"
     },
+    "studio": {
+      "briefs": "Briefs", "newBrief": "New brief", "noBriefs": "No briefs yet.",
+      "briefIntro": "Describe your product; the AI designer + marketer generate a landing page, copy, a brand kit, and a strategy from it.",
+      "fieldName": "Brief name", "fieldNamePlaceholder": "e.g. Launch v1",
+      "fieldProduct": "Product / what you're marketing", "fieldProductPlaceholder": "e.g. Acme — an AI to-do app",
+      "fieldAudience": "Target audience", "fieldAudiencePlaceholder": "e.g. busy founders + small teams",
+      "fieldTone": "Tone / brand voice", "fieldTonePlaceholder": "e.g. bold, playful, confident",
+      "fieldGoals": "Goals", "fieldGoalsPlaceholder": "What should this marketing achieve?",
+      "fieldNotes": "Extra context (optional)", "fieldNotesPlaceholder": "Anything else the AI should know",
+      "saveBrief": "Save brief", "editBrief": "Edit brief",
+      "generate": "Generate", "generating": "Generating — this can take up to a minute…",
+      "noArtifacts": "No artifacts yet. Generate one above.", "noAudience": "no audience set",
+      "kind": { "landing": "Landing page", "copy": "Marketing copy", "brand": "Brand kit", "strategy": "Strategy" },
+      "deleteBriefTitle": "Delete “{{name}}”?", "deleteBriefBody": "This removes the brief and all its generated artifacts.", "deleteArtifact": "Delete artifact",
+      "failed": "Generation failed", "empty": "Nothing generated.",
+      "palette": "Palette", "typography": "Typography", "voice": "Voice", "taglines": "Taglines", "logoIdeas": "Logo ideas",
+      "collapse": "Collapse", "expand": "Expand", "copyHtml": "Copy HTML"
+    },
     "automation": {
       "title": "Automation", "subtitle": "Fire an action when something happens, or on a schedule.",
       "add": "New trigger", "empty": "No triggers yet. Create one to automate notifications, stage moves, and more.",

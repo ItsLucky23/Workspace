@@ -27,7 +27,13 @@ import type {
   SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
+  StudioBrief, StudioArtifact, StudioArtifactKind,
 } from '../../src/workspaces/_data/types';
+
+//? DB-string → the studio artifact kind (fallback keeps a stale row from crashing the snapshot).
+const ARTIFACT_KINDS: readonly StudioArtifactKind[] = ['landing', 'copy', 'brand', 'strategy'];
+const asArtifactKind = (s: string): StudioArtifactKind => ((ARTIFACT_KINDS as readonly string[]).includes(s) ? s : 'landing') as StudioArtifactKind;
+const asArtifactStatus = (s: string): StudioArtifact['status'] => (s === 'generating' || s === 'error' ? s : 'ready');
 
 //? DB-string → the trigger unions (fallback to a safe default so a stale row can't crash the snapshot).
 const TRIGGER_ONS: readonly TriggerEventKind[] = ['stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.created', 'ticket.merged', 'suggestion.accepted', 'cron'];
@@ -146,6 +152,9 @@ export interface WorkspaceSnapshot {
   insights: WorkspaceInsights;
   //? Automation (#2): the workspace's triggers.
   triggers: WorkspaceTrigger[];
+  //? Studio module: product briefs + their generated artifacts.
+  studioBriefs: StudioBrief[];
+  studioArtifacts: StudioArtifact[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -157,6 +166,8 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
+  studioBriefs: [],
+  studioArtifacts: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -180,7 +191,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
@@ -205,6 +216,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.spendRecord.findMany({ orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true } }),
       //? Automation (#2): the workspace's WorkspaceTriggers (for the automation panel).
       tenantDb.workspaceTrigger.findMany({ orderBy: { createdAt: 'desc' } }),
+      //? Studio module: briefs + their generated artifacts.
+      tenantDb.studioBrief.findMany({ orderBy: { createdAt: 'desc' } }),
+      tenantDb.studioArtifact.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -265,6 +279,15 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         match: t.match, params: t.params, requiresApproval: t.requiresApproval,
         ...(t.cron ? { cron: t.cron } : {}), ...(t.dedupeKey ? { dedupeKey: t.dedupeKey } : {}), ...(t.debounceMs === null ? {} : { debounceMs: t.debounceMs }),
         ...(t.lastFiredAt ? { lastFiredAt: t.lastFiredAt.toISOString() } : {}),
+      })),
+      studioBriefs: studioBriefRows.map((b): StudioBrief => ({
+        id: b.id, workspaceId: b.workspaceId, name: b.name, productName: b.productName, audience: b.audience, tone: b.tone, goals: b.goals,
+        ...(b.projectId ? { projectId: b.projectId } : {}), ...(b.notes ? { notes: b.notes } : {}), createdAt: b.createdAt.toISOString(),
+      })),
+      studioArtifacts: studioArtifactRows.map((a): StudioArtifact => ({
+        id: a.id, workspaceId: a.workspaceId, briefId: a.briefId, kind: asArtifactKind(a.kind), role: a.role === 'marketer' ? 'marketer' : 'designer',
+        title: a.title, content: a.content, status: asArtifactStatus(a.status),
+        ...(a.providerId ? { providerId: a.providerId } : {}), ...(a.error ? { error: a.error } : {}), createdAt: a.createdAt.toISOString(),
       })),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),

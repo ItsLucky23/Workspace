@@ -877,6 +877,24 @@
       "urgent": "Dringend",
       "urgentHint": "Überspringt das Kapazitätslimit · benötigt weiterhin eine Freigabe zum Mergen"
     },
+    "studio": {
+      "briefs": "Briefings", "newBrief": "Neues Briefing", "noBriefs": "Noch keine Briefings.",
+      "briefIntro": "Beschreibe dein Produkt; der KI-Designer + Marketer erzeugen daraus eine Landingpage, Copy, ein Brand-Kit und eine Strategie.",
+      "fieldName": "Briefing-Name", "fieldNamePlaceholder": "z. B. Launch v1",
+      "fieldProduct": "Produkt / was du vermarktest", "fieldProductPlaceholder": "z. B. Acme — eine KI-To-do-App",
+      "fieldAudience": "Zielgruppe", "fieldAudiencePlaceholder": "z. B. beschäftigte Gründer + kleine Teams",
+      "fieldTone": "Ton / Markenstimme", "fieldTonePlaceholder": "z. B. mutig, verspielt, selbstbewusst",
+      "fieldGoals": "Ziele", "fieldGoalsPlaceholder": "Was soll dieses Marketing erreichen?",
+      "fieldNotes": "Zusätzlicher Kontext (optional)", "fieldNotesPlaceholder": "Was die KI sonst noch wissen sollte",
+      "saveBrief": "Briefing speichern", "editBrief": "Briefing bearbeiten",
+      "generate": "Generieren", "generating": "Wird generiert — das kann bis zu einer Minute dauern…",
+      "noArtifacts": "Noch keine Artefakte. Generiere oben eines.", "noAudience": "keine Zielgruppe gesetzt",
+      "kind": { "landing": "Landingpage", "copy": "Marketing-Copy", "brand": "Brand-Kit", "strategy": "Strategie" },
+      "deleteBriefTitle": "„{{name}}“ löschen?", "deleteBriefBody": "Das entfernt das Briefing und alle generierten Artefakte.", "deleteArtifact": "Artefakt löschen",
+      "failed": "Generierung fehlgeschlagen", "empty": "Nichts generiert.",
+      "palette": "Palette", "typography": "Typografie", "voice": "Stimme", "taglines": "Taglines", "logoIdeas": "Logo-Ideen",
+      "collapse": "Einklappen", "expand": "Ausklappen", "copyHtml": "HTML kopieren"
+    },
     "automation": {
       "title": "Automatisierung", "subtitle": "Löse eine Aktion aus, wenn etwas passiert, oder nach Zeitplan.",
       "add": "Neuer Trigger", "empty": "Noch keine Trigger. Erstelle einen, um Benachrichtigungen, Stage-Wechsel und mehr zu automatisieren.",

@@ -1378,3 +1378,18 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Resultaat:** app-image **bouwt** (npm install + node-pty-compile + vite build + prisma generate, exit 0). Volledige stack **draait healthy**: `workspaces-app-1`, `-mongo-1` (single-node replica-set, self-init), `-redis-1` — `/healthz`+`/readyz`+`/livez` = **200** tegen z'n EIGEN verse mongo/redis (niet de dev-tunnel). App is niet host-published (alleen caddy) → verstoorde de dev-:80 niet. Daarna `compose down -v` opgeruimd; dev-:80 nog healthy, `workspaces-net` behouden.
 
 **Files touched:** `.dockerignore` (nieuw), `deploy/Dockerfile`, `deploy/docker-compose.yml`, `deploy/bootstrap.sh`.
+
+## 2026-07-05 — Studio: AI design + marketing module (ADR 0033)
+
+**User prompt:** werk de designer + marketing-tool uit, gedetailleerd, en test live (na een vragenrondje: AI-rollen op de AgentRole-registry, via de provider-abstractie, alle 4 artefact-types, eerst één verticale flow end-to-end).
+
+**What I did:** Nieuwe Workspaces-module "Studio" — AI designer- + marketeer-rollen nemen een product-brief en leveren artefacten, via de pluggable AI-provider-laag (ADR 0007) + de AgentRole-registry (#2).
+- **Data**: `StudioBrief` + `StudioArtifact` (Prisma).
+- **`server/studio/generate.ts`**: pure per-kind prompt-builders + parsers (unit-getest) + `generateArtifact` (runt `runAiCompletion` → parse → store). Kinds→rollen/features: landing+brand=designer/`studio-designer`, copy+strategy=marketer/`studio-marketer` (2 nieuwe `AiFeature`s + assignments). Landing=self-contained HTML in een **sandboxed iframe**, brand/copy=JSON, strategy=markdown.
+- **`server/studio/roles.ts`**: registreert `studio-designer`/`studio-marketer` in de #2-registry (`mutates:true` → approval-gate), boot in server.ts.
+- **Routes** (`_api`, membership-gated, relaxed): `studioSaveBrief`, `studioGenerate` (rate-limit 10), `studioDelete`. Snapshot-exposure van briefs + artifacts.
+- **UI**: nieuwe `studio`-view + nav-item + `src/workspaces/studio/page.tsx` (brief-lijst, brief-form, generate-rij met 4 kinds, per-kind live preview: iframe-landing, palette-swatches, copy-kolommen, gerenderde strategy-markdown). i18n en/nl/de/fr.
+
+**Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. `studio.test.mts` **17/17** (pure builders/parsers/role-wiring). **PENDING live-verificatie**: een externe `@luckystack/secret-manager`-outage blokkeerde `DATABASE_URL`-resolutie → de DB-index-push (Mongo maakt collecties bij eerste write), de store-flow-test en de browser-generate. Te draaien zodra de secret-manager bereikbaar is.
+
+**Files touched:** `prisma/schema.prisma` (StudioBrief/StudioArtifact), `server/studio/{generate,roles}.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/studio/page.tsx` (nieuw), `src/workspaces/_api/studio{SaveBrief,Generate,Delete}_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0033-*.md`, `tests/integration/studio.test.mts` (nieuw).

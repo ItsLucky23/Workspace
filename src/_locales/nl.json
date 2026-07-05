@@ -877,6 +877,24 @@
       "urgent": "Urgent",
       "urgentHint": "Slaat de capaciteitslimiet over · vereist nog steeds goedkeuring om te mergen"
     },
+    "studio": {
+      "briefs": "Briefs", "newBrief": "Nieuwe brief", "noBriefs": "Nog geen briefs.",
+      "briefIntro": "Beschrijf je product; de AI-designer + marketeer genereren er een landingspagina, copy, een brand-kit en een strategie uit.",
+      "fieldName": "Brief-naam", "fieldNamePlaceholder": "bijv. Launch v1",
+      "fieldProduct": "Product / wat je vermarkt", "fieldProductPlaceholder": "bijv. Acme — een AI-todo-app",
+      "fieldAudience": "Doelgroep", "fieldAudiencePlaceholder": "bijv. drukke founders + kleine teams",
+      "fieldTone": "Tone / merkstem", "fieldTonePlaceholder": "bijv. gedurfd, speels, zelfverzekerd",
+      "fieldGoals": "Doelen", "fieldGoalsPlaceholder": "Wat moet deze marketing bereiken?",
+      "fieldNotes": "Extra context (optioneel)", "fieldNotesPlaceholder": "Wat de AI nog meer moet weten",
+      "saveBrief": "Brief opslaan", "editBrief": "Brief bewerken",
+      "generate": "Genereren", "generating": "Bezig met genereren — dit kan tot een minuut duren…",
+      "noArtifacts": "Nog geen artefacten. Genereer er hierboven een.", "noAudience": "geen doelgroep ingesteld",
+      "kind": { "landing": "Landingspagina", "copy": "Marketing-copy", "brand": "Brand-kit", "strategy": "Strategie" },
+      "deleteBriefTitle": "“{{name}}” verwijderen?", "deleteBriefBody": "Dit verwijdert de brief en al z'n gegenereerde artefacten.", "deleteArtifact": "Artefact verwijderen",
+      "failed": "Genereren mislukt", "empty": "Niets gegenereerd.",
+      "palette": "Palet", "typography": "Typografie", "voice": "Stem", "taglines": "Taglines", "logoIdeas": "Logo-ideeën",
+      "collapse": "Inklappen", "expand": "Uitklappen", "copyHtml": "HTML kopiëren"
+    },
     "automation": {
       "title": "Automatisering", "subtitle": "Vuur een actie af als er iets gebeurt, of op schema.",
       "add": "Nieuwe trigger", "empty": "Nog geen triggers. Maak er een om meldingen, stage-verplaatsingen en meer te automatiseren.",

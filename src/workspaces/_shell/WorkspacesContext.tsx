@@ -11,11 +11,12 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
+  StudioBrief, StudioArtifact, StudioArtifactKind,
 } from '../_data/types';
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'ai' | 'settings' | 'workspace'
+  | 'pipeline' | 'usage' | 'studio' | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 
 export interface WorkspacesCtx {
@@ -169,6 +170,13 @@ export interface WorkspacesCtx {
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
   triggers: WorkspaceTrigger[];        // #2: automation triggers
+  //? Studio module — design + marketing tool.
+  studioBriefs: StudioBrief[];
+  studioArtifacts: StudioArtifact[];
+  saveBrief: (b: { id?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes?: string }) => Promise<void>;
+  generateArtifact: (briefId: string, kind: StudioArtifactKind) => Promise<{ ok: boolean; artifactId?: string; error?: string }>;
+  deleteBrief: (briefId: string) => void;
+  deleteArtifact: (artifactId: string) => void;
   //? #2 automation writes — create/update, enable/disable, delete a trigger (control-ops).
   saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string }) => void;
   toggleTrigger: (id: string, enabled: boolean) => void;

@@ -13,6 +13,10 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'dockerfile-generate': 'claude-cli',
   'pipeline-agent': 'claude-cli',
   'conflict-resolve': 'claude-cli',
+  //? Studio is non-coding one-shot generation — default to the always-available Claude CLI,
+  //? overridable to gemini-api (faster/cheaper for bulk text) once the picker UI exists.
+  'studio-designer': 'claude-cli',
+  'studio-marketer': 'claude-cli',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a
