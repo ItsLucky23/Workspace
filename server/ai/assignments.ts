@@ -20,6 +20,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   //? Designer theme generation is short structured JSON — always-available Claude CLI default,
   //? overridable to gemini-api (a good fit for cheap fast JSON) once the picker UI exists.
   'designer-theme': 'claude-cli',
+  'designer-style': 'claude-cli',
+  'designer-animation': 'claude-cli',
   //? Interviewer reasoning — default to the always-available Claude CLI, overridable per workspace.
   'interviewer': 'claude-cli',
   //? Web-scrape summarisation — always-available Claude CLI default, overridable.

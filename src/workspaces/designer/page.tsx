@@ -11,7 +11,7 @@ import { useTranslator } from '@luckystack/core/client';
 import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../_components/Icon';
-import { Segmented } from '../_components/primitives';
+import { Segmented, WsButton } from '../_components/primitives';
 import { DesignerProvider, useDesigner } from './state';
 import type { ThemeMode } from './themes';
 import Components from './sections/Components';
@@ -39,13 +39,27 @@ export default function DesignerPage() {
   );
 }
 
+//? The sections the unified "AI generates it" bar can target (each has an AI generator).
+const AI_SECTIONS = new Set<SectionId>(['themes', 'styles', 'animations']);
+
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
   const [section, setSection] = useState<SectionId>('components');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState(false);
 
   const themeItems: DropdownItem[] = d.themes.map((t) => ({ id: t.id, value: t.id, item: t.name }));
   const activeItem = themeItems.find((i) => i.id === d.activeThemeId);
+
+  const runAi = () => {
+    const p = aiPrompt.trim();
+    if (!p || aiBusy) return;
+    setAiBusy(true); setAiError(false);
+    const gen = section === 'themes' ? d.generateTheme : (section === 'styles' ? d.generateStyle : d.generateAnimation);
+    void gen(p).then((ok) => { setAiBusy(false); if (ok) setAiPrompt(''); else setAiError(true); });
+  };
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -79,6 +93,19 @@ function DesignerShell() {
           );
         })}
       </div>
+
+      {/* unified "AI generates / adjusts" bar — one input, targets the active section (no duplicate AI boxes) */}
+      {AI_SECTIONS.has(section) && (
+        <div className="px-3 md:px-4 py-2 border-b border-divider flex items-center gap-2 bg-container1/40">
+          <Icon name="wand-magic-sparkles" className="text-primary shrink-0" />
+          <input value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} disabled={aiBusy}
+            onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
+            placeholder={translate({ key: `workspaces.designer.aiBar.${section}` })}
+            className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+          {aiError && <span className="text-xs text-wrong shrink-0">{translate({ key: 'workspaces.designer.aiError' })}</span>}
+          <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={runAi} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>{translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiGenerate' })}</WsButton>
+        </div>
+      )}
 
       {/* active section */}
       <div className="flex-1 min-h-0">

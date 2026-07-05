@@ -6,6 +6,8 @@
 
 import type { Transition } from 'motion/react';
 
+import { coNum, coStr } from './styles';
+
 export type AnimSource = 'seed' | 'ai' | 'manual';
 export type AnimEasing = 'spring' | 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
 
@@ -83,4 +85,22 @@ export const SEED_ANIMS: AnimSpec[] = [
 //? A blank-but-valid spec (clones Fade up) for "new animation" / AI fill.
 export function blankAnim(id: string, name: string): AnimSpec {
   return { id, name, description: '', source: 'manual', fade: true, x: 0, y: 12, scale: 1, rotate: 0, easing: 'spring', duration: 0.34, bounce: 0.1 };
+}
+
+function coClamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)); }
+
+//? Coerce a raw AI-generated object into a valid AnimSpec (validates the easing enum, clamps ranges).
+export function coerceAnim(raw: unknown, id: string): AnimSpec {
+  const o = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const num = coNum; const str = coStr; const clamp = coClamp;
+  const easings: readonly AnimEasing[] = ['spring', 'linear', 'easeIn', 'easeOut', 'easeInOut'];
+  const easing = typeof o.easing === 'string' && (easings as readonly string[]).includes(o.easing) ? (o.easing as AnimEasing) : 'spring';
+  return {
+    id, source: 'ai',
+    name: str(o.name, 'AI animation'), description: str(o.description, ''),
+    fade: typeof o.fade === 'boolean' ? o.fade : true,
+    x: clamp(num(o.x, 0), -160, 160), y: clamp(num(o.y, 12), -160, 160),
+    scale: clamp(num(o.scale, 1), 0.2, 1.6), rotate: clamp(num(o.rotate, 0), -180, 180),
+    easing, duration: clamp(num(o.duration, 0.34), 0.1, 1.5), bounce: clamp(num(o.bounce, 0.1), 0, 0.8),
+  };
 }

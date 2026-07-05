@@ -15,8 +15,8 @@ import {
   COLOR_TOKENS, LUCKYSTACK_THEME, SEED_THEMES, blankTheme,
   type ColorToken, type DesignTheme, type ThemeMode, type ThemeSource, type ThemeTokens,
 } from './themes';
-import { APPLE_STYLE, SEED_STYLES, blankStyle, type DesignStyle } from './styles';
-import { FADE_ANIM, SEED_ANIMS, blankAnim, type AnimSpec } from './animations';
+import { APPLE_STYLE, SEED_STYLES, blankStyle, coerceStyle, type DesignStyle } from './styles';
+import { FADE_ANIM, SEED_ANIMS, blankAnim, coerceAnim, type AnimSpec } from './animations';
 
 //? A stable, collision-free client id (no Date.now/Math.random needed — a monotonic counter is
 //? enough for client-only library items).
@@ -58,6 +58,7 @@ export interface DesignerCtx {
   renameStyle: (id: string, name: string) => void;
   removeStyle: (id: string) => void;
   setStyle: (patch: Partial<DesignStyle>) => void;
+  generateStyle: (prompt: string) => Promise<boolean>;    // AI
 
   // ---- animations ----
   anims: AnimSpec[];
@@ -69,6 +70,7 @@ export interface DesignerCtx {
   renameAnim: (id: string, name: string) => void;
   removeAnim: (id: string) => void;
   setAnim: (patch: Partial<AnimSpec>) => void;
+  generateAnimation: (prompt: string) => Promise<boolean>;    // AI
 }
 
 const Ctx = createContext<DesignerCtx | null>(null);
@@ -124,6 +126,15 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       renameStyle: (id, name) => { setStyles((p) => p.map((s) => (s.id === id ? { ...s, name } : s))); },
       removeStyle: (id) => { setStyles((p) => p.filter((s) => s.id !== id)); if (activeStyleId === id) setActiveStyleId(APPLE_STYLE.id); },
       setStyle: (patch) => { setStyles((p) => p.map((s) => (s.id === activeStyleId ? { ...s, ...patch, source: s.source === 'seed' ? 'seed' : 'manual' } : s))); },
+      generateStyle: async (prompt) => {
+        const workspaceId = activeWorkspace.id;
+        if (!workspaceId || prompt.trim().length === 0) return false;
+        const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/designerGenerateAsset', version: 'v1', data: { workspaceId, kind: 'style', prompt: prompt.trim() } }));
+        if (error || res?.status !== 'success') return false;
+        const s = coerceStyle(res.result.asset, nextId('ai-style'));
+        setStyles((p) => [...p, s]); setActiveStyleId(s.id);
+        return true;
+      },
 
       anims, activeAnimId, setActiveAnimId, activeAnim,
       addAnim: () => { const a = blankAnim(nextId('anim'), `Custom ${String(anims.filter((x) => x.source === 'manual').length + 1)}`); setAnims((p) => [...p, a]); setActiveAnimId(a.id); },
@@ -131,6 +142,15 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       renameAnim: (id, name) => { setAnims((p) => p.map((a) => (a.id === id ? { ...a, name } : a))); },
       removeAnim: (id) => { setAnims((p) => p.filter((a) => a.id !== id)); if (activeAnimId === id) setActiveAnimId(FADE_ANIM.id); },
       setAnim: (patch) => { setAnims((p) => p.map((a) => (a.id === activeAnimId ? { ...a, ...patch, source: a.source === 'seed' ? 'seed' : 'manual' } : a))); },
+      generateAnimation: async (prompt) => {
+        const workspaceId = activeWorkspace.id;
+        if (!workspaceId || prompt.trim().length === 0) return false;
+        const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/designerGenerateAsset', version: 'v1', data: { workspaceId, kind: 'animation', prompt: prompt.trim() } }));
+        if (error || res?.status !== 'success') return false;
+        const a = coerceAnim(res.result.asset, nextId('ai-anim'));
+        setAnims((p) => [...p, a]); setActiveAnimId(a.id);
+        return true;
+      },
     };
   }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id]);
 

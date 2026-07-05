@@ -146,3 +146,28 @@ export const SEED_STYLES: DesignStyle[] = [
 export function blankStyle(id: string, name: string): DesignStyle {
   return { ...APPLE_STYLE, id, name, description: '', source: 'manual' };
 }
+
+//? Small coercion helpers (module-scope) shared by the AI-fill parsers.
+export function coNum(v: unknown, fb: number): number { return typeof v === 'number' && Number.isFinite(v) ? v : fb; }
+export function coStr(v: unknown, fb: string): string { return typeof v === 'string' && v.trim().length > 0 ? v.trim() : fb; }
+export function coOneOf<T extends string>(v: unknown, opts: readonly T[], fb: T): T { return typeof v === 'string' && (opts as readonly string[]).includes(v) ? (v as T) : fb; }
+
+//? Coerce a raw AI-generated object into a valid DesignStyle (validates enums, fills from Apple).
+export function coerceStyle(raw: unknown, id: string): DesignStyle {
+  const o = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const b = APPLE_STYLE;
+  const num = coNum; const str = coStr; const oneOf = coOneOf;
+  return {
+    id, source: 'ai',
+    name: str(o.name, 'AI style'), description: str(o.description, ''),
+    radius: num(o.radius, b.radius), radiusLg: num(o.radiusLg, b.radiusLg),
+    pill: typeof o.pill === 'boolean' ? o.pill : b.pill,
+    shadow: str(o.shadow, b.shadow), shadowSm: str(o.shadowSm, b.shadowSm),
+    border: oneOf(o.border, ['none', 'hairline', 'solid', 'bold'] as const, b.border),
+    density: oneOf(o.density, ['compact', 'cozy', 'comfortable'] as const, b.density),
+    fontHeading: str(o.fontHeading, b.fontHeading), fontBody: str(o.fontBody, b.fontBody),
+    weightHeading: num(o.weightHeading, b.weightHeading), tracking: str(o.tracking, b.tracking),
+    motion: oneOf(o.motion, ['none', 'snappy', 'smooth', 'bouncy'] as const, b.motion),
+    blur: num(o.blur, b.blur),
+  };
+}

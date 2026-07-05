@@ -25,6 +25,9 @@ export type AiFeature =
   //? Designer module — generates a full design THEME (a light+dark set of the 30 --color-* tokens)
   //? from a plain-language brief. Non-coding structured-JSON generation.
   | 'designer-theme'
+  //? Designer — generate a visual STYLE (radius/shadow/typography/motion) or an ANIMATION from a brief.
+  | 'designer-style'
+  | 'designer-animation'
   //? Interviewer — reasons over the project and proposes concrete improvement ideas (schedulable as
   //? an agent role). Non-coding one-shot completion.
   | 'interviewer'

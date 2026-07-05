@@ -1541,3 +1541,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** server-tsc 0 · eslint 0 · ai:lint 0 · `interviewerRole.test` **11/11** (RAG-grounding-blok + scraper-registratie). Live na backend-herstart.
 
 **Files touched:** `server/interviewer/role.ts`, `server/scraper/role.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `tests/integration/interviewerRole.test.mts`.
+
+## 2026-07-05 22:00 — Designer: AI genereert óók styles + animaties + unified "AI past alles aan"-balk
+
+**User prompt:** "Designer: AI genereert óók styles/animaties + een unified 'AI past alles aan'-balk."
+
+**What I did (gespiegeld op de bewezen theme-gen):**
+- **Server** `server/designer/generateAsset.ts` — pure `buildStylePrompt`/`buildAnimPrompt` (vragen 1 JSON-blok in de exacte DesignStyle- resp. AnimSpec-shape) + `parseAsset` + `generateStyle`/`generateAnimation` (provider-laag, nieuwe features `designer-style`/`designer-animation`, getagd in de AI-activity-feed). Eén membership-gated route `designerGenerateAsset_v1` (`kind:'style'|'animation'`).
+- **Client** — `coerceStyle`/`coerceAnim` (raw JSON → valide DesignStyle/AnimSpec: enums gevalideerd, ranges geclamped, defaults uit de seed). `state.tsx` kreeg `generateStyle`/`generateAnimation` (route → coerce → toevoegen als `source:'ai'` + selecteren).
+- **Unified "AI past alles aan"-balk** in de Designer-shell: **één** AI-input (geen dubbele boxes — sluit aan op de "geen dubbele AI-inputs"-wens) die op de **actieve sectie** genereert (Themes → thema, Styles → style, Animations → animatie), met loading/error. De losse Themes-rail-composer blijft als contextuele shortcut.
+- i18n en/nl (de/fr EN-mirror voor de bar-placeholders).
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `designerAsset.test` **7/7** (style/anim-prompts vragen JSON + brief; parser leest velden + garbage→leeg). Live na backend-herstart.
+
+**Files touched:** `server/designer/generateAsset.ts` (nieuw), `server/ai/{types,assignments}.ts`, `src/workspaces/_api/designerGenerateAsset_v1.ts` (nieuw), `src/workspaces/designer/{state.tsx,styles.ts,animations.ts,page.tsx}`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designerAsset.test.mts` (nieuw).
