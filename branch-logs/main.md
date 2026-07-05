@@ -1450,3 +1450,23 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0, eslint 0, ai:lint 0. Nieuw `designerTheme.test.mts` **18/18** (prompt bevat de 30 tokens + brief; parser leest name/desc/tokens, vult ontbrekende, unfenced JSON, garbage→base-fallback zonder throw). **Browser**: composer rendert + verstuurt `workspaces/designerGenerateTheme` met de juiste payload; de UI toont de error-state netjes. **Live claude-cli-generatie is nog niet groen bewezen**: de draaiende backend gaf 500 omdat server-code niet hot-reloadt (lesson 0007) — de route zit pas in de map ná een backend-herstart. Ik heb de gedeelde backend NIET herstart (risico: de WIP-tsc-fouten van de andere AI kunnen de boot breken). De logica is unit-bewezen; claude-cli zelf is bewezen werkend (Studio-generatie). **Developer-actie:** herstart de backend (schone boot) → de knop genereert live.
 
 **Files touched:** `server/ai/{types,assignments}.ts`, `server/designer/generateTheme.ts` (nieuw), `src/workspaces/_api/designerGenerateTheme_v1.ts` (nieuw), `src/workspaces/designer/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designerTheme.test.mts` (nieuw).
+
+## 2026-07-05 17:30 — Designer v2: brede visual-editor (Styles + Animations + Typography + Themes-polish + reorg)
+
+**User prompt:** "Per feature 10 extra dingen zelf toevoegen, alles testen, neem 2× de tijd — volume én kwaliteit." Feedback: component-lijst is te gelimiteerd → wil **design-skills/styles (Apple-achtig e.a.)** + **animatie-preview/editor**; Designer veel breder ("alles omtrent visuals bewerken/inzien, handmatige editors voor simpel, AI kan alles"); **rename** miste; "alles op 1 pagina van components is niet overzichtelijk".
+
+**What I did — de Designer omgebouwd van één lijst naar een sectie-tool:**
+- **Shell** (`page.tsx` herschreven): intro + **globale theme/mode-picker** (geldt over alle secties) + **sectie-tabs Components · Styles · Animations · Themes · Typography**. Gedeelde state in een nieuwe **`DesignerProvider`/`useDesigner`** context (`state.tsx`) — thema's + styles + animaties, elk met add/duplicate/**rename**/remove + AI (thema).
+- **Components** (`sections/Components.tsx`): dezelfde échte-componenten-gallery maar met **categorie-rail + zoek** (lost "niet overzichtelijk" op), rendert onder het actieve thema.
+- **Styles** (`sections/Styles.tsx` + `styles.ts`): **8 design-skills** (Apple/Material/Brutalist/Neumorphic/Glass/Minimal/Playful/Editorial) als `--ds-*`-CSS-vars → een **live style-aware showcase** (kaart+form+badges) die zichtbaar hervormt (radius/shadow/borders/density/fonts/blur) + **handmatige editor** (sliders + keuzes + font/shadow-velden). Browser-bewezen: Apple↔Brutalist hertekent de showcase compleet.
+- **Animations** (`sections/Animations.tsx` + `animations.ts`): **8 motion-presets** afgestemd op de échte app-springs (SPRING_POP/SHEET/SOFT + accordion) + een **playground** (element re-playt live op elke wijziging + Replay-knop, `motion/react`) + **param-editor** (fade/x/y/scale/rotate/duur/bounce sliders) + **easing-curve-SVG** + reduced-motion-note.
+- **Themes** (`sections/Themes.tsx` + `themes.ts`-uitbreiding): rail met **rename + A/B-compare** + de token-editor + **live WCAG-contrast-grading** (browser: 15.13·AAA … 3.68·AA-large) + **export naar echte `@theme`-CSS** + **auto-afgeleide accent-varianten** (G-DSGN-4, hex-maths) + AI-thema-generatie.
+- **Typography** (`sections/Typography.tsx`): font-paar van de actieve style over een volledige type-scale + bewerkbare font-stacks.
+- **`ui.tsx`**: gedeelde `RenameField` (dubbelklik/pencil, single-click blijft selecteren), `SourceBadge`, `SectionHead`, `Slider`.
+- i18n: ~70 nieuwe keys; **en + nl volledig vertaald**, de/fr = EN-mirror voor dit v2-blok (vertaling = follow-up; keys compleet).
+
+**Verify:** root-tsc 0 · eslint 0 · ai:lint 0 · `vite build` groen · `designerTheme.test` 18/18. **Browser live** (5 secties doorgeklikt): shell + globale picker, Components-categorie-rail, Styles Apple↔Brutalist-hervorming, Animations-playground, Themes-contrast/export/derive, rename-fix (single-click selecteert, niet-rename). Console clean.
+
+**Files touched:** `src/workspaces/designer/{page,state,ui}.tsx` (state/ui nieuw), `designer/{themes,styles,animations}.ts` (styles/animations nieuw), `designer/sections/{Components,Styles,Animations,Themes,Typography}.tsx` (nieuw), `src/_locales/{en,nl,de,fr}.json`.
+
+**Notes / volgende:** AI-generatie voor styles + animaties (nu handmatig) + unified "AI past alles aan"-balk = volgende Designer-slice. Client-side thema/style/anim-bibliotheken (persisteren later). Interviewer-saved-proposals + Scheduled-tasks(cron)-feature + Marketing (ads/thumbnails/scraping/video) staan nog open.
