@@ -16,7 +16,7 @@ import type {
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing'
+  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled'
   | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 
@@ -171,6 +171,7 @@ export interface WorkspacesCtx {
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
   triggers: WorkspaceTrigger[];        // #2: automation triggers
+  agentRoles: { key: string; label: string; description: string; mutates: boolean }[]; // schedulable roles
   //? Studio module — design + marketing tool.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];

@@ -1484,3 +1484,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root-tsc 0 · eslint 0 · ai:lint 0. Browser: font-picker (Georgia→serif), States+Foundations-categorieën, media-showcase. Lesson onderweg: `MotionTarget` moest een `type` blijven (geen `interface`) — motion/react's `TargetAndTransition` heeft een index-signature en alleen een type-alias is toewijsbaar (gedocumenteerde eslint-disable).
 
 **Files touched:** `src/workspaces/designer/fonts.ts` (nieuw), `ui.tsx` (FontPicker), `sections/{Typography,Styles,Components}.tsx`, `animations.ts` (MotionTarget-fix), `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-05 19:15 — Scheduled tasks (cron) feature + Interviewer als schedulebare AgentRole
+
+**User prompt:** "Ga verder" — de Interviewer mag voorstellen doen die opgeslagen worden, met een cronjob erachter; cron als aparte, herbruikbare feature.
+
+**What I did (bovenop de bestaande automation-engine ADR 0027 — geen nieuwe engine):**
+- **Interviewer als AgentRole** (`server/interviewer/role.ts`): registreert de `interviewer`-rol (mutates:false → propose-only) + een pure `buildInterviewerPrompt(focus)`. `run` roept `runAiCompletion('interviewer', …)` (nieuwe AiFeature, provider-laag ADR 0007) in `tryCatch` → geeft verbeterideeën terug die de executor als **notificatie** in het systeem vastlegt. Geregistreerd in `server.ts` naast `registerStudioRoles()`.
+- **`agentRoles` in de snapshot** (`workspaceSnapshot.ts` via `listAgentRoles()`) → client weet welke rollen schedulebaar zijn (studio-designer/marketer + interviewer).
+- **Scheduled-tasks-pagina** (`scheduled/page.tsx`, nieuwe nav-entry `clock`): een duidelijke cron-manager — kies cadans (Elk uur / Dagelijks 09:00 / Weekdagen / Wekelijks / custom cron), kies actie (**Draai een AI-rol** [role-picker + focus] of **Stuur een notificatie**), lijst met enable-toggle + delete + laatste-run. Schrijft via de bestaande `saveTrigger`/`toggleTrigger`/`deleteTrigger` control-ops (Conductor = single-writer, B-23). `requiresApproval` auto-aan voor `mutates`-rollen. Herbruikbaar voor Marketing-scraping later.
+- i18n en+nl vertaald, de/fr EN-mirror.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. Nieuw `interviewerRole.test.mts` **8/8** (prompt-scope + registratie in `listAgentRoles`). **Live-verificatie van de scheduler + role-invocatie vereist een backend-herstart** (nieuwe snapshot-field + role-registratie; server hot-reload niet — lesson 0007). De server compileert nu 100% clean → herstart is veilig. De trigger-CRUD zelf draait op de bestaande control-ops.
+
+**Files touched:** `server/interviewer/role.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/scheduled/page.tsx` (nieuw), `src/workspaces/_shell/{Shell,WorkspacesContext,WorkspacesProvider}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/interviewerRole.test.mts` (nieuw).

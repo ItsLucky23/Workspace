@@ -56,6 +56,7 @@ interface Snap {
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
   triggers: WorkspaceTrigger[];
+  agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
   studioBrand: StudioBrandLibrary | null;
@@ -71,6 +72,7 @@ const EMPTY_SNAP: Snap = {
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
+  agentRoles: [],
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
@@ -91,7 +93,7 @@ function viewFromPath(pathname: string): WsView {
 const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',
   sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
-  designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing',
+  designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
   settings: 'Account', workspace: 'Workspace',
 };
 function viewLabel(view: WsView): string {
@@ -796,6 +798,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       usage: snap.usage,
       insights: snap.insights,
       triggers: snap.triggers,
+      agentRoles: snap.agentRoles,
       studioBriefs: snap.studioBriefs,
       studioArtifacts: snap.studioArtifacts,
       studioBrand: snap.studioBrand,

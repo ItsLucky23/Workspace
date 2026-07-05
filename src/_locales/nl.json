@@ -974,6 +974,20 @@
       "placeholder": "Vraag iets over je codebase, of beschrijf een plan…",
       "send": "Versturen", "error": "Er ging iets mis bij het bereiken van de AI. Probeer opnieuw."
     },
+    "scheduled": {
+      "title": "Geplande taken",
+      "tagline": "Draai een AI-rol of een notificatie op schema.",
+      "new": "Nieuwe taak", "empty": "Nog geen geplande taken. Maak er een om iets op een cron-schema te draaien.",
+      "name": "Naam", "namePlaceholder": "bv. Wekelijkse verbeterideeën",
+      "cadenceLabel": "Hoe vaak", "doLabel": "Wat draaien",
+      "cadence": { "hourly": "Elk uur", "daily": "Dagelijks · 09:00", "weekdays": "Weekdagen · 09:00", "weekly": "Wekelijks · ma 09:00", "custom": "Aangepast" },
+      "mode": { "role": "Draai een AI-rol", "notify": "Stuur een notificatie" },
+      "role": "AI-rol", "rolePlaceholder": "Kies een rol", "needsApproval": "vereist goedkeuring",
+      "focus": "Focus (optioneel)", "focusPlaceholder": "bv. de auth-flow, of laat leeg voor het hele project",
+      "notifyTitle": "Notificatie-titel", "notifyTitlePlaceholder": "bv. Standup-herinnering", "notifyBody": "Notificatie-tekst",
+      "runsAt": "Draait op: {{cron}}", "create": "Taak aanmaken", "actNotify": "Notificatie",
+      "lastRun": "laatst gedraaid {{when}}"
+    },
     "automation": {
       "title": "Automatisering", "subtitle": "Vuur een actie af als er iets gebeurt, of op schema.",
       "add": "Nieuwe trigger", "empty": "Nog geen triggers. Maak er een om meldingen, stage-verplaatsingen en meer te automatiseren.",

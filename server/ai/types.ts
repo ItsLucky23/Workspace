@@ -24,7 +24,10 @@ export type AiFeature =
   | 'studio-marketer'
   //? Designer module — generates a full design THEME (a light+dark set of the 30 --color-* tokens)
   //? from a plain-language brief. Non-coding structured-JSON generation.
-  | 'designer-theme';
+  | 'designer-theme'
+  //? Interviewer — reasons over the project and proposes concrete improvement ideas (schedulable as
+  //? an agent role). Non-coding one-shot completion.
+  | 'interviewer';
 
 export interface AiCompletionRequest {
   prompt: string;

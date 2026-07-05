@@ -974,6 +974,20 @@
       "placeholder": "Posez une question sur votre base de code, ou décrivez un plan…",
       "send": "Envoyer", "error": "Un problème est survenu en contactant l'IA. Réessayez."
     },
+    "scheduled": {
+      "title": "Scheduled tasks",
+      "tagline": "Run an AI role or a notification on a schedule.",
+      "new": "New task", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
+      "name": "Name", "namePlaceholder": "e.g. Weekly improvement ideas",
+      "cadenceLabel": "How often", "doLabel": "What to run",
+      "cadence": { "hourly": "Hourly", "daily": "Daily · 09:00", "weekdays": "Weekdays · 09:00", "weekly": "Weekly · Mon 09:00", "custom": "Custom" },
+      "mode": { "role": "Run an AI role", "notify": "Send a notification" },
+      "role": "AI role", "rolePlaceholder": "Pick a role", "needsApproval": "needs approval",
+      "focus": "Focus (optional)", "focusPlaceholder": "e.g. the auth flow, or leave blank for the whole project",
+      "notifyTitle": "Notification title", "notifyTitlePlaceholder": "e.g. Standup reminder", "notifyBody": "Notification body",
+      "runsAt": "Runs on: {{cron}}", "create": "Create task", "actNotify": "Notification",
+      "lastRun": "last run {{when}}"
+    },
     "automation": {
       "title": "Automatisation", "subtitle": "Déclenche une action quand quelque chose se produit, ou selon un planning.",
       "add": "Nouveau déclencheur", "empty": "Aucun déclencheur. Créez-en un pour automatiser notifications, changements d'étape et plus.",

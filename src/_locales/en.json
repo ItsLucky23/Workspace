@@ -974,6 +974,20 @@
       "placeholder": "Ask about your codebase, or describe a plan…",
       "send": "Send", "error": "Something went wrong reaching the AI. Try again."
     },
+    "scheduled": {
+      "title": "Scheduled tasks",
+      "tagline": "Run an AI role or a notification on a schedule.",
+      "new": "New task", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
+      "name": "Name", "namePlaceholder": "e.g. Weekly improvement ideas",
+      "cadenceLabel": "How often", "doLabel": "What to run",
+      "cadence": { "hourly": "Hourly", "daily": "Daily · 09:00", "weekdays": "Weekdays · 09:00", "weekly": "Weekly · Mon 09:00", "custom": "Custom" },
+      "mode": { "role": "Run an AI role", "notify": "Send a notification" },
+      "role": "AI role", "rolePlaceholder": "Pick a role", "needsApproval": "needs approval",
+      "focus": "Focus (optional)", "focusPlaceholder": "e.g. the auth flow, or leave blank for the whole project",
+      "notifyTitle": "Notification title", "notifyTitlePlaceholder": "e.g. Standup reminder", "notifyBody": "Notification body",
+      "runsAt": "Runs on: {{cron}}", "create": "Create task", "actNotify": "Notification",
+      "lastRun": "last run {{when}}"
+    },
     "automation": {
       "title": "Automation", "subtitle": "Fire an action when something happens, or on a schedule.",
       "add": "New trigger", "empty": "No triggers yet. Create one to automate notifications, stage moves, and more.",

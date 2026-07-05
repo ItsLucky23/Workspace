@@ -15,6 +15,7 @@ import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/cli
 
 import { runInTenant } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
+import { listAgentRoles } from '../automation/agentRoles';
 import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { decryptSecret } from '../crypto/secretBox';
@@ -155,6 +156,8 @@ export interface WorkspaceSnapshot {
   insights: WorkspaceInsights;
   //? Automation (#2): the workspace's triggers.
   triggers: WorkspaceTrigger[];
+  //? Scheduled tasks: the agent roles a trigger can run (registered at boot; global, not per-workspace).
+  agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   //? Studio module: product briefs + their generated artifacts + the central brand library.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
@@ -170,6 +173,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   triggers: [],
+  agentRoles: [],
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
@@ -286,6 +290,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(t.cron ? { cron: t.cron } : {}), ...(t.dedupeKey ? { dedupeKey: t.dedupeKey } : {}), ...(t.debounceMs === null ? {} : { debounceMs: t.debounceMs }),
         ...(t.lastFiredAt ? { lastFiredAt: t.lastFiredAt.toISOString() } : {}),
       })),
+      agentRoles: listAgentRoles(),
       studioBriefs: studioBriefRows.map((b): StudioBrief => ({
         id: b.id, workspaceId: b.workspaceId, name: b.name, productName: b.productName, audience: b.audience, tone: b.tone, goals: b.goals,
         ...(b.projectId ? { projectId: b.projectId } : {}), ...(b.notes ? { notes: b.notes } : {}), createdAt: b.createdAt.toISOString(),

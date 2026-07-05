@@ -49,6 +49,7 @@ import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
 import { registerStudioRoles } from './studio/roles';
+import { registerInterviewerRole } from './interviewer/role';
 import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
@@ -104,6 +105,8 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Studio module (#studio): register the designer + marketer AI roles into the AgentRole registry
   //? so automation triggers can invoke them. Pure registry write — no DB at boot.
   registerStudioRoles();
+  //? Interviewer: register the schedulable idea-proposing role (so a cron trigger can run it).
+  registerInterviewerRole();
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
   //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
   registerForgeWebhook();
