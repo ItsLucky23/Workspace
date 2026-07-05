@@ -27,7 +27,9 @@ export type AiFeature =
   | 'designer-theme'
   //? Interviewer — reasons over the project and proposes concrete improvement ideas (schedulable as
   //? an agent role). Non-coding one-shot completion.
-  | 'interviewer';
+  | 'interviewer'
+  //? Web scraper (Marketing reach) — summarises a fetched page for outreach. Schedulable role.
+  | 'scraper';
 
 export interface AiCompletionRequest {
   prompt: string;

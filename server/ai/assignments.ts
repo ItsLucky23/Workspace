@@ -22,6 +22,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'designer-theme': 'claude-cli',
   //? Interviewer reasoning — default to the always-available Claude CLI, overridable per workspace.
   'interviewer': 'claude-cli',
+  //? Web-scrape summarisation — always-available Claude CLI default, overridable.
+  'scraper': 'claude-cli',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a

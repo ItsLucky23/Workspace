@@ -1529,3 +1529,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. Live-test na backend-herstart (nieuwe snapshot-field + recording).
 
 **Files touched:** `server/ai/{activity.ts (nieuw),registry.ts,types.ts}`, `server/{studio/generate,interviewer/role,designer/generateTheme}.ts`, `src/workspaces/_api/designerGenerateTheme_v1.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{Shell,WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-05 21:30 — Interviewer RAG-grounding + Web-scraper-rol (reach op de Scheduled-engine)
+
+**User prompt:** "Interviewer: echte RAG-grounding i.p.v. focus-param" + "web-scraping-reach als scraper-AgentRole op de Scheduled-engine".
+
+**What I did:**
+- **Interviewer RAG-grounding**: de `interviewer`-rol haalt nu de top-6 relevante codebase-chunks op via de bestaande RAG (`server/rag/index.ts` `retrieve(prisma, workspaceId, query, k)`) — query = de focus of een brede kwaliteits-query — en `buildInterviewerPrompt(focus, context)` vouwt die als "GROUND your ideas in these real excerpts"-blok in. Leeg (niets geïndexeerd) → valt terug op de generieke prompt. Ideeën zijn nu gegrond in de echte code.
+- **Web-scraper-rol** (`server/scraper/role.ts`): schedulebare `scraper`-AgentRole (mutates:false) — een **geguarde** fetch (`fetchPageText`: alleen http(s), 15s-timeout, 200KB/8K-cap, HTML→tekst, gooit nooit via `tryCatch`) → `runAiCompletion('scraper', …)` vat de pagina samen voor outreach (getagd in de AI-activity-feed). Nieuwe `scraper` AiFeature. Geregistreerd in `server.ts`. Selecteerbaar in **Scheduled tasks** → cron-scraping van een `params.url`.
+
+**Verify:** server-tsc 0 · eslint 0 · ai:lint 0 · `interviewerRole.test` **11/11** (RAG-grounding-blok + scraper-registratie). Live na backend-herstart.
+
+**Files touched:** `server/interviewer/role.ts`, `server/scraper/role.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `tests/integration/interviewerRole.test.mts`.

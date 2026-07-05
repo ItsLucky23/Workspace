@@ -50,6 +50,7 @@ import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
 import { registerStudioRoles } from './studio/roles';
 import { registerInterviewerRole } from './interviewer/role';
+import { registerScraperRole } from './scraper/role';
 import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
@@ -107,6 +108,8 @@ import { startLeaderElection } from './orchestrator/cluster';
   registerStudioRoles();
   //? Interviewer: register the schedulable idea-proposing role (so a cron trigger can run it).
   registerInterviewerRole();
+  //? Marketing reach: register the schedulable web-scraper role.
+  registerScraperRole();
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
   //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
   registerForgeWebhook();
