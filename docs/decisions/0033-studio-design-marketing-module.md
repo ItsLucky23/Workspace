@@ -57,7 +57,9 @@ save), then the other three kinds.
 - Verified: `studio.test.mts` (17/17) — prompt builders embed the brief + ask for the right shape,
   parsers extract HTML/JSON/markdown + fall back safely, role/feature wiring is correct. server/
   front-tsc + eslint + ai:lint 0.
-- **PENDING live verification** (an external `@luckystack/secret-manager` outage was blocking
-  `DATABASE_URL` resolution → the DB index push, the store-flow test, and the browser test at build
-  time): the `prisma db push` (indexes; Mongo auto-creates the collections on first write) + an
-  end-to-end browser generate. To run once the secret-manager is reachable.
+- **LIVE-VERIFIED end-to-end (2026-07-05)** once the self-hosted secret-manager host came back:
+  `prisma db push` (in sync), backend booted, and in the browser a brief ("Nimbus — an AI note-taking
+  app") generated a **landing page** (claude-cli → 14 KB HTML rendered in the sandboxed iframe:
+  hero "The meeting ends. The notes are already done.", CTA, tagline) AND a **brand kit** (claude-cli
+  → 6-colour palette with hex swatches, Sora/Inter typography, brand voice, 5 taglines, 5 logo ideas).
+  Both artifact families (HTML iframe + JSON preview) render correctly with real AI output.

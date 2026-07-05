@@ -1393,3 +1393,15 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 **Verify:** server-tsc 0, front-tsc 0, eslint 0, ai:lint 0. `studio.test.mts` **17/17** (pure builders/parsers/role-wiring). **PENDING live-verificatie**: een externe `@luckystack/secret-manager`-outage blokkeerde `DATABASE_URL`-resolutie → de DB-index-push (Mongo maakt collecties bij eerste write), de store-flow-test en de browser-generate. Te draaien zodra de secret-manager bereikbaar is.
 
 **Files touched:** `prisma/schema.prisma` (StudioBrief/StudioArtifact), `server/studio/{generate,roles}.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/studio/page.tsx` (nieuw), `src/workspaces/_api/studio{SaveBrief,Generate,Delete}_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0033-*.md`, `tests/integration/studio.test.mts` (nieuw).
+
+## 2026-07-05 — Studio: live e2e-verificatie GROEN (secret-manager terug)
+
+**User prompt:** connectie moet nu weer werken.
+
+**What I did:** De self-hosted secret-manager (`secretmanager.workspace.keetlerop.nl`) was terug (200). DB-push (in sync), backend geboot (readyz 200, leader), en de Studio **end-to-end in de browser getest**:
+- Brief "Nimbus — an AI note-taking app" aangemaakt + opgeslagen (studioSaveBrief).
+- **Landingspagina gegenereerd** (studioGenerate → **claude-cli** → 14KB HTML) → rendert live in de **sandboxed iframe** (hero "The meeting ends. The notes are already done.", CTA "Start free", tagline). Screenshot gemaakt.
+- **Brand-kit gegenereerd** (claude-cli → JSON) → **6 palet-swatches** met hex, Sora/Inter-typografie, voice-paragraaf, 5 taglines, 5 logo-ideeën. Screenshot gemaakt.
+Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte AI-output. Provider/timestamp-footer + regenerate zichtbaar.
+
+**Verify:** volledige verticale flow (brief → AI → parse → live preview) live bewezen voor 2 kinds; copy/strategy delen dezelfde parse/preview-infra (unit-getest 17/17). Geen code-wijziging deze stap — puur live-verificatie (ADR 0033 consequences bijgewerkt).
