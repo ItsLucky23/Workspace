@@ -13,7 +13,7 @@ import { WsButton } from '../../_components/primitives';
 import { useDesigner } from '../state';
 import { themeVars } from '../themes';
 import { styleChips, styleVars, type BorderTreatment, type Density, type MotionFeel } from '../styles';
-import { RenameField, SectionHead, Slider, SourceBadge, inputCls } from '../ui';
+import { FontPicker, RenameField, SectionHead, Slider, SourceBadge, inputCls } from '../ui';
 
 const BORDERS: BorderTreatment[] = ['none', 'hairline', 'solid', 'bold'];
 const DENSITIES: Density[] = ['compact', 'cozy', 'comfortable'];
@@ -83,6 +83,7 @@ export default function Styles() {
                 </div>
               </div>
             </div>
+            <MediaShowcase />
           </div>
         </div>
 
@@ -96,10 +97,34 @@ export default function Styles() {
           <Choice label={translate({ key: 'workspaces.designer.density' })} value={s.density} options={DENSITIES} onChange={(v) => { d.setStyle({ density: v }); }} tkey="densityOpt" />
           <Choice label={translate({ key: 'workspaces.designer.motion' })} value={s.motion} options={MOTIONS} onChange={(v) => { d.setStyle({ motion: v }); }} tkey="motionOpt" />
           <label className="flex items-center gap-2 self-end pb-1 cursor-pointer"><input type="checkbox" checked={s.pill} onChange={(e) => { d.setStyle({ pill: e.target.checked }); }} className="accent-primary w-4 h-4" /><span className="text-sm text-common">{translate({ key: 'workspaces.designer.pill' })}</span></label>
-          <TextRow label={translate({ key: 'workspaces.designer.fontHeading' })} value={s.fontHeading} onChange={(v) => { d.setStyle({ fontHeading: v }); }} />
-          <TextRow label={translate({ key: 'workspaces.designer.fontBody' })} value={s.fontBody} onChange={(v) => { d.setStyle({ fontBody: v }); }} />
+          <FontPicker label={translate({ key: 'workspaces.designer.fontHeading' })} value={s.fontHeading} onChange={(v) => { d.setStyle({ fontHeading: v }); }} />
+          <FontPicker label={translate({ key: 'workspaces.designer.fontBody' })} value={s.fontBody} onChange={(v) => { d.setStyle({ fontBody: v }); }} />
           <TextRow label={translate({ key: 'workspaces.designer.shadow' })} value={s.shadow} onChange={(v) => { d.setStyle({ shadow: v }); }} />
           <TextRow label={translate({ key: 'workspaces.designer.shadowSm' })} value={s.shadowSm} onChange={(v) => { d.setStyle({ shadowSm: v }); }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//? Image / media treatment — placeholders (CSS gradients, no external assets) that adopt the style's
+//? radius + shadow, plus an avatar and a hero, so you see how imagery sits in the current style+theme.
+function MediaShowcase() {
+  const translate = useTranslator();
+  const img: CSSProperties = { borderRadius: 'var(--ds-radius)', boxShadow: 'var(--ds-shadow-sm)' };
+  return (
+    <div className="bg-container1 text-common" style={cardStyle}>
+      <div className="text-title" style={headingStyle}>{translate({ key: 'workspaces.designer.mediaTitle' })}</div>
+      <div className="grid grid-cols-3 mt-2" style={{ gap: 'var(--ds-gap)' }}>
+        <div className="aspect-square bg-gradient-to-br from-primary to-secondary" style={img} />
+        <div className="aspect-video bg-gradient-to-br from-correct to-primary" style={img} />
+        <div className="aspect-[4/3] bg-gradient-to-br from-warning to-wrong" style={img} />
+      </div>
+      <div className="flex items-center mt-3" style={{ gap: 'var(--ds-gap)' }}>
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary to-warning shrink-0" style={{ boxShadow: 'var(--ds-shadow-sm)' }} />
+        <div className="relative flex-1 aspect-[21/6] overflow-hidden" style={{ borderRadius: 'var(--ds-radius-lg)', boxShadow: 'var(--ds-shadow)' }}>
+          <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary" />
+          <div className="absolute inset-0 flex items-center px-4"><span className="text-title-primary font-semibold text-sm" style={headingStyle}>{translate({ key: 'workspaces.designer.mediaHero' })}</span></div>
         </div>
       </div>
     </div>

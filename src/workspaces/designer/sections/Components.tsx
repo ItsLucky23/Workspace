@@ -38,7 +38,11 @@ const APPLE: DropdownItem = { id: 'apple', value: 'apple', item: 'Apple' };
 const FRUIT: DropdownItem[] = [APPLE, { id: 'banana', value: 'banana', item: 'Banana' }, { id: 'cherry', value: 'cherry', item: 'Cherry' }];
 const TAG_FE: DropdownItem = { id: 1, value: 1, item: 'Frontend' };
 const TAGS: DropdownItem[] = [TAG_FE, { id: 2, value: 2, item: 'Backend' }, { id: 3, value: 3, item: 'Design' }];
-const DEMO = { primary: 'Primary', secondary: 'Secondary', ghost: 'Ghost', danger: 'Danger', disabled: 'Disabled', signedIn: 'Signed in as Ada', profile: 'Profile', signOut: 'Sign out', popover: 'Popover', newItem: 'New item' } as const;
+const DEMO = { primary: 'Primary', secondary: 'Secondary', ghost: 'Ghost', danger: 'Danger', disabled: 'Disabled', signedIn: 'Signed in as Ada', profile: 'Profile', signOut: 'Sign out', popover: 'Popover', newItem: 'New item', default: 'Default', focus: 'Focus', loading: 'Loading', focused: 'Focused', error: 'Error' } as const;
+const inputBase = 'h-9 px-3 rounded-lg border bg-container2/40 text-sm text-title focus:outline-none';
+const SHADOWS = ['shadow-sm', 'shadow', 'shadow-md', 'shadow-lg', 'shadow-xl'];
+const RADII = ['rounded-none', 'rounded', 'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-full'];
+const SPACES = [4, 8, 12, 16, 24, 32, 48];
 
 interface Cat { key: string; icon: string; render: () => React.ReactNode }
 
@@ -117,6 +121,38 @@ export default function Components() {
         <div className="flex flex-wrap items-center gap-1.5">{DEMO_LABELS.map((l) => <LabelChip key={l} name={l} />)}</div>
         <div className="flex items-center gap-4"><AvatarStack users={DEMO_MEMBERS} max={3} size={28} /><div className="flex items-center gap-2">{DEMO_MEMBERS.slice(0, 3).map((m) => <AvatarBubble key={m.id} user={m} size={32} />)}</div></div>
         <EmptyState icon="inbox" title={translate({ key: 'workspaces.designer.emptyDemoTitle' })} sub={translate({ key: 'workspaces.designer.emptyDemoSub' })} action={<WsButton icon="plus">{DEMO.newItem}</WsButton>} />
+      </div>
+    ) },
+    { key: 'states', icon: 'wand-sparkles', render: () => (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <WsButton icon="check">{DEMO.default}</WsButton>
+          <WsButton icon="check" className="ring-2 ring-focus-ring">{DEMO.focus}</WsButton>
+          <WsButton icon="spinner" className="[&_svg]:animate-spin">{DEMO.loading}</WsButton>
+          <WsButton icon="check" disabled>{DEMO.disabled}</WsButton>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 max-w-xl">
+          <input placeholder={DEMO.default} className={`${inputBase} border-container1-border focus:border-primary focus:ring-2 focus:ring-primary/30`} />
+          <input placeholder={DEMO.focused} className={`${inputBase} border-primary ring-2 ring-primary/30`} />
+          <input placeholder={DEMO.error} className={`${inputBase} border-wrong ring-2 ring-wrong/20`} />
+          <input placeholder={DEMO.disabled} disabled className={`${inputBase} border-container1-border opacity-50 cursor-not-allowed`} />
+        </div>
+      </div>
+    ) },
+    { key: 'foundations', icon: 'ruler-combined', render: () => (
+      <div className="flex flex-col gap-5">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted mb-2">{translate({ key: 'workspaces.designer.elevation' })}</div>
+          <div className="flex flex-wrap items-end gap-3">{SHADOWS.map((sh) => <div key={sh} className={`w-16 h-16 rounded-xl bg-container1 border border-container1-border ${sh} flex items-end justify-center pb-1`}><span className="text-[9px] text-muted">{sh.replace('shadow', 'sh') || 'sh'}</span></div>)}</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted mb-2">{translate({ key: 'workspaces.designer.radiusScale' })}</div>
+          <div className="flex flex-wrap items-center gap-3">{RADII.map((r) => <div key={r} className={`w-14 h-14 bg-primary/15 border border-primary/30 ${r}`} />)}</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted mb-2">{translate({ key: 'workspaces.designer.spacing' })}</div>
+          <div className="flex items-end gap-2">{SPACES.map((sp) => <div key={sp} className="flex flex-col items-center gap-1"><div className="bg-primary rounded" style={{ width: sp, height: sp }} /><span className="text-[9px] text-muted font-mono">{sp}</span></div>)}</div>
+        </div>
       </div>
     ) },
     { key: 'tokens', icon: 'palette', render: () => (

@@ -1470,3 +1470,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Files touched:** `src/workspaces/designer/{page,state,ui}.tsx` (state/ui nieuw), `designer/{themes,styles,animations}.ts` (styles/animations nieuw), `designer/sections/{Components,Styles,Animations,Themes,Typography}.tsx` (nieuw), `src/_locales/{en,nl,de,fr}.json`.
 
 **Notes / volgende:** AI-generatie voor styles + animaties (nu handmatig) + unified "AI past alles aan"-balk = volgende Designer-slice. Client-side thema/style/anim-bibliotheken (persisteren later). Interviewer-saved-proposals + Scheduled-tasks(cron)-feature + Marketing (ads/thumbnails/scraping/video) staan nog open.
+
+## 2026-07-05 18:15 — Designer v2.1: font-bibliotheek + images/media + states + foundations
+
+**User prompt:** "Bij designer ook fonts om te testen, iets extra's voor images, en andere UI/UX-details meenemen."
+
+**What I did (verrijking, client-side):**
+- **Font-bibliotheek** (`fonts.ts`, 19 web-veilige stacks: sans/serif/mono/display) + **`FontPicker`** (`ui.tsx`) die elk font **in z'n eigen typeface** toont met zoek. Gewired in **Typography** (heading+body + collapsible custom-stack) én de **Styles**-editor (verving de rauwe font-velden). Browser-bewezen: Georgia → hele type-scale wordt serif.
+- **Images & media**-showcase in Styles: aspect-ratio-placeholders (1:1/16:9/4:3, CSS-gradients — geen externe assets), avatar + hero-met-overlay, allemaal met de style-radius/shadow → beeld-treatment blijft consistent met style+thema.
+- **States**-categorie in Components: interactieve staten (focus/loading/disabled/error) voor knoppen + inputs. **Foundations**-categorie: elevation-schaal (shadow-steps), radius-schaal, spacing-schaal.
+- i18n: en+nl vertaald, de/fr `sec` in de bestaande taal + platte keys EN-mirror.
+
+**Verify:** root-tsc 0 · eslint 0 · ai:lint 0. Browser: font-picker (Georgia→serif), States+Foundations-categorieën, media-showcase. Lesson onderweg: `MotionTarget` moest een `type` blijven (geen `interface`) — motion/react's `TargetAndTransition` heeft een index-signature en alleen een type-alias is toewijsbaar (gedocumenteerde eslint-disable).
+
+**Files touched:** `src/workspaces/designer/fonts.ts` (nieuw), `ui.tsx` (FontPicker), `sections/{Typography,Styles,Components}.tsx`, `animations.ts` (MotionTarget-fix), `src/_locales/{en,nl,de,fr}.json`.

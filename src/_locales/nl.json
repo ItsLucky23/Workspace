@@ -917,6 +917,8 @@
         "controls": "Bediening", "controlsSub": "Segmented controls, toggles en tabs.",
         "overlays": "Overlays", "overlaysSub": "Popovers, menu's en bevestigingsdialogen.",
         "data": "Feedback & data", "dataSub": "Statuspills, labels, avatars en lege staten.",
+        "states": "Staten", "statesSub": "Interactieve staten: focus, loading, disabled en error.",
+        "foundations": "Fundamenten", "foundationsSub": "Elevatie-, radius- en witruimte-schalen.",
         "tokens": "Kleur-tokens", "tokensSub": "Elk design-token in dit thema."
       },
       "confirmDemoTitle": "Dit item verwijderen?", "confirmDemoBody": "Dit is maar een demo — er wordt niets echt verwijderd.",
@@ -954,7 +956,10 @@
       "typography": "Typografie", "typographySub": "Het kop- + tekst-paar van de actieve style, over een volledige schaal.",
       "scale": { "display": "Display", "h1": "H1", "h2": "H2", "h3": "H3", "body": "Tekst", "small": "Klein" },
       "typeSample": "Pa's wijze lynx bezag vroom het fikse aquaduct",
-      "typeParagraph": "Goede typografie is onzichtbaar: ze draagt de inhoud zonder de aandacht op zichzelf te vestigen. Deze paragraaf checkt regellengte, ritme en kleurcontrast in het tekst-lettertype van de huidige style."
+      "typeParagraph": "Goede typografie is onzichtbaar: ze draagt de inhoud zonder de aandacht op zichzelf te vestigen. Deze paragraaf checkt regellengte, ritme en kleurcontrast in het tekst-lettertype van de huidige style.",
+      "customFont": "Eigen lettertype", "customStack": "Geavanceerd: eigen font-stack",
+      "mediaTitle": "Afbeeldingen & media", "mediaHero": "Hero-afbeelding",
+      "elevation": "Elevatie", "radiusScale": "Radius-schaal", "spacing": "Witruimte"
     },
     "interviewer": {
       "title": "Interviewer",

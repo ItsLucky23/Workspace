@@ -917,6 +917,8 @@
         "controls": "Contrôles", "controlsSub": "Contrôles segmentés, interrupteurs et onglets.",
         "overlays": "Overlays", "overlaysSub": "Popovers, menus et dialogues de confirmation.",
         "data": "Retours & données", "dataSub": "Pastilles de statut, libellés, avatars et états vides.",
+        "states": "États", "statesSub": "États interactifs : focus, chargement, désactivé et erreur.",
+        "foundations": "Fondations", "foundationsSub": "Échelles d'élévation, de rayon et d'espacement.",
         "tokens": "Tokens de couleur", "tokensSub": "Chaque token de design de ce thème."
       },
       "confirmDemoTitle": "Supprimer cet élément ?", "confirmDemoBody": "Ce n'est qu'une démo — rien ne sera réellement supprimé.",
@@ -954,7 +956,10 @@
       "typography": "Typography", "typographySub": "The heading + body pairing of the active style, across a full scale.",
       "scale": { "display": "Display", "h1": "H1", "h2": "H2", "h3": "H3", "body": "Body", "small": "Small" },
       "typeSample": "The quick brown fox jumps over the lazy dog",
-      "typeParagraph": "Good typography is invisible: it carries the content without calling attention to itself. This paragraph checks line length, rhythm and colour contrast in the body font of the current style."
+      "typeParagraph": "Good typography is invisible: it carries the content without calling attention to itself. This paragraph checks line length, rhythm and colour contrast in the body font of the current style.",
+      "customFont": "Custom font", "customStack": "Advanced: custom font stack",
+      "mediaTitle": "Images & media", "mediaHero": "Hero image",
+      "elevation": "Elevation", "radiusScale": "Radius scale", "spacing": "Spacing"
     },
     "interviewer": {
       "title": "Interviewer",

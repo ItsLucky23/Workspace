@@ -24,7 +24,8 @@ export interface AnimSpec {
   bounce: number;     //? spring bounce 0–1 (ignored for tweens)
 }
 
-export interface MotionTarget { opacity?: number; x?: number; y?: number; scale?: number; rotate?: number }
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- must be a type alias, not an interface: motion/react's TargetAndTransition has an index signature and only a type alias (implicit index signature) is assignable to it
+export type MotionTarget = { opacity?: number; x?: number; y?: number; scale?: number; rotate?: number };
 
 //? Build the initial ("from") target for `motion.div initial={…}`.
 export function animFrom(a: AnimSpec): MotionTarget {

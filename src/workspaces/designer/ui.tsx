@@ -6,7 +6,10 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+
 import Icon from '../_components/Icon';
+import { FONT_LIBRARY, fontByStack } from './fonts';
 
 export const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -55,6 +58,22 @@ export function SectionHead({ icon, title, sub, right }: { icon: string; title: 
         </div>
       </div>
       {right}
+    </div>
+  );
+}
+
+//? Font picker — each option renders in its own typeface so you can compare at a glance. Selecting
+//? one writes its font stack; a hand-typed custom stack simply shows as "Custom" until changed.
+const FONT_ITEMS: DropdownItem[] = FONT_LIBRARY.map((f) => ({ id: f.id, value: f.id, searchText: f.name, item: <span style={{ fontFamily: f.stack }}>{f.name}</span>, selectedItem: <span style={{ fontFamily: f.stack }} className="truncate">{f.name}</span> }));
+export function FontPicker({ label, value, onChange }: { label: string; value: string; onChange: (stack: string) => void }) {
+  const translate = useTranslator();
+  const current = fontByStack(value);
+  const activeItem = current ? FONT_ITEMS.find((i) => i.id === current.id) : undefined;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] text-muted">{label}</span>
+      <Dropdown items={FONT_ITEMS} {...(activeItem ? { value: activeItem } : {})} placeholder={translate({ key: 'workspaces.designer.customFont' })} showSearch size="lg"
+        onChange={(item) => { const f = FONT_LIBRARY.find((x) => x.id === item.id); if (f) onChange(f.stack); }} />
     </div>
   );
 }
