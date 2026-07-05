@@ -9,8 +9,8 @@ import { registerAgentRole } from '../automation/agentRoles';
 import { generateArtifact, KIND_META, type ArtifactKind, type StudioRole } from './generate';
 
 const KINDS_FOR: Record<StudioRole, ArtifactKind[]> = {
-  designer: ['landing', 'brand'],
-  marketer: ['copy', 'strategy'],
+  designer: ['landing', 'component', 'brand'],
+  marketer: ['copy', 'strategy', 'email', 'ads', 'social', 'names'],
 };
 
 function makeRole(role: StudioRole, label: string, description: string): void {

@@ -1405,3 +1405,16 @@ De root-cause van de eerdere member-403: het openvscode connection-token in `/tm
 Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte AI-output. Provider/timestamp-footer + regenerate zichtbaar.
 
 **Verify:** volledige verticale flow (brief → AI → parse → live preview) live bewezen voor 2 kinds; copy/strategy delen dezelfde parse/preview-infra (unit-getest 17/17). Geen code-wijziging deze stap — puur live-verificatie (ADR 0033 consequences bijgewerkt).
+
+## 2026-07-05 — Studio v2: tool-modules-visie uitgewerkt — 9 kinds + centrale merk-bibliotheek (ADR 0033)
+
+**User prompt:** werk echt alles uit wat je kan vinden over de designer + marketing-tool.
+
+**What I did:** De volledige tool-modules-visie (ADR 0013/0016) uitgewerkt bovenop de Studio-basis: een **Designer** + **Marketing**-module met een gedeelde **centrale merk-bibliotheek**.
+- **Merk-bibliotheek (G-MKT-2, de ruggengraat)**: `StudioBrandLibrary` (één per workspace) — palet/typografie/voice/taglines/logo's. **Seedt elke generatie** (`readBrandContext` → prompt-preamble) zodat alles on-brand is. Bewerkbare BrandPanel (palet-editor met color-pickers, fonts, voice, taglines) + **"Use as brand"** promoot een gegenereerde brand-kit → de bibliotheek. `server/studio/brand.ts` + `studioBrand_v1.ts`-route.
+- **5 nieuwe artefact-kinds** (naast landing/copy/brand/strategy): **component** (Designer, UI-component in sandboxed iframe), **email** (sequentie), **ads** (multi-platform ad-set), **social** (2-weken content-kalender), **names** (namen+taglines+domeinen). Prompt-builders + parsers + per-kind live previews. Generate-rij gegroepeerd per rol (Designer/Marketer).
+- Snapshot-exposure van de merk-bibliotheek; ctx `saveBrand`/`promoteBrand`; i18n en/nl/de/fr.
+
+**Verify:** server/front-tsc 0, eslint 0, ai:lint 0. `studio.test.mts` **28/28** (nieuwe kinds' prompts/parsers + brand-seeding: palet/fonts/voice folden in de prompt, geen-brand→geen on-brand-blok). **Browser live**: "Use as brand" promootte de Nimbus-brand-kit → merk-bibliotheek (6 kleuren/voice/5 taglines/Sora-Inter), BrandPanel rendert + bewerkbaar (screenshot). Alle 9 kinds zichtbaar in de UI. NB: een live e-mail-generatie **timeoutte op claude-cli** (`ai.turnTimeout`, PTY-traagheid op langere prompts) — timeout verhoogd naar 240s; de robuuste route is `studio-marketer` op een API-provider (gemini) zetten via de AI-laag. De logica is unit-bewezen; landing+brand draaiden eerder wél live.
+
+**Files touched:** `prisma/schema.prisma` (StudioBrandLibrary + kinds), `server/studio/{generate,brand,roles}.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/studio/page.tsx` (BrandPanel + 5 previews + role-groepen), `src/workspaces/_api/studioBrand_v1.ts` (nieuw) + studioGenerate, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/studio.test.mts`.

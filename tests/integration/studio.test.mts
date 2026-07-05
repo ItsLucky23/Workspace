@@ -46,6 +46,27 @@ try {
   eq(g.KIND_META.copy.role, 'marketer', 'copy is a marketer artifact');
   eq(g.KIND_META.landing.feature, 'studio-designer', 'landing resolves to the studio-designer provider feature');
   eq(g.KIND_META.strategy.feature, 'studio-marketer', 'strategy resolves to the studio-marketer provider feature');
+  eq(g.ARTIFACT_KINDS.length, 9, 'there are 9 artifact kinds');
+  eq(g.KIND_META.component.role, 'designer', 'component is a designer artifact');
+  eq(g.KIND_META.email.role, 'marketer', 'email is a marketer artifact');
+
+  // ---- new kinds: prompts + parsers ----
+  assert(g.buildPrompt('component', brief).system.includes('```html'), 'component asks for an HTML block');
+  assert(g.buildPrompt('email', brief).system.includes('emails'), 'email asks for the emails JSON shape');
+  assert(g.buildPrompt('social', brief).system.includes('posts'), 'social asks for the posts JSON shape');
+  const comp = g.parseArtifact('component', '```html\n<section>Pricing</section>\n```');
+  eq((comp.content.html as string).includes('Pricing'), true, 'component parses the HTML');
+  const em = g.parseArtifact('email', '```json\n{"emails":[{"subject":"Hi","body":"..."}]}\n```');
+  eq((em.content.emails as unknown[]).length, 1, 'email parses the emails array');
+  const nm = g.parseArtifact('names', '```json\n{"names":[{"name":"Nimbus"}],"taglines":["x"],"domains":["nimbus.io"]}\n```');
+  eq((nm.content.domains as string[])[0], 'nimbus.io', 'names parses domains');
+
+  // ---- brand seeding (G-MKT-2): a brand context folds into the prompt ----
+  const brandCtx = { palette: [{ name: 'Ink', hex: '#111827' }], typography: { heading: 'Sora', body: 'Inter' }, voice: 'bold + warm', taglines: ['Notes that keep up'] };
+  const seeded = g.buildPrompt('landing', brief, brandCtx);
+  assert(seeded.prompt.includes('#111827') && seeded.prompt.includes('Sora') && seeded.prompt.includes('bold + warm'), 'the brand library seeds the landing prompt (palette + fonts + voice)');
+  const unseeded = g.buildPrompt('landing', brief, null);
+  assert(!unseeded.prompt.includes('STAY ON-BRAND'), 'no brand → no on-brand block');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 }

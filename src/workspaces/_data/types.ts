@@ -751,7 +751,19 @@ export interface TicketSort {
 //? Studio module — the design + marketing tool. A BRIEF describes the product; the AI designer/
 //? marketer roles generate ARTIFACTS from it. Kinds: landing page, marketing copy, brand kit,
 //? go-to-market strategy.
-export type StudioArtifactKind = 'landing' | 'copy' | 'brand' | 'strategy';
+export type StudioArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names';
+
+//? The workspace's central brand library (ADR 0013 G-MKT-2) — one source of brand truth every
+//? Studio generation seeds from.
+export interface StudioBrandLibrary {
+  workspaceId: string;
+  name: string;
+  palette: { name: string; hex: string }[];
+  typography: { heading: string; body: string };
+  voice: string;
+  taglines: string[];
+  logoIdeas: string[];
+}
 
 export interface StudioBrief {
   id: string;

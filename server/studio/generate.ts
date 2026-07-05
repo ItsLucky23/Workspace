@@ -14,25 +14,42 @@ import type { AiFeature } from '../ai/types';
 //? Bridge a genuinely-JSON value to Prisma's Json WRITE type (read JsonValue vs write InputJsonValue).
 const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
 
-export type ArtifactKind = 'landing' | 'copy' | 'brand' | 'strategy';
+//? The artifact kinds. Designer = visual/UI (landing, brand kit, UI component). Marketer = words +
+//? plans (copy, strategy, email sequence, ad set, social calendar, naming).
+export type ArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names';
 export type StudioRole = 'designer' | 'marketer';
 
 //? Which role + provider-feature owns each kind.
 export const KIND_META: Record<ArtifactKind, { role: StudioRole; feature: AiFeature; title: string }> = {
   landing: { role: 'designer', feature: 'studio-designer', title: 'Landing page' },
+  component: { role: 'designer', feature: 'studio-designer', title: 'UI component' },
   brand: { role: 'designer', feature: 'studio-designer', title: 'Brand kit' },
   copy: { role: 'marketer', feature: 'studio-marketer', title: 'Marketing copy' },
   strategy: { role: 'marketer', feature: 'studio-marketer', title: 'Marketing strategy' },
+  email: { role: 'marketer', feature: 'studio-marketer', title: 'Email sequence' },
+  ads: { role: 'marketer', feature: 'studio-marketer', title: 'Ad set' },
+  social: { role: 'marketer', feature: 'studio-marketer', title: 'Social calendar' },
+  names: { role: 'marketer', feature: 'studio-marketer', title: 'Names & taglines' },
 };
+export const ARTIFACT_KINDS: readonly ArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names'];
+
+//? The workspace's central brand library (ADR 0013 G-MKT-2), folded into every prompt so all
+//? artifacts stay on-brand. Null when the workspace hasn't set one yet.
+export interface BrandContext { palette: { name: string; hex: string }[]; typography: { heading: string; body: string }; voice: string; taglines: string[] }
 
 export interface BriefInput { productName: string; audience: string; tone: string; goals: string; notes?: string | null }
 
-const briefBlock = (b: BriefInput): string =>
-  `PRODUCT: ${b.productName}\nAUDIENCE: ${b.audience}\nTONE / BRAND VOICE: ${b.tone}\nGOALS: ${b.goals}${b.notes ? `\nEXTRA CONTEXT: ${b.notes}` : ''}`;
+const briefBlock = (b: BriefInput, brand?: BrandContext | null): string => {
+  const base = `PRODUCT: ${b.productName}\nAUDIENCE: ${b.audience}\nTONE / BRAND VOICE: ${b.tone}\nGOALS: ${b.goals}${b.notes ? `\nEXTRA CONTEXT: ${b.notes}` : ''}`;
+  if (!brand || (brand.palette.length === 0 && !brand.voice)) return base;
+  const pal = brand.palette.map((p) => `${p.name} ${p.hex}`).join(', ');
+  return `${base}\n\nSTAY ON-BRAND — use this workspace brand:\n- Palette: ${pal || '(none)'}\n- Fonts: ${brand.typography.heading || '?'} / ${brand.typography.body || '?'}\n- Voice: ${brand.voice || b.tone}${brand.taglines.length > 0 ? `\n- Existing taglines: ${brand.taglines.join(' · ')}` : ''}`;
+};
 
-//? Build the {system, prompt} for a kind. Pure — the prompts are the product; keep them explicit.
-export function buildPrompt(kind: ArtifactKind, brief: BriefInput): { system: string; prompt: string } {
-  const brf = briefBlock(brief);
+//? Build the {system, prompt} for a kind, folding in the central brand library. Pure — the prompts
+//? are the product; keep them explicit.
+export function buildPrompt(kind: ArtifactKind, brief: BriefInput, brand?: BrandContext | null): { system: string; prompt: string } {
+  const brf = briefBlock(brief, brand);
   switch (kind) {
     case 'landing': {
       return {
@@ -58,8 +75,38 @@ export function buildPrompt(kind: ArtifactKind, brief: BriefInput): { system: st
         prompt: `Write a go-to-market marketing strategy for this product.\n\n${brf}\n\nCover: positioning + one-line value prop, 2-3 audience personas, message hierarchy, the top 3-4 channels with why, a simple launch plan (phases), and 3-5 KPIs. Be specific to the product, not generic.`,
       };
     }
+    case 'component': {
+      return {
+        system: 'You are a senior product/UI designer + front-end engineer. You output a SINGLE self-contained, responsive HTML snippet of ONE polished UI component (e.g. a pricing table, feature grid, testimonial section, or signup card): inline <style> only, NO external assets/fonts/scripts/images (CSS + emoji only). Modern, accessible, on-brand. Return ONLY the HTML in one ```html code block.',
+        prompt: `Design one reusable UI component for this product's marketing site (pick the most useful one for the goals).\n\n${brf}\n\nReturn one \`\`\`html block with the component (a centered, self-contained section).`,
+      };
+    }
+    case 'email': {
+      return {
+        system: 'You are a lifecycle-email expert. You output an onboarding/launch EMAIL SEQUENCE as ONE ```json code block only, matching exactly: {"emails":[{"subject":string,"preview":string,"body":string}]}. 3-5 emails, each with a compelling subject, a preview line, and a short plain-text body with one clear CTA.',
+        prompt: `Write an email sequence to convert + activate for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
+      };
+    }
+    case 'ads': {
+      return {
+        system: 'You are a performance-ad specialist. You output an AD SET as ONE ```json code block only, matching exactly: {"ads":[{"platform":string,"headline":string,"body":string,"cta":string}]}. Cover Google Search, Meta (FB/IG), and LinkedIn; 2-3 variants per platform, within realistic character limits.',
+        prompt: `Write an ad set across platforms for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
+      };
+    }
+    case 'social': {
+      return {
+        system: 'You are a social-media strategist. You output a 2-week CONTENT CALENDAR as ONE ```json code block only, matching exactly: {"posts":[{"day":string,"platform":string,"hook":string,"body":string}]}. Mix formats (educational, social proof, behind-the-scenes, launch); 8-10 posts.',
+        prompt: `Plan a 2-week social content calendar for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
+      };
+    }
+    case 'names': {
+      return {
+        system: 'You are a naming + brand strategist. You output naming ideas as ONE ```json code block only, matching exactly: {"names":[{"name":string,"rationale":string}],"taglines":[string],"domains":[string]}. 6-8 distinct names with a one-line rationale, 6-8 taglines, and plausible available-style domain ideas.',
+        prompt: `Generate product names, taglines, and domain ideas for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
+      };
+    }
     default: {
-      return { system: '', prompt: briefBlock(brief) };
+      return { system: '', prompt: briefBlock(brief, brand) };
     }
   }
 }
@@ -74,19 +121,33 @@ function extractBlock(text: string, lang: string): string {
 //? Parse the model's text into the kind-specific `content` object. Never throws — returns a
 //? best-effort shape (a raw fallback) so a slightly-off model response still yields something.
 export function parseArtifact(kind: ArtifactKind, text: string): { content: Record<string, unknown>; title: string } {
-  if (kind === 'landing') {
+  if (kind === 'landing' || kind === 'component') {
     const html = extractBlock(text, 'html') || text.trim();
-    return { content: { html }, title: 'Landing page' };
+    return { content: { html }, title: KIND_META[kind].title };
   }
   if (kind === 'strategy') {
     return { content: { markdown: text.trim() }, title: 'Marketing strategy' };
   }
-  //? brand + copy are JSON.
+  //? the rest (brand, copy, email, ads, social, names) are JSON.
   const raw = extractBlock(text, 'json') || text.trim();
   const [, parsed] = tryCatchSync(() => JSON.parse(raw) as unknown);
   const obj = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : { raw };
   return { content: obj, title: KIND_META[kind].title };
 }
+
+//? Read the workspace's central brand library into a BrandContext (null when unset/empty). Defensive
+//? readers — the Json columns are `unknown` at the type level.
+export async function readBrandContext(prisma: PrismaClient, workspaceId: string): Promise<BrandContext | null> {
+  const lib = await prisma.studioBrandLibrary.findFirst({ where: { workspaceId } });
+  if (!lib) return null;
+  const palRaw = Array.isArray(lib.palette) ? lib.palette : [];
+  const palette = palRaw
+    .map((p): { name: string; hex: string } | null => (p !== null && typeof p === 'object' ? { name: strOf((p as Record<string, unknown>).name), hex: strOf((p as Record<string, unknown>).hex) } : null))
+    .filter((p): p is { name: string; hex: string } => p !== null && p.hex.length > 0);
+  const typo = lib.typography !== null && typeof lib.typography === 'object' ? (lib.typography as Record<string, unknown>) : {};
+  return { palette, typography: { heading: strOf(typo.heading), body: strOf(typo.body) }, voice: lib.voice, taglines: lib.taglines };
+}
+const strOf = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 export interface GenerateResult { ok: boolean; artifactId?: string; error?: string }
 
@@ -96,9 +157,13 @@ export async function generateArtifact(prisma: PrismaClient, input: { workspaceI
   const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
   if (!brief) return { ok: false, error: 'studio.briefNotFound' };
   const meta = KIND_META[input.kind];
-  const { system, prompt } = buildPrompt(input.kind, brief);
+  //? Seed the prompt with the workspace's central brand library so the artifact stays on-brand (G-MKT-2).
+  const brand = await readBrandContext(prisma, input.workspaceId);
+  const { system, prompt } = buildPrompt(input.kind, brief, brand);
 
-  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 180_000 });
+  //? Generous timeout — the interactive claude-cli PTY can be slow on longer (brand-seeded) prompts.
+  //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
+  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000 });
   if (!completion.ok || completion.text.trim().length === 0) {
     const failed = await prisma.studioArtifact.create({
       data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' },

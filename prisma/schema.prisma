@@ -663,6 +663,22 @@ model StudioBrief {
   @@index([workspaceId, createdAt])
 }
 
+//? Studio module — the workspace's CENTRAL BRAND LIBRARY (ADR 0013 G-MKT-2): one source of brand
+//? truth (palette, typography, voice, taglines, logo ideas) that every Designer/Marketing generation
+//? seeds from, so all artifacts stay on-brand. One per workspace (upserted).
+model StudioBrandLibrary {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @unique @db.ObjectId
+  name        String   @default("Brand")
+  palette     Json                                   // [{ name, hex }]
+  typography  Json                                   // { heading, body }
+  voice       String   @default("")
+  taglines    String[]
+  logoIdeas   String[]
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
 //? Studio module — a generated ARTIFACT (a landing page, copy set, brand kit, or strategy)
 //? produced by an AI role from a brief. `content` is the structured, kind-specific payload the
 //? Studio UI renders + live-previews.

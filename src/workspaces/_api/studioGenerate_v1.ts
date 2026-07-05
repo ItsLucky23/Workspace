@@ -5,14 +5,14 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { generateArtifact, type ArtifactKind } from '../../../server/studio/generate';
+import { generateArtifact, ARTIFACT_KINDS, type ArtifactKind } from '../../../server/studio/generate';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const KINDS = new Set(['landing', 'copy', 'brand', 'strategy']);
+const KINDS = new Set<string>(ARTIFACT_KINDS);
 
 export interface ApiParams {
   data: { workspaceId: string; briefId: string; kind: string };

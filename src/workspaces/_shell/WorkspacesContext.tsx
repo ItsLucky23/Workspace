@@ -11,7 +11,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioArtifactKind,
+  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
 } from '../_data/types';
 
 export type WsView =
@@ -173,10 +173,13 @@ export interface WorkspacesCtx {
   //? Studio module — design + marketing tool.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
+  studioBrand: StudioBrandLibrary | null;    // central brand library (ADR 0013 G-MKT-2)
   saveBrief: (b: { id?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes?: string }) => Promise<void>;
   generateArtifact: (briefId: string, kind: StudioArtifactKind) => Promise<{ ok: boolean; artifactId?: string; error?: string }>;
   deleteBrief: (briefId: string) => void;
   deleteArtifact: (artifactId: string) => void;
+  saveBrand: (b: Partial<Omit<StudioBrandLibrary, 'workspaceId'>>) => Promise<void>;
+  promoteBrand: (artifactId: string) => Promise<void>;
   //? #2 automation writes — create/update, enable/disable, delete a trigger (control-ops).
   saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string }) => void;
   toggleTrigger: (id: string, enabled: boolean) => void;
