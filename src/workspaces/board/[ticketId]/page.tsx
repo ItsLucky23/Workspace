@@ -390,6 +390,7 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
           <span className="text-muted">· {stageCfg?.aiEnabled === true ? translate({ key: 'workspaces.board.aiDrivenStage' }) : translate({ key: 'workspaces.board.noAi' })}{stageSkills.length > 0 ? ` · ${stageSkills.join(', ')}` : ''}</span>
         </div>
       </Card>
+      <LinkedArtifactsCard ticketKey={ticket.id} />
       <CommentsThread ticketId={ticket.id} />
       <div className="flex items-center gap-2">
         <WsButton
@@ -403,6 +404,41 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
         </WsButton>
       </div>
     </div>
+  );
+}
+
+//? Linked artifacts (ADR 0034) — design/Studio artifacts this ticket implements. The Conductor injects
+//? each linked artifact into the coding agent's context at stage-spawn, so linking a Designer theme or
+//? a Studio spec to a ticket makes the agent build to it.
+function LinkedArtifactsCard({ ticketKey }: { ticketKey: string }) {
+  const translate = useTranslator();
+  const ctx = useWorkspaces();
+  const links = ctx.ticketArtifactLinks.filter((l) => l.ticketId === ticketKey);
+  const options: DropdownItem[] = [
+    ...ctx.designArtifacts.map((d) => ({ id: `design:${d.id}`, value: `design:${d.id}`, item: `${d.kind}: ${d.name}`, searchText: d.name })),
+    ...ctx.studioArtifacts.map((s) => ({ id: `studio:${s.id}`, value: `studio:${s.id}`, item: `${s.kind}: ${s.title}`, searchText: s.title })),
+  ];
+  const onPick = (it: DropdownItem) => {
+    const kind = String(it.id).startsWith('design:') ? 'design' : 'studio';
+    const aid = String(it.id).slice(kind.length + 1);
+    if (aid.length === 0) return;
+    const name = kind === 'design' ? ctx.designArtifacts.find((d) => d.id === aid)?.name : ctx.studioArtifacts.find((s) => s.id === aid)?.title;
+    ctx.linkArtifact(ticketKey, aid, kind, name);
+  };
+  return (
+    <Card title={translate({ key: 'workspaces.ticket.linkedArtifacts' })}>
+      <div className="flex flex-col gap-2">
+        {links.length === 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.ticket.noLinkedArtifacts' })}</div>}
+        {links.map((l) => (
+          <div key={l.id} className="flex items-center gap-2 rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
+            <Icon name={l.artifactKind === 'design' ? 'palette' : 'bullhorn'} className="text-primary text-sm shrink-0" />
+            <span className="text-sm text-common truncate flex-1">{l.name}</span>
+            <button type="button" onClick={() => { ctx.unlinkArtifact(l.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
+          </div>
+        ))}
+        {options.length > 0 && <Dropdown size="sm" items={options} placeholder={translate({ key: 'workspaces.ticket.linkArtifactPlaceholder' })} onChange={onPick} />}
+      </div>
+    </Card>
   );
 }
 

@@ -750,7 +750,7 @@
       "stageConfigMeta": "· AI-gesteuert · RAG, Graphify, Symbol-Index",
       "teardownConfirmTitle": "Container von {{id}} abbauen?",
       "teardownConfirmContent": "Der Container + Worktree werden entfernt. Der Branch und das Event-Log bleiben erhalten — du kannst später reaktivieren.",
-      "teardownContainer": "Container abbauen",
+      "teardownContainer": "Container abbauen", "linkedArtifacts": "Verknüpfte Designs & Specs", "noLinkedArtifacts": "Kein Design/Spec verknüpft. Verknüpfe eines, damit die KI danach baut.", "linkArtifactPlaceholder": "Ein Design oder eine Studio-Spec verknüpfen…",
       "noTerminal": "Kein Terminal aktiv",
       "noTerminalSub": "Dieses Ticket hat keinen aktiven Container. Reaktiviere es, um ein Terminal anzuhängen.",
       "openInTerminals": "In Terminals öffnen",

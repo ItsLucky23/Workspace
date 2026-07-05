@@ -1611,3 +1611,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `interviewerFindings.test` **8/8** (preamble geskipt, area+severity, titel/summary-split, geen-list→0). Live-e2e na de volgende Interviewer-run (findings verschijnen → ticket).
 
 **Files touched:** `server/interviewer/{findings.ts (nieuw),role.ts}`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/findingAction_server_v1.ts` (nieuw), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/interviewer/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/interviewerFindings.test.mts` (nieuw).
+
+## 2026-07-06 02:00 — Pipeline-koppeling Fase 4: ticket ↔ artifact-injectie
+
+**Fase 4 (de generieke brug):** een ticket kan nu een design/Studio-artifact meenemen dat de Conductor bij stage-spawn in de agent-context injecteert.
+- **`server/orchestrator/artifactContext.ts`** — `loadTicketArtifactContext`: leest de `TicketArtifactLink`s van een ticket → rendert elk gelinkt design-artifact (via `buildDesignSystemDoc`) of Studio-artifact (bounded kind-render, geen volle HTML-dump) als context-doc.
+- **Injectie** in `stageRunner`: de gelinkte artifacts komen naast de starter-docs + de workspace-brede design-system-doc in élke stage-`CLAUDE.md`.
+- **Control-ops** `ticket-link-artifact` / `ticket-unlink-artifact` (B-23, `workTickets`) — union/rbac/nieuwe `ticketArtifact`-sync-route/conductor (dedupe op bestaande link).
+- **Snapshot** exposeert `ticketArtifactLinks` (met opgeloste artifact-naam + DEV-key).
+- **UI** — "Linked design & specs"-Card op de ticket-overview met een picker (alle design- + Studio-artifacts) + unlink. Client `linkArtifact`/`unlinkArtifact`.
+- i18n en/nl/de/fr.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. (Volledige stage-injectie vereist een container-run; het pad is de bewezen contextDocs-seam.)
+
+**Files touched:** `server/orchestrator/{artifactContext.ts (nieuw),stageRunner.ts,conductor.ts}`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/ticketArtifact_server_v1.ts` (nieuw), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`.

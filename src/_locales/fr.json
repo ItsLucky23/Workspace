@@ -750,7 +750,7 @@
       "stageConfigMeta": "· piloté par l’IA · RAG, graphify, index de symboles",
       "teardownConfirmTitle": "Démonter le conteneur de {{id}} ?",
       "teardownConfirmContent": "Le conteneur + le worktree sont supprimés. La branche et le journal d’événements persistent — vous pourrez réactiver plus tard.",
-      "teardownContainer": "Démonter le conteneur",
+      "teardownContainer": "Démonter le conteneur", "linkedArtifacts": "Designs & specs liés", "noLinkedArtifacts": "Aucun design ou spec lié. Liez-en un pour que l'IA s'y conforme.", "linkArtifactPlaceholder": "Lier un design ou une spec Studio…",
       "noTerminal": "Aucun terminal en cours d’exécution",
       "noTerminalSub": "Ce ticket n’a aucun conteneur actif. Réactivez-le pour attacher un terminal.",
       "openInTerminals": "Ouvrir dans Terminaux",

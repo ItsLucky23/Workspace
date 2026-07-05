@@ -946,6 +946,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (id) await prisma.workspaceTrigger.deleteMany({ where: { workspaceId: action.workspaceId, id } });
       return;
     }
+    //? Ticket ↔ artifact links (ADR 0034) — link a design/Studio artifact to a ticket so the Conductor
+    //? injects it at stage-spawn (see server/orchestrator/artifactContext.ts).
+    case 'ticket-link-artifact': {
+      const ticketKey = str(target, 'ticketId');
+      const artifactId = str(payload, 'artifactId');
+      const artifactKind = str(payload, 'artifactKind');
+      if (!ticketKey || !artifactId || (artifactKind !== 'design' && artifactKind !== 'studio')) return;
+      const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { id: true } });
+      if (!ticket) return;
+      const existing = await prisma.ticketArtifactLink.findFirst({ where: { workspaceId: action.workspaceId, ticketId: ticket.id, artifactId }, select: { id: true } });
+      if (existing) return;
+      await prisma.ticketArtifactLink.create({ data: { workspaceId: action.workspaceId, ticketId: ticket.id, artifactId, artifactKind, ...(str(payload, 'label') ? { label: str(payload, 'label') } : {}), linkedBy: userId } });
+      return;
+    }
+    case 'ticket-unlink-artifact': {
+      const linkId = str(target, 'linkId') ?? str(payload, 'linkId');
+      if (linkId) await prisma.ticketArtifactLink.deleteMany({ where: { workspaceId: action.workspaceId, id: linkId } });
+      return;
+    }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {
       const id = str(target, 'findingId') ?? str(payload, 'findingId');

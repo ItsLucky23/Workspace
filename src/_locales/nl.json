@@ -750,7 +750,7 @@
       "stageConfigMeta": "· AI-gedreven · RAG, graphify, symbol-index",
       "teardownConfirmTitle": "Container van {{id}} afbreken?",
       "teardownConfirmContent": "De container + worktree worden verwijderd. De branch en het event-log blijven — je kunt later heractiveren.",
-      "teardownContainer": "Container afbreken",
+      "teardownContainer": "Container afbreken", "linkedArtifacts": "Gekoppelde designs & specs", "noLinkedArtifacts": "Geen design of spec gekoppeld. Koppel er een zodat de AI ernaar bouwt.", "linkArtifactPlaceholder": "Koppel een design of Studio-spec…",
       "noTerminal": "Geen terminal actief",
       "noTerminalSub": "Dit ticket heeft geen actieve container. Heractiveer het om een terminal te koppelen.",
       "openInTerminals": "Openen in Terminals",

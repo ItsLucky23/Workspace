@@ -750,7 +750,7 @@
       "stageConfigMeta": "· AI-driven · RAG, graphify, symbol-index",
       "teardownConfirmTitle": "Teardown {{id}}'s container?",
       "teardownConfirmContent": "The container + worktree are removed. The branch and event log persist — you can reactivate later.",
-      "teardownContainer": "Teardown container",
+      "teardownContainer": "Teardown container", "linkedArtifacts": "Linked design & specs", "noLinkedArtifacts": "No design or spec linked. Link one so the AI builds to it.", "linkArtifactPlaceholder": "Link a design or Studio spec…",
       "noTerminal": "No terminal running",
       "noTerminalSub": "This ticket has no active container. Reactivate it to attach a terminal.",
       "openInTerminals": "Open in Terminals",

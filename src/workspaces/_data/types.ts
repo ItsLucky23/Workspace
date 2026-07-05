@@ -778,6 +778,16 @@ export interface InterviewFinding {
   createdAt: string;
 }
 
+//? Ticket ↔ artifact link (ADR 0034) — a design/Studio artifact a ticket implements.
+export interface TicketArtifactLink {
+  id: string;
+  ticketId: string;                    // DEV-#### key
+  artifactId: string;
+  artifactKind: string;                // 'design' | 'studio'
+  name: string;
+  label: string | null;
+}
+
 export interface AiRun {
   id: string;
   feature: string;

@@ -24,7 +24,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding,
+  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -63,6 +63,7 @@ interface Snap {
   studioBrand: StudioBrandLibrary | null;
   designArtifacts: DesignArtifact[];
   interviewFindings: InterviewFinding[];
+  ticketArtifactLinks: TicketArtifactLink[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -82,6 +83,7 @@ const EMPTY_SNAP: Snap = {
   studioBrand: null,
   designArtifacts: [],
   interviewFindings: [],
+  ticketArtifactLinks: [],
 };
 
 function pathForView(view: WsView): string {
@@ -811,8 +813,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       studioBrand: snap.studioBrand,
       designArtifacts: snap.designArtifacts,
       interviewFindings: snap.interviewFindings,
+      ticketArtifactLinks: snap.ticketArtifactLinks,
       makeTicketFromFinding: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-to-ticket', findingId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       dismissFinding: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-dismiss', findingId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      linkArtifact: (ticketKey, artifactId, artifactKind, label) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-link-artifact', ticketId: ticketKey, artifactId, artifactKind, ...(label ? { label } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      unlinkArtifact: (linkId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-unlink-artifact', linkId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       saveBrand: async (b) => { const ws = snap.activeWorkspaceId; if (!ws) return; await apiRequest({ name: 'workspaces/studioBrand', version: 'v1', data: { workspaceId: ws, op: 'save', ...b } }); refetch(); },
       promoteBrand: async (artifactId) => { const ws = snap.activeWorkspaceId; if (!ws) return; await apiRequest({ name: 'workspaces/studioBrand', version: 'v1', data: { workspaceId: ws, op: 'promote', artifactId } }); refetch(); },
       saveBrief: async (b) => {

@@ -13,6 +13,7 @@ import type { Prisma } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
 import { renderStage, type StageArtifacts } from './renderStage';
+import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
@@ -168,7 +169,11 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     where: { workspaceId, mode: 'context-doc', OR: [{ source: 'starter', enabled: true }, { source: 'design-system', enabled: true }, ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : [])] },
     select: { name: true, content: true }, take: 12,
   });
-  const contextDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));
+  const starterDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));
+  //? ADR 0034: per-ticket linked artifacts (the specific design/spec this ticket implements) — injected
+  //? alongside the workspace-wide design-system doc + starter docs.
+  const linkedArtifacts = await loadTicketArtifactContext(prisma, workspaceId, ticket.id);
+  const contextDocs = [...starterDocs, ...linkedArtifacts];
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
   //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).
