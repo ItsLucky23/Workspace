@@ -81,7 +81,7 @@ export function useDesigner(): DesignerCtx {
 }
 
 export function DesignerProvider({ children }: { children: ReactNode }) {
-  const { activeWorkspace } = useWorkspaces();
+  const { activeWorkspace, refetch } = useWorkspaces();
 
   const [themes, setThemes] = useState<DesignTheme[]>(SEED_THEMES);
   const [activeThemeId, setActiveThemeId] = useState(LUCKYSTACK_THEME.id);
@@ -117,6 +117,7 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         const r = res.result;
         const t: DesignTheme = { id: nextId('ai-theme'), name: r.name || 'AI theme', description: r.description, source: 'ai', light: coerceTokens(r.light, LUCKYSTACK_THEME.light), dark: coerceTokens(r.dark, LUCKYSTACK_THEME.dark) };
         setThemes((p) => [...p, t]); setActiveThemeId(t.id);
+        refetch(); //? so the new run shows in the AI-activity feed (snapshot-backed)
         return true;
       },
 
@@ -133,6 +134,7 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         if (error || res?.status !== 'success') return false;
         const s = coerceStyle(res.result.asset, nextId('ai-style'));
         setStyles((p) => [...p, s]); setActiveStyleId(s.id);
+        refetch();
         return true;
       },
 
@@ -149,10 +151,11 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         if (error || res?.status !== 'success') return false;
         const a = coerceAnim(res.result.asset, nextId('ai-anim'));
         setAnims((p) => [...p, a]); setActiveAnimId(a.id);
+        refetch();
         return true;
       },
     };
-  }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id]);
+  }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id, refetch]);
 
   return <Ctx value={ctx}>{children}</Ctx>;
 }
