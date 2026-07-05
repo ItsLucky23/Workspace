@@ -974,7 +974,7 @@
         "risks": "Quels sont les plus grands risques ou zones fragiles de cette base de code ?"
       },
       "placeholder": "Posez une question sur votre base de code, ou décrivez un plan…",
-      "send": "Envoyer", "error": "Un problème est survenu en contactant l'IA. Réessayez."
+      "send": "Envoyer", "error": "Un problème est survenu en contactant l'IA. Réessayez.", "findingsTitle": "Constats ({{n}})", "high": "Élevé", "linkedTicket": "Ticket créé", "makeTicket": "Créer un ticket", "dismiss": "Ignorer"
     },
     "scheduled": {
       "title": "Scheduled tasks",

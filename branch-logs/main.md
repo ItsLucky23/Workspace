@@ -1597,3 +1597,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `designSystemDoc.test` **6/6** (tokens gerenderd, wijst naar index.css, geen `[object Object]`-lek). Live-e2e na backend-herstart.
 
 **Files touched:** `server/designer/{designSystemDoc,library}.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_api/designerLibrary_v1.ts` (nieuw), `src/workspaces/designer/{state.tsx,page.tsx}`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designSystemDoc.test.mts` (nieuw).
+
+## 2026-07-06 01:15 — Pipeline-koppeling Fase 3: Interviewer-findings (persist + categoriseer + → ticket)
+
+**Fase 3 (jouw expliciete zorg: Interviewer-data niet opgeslagen/gecategoriseerd):**
+- **`server/interviewer/findings.ts`** — `parseFindings` (puur): parseert de markdown-lijst naar **gecategoriseerde** findings (`- [area] **Title** — why`, area ∈ reliability/dx/ux/performance/security/product/other; alleen list-items, geen preamble); `recordFindings` persist ze als `InterviewFinding`-rows.
+- **Rol** (`role.ts`): prompt vraagt nu het `[area]`-format; de run **schrijft findings** i.p.v. alleen een notificatie (+ meldt "N new findings saved").
+- **Snapshot** exposeert `interviewFindings` (open+accepted, dismissed verborgen).
+- **`finding-to-ticket` + `finding-dismiss` control-ops** (B-23: mens klikt) — ControlOp/rbac(`workTickets`)/nieuwe `findingAction`-sync-route/conductor-handler. `finding-to-ticket` maakt een `DEV-####`-ticket (titel/summary/area-label/severity→priority) op `unrefined`, markeert de finding `accepted`+`ticketId`, vuurt `ticket.created` → **voedt de pipeline**.
+- **UI** (`interviewer/page.tsx`): findings-paneel boven de chat — per finding area-icoon + severity + titel/summary + **"Make ticket"**/**"Dismiss"** (of "Ticket created" als accepted). Client `makeTicketFromFinding`/`dismissFinding`.
+- i18n en/nl/de/fr.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `interviewerFindings.test` **8/8** (preamble geskipt, area+severity, titel/summary-split, geen-list→0). Live-e2e na de volgende Interviewer-run (findings verschijnen → ticket).
+
+**Files touched:** `server/interviewer/{findings.ts (nieuw),role.ts}`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/findingAction_server_v1.ts` (nieuw), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/interviewer/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/interviewerFindings.test.mts` (nieuw).

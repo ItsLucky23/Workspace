@@ -974,7 +974,7 @@
         "risks": "Was sind die größten Risiken oder fragilen Stellen in dieser Codebase?"
       },
       "placeholder": "Frag etwas über deine Codebase oder beschreibe einen Plan…",
-      "send": "Senden", "error": "Beim Erreichen der KI ist etwas schiefgelaufen. Versuch es erneut."
+      "send": "Senden", "error": "Beim Erreichen der KI ist etwas schiefgelaufen. Versuch es erneut.", "findingsTitle": "Erkenntnisse ({{n}})", "high": "Hoch", "linkedTicket": "Ticket erstellt", "makeTicket": "Ticket erstellen", "dismiss": "Verwerfen"
     },
     "scheduled": {
       "title": "Scheduled tasks",

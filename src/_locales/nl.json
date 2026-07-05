@@ -974,7 +974,7 @@
         "risks": "Wat zijn de grootste risico's of kwetsbare plekken in deze codebase?"
       },
       "placeholder": "Vraag iets over je codebase, of beschrijf een plan…",
-      "send": "Versturen", "error": "Er ging iets mis bij het bereiken van de AI. Probeer opnieuw."
+      "send": "Versturen", "error": "Er ging iets mis bij het bereiken van de AI. Probeer opnieuw.", "findingsTitle": "Bevindingen ({{n}})", "high": "Hoog", "linkedTicket": "Ticket gemaakt", "makeTicket": "Maak ticket", "dismiss": "Negeren"
     },
     "scheduled": {
       "title": "Geplande taken",

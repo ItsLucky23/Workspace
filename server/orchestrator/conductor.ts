@@ -946,6 +946,33 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (id) await prisma.workspaceTrigger.deleteMany({ where: { workspaceId: action.workspaceId, id } });
       return;
     }
+    //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
+    case 'finding-to-ticket': {
+      const id = str(target, 'findingId') ?? str(payload, 'findingId');
+      if (!id) return;
+      const finding = await prisma.interviewFinding.findFirst({ where: { workspaceId: action.workspaceId, id } });
+      if (!finding || finding.ticketId) return;
+      const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId } });
+      if (!project) return;
+      const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
+      const number = (last?.number ?? 0) + 1;
+      const created = await prisma.ticket.create({
+        data: {
+          workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+          title: finding.title, description: finding.summary, stageId: 'unrefined', status: 'idle',
+          labels: [finding.area], creatorId: userId, priority: finding.severity === 'high' ? 'high' : 'normal',
+        },
+      });
+      await prisma.interviewFinding.updateMany({ where: { workspaceId: action.workspaceId, id }, data: { status: 'accepted', ticketId: created.id } });
+      await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket from an Interviewer finding');
+      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: project.id });
+      return created;
+    }
+    case 'finding-dismiss': {
+      const id = str(target, 'findingId') ?? str(payload, 'findingId');
+      if (id) await prisma.interviewFinding.updateMany({ where: { workspaceId: action.workspaceId, id }, data: { status: 'dismissed' } });
+      return;
+    }
     case 'trigger-run': {
       //? Run a trigger's action NOW (on-demand, e.g. "Run now" on a scheduled task) — goes through the
       //? same approval gate as the scheduler (a `mutates`/requiresApproval action opens a suggestion).

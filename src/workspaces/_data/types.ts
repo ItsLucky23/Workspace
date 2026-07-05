@@ -766,6 +766,18 @@ export interface DesignArtifact {
   createdAt: string;
 }
 
+//? Interviewer module (ADR 0034) — a persisted, categorised improvement finding.
+export interface InterviewFinding {
+  id: string;
+  area: string;                        // reliability|dx|ux|performance|security|product|other
+  severity: string;                    // low|normal|high
+  title: string;
+  summary: string;
+  status: string;                      // open|accepted|dismissed
+  ticketId: string | null;
+  createdAt: string;
+}
+
 export interface AiRun {
   id: string;
   feature: string;

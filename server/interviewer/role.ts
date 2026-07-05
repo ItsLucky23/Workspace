@@ -9,6 +9,7 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag/index';
+import { parseFindings, recordFindings } from './findings';
 
 //? Pure prompt builder (unit-testable). `focus` narrows the review (e.g. "the auth flow"); empty =
 //? the whole project. `context` is retrieved codebase excerpts (RAG) that GROUND the ideas in the
@@ -19,8 +20,8 @@ export function buildInterviewerPrompt(focus: string, context = ''): { system: s
     ? `\n\nGROUND your ideas in these real excerpts from the codebase (cite the file when relevant):\n${context.trim()}`
     : '';
   return {
-    system: 'You are a sharp senior engineer reviewing a software project and proposing improvements. Output 3–5 concise, concrete, actionable ideas as a short markdown list. Each idea is a bold one-line title followed by one sentence on why it matters. No preamble, no filler.',
-    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon — reliability, developer experience, UX, performance, security, or product gaps. Return a short markdown list.${grounding}`,
+    system: 'You are a sharp senior engineer reviewing a software project and proposing improvements. Output 3–5 concise, concrete, actionable ideas as a short markdown list. Each line MUST be exactly: `- [area] **Title** — one sentence on why it matters`, where area is ONE of reliability, dx, ux, performance, security, product. No preamble, no filler.',
+    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}`,
   };
 }
 
@@ -39,7 +40,10 @@ export function registerInterviewerRole(): void {
       const { system, prompt } = buildInterviewerPrompt(focus, context);
       const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: 'Interviewer · improvement ideas' }));
       if (error || !res?.ok || res.text.trim().length === 0) return { kind: 'interview-result', title: 'Interviewer', body: 'Could not generate ideas this run — try again.' };
-      return { kind: 'interview-result', title: 'Ideas from the Interviewer', body: res.text.trim() };
+      //? Persist the ideas as CATEGORISED findings (ADR 0034) so they survive + can become tickets.
+      const [, count] = await tryCatch(() => recordFindings(getPrismaClient(), ctx.workspaceId, parseFindings(res.text)));
+      const n = count ?? 0;
+      return { kind: 'interview-result', title: 'Ideas from the Interviewer', body: `${n > 0 ? `${String(n)} new finding${n === 1 ? '' : 's'} saved.\n\n` : ''}${res.text.trim()}` };
     },
   });
 }

@@ -8,14 +8,27 @@ import { useEffect, useRef, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
-import Icon from '../_components/Icon';
+import Icon, { type IconName } from '../_components/Icon';
 import { WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+import type { InterviewFinding } from '../_data/types';
 
 export const template = 'workspaces';
 
 interface Msg { id: string; role: 'user' | 'ai'; text: string; pending?: boolean }
 let seq = 0;
+
+//? Finding areas → an icon + accent (for the grouped findings panel). ADR 0034.
+const AREA_META: Record<string, { icon: IconName; tint: string }> = {
+  reliability: { icon: 'shield-halved', tint: 'text-correct' },
+  security: { icon: 'lock', tint: 'text-wrong' },
+  performance: { icon: 'gauge-high', tint: 'text-warning' },
+  ux: { icon: 'wand-magic-sparkles', tint: 'text-primary' },
+  dx: { icon: 'code', tint: 'text-primary' },
+  product: { icon: 'lightbulb', tint: 'text-warning' },
+  other: { icon: 'circle-dot', tint: 'text-muted' },
+};
+const areaMeta = (area: string): { icon: IconName; tint: string } => AREA_META[area] ?? { icon: 'circle-dot', tint: 'text-muted' };
 
 //? Starter prompts — clickable so a first-time visitor instantly sees what this page is for.
 const STARTERS: { icon: string; key: string }[] = [
@@ -27,7 +40,7 @@ const STARTERS: { icon: string; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace } = useWorkspaces();
+  const { activeWorkspace, interviewFindings, makeTicketFromFinding, dismissFinding } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,6 +81,20 @@ export default function Interviewer() {
         <p className="text-sm text-muted mt-1.5 max-w-2xl">{translate({ key: 'workspaces.interviewer.intro' })}</p>
       </div>
 
+      {/* findings (ADR 0034) — categorised, persisted ideas from the interviewer role; turn one into a ticket */}
+      {interviewFindings.length > 0 && (
+        <div className="shrink-0 border-b border-divider px-5 md:px-6 py-3 max-h-64 overflow-y-auto bg-container1/30">
+          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
+          <div className="flex flex-col gap-2 max-w-3xl">
+            {interviewFindings.map((f) => (
+              <FindingRow key={f.id} f={f} translate={translate}
+                onMakeTicket={() => { makeTicketFromFinding(f.id); }}
+                onDismiss={() => { dismissFinding(f.id); }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* conversation */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5">
         {empty ? (
@@ -102,6 +129,32 @@ export default function Interviewer() {
           <WsButton icon="paper-plane" onClick={() => { ask(draft); }} disabled={busy || draft.trim().length === 0}>{translate({ key: 'workspaces.interviewer.send' })}</WsButton>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FindingRow({ f, translate, onMakeTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onDismiss: () => void }) {
+  const meta = areaMeta(f.area);
+  const accepted = f.status === 'accepted';
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-container1-border bg-container1 p-2.5">
+      <span className={`w-7 h-7 shrink-0 rounded-lg bg-container2 flex items-center justify-center ${meta.tint}`}><Icon name={meta.icon} className="text-sm" /></span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-title">{f.title}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-container2 text-muted uppercase shrink-0">{f.area}</span>
+          {f.severity === 'high' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-wrong/12 text-wrong shrink-0">{translate({ key: 'workspaces.interviewer.high' })}</span>}
+        </div>
+        {f.summary.length > 0 && <div className="text-xs text-muted mt-0.5">{f.summary}</div>}
+      </div>
+      {accepted ? (
+        <span className="text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center"><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</span>
+      ) : (
+        <div className="flex items-center gap-1.5 shrink-0 self-center">
+          <button type="button" onClick={onMakeTicket} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="plus" className="text-xs" />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
+          <button type="button" onClick={onDismiss} title={translate({ key: 'workspaces.interviewer.dismiss' })} className="text-muted hover:text-wrong cursor-pointer p-1"><Icon name="xmark" className="text-xs" /></button>
+        </div>
+      )}
     </div>
   );
 }

@@ -974,7 +974,7 @@
         "risks": "What are the biggest risks or fragile areas in this codebase?"
       },
       "placeholder": "Ask about your codebase, or describe a plan…",
-      "send": "Send", "error": "Something went wrong reaching the AI. Try again."
+      "send": "Send", "error": "Something went wrong reaching the AI. Try again.", "findingsTitle": "Findings ({{n}})", "high": "High", "linkedTicket": "Ticket created", "makeTicket": "Make ticket", "dismiss": "Dismiss"
     },
     "scheduled": {
       "title": "Scheduled tasks",
