@@ -91,6 +91,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'trigger-save': CAP.editPipeline,
   'trigger-toggle': CAP.editPipeline,
   'trigger-delete': CAP.editPipeline,
+  'trigger-run': CAP.editPipeline,
   'mark-read': null,
   pause: CAP.workTickets,
   resume: CAP.workTickets,

@@ -908,7 +908,7 @@
       "intro": "One place to keep your whole product UI consistent. Browse every component we ship, switch between design themes, and see everything re-render instantly so you can pick what fits.",
       "themes": "Themes", "themesSub": "Pick one to preview — or make your own.",
       "newTheme": "New theme", "generateAi": "Generate with AI", "aiSoon": "AI theme generation — coming in the next update", "soon": "Soon",
-      "aiPlaceholder": "Describe the look — e.g. 'a warm, premium fintech theme' or 'playful mint & coral'", "aiGenerate": "Generate theme", "aiGenerating": "Generating…", "aiError": "Couldn't generate a theme. Try again.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…" },
+      "aiPlaceholder": "Describe the look — e.g. 'a warm, premium fintech theme' or 'playful mint & coral'", "aiGenerate": "Generate theme", "aiGenerating": "Generating…", "aiError": "Couldn't generate a theme. Try again.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…", "generate": "Generate" },
       "light": "Light", "dark": "Dark", "editTokens": "Edit tokens", "duplicate": "Duplicate",
       "livePreview": "Live preview — {{theme}} ({{mode}})",
       "source": { "seed": "Built-in", "ai": "AI", "manual": "Custom" },
@@ -979,7 +979,7 @@
     "scheduled": {
       "title": "Scheduled tasks",
       "tagline": "Run an AI role or a notification on a schedule.",
-      "new": "New task", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
+      "new": "New task", "runNow": "Run now", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
       "name": "Name", "namePlaceholder": "e.g. Weekly improvement ideas",
       "cadenceLabel": "How often", "doLabel": "What to run",
       "cadence": { "hourly": "Hourly", "daily": "Daily · 09:00", "weekdays": "Weekdays · 09:00", "weekly": "Weekly · Mon 09:00", "custom": "Custom" },

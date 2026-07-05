@@ -103,7 +103,7 @@ function DesignerShell() {
             placeholder={translate({ key: `workspaces.designer.aiBar.${section}` })}
             className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
           {aiError && <span className="text-xs text-wrong shrink-0">{translate({ key: 'workspaces.designer.aiError' })}</span>}
-          <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={runAi} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>{translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiGenerate' })}</WsButton>
+          <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={runAi} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>{translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiBar.generate' })}</WsButton>
         </div>
       )}
 

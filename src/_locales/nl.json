@@ -908,7 +908,7 @@
       "intro": "Eén plek om je hele product-UI consistent te houden. Bekijk elk component dat we hebben, wissel tussen design-thema's, en zie alles direct hertekenen zodat je kunt kiezen wat past.",
       "themes": "Thema's", "themesSub": "Kies er een om te previewen — of maak je eigen.",
       "newTheme": "Nieuw thema", "generateAi": "Genereer met AI", "aiSoon": "AI-themagenerator — komt in de volgende update", "soon": "Binnenkort",
-      "aiPlaceholder": "Beschrijf de look — bv. 'een warm, premium fintech-thema' of 'speels mint & koraal'", "aiGenerate": "Genereer thema", "aiGenerating": "Bezig…", "aiError": "Kon geen thema genereren. Probeer opnieuw.", "aiBar": { "themes": "Beschrijf een thema om te genereren…", "styles": "Beschrijf een style om te genereren…", "animations": "Beschrijf een animatie om te genereren…" },
+      "aiPlaceholder": "Beschrijf de look — bv. 'een warm, premium fintech-thema' of 'speels mint & koraal'", "aiGenerate": "Genereer thema", "aiGenerating": "Bezig…", "aiError": "Kon geen thema genereren. Probeer opnieuw.", "aiBar": { "themes": "Beschrijf een thema om te genereren…", "styles": "Beschrijf een style om te genereren…", "animations": "Beschrijf een animatie om te genereren…", "generate": "Genereer" },
       "light": "Licht", "dark": "Donker", "editTokens": "Tokens bewerken", "duplicate": "Dupliceren",
       "livePreview": "Live preview — {{theme}} ({{mode}})",
       "source": { "seed": "Ingebouwd", "ai": "AI", "manual": "Eigen" },
@@ -979,7 +979,7 @@
     "scheduled": {
       "title": "Geplande taken",
       "tagline": "Draai een AI-rol of een notificatie op schema.",
-      "new": "Nieuwe taak", "empty": "Nog geen geplande taken. Maak er een om iets op een cron-schema te draaien.",
+      "new": "Nieuwe taak", "runNow": "Nu draaien", "empty": "Nog geen geplande taken. Maak er een om iets op een cron-schema te draaien.",
       "name": "Naam", "namePlaceholder": "bv. Wekelijkse verbeterideeën",
       "cadenceLabel": "Hoe vaak", "doLabel": "Wat draaien",
       "cadence": { "hourly": "Elk uur", "daily": "Dagelijks · 09:00", "weekdays": "Weekdagen · 09:00", "weekly": "Wekelijks · ma 09:00", "custom": "Aangepast" },

@@ -187,6 +187,7 @@ export interface WorkspacesCtx {
   saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string }) => void;
   toggleTrigger: (id: string, enabled: boolean) => void;
   deleteTrigger: (id: string) => void;
+  runTrigger: (id: string) => void;   // run a trigger's action now (on-demand)
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES

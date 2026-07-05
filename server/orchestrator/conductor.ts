@@ -31,7 +31,7 @@ import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './ca
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { fireEvent } from '../automation/triggers';
-import { executeGatedAction } from '../automation/executor';
+import { executeGatedAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
 
@@ -944,6 +944,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'trigger-delete': {
       const id = str(target, 'triggerId') ?? str(payload, 'id');
       if (id) await prisma.workspaceTrigger.deleteMany({ where: { workspaceId: action.workspaceId, id } });
+      return;
+    }
+    case 'trigger-run': {
+      //? Run a trigger's action NOW (on-demand, e.g. "Run now" on a scheduled task) — goes through the
+      //? same approval gate as the scheduler (a `mutates`/requiresApproval action opens a suggestion).
+      const id = str(target, 'triggerId') ?? str(payload, 'id');
+      if (!id) return;
+      const t = await prisma.workspaceTrigger.findFirst({ where: { workspaceId: action.workspaceId, id } });
+      if (!t) return;
+      await runTriggerAction(prisma, action.workspaceId, { action: t.action, params: asRec(t.params), triggerName: t.name }, t.requiresApproval);
       return;
     }
     // ---- notifications ----

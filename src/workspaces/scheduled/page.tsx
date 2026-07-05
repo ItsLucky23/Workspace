@@ -34,7 +34,7 @@ function cronLabel(cron: string): string {
 
 export default function Scheduled() {
   const translate = useTranslator();
-  const { triggers, agentRoles, toggleTrigger, deleteTrigger } = useWorkspaces();
+  const { triggers, agentRoles, toggleTrigger, deleteTrigger, runTrigger } = useWorkspaces();
   const scheduled = triggers.filter((t) => t.on === 'cron');
   const [creating, setCreating] = useState(false);
 
@@ -73,6 +73,7 @@ export default function Scheduled() {
                     {t.lastFiredAt ? ` · ${translate({ key: 'workspaces.scheduled.lastRun', params: [{ key: 'when', value: new Date(t.lastFiredAt).toLocaleString() }] })}` : ''}
                   </div>
                 </div>
+                <button type="button" onClick={() => { runTrigger(t.id); }} title={translate({ key: 'workspaces.scheduled.runNow' })} className="text-muted hover:text-primary cursor-pointer shrink-0 inline-flex items-center gap-1 text-xs"><Icon name="play" />{translate({ key: 'workspaces.scheduled.runNow' })}</button>
                 <Toggle on={t.enabled} onChange={(on) => { toggleTrigger(t.id, on); }} />
                 <button type="button" onClick={() => { deleteTrigger(t.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="trash-can" className="text-sm" /></button>
               </div>

@@ -23,7 +23,7 @@ export interface SyncParams {
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
   const { op, clientRequestId, triggerId, ...payload } = clientInput;
-  if (op !== 'trigger-save' && op !== 'trigger-toggle' && op !== 'trigger-delete') {
+  if (op !== 'trigger-save' && op !== 'trigger-toggle' && op !== 'trigger-delete' && op !== 'trigger-run') {
     return { status: 'error', errorCode: 'sync.invalidRequest' };
   }
   const res = await dispatchControlSync({

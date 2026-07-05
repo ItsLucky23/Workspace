@@ -908,7 +908,7 @@
       "intro": "Ein Ort, um deine gesamte Produkt-UI konsistent zu halten. Sieh dir jede Komponente an, wechsle zwischen Design-Themes und beobachte, wie alles sofort neu rendert, damit du wählen kannst, was passt.",
       "themes": "Themes", "themesSub": "Wähle eins zur Vorschau — oder erstelle dein eigenes.",
       "newTheme": "Neues Theme", "generateAi": "Mit KI generieren", "aiSoon": "KI-Theme-Generierung — kommt im nächsten Update", "soon": "Bald",
-      "aiPlaceholder": "Beschreibe den Look — z. B. 'ein warmes, edles Fintech-Theme' oder 'verspielt Mint & Koralle'", "aiGenerate": "Theme generieren", "aiGenerating": "Wird generiert…", "aiError": "Theme konnte nicht generiert werden. Versuch es erneut.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…" },
+      "aiPlaceholder": "Beschreibe den Look — z. B. 'ein warmes, edles Fintech-Theme' oder 'verspielt Mint & Koralle'", "aiGenerate": "Theme generieren", "aiGenerating": "Wird generiert…", "aiError": "Theme konnte nicht generiert werden. Versuch es erneut.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…", "generate": "Generate" },
       "light": "Hell", "dark": "Dunkel", "editTokens": "Tokens bearbeiten", "duplicate": "Duplizieren",
       "livePreview": "Live-Vorschau — {{theme}} ({{mode}})",
       "source": { "seed": "Integriert", "ai": "KI", "manual": "Eigen" },
@@ -979,7 +979,7 @@
     "scheduled": {
       "title": "Scheduled tasks",
       "tagline": "Run an AI role or a notification on a schedule.",
-      "new": "New task", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
+      "new": "New task", "runNow": "Run now", "empty": "No scheduled tasks yet. Create one to run something on a cron schedule.",
       "name": "Name", "namePlaceholder": "e.g. Weekly improvement ideas",
       "cadenceLabel": "How often", "doLabel": "What to run",
       "cadence": { "hourly": "Hourly", "daily": "Daily · 09:00", "weekdays": "Weekdays · 09:00", "weekly": "Weekly · Mon 09:00", "custom": "Custom" },

@@ -1555,3 +1555,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `designerAsset.test` **7/7** (style/anim-prompts vragen JSON + brief; parser leest velden + garbage→leeg). Live na backend-herstart.
 
 **Files touched:** `server/designer/generateAsset.ts` (nieuw), `server/ai/{types,assignments}.ts`, `src/workspaces/_api/designerGenerateAsset_v1.ts` (nieuw), `src/workspaces/designer/{state.tsx,styles.ts,animations.ts,page.tsx}`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designerAsset.test.mts` (nieuw).
+
+## 2026-07-05 22:30 — "Run now" op geplande taken + AI-balk-label-polish + refetch-fix (live e2e)
+
+**User prompt:** "Doe nog zoveel nuttigs als je kan + alles e2e testen."
+
+**What I did:**
+- **`trigger-run` control-op** — een "Run now" op elke geplande taak draait de actie **nu** via de bestaande `runTriggerAction` (zelfde approval-gate als de scheduler, B-23). Toegevoegd aan de `ControlOp`-unie, rbac (`editPipeline`), de `triggerAction`-sync-route-whitelist, een conductor-handler (laadt de trigger → `runTriggerAction`), en client `runTrigger` + een **"Run now"**-knop in de Scheduled-pagina. Maakt de Interviewer/scraper on-demand draaibaar → meteen zichtbaar in de AI-activity-feed / als notificatie.
+- **Polish** — de unified AI-balk-knop zei "Generate theme" op álle secties; nu een generieke `aiBar.generate` ("Generate"/"Genereer").
+- **Refetch-fix** (gevonden tijdens live-test) — de Designer-generatie refetcht nu, zodat de nieuwe run in de AI-activity-feed verschijnt.
+
+**LIVE e2e (verse backend+client):** ✅ **Designer AI-style-gen** — "candy pastel"-brief → **Candy Cloud**-style (radius 20/32, pastel-getinte schaduwen, Baloo/Nunito, bouncy) in 19.6s, AI-badge. ✅ **AI-activity-feed** — de run verschijnt in de "Activity"-tab van het Workspace-AI-paneel mét **onze prompt + de volledige AI-reasoning/output**. root+server-tsc/eslint/ai:lint 0.
+
+**Files touched:** `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `src/workspaces/_sync/triggerAction_server_v1.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/scheduled/page.tsx`, `src/workspaces/designer/{page.tsx,state.tsx}`, `src/_locales/{en,nl,de,fr}.json`.
