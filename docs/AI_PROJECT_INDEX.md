@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (28)
+## API routes (31)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -39,6 +39,9 @@
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
+| `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
+| `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
+| `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
 ## Sync routes (35)
 
@@ -86,9 +89,9 @@
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 63 |
+| _(unowned)_ | 66 |
 
-**Test coverage**: 3/63 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/66 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -117,6 +120,9 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
 - `api/workspaces/saveDevCommand/v1`
+- `api/workspaces/studioDelete/v1`
+- `api/workspaces/studioGenerate/v1`
+- `api/workspaces/studioSaveBrief/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/agentControl/v1`
@@ -139,12 +145,9 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/removeMember/v1`
 - `sync/workspaces/renameWorkspace/v1`
 - `sync/workspaces/revokeInvite/v1`
-- `sync/workspaces/roleCreate/v1`
-- `sync/workspaces/roleUpdate/v1`
-- `sync/workspaces/saveEnv/v1`
-- … +10 more
+- … +13 more
 
-## Pages (19)
+## Pages (20)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -164,6 +167,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
 | `/workspaces/settings` | plain | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
 | `/workspaces/sources` | workspaces | — | `workspaces/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
+| `/workspaces/studio` | workspaces | — | `workspaces/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |
 | `/workspaces/terminals` | workspaces | — | `workspaces/terminals/page.tsx` | Workspaces — Terminals page. Always-dark multi-terminal workspace, gated on |
 | `/workspaces/usage` | workspaces | — | `workspaces/usage/page.tsx` | Workspaces — Usage. No monetary budget/cap/alert (we run Claude via the Pro |
 | `/workspaces/workspace` | workspaces | — | `workspaces/workspace/page.tsx` | Workspaces — workspace settings. Members + per-member role (searchable |
