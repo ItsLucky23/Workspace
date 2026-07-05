@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (32)
+## Decisions (33)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -45,6 +45,7 @@
 | 0031 | Multi-instance Deel B — coordination verified under concurrency + live 2-instance | 🟢 accepted | workspaces, multi-instance, cluster, leader-election, verification | — | `docs/decisions/0031-multi-instance-verification.md` |
 | 0032 | Self-host installer + DR — compose stack, bootstrap, runbook | 🟢 accepted | workspaces, self-host, deployment, docker-compose, disaster-recovery | — | `docs/decisions/0032-self-host-installer-dr.md` |
 | 0033 | Studio — AI design + marketing module (brief → artifacts via provider layer + AgentRoles) | 🟢 accepted | workspaces, studio, ai, marketing, design, provider-abstraction, agent-roles | — | `docs/decisions/0033-studio-design-marketing-module.md` |
+| 0034 | Tool-module ↔ pipeline coupling (design-system, interview findings, ticket↔artifact) | 🟢 accepted | pipeline, designer, interviewer, studio, coupling, injection, b-23 | — | `docs/decisions/0034-tool-module-pipeline-coupling.md` |
 
 ## Summaries
 
@@ -305,6 +306,14 @@ A self-contained `deploy/` stack + a DR runbook:
 **Data model**: `StudioBrief` (product, audience, tone, goals, notes) + `StudioArtifact` (kind, role, `content` JSON, providerId, status). A brief has many artifacts. **Generation** (`server/studio/generate.ts`): PURE per-kind prompt builders + parsers (unit-tested, no DB), and one impure `generateArtifact` that runs `runAiCompletion(feature, req)` and stores a `StudioArtifact`. Kinds → roles/features: landing+brand = `designer`/`studio-designer`, copy+strategy = `marketer`/`studio-marketer` (two new `AiFeature`s + assignments, defaulting to claude-cli, overridable to gemini per the abstraction). Landing = a self-contained responsive HTML page (rendered in a **sandboxed iframe** — no scripts run); brand/copy = structured JSON; strategy = markdown. **AgentRole bridge** (`server/studio/roles.ts`): registers `studio-designer` + `studio-marketer` into the #2 registry (`mutates: true` → automation gates them behind approval), so a WorkspaceTrigger can auto-generate an artifact. **Routes** (`_api`, membership-gated, `relaxed`): `studioSaveBrief`, `studioGenerate` (runs the AI, rate-limited 10/min), `studioDelete`. Studio content is a separate domain (not board/git/status), so it writes via `_api` like the chat/preferences routes — the Conductor single-writer invariant (B-23) governs orchestration state, not this content. **UI**: a new `studio` view + nav item + `src/workspaces/studio/page.tsx` — brief list, brief form, a generate row (4 kinds), and per-kind live previews (iframe landing, palette swatches, copy columns, rendered strategy markdown). i18n en/nl/de/fr.
 
 → `docs/decisions/0033-studio-design-marketing-module.md`
+
+### 0034 — Tool-module ↔ pipeline coupling (design-system, interview findings, ticket↔artifact)
+
+**0034** · accepted · tags: pipeline, designer, interviewer, studio, coupling, injection, b-23 · 2026-07-05
+
+1. **Design-system is the coupling.** Persist the Designer library as `DesignArtifact` rows (kind `theme|style|animation`, `active` flag). One **active theme + style per workspace** is the fixed truth; the Designer stays a playground. From the active choice we synthesize a single `InfoSource(mode:'context-doc', source:'design-system', name:'Design system')`; `stageRunner` auto-injects `source:'design-system'` into **every** stage's `CLAUDE.md` (same seam as `source:'starter'`). The coding agent thus builds on-brand. Optional **"Apply to app"** emits a `WorkspaceSuggestion(type:'design')` carrying the `src/index.css` `@theme` token-diff; on accept the **Conductor** writes it (single-writer, B-23).
+
+→ `docs/decisions/0034-tool-module-pipeline-coupling.md`
 
 ## Code governed by decisions
 

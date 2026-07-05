@@ -699,13 +699,65 @@ model StudioArtifact {
   @@index([workspaceId, briefId, createdAt])
 }
 
-//? The Assistant's propose-only output (B-23). 5-value `type` (04b §8, CANONICAL).
-//? `patch` carries the appliable config/automation patch — applied ONLY when the
+//? Designer module (ADR 0034) — a persisted design-library entry: a theme, style, or animation.
+//? `content` is the kind-specific token/spec payload the Designer UI renders. `active` marks the ONE
+//? theme + the ONE style that are the workspace's current truth → synthesized into the injected
+//? 'design-system' context-doc the coding agent builds on.
+model DesignArtifact {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  kind        String                              // 'theme' | 'style' | 'animation'
+  name        String
+  description String?
+  content     Json                                // kind-specific: theme token-set | style spec | anim spec
+  source      String   @default("manual")         // 'seed' | 'manual' | 'ai'
+  active      Boolean  @default(false)            // the active theme/style for the workspace (one per kind)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, kind, active])
+}
+
+//? Interviewer module (ADR 0034) — a persisted, CATEGORISED improvement finding produced by the
+//? interviewer role/chat (replaces the notification-only output). A human can turn one into a ticket
+//? (B-23), recorded in `ticketId`.
+model InterviewFinding {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  area        String                              // 'reliability'|'dx'|'ux'|'performance'|'security'|'product'|'other'
+  severity    String   @default("normal")         // 'low' | 'normal' | 'high'
+  title       String
+  summary     String                              // one-line why-it-matters
+  detail      String?                             // optional longer body
+  status      String   @default("open")           // 'open' | 'accepted' | 'dismissed'
+  ticketId    String?  @db.ObjectId               // set when converted into a ticket
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, status, area])
+}
+
+//? ADR 0034 — a live reference linking a ticket to a design/Studio artifact. At stage-spawn the
+//? Conductor reads a ticket's links and injects the current artifact as extra context.
+model TicketArtifactLink {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  ticketId     String   @db.ObjectId
+  artifactId   String   @db.ObjectId              // → DesignArtifact.id | StudioArtifact.id
+  artifactKind String                             // 'design' | 'studio'
+  label        String?
+  linkedBy     String?  @db.ObjectId              // userId
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId, ticketId])
+}
+
+//? The Assistant's propose-only output (B-23). Extended `type` (04b §8 + ADR 0034).
+//? `patch` carries the appliable config/automation/design patch — applied ONLY when the
 //? user accepts → Conductor executes. Prototype mirror: `AiSuggestion` (types.ts:101).
 model WorkspaceSuggestion {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
-  type        String                              // 'link-tickets'|'create-epic'|'config-review'|'maintenance'|'automation' (5-value)
+  type        String                              // 'link-tickets'|'create-epic'|'config-review'|'maintenance'|'automation'|'design'|'interview-answer'
   title       String
   body        String
   ticketIds   String[] @db.ObjectId               // tickets the suggestion concerns

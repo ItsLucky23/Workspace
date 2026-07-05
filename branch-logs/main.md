@@ -1568,3 +1568,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **LIVE e2e (verse backend+client):** ✅ **Designer AI-style-gen** — "candy pastel"-brief → **Candy Cloud**-style (radius 20/32, pastel-getinte schaduwen, Baloo/Nunito, bouncy) in 19.6s, AI-badge. ✅ **AI-activity-feed** — de run verschijnt in de "Activity"-tab van het Workspace-AI-paneel mét **onze prompt + de volledige AI-reasoning/output**. root+server-tsc/eslint/ai:lint 0.
 
 **Files touched:** `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `src/workspaces/_sync/triggerAction_server_v1.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/scheduled/page.tsx`, `src/workspaces/designer/{page.tsx,state.tsx}`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-05 23:30 — Pipeline-koppeling Fase 1: schema + ADR 0034
+
+**User prompt:** Analyse of de main-pipeline gekoppeld is aan de nieuwe features; bouw daarna "alles wat je kan bedenken" om ze te koppelen, actieve design-keuze **workspace-breed**.
+
+**Analyse (bevestigd):** de tool-modules waren losstaand — de coding-agent krijgt context alleen via `InfoSource` context-docs (`sourceIds` → `renderStage` → `CLAUDE.md`) + RAG; niks van Designer/Interviewer/Marketing ging erdoorheen. Designer = client-only (weg bij reload), Interviewer-rol = notificatie-only, geen ticket↔artifact-link, niks schrijft `src/index.css`.
+
+**Fase 1 (waterfall — schema eerst):**
+- **ADR 0034** vastgelegd: workspace-brede actieve design-system geïnjecteerd als een gesynthetiseerd `InfoSource(source:'design-system')` context-doc (hergebruikt de bewezen seam); Interviewer-findings gepersisteerd + gecategoriseerd + finding→ticket; `TicketArtifactLink`; B-23 bewaard. Verworpen: per-ticket design, hardcoden in system-prompt, één `ModuleArtifact`-megatabel.
+- **Schema** (`prisma/schema.prisma`): `DesignArtifact` (kind theme|style|animation, `active`-vlag), `InterviewFinding` (area/severity/status + `ticketId`), `TicketArtifactLink` (ticket → design/studio-artifact); `WorkspaceSuggestion.type` uitgebreid met `'design'`/`'interview-answer'`.
+- `prisma:generate` + `db push` groen (indexes gesynced), `ai:decisions` (33). server-tsc 0.
+
+**Verify:** Prisma-client gegenereerd, DB in sync, server-tsc 0. Backend was gestopt voor de generate (EPERM) — herstart volgt na de code-fases.
+
+**Files touched:** `prisma/schema.prisma`, `docs/decisions/0034-tool-module-pipeline-coupling.md` (nieuw), `docs/AI_DECISIONS_INDEX.md`.
