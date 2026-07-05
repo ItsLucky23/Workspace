@@ -35,7 +35,7 @@ import type {
 const jsonStr = (v: unknown, key: string): string => (v !== null && typeof v === 'object' && typeof (v as Record<string, unknown>)[key] === 'string' ? ((v as Record<string, string>)[key] ?? '') : '');
 
 //? DB-string → the studio artifact kind (fallback keeps a stale row from crashing the snapshot).
-const ARTIFACT_KINDS: readonly StudioArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names'];
+const ARTIFACT_KINDS: readonly StudioArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names', 'thumbnail', 'videoScript'];
 const asArtifactKind = (s: string): StudioArtifactKind => ((ARTIFACT_KINDS as readonly string[]).includes(s) ? s : 'landing') as StudioArtifactKind;
 const asArtifactStatus = (s: string): StudioArtifact['status'] => (s === 'generating' || s === 'error' ? s : 'ready');
 

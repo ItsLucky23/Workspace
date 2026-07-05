@@ -889,7 +889,7 @@
       "saveBrief": "Brief opslaan", "editBrief": "Brief bewerken",
       "generate": "Genereren", "generating": "Bezig met genereren — dit kan tot een minuut duren…",
       "noArtifacts": "Nog geen artefacten. Genereer er hierboven een.", "noAudience": "geen doelgroep ingesteld",
-      "kind": { "landing": "Landingspagina", "component": "UI-component", "brand": "Brand-kit", "copy": "Marketing-copy", "strategy": "Strategie", "email": "E-mailsequentie", "ads": "Advertentieset", "social": "Social-kalender", "names": "Namen & taglines" },
+      "kind": { "landing": "Landingspagina", "component": "UI-component", "brand": "Brand-kit", "copy": "Marketing-copy", "strategy": "Strategie", "email": "E-mailsequentie", "ads": "Advertentieset", "social": "Social-kalender", "names": "Namen & taglines", "thumbnail": "Advertentie", "videoScript": "Videoscript" },
       "role": { "designer": "Designer", "marketer": "Marketeer" },
       "brandLibrary": "Merk-bibliotheek", "brandSet": "merk ingesteld", "brandUnset": "nog niet ingesteld",
       "brandIntro": "Je enige merk-waarheid. Elke generatie blijft on-brand met dit palet, deze fonts, voice en taglines. Genereer een Brand-kit en klik “Gebruik als merk”, of stel 't handmatig in.",
@@ -899,7 +899,8 @@
       "deleteBriefTitle": "“{{name}}” verwijderen?", "deleteBriefBody": "Dit verwijdert de brief en al z'n gegenereerde artefacten.", "deleteArtifact": "Artefact verwijderen", "regenerate": "Opnieuw genereren",
       "failed": "Genereren mislukt", "empty": "Niets gegenereerd.",
       "palette": "Palet", "typography": "Typografie", "voice": "Stem", "taglines": "Taglines", "logoIdeas": "Logo-ideeën",
-      "collapse": "Inklappen", "expand": "Uitklappen", "copyHtml": "HTML kopiëren"
+      "collapse": "Inklappen", "expand": "Uitklappen", "copyHtml": "HTML kopiëren",
+      "vsHook": "Hook", "vsDuration": "~{{sec}}s totaal", "vsVo": "VO", "vsScreen": "In beeld", "vsCta": "CTA", "vsNote": "Script + storyboard gegenereerd — volledige video-rendering vereist een media/video-API-key."
     },
     "designer": {
       "title": "Designer",

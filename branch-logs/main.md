@@ -1498,3 +1498,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. Nieuw `interviewerRole.test.mts` **8/8** (prompt-scope + registratie in `listAgentRoles`). **LIVE end-to-end bewezen** — de backend bleek down, dus opnieuw gestart (boot clean, leader-elected → cron-scheduler actief). Browser: de Scheduled-pagina rendert, de role-picker is gevuld met alle 3 geregistreerde rollen (studio-designer/marketer + **interviewer**, `mutates:false` → geen approval-badge), en het aanmaken van een **weekly-cron Interviewer-taak** ("0 9 * * 1") liep door `trigger-save` → success → refetch toont de rij (`Weekly · Mon 09:00 · Interviewer` + enable-toggle + delete). De scheduler vuurt 'm wekelijks. NB: één test-trigger + het wegwerp-testaccount blijven in de dev-DB (opruimen).
 
 **Files touched:** `server/interviewer/role.ts` (nieuw), `server/ai/{types,assignments}.ts`, `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/scheduled/page.tsx` (nieuw), `src/workspaces/_shell/{Shell,WorkspacesContext,WorkspacesProvider}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/interviewerRole.test.mts` (nieuw).
+
+## 2026-07-05 20:00 — Marketing: ad-creatives (thumbnails) + video-script generatie
+
+**User prompt:** "Ga door" — Marketing: advertenties, thumbnails, video's.
+
+**What I did (bovenop de bewezen Studio-generate-engine — Marketing herbruikt die):**
+- **Twee nieuwe marketer-kinds** in `server/studio/generate.ts`: **`thumbnail`** = een zelf-contained HTML **ad-creative** (~1200×630, CSS-only, in een sandboxed iframe gerenderd zoals de landing) en **`videoScript`** = een promo **script + storyboard** (JSON: hook/durationSec/scenes[shot/voiceover/onScreen/seconds]/cta). `KIND_META` + `ARTIFACT_KINDS` (9→11) + `buildPrompt`-cases + `parseArtifact` (thumbnail→html, videoScript→JSON). De snapshot-mapper-lijst mee bijgewerkt (anders mis-mappen naar 'landing' — dezelfde bug-klasse als eerder gefixt).
+- **UI**: KINDS-array (thumbnail `image` / videoScript `film`, beide marketer) + `VideoScriptPreview` (hook + genummerde scenes + CTA + een nette note: *volledige video-rendering vereist een media/video-API-key*). De Marketing-pagina (die de Studio-generator herbruikt) toont ze meteen.
+- **Video-strategie (Rule 3b, 3-jul verduidelijking):** de video-**script** draait nu op de bestaande tekst-provider; de échte video-**render** hangt aan een media/video-provider-key via de provider-abstractie (G-MKT-3 = eigen key, geen billing-laag) — die wire ik zodra de user de key dropt. Web-scraping-"reach" is voorzien via de nieuwe **Scheduled-engine** (een `scraper`-rol op een cron) — volgende slice.
+- i18n en/nl/de/fr (kind-labels + video-script-keys), volledig vertaald.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · `studio.test` **33/33** (nieuw: thumbnail-prompt vraagt HTML, videoScript-prompt vraagt scenes, parsers lezen hook/html). Live claude-cli-generatie van een thumbnail vereist een backend-herstart (server-module hot-reload niet; type-map wél live).
+
+**Files touched:** `server/studio/generate.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/studio/page.tsx` (VideoScriptPreview + KINDS), `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/studio.test.mts`.

@@ -889,7 +889,7 @@
       "saveBrief": "Enregistrer le brief", "editBrief": "Modifier le brief",
       "generate": "Générer", "generating": "Génération — cela peut prendre jusqu'à une minute…",
       "noArtifacts": "Aucun artefact. Générez-en un ci-dessus.", "noAudience": "aucun public défini",
-      "kind": { "landing": "Landing page", "component": "Composant UI", "brand": "Brand kit", "copy": "Copy marketing", "strategy": "Stratégie", "email": "Séquence e-mail", "ads": "Jeu d'annonces", "social": "Calendrier social", "names": "Noms & slogans" },
+      "kind": { "landing": "Landing page", "component": "Composant UI", "brand": "Brand kit", "copy": "Copy marketing", "strategy": "Stratégie", "email": "Séquence e-mail", "ads": "Jeu d'annonces", "social": "Calendrier social", "names": "Noms & slogans", "thumbnail": "Créa pub", "videoScript": "Script vidéo" },
       "role": { "designer": "Designer", "marketer": "Marketeur" },
       "brandLibrary": "Bibliothèque de marque", "brandSet": "marque définie", "brandUnset": "pas encore définie",
       "brandIntro": "Votre unique source de vérité de marque. Chaque génération reste fidèle à cette palette, ces polices, ce ton et ces slogans. Générez un Brand kit puis « Utiliser comme marque », ou définissez-la manuellement.",
@@ -899,7 +899,8 @@
       "deleteBriefTitle": "Supprimer « {{name}} » ?", "deleteBriefBody": "Cela supprime le brief et tous ses artefacts générés.", "deleteArtifact": "Supprimer l'artefact", "regenerate": "Régénérer",
       "failed": "Échec de la génération", "empty": "Rien de généré.",
       "palette": "Palette", "typography": "Typographie", "voice": "Voix", "taglines": "Slogans", "logoIdeas": "Idées de logo",
-      "collapse": "Réduire", "expand": "Agrandir", "copyHtml": "Copier le HTML"
+      "collapse": "Réduire", "expand": "Agrandir", "copyHtml": "Copier le HTML",
+      "vsHook": "Accroche", "vsDuration": "~{{sec}}s au total", "vsVo": "VO", "vsScreen": "À l'écran", "vsCta": "CTA", "vsNote": "Script + storyboard générés — le rendu vidéo complet nécessite une clé d'API média/vidéo."
     },
     "designer": {
       "title": "Designer",

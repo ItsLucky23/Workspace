@@ -24,6 +24,8 @@ const KINDS: { kind: StudioArtifactKind; icon: string; role: 'designer' | 'marke
   { kind: 'ads', icon: 'bullhorn', role: 'marketer' },
   { kind: 'social', icon: 'calendar-days', role: 'marketer' },
   { kind: 'names', icon: 'signature', role: 'marketer' },
+  { kind: 'thumbnail', icon: 'image', role: 'marketer' },
+  { kind: 'videoScript', icon: 'film', role: 'marketer' },
 ];
 
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
@@ -219,7 +221,8 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote }: { a
 
 //? Render the artifact body by kind (avoids a nested ternary at the call site).
 function ArtifactBody({ kind, c }: { kind: StudioArtifactKind; c: Record<string, unknown> }): React.ReactNode {
-  if (kind === 'landing' || kind === 'component') return <LandingPreview html={asStr(c.html)} />;
+  if (kind === 'landing' || kind === 'component' || kind === 'thumbnail') return <LandingPreview html={asStr(c.html)} />;
+  if (kind === 'videoScript') return <VideoScriptPreview c={c} />;
   if (kind === 'brand') return <BrandPreview c={c} />;
   if (kind === 'copy') return <CopyPreview c={c} />;
   if (kind === 'strategy') return <StrategyPreview markdown={asStr(c.markdown)} />;
@@ -361,6 +364,38 @@ function NamesPreview({ c }: { c: Record<string, unknown> }) {
       )}
       {taglines.length > 0 && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.studio.taglines' })}</div><ul className="list-disc list-inside text-sm text-common">{taglines.map((t, i) => <li key={`${t.slice(0, 12)}-${String(i)}`}>{t}</li>)}</ul></div>}
       {domains.length > 0 && <div className="flex flex-wrap gap-1.5">{domains.map((d, i) => <span key={`${d}-${String(i)}`} className="rounded-md bg-container2 text-xs text-common px-2 py-0.5 font-mono">{d}</span>)}</div>}
+    </div>
+  );
+}
+
+function VideoScriptPreview({ c }: { c: Record<string, unknown> }) {
+  const translate = useTranslator();
+  const scenes = Array.isArray(c.scenes) ? c.scenes.map((x) => asRecord(x)) : [];
+  const hook = asStr(c.hook); const cta = asStr(c.cta);
+  const dur = typeof c.durationSec === 'number' ? c.durationSec : null;
+  const ctaLine = `${translate({ key: 'workspaces.studio.vsCta' })}: ${cta}`;
+  if (scenes.length === 0 && hook.length === 0) return <div className="text-sm text-muted">—</div>;
+  return (
+    <div className="flex flex-col gap-3">
+      {hook && <div className="rounded-xl bg-primary/8 border border-primary-border/40 p-3"><div className="text-[11px] uppercase tracking-wide text-primary mb-0.5">{translate({ key: 'workspaces.studio.vsHook' })}</div><div className="text-sm font-medium text-title">{hook}</div>{dur !== null && <div className="text-xs text-muted mt-1">{translate({ key: 'workspaces.studio.vsDuration', params: [{ key: 'sec', value: String(dur) }] })}</div>}</div>}
+      {scenes.map((s, i) => {
+        const vo = asStr(s.voiceover); const screen = asStr(s.onScreen);
+        const shotLine = typeof s.seconds === 'number' ? `${asStr(s.shot)} · ${String(s.seconds)}s` : asStr(s.shot);
+        const voLine = `${translate({ key: 'workspaces.studio.vsVo' })}: ${vo}`;
+        const screenLine = `${translate({ key: 'workspaces.studio.vsScreen' })}: ${screen}`;
+        return (
+          <div key={`${asStr(s.shot).slice(0, 12)}-${String(i)}`} className="flex gap-3 rounded-xl border border-container1-border bg-container2/30 p-3">
+            <div className="shrink-0 w-7 h-7 rounded-lg bg-container2 text-muted text-sm font-semibold flex items-center justify-center">{i + 1}</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-title">{shotLine}</div>
+              {vo && <div className="text-sm text-common mt-0.5">{voLine}</div>}
+              {screen && <div className="text-xs text-muted mt-0.5">{screenLine}</div>}
+            </div>
+          </div>
+        );
+      })}
+      {cta && <div className="text-sm text-title">{ctaLine}</div>}
+      <div className="text-xs text-muted flex items-center gap-1.5 rounded-lg bg-container2/40 p-2"><Icon name="circle-info" className="text-primary" />{translate({ key: 'workspaces.studio.vsNote' })}</div>
     </div>
   );
 }

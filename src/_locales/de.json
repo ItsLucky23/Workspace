@@ -889,7 +889,7 @@
       "saveBrief": "Briefing speichern", "editBrief": "Briefing bearbeiten",
       "generate": "Generieren", "generating": "Wird generiert — das kann bis zu einer Minute dauern…",
       "noArtifacts": "Noch keine Artefakte. Generiere oben eines.", "noAudience": "keine Zielgruppe gesetzt",
-      "kind": { "landing": "Landingpage", "component": "UI-Komponente", "brand": "Brand-Kit", "copy": "Marketing-Copy", "strategy": "Strategie", "email": "E-Mail-Sequenz", "ads": "Anzeigen-Set", "social": "Social-Kalender", "names": "Namen & Slogans" },
+      "kind": { "landing": "Landingpage", "component": "UI-Komponente", "brand": "Brand-Kit", "copy": "Marketing-Copy", "strategy": "Strategie", "email": "E-Mail-Sequenz", "ads": "Anzeigen-Set", "social": "Social-Kalender", "names": "Namen & Slogans", "thumbnail": "Werbeanzeige", "videoScript": "Videoskript" },
       "role": { "designer": "Designer", "marketer": "Marketer" },
       "brandLibrary": "Marken-Bibliothek", "brandSet": "Marke gesetzt", "brandUnset": "noch nicht gesetzt",
       "brandIntro": "Deine einzige Markenwahrheit. Jede Generierung bleibt markenkonform mit dieser Palette, diesen Fonts, Stimme und Slogans. Generiere ein Brand-Kit und klicke „Als Marke verwenden“, oder setze es manuell.",
@@ -899,7 +899,8 @@
       "deleteBriefTitle": "„{{name}}“ löschen?", "deleteBriefBody": "Das entfernt das Briefing und alle generierten Artefakte.", "deleteArtifact": "Artefakt löschen", "regenerate": "Neu generieren",
       "failed": "Generierung fehlgeschlagen", "empty": "Nichts generiert.",
       "palette": "Palette", "typography": "Typografie", "voice": "Stimme", "taglines": "Taglines", "logoIdeas": "Logo-Ideen",
-      "collapse": "Einklappen", "expand": "Ausklappen", "copyHtml": "HTML kopieren"
+      "collapse": "Einklappen", "expand": "Ausklappen", "copyHtml": "HTML kopieren",
+      "vsHook": "Hook", "vsDuration": "~{{sec}}s gesamt", "vsVo": "VO", "vsScreen": "Im Bild", "vsCta": "CTA", "vsNote": "Skript + Storyboard generiert — vollständiges Video-Rendering braucht einen Media-/Video-API-Key."
     },
     "designer": {
       "title": "Designer",

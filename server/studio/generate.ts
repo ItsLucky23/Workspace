@@ -16,7 +16,7 @@ const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
 
 //? The artifact kinds. Designer = visual/UI (landing, brand kit, UI component). Marketer = words +
 //? plans (copy, strategy, email sequence, ad set, social calendar, naming).
-export type ArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names';
+export type ArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names' | 'thumbnail' | 'videoScript';
 export type StudioRole = 'designer' | 'marketer';
 
 //? Which role + provider-feature owns each kind.
@@ -30,8 +30,13 @@ export const KIND_META: Record<ArtifactKind, { role: StudioRole; feature: AiFeat
   ads: { role: 'marketer', feature: 'studio-marketer', title: 'Ad set' },
   social: { role: 'marketer', feature: 'studio-marketer', title: 'Social calendar' },
   names: { role: 'marketer', feature: 'studio-marketer', title: 'Names & taglines' },
+  //? Marketing visuals + video. `thumbnail` is a self-contained HTML ad creative (rendered in an
+  //? iframe like a landing); `videoScript` is a promo script + storyboard (full video render needs a
+  //? media/video provider key — the script is generated now, on the existing text provider).
+  thumbnail: { role: 'marketer', feature: 'studio-marketer', title: 'Ad creative' },
+  videoScript: { role: 'marketer', feature: 'studio-marketer', title: 'Video script' },
 };
-export const ARTIFACT_KINDS: readonly ArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names'];
+export const ARTIFACT_KINDS: readonly ArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names', 'thumbnail', 'videoScript'];
 
 //? The workspace's central brand library (ADR 0013 G-MKT-2), folded into every prompt so all
 //? artifacts stay on-brand. Null when the workspace hasn't set one yet.
@@ -105,6 +110,18 @@ export function buildPrompt(kind: ArtifactKind, brief: BriefInput, brand?: Brand
         prompt: `Generate product names, taglines, and domain ideas for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
       };
     }
+    case 'thumbnail': {
+      return {
+        system: 'You are a senior advertising creative designer. You output a SINGLE self-contained, responsive HTML AD CREATIVE / thumbnail — a bold landscape card (~1200×630): inline <style> only, NO external assets/fonts/scripts/images (CSS gradients/shapes + emoji only). A strong headline, a short subhead, and a clear CTA button, on-brand colours. Return ONLY the HTML in one ```html code block.',
+        prompt: `Design one scroll-stopping ad creative / social thumbnail for this product (pick the strongest angle for the goals).\n\n${brf}\n\nReturn one \`\`\`html block — a single centered ad card sized around 1200×630.`,
+      };
+    }
+    case 'videoScript': {
+      return {
+        system: 'You are a short-form video director + scriptwriter. You output a promo VIDEO SCRIPT + storyboard as ONE ```json code block only, matching exactly: {"hook":string,"durationSec":number,"scenes":[{"shot":string,"voiceover":string,"onScreen":string,"seconds":number}],"cta":string}. 4-7 scenes for a 30-60s promo — concrete, punchy, product-specific.',
+        prompt: `Write a 30-60 second promo video script + storyboard for this product.\n\n${brf}\n\nReturn one \`\`\`json block only.`,
+      };
+    }
     default: {
       return { system: '', prompt: briefBlock(brief, brand) };
     }
@@ -121,7 +138,7 @@ function extractBlock(text: string, lang: string): string {
 //? Parse the model's text into the kind-specific `content` object. Never throws — returns a
 //? best-effort shape (a raw fallback) so a slightly-off model response still yields something.
 export function parseArtifact(kind: ArtifactKind, text: string): { content: Record<string, unknown>; title: string } {
-  if (kind === 'landing' || kind === 'component') {
+  if (kind === 'landing' || kind === 'component' || kind === 'thumbnail') {
     const html = extractBlock(text, 'html') || text.trim();
     return { content: { html }, title: KIND_META[kind].title };
   }

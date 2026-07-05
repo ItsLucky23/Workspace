@@ -889,7 +889,7 @@
       "saveBrief": "Save brief", "editBrief": "Edit brief",
       "generate": "Generate", "generating": "Generating — this can take up to a minute…",
       "noArtifacts": "No artifacts yet. Generate one above.", "noAudience": "no audience set",
-      "kind": { "landing": "Landing page", "component": "UI component", "brand": "Brand kit", "copy": "Marketing copy", "strategy": "Strategy", "email": "Email sequence", "ads": "Ad set", "social": "Social calendar", "names": "Names & taglines" },
+      "kind": { "landing": "Landing page", "component": "UI component", "brand": "Brand kit", "copy": "Marketing copy", "strategy": "Strategy", "email": "Email sequence", "ads": "Ad set", "social": "Social calendar", "names": "Names & taglines", "thumbnail": "Ad creative", "videoScript": "Video script" },
       "role": { "designer": "Designer", "marketer": "Marketer" },
       "brandLibrary": "Brand library", "brandSet": "brand set", "brandUnset": "not set yet",
       "brandIntro": "Your single source of brand truth. Every generation stays on-brand with this palette, fonts, voice and taglines. Generate a Brand kit and click “Use as brand”, or set it manually.",
@@ -899,7 +899,8 @@
       "deleteBriefTitle": "Delete “{{name}}”?", "deleteBriefBody": "This removes the brief and all its generated artifacts.", "deleteArtifact": "Delete artifact", "regenerate": "Regenerate",
       "failed": "Generation failed", "empty": "Nothing generated.",
       "palette": "Palette", "typography": "Typography", "voice": "Voice", "taglines": "Taglines", "logoIdeas": "Logo ideas",
-      "collapse": "Collapse", "expand": "Expand", "copyHtml": "Copy HTML"
+      "collapse": "Collapse", "expand": "Expand", "copyHtml": "Copy HTML",
+      "vsHook": "Hook", "vsDuration": "~{{sec}}s total", "vsVo": "VO", "vsScreen": "On screen", "vsCta": "CTA", "vsNote": "Script + storyboard generated — full video rendering needs a media/video API key."
     },
     "designer": {
       "title": "Designer",

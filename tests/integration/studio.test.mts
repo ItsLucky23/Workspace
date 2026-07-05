@@ -46,7 +46,14 @@ try {
   eq(g.KIND_META.copy.role, 'marketer', 'copy is a marketer artifact');
   eq(g.KIND_META.landing.feature, 'studio-designer', 'landing resolves to the studio-designer provider feature');
   eq(g.KIND_META.strategy.feature, 'studio-marketer', 'strategy resolves to the studio-marketer provider feature');
-  eq(g.ARTIFACT_KINDS.length, 9, 'there are 9 artifact kinds');
+  eq(g.ARTIFACT_KINDS.length, 11, 'there are 11 artifact kinds');
+  eq(g.KIND_META.thumbnail.role, 'marketer', 'thumbnail is a marketer artifact');
+  assert(g.buildPrompt('thumbnail', brief).system.includes('```html'), 'thumbnail asks for an HTML ad creative');
+  assert(g.buildPrompt('videoScript', brief).system.includes('scenes'), 'videoScript asks for the scenes JSON shape');
+  const vs = g.parseArtifact('videoScript', '```json\n{"hook":"Meet Acme","durationSec":45,"scenes":[{"shot":"Open","voiceover":"Hi","onScreen":"logo","seconds":5}],"cta":"Try it"}\n```');
+  eq((vs.content.hook as string), 'Meet Acme', 'videoScript parses the hook');
+  const th = g.parseArtifact('thumbnail', '```html\n<div>Buy now</div>\n```');
+  eq((th.content.html as string).includes('Buy now'), true, 'thumbnail parses the HTML');
   eq(g.KIND_META.component.role, 'designer', 'component is a designer artifact');
   eq(g.KIND_META.email.role, 'marketer', 'email is a marketer artifact');
 
