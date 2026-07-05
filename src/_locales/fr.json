@@ -890,7 +890,7 @@
       "generate": "Générer", "generating": "Génération — cela peut prendre jusqu'à une minute…",
       "noArtifacts": "Aucun artefact. Générez-en un ci-dessus.", "noAudience": "aucun public défini",
       "kind": { "landing": "Landing page", "copy": "Copy marketing", "brand": "Brand kit", "strategy": "Stratégie" },
-      "deleteBriefTitle": "Supprimer « {{name}} » ?", "deleteBriefBody": "Cela supprime le brief et tous ses artefacts générés.", "deleteArtifact": "Supprimer l'artefact",
+      "deleteBriefTitle": "Supprimer « {{name}} » ?", "deleteBriefBody": "Cela supprime le brief et tous ses artefacts générés.", "deleteArtifact": "Supprimer l'artefact", "regenerate": "Régénérer",
       "failed": "Échec de la génération", "empty": "Rien de généré.",
       "palette": "Palette", "typography": "Typographie", "voice": "Voix", "taglines": "Slogans", "logoIdeas": "Idées de logo",
       "collapse": "Réduire", "expand": "Agrandir", "copyHtml": "Copier le HTML"

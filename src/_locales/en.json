@@ -890,7 +890,7 @@
       "generate": "Generate", "generating": "Generating — this can take up to a minute…",
       "noArtifacts": "No artifacts yet. Generate one above.", "noAudience": "no audience set",
       "kind": { "landing": "Landing page", "copy": "Marketing copy", "brand": "Brand kit", "strategy": "Strategy" },
-      "deleteBriefTitle": "Delete “{{name}}”?", "deleteBriefBody": "This removes the brief and all its generated artifacts.", "deleteArtifact": "Delete artifact",
+      "deleteBriefTitle": "Delete “{{name}}”?", "deleteBriefBody": "This removes the brief and all its generated artifacts.", "deleteArtifact": "Delete artifact", "regenerate": "Regenerate",
       "failed": "Generation failed", "empty": "Nothing generated.",
       "palette": "Palette", "typography": "Typography", "voice": "Voice", "taglines": "Taglines", "logoIdeas": "Logo ideas",
       "collapse": "Collapse", "expand": "Expand", "copyHtml": "Copy HTML"

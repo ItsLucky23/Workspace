@@ -890,7 +890,7 @@
       "generate": "Generieren", "generating": "Wird generiert — das kann bis zu einer Minute dauern…",
       "noArtifacts": "Noch keine Artefakte. Generiere oben eines.", "noAudience": "keine Zielgruppe gesetzt",
       "kind": { "landing": "Landingpage", "copy": "Marketing-Copy", "brand": "Brand-Kit", "strategy": "Strategie" },
-      "deleteBriefTitle": "„{{name}}“ löschen?", "deleteBriefBody": "Das entfernt das Briefing und alle generierten Artefakte.", "deleteArtifact": "Artefakt löschen",
+      "deleteBriefTitle": "„{{name}}“ löschen?", "deleteBriefBody": "Das entfernt das Briefing und alle generierten Artefakte.", "deleteArtifact": "Artefakt löschen", "regenerate": "Neu generieren",
       "failed": "Generierung fehlgeschlagen", "empty": "Nichts generiert.",
       "palette": "Palette", "typography": "Typografie", "voice": "Stimme", "taglines": "Taglines", "logoIdeas": "Logo-Ideen",
       "collapse": "Einklappen", "expand": "Ausklappen", "copyHtml": "HTML kopieren"

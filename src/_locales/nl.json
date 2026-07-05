@@ -890,7 +890,7 @@
       "generate": "Genereren", "generating": "Bezig met genereren — dit kan tot een minuut duren…",
       "noArtifacts": "Nog geen artefacten. Genereer er hierboven een.", "noAudience": "geen doelgroep ingesteld",
       "kind": { "landing": "Landingspagina", "copy": "Marketing-copy", "brand": "Brand-kit", "strategy": "Strategie" },
-      "deleteBriefTitle": "“{{name}}” verwijderen?", "deleteBriefBody": "Dit verwijdert de brief en al z'n gegenereerde artefacten.", "deleteArtifact": "Artefact verwijderen",
+      "deleteBriefTitle": "“{{name}}” verwijderen?", "deleteBriefBody": "Dit verwijdert de brief en al z'n gegenereerde artefacten.", "deleteArtifact": "Artefact verwijderen", "regenerate": "Opnieuw genereren",
       "failed": "Genereren mislukt", "empty": "Niets gegenereerd.",
       "palette": "Palet", "typography": "Typografie", "voice": "Stem", "taglines": "Taglines", "logoIdeas": "Logo-ideeën",
       "collapse": "Inklappen", "expand": "Uitklappen", "copyHtml": "HTML kopiëren"

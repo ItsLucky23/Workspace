@@ -109,7 +109,7 @@ export default function Studio() {
               {/* artifacts */}
               <div className="flex flex-col gap-4">
                 {artifacts.length === 0 && !busyKind && <div className="text-sm text-muted py-8 text-center border border-dashed border-container1-border rounded-2xl">{translate({ key: 'workspaces.studio.noArtifacts' })}</div>}
-                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} onDelete={() => { deleteArtifact(a.id); }} />)}
+                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} />)}
               </div>
             </div>
           )
@@ -168,21 +168,28 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
 }
 
 //? ---- Artifact card (renders by kind) ----
-function ArtifactCard({ artifact, onDelete }: { artifact: StudioArtifact; onDelete: () => void }) {
+function ArtifactCard({ artifact, busy, onDelete, onRegenerate }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
+  const when = new Date(artifact.createdAt).toLocaleString();
   return (
     <div className="rounded-2xl border border-container1-border bg-container1 overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-divider">
         <Icon name={KINDS.find((k) => k.kind === artifact.kind)?.icon ?? 'file'} className="text-primary" />
         <div className="text-sm font-medium text-title flex-1 truncate">{artifact.title}</div>
         {artifact.status === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.studio.failed' })}</span>}
+        <button type="button" disabled={busy} onClick={onRegenerate} className={`text-muted hover:text-primary ${busy ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`} title={translate({ key: 'workspaces.studio.regenerate' })}><Icon name="rotate" className="text-xs" /></button>
         <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer" title={translate({ key: 'workspaces.studio.deleteArtifact' })}><Icon name="trash-can" className="text-xs" /></button>
       </div>
       <div className="p-4">
         {artifact.status === 'error'
           ? <div className="text-sm text-muted">{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>
           : <ArtifactBody kind={artifact.kind} c={c} />}
+      </div>
+      <div className="px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2">
+        <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
+        {artifact.providerId && <span>· {artifact.providerId}</span>}
+        <span className="ml-auto">{when}</span>
       </div>
     </div>
   );
