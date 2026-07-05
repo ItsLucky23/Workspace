@@ -11,7 +11,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun,
+  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact,
 } from '../_data/types';
 
 export type WsView =
@@ -177,6 +177,7 @@ export interface WorkspacesCtx {
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
   studioBrand: StudioBrandLibrary | null;    // central brand library (ADR 0013 G-MKT-2)
+  designArtifacts: DesignArtifact[];         // persisted design library + active flag (ADR 0034)
   saveBrief: (b: { id?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes?: string }) => Promise<void>;
   generateArtifact: (briefId: string, kind: StudioArtifactKind) => Promise<{ ok: boolean; artifactId?: string; error?: string }>;
   deleteBrief: (briefId: string) => void;

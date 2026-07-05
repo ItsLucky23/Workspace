@@ -754,6 +754,18 @@ export interface TicketSort {
 export type StudioArtifactKind = 'landing' | 'component' | 'brand' | 'copy' | 'strategy' | 'email' | 'ads' | 'social' | 'names' | 'thumbnail' | 'videoScript';
 
 //? A recorded AI run for the central activity feed (the "Activity" tab of the Workspace-AI panel).
+//? Designer module (ADR 0034) — a persisted design-library entry + the workspace's active flag.
+export interface DesignArtifact {
+  id: string;
+  kind: string;                        // 'theme' | 'style' | 'animation'
+  name: string;
+  description: string;
+  content: unknown;
+  source: string;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface AiRun {
   id: string;
   feature: string;

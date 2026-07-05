@@ -24,7 +24,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun,
+  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -61,6 +61,7 @@ interface Snap {
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
   studioBrand: StudioBrandLibrary | null;
+  designArtifacts: DesignArtifact[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -78,6 +79,7 @@ const EMPTY_SNAP: Snap = {
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
+  designArtifacts: [],
 };
 
 function pathForView(view: WsView): string {
@@ -805,6 +807,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       studioBriefs: snap.studioBriefs,
       studioArtifacts: snap.studioArtifacts,
       studioBrand: snap.studioBrand,
+      designArtifacts: snap.designArtifacts,
       saveBrand: async (b) => { const ws = snap.activeWorkspaceId; if (!ws) return; await apiRequest({ name: 'workspaces/studioBrand', version: 'v1', data: { workspaceId: ws, op: 'save', ...b } }); refetch(); },
       promoteBrand: async (artifactId) => { const ws = snap.activeWorkspaceId; if (!ws) return; await apiRequest({ name: 'workspaces/studioBrand', version: 'v1', data: { workspaceId: ws, op: 'promote', artifactId } }); refetch(); },
       saveBrief: async (b) => {

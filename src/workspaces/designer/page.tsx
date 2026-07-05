@@ -53,6 +53,8 @@ function DesignerShell() {
   const themeItems: DropdownItem[] = d.themes.map((t) => ({ id: t.id, value: t.id, item: t.name }));
   const activeItem = themeItems.find((i) => i.id === d.activeThemeId);
 
+  const [useBusy, setUseBusy] = useState(false);
+
   const runAi = () => {
     const p = aiPrompt.trim();
     if (!p || aiBusy) return;
@@ -60,6 +62,15 @@ function DesignerShell() {
     const gen = section === 'themes' ? d.generateTheme : (section === 'styles' ? d.generateStyle : d.generateAnimation);
     void gen(p).then((ok) => { setAiBusy(false); if (ok) setAiPrompt(''); else setAiError(true); });
   };
+
+  //? Persist + activate the selected theme/style as the workspace's design system → injected into
+  //? every pipeline stage so the coding agent builds on-brand (ADR 0034).
+  const useInProjectNow = () => {
+    if (useBusy) return;
+    setUseBusy(true);
+    void d.useInProject(section === 'themes' ? 'theme' : 'style').then(() => { setUseBusy(false); });
+  };
+  const activeName = section === 'themes' ? d.activeThemeName : d.activeStyleName;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -104,6 +115,18 @@ function DesignerShell() {
             className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
           {aiError && <span className="text-xs text-wrong shrink-0">{translate({ key: 'workspaces.designer.aiError' })}</span>}
           <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={runAi} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>{translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiBar.generate' })}</WsButton>
+        </div>
+      )}
+
+      {/* pipeline coupling (ADR 0034): the active design-system the coding agent builds on */}
+      {(section === 'themes' || section === 'styles') && (
+        <div className="px-3 md:px-4 py-2 border-b border-divider flex items-center gap-2 flex-wrap bg-container1/30">
+          <span className="text-xs text-muted inline-flex items-center gap-1.5 min-w-0">
+            <Icon name="link" className={activeName ? 'text-correct' : 'text-muted'} />
+            <span className="truncate">{activeName ? translate({ key: 'workspaces.designer.activeInProject', params: [{ key: 'name', value: activeName }] }) : translate({ key: 'workspaces.designer.noneActive' })}</span>
+          </span>
+          <div className="flex-1" />
+          <WsButton variant="secondary" icon={useBusy ? 'spinner' : 'circle-check'} disabled={useBusy} className={useBusy ? '[&_svg]:animate-spin' : ''} onClick={useInProjectNow}>{translate({ key: 'workspaces.designer.useInProject' })}</WsButton>
         </div>
       )}
 

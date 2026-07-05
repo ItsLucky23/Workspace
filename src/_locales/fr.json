@@ -908,7 +908,7 @@
       "intro": "Un seul endroit pour garder toute l'UI de votre produit cohérente. Parcourez chaque composant, changez de thème et voyez tout se redessiner instantanément pour choisir ce qui convient.",
       "themes": "Thèmes", "themesSub": "Choisissez-en un à prévisualiser — ou créez le vôtre.",
       "newTheme": "Nouveau thème", "generateAi": "Générer avec l'IA", "aiSoon": "Génération de thème par IA — bientôt disponible", "soon": "Bientôt",
-      "aiPlaceholder": "Décrivez le style — p. ex. « un thème fintech chaleureux et premium » ou « menthe et corail ludiques »", "aiGenerate": "Générer le thème", "aiGenerating": "Génération…", "aiError": "Impossible de générer un thème. Réessayez.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…", "generate": "Generate" },
+      "aiPlaceholder": "Décrivez le style — p. ex. « un thème fintech chaleureux et premium » ou « menthe et corail ludiques »", "aiGenerate": "Générer le thème", "aiGenerating": "Génération…", "aiError": "Impossible de générer un thème. Réessayez.", "aiBar": { "themes": "Describe a theme to generate…", "styles": "Describe a style to generate…", "animations": "Describe an animation to generate…", "generate": "Generate" }, "useInProject": "Use in project", "activeInProject": "Active in project: {{name}}", "noneActive": "Nothing active — the coding agent has no design system yet",
       "light": "Clair", "dark": "Sombre", "editTokens": "Modifier les tokens", "duplicate": "Dupliquer",
       "livePreview": "Aperçu en direct — {{theme}} ({{mode}})",
       "source": { "seed": "Intégré", "ai": "IA", "manual": "Perso" },

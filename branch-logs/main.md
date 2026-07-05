@@ -1583,3 +1583,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** Prisma-client gegenereerd, DB in sync, server-tsc 0. Backend was gestopt voor de generate (EPERM) — herstart volgt na de code-fases.
 
 **Files touched:** `prisma/schema.prisma`, `docs/decisions/0034-tool-module-pipeline-coupling.md` (nieuw), `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 00:30 — Pipeline-koppeling Fase 2: design-system → coding-agent
+
+**Fase 2 (de kern-koppeling):** de workspace-brede actieve thema+style bereiken nu de coding-agent.
+- **Synthese** `server/designer/designSystemDoc.ts` — `buildDesignSystemDoc(theme, style)` (puur) → markdown-doc (light/dark-tokens + style-regels + "de app-theme leeft in `src/index.css` `@theme`"); `rebuildDesignSystemDoc` upsert een `InfoSource(source:'design-system')`.
+- **Injectie** `server/orchestrator/stageRunner.ts` — de context-doc-query includeert nu `source:'design-system'` → auto-geïnjecteerd in **élke** stage's `CLAUDE.md` (naast `starter` + expliciete `sourceIds`). De agent bouwt on-brand.
+- **Persistence** — `DesignArtifact`-CRUD in `server/designer/library.ts` (Prisma buiten consumer-`src/`) achter route `designerLibrary_v1` (`save`/`setActive`/`delete`, membership-gated). `setActive` herbouwt de design-system-doc.
+- **Snapshot** exposeert `designArtifacts`; client-types/context/provider doorgetrokken.
+- **UI** — Designer-strip (themes/styles): toont de **actieve** keuze + een **"Use in project"**-knop → persist + activeer → injectie live. (`activeThemeName`/`activeStyleName` + `useInProject` in `state.tsx`.)
+- i18n en/nl/de/fr.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0 · nieuw `designSystemDoc.test` **6/6** (tokens gerenderd, wijst naar index.css, geen `[object Object]`-lek). Live-e2e na backend-herstart.
+
+**Files touched:** `server/designer/{designSystemDoc,library}.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_api/designerLibrary_v1.ts` (nieuw), `src/workspaces/designer/{state.tsx,page.tsx}`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designSystemDoc.test.mts` (nieuw).

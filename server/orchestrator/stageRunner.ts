@@ -165,7 +165,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? `summary` pseudo-source + any non-ObjectId ids so the Mongo `in` filter stays valid).
   const explicitIds = cfg.sourceIds.filter((id) => /^[a-fA-F0-9]{24}$/.test(id));
   const docRows = await prisma.infoSource.findMany({
-    where: { workspaceId, mode: 'context-doc', OR: [{ source: 'starter', enabled: true }, ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : [])] },
+    where: { workspaceId, mode: 'context-doc', OR: [{ source: 'starter', enabled: true }, { source: 'design-system', enabled: true }, ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : [])] },
     select: { name: true, content: true }, take: 12,
   });
   const contextDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));

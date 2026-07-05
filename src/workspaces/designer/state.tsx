@@ -71,6 +71,11 @@ export interface DesignerCtx {
   removeAnim: (id: string) => void;
   setAnim: (patch: Partial<AnimSpec>) => void;
   generateAnimation: (prompt: string) => Promise<boolean>;    // AI
+
+  // ---- pipeline coupling (ADR 0034): the workspace's ACTIVE theme/style + a "use in project" action ----
+  activeThemeName: string | null;
+  activeStyleName: string | null;
+  useInProject: (kind: 'theme' | 'style') => Promise<boolean>;
 }
 
 const Ctx = createContext<DesignerCtx | null>(null);
@@ -81,7 +86,9 @@ export function useDesigner(): DesignerCtx {
 }
 
 export function DesignerProvider({ children }: { children: ReactNode }) {
-  const { activeWorkspace, refetch } = useWorkspaces();
+  const { activeWorkspace, refetch, designArtifacts } = useWorkspaces();
+  const activeThemeName = designArtifacts.find((d) => d.kind === 'theme' && d.active)?.name ?? null;
+  const activeStyleName = designArtifacts.find((d) => d.kind === 'style' && d.active)?.name ?? null;
 
   const [themes, setThemes] = useState<DesignTheme[]>(SEED_THEMES);
   const [activeThemeId, setActiveThemeId] = useState(LUCKYSTACK_THEME.id);
@@ -144,6 +151,28 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       renameAnim: (id, name) => { setAnims((p) => p.map((a) => (a.id === id ? { ...a, name } : a))); },
       removeAnim: (id) => { setAnims((p) => p.filter((a) => a.id !== id)); if (activeAnimId === id) setActiveAnimId(FADE_ANIM.id); },
       setAnim: (patch) => { setAnims((p) => p.map((a) => (a.id === activeAnimId ? { ...a, ...patch, source: a.source === 'seed' ? 'seed' : 'manual' } : a))); },
+      activeThemeName, activeStyleName,
+      useInProject: async (kind) => {
+        const workspaceId = activeWorkspace.id;
+        if (!workspaceId) return false;
+        let artifact: { kind: string; name: string; description: string; content: unknown; source: string } | null = null;
+        if (kind === 'theme') {
+          const t = themes.find((x) => x.id === activeThemeId);
+          if (t) artifact = { kind: 'theme', name: t.name, description: t.description, content: { light: t.light, dark: t.dark }, source: t.source };
+        } else {
+          const s = styles.find((x) => x.id === activeStyleId);
+          if (s) artifact = { kind: 'style', name: s.name, description: s.description, content: s, source: s.source };
+        }
+        if (!artifact) return false;
+        const [e1, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
+        if (e1 || saved?.status !== 'success') return false;
+        const id = saved.result.id;
+        if (!id) return false;
+        const [e2, act] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'setActive', artifactId: id } }));
+        if (e2 || act?.status !== 'success') return false;
+        refetch();
+        return true;
+      },
       generateAnimation: async (prompt) => {
         const workspaceId = activeWorkspace.id;
         if (!workspaceId || prompt.trim().length === 0) return false;
@@ -155,7 +184,7 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         return true;
       },
     };
-  }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id, refetch]);
+  }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id, refetch, activeThemeName, activeStyleName]);
 
   return <Ctx value={ctx}>{children}</Ctx>;
 }

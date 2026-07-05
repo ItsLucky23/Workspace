@@ -166,6 +166,8 @@ export interface WorkspaceSnapshot {
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
   studioBrand: StudioBrandLibrary | null;
+  //? Designer module (ADR 0034): the persisted design library (themes/styles/animations) + active flag.
+  designArtifacts: { id: string; kind: string; name: string; description: string; content: unknown; source: string; active: boolean; createdAt: string }[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -182,6 +184,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   studioBriefs: [],
   studioArtifacts: [],
   studioBrand: null,
+  designArtifacts: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -205,7 +208,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
@@ -234,6 +237,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.studioBrief.findMany({ orderBy: { createdAt: 'desc' } }),
       tenantDb.studioArtifact.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
       tenantDb.studioBrandLibrary.findFirst(),
+      //? Designer library (ADR 0034): persisted themes/styles/animations + the active flag.
+      tenantDb.designArtifact.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -312,6 +317,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         typography: { heading: jsonStr(studioBrandRow.typography, 'heading'), body: jsonStr(studioBrandRow.typography, 'body') },
         voice: studioBrandRow.voice, taglines: studioBrandRow.taglines, logoIdeas: studioBrandRow.logoIdeas,
       },
+      designArtifacts: designArtifactRows.map((d) => ({
+        id: d.id, kind: d.kind, name: d.name, description: d.description ?? '', content: d.content, source: d.source, active: d.active, createdAt: d.createdAt.toISOString(),
+      })),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),
