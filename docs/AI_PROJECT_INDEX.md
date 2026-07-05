@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (31)
+## API routes (32)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -39,6 +39,7 @@
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
+| `api/workspaces/studioBrand/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — the central brand library (ADR 0013 G-MKT-2). `op:'save'` upserts the |
 | `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
@@ -89,9 +90,9 @@
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 66 |
+| _(unowned)_ | 67 |
 
-**Test coverage**: 3/66 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/67 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -120,6 +121,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
 - `api/workspaces/saveDevCommand/v1`
+- `api/workspaces/studioBrand/v1`
 - `api/workspaces/studioDelete/v1`
 - `api/workspaces/studioGenerate/v1`
 - `api/workspaces/studioSaveBrief/v1`
@@ -144,8 +146,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/removeIntegration/v1`
 - `sync/workspaces/removeMember/v1`
 - `sync/workspaces/renameWorkspace/v1`
-- `sync/workspaces/revokeInvite/v1`
-- … +13 more
+- … +14 more
 
 ## Pages (20)
 
