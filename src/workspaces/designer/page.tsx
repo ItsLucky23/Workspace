@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import MultiSelectDropdown from 'src/_components/dropdown/MultiSelectDropdown';
@@ -24,11 +24,21 @@ import {
   AvatarBubble, AvatarStack, EmptyState, IconButton, InfoDot, LabelChip, PopMenu,
   Segmented, StatusPill, Tabs, Toggle as WsToggle, WsButton,
 } from '../_components/primitives';
+import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Member, TicketStatus } from '../_data/types';
 import {
   COLOR_TOKENS, LUCKYSTACK_THEME, SEED_THEMES, TOKEN_GROUPS, blankTheme, themeVars,
-  type ColorToken, type DesignTheme, type ThemeMode, type ThemeSource,
+  type ColorToken, type DesignTheme, type ThemeMode, type ThemeSource, type ThemeTokens,
 } from './themes';
+
+//? Coerce an AI-returned (loosely-typed) token map into a complete client ThemeTokens set,
+//? filling any omission from the given base — so an AI theme is always a valid 30-token set.
+function coerceTokens(raw: unknown, base: ThemeTokens): ThemeTokens {
+  const obj = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const out = { ...base };
+  for (const t of COLOR_TOKENS) { const v = obj[t]; if (typeof v === 'string' && v.trim().length > 0) out[t] = v.trim(); }
+  return out;
+}
 
 export const template = 'workspaces';
 
@@ -59,11 +69,43 @@ interface Section { key: string; title: string; sub: string; render: () => React
 
 export default function Designer() {
   const translate = useTranslator();
-  //? Client-held theme library (seeds now; AI-generated + persisted themes land next commit).
+  const { activeWorkspace } = useWorkspaces();
+  //? Client-held theme library (seeds + AI-generated; persistence lands in a later phase).
   const [themes, setThemes] = useState<DesignTheme[]>(SEED_THEMES);
   const [activeId, setActiveId] = useState<string>(LUCKYSTACK_THEME.id);
   const [mode, setMode] = useState<ThemeMode>('light');
   const [editing, setEditing] = useState(false);
+  //? AI theme generation (feature `designer-theme`).
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState(false);
+
+  const generateAiTheme = () => {
+    const prompt = aiPrompt.trim();
+    const workspaceId = activeWorkspace.id;
+    if (!prompt || !workspaceId || aiBusy) return;
+    setAiBusy(true);
+    setAiError(false);
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/designerGenerateTheme', version: 'v1', data: { workspaceId, prompt } }));
+      if (error || res?.status !== 'success') { setAiError(true); setAiBusy(false); return; }
+      const r = res.result;
+      const t: DesignTheme = {
+        id: `ai-${String(themes.length)}-${String(prompt.length)}`,
+        name: r.name || 'AI theme',
+        description: r.description,
+        source: 'ai',
+        light: coerceTokens(r.light, LUCKYSTACK_THEME.light),
+        dark: coerceTokens(r.dark, LUCKYSTACK_THEME.dark),
+      };
+      setThemes((prev) => [...prev, t]);
+      setActiveId(t.id);
+      setAiPrompt('');
+      setAiOpen(false);
+      setAiBusy(false);
+    })();
+  };
 
   const active = themes.find((t) => t.id === activeId) ?? LUCKYSTACK_THEME;
   const tokens = active[mode];
@@ -112,11 +154,22 @@ export default function Designer() {
           <button type="button" onClick={addTheme} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-common hover:bg-container2 cursor-pointer">
             <Icon name="plus" className="text-muted" /> {translate({ key: 'workspaces.designer.newTheme' })}
           </button>
-          <button type="button" disabled title={translate({ key: 'workspaces.designer.aiSoon' })}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-disabled cursor-not-allowed">
-            <Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.designer.generateAi' })}
-            <span className="ml-auto text-[10px] uppercase tracking-wide rounded bg-container2 px-1.5 py-0.5 text-muted">{translate({ key: 'workspaces.designer.soon' })}</span>
+          <button type="button" onClick={() => { setAiOpen((v) => !v); setAiError(false); }}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors ${aiOpen ? 'bg-primary/10 text-primary' : 'text-common hover:bg-container2'}`}>
+            <Icon name="wand-magic-sparkles" className={aiOpen ? 'text-primary' : 'text-primary'} /> {translate({ key: 'workspaces.designer.generateAi' })}
           </button>
+          {aiOpen && (
+            <div className="flex flex-col gap-2 rounded-xl border border-container1-border bg-container1 p-2">
+              <textarea value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} rows={3} disabled={aiBusy}
+                placeholder={translate({ key: 'workspaces.designer.aiPlaceholder' })}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generateAiTheme(); } }}
+                className="w-full resize-none rounded-lg border border-container1-border bg-container2/40 px-2.5 py-2 text-xs text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+              {aiError && <div className="text-[11px] text-wrong">{translate({ key: 'workspaces.designer.aiError' })}</div>}
+              <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={generateAiTheme} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>
+                {translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiGenerate' })}
+              </WsButton>
+            </div>
+          )}
         </div>
       </div>
 

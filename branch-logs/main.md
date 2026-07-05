@@ -1435,3 +1435,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Files touched:** `src/workspaces/designer/{page.tsx,themes.ts}` (nieuw), `src/workspaces/interviewer/page.tsx` (nieuw), `src/workspaces/marketing/page.tsx` (nieuw), `src/workspaces/_shell/{Shell,WorkspacesContext,WorkspacesProvider}.tsx`, `src/_locales/{en,nl,de,fr}.json`.
 
 **Notes / volgende fases:** fase 2 = AI-themagenerator (`designer-theme` provider-feature + `_api`-route + persistente `DesignTheme`); fase 3 = Interviewer RAG + idee-kaarten; fase 4 = Marketing echte video-gen via provider-seam + editor. De huidige thema-bibliotheek is client-side (seeds); persisteren komt met fase 2. Marketing toont nog Studio-labels tot fase 4 de eigen Marketing-pagina bouwt.
+
+## 2026-07-05 16:15 — Designer fase 2: AI-themagenerator (provider-feature + route)
+
+**User prompt:** (doorlopende run) "werk alles uit" — de "Generate with AI"-knop van fase 1 écht maken.
+
+**What I did:**
+- **Provider-feature** `designer-theme` toegevoegd aan de AI-laag (ADR 0007): `AiFeature`-unie (`server/ai/types.ts`) + `DEFAULT_ASSIGNMENTS` (`assignments.ts`, default `claude-cli`, overridebaar naar gemini). Nul feature hardcode't een backend.
+- **`server/designer/generateTheme.ts`** — pure `buildThemePrompt` (vraagt één JSON-blok met light+dark maps van alle 30 tokens + rol-hints + AA-contrast-instructie) + `parseTheme` (fenced/unfenced JSON, vult ontbrekende tokens uit de LuckyStack-base → altijd een complete 30-token set, gooit nooit). Impure `generateTheme` = `runAiCompletion('designer-theme', …)` **in `tryCatch`** zodat een PTY-spawn-throw een nette handled error wordt i.p.v. een 500. `light`/`dark` als index-signature (niet de hyphen-literal-key `ThemeTokens`) zodat de type-map-generator een valide `{ [k:string]:string }` emit i.p.v. ongequote `container1-hover:`-keys (fixte een generator-crash — Rule 21: type gefixt, niet omzeild).
+- **Route** `src/workspaces/_api/designerGenerateTheme_v1.ts` (membership-gated, `relaxed`) → `{name,description,light,dark}`. `generateArtifacts` ge-refresht (route in de type-map).
+- **Designer-UI**: de disabled "SOON"-knop is nu een echte composer (textarea + Generate); resultaat wordt als `source:'ai'`-thema toegevoegd + geselecteerd, met loading/error-state. `coerceTokens` maakt de AI-respons cast-vrij compleet.
+- i18n (aiPlaceholder/aiGenerate/aiGenerating/aiError) in en/nl/de/fr.
+
+**Verify:** root+server-tsc 0, eslint 0, ai:lint 0. Nieuw `designerTheme.test.mts` **18/18** (prompt bevat de 30 tokens + brief; parser leest name/desc/tokens, vult ontbrekende, unfenced JSON, garbage→base-fallback zonder throw). **Browser**: composer rendert + verstuurt `workspaces/designerGenerateTheme` met de juiste payload; de UI toont de error-state netjes. **Live claude-cli-generatie is nog niet groen bewezen**: de draaiende backend gaf 500 omdat server-code niet hot-reloadt (lesson 0007) — de route zit pas in de map ná een backend-herstart. Ik heb de gedeelde backend NIET herstart (risico: de WIP-tsc-fouten van de andere AI kunnen de boot breken). De logica is unit-bewezen; claude-cli zelf is bewezen werkend (Studio-generatie). **Developer-actie:** herstart de backend (schone boot) → de knop genereert live.
+
+**Files touched:** `server/ai/{types,assignments}.ts`, `server/designer/generateTheme.ts` (nieuw), `src/workspaces/_api/designerGenerateTheme_v1.ts` (nieuw), `src/workspaces/designer/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/designerTheme.test.mts` (nieuw).

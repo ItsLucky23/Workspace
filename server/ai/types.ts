@@ -21,7 +21,10 @@ export type AiFeature =
   //? Studio module (design + marketing). Two non-coding roles, each resolves to a provider
   //? independently (so a design task can run on a different backend than a copy task).
   | 'studio-designer'
-  | 'studio-marketer';
+  | 'studio-marketer'
+  //? Designer module — generates a full design THEME (a light+dark set of the 30 --color-* tokens)
+  //? from a plain-language brief. Non-coding structured-JSON generation.
+  | 'designer-theme';
 
 export interface AiCompletionRequest {
   prompt: string;
