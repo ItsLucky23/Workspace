@@ -2224,3 +2224,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/contentParse.test.mts` **17/17** (JSON-extractie fenced/inline/prose/invalid, beat-coercion, script JSON-vs-line-fallback, blueprint parse/null). contentScript **8/8** + referenceVideo **6/6** (stub-pad) onaangetast. Lint + build groen. Live parsing = deferred post-keys e2e.
 
 **Files touched:** `server/content/jsonParse.ts` (nieuw), `server/content/script.ts`, `server/content/referenceVideo.ts`, `tests/unit/contentParse.test.mts` (nieuw), `docs/decisions/0081-real-llm-parsing.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM M4: echte ffmpeg-render (Docker) + /media-download-route
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item M4.
+
+**What I did:**
+- `server/content/render.ts`: `buildFfmpegPlan` (puur) — ffmpeg concat-demuxer slideshow (image per beat voor z'n duur, laatste herhaald; optioneel audio; h264/yuv420p, 1280×720, `-shortest`). `renderTimeline` lokaliseert assets (`/media/<file>` direct, http(s) gedownload+persisted, `stub://` niet-renderbaar), schrijft de concat-list, draait ffmpeg **in Docker** (`jrottenberg/ffmpeg`, MEDIA_DIR→/media). Runner injecteerbaar. Geen hosted API → costCents 0.
+- Degrade-niet-faal: niks renderbaar (dummy `stub://`) of ffmpeg/Docker weg → typed `ok:false` → `assembleContent` valt terug op de valid-shaped stub-render. Dummy-pipeline blijft groen zonder Docker/keys.
+- `server/media/download.ts`: `GET /media/<uuid-file>` streamt een geproduceerd bestand (M2-audio + render-mp4) uit de store; unguessable uuid = capability + harde path-traversal-guard (`safeMediaPath`). Geregistreerd in server.ts (origin-exempt).
+
+**Verify:** `tests/unit/render.test.mts` **18/18** (ffmpeg-plan, no-image-degrade, /media traversal-guard, asset-localisatie). contentAssembly **11/11** (stub-degrade) onaangetast. Lint + build groen. Env `WS_FFMPEG_IMAGE`/`WS_MEDIA_DIR`. Echte ffmpeg-run = deferred post-keys e2e.
+
+**Files touched:** `server/content/render.ts` (nieuw), `server/media/download.ts` (nieuw), `server/content/assembly.ts`, `server/server.ts`, `tests/unit/render.test.mts` (nieuw), `docs/decisions/0082-real-ffmpeg-render.md`, `docs/AI_DECISIONS_INDEX.md`.

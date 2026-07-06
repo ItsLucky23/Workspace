@@ -49,6 +49,7 @@ import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
 import { registerBuildDownload } from './deploy/downloadRoute';
+import { registerMediaDownload } from './media/download';
 import { registerStudioRoles } from './studio/roles';
 import { registerInterviewerRole } from './interviewer/role';
 import { registerScraperRole } from './scraper/role';
@@ -130,6 +131,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Build-artifact downloads (ADR 0038): GET /downloads/build/<token> serves a `docker save` tarball
   //? over a signed, TTL'd, token-gated link so a user can export a build to self-host elsewhere.
   registerBuildDownload();
+  //? Media downloads (M4): GET /media/<uuid-file> streams a produced media file (voice/sfx/render) from
+  //? the media store; the unguessable uuid filename is the capability, with a hard path-traversal guard.
+  registerMediaDownload();
 
   const server = await bootstrapLuckyStack({
     //? Single-instance backend port from config.ports.ts. Sits BELOW a positional

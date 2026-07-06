@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (80)
+## Decisions (81)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -93,6 +93,7 @@
 | 0079 | Real Fal.ai media generation behind available() (stub = no-key fallback) | 🟢 accepted | content, media, fal, generation, depth-program | — | `docs/decisions/0079-real-fal-media-gen.md` |
 | 0080 | Real ElevenLabs voice/sfx + Suno music behind available() | 🟢 accepted | content, media, elevenlabs, suno, generation, depth-program | — | `docs/decisions/0080-real-voice-music-gen.md` |
 | 0081 | Real structured LLM parsing for script + reference-video blueprint | 🟢 accepted | content, llm, parsing, depth-program | — | `docs/decisions/0081-real-llm-parsing.md` |
+| 0082 | Real ffmpeg (Docker) render pipeline + media download route | 🟢 accepted | content, render, ffmpeg, docker, download, depth-program | — | `docs/decisions/0082-real-ffmpeg-render.md` |
 
 ## Summaries
 
@@ -737,6 +738,14 @@ Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ 
 New `server/content/jsonParse.ts`: `extractJson` robustly pulls the first JSON object out of an LLM response (```json fences, prose-wrapped, string-aware brace matching) — never throws (→ null on miss). `coerceBeats` maps a model's `beats` array into `{text, visualPrompt}[]`, tolerant of missing fields. `parseLiveScript` (script.ts) now prefers the requested JSON (`{body, beats:[…]}`) and falls back to the line-based parse when the model returned prose. The prompt appends a `SCRIPT_FORMAT` directive. `parseBlueprint` (referenceVideo.ts) parses a real `{pacing, styleHint, beats}` blueprint; the caller uses it when present and falls back to the stub only when there's no key OR nothing usable came back. The prompt appends a `BLUEPRINT_FORMAT` directive. Both parsers are exported + pure → unit-tested.
 
 → `docs/decisions/0081-real-llm-parsing.md`
+
+### 0082 — Real ffmpeg (Docker) render pipeline + media download route
+
+**0082** · accepted · tags: content, render, ffmpeg, docker, download, depth-program · 2026-07-06
+
+New `server/content/render.ts`: `buildFfmpegPlan` (pure) builds an ffmpeg **concat-demuxer** slideshow (one image per beat for its duration, last image repeated per the demuxer quirk) + an optional audio track (h264/yuv420p, scaled/padded to 1280×720, `-shortest`). `renderTimeline` localizes each asset (a `/media/<file>` used directly, an http(s) URL downloaded + persisted, a `stub://` URL not renderable), writes the concat list, and runs ffmpeg **in a Docker container** (`jrottenberg/ffmpeg`, MEDIA_DIR mounted at `/media`). The runner is injectable for tests. No hosted API → costCents 0. **Degrade, don't fail:** when nothing is renderable (dummy `stub://` assets) or ffmpeg/Docker is unavailable, `renderTimeline` returns a typed `ok:false` and `assembleContent` falls back to the valid-shaped stub render asset — the dummy pipeline stays green without Docker/keys. New `server/media/download.ts` — `GET /media/<uuid-file>` streams a produced media file (M2 audio + the render mp4) from the store; the unguessable uuid filename is the capability, with a hard path-traversal guard (`safeMediaPath`). Registered at boot (origin-exempt, like the build download).
+
+→ `docs/decisions/0082-real-ffmpeg-render.md`
 
 ## Code governed by decisions
 
