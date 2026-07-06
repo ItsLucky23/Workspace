@@ -2089,3 +2089,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **🏁 Fase 4 (frontend/UX) KLAAR** (rijke pagina-UI + settings-form + de-echte-copilot-UI = browser-deferred, backend-modellen bewezen).
 
 **Files touched:** `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/copilot.test.mts`, `docs/decisions/0070-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 07:55 — Content-platform F5.1: per-kanaal brand-RAG + content-analytics (ADR 0071) — 🏁 PROGRAMMA COMPLEET
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F5.1 (het laatste).
+
+**What I did:**
+- **`server/content/brandMemory.ts`** — per-kanaal brand-memory via de ÉNE unified RAG-store + `retrieve()` onder een sentinel `brand:<channelId>` (spiegelt institutioneel geheugen 0045). `indexChannelBrand` + `retrieveChannelBrand`; per-kanaal geïsoleerd, geen parallelle index.
+- **`server/content/contentAnalytics.ts`** — pure fold `computeContentAnalytics` (totalPieces/done/published/byStage/byFormat/totalCostCents/costByFeature). Views/CTR = placeholder tot platform-keys.
+- **Verify:** `tests/integration/contentMemory.test.mts` **12/12** (analytics-fold: archived-excluded/done/published/by-format/cost-by-feature-folding · brand index+retrieve round-trip + per-kanaal-isolatie). rbac **122/122**. lint+build+ai:lint groen. ADR **0071**.
+
+**🏁 CONTENT PLATFORM PROGRAM COMPLEET — alle 22 items (F0.1–F5.1) gebouwd, getest, gecommit.** ADRs 0049–0071. ~230 dummy-data integratie-assertions groen. De content-lane draait end-to-end op dummy-data: brief (pipeline of chat) → script → voice → beelden → montage → complete downloadbare asset → publish-suggestie achter de B-23-gate, budget-guarded + style-driven, over alle modaliteiten. Frontend-items (F4.1–4.3) leverden de testbare/backend-kern; rijke pagina-UI + settings-form + live-copilot-UX = browser-deferred. Live-AI-verificatie = keyed follow-up.
+
+**Files touched:** `server/content/brandMemory.ts`, `server/content/contentAnalytics.ts`, `src/workspaces/_docs/CONTENT_PLATFORM_PROGRAM.md`, `tests/integration/contentMemory.test.mts`, `docs/decisions/0071-*.md`, `docs/AI_DECISIONS_INDEX.md`.

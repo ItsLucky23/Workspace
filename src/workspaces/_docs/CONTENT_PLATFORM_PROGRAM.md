@@ -1,9 +1,14 @@
 # CONTENT PLATFORM PROGRAM — the `/goal` build spec
 
-> **Status:** LOCKED & EXECUTION-READY (2026-07-06). Source of truth for the autonomous `/goal` run that
-> turns Workspaces into an all-in-1 AI content platform (ADR 0049). Precedence: locked decisions here →
-> ADR 0049 → the framework rules in `CLAUDE.md` → the nine Workspaces invariants. A real conflict with no
-> resolution = a flag to the user, never a silent pick.
+> **Status:** ✅ **COMPLETE** (2026-07-06) — all 22 items (F0.1→F5.1) built, tested, and committed on `main`
+> (ADRs 0049–0071; ~230 dummy-data integration assertions green). The content lane runs end-to-end on dummy
+> data: brief (pipeline OR chat) → script → voice → images → assembly → a complete downloadable asset →
+> a publish suggestion behind the B-23 approval gate, budget-guarded + style-driven, across all modalities.
+> Per-item summaries: `branch-logs/main.md` + `INDEX.md`. Per-item follow-ups live in each ADR's Consequences.
+> The FRONTEND items (F4.1–F4.3) landed their testable/backend core; the rich page UI + settings form + the
+> live copilot UX are the **browser-deferred layer** (no keys / running server for a visual pass). Live
+> AI-output verification is the **keyed follow-up** (add Fal/ElevenLabs/Gemini + platform keys → swap stubs).
+> Original locked spec preserved below.
 
 ---
 

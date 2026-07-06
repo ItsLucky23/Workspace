@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (69)
+## Decisions (70)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -82,6 +82,7 @@
 | 0068 | Main-navbar grouping (F4.1) | 🟢 accepted | frontend, navbar, ux, expansion-f41 | — | `docs/decisions/0068-nav-grouping.md` |
 | 0069 | Content lane in the snapshot (F4.2) | 🟢 accepted | content, snapshot, ui, expansion-f42 | — | `docs/decisions/0069-content-snapshot-ui.md` |
 | 0070 | AI-drives-UI copilot — propose a directive, never write (F4.3) | 🟢 accepted | content, copilot, assistant, b-23, expansion-f43 | — | `docs/decisions/0070-copilot.md` |
+| 0071 | Per-channel brand-RAG + content-analytics (F5.1) | 🟢 accepted | content, rag, brand, analytics, expansion-f51 | — | `docs/decisions/0071-content-memory-analytics.md` |
 
 ## Summaries
 
@@ -638,6 +639,14 @@ The snapshot gains `content: ContentSnapshot` — `pieces` (the non-archived `Co
 A `copilot-propose` op (B-23, `workTickets`) creates a `WorkspaceSuggestion(type:'copilot', patch:{navigate, prefill, op})` — the UI directive: WHERE to navigate, WHAT to pre-fill a form with, and the underlying control-op the user would confirm. The copilot **writes nothing authoritative** — only the proposal. The client (browser-deferred) reads it, navigates + pre-fills, and the user taps the real control-op (which the Conductor executes). This is "AI drives, human confirms".
 
 → `docs/decisions/0070-copilot.md`
+
+### 0071 — Per-channel brand-RAG + content-analytics (F5.1)
+
+**0071** · accepted · tags: content, rag, brand, analytics, expansion-f51 · 2026-07-06
+
+1. **Per-channel brand memory** (`server/content/brandMemory.ts`) reuses the SINGLE unified RAG store + `retrieve()` under a per-channel sentinel commit `brand:<channelId>` (mirrors the institutional-memory sentinel, ADR 0045). `indexChannelBrand` (re-)indexes a channel's brand snippets; `retrieveChannelBrand` retrieves them for that channel only — no parallel index, no cross-channel leakage. 2. **A PURE content-analytics fold** (`server/content/contentAnalytics.ts` `computeContentAnalytics`) over pieces + media spend + publish jobs → `totalPieces`, `doneCount`, `publishedCount`, `byStage`, `byFormat`, `totalCostCents`, `costByFeature`. Deterministic → testable; views/CTR are placeholders until platform keys land.
+
+→ `docs/decisions/0071-content-memory-analytics.md`
 
 ## Code governed by decisions
 
