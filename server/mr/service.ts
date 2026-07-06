@@ -8,13 +8,14 @@ import type { PrismaClient, MergeRequest } from '@prisma/client';
 
 import { normalizeGitConfig } from '../git/branchStrategy';
 import { branchDiff, branchHead, mergeBranches, revertMergeCommit } from '../git/repoStore';
+import { pushMergedTarget } from '../git/forge';
 import { ciGateForMr, allowMergeOnRedCI } from '../ci/gate';
 import { parseUnifiedDiff, type MrDiff } from './diff';
 
 //? The outcome of a merge/rollback attempt — the caller maps `reason` to a UI message. `conflict`
 //? carries the unmerged files. Never throws; the real git-merge is done under the caller's lease.
 export type MergeMrResult =
-  | { ok: true; sha?: string }
+  | { ok: true; sha?: string; pushed?: boolean; pushError?: string }
   | { ok: false; reason: 'not-open' | 'no-approval' | 'ci-red' | 'ci-running' | 'ci-stale' | 'conflict' | 'not-linked' | 'nothing-to-merge' | 'error'; files?: string[]; message?: string };
 
 export interface MrThreadView {
@@ -125,7 +126,10 @@ export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRe
     return { ok: false, reason: 'error', message: outcome.error };
   }
   await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'merged', mergedAt: new Date(), mergedSha: outcome.sha } });
-  return { ok: true, sha: outcome.sha };
+  //? C1: the merge advanced `target` in the bare clone — push it to origin so the forge ref
+  //? receives it. Non-fatal: the local merge is authoritative; a push failure is surfaced, not rolled back.
+  const push = await pushMergedTarget(prisma, workspaceId, mr.ticketId, mr.targetBranch);
+  return { ok: true, sha: outcome.sha, pushed: push.pushed, ...(push.error ? { pushError: push.error } : {}) };
 }
 
 //? Roll a merged MR back with a git-revert (#9) — reverts the recorded merge commit on the target
@@ -138,7 +142,9 @@ export async function rollbackMr(prisma: PrismaClient, workspaceId: string, merg
   if (!outcome.ok) return { ok: false, reason: outcome.error === 'not-linked' ? 'not-linked' : 'error', message: outcome.error };
   //? Reopen for re-review; drop the recorded merge sha (the revert is now the target tip).
   await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'open', mergedAt: null, mergedSha: null } });
-  return { ok: true, sha: outcome.sha };
+  //? C1: the revert advanced `target` in the bare clone — push it so the forge ref reflects the rollback.
+  const push = await pushMergedTarget(prisma, workspaceId, mr.ticketId, mr.targetBranch);
+  return { ok: true, sha: outcome.sha, pushed: push.pushed, ...(push.error ? { pushError: push.error } : {}) };
 }
 
 //? The full MR view for the frontend: fresh diff + threads (with comments) + approvals (staleness

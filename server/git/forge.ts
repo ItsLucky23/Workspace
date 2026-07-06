@@ -8,12 +8,35 @@ import { tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { normalizeGitConfig } from './branchStrategy';
-import { pushBranch } from './repoStore';
+import { pushBranch, pushRef } from './repoStore';
 import { postIssueComment } from './gitlabSync';
 import { resolveForge } from './forgeResolve';
 import { openForgeMergeRequest } from './forgeProvider';
 
 export interface ForgeResult { ok: boolean; pushed: boolean; mrUrl?: string; error?: string }
+
+//? The outcome of pushing a server-side merge/revert result to origin (C1). `skipped` = the project
+//? has no forge configured (local-only workspace), which is NOT an error — the local merge is
+//? authoritative and the push is simply not applicable. `error` = a real push failure to surface.
+export interface TargetPushResult { pushed: boolean; skipped?: boolean; error?: string }
+
+//? Push a target branch to origin after a server-side merge/revert of a ticket's MR (C1). Resolves
+//? the ticket's project git URL + the per-project forge token, then pushes the bare-repo `target`
+//? ref (with retry/backoff). Never throws — the merge already landed locally; this reports whether
+//? the forge received it so a failure is visible without rolling back the authoritative local merge.
+export async function pushMergedTarget(prisma: PrismaClient, workspaceId: string, ticketId: string, targetBranch: string): Promise<TargetPushResult> {
+  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, id: ticketId }, select: { projectId: true } });
+  if (!ticket) return { pushed: false, skipped: true };
+  const project = await prisma.project.findFirst({ where: { id: ticket.projectId, workspaceId }, select: { gitUrl: true } });
+  const forge = await resolveForge(prisma, workspaceId, ticket.projectId);
+  const gitUrl = project?.gitUrl;
+  const token = forge?.token;
+  //? No remote configured → local-only workspace; the merge stands, nothing to push.
+  if (!gitUrl || !token) return { pushed: false, skipped: true };
+  const [pushErr] = await tryCatch(() => pushRef({ workspaceId, gitUrl, token, ref: targetBranch }));
+  if (pushErr) return { pushed: false, error: `forge.pushFailed: ${pushErr.message}` };
+  return { pushed: true };
+}
 
 //? Push (and optionally MR) a ticket's committed work per the workspace's pushPolicy. Gated:
 //? 'local-only' does nothing; 'push' pushes; 'merge-request' pushes + opens an MR. A protected

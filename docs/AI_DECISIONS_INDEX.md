@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (73)
+## Decisions (74)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -86,6 +86,7 @@
 | 0072 | Depth program — real gen/render/publish + UI + platform hardening | 🟢 accepted | strategy, depth, hardening, content, ui, expansion-depth | — | `docs/decisions/0072-depth-program.md` |
 | 0073 | Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold) | 🟢 accepted | security, tenancy, hardening, ai-lint, depth-program | — | `docs/decisions/0073-tenant-scope-lint-guard.md` |
 | 0074 | Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory | 🟢 accepted | security, secrets, hardening, depth-program | — | `docs/decisions/0074-encryption-fail-closed.md` |
+| 0075 | Server-side merge/rollback pushes the target to origin | 🟢 accepted | git, mr, forge, depth-program | — | `docs/decisions/0075-mr-push-to-origin.md` |
 
 ## Summaries
 
@@ -674,6 +675,14 @@ Chose branch (b) — a new diff-scoped `tenant-scope` `ai:lint` rule — plus fi
 Make at-rest encryption **fail-closed**:
 
 → `docs/decisions/0074-encryption-fail-closed.md`
+
+### 0075 — Server-side merge/rollback pushes the target to origin
+
+**0075** · accepted · tags: git, mr, forge, depth-program · 2026-07-06
+
+New `pushRef(workspaceId, gitUrl, token, ref)` in `repoStore` pushes a branch straight from the BARE clone to origin (the merge/revert advance `target` there). Token injected transiently via `withAuth`, never stored/logged. Bounded **retry/backoff** via a new shared `withRetry` helper (`server/util/retry.ts`, reused by C3). New `pushMergedTarget(prisma, workspaceId, ticketId, targetBranch)` in `forge.ts` resolves the ticket's `project.gitUrl` + the per-project forge token (`resolveForge`) and pushes the target. *Non-fatal:** the local merge is authoritative; a `local-only` project (no gitUrl/token) is a SKIP, and a push failure is surfaced (`pushError`), never rolled back. Wired into `mergeMr` (after a successful merge) and `rollbackMr` (after a successful revert); `MergeMrResult` gains `pushed?`/`pushError?` so the client/log can see whether the forge received it.
+
+→ `docs/decisions/0075-mr-push-to-origin.md`
 
 ## Code governed by decisions
 

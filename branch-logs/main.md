@@ -2133,3 +2133,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Developer-actie:** `WORKSPACES_ENC_KEY` MOET gezet zijn (secret-manager pointer of literal) anders boot de server niet — bewust fail-closed. (ADR 0074, KEY_SETUP_GUIDE volgt in D1.)
 
 **Files touched:** `server/crypto/secretBox.ts`, `server/server.ts`, `tests/_helpers.mts`, `tests/unit/secretBox.test.mts`, `docs/decisions/0074-encryption-fail-closed.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM C1: merge/rollback pusht target naar origin
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item C1.
+
+**What I did:**
+- `mergeBranches`/`revertMergeCommit` advanceden `target` alleen lokaal in de bare clone — nu gaat het ook naar de forge.
+- Nieuwe `withRetry` (`server/util/retry.ts`, gedeeld met C3): bounded retry + exponential backoff, `retryable`-predicate om permanente fouten niet te herhalen.
+- `pushRef(workspaceId, gitUrl, token, ref)` in `repoStore`: pusht de bare-repo target-branch naar origin (token via `withAuth`, scrubbed, retry).
+- `pushMergedTarget(prisma, ws, ticketId, target)` in `forge.ts`: resolvet `project.gitUrl` + forge-token → `pushRef`. Non-fataal — local-only project = SKIP, push-fail = surfaced (nooit de authoritatieve lokale merge terugdraaien).
+- Gewired in `mergeMr` + `rollbackMr`; `MergeMrResult` krijgt `pushed?`/`pushError?`.
+
+**Verify:** real-git `tests/integration/mergePush.test.mts` **6/6** (origin/main advanceert naar de merge-commit + local-only skip) + `tests/unit/retry.test.mts` **8/8**. mergeReal **16/16** onaangetast. Lint + build groen.
+
+**Files touched:** `server/util/retry.ts` (nieuw), `server/git/repoStore.ts`, `server/git/forge.ts`, `server/mr/service.ts`, `tests/integration/mergePush.test.mts` (nieuw), `tests/unit/retry.test.mts` (nieuw), `docs/decisions/0075-mr-push-to-origin.md`, `docs/AI_DECISIONS_INDEX.md`.

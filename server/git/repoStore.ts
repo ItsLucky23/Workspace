@@ -15,6 +15,8 @@ import path from 'node:path';
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
+import { withRetry } from '../util/retry';
+
 export interface RepoStatus { linked: boolean; gitUrl?: string; branch?: string; head?: string }
 
 //? The DEV-#### git-worktree a ticket edits in, cut from the bare clone at activation
@@ -329,4 +331,15 @@ async function cleanupWorktree(bare: string, wt: string): Promise<void> {
 export async function pushBranch(input: { workspaceId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
   const wt = worktreePath(input.workspaceId, input.ticketKey);
   await git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`]);
+}
+
+//? Push a branch ref straight from the BARE clone to origin (C1). Used after a server-side
+//? merge/revert — those advance `target` in the bare repo, and this is what makes the forge ref
+//? actually receive the result (previously the merge landed only locally). Bounded retry/backoff
+//? so a transient blip doesn't drop an authoritative merge. Token injected only into this git
+//? process via `withAuth` (never stored on the remote, never logged — errors are scrubbed).
+export async function pushRef(input: { workspaceId: string; gitUrl: string; token: string; ref: string }): Promise<void> {
+  const bare = bareRepoPath(input.workspaceId);
+  if (!existsSync(bare)) throw new Error('not-linked');
+  await withRetry(() => git(['--git-dir', bare, 'push', withAuth(input.gitUrl, input.token), `${input.ref}:${input.ref}`]), { attempts: 3, baseMs: 200 });
 }
