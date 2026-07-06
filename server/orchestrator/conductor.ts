@@ -30,6 +30,7 @@ import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
 import type { MediaFeature } from '../media/types';
+import { publishAsset, isPublishPlatform } from '../content/publish';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1113,6 +1114,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       });
       return;
     }
+    //? Request publish (F3.1, ADR 0065) — propose publishing behind the B-23 gate: create a publish
+    //? suggestion. The actual post happens ONLY when the user accepts it (accept-suggestion 'publish').
+    case 'content-request-publish': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const assetId = str(payload, 'assetId');
+      const platform = str(payload, 'platform');
+      if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
+      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform } } });
+    }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.
     case 'content-gen-reference-image': {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
@@ -1174,6 +1184,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? AI rollback (ADR 0042): accepting reverts the ranked culprit MR (forward `git revert -m 1`, #7) +
       //? drafts a tracking ticket. The AI never reverted — the Conductor does, on human consent (B-23).
       if (suggestion?.type === 'rollback') return acceptRollback(action.workspaceId, userId, suggestion.patch);
+      //? Publish (F3.1, ADR 0065): accepting posts the asset to the platform (dummy, no key). The AI never
+      //? published — the Conductor does, on explicit human consent (B-23; publishing is irreversible).
+      if (suggestion?.type === 'publish') {
+        const p = asRec(suggestion.patch);
+        const contentProjectId = typeof p.contentProjectId === 'string' ? p.contentProjectId : '';
+        const assetId = typeof p.assetId === 'string' ? p.assetId : '';
+        const platform = typeof p.platform === 'string' ? p.platform : '';
+        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform });
+      }
       return;
     }
     // ---- automation triggers (#2) ----

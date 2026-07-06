@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (63)
+## Decisions (64)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -76,6 +76,7 @@
 | 0062 | Shared single-asset gen + avatar (F2.4) | 🟢 accepted | content, avatar, media, expansion-f24 | — | `docs/decisions/0062-media-asset-avatar.md` |
 | 0063 | Music + SFX generation (F2.5) | 🟢 accepted | content, music, sfx, audio, expansion-f25 | — | `docs/decisions/0063-music-sfx.md` |
 | 0064 | 3D-concepting generation (F2.6) | 🟢 accepted | content, 3d, media, expansion-f26 | — | `docs/decisions/0064-model-3d.md` |
+| 0065 | Publishing behind the B-23 approval gate + YouTube (F3.1) | 🟢 accepted | content, publish, youtube, b-23, expansion-f31 | — | `docs/decisions/0065-publish-gate.md` |
 
 ## Summaries
 
@@ -584,6 +585,14 @@ Music + sfx generation ride the `content-gen-music` / `content-gen-sfx` ops (alr
 3D generation rides the `content-gen-3d` op (wired in F2.4's shared Conductor case → `generateMediaAsset` with feature `model-3d`, default fal/Meshy-class provider, stub). No new engine code.
 
 → `docs/decisions/0064-model-3d.md`
+
+### 0065 — Publishing behind the B-23 approval gate + YouTube (F3.1)
+
+**0065** · accepted · tags: content, publish, youtube, b-23, expansion-f31 · 2026-07-06
+
+1. **`content-request-publish` creates a publish SUGGESTION** (`WorkspaceSuggestion(type:'publish', patch:{contentProjectId, assetId, platform})`) — it does NOT post. Accepting it (`accept-suggestion` → the new `'publish'` branch) makes the **Conductor** call `publishAsset` (the only writer of the `PublishJob`). The AI never publishes. 2. **A platform abstraction** (`server/content/publish.ts`) with `BUILT_PLATFORMS` (youtube, tiktok) + `FUTURE_PLATFORMS` (instagram, linkedin). A built platform with no key → a **dummy post** returning a `stub://<platform>/<asset>` external url; a future-ready platform → a `PublishJob(status:error, error:'platform.notBuilt')` (recorded, not posted). 3. **A `PublishJob` model** records each post (platform, status, externalUrl, error).
+
+→ `docs/decisions/0065-publish-gate.md`
 
 ## Code governed by decisions
 

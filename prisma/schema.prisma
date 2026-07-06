@@ -1405,6 +1405,24 @@ model MediaSpend {
   @@index([workspaceId, createdAt])
 }
 
+//? A publish job (F3.1, ADR 0065) — a content asset posted to a platform behind the B-23 approval gate.
+//? The Conductor creates it ONLY after a publish suggestion is accepted. `externalUrl` is the posted url
+//? (a `stub://` fake in dummy mode / no key). `platform.notBuilt` = a future-ready platform not built yet.
+model PublishJob {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  assetId          String   @db.ObjectId
+  platform         String                            // 'youtube' | 'tiktok' | 'instagram' | 'linkedin'
+  status           String   @default("queued")       // 'queued' | 'done' | 'error'
+  externalUrl      String?
+  error            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([workspaceId, contentProjectId])
+}
+
 //? The per-workspace media €-budget (F0.2, ADR 0051) — ONE row per workspace. `capCents`/`spentCents`
 //? in cents; `enabled=false` or `capCents<=0` = no cap. The pre-generation guard (server/media/budget.ts)
 //? blocks a gen that would push `spentCents` past `capCents`. Opt-in (disabled by default).

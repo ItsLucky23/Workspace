@@ -2027,3 +2027,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **🏁 Fase 2 (alle modaliteiten) KLAAR** — faceless-pipeline · referentie-fotorealisme · short-form · referentie-video-analyse · avatar · muziek/sfx · 3d. Alles gemeterd + style-driven op dummy-data.
 
 **Files touched:** `tests/integration/model3d.test.mts`, `docs/decisions/0064-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 05:50 — Content-platform F3.1: publish-gate + YouTube (ADR 0065) — start Fase 3
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F3.1.
+
+**What I did:** publiceren achter de B-23-approval-gate.
+- **`content-request-publish`** maakt een **`WorkspaceSuggestion(type:'publish')`** (géén post) → `accept-suggestion`'s nieuwe **'publish'-branch** laat de **Conductor** `publishAsset` draaien. **`PublishJob`-model** + **`server/content/publish.ts`** (platform-abstractie: `BUILT`=youtube/tiktok, `FUTURE`=instagram/linkedin; geen key → dummy-post `stub://platform/asset`; future-platform → `PublishJob(error:'platform.notBuilt')`).
+- **Verify:** `tests/integration/publish.test.mts` **8/8** (request→suggestion, **niks gepost vóór accept** · accept→done YouTube-PublishJob(stub-url) + suggestion accepted · linkedin→platform.notBuilt). rbac **122/122**. lint+build+ai:lint groen. ADR **0065**. `cleanupWorkspace` + publishJob.
+
+**Files touched:** `prisma/schema.prisma`, `server/content/publish.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/_helpers.mts`, `tests/integration/publish.test.mts`, `docs/decisions/0065-*.md`, `docs/AI_DECISIONS_INDEX.md`.
