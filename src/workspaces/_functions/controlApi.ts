@@ -60,7 +60,7 @@ export type ControlOp =
   // content platform (ADR 0049)
   | 'edit-media-budget' | 'save-style'
   | 'content-create' | 'content-advance' | 'content-archive'
-  | 'content-gen-script' | 'content-gen-voice'
+  | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

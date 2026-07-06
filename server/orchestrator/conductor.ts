@@ -23,6 +23,7 @@ import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
 import { generateVoiceover } from '../content/voice';
+import { generateBeatImages } from '../content/images';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1039,6 +1040,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
       if (!script) return;
       await generateVoiceover(prisma, {
+        workspaceId: action.workspaceId, contentProjectId, scriptId: script.id,
+        ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
+        ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
+      });
+      return;
+    }
+    //? Per-beat image generation (F1.4, ADR 0049) — a visual per storyboard beat, in the chosen style.
+    case 'content-gen-images': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
+      if (!script) return;
+      await generateBeatImages(prisma, {
         workspaceId: action.workspaceId, contentProjectId, scriptId: script.id,
         ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
         ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),

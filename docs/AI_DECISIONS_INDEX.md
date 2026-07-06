@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (55)
+## Decisions (56)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -68,6 +68,7 @@
 | 0054 | Generic content-pipeline — fixed stage sequence + control-ops (F1.1) | 🟢 accepted | content, pipeline, control-ops, expansion-f11 | — | `docs/decisions/0054-content-pipeline.md` |
 | 0055 | Content script + beats generation with a stub fallback (F1.2) | 🟢 accepted | content, script, ai, stub, expansion-f12 | — | `docs/decisions/0055-content-script-generation.md` |
 | 0056 | Voiceover generation — metered path + per-beat timing (F1.3) | 🟢 accepted | content, voice, tts, budget, expansion-f13 | — | `docs/decisions/0056-content-voiceover.md` |
+| 0057 | Per-beat image generation (F1.4) | 🟢 accepted | content, image, media, budget, expansion-f14 | — | `docs/decisions/0057-content-beat-images.md` |
 
 ## Summaries
 
@@ -512,6 +513,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **`server/content/voice.ts` `generateVoiceover`** runs the whole path: `estimateMediaCostCents('tts')` → `checkMediaBudget` (block BEFORE the paid call) → `runMediaGeneration({feature:'tts', …})` (stub when no key) → a voice `ContentAsset` + a `MediaJob` (linked `resultAssetId`) → `recordMediaSpend`. Returns `{ ok, blocked?, assetId, costCents, stub, totalMs }`. 2. **Budget-check BEFORE gen, via `estimateMediaCostCents`** — a new registry export returning the expected cost so the guard runs before the (paid) call; the actual `result.costCents` is recorded after. A cap hit returns `blocked:true` and runs no gen. 3. **Per-beat timing** — each `Beat` gets a persisted `durationMs` (word-count-derived, min 1.5s), and the voice asset's `metadata` carries `{ totalMs, timing[] }` (cumulative start + duration per beat). Deterministic → testable.
 
 → `docs/decisions/0056-content-voiceover.md`
+
+### 0057 — Per-beat image generation (F1.4)
+
+**0057** · accepted · tags: content, image, media, budget, expansion-f14 · 2026-07-06
+
+`server/content/images.ts` `generateBeatImages` loops the script's beats: per beat it budget-checks (`estimateMediaCostCents('image-gen')` → `checkMediaBudget`), runs `runMediaGeneration({feature:'image-gen', prompt: beat.visualPrompt})`, writes a `MediaJob` + an image `ContentAsset`, links `Beat.imageAssetId`, and records the spend. It **stops early (partial result) if the budget cap is hit** mid-loop. Driven by the `content-gen-images` control-op (B-23, `workTickets`).
+
+→ `docs/decisions/0057-content-beat-images.md`
 
 ## Code governed by decisions
 

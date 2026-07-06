@@ -94,6 +94,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-archive': CAP.workTickets,
   'content-gen-script': CAP.workTickets,
   'content-gen-voice': CAP.workTickets,
+  'content-gen-images': CAP.workTickets,
   'resume-spend': CAP.workspaceSettings,
   'skill-toggle': CAP.editPipeline,
   'save-stage-config': CAP.editPipeline,
