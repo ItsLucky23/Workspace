@@ -177,7 +177,7 @@ No LLM has a write verb (B-23 enforced structurally: AI proposes → user accept
 
 **01 — Workspace setup**
 - ⚑ **D11 (01.q1)** Slug uniqueness = **per-owner** (two users can each have `my-app`); not global.
-- ⚑ **D12 (01.q2)** **One project per workspace** (no project switcher; the seed's 2nd project is legacy); the wizard stays single-project.
+- ⚑ **D12 (01.q2)** ~~**One project per workspace** (no project switcher; the seed's 2nd project is legacy); the wizard stays single-project.~~ **SUPERSEDED by ADR 0035 (2026-07-06)** — a workspace now holds N projects (polyrepo) each optionally declaring N services; a project switcher lands in the shell. See `docs/decisions/0035-multi-project-multi-service.md`.
 - **D13 (01.q3)** Copy-from-workspace = **fresh GitLab connect** (own per-workspace token, B-07); never reuse the source's token.
 - **D14 (01.q4)** First-index unlocks when the GENERATE'd project-summary is done; RAG/code-graph keep indexing — show a visible "still indexing in the background" indicator with per-source progress chips (done/indexing) after unlock.
 

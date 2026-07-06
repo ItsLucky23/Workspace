@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (33)
+## Decisions (34)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -46,6 +46,7 @@
 | 0032 | Self-host installer + DR — compose stack, bootstrap, runbook | 🟢 accepted | workspaces, self-host, deployment, docker-compose, disaster-recovery | — | `docs/decisions/0032-self-host-installer-dr.md` |
 | 0033 | Studio — AI design + marketing module (brief → artifacts via provider layer + AgentRoles) | 🟢 accepted | workspaces, studio, ai, marketing, design, provider-abstraction, agent-roles | — | `docs/decisions/0033-studio-design-marketing-module.md` |
 | 0034 | Tool-module ↔ pipeline coupling (design-system, interview findings, ticket↔artifact) | 🟢 accepted | pipeline, designer, interviewer, studio, coupling, injection, b-23 | — | `docs/decisions/0034-tool-module-pipeline-coupling.md` |
+| 0035 | Multi-project / multi-service workspaces (reverses D12 "one project per workspace") | 🟢 accepted | multi-project, multi-service, polyrepo, forge, tenancy, schema, expansion-a1 | — | `docs/decisions/0035-multi-project-multi-service.md` |
 
 ## Summaries
 
@@ -314,6 +315,14 @@ A self-contained `deploy/` stack + a DR runbook:
 1. **Design-system is the coupling.** Persist the Designer library as `DesignArtifact` rows (kind `theme|style|animation`, `active` flag). One **active theme + style per workspace** is the fixed truth; the Designer stays a playground. From the active choice we synthesize a single `InfoSource(mode:'context-doc', source:'design-system', name:'Design system')`; `stageRunner` auto-injects `source:'design-system'` into **every** stage's `CLAUDE.md` (same seam as `source:'starter'`). The coding agent thus builds on-brand. Optional **"Apply to app"** emits a `WorkspaceSuggestion(type:'design')` carrying the `src/index.css` `@theme` token-diff; on accept the **Conductor** writes it (single-writer, B-23).
 
 → `docs/decisions/0034-tool-module-pipeline-coupling.md`
+
+### 0035 — Multi-project / multi-service workspaces (reverses D12 "one project per workspace")
+
+**0035** · accepted · tags: multi-project, multi-service, polyrepo, forge, tenancy, schema, expansion-a1 · 2026-07-06
+
+Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally declares **N services** (a build+deploy unit). Built incrementally per the user's decision (2026-07-06): **(a) polyrepo first, then (b) services layered on**.
+
+→ `docs/decisions/0035-multi-project-multi-service.md`
 
 ## Code governed by decisions
 

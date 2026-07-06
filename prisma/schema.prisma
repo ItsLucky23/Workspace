@@ -248,6 +248,28 @@ model Project {
   @@index([workspaceId])
 }
 
+//? A build+deploy unit WITHIN a project — the monorepo-with-services granularity
+//? (ADR 0035, item A1 step (b)). A project holds N services; each is independently
+//? buildable / deployable / previewable. A single-service repo needs NO explicit
+//? Service row (the project root IS the unit); services are additive granularity for
+//? monorepos. `workspaceId` is denormalized for `runInTenant` row-isolation (B-O8).
+model Service {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  projectId    String   @db.ObjectId
+  name         String
+  path         String   @default(".")           // repo-relative root of this service
+  buildCmd     String?                            // build command (null ⇒ inherit project/default)
+  deployUnit   String?                            // deployable-artifact name (null ⇒ = name)
+  baseImageRef String?                            // per-service image override (falls back to Project.baseImageRef)
+  devCommand   String?                            // dev-server command for preview (falls back to Project.devCommand)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
 //? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).
@@ -456,6 +478,7 @@ model TicketReference {
 model Sprint {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String    @db.ObjectId
+  projectId   String    @db.ObjectId            // ADR 0035 — sprints belong to a project's board (backfilled to project #1)
   name        String
   startAt     DateTime?                         // workspace tz (D55) — replaces prototype display-string `start`
   endAt       DateTime?                         // replaces prototype display-string `end`
@@ -463,6 +486,7 @@ model Sprint {
   createdAt   DateTime  @default(now())
 
   @@index([workspaceId, active])
+  @@index([workspaceId, projectId, active])
 }
 
 // ============================================================================
