@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (32)
+## API routes (35)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -29,6 +29,9 @@
 | `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | **no** | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
 | `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | **no** | — | Workspaces — [create-workspace] typed per-action route (Fase-0 split). Login-only |
 | `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | **no** | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
+| `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
+| `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
+| `api/workspaces/designerLibrary/v1` | POST | login | 40 | — | **no** | — | Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR |
 | `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | **no** | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
 | `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
 | `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
@@ -44,7 +47,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (35)
+## Sync routes (38)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -59,11 +62,13 @@
 | `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
 | `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
 | `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
 | `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
 | `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
 | `sync/workspaces/linkRepo/v1` | yes | — | login | — | **no** | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
 | `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
+| `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). Three control-ops |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
 | `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
 | `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
@@ -80,6 +85,7 @@
 | `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
 | `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | **no** | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
@@ -90,9 +96,9 @@
 
 | Owner | Routes |
 | --- | --- |
-| _(unowned)_ | 67 |
+| _(unowned)_ | 73 |
 
-**Test coverage**: 3/67 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/73 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -114,6 +120,9 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/containerTerminals/v1`
 - `api/workspaces/createWorkspace/v1`
 - `api/workspaces/deleteWorkspace/v1`
+- `api/workspaces/designerGenerateAsset/v1`
+- `api/workspaces/designerGenerateTheme/v1`
+- `api/workspaces/designerLibrary/v1`
 - `api/workspaces/devLaunchEditor/v1`
 - `api/workspaces/generateDockerfile/v1`
 - `api/workspaces/generateDocs/v1`
@@ -136,19 +145,16 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkSprint/v1`
 - `sync/workspaces/bulkStatus/v1`
 - `sync/workspaces/changeRole/v1`
+- `sync/workspaces/findingAction/v1`
 - `sync/workspaces/gitlabSettings/v1`
 - `sync/workspaces/invite/v1`
 - `sync/workspaces/linkRepo/v1`
 - `sync/workspaces/mrAction/v1`
 - `sync/workspaces/presence/v1`
-- `sync/workspaces/quickAdd/v1`
-- `sync/workspaces/removeEnv/v1`
-- `sync/workspaces/removeIntegration/v1`
-- `sync/workspaces/removeMember/v1`
-- `sync/workspaces/renameWorkspace/v1`
-- … +14 more
+- `sync/workspaces/projectAdmin/v1`
+- … +20 more
 
-## Pages (20)
+## Pages (24)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -165,7 +171,11 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/activity` | workspaces | — | `workspaces/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
 | `/workspaces/backlog` | workspaces | — | `workspaces/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
 | `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
+| `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
+| `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
+| `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer/designer roles turn a |
 | `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
+| `/workspaces/scheduled` | workspaces | — | `workspaces/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
 | `/workspaces/settings` | plain | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
 | `/workspaces/sources` | workspaces | — | `workspaces/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
 | `/workspaces/studio` | workspaces | — | `workspaces/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |

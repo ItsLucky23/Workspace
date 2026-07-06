@@ -1846,3 +1846,14 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **🏁 EXPANSION PROGRAM COMPLEET — alle 14 items (A1–G2) gebouwd, getest, gecommit.** ADRs 0035–0048. ~135 integratie-assertions groen. Zie de INDEX voor de per-item-samenvatting.
 
 **Files touched:** `docs/decisions/0048-*.md`, `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/presence_server_v1.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/answerQueue.test.mts`.
+
+## 2026-07-06 22:45 — Framework-upgrade @luckystack 0.3.0 → 0.4.1
+
+**User:** "versie bump van luckystack, dit mag jij nu doen" (daarna browser-test-fase van alle nieuwe features).
+
+**What I did:** alle 14 `@luckystack/*` deps `^0.3.0` → `^0.4.1` in `package.json` + `npm install` (152 added / 16 changed; geïnstalleerde versies geverifieerd = 0.4.1). Backend gekilld vóór install (file-lock-EPERM-preventie), daarna herstart. `generateArtifacts` + `lint` + `build` schoon — geen breakage.
+- **Waarom:** 0.4.1 bevat de fix voor de v0.3.0 `validateType`/`validateInputByType`-bug (geneste `|`-unions → depth-64-recursie → élke payload afgewezen; blokkeerde o.a. de notification-prefs-save, ADR 0019). Diff is ~10 commits, vrijwel alles security-hardening; geen API-breaking, geen DB-migraties.
+- **Te weten (gedragswijzigingen 0.4.1):** session-cookie `Secure` default AAN in prod (breekt alléén bij HTTP-only-prod; opt-out `http.sessionCookieSecure:false`) · room-namen canoniek `'broadcast'` (alleen bij custom `registerRoomNameFormatter`) · unions worden nu écht gevalideerd (test routes waar `validation='relaxed'` weggehaald wordt). `npm audit`: 2 transitieve vulns (1 low/1 moderate) — niet van deze bump, `--force` = breaking, laten staan.
+- **Openstaand (volgende fase):** de `validation='relaxed'`-workaround op `updatePreferences` weghalen + de prefs-save-repro (`notifyOnAssignment:false`) + login-flow testen; daarna de volledige **browser-verificatie** (agent-browser voor app-UI, Playwright MCP voor het editor-subdomein) van alle 14 Expansion-items — wacht op de user's grote prompt.
+
+**Files touched:** `package.json`, `package-lock.json`.
