@@ -18,6 +18,9 @@ const SUPPORTED: MediaFeature[] = ['image-gen', 'reference-image', 'video-gen', 
 
 const envStr = (name: string, fallback: string): string => (process.env[name] ?? '').trim() || fallback;
 const envNum = (name: string, fallback: number): number => Number(process.env[name] ?? '') || fallback;
+//? Cheap-test mode (`WS_MEDIA_CHEAP=1`) — the CHEAPEST real generation so a live test costs almost
+//? nothing: the fast/low-step model + the lowest resolution + a single output. Full quality is the default.
+const cheapMode = (): boolean => (process.env.WS_MEDIA_CHEAP ?? '').trim() !== '';
 const firstOf = (v: unknown): unknown => (Array.isArray(v) ? v[0] : v);
 const asUrl = (v: unknown): string | null => {
   if (v !== null && typeof v === 'object' && typeof (v as { url?: unknown }).url === 'string') return (v as { url: string }).url;
@@ -28,8 +31,10 @@ const asUrl = (v: unknown): string | null => {
 //? without a code change; the defaults are current, widely-available fal endpoints.
 function falModelFor(feature: MediaFeature): string {
   const env = envStr;
+  //? Cheap mode defaults to the fast/low-cost `schnell` image model (unless FAL_MODEL_IMAGE is pinned).
+  const cheapImage = cheapMode() ? 'fal-ai/flux/schnell' : 'fal-ai/flux/dev';
   const models: Record<MediaFeature, string> = {
-    'image-gen': env('FAL_MODEL_IMAGE', 'fal-ai/flux/dev'),
+    'image-gen': env('FAL_MODEL_IMAGE', cheapImage),
     'reference-image': env('FAL_MODEL_REFERENCE_IMAGE', 'fal-ai/flux/dev/image-to-image'),
     'video-gen': env('FAL_MODEL_VIDEO', 'fal-ai/ltx-video'),
     'model-3d': env('FAL_MODEL_3D', 'fal-ai/triposr'),
@@ -39,11 +44,25 @@ function falModelFor(feature: MediaFeature): string {
   return models[feature];
 }
 
+//? The cheapest fal input params per feature when `WS_MEDIA_CHEAP` is on — lowest resolution + fewest
+//? steps + a single output. Overridable per env; the request's own `params` always win over these.
+function cheapParams(feature: MediaFeature): Record<string, unknown> {
+  if (!cheapMode()) return {};
+  if (feature === 'image-gen' || feature === 'reference-image') {
+    return { image_size: envStr('FAL_IMAGE_SIZE', 'square'), num_inference_steps: envNum('FAL_IMAGE_STEPS', 4), num_images: 1, enable_safety_checker: false };
+  }
+  if (feature === 'video-gen' || feature === 'avatar') {
+    return { num_inference_steps: envNum('FAL_VIDEO_STEPS', 8), resolution: envStr('FAL_VIDEO_RESOLUTION', '480p'), num_frames: envNum('FAL_VIDEO_FRAMES', 65) };
+  }
+  return {};
+}
+
 //? Build the fal model id + input body for a request. `reference-image` carries the reference as
-//? `image_url` (reference-conditioned gen). Pure + exported for tests.
+//? `image_url` (reference-conditioned gen). Cheap-mode defaults are merged UNDER the caller's params
+//? (so explicit params win) UNDER the prompt (never overridden). Pure + exported for tests.
 export function composeFalInput(req: MediaGenerationRequest): { model: string; input: Record<string, unknown> } {
   const prompt = composeMediaPrompt(req);
-  const input: Record<string, unknown> = { prompt, ...req.params };
+  const input: Record<string, unknown> = { ...cheapParams(req.feature), ...req.params, prompt };
   if ((req.feature === 'reference-image' || req.feature === 'model-3d') && req.referenceUrl) input.image_url = req.referenceUrl;
   return { model: falModelFor(req.feature), input };
 }

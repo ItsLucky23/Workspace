@@ -9,6 +9,26 @@ import { assert, eq, report } from '../_helpers.mts';
 const { composeMediaPrompt, composeFalInput, extractFalAsset, createFalProvider, liveMediaCostCents } =
   await import('../../server/media/providers/fal.ts');
 
+// 0) cheap-test mode (WS_MEDIA_CHEAP) — cheapest model + lowest resolution + a single output
+{
+  const prev = process.env.WS_MEDIA_CHEAP;
+  process.env.WS_MEDIA_CHEAP = '1';
+  const cheap = composeFalInput({ feature: 'image-gen', prompt: 'a cat' });
+  assert(cheap.model.includes('schnell'), 'cheap mode → the fast/low-cost schnell image model');
+  const ci = cheap.input as { image_size?: string; num_inference_steps?: number; num_images?: number; prompt?: string };
+  eq(ci.image_size, 'square', 'cheap mode → low resolution (square)');
+  eq(ci.num_inference_steps, 4, 'cheap mode → few steps');
+  eq(ci.num_images, 1, 'cheap mode → a single image');
+  eq(ci.prompt, 'a cat', 'the prompt is preserved');
+  // explicit params win over cheap defaults
+  const override = composeFalInput({ feature: 'image-gen', prompt: 'x', params: { image_size: 'landscape_16_9' } });
+  eq((override.input as { image_size?: string }).image_size, 'landscape_16_9', 'an explicit param overrides the cheap default');
+  if (prev === undefined) delete process.env.WS_MEDIA_CHEAP; else process.env.WS_MEDIA_CHEAP = prev;
+  // off by default → full-quality model, no cheap params
+  const full = composeFalInput({ feature: 'image-gen', prompt: 'y' });
+  assert(!full.model.includes('schnell') && (full.input as { num_inference_steps?: number }).num_inference_steps === undefined, 'cheap mode OFF by default (full quality)');
+}
+
 // 1) prompt composition (style + prompt + extra)
 {
   const p = composeMediaPrompt({ feature: 'image-gen', prompt: 'a red car', style: { key: 'realistic', systemPrompt: 'photorealistic, 4k' }, extraInstructions: 'in the rain' });

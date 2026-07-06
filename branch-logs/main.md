@@ -2314,3 +2314,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **🏁 DEPTH PROGRAM COMPLEET — 16/16 items (H1→D1), ADRs 0073–0088, op `main` (niet gepusht).** Elk `available()`-gate heeft nu een echt live-code-pad (stub = puur no-key-fallback); content-platform bereikbaar+bruikbaar (nav→create→generate(stub)→assemble→download→publish achter de gate) + key-setup-guide. **Deferred (user-triggered): de complete LIVE e2e zodra keys+budget staan.**
 
 **Files touched:** `docs/KEY_SETUP_GUIDE.md` (nieuw), `docs/decisions/0088-key-setup-guide.md` (nieuw), `src/workspaces/_docs/DEPTH_PROGRAM.md` (COMPLETE + log), `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH follow-up: cheap-test-mode (`WS_MEDIA_CHEAP`) + env-template + key-locatie-antwoord
+
+**User prompt:** moeten keys in de workspace of env? welke keys handig voor testen? laat je zo goedkoop mogelijk testen (240p / laagste i.p.v. 4k).
+
+**What I did:**
+- **Eerlijke bevinding benoemd:** de media-adapters (fal/elevenlabs/suno/gemini) lezen de key uit `process.env`, NIET uit de per-workspace settings-form (die slaat 'm wél encrypted op — consumptie is de ADR-0086-follow-up). Dus voor testen NU → keys in `.env.local`.
+- **Cheap-test-mode** in `server/media/providers/fal.ts`: `WS_MEDIA_CHEAP=1` → goedkoopste echte gen — `fal-ai/flux/schnell` + laagste resolutie (`square` ~512²) + 4 steps + 1 image; video 480p/8 steps/kort. Env-fijnregelbaar (`FAL_IMAGE_SIZE/STEPS`, `FAL_VIDEO_*`); request-params winnen altijd. Standaard UIT = volle kwaliteit.
+- `docs/KEY_SETUP_GUIDE.md` cheap-testing-sectie + `.env.local_template` media-block (Rule 17).
+
+**Verify:** `tests/unit/falProvider.test.mts` **26/26** (7 nieuwe cheap-mode-assertions: schnell-model, square/4-steps/1-image, param-override wint, off-by-default). Lint + build groen.
+
+**Files touched:** `server/media/providers/fal.ts`, `tests/unit/falProvider.test.mts`, `docs/KEY_SETUP_GUIDE.md`, `.env.local_template`.

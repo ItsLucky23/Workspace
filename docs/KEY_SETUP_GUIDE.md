@@ -82,6 +82,22 @@ available on the host.
 
 ---
 
+## 💸 Cheapest-possible testing (`WS_MEDIA_CHEAP=1`)
+
+To try a real generation for almost nothing, set **`WS_MEDIA_CHEAP=1`** in `.env.local`. It forces the
+cheapest real settings on the Fal gateway:
+- **Image** → the fast/low-cost `fal-ai/flux/schnell` model, **lowest resolution** (`square` ≈ 512²),
+  **4 steps**, a single image.
+- **Video/avatar** → fewest steps, **480p**, short clip.
+
+Fine-tune with (all optional): `FAL_IMAGE_SIZE` (e.g. `square` / `square_hd` / `{width,height}`),
+`FAL_IMAGE_STEPS`, `FAL_VIDEO_RESOLUTION`, `FAL_VIDEO_STEPS`, `FAL_VIDEO_FRAMES`. Your own per-generation
+params always win over these. Turn it **off** (remove the var) for full quality.
+
+> This only changes cost/quality — the whole flow (budget, review, publish gate) is identical. Combine it
+> with a **€1–2 budget cap** and you can validate the real pipeline end-to-end for pennies. Skip video/3D
+> entirely for the cheapest run (images + a short voiceover already prove the full assembly).
+
 ## Recommended first run
 
 1. Set `WORKSPACES_ENC_KEY` (boot requirement).
