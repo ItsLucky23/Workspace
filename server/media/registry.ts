@@ -54,6 +54,12 @@ function stubMediaResult(feature: MediaFeature, providerId: MediaProviderId, req
   };
 }
 
+//? The expected € cost (cents) of a generation BEFORE running it — so the caller can budget-check first
+//? (F0.2). Today = the deterministic stub cost; a live provider estimate replaces it when keyed.
+export function estimateMediaCostCents(feature: MediaFeature): number {
+  return STUB_COST_CENTS[feature];
+}
+
 //? Run one media generation for a feature. `overrides` = the per-workspace provider map. Never throws;
 //? returns a typed result. No key → a valid-shaped STUB (so the pipeline runs on dummy data).
 export async function runMediaGeneration(req: MediaGenerationRequest, overrides?: Partial<Record<MediaFeature, MediaProviderId>>): Promise<MediaGenerationResult> {

@@ -22,6 +22,7 @@ import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
+import { generateVoiceover } from '../content/voice';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1026,6 +1027,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!piece) return;
       await generateScript(prisma, {
         workspaceId: action.workspaceId, contentProjectId: piece.id, brief: piece.brief ?? piece.title,
+        ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
+        ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
+      });
+      return;
+    }
+    //? Content voiceover (F1.3, ADR 0049) — the piece's latest script → a voice asset + per-beat timing.
+    case 'content-gen-voice': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
+      if (!script) return;
+      await generateVoiceover(prisma, {
+        workspaceId: action.workspaceId, contentProjectId, scriptId: script.id,
         ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
         ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
       });

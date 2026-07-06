@@ -1941,3 +1941,14 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/contentScript.test.mts` **8/8** (script+4 geordende beats · style resolved+linked · provider recorded · beats reflecteren de brief + visual-prompts). rbac **122/122**, aiRegistry **12/12**. lint+build+ai:lint groen. ADR **0055**.
 
 **Files touched:** `server/content/script.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentScript.test.mts`, `docs/decisions/0055-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 02:40 — Content-platform F1.3: voiceover + per-beat timing (ADR 0056)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F1.3.
+
+**What I did:** de eerste volledige gemeterde media-keten end-to-end.
+- **`server/content/voice.ts` `generateVoiceover`** — `estimateMediaCostCents('tts')` → `checkMediaBudget` (block vóór de betaalde call) → `runMediaGeneration(tts)` (stub) → voice-`ContentAsset` + `MediaJob` (resultAssetId) → `recordMediaSpend`. **Per-beat timing**: elke `Beat.durationMs` (word-count, min 1.5s) + asset-metadata `{totalMs, timing[]}`.
+- **`estimateMediaCostCents`** op de media-registry (pre-call kost voor de guard). **`content-gen-voice`** control-op (B-23, workTickets).
+- **Verify:** `tests/integration/contentVoice.test.mts` **12/12** (voice-asset + linked tts-MediaJob(elevenlabs) + timing-map 4 beats + persisted durations + spend-ledger + budget-debit 2c + **budget-BLOCK-pad**: cap-hit → geen asset, geen extra debit). rbac **122/122**. lint+build+ai:lint groen. ADR **0056**.
+
+**Files touched:** `server/content/voice.ts`, `server/media/registry.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentVoice.test.mts`, `docs/decisions/0056-*.md`, `docs/AI_DECISIONS_INDEX.md`.

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (54)
+## Decisions (55)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -67,6 +67,7 @@
 | 0053 | Cross-cutting style/preset system (F0.4) | 🟢 accepted | content, style, preset, expansion-f04 | — | `docs/decisions/0053-style-preset-system.md` |
 | 0054 | Generic content-pipeline — fixed stage sequence + control-ops (F1.1) | 🟢 accepted | content, pipeline, control-ops, expansion-f11 | — | `docs/decisions/0054-content-pipeline.md` |
 | 0055 | Content script + beats generation with a stub fallback (F1.2) | 🟢 accepted | content, script, ai, stub, expansion-f12 | — | `docs/decisions/0055-content-script-generation.md` |
+| 0056 | Voiceover generation — metered path + per-beat timing (F1.3) | 🟢 accepted | content, voice, tts, budget, expansion-f13 | — | `docs/decisions/0056-content-voiceover.md` |
 
 ## Summaries
 
@@ -503,6 +504,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A content-script service `server/content/script.ts`** — `generateScript(prisma, { workspaceId, contentProjectId, brief, styleKey?, extraInstructions? })` resolves the `script` style + composes the system prompt (F0.4), calls `runAiCompletion('script', …)`, then writes a `Script` + ordered `Beat` rows and returns `{ scriptId, beatCount, stub, providerId }`. 2. **A CONTENT-LOCAL stub fallback.** When the provider is unavailable (no key), `generateScript` produces a valid-shaped 4-beat script from the brief (dummy-data mode) — the stub lives in the content layer, NOT in `runAiCompletion`, so the global text abstraction (incl. the coding agent) never silently stubs. 3. **`script` is a text `AiFeature`** (default `gemini-api` — non-coding bulk text, overridable). The `Script` records the resolved `providerId` + links the resolved `styleId`. 4. **Driven by a `content-gen-script` control-op** (B-23, `workTickets`) — the Conductor calls `generateScript` for the piece.
 
 → `docs/decisions/0055-content-script-generation.md`
+
+### 0056 — Voiceover generation — metered path + per-beat timing (F1.3)
+
+**0056** · accepted · tags: content, voice, tts, budget, expansion-f13 · 2026-07-06
+
+1. **`server/content/voice.ts` `generateVoiceover`** runs the whole path: `estimateMediaCostCents('tts')` → `checkMediaBudget` (block BEFORE the paid call) → `runMediaGeneration({feature:'tts', …})` (stub when no key) → a voice `ContentAsset` + a `MediaJob` (linked `resultAssetId`) → `recordMediaSpend`. Returns `{ ok, blocked?, assetId, costCents, stub, totalMs }`. 2. **Budget-check BEFORE gen, via `estimateMediaCostCents`** — a new registry export returning the expected cost so the guard runs before the (paid) call; the actual `result.costCents` is recorded after. A cap hit returns `blocked:true` and runs no gen. 3. **Per-beat timing** — each `Beat` gets a persisted `durationMs` (word-count-derived, min 1.5s), and the voice asset's `metadata` carries `{ totalMs, timing[] }` (cumulative start + duration per beat). Deterministic → testable.
+
+→ `docs/decisions/0056-content-voiceover.md`
 
 ## Code governed by decisions
 
