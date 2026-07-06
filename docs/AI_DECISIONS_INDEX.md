@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (45)
+## Decisions (46)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -58,6 +58,7 @@
 | 0044 | Reasoning first-class — per-stage think-budget (surfaced) + plan-critique gate | 🟢 accepted | reasoning, plan-critique, think-budget, expansion-e1 | — | `docs/decisions/0044-reasoning-plan-critique.md` |
 | 0045 | RAG sharpen — institutional memory + wire into surfaces + re-index on merge | 🟢 accepted | rag, institutional-memory, retrieve, expansion-e2 | — | `docs/decisions/0045-rag-institutional-memory.md` |
 | 0046 | Greenfield scaffolding — curated stack templates + project-from-template | 🟢 accepted | scaffolding, templates, onboarding, expansion-f1 | — | `docs/decisions/0046-greenfield-scaffolding.md` |
+| 0047 | Delivery analytics — on-request fold over the append-only log (tokens, not €) | 🟢 accepted | analytics, insights, tokens, expansion-g1 | — | `docs/decisions/0047-delivery-analytics.md` |
 
 ## Summaries
 
@@ -422,6 +423,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A small CURATED template catalog** (`server/scaffold/templates.ts`) — a few reviewed stacks (node-api, react-vite, python-fastapi), each carrying the seed config a fresh project needs: a base image hint, a dev command, and starter convention docs. Pure data + `listTemplates()`/`getTemplate()`. A cross-workspace template marketplace is later (features/01 B-O4).
 
 → `docs/decisions/0046-greenfield-scaffolding.md`
+
+### 0047 — Delivery analytics — on-request fold over the append-only log (tokens, not €)
+
+**0047** · accepted · tags: analytics, insights, tokens, expansion-g1 · 2026-07-06
+
+1. **A PURE on-request fold — no new write path/model/verb** (`server/obs/analytics.ts` `computeAnalytics`). It folds tickets + the already-aggregated usage into: cycle-time **p50/p85** (p85 = the robust "how long does it really take", not a mean skewed by outliers), **weekly throughput** (4 buckets), **stuck-points** (tickets parked in stuck/paused/needs-input), and **token cost by label** (cost per work TYPE). `now` is injected → deterministic + unit-testable. Advisory — it gates nothing.
+
+→ `docs/decisions/0047-delivery-analytics.md`
 
 ## Code governed by decisions
 

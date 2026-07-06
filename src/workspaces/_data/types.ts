@@ -232,6 +232,18 @@ export interface WorkspaceInsights {
   avgCycleHours: number; throughput7d: number; avgTokensPerTicket: number; doneCount: number; openCount: number;
 }
 
+//? Delivery analytics (ADR 0047) — the fuller on-request fold surfaced on the analytics dashboard.
+export interface WorkspaceAnalytics {
+  cycleP50Hours: number;
+  cycleP85Hours: number;
+  throughputByWeek: { weekStart: string; done: number }[];
+  stuckCount: number;
+  doneCount: number;
+  openCount: number;
+  tokensByLabel: { label: string; tokens: number }[];
+  totalTokens: number;
+}
+
 //? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
 export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }
 

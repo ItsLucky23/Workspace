@@ -25,6 +25,7 @@ import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
+import { computeAnalytics } from '../obs/analytics';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -32,7 +33,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics,
 } from '../../src/workspaces/_data/types';
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -170,6 +171,8 @@ export interface WorkspaceSnapshot {
   usage: WorkspaceUsage;
   //? Flow insights (#5): cycle time / throughput / cost-per-ticket.
   insights: WorkspaceInsights;
+  //? Delivery analytics (ADR 0047): the fuller fold for the analytics dashboard.
+  analytics: WorkspaceAnalytics;
   //? Automation (#2): the workspace's triggers.
   triggers: WorkspaceTrigger[];
   //? Scheduled tasks: the agent roles a trigger can run (registered at boot; global, not per-workspace).
@@ -198,6 +201,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
+  analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -301,6 +305,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const usageByKey = new Map(usage.byTicket.map((u) => [u.ticketKey, u]));
     //? Flow insights (#5): cycle time / throughput / cost-per-ticket from the tickets + usage.
     const insights = computeInsights(ticketRows.map((t) => ({ status: t.status, archived: t.archived, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
+    //? Delivery analytics (ADR 0047): the fuller fold (cycle p50/p85, weekly throughput, stuck, tokens-by-label).
+    const analytics = computeAnalytics(ticketRows.map((t) => ({ key: t.key, status: t.status, archived: t.archived, labels: t.labels, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
@@ -346,7 +352,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         if (u && u.tokensIn + u.tokensOut > 0) mapped.costLabel = `${String(u.tokensIn + u.tokensOut)} tok · ${String(u.turns)}×`;
         return mapped;
       }),
-      usage, insights,
+      usage, insights, analytics,
       triggers: triggerRows.map((t): WorkspaceTrigger => ({
         id: t.id, workspaceId: t.workspaceId, enabled: t.enabled, name: t.name, on: asTriggerOn(t.on), action: asTriggerAction(t.action),
         match: t.match, params: t.params, requiresApproval: t.requiresApproval,

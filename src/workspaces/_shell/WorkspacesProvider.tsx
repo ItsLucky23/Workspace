@@ -23,7 +23,7 @@ import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
-  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
+  SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
   ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
 } from '../_data/types';
@@ -66,6 +66,7 @@ interface Snap {
   workspacePaused: boolean;
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
+  analytics: WorkspaceAnalytics;
   triggers: WorkspaceTrigger[];
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   aiRuns: AiRun[];
@@ -88,6 +89,7 @@ const EMPTY_SNAP: Snap = {
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
+  analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -923,6 +925,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       budget: snap.budget,
       usage: snap.usage,
       insights: snap.insights,
+      analytics: snap.analytics,
       triggers: snap.triggers,
       agentRoles: snap.agentRoles,
       aiRuns: snap.aiRuns,

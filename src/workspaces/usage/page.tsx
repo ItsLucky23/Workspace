@@ -37,7 +37,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 export default function Usage() {
-  const { openTicket, tickets, membersById, usage, insights } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage, insights, analytics } = useWorkspaces();
   const translate = useTranslator();
   //? Real 7-day token activity (#16); guard the divisor so an all-zero week doesn't divide by 0.
   const maxDay = Math.max(1, ...usage.activity.map((d) => d.tokens));
@@ -84,6 +84,40 @@ export default function Usage() {
               hint={translate({ key: 'workspaces.usage.insightCostHint' })}
             />
           </div>
+
+          {/* Delivery analytics (ADR 0047): cycle p50/p85 · weekly throughput · stuck · tokens by type */}
+          <Card title={translate({ key: 'workspaces.usage.analyticsTitle' })} desc={translate({ key: 'workspaces.usage.analyticsDesc' })}>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <StatCard label={translate({ key: 'workspaces.usage.cycleP85' })} value={analytics.cycleP85Hours > 0 ? `${String(analytics.cycleP85Hours)} h` : '—'} hint={`p50 ${analytics.cycleP50Hours > 0 ? `${String(analytics.cycleP50Hours)} h` : '—'}`} />
+              <StatCard label={translate({ key: 'workspaces.usage.stuck' })} value={String(analytics.stuckCount)} hint={`${String(analytics.openCount)} open`} />
+              <StatCard label={translate({ key: 'workspaces.usage.weeklyThroughput' })} value={String(analytics.throughputByWeek.at(-1)?.done ?? 0)} hint={`${String(analytics.doneCount)} done`} />
+            </div>
+            <div className="flex items-end gap-3 h-24 mb-4">
+              {analytics.throughputByWeek.map((w) => {
+                const max = Math.max(1, ...analytics.throughputByWeek.map((x) => x.done));
+                return (
+                  <div key={w.weekStart} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className="w-full rounded-t-md bg-primary/70" style={{ height: `${String(Math.round((w.done / max) * 100))}%` }} />
+                    <span className="text-[10px] text-muted">{w.weekStart.slice(5)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-xs font-medium text-muted mb-1.5">{translate({ key: 'workspaces.usage.tokensByType' })}</div>
+            <div className="flex flex-col gap-1">
+              {analytics.tokensByLabel.length === 0
+                ? <div className="text-sm text-disabled">—</div>
+                : analytics.tokensByLabel.map((t) => {
+                  const tokLabel = `${String(t.tokens)} tok`;
+                  return (
+                    <div key={t.label} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-title truncate">{t.label}</span>
+                      <span className="text-muted font-mono">{tokLabel}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </Card>
 
           <Card title={translate({ key: 'workspaces.usage.activityTitle' })}>
             <div className="flex items-end gap-3 h-36">

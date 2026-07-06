@@ -1820,3 +1820,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** de welcome-wizard-UI, echte repo/file-tree-generatie (git-server), user-templates/marketplace.
 
 **Files touched:** `docs/decisions/0046-*.md`, `server/scaffold/templates.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/scaffold.test.mts`.
+
+## 2026-07-06 21:45 — Expansion G1: delivery-analytics (ADR 0047)
+
+**User:** `/goal` (vervolg — item G1). Un-defert PRODUCT_ANALYTICS.
+
+**What I did:** een **pure on-request fold** over de append-only log — geen nieuw write-pad/model/verb.
+- **Fold:** `server/obs/analytics.ts` `computeAnalytics(tickets, usage, now)` — cycle-time **p50/p85** (p85 = robuuste "hoe lang duurt het echt"), **wekelijkse throughput** (4 buckets), **stuck-points** (stuck/paused/needs-input), en **token-kosten per label** (kosten per werk-TYPE). Kosten in **TOKENS**, nooit € (#9). Deterministisch (`now` injected).
+- **Surface:** snapshot emit `analytics` (naast `insights`); Usage-pagina krijgt een "Delivery-analytics"-card (p85/stuck/weekly stat-cards + throughput-bar-chart + tokens-per-type-lijst). Geen nieuwe pagina. i18n ×4.
+- **Verify:** `tests/integration/analytics.test.mts` — **15/15** (archived uitgesloten · stuck telt open+stuck · **cycle p50=4/p85=10** uit [2,4,10] · 4 weekly-buckets, meest-recente done=3 · **tokens-by-label feature 200 > bug 150** · totaal 350 tokens · lege input → zeroed). ADR **0047**.
+- **Follow-ups (in ADR):** agent-quality-trend (vereist een quality-signaal per turn), per-project-scoping, een precieze completion-timestamp.
+
+**Files touched:** `docs/decisions/0047-*.md`, `server/obs/analytics.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/usage/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/analytics.test.mts`.
