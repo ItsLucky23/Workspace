@@ -23,6 +23,7 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../g
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
+import { applyMigration, introspectDb } from '../db/migrate';
 import { indexWorkspace } from '../rag';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
@@ -203,6 +204,8 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.pipelineJob.deleteMany({ where: { workspaceId } });
   await prisma.pipelineRun.deleteMany({ where: { workspaceId } });
   await prisma.pipeline.deleteMany({ where: { workspaceId } });
+  await prisma.migration.deleteMany({ where: { workspaceId } });
+  await prisma.dbConnection.deleteMany({ where: { workspaceId } });
   await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
@@ -1137,6 +1140,39 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!role) return { ok: false };
       const artifact = await role.run({ workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
+    }
+    //? User-app DB + migrations (ADR 0043) — B-23: the Conductor writes the connection + applies migrations.
+    case 'db-connect': {
+      const dbProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      const url = str(payload, 'url'); const name = str(payload, 'name'); const kind = str(payload, 'kind');
+      if (!dbProjectId || !url || !name || !kind) return { ok: false };
+      const envKind = str(payload, 'envKind') ?? 'dev';
+      const serviceId = str(payload, 'serviceId') ?? null;
+      const existing = await prisma.dbConnection.findFirst({ where: { workspaceId: action.workspaceId, projectId: dbProjectId, envKind, ...(serviceId ? { serviceId } : {}) }, select: { id: true } });
+      const data = { name, kind, urlEnc: encryptSecret(url), envKind, ...(serviceId ? { serviceId } : {}) };
+      const conn = await (existing
+        ? prisma.dbConnection.update({ where: { id: existing.id }, data })
+        : prisma.dbConnection.create({ data: { workspaceId: action.workspaceId, projectId: dbProjectId, ...data } }));
+      return { id: conn.id };
+    }
+    case 'db-migrate-create': {
+      const migProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      const name = str(payload, 'name'); const sql = str(payload, 'sql');
+      if (!migProjectId || !name || !sql) return { ok: false };
+      const created = await prisma.migration.create({
+        data: { workspaceId: action.workspaceId, projectId: migProjectId, name, sql, envKind: str(payload, 'envKind') ?? 'dev', ...(str(payload, 'rollbackSql') ? { rollbackSql: str(payload, 'rollbackSql') } : {}), status: 'pending' },
+      });
+      return { id: created.id };
+    }
+    case 'db-migrate-apply': {
+      const migrationId = str(target, 'migrationId') ?? str(payload, 'migrationId');
+      if (!migrationId) return { ok: false, status: 'error' };
+      return applyMigration(prisma, action.workspaceId, migrationId, { approved: bool(payload, 'approved') });
+    }
+    case 'db-introspect': {
+      const connectionId = str(target, 'connectionId') ?? str(payload, 'connectionId');
+      if (!connectionId) return { ok: false, tables: [] };
+      return introspectDb(prisma, action.workspaceId, connectionId);
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {

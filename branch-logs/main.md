@@ -1769,3 +1769,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** auto-propose `WorkspaceTrigger` op een deploy/health-fail-signaal (B1's health-check + Environment-status is de hook); per-culprit confidence/diff-view in de suggestie-UI. `accept-suggestion` dispatcht nu 3 types: automation/mr-review/rollback.
 
 **Files touched:** `docs/decisions/0042-*.md`, `server/mr/rootCauseRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/aiRollback.test.mts`.
+
+## 2026-07-06 19:45 — Expansion D1: user-app DB support + gated migraties (ADR 0043)
+
+**User:** `/goal` (vervolg — item D1). Beslissing eerder: betere database-support incl. migraties.
+
+**What I did:** een DB-surface voor de user-app (greenfield), gekoppeld aan B1-environments.
+- **Schema:** `DbConnection` (per project/service/env, `kind` postgres/mysql/mongo, `urlEnc` **encrypted** via secretBox) + `Migration` (sql + optionele rollbackSql, envKind, status pending/applied/failed).
+- **Engine:** `server/db/migrate.ts` — `applyMigration` (gated: **dev vrij; prod = expliciete approval ÉN een rollback-plan**, B-23; draait de SQL via de connection's DB-client in een wegwerp-container, best-effort) + `introspectDb` (read-only explorer — lijst tabellen/collecties via een read-only listing-query, browse-before-edit).
+- **Control-ops:** `db-connect` (encrypted store), `db-migrate-create`, `db-migrate-apply` (prod-gated), `db-introspect` — via de `projectAdmin`-sync-route + conductor. rbac: connect/apply=settings, create=editPipeline, introspect=workTickets.
+- **Verify:** `tests/integration/dbMigrate.test.mts` — **8/8** (db-connect **encrypted** opgeslagen · migrate-create pending · dev-apply graceful terminal-status · **prod geblokkeerd zonder rollback-plan** · **prod geblokkeerd zonder approval** · approved+rollback passeert de gate). ADR **0043**.
+- **Follow-ups (in ADR):** de explorer-UI (tabellen browsen + gated query-runner), agent-gegenereerde migraties uit een schema-diff, dev-auto-apply-on-merge-trigger, per-rij data-browsing.
+
+**Files touched:** `prisma/schema.prisma`, `docs/decisions/0043-*.md`, `server/db/migrate.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/dbMigrate.test.mts`, `tests/_helpers.mts`.

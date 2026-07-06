@@ -416,6 +416,45 @@ model PipelineJob {
   @@index([workspaceId, pipelineRunId, status])
 }
 
+//? A user-app database connection (ADR 0043, item D1) — per project (optionally per service/env). The
+//? connection string is ENCRYPTED at rest (B-07, `secretBox`), never client-visible. Drives the read-only
+//? DB explorer + migration apply. `kind` picks the client (psql/mysql/mongosh — all in the base image).
+model DbConnection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  projectId   String   @db.ObjectId
+  serviceId   String?  @db.ObjectId
+  envKind     String   @default("dev")           // 'dev' | 'staging' | 'prod' — which environment's DB
+  name        String
+  kind        String                              // 'postgres' | 'mysql' | 'mongo'
+  urlEnc      String                              // ENCRYPTED connection string (B-07)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId, envKind])
+}
+
+//? A user-app schema migration (ADR 0043, D1). Authored by the coding agent (schema-diff → SQL); applied
+//? as a GATED control-op per environment (dev auto; prod = approval + a recorded rollback plan). `status`
+//? tracks the apply lifecycle per env. Never applied client-side — the Conductor applies (B-23).
+model Migration {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String    @db.ObjectId
+  projectId    String    @db.ObjectId
+  name         String
+  sql          String                              // the forward migration SQL
+  rollbackSql  String?                             // the rollback plan (prod apply requires it)
+  envKind      String    @default("dev")           // the environment this apply targets
+  status       String    @default("pending")       // 'pending' | 'applied' | 'failed'
+  error        String?
+  appliedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([projectId, status])
+}
+
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
 //? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).

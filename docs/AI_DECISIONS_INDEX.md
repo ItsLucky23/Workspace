@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (41)
+## Decisions (42)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -54,6 +54,7 @@
 | 0040 | Security & dependency scanning — first-class CI job types | 🟢 accepted | ci, security, dependency-audit, secret-scan, expansion-c2 | — | `docs/decisions/0040-security-dependency-scanning.md` |
 | 0041 | AI MR-review pass (propose→accept, never writes/approves) | 🟢 accepted | mr-review, ai, propose-accept, rag, b-23, expansion-c3 | — | `docs/decisions/0041-ai-mr-review.md` |
 | 0042 | AI-assisted rollback — root-cause role → propose→accept forward-revert + tracking ticket | 🟢 accepted | rollback, root-cause, ai, propose-accept, forward-revert, expansion-b3 | — | `docs/decisions/0042-ai-assisted-rollback.md` |
+| 0043 | User-app DB support + gated migrations | 🟢 accepted | database, migrations, explorer, gated-apply, expansion-d1 | — | `docs/decisions/0043-user-app-db-migrations.md` |
 
 ## Summaries
 
@@ -386,6 +387,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A non-coding `root-cause` AgentRole** (provider abstraction — new `AiFeature 'root-cause'`), mirroring the mr-review/interviewer roles. `run`: given a `symptom` + the recent merged MRs (newest first), `runAiCompletion('root-cause', …)` ranks the single most-likely culprit + explains why + what to verify. It parses `CULPRIT: <mr-number>` / `REASON: …` (pure `parseCulprit`), maps the number to the MR, and emits ONE `WorkspaceSuggestion(type:'rollback', patch:{ mrId, symptom, reason })`. It NEVER reverts.
 
 → `docs/decisions/0042-ai-assisted-rollback.md`
+
+### 0043 — User-app DB support + gated migrations
+
+**0043** · accepted · tags: database, migrations, explorer, gated-apply, expansion-d1 · 2026-07-06
+
+1. **`DbConnection` model** (per project, optionally per service/env; `kind` postgres/mysql/mongo; `urlEnc` ENCRYPTED via `secretBox`, never client-visible). The connection store the explorer + migrations resolve.
+
+→ `docs/decisions/0043-user-app-db-migrations.md`
 
 ## Code governed by decisions
 
