@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (56)
+## Decisions (57)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -69,6 +69,7 @@
 | 0055 | Content script + beats generation with a stub fallback (F1.2) | 🟢 accepted | content, script, ai, stub, expansion-f12 | — | `docs/decisions/0055-content-script-generation.md` |
 | 0056 | Voiceover generation — metered path + per-beat timing (F1.3) | 🟢 accepted | content, voice, tts, budget, expansion-f13 | — | `docs/decisions/0056-content-voiceover.md` |
 | 0057 | Per-beat image generation (F1.4) | 🟢 accepted | content, image, media, budget, expansion-f14 | — | `docs/decisions/0057-content-beat-images.md` |
+| 0058 | Assembly / render — the complete downloadable output (F1.5) | 🟢 accepted | content, assembly, remotion, render, expansion-f15 | — | `docs/decisions/0058-content-assembly.md` |
 
 ## Summaries
 
@@ -521,6 +522,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 `server/content/images.ts` `generateBeatImages` loops the script's beats: per beat it budget-checks (`estimateMediaCostCents('image-gen')` → `checkMediaBudget`), runs `runMediaGeneration({feature:'image-gen', prompt: beat.visualPrompt})`, writes a `MediaJob` + an image `ContentAsset`, links `Beat.imageAssetId`, and records the spend. It **stops early (partial result) if the budget cap is hit** mid-loop. Driven by the `content-gen-images` control-op (B-23, `workTickets`).
 
 → `docs/decisions/0057-content-beat-images.md`
+
+### 0058 — Assembly / render — the complete downloadable output (F1.5)
+
+**0058** · accepted · tags: content, assembly, remotion, render, expansion-f15 · 2026-07-06
+
+1. **`server/content/assembly.ts` `assembleContent`** builds a Remotion timeline (`{ order, text, imageAssetId, durationMs }` per beat, over the voice asset, `totalMs` summed), writes a `RenderJob` (`composition:'faceless'`, `status:'done'`), and produces the final `ContentAsset` (`kind:'render'`, `metadata.downloadable=true` + `hasVoice`/`hasAllImages`/`beatCount`/`totalMs`), linking `RenderJob.resultAssetId`. 2. **Local render is FREE (`costCents:0`)** — Remotion renders on CPU, not a metered media API, so it does NOT debit the €-budget (only the gen calls do: voice + images). This keeps the cost model honest. 3. **The render asset IS the deliverable** — its `stub://render/<piece>` url + `downloadable` flag is the complete output the user downloads + posts manually (the primary near-term path). A real HTTP download route is F3.3. 4. Driven by the `content-assemble` control-op (B-23, `workTickets`).
+
+→ `docs/decisions/0058-content-assembly.md`
 
 ## Code governed by decisions
 

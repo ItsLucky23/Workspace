@@ -1961,3 +1961,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/contentImages.test.mts` **7/7** (4 image-assets/beat · style toegepast · elke beat gelinkt · MediaJob/image fal+asset · budget 4×4c=16c). rbac **122/122**. lint+build+ai:lint groen. ADR **0057**.
 
 **Files touched:** `server/content/images.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentImages.test.mts`, `docs/decisions/0057-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 03:30 — Content-platform F1.5: assembly/render — complete output (ADR 0058) — Fase 1 KLAAR
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F1.5 (laatste van Fase 1).
+
+**What I did:** `server/content/assembly.ts` `assembleContent` — bouwt een Remotion-timeline (per beat: image+durationMs, over de voice), schrijft een `RenderJob` (faceless, done) + het finale `ContentAsset` (kind `render`, `metadata.downloadable=true` + hasVoice/hasAllImages/beatCount/totalMs), linkt resultAssetId. **Lokale render = gratis** (costCents 0, geen budget-debit — alleen gen-calls kosten €). `content-assemble` op (B-23, workTickets).
+- **Verify:** `tests/integration/contentAssembly.test.mts` **11/11** — de **Fase-1 DoD-proef**: volledige pipeline (script→voice→images→assemble) → downloadbare render-asset (voice+alle images, 4 beats, duur) · done RenderJob (linked, gratis) · totale metered-spend voice(2)+images(16)=18. rbac **122/122**. lint+build+ai:lint groen. ADR **0058**.
+- **🏁 Fase 1 (content-pipeline-engine) KLAAR** — een piece loopt end-to-end op dummy-data naar een complete downloadbare output, gemeterd + style-driven.
+
+**Files touched:** `server/content/assembly.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentAssembly.test.mts`, `docs/decisions/0058-*.md`, `docs/AI_DECISIONS_INDEX.md`.

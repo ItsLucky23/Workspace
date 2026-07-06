@@ -24,6 +24,7 @@ import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
+import { assembleContent } from '../content/assembly';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1057,6 +1058,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
         ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
       });
+      return;
+    }
+    //? Assembly / render (F1.5, ADR 0049) — beats+images+voice → the final downloadable render asset.
+    case 'content-assemble': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId } });
+      if (!piece) return;
+      await assembleContent(prisma, { workspaceId: action.workspaceId, contentProjectId });
       return;
     }
     case 'skill-toggle': {
