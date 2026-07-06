@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (60)
+## Decisions (61)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -73,6 +73,7 @@
 | 0059 | Reference-driven photorealistic image generation (F2.1, #1 feature) | 🟢 accepted | content, image, reference, photoreal, expansion-f21 | — | `docs/decisions/0059-reference-image.md` |
 | 0060 | Short-form clip generation (F2.2) | 🟢 accepted | content, video, short-form, expansion-f22 | — | `docs/decisions/0060-short-form-clips.md` |
 | 0061 | Reference-video analysis → blueprint that seeds a script (F2.3) | 🟢 accepted | content, reference-video, gemini, blueprint, expansion-f23 | — | `docs/decisions/0061-reference-video-analysis.md` |
+| 0062 | Shared single-asset gen + avatar (F2.4) | 🟢 accepted | content, avatar, media, expansion-f24 | — | `docs/decisions/0062-media-asset-avatar.md` |
 
 ## Summaries
 
@@ -557,6 +558,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 `server/content/referenceVideo.ts` `analyzeReferenceVideo` calls the `reference-video-analysis` text AiFeature (Gemini, video-capable), producing a `VideoBlueprint` (`pacing`, `styleHint`, `beats[]`), then SEEDS a `Script` (title "From reference video") + `Beat`s from it — the NEW story in the reference's shape. Content-local stub (no key). Driven by `content-analyze-reference-video` (B-23, `workTickets`, requires `referenceVideoUrl` + `newStory`).
 
 → `docs/decisions/0061-reference-video-analysis.md`
+
+### 0062 — Shared single-asset gen + avatar (F2.4)
+
+**0062** · accepted · tags: content, avatar, media, expansion-f24 · 2026-07-06
+
+`server/content/mediaAsset.ts` `generateMediaAsset(prisma, { feature, prompt?, referenceUrl?, styleKey?, extraInstructions? })` is the generic metered path for the simple single-asset features. The 4 ops (`content-gen-avatar`/`-music`/`-sfx`/`-3d`, B-23, `workTickets`) share ONE Conductor case that maps op→`MediaFeature` and calls it. The specialised services (voice timing, per-beat images, short-form captions, reference-image) keep their own files.
+
+→ `docs/decisions/0062-media-asset-avatar.md`
 
 ## Code governed by decisions
 

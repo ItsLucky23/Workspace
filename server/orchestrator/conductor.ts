@@ -28,6 +28,8 @@ import { assembleContent } from '../content/assembly';
 import { generateReferenceImage } from '../content/referenceImage';
 import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
+import { generateMediaAsset } from '../content/mediaAsset';
+import type { MediaFeature } from '../media/types';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1091,6 +1093,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const newStory = str(payload, 'newStory') ?? str(payload, 'story');
       if (!contentProjectId || !referenceVideoUrl || !newStory) return;
       await analyzeReferenceVideo(prisma, { workspaceId: action.workspaceId, contentProjectId, referenceVideoUrl, newStory });
+      return;
+    }
+    //? Single-asset gens (F2.4 avatar, F2.5 music/sfx, F2.6 3d) — the shared metered path via generateMediaAsset.
+    case 'content-gen-avatar':
+    case 'content-gen-music':
+    case 'content-gen-sfx':
+    case 'content-gen-3d': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const featureByOp: Record<string, MediaFeature> = { 'content-gen-avatar': 'avatar', 'content-gen-music': 'music', 'content-gen-sfx': 'sfx', 'content-gen-3d': 'model-3d' };
+      const feature = featureByOp[action.op];
+      if (!feature) return;
+      await generateMediaAsset(prisma, {
+        workspaceId: action.workspaceId, contentProjectId, feature,
+        ...(str(payload, 'prompt') ? { prompt: str(payload, 'prompt') } : {}),
+        ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
+        ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
+      });
       return;
     }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.

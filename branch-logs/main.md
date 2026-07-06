@@ -1999,3 +1999,12 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/referenceVideo.test.mts` **6/6** (gemini-seeded script · 4-beat-arc · nieuwe story (coffee) drijft de beats · hook-first vorm van de referentie). rbac **122/122**. lint+build+ai:lint groen. ADR **0061**.
 
 **Files touched:** `server/content/referenceVideo.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/referenceVideo.test.mts`, `docs/decisions/0061-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 04:55 — Content-platform F2.4: gedeelde single-asset-gen + avatar (ADR 0062)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.4.
+
+**What I did:** `server/content/mediaAsset.ts` `generateMediaAsset` — de generieke gemeterde single-asset-keten (budget→gen-stub→ContentAsset+MediaJob+spend) voor avatar/music/sfx/3d. 4 ops (`content-gen-avatar/-music/-sfx/-3d`, B-23, workTickets) delen één Conductor-case (op→MediaFeature-map). Avatar hier gewired+getest; music/sfx=F2.5, 3d=F2.6.
+- **Verify:** `tests/integration/avatar.test.mts` **6/6** (avatar-asset fal · MediaJob linked · budget 30c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0062**.
+
+**Files touched:** `server/content/mediaAsset.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/avatar.test.mts`, `docs/decisions/0062-*.md`, `docs/AI_DECISIONS_INDEX.md`.
