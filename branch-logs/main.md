@@ -1971,3 +1971,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **🏁 Fase 1 (content-pipeline-engine) KLAAR** — een piece loopt end-to-end op dummy-data naar een complete downloadbare output, gemeterd + style-driven.
 
 **Files touched:** `server/content/assembly.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentAssembly.test.mts`, `docs/decisions/0058-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 03:55 — Content-platform F2.1: referentie-fotorealisme #1 (ADR 0059) — start Fase 2
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.1 (de #1-prioriteit).
+
+**What I did:** `server/content/referenceImage.ts` `generateReferenceImage` — gemeterde keten: budget → `runMediaGeneration(reference-image, referenceUrl, style, extra)` (stub) → image-`ContentAsset` (`hasReference`) + `MediaJob` (records referenceUrl+styleId) → spend. **Style default `realistisch`** (realisme = prioriteit). `content-gen-reference-image` op (B-23, workTickets, vereist referenceUrl).
+- **Follow-up (in ADR):** custom-model/LoRA-training-uit-een-referentie-SET = apart, zwaarder item (het voorbeeld van de user is per-generatie-conditioning, geen getraind model).
+- **Verify:** `tests/integration/referenceImage.test.mts` **10/10** (reference-conditioned · realistisch toegepast · extra-instructie flow · MediaJob referenceUrl+fal+asset · budget 5c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0059**.
+
+**Files touched:** `server/content/referenceImage.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/referenceImage.test.mts`, `docs/decisions/0059-*.md`, `docs/AI_DECISIONS_INDEX.md`.
