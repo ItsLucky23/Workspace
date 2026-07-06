@@ -2148,3 +2148,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** real-git `tests/integration/mergePush.test.mts` **6/6** (origin/main advanceert naar de merge-commit + local-only skip) + `tests/unit/retry.test.mts` **8/8**. mergeReal **16/16** onaangetast. Lint + build groen.
 
 **Files touched:** `server/util/retry.ts` (nieuw), `server/git/repoStore.ts`, `server/git/forge.ts`, `server/mr/service.ts`, `tests/integration/mergePush.test.mts` (nieuw), `tests/unit/retry.test.mts` (nieuw), `docs/decisions/0075-mr-push-to-origin.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM C2: readiness-probes voor preview/editor (geen fire-and-forget)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item C2.
+
+**What I did:**
+- `waitForContainerReady` geparametriseerd → `opts { attempts, delayMs, acceptAnyStatus, run }`. `acceptAnyStatus` dropt curl `-f` (openvscode's token-gate geeft 401 → poort is wél gebonden); `run` = injecteerbare probe-runner (testbaar zonder Docker).
+- `openPreviewForTicket`: probe `PREVIEW_PORT` ná dev-server-start → `preview.notReady` op timeout i.p.v. de route naar een dode URL flippen.
+- `openEditorForTicket`: probe `EDITOR_IN_CONTAINER_PORT` (`acceptAnyStatus`) ná `startEditorInContainer` → `editor.notReady` op timeout, vóór route-flip.
+- Deploy-pad (`environment.ts`) riep de probe al aan — ongewijzigd (default-opts backward-compatible).
+
+**Verify:** `tests/unit/containerReady.test.mts` **6/6** (ready-op-Nde-poll + stopt, uitputting, `acceptAnyStatus`-probe-shape). environments **7/7** onaangetast. Lint + build groen. Live-probe tegen echte container = deferred post-keys e2e.
+
+**Files touched:** `server/container/health.ts`, `server/container/previewSession.ts`, `server/container/editorSession.ts`, `tests/unit/containerReady.test.mts` (nieuw), `docs/decisions/0076-container-readiness-probes.md`, `docs/AI_DECISIONS_INDEX.md`.

@@ -9,6 +9,7 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker } from './runtime';
+import { waitForContainerReady } from './health';
 import { getProxyProvider, previewRoute, baseDomain } from '../proxy';
 
 const PREVIEW_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
@@ -34,6 +35,11 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   //? in devCommand. A previous run's server is left as-is (idempotent — same port).
   const devCmd = (project?.devCommand ?? '').trim().length > 0 ? (project?.devCommand ?? '') : 'npm run dev';
   await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
+
+  //? C2: don't advertise the URL until the dev server actually binds the port — probe before flipping
+  //? the route (no fire-and-forget). A dev server can take 10–30s; a typed timeout beats a 502.
+  const ready = await waitForContainerReady(container.name, PREVIEW_PORT);
+  if (!ready) return { ok: false, error: 'preview.notReady' };
 
   const route = previewRoute({ ticketKey, branch: ticket.branch, containerName: container.name, port: PREVIEW_PORT, workspaceId });
   const proxied = await getProxyProvider().upsertRoute(route);

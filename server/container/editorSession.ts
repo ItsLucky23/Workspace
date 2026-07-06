@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { tryCatch } from '@luckystack/core';
 
 import { docker, containerName, launchTicketContainer } from './runtime';
+import { waitForContainerReady } from './health';
 import { startEditorInContainer, EDITOR_IN_CONTAINER_PORT } from './editorServer';
 import { captureProfileFromContainer } from './editorProfile';
 import { isEditorRunning } from '../orchestrator/editGuard';
@@ -110,6 +111,11 @@ export async function openEditorForTicket(input: {
     ...(input.settingsJson ? { settingsJson: input.settingsJson } : {}),
   });
   if (started.error !== undefined) return { ok: false, error: started.error };
+  //? C2: openvscode is started with `exec -d` (detached) — wait until the port actually serves before
+  //? flipping the proxy route (no fire-and-forget → no 502 on first load). `acceptAnyStatus` because
+  //? the connection-token gates `/` with a 401 until presented — a 401 still proves the port is bound.
+  const ready = await waitForContainerReady(container.name, EDITOR_IN_CONTAINER_PORT, { acceptAnyStatus: true });
+  if (!ready) return { ok: false, error: 'editor.notReady' };
   editorTokens.set(key, token);
   return finalizeEditor(input.workspaceId, input.ticketKey, input.branch, container.name, token);
 }

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (74)
+## Decisions (75)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -87,6 +87,7 @@
 | 0073 | Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold) | 🟢 accepted | security, tenancy, hardening, ai-lint, depth-program | — | `docs/decisions/0073-tenant-scope-lint-guard.md` |
 | 0074 | Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory | 🟢 accepted | security, secrets, hardening, depth-program | — | `docs/decisions/0074-encryption-fail-closed.md` |
 | 0075 | Server-side merge/rollback pushes the target to origin | 🟢 accepted | git, mr, forge, depth-program | — | `docs/decisions/0075-mr-push-to-origin.md` |
+| 0076 | Preview/editor serve paths wait for readiness (no fire-and-forget) | 🟢 accepted | containers, preview, editor, reliability, depth-program | — | `docs/decisions/0076-container-readiness-probes.md` |
 
 ## Summaries
 
@@ -683,6 +684,14 @@ Make at-rest encryption **fail-closed**:
 New `pushRef(workspaceId, gitUrl, token, ref)` in `repoStore` pushes a branch straight from the BARE clone to origin (the merge/revert advance `target` there). Token injected transiently via `withAuth`, never stored/logged. Bounded **retry/backoff** via a new shared `withRetry` helper (`server/util/retry.ts`, reused by C3). New `pushMergedTarget(prisma, workspaceId, ticketId, targetBranch)` in `forge.ts` resolves the ticket's `project.gitUrl` + the per-project forge token (`resolveForge`) and pushes the target. *Non-fatal:** the local merge is authoritative; a `local-only` project (no gitUrl/token) is a SKIP, and a push failure is surfaced (`pushError`), never rolled back. Wired into `mergeMr` (after a successful merge) and `rollbackMr` (after a successful revert); `MergeMrResult` gains `pushed?`/`pushError?` so the client/log can see whether the forge received it.
 
 → `docs/decisions/0075-mr-push-to-origin.md`
+
+### 0076 — Preview/editor serve paths wait for readiness (no fire-and-forget)
+
+**0076** · accepted · tags: containers, preview, editor, reliability, depth-program · 2026-07-06
+
+Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ attempts, delayMs, acceptAnyStatus, run }`. `acceptAnyStatus` drops curl's `-f` so a token-gated `401` (openvscode's root before the connection-token) still counts as bound; `run` is an injectable probe runner so the retry loop is unit-testable without Docker. `openPreviewForTicket` now probes `PREVIEW_PORT` after starting the dev server and returns `preview.notReady` on timeout INSTEAD of flipping the route to a dead URL. `openEditorForTicket` now probes `EDITOR_IN_CONTAINER_PORT` (with `acceptAnyStatus`) after `startEditorInContainer` and returns `editor.notReady` on timeout before flipping the route. The deploy path (`environment.ts`) already called the probe — unchanged (the new default `opts` is backward-compatible).
+
+→ `docs/decisions/0076-container-readiness-probes.md`
 
 ## Code governed by decisions
 
