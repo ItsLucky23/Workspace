@@ -734,6 +734,8 @@
       "generateDesc": "Transformez cette pièce en média fini, étape par étape.",
       "assetsTitle": "Ressources",
       "assetsEmpty": "Les médias générés apparaissent ici une fois prêts.",
+      "assetStub": "Aperçu",
+      "assetOpen": "Ouvrir",
       "actScript": "Écrire le script",
       "actVoice": "Voix off",
       "actImages": "Image par séquence",

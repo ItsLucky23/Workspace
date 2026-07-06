@@ -33,7 +33,7 @@ try {
   const music = await poll(() => prisma.contentAsset.findFirst({ where: { workspaceId: wsId, contentProjectId: pieceId, kind: 'music' } }));
   assert(music !== null, 'content-gen-music produced a music asset');
   assert((music?.url ?? '').startsWith('stub://music/'), 'the music is a valid-shaped stub');
-  eq((await prisma.mediaJob.findFirst({ where: { workspaceId: wsId, feature: 'music' } }))?.providerId, 'elevenlabs', 'music routed to elevenlabs');
+  eq((await prisma.mediaJob.findFirst({ where: { workspaceId: wsId, feature: 'music' } }))?.providerId, 'suno', 'music routed to suno (M2 — Suno is the music provider)');
 
   await enqueueControlAction({ workspaceId: wsId, op: 'content-gen-sfx', target: {}, payload: { contentProjectId: pieceId, prompt: 'whoosh transition' }, userId: owner.id, clientRequestId: `f25-gx-${String(stamp)}` });
   const sfx = await poll(() => prisma.contentAsset.findFirst({ where: { workspaceId: wsId, contentProjectId: pieceId, kind: 'sfx' } }));

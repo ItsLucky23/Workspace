@@ -32,6 +32,7 @@ import { generateMediaAsset } from '../content/mediaAsset';
 import type { MediaFeature } from '../media/types';
 import { publishAsset, isPublishPlatform } from '../content/publish';
 import { indexChannelBrand } from '../content/brandMemory';
+import { jsonInput } from '../util/json';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -989,9 +990,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'save-style': {
       const feature = str(payload, 'feature');
       const key = str(payload, 'key');
-      const label = str(payload, 'label') ?? key;
       const systemPrompt = str(payload, 'systemPrompt');
       if (!feature || !key || !systemPrompt) return;
+      const label = str(payload, 'label') ?? key;
       const existing = await prisma.stylePreset.findFirst({ where: { workspaceId: action.workspaceId, feature, key } });
       if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
       return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
@@ -1164,7 +1165,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           workspaceId: action.workspaceId, type: 'copilot',
           title: str(payload, 'title') ?? 'Copilot suggestion',
           body: str(payload, 'note') ?? 'The assistant suggests an action — review and confirm.',
-          patch: { navigate: navigate ?? null, prefill: asRec(payload.prefill), op: op ?? null },
+          patch: jsonInput({ navigate: navigate ?? null, prefill: asRec(payload.prefill), op: op ?? null }),
         },
       });
     }

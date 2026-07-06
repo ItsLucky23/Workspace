@@ -5,8 +5,11 @@
 //? Claude turn (that PTY path is verified manually; it bills a subscription + needs login).
 
 import { assert, eq, report } from '../_helpers.mts';
-import { resolveAssignment, defaultAssignments } from '../../server/ai/assignments';
-import { runAiCompletion, currentAssignments } from '../../server/ai/registry';
+//? Dynamic imports (after `_helpers` has booted dotenvx + forced the stub world): a STATIC import of a
+//? server module is evaluated as a sibling of `_helpers` and races its provider-key unset, leaking a
+//? real GEMINI key into the "unavailable provider" assertion. Every sibling test uses this same pattern.
+const { resolveAssignment, defaultAssignments } = await import('../../server/ai/assignments');
+const { runAiCompletion, currentAssignments } = await import('../../server/ai/registry');
 
 //? Defaults: every feature resolves to a provider; chat defaults to the Claude CLI.
 eq(resolveAssignment('workspace-chat'), 'claude-cli', 'workspace-chat defaults to claude-cli');

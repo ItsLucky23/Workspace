@@ -34,7 +34,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 
@@ -327,14 +327,25 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
     //? U4 folds: content-analytics (over pieces + media spend + publish jobs), the style library (this
     //? workspace's + the global defaults), and channels + their brand voice.
-    const [mediaSpendRows, publishJobRows, styleRows, channelRows] = await Promise.all([
+    const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows] = await Promise.all([
       prisma.mediaSpend.findMany({ where: { workspaceId: contentWsId } }),
       prisma.publishJob.findMany({ where: { workspaceId: contentWsId } }),
       prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
       prisma.channel.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
+      prisma.contentAsset.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
     ]);
+    //? U-fix B: group the produced media assets per piece so the detail page can show + download them.
+    //? `stub` = the asset was produced in dummy mode (no key) — the registry marks it in `metadata.stub`.
+    const assetsByPiece = new Map<string, ContentAssetSummary[]>();
+    for (const a of contentAssetRows) {
+      const m = a.metadata;
+      const stub = typeof m === 'object' && m !== null && 'stub' in m && m.stub === true;
+      const list = assetsByPiece.get(a.contentProjectId) ?? [];
+      list.push({ id: a.id, kind: a.kind, url: a.url ?? '', status: a.status, stub });
+      assetsByPiece.set(a.contentProjectId, list);
+    }
     const contentSnapshot: ContentSnapshot = {
-      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId })),
+      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [] })),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(
         contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),

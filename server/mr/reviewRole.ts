@@ -11,6 +11,7 @@ import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag';
 import { branchDiff } from '../git/repoStore';
+import { jsonInput } from '../util/json';
 import { parseUnifiedDiff } from './diff';
 import { addReviewComment } from './service';
 
@@ -113,7 +114,7 @@ export function registerMrReviewRole(): void {
           workspaceId: ctx.workspaceId, type: 'mr-review',
           title: `AI review: ${String(findings.length)} finding(s) on ${mr.title}`,
           body: findings.map((f) => `• ${f.filePath}:${String(f.line)} — ${f.body}`).join('\n'),
-          ticketIds: [], patch: { mrId: mr.id, findings }, status: 'open',
+          ticketIds: [], patch: jsonInput({ mrId: mr.id, findings }), status: 'open',
         },
       });
       return { kind: 'mr-review', title: 'AI MR review', body: `Proposed ${String(findings.length)} review finding(s) for acceptance.` };

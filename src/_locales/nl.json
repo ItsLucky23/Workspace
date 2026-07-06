@@ -734,6 +734,8 @@
       "generateDesc": "Maak van dit stuk stap voor stap afgewerkte media.",
       "assetsTitle": "Assets",
       "assetsEmpty": "Gegenereerde media verschijnt hier zodra klaar.",
+      "assetStub": "Voorbeeld",
+      "assetOpen": "Openen",
       "actScript": "Script schrijven",
       "actVoice": "Voice-over",
       "actImages": "Beeld per beat",

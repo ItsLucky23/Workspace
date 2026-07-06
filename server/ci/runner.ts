@@ -11,6 +11,7 @@ import { launchTicketContainer, teardownTicketContainer, docker, dockerAvailable
 import { showRepoFile } from '../git/repoStore';
 import { parseCiYaml, specFingerprint } from './parse';
 import { isScannerType, scannerCommand, parseScan, higherSeverity } from './security';
+import { jsonInput } from '../util/json';
 
 export interface CiRunResult { status: string; runId?: string; error?: string }
 
@@ -21,7 +22,7 @@ const CI_PATH = '.workspaces/ci.yml';
 async function recordCiEvent(prisma: PrismaClient, workspaceId: string, ticketId: string | null, text: string, metadata: Record<string, unknown>): Promise<void> {
   if (!ticketId) return;
   const last = await prisma.ticketEvent.findFirst({ where: { workspaceId, ticketId }, orderBy: { seq: 'desc' }, select: { seq: true } });
-  await prisma.ticketEvent.create({ data: { workspaceId, ticketId, seq: (last?.seq ?? 0) + 1, type: 'ci', actor: 'conductor', text, metadata } }).catch(() => null);
+  await prisma.ticketEvent.create({ data: { workspaceId, ticketId, seq: (last?.seq ?? 0) + 1, type: 'ci', actor: 'conductor', text, metadata: jsonInput(metadata) } }).catch(() => null);
 }
 
 //? Run the project's CI at `commitHash` (frozen). Creates Pipeline (upsert) + PipelineRun + PipelineJobs,
@@ -82,7 +83,7 @@ export async function runPipeline(prisma: PrismaClient, workspaceId: string, pro
     if (scanner) {
       const scan = parseScan(job.type, res.out);
       runMaxSeverity = higherSeverity(runMaxSeverity, scan.maxSeverity);
-      await prisma.pipelineJob.update({ where: { id: row.id }, data: { status: 'success', exitCode: res.code, severity: scan.maxSeverity, findings: scan.findings, logTail: `${String(scan.findings.length)} finding(s)`, finishedAt: new Date() } });
+      await prisma.pipelineJob.update({ where: { id: row.id }, data: { status: 'success', exitCode: res.code, severity: scan.maxSeverity, findings: jsonInput(scan.findings), logTail: `${String(scan.findings.length)} finding(s)`, finishedAt: new Date() } });
       await recordCiEvent(prisma, workspaceId, ticketId, `CI ${job.name}: ${String(scan.findings.length)} finding(s) (${scan.maxSeverity})`, { pipelineRunId: run.id, jobName: job.name, jobType: job.type, severity: scan.maxSeverity, findings: scan.findings.length });
       continue;
     }

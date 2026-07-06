@@ -10,8 +10,24 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
 import { EmptyState } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import type { ContentAssetSummary } from '../../_data/types';
+import { backendUrl } from '../../../../config';
 
 export const template = 'workspaces';
+
+//? Asset kind → icon (unknown kinds fall back to the generic file icon).
+const ASSET_ICON: Record<string, IconName> = {
+  image: 'table-cells-large', render: 'display', video: 'display', voice: 'wave-square',
+  music: 'wave-square', sfx: 'wave-square', avatar: 'user', 'model-3d': 'box-archive', script: 'file-lines',
+};
+
+//? A downloadable/openable href for an asset: `/media/<file>` is served by the backend (prefix its origin),
+//? a hosted `http(s)` url is used as-is, and a `stub://` (dummy-mode) url is not openable → null.
+function assetHref(url: string): string | null {
+  if (url.startsWith('/media/')) return `${backendUrl}${url}`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return null;
+}
 
 //? A generation action: its content-op + label + icon + whether it needs the reference url / a prompt.
 interface GenAction { op: string; labelKey: string; icon: IconName; needsRef?: boolean; needsPrompt?: boolean }
@@ -26,6 +42,39 @@ const ACTIONS: GenAction[] = [
   { op: 'content-gen-3d', labelKey: 'workspaces.content.act3d', icon: 'box-archive' },
   { op: 'content-assemble', labelKey: 'workspaces.content.actAssemble', icon: 'diagram-project' },
 ];
+
+//? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge
+//? and an open/download link when the media is reachable.
+function AssetCard({ asset, translate }: { asset: ContentAssetSummary; translate: ReturnType<typeof useTranslator> }) {
+  const href = assetHref(asset.url);
+  const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
+  return (
+    <div className="rounded-xl border border-container2-border bg-container2 overflow-hidden flex flex-col">
+      <div className="aspect-square bg-container1 flex items-center justify-center relative">
+        {isImage && href ? (
+          <img src={href} alt={asset.kind} className="w-full h-full object-cover" />
+        ) : (
+          <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className="text-2xl text-muted" />
+        )}
+        {asset.stub && (
+          <span className="absolute top-1.5 left-1.5 rounded-md bg-warning/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary">
+            {translate({ key: 'workspaces.content.assetStub' })}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+        <span className="text-[11px] font-medium text-common capitalize truncate">{asset.kind}</span>
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer" title={translate({ key: 'workspaces.content.assetOpen' })} className="text-muted hover:text-primary cursor-pointer shrink-0">
+            <Icon name="up-right-from-square" />
+          </a>
+        ) : (
+          <span className="text-[10px] text-disabled capitalize shrink-0">{asset.status}</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
@@ -121,9 +170,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
 
             <div className="mt-5">
               <div className="text-sm font-medium text-muted mb-2">{translate({ key: 'workspaces.content.assetsTitle' })}</div>
-              <div className="rounded-xl border border-dashed border-divider py-8 text-center text-sm text-disabled">
-                {translate({ key: 'workspaces.content.assetsEmpty' })}
-              </div>
+              {piece.assets.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-divider py-8 text-center text-sm text-disabled">
+                  {translate({ key: 'workspaces.content.assetsEmpty' })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} translate={translate} />)}
+                </div>
+              )}
             </div>
           </section>
         </div>

@@ -7,6 +7,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { runMediaGeneration, estimateMediaCostCents } from '../media/registry';
 import { checkMediaBudget, recordMediaSpend } from '../media/budget';
+import { jsonInput } from '../util/json';
 import { resolveStyle } from './styles';
 import type { MediaFeature } from '../media/types';
 
@@ -39,7 +40,7 @@ export async function generateMediaAsset(
   if (!res.ok || !res.asset) return { ok: false, costCents: 0, stub: res.stub };
 
   const job = await prisma.mediaJob.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, feature: args.feature, providerId: res.providerId, ...(resolved ? { styleId: resolved.id } : {}), status: 'done', input: { prompt: args.prompt ?? null, referenceUrl: args.referenceUrl ?? null }, costCents: res.costCents } });
-  const asset = await prisma.contentAsset.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: res.asset.kind, url: res.asset.url, mediaJobId: job.id, status: 'ready', metadata: res.asset.metadata } });
+  const asset = await prisma.contentAsset.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: res.asset.kind, url: res.asset.url, mediaJobId: job.id, status: 'ready', metadata: jsonInput(res.asset.metadata) } });
   await prisma.mediaJob.update({ where: { id: job.id }, data: { resultAssetId: asset.id } });
   await recordMediaSpend(prisma, args.workspaceId, { contentProjectId: args.contentProjectId, mediaJobId: job.id, feature: args.feature, providerId: res.providerId, costCents: res.costCents });
 

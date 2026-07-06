@@ -734,6 +734,8 @@
       "generateDesc": "Mach aus diesem Stück Schritt für Schritt fertige Medien.",
       "assetsTitle": "Assets",
       "assetsEmpty": "Generierte Medien erscheinen hier, sobald sie fertig sind.",
+      "assetStub": "Platzhalter",
+      "assetOpen": "Öffnen",
       "actScript": "Skript schreiben",
       "actVoice": "Voiceover",
       "actImages": "Bild pro Beat",

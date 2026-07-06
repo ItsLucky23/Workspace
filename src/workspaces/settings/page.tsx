@@ -69,7 +69,7 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
   const [repoPath, setRepoPath] = useState('');
   const [token, setToken] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
-  const modeItems: DropdownItem[] = [{ label: 'GitHub', value: 'github' }, { label: 'GitLab', value: 'gitlab' }];
+  const modeItems: DropdownItem[] = [{ id: 'github', value: 'github', item: 'GitHub' }, { id: 'gitlab', value: 'gitlab', item: 'GitLab' }];
   const submit = () => {
     onConnect({ projectId, mode, ...(repoPath.trim() ? { repoPath: repoPath.trim() } : {}), ...(token.trim() ? { token: token.trim() } : {}), ...(baseUrl.trim() ? { baseUrl: baseUrl.trim() } : {}) });
     void menuHandler.close();
@@ -81,7 +81,7 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
       <span className="text-sm text-muted -mt-2">{translate({ key: 'workspaces.account.forgeConnectFor' })}</span>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-common">{translate({ key: 'workspaces.account.forgeProvider' })}</span>
-        <Dropdown size="sm" items={modeItems} value={mode} onChange={(it) => { setMode(it.value === 'gitlab' ? 'gitlab' : 'github'); }} />
+        <Dropdown size="sm" items={modeItems} value={modeItems.find((it) => it.id === mode)} onChange={(it) => { setMode(it.value === 'gitlab' ? 'gitlab' : 'github'); }} />
       </div>
       <input value={repoPath} onChange={(e) => { setRepoPath(e.target.value); }} placeholder={translate({ key: 'workspaces.account.forgeRepoPathPh' })} className={inputCls} />
       <input value={token} onChange={(e) => { setToken(e.target.value); }} type="password" placeholder={translate({ key: 'workspaces.account.forgeTokenPh' })} className={inputCls} />

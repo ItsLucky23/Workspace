@@ -50,7 +50,7 @@ const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
 //? sections. The group header renders when the rail is expanded; collapsed shows a thin divider between
 //? groups. Groups render in GROUP_ORDER.
 type NavGroup = 'work' | 'build' | 'studio' | 'insights';
-interface NavDef { id: WsView; icon: IconName; label: string; group: NavGroup }
+interface NavDef { id: WsView; icon: IconName; label: string; group?: NavGroup }
 export const GROUP_ORDER: NavGroup[] = ['work', 'build', 'studio', 'insights'];
 export const GROUP_LABELS: Record<NavGroup, string> = { work: 'Work', build: 'Build', studio: 'Studio', insights: 'Insights' };
 export const NAV_ITEMS: NavDef[] = [

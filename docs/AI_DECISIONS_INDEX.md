@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (87)
+## Decisions (89)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -100,6 +100,8 @@
 | 0086 | Content settings — provider keys + €-budget + setup flow | 🟢 accepted | content, settings, ui, control-op, depth-program | — | `docs/decisions/0086-content-settings-setup.md` |
 | 0087 | Content insights dashboard + style library + brand editor | 🟢 accepted | content, insights, analytics, brand, ui, depth-program | — | `docs/decisions/0087-content-insights-brand.md` |
 | 0088 | KEY_SETUP_GUIDE + Depth Program complete | 🟢 accepted | docs, content, keys, depth-program | — | `docs/decisions/0088-key-setup-guide.md` |
+| 0089 | tsc is a delivery gate; Prisma-Json writes go through jsonInput, never a cast | 🟢 accepted | tooling, typing, testing, prisma | — | `docs/decisions/0089-typecheck-gate-and-json-input.md` |
+| 0090 | Tests run a stub provider world by default; live-AI is opt-in via enableLiveProviders() | 🟢 accepted | testing, ai, media, providers | — | `docs/decisions/0090-deterministic-test-provider-world.md` |
 
 ## Summaries
 
@@ -800,6 +802,22 @@ New `save-media-provider` control-op — stores an ENCRYPTED provider API key (`
 `docs/KEY_SETUP_GUIDE.md` — per provider (Fal, ElevenLabs, Suno, Gemini, YouTube, TikTok): where to get the key, where to put it (the encrypted in-app settings form OR `.env.local`), the env var names, and a *cost warning** (video/3D are the expensive ones; set a €-cap first). It leads with the two load-bearing rules: `WORKSPACES_ENC_KEY` is a boot requirement (H2), and set a media €-budget cap before adding any key. Linked from the U3 settings setup flow. ffmpeg render (Docker, no key) + the safe dummy-mode default are documented so the reader understands what already works without keys.
 
 → `docs/decisions/0088-key-setup-guide.md`
+
+### 0089 — tsc is a delivery gate; Prisma-Json writes go through jsonInput, never a cast
+
+**0089** · accepted · tags: tooling, typing, testing, prisma · 2026-07-07
+
+1. **`npm run typecheck` (tsc) is a mandatory pre-delivery gate**, run per item alongside `lint` + `build` + `ai:lint`. Vite's per-file transpile is not a substitute for whole-program type safety. 2. **Typed data destined for a Prisma `Json` column goes through `server/util/json.ts` `jsonInput()`** — a deep-clone (`structuredClone`) that widens the value to `Prisma.InputJsonValue` **without a cast**. This honours the standing "no `as any` / `as unknown as T`" rule (Rule 21): the clone is a genuine structural coercion, and being a copy it is also safe to store. Every other error was fixed at its typing source (reorder so a `const` is narrowed before use, `?? null`, annotate the header as `Record<string,string>`, make `NavDef.group` optional, build `DropdownItem`s with `id`+`item`).
+
+→ `docs/decisions/0089-typecheck-gate-and-json-input.md`
+
+### 0090 — Tests run a stub provider world by default; live-AI is opt-in via enableLiveProviders()
+
+**0090** · accepted · tags: testing, ai, media, providers · 2026-07-07
+
+The default test world is **stub**; a live-AI test **opts in**.
+
+→ `docs/decisions/0090-deterministic-test-provider-world.md`
 
 ## Code governed by decisions
 

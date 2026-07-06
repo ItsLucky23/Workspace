@@ -12,7 +12,7 @@ export type ContentStage = (typeof CONTENT_STAGES)[number];
 export function nextContentStage(current: string): ContentStage | null {
   const i = (CONTENT_STAGES as readonly string[]).indexOf(current);
   if (i === -1) return CONTENT_STAGES[0];
-  return i + 1 < CONTENT_STAGES.length ? CONTENT_STAGES[i + 1] : null;
+  return i + 1 < CONTENT_STAGES.length ? CONTENT_STAGES[i + 1] ?? null : null;
 }
 
 //? Is `stage` a valid content stage?

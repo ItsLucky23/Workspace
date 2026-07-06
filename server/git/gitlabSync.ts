@@ -132,7 +132,7 @@ export async function postIssueComment(prisma: PrismaClient, workspaceId: string
     const url = forge.mode === 'github'
       ? `${forge.base}/repos/${forge.repoPath}/issues/${String(ticket.number)}/comments`
       : `${forge.base}/api/v4/projects/${encodeURIComponent(forge.repoPath)}/issues/${String(ticket.number)}/notes`;
-    const headers = forge.mode === 'github'
+    const headers: Record<string, string> = forge.mode === 'github'
       ? { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }
       : { 'PRIVATE-TOKEN': token, 'Content-Type': 'application/json' };
     //? External forge REST API — not a framework `/api/*` route.

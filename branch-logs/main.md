@@ -2343,3 +2343,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** tsc 22→19 (mijn 3 weg), lint groen. De 19 resterende zijn pre-existing (rapport + fix-aanbod apart).
 
 **Files touched:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/_sockets/apiTypes.generated.ts` (regen, gitignored).
+
+## 2026-07-07 — Overnight-goal deel 1: green tsc + FIX-B (assets) + deterministische test-provider-wereld
+
+**User prompt:** /goal — volledig e2e-testen + fix alles wat niet werkt + premium look (nachtrun). Deel 1 = in-flight afmaken, tsc groen, FIX-B.
+
+**Wat ik deed:**
+- **Green tsc (ADR 0089):** `npm run typecheck` toegevoegd als per-item gate (vite type-checkt niet). Alle **20 tsc-fouten weg** (19 pre-existing + 1 nieuw van FIX-B). Kern-oorzaak van 6 ervan: typed data → Prisma `Json`-kolom. Opgelost met **`server/util/json.ts` `jsonInput()`** (structuredClone → `Prisma.InputJsonValue`, géén cast — respecteert Rule 21). Rest bij de bron: `label`-narrowing-volgorde in conductor, `?? null` in pipeline, `headers: Record<string,string>` in gitlabSync, `NavDef.group` optioneel in Shell, `DropdownItem` met `id`+`item` in settings.
+- **FIX-B (assets zichtbaar + downloadbaar):** `ContentAssetSummary` + `assets` op `ContentPieceSummary`; snapshot-builder groepeert `contentAsset`-rijen per piece (`stub` uit `metadata.stub`); piece-detail rendert een asset-grid met thumbnails + `/media/<file>`-download-links (backendUrl-prefix) i.p.v. de dode placeholder. i18n `assetStub`/`assetOpen` ×4.
+- **Deterministische test-provider-wereld (ADR 0090):** met echte keys in de env flipte elke `available()` naar live → 15 stub-tests faalden. `tests/_helpers.mts` boot nu zelf dotenvx (`import @luckystack/core`) en unset dáárna de provider-keys (blijft staan), plus `enableLiveProviders()` voor de live-suite. `aiRegistry` naar dynamische imports (statische race'de de unset). `musicSfx` verouderde assertie `elevenlabs`→`suno` (M2). `editorProfileCrypto` H2 fail-closed.
+
+**Verify:** tsc **0 fouten** (was 20) · lint · build · ai:lint groen · **ws-suite 92/93** (enkel `httpControl` faalt — vereist draaiende dev-server, dev-actie).
+
+**OPEN VRAAG:** tsc in de pre-commit-hook wieren (+~30s per commit) of AI-per-item-gate laten? Nu het laatste — jouw keuze.
+
+**Files touched:** `server/util/json.ts` (nw), `server/{ci/runner,content/{images,mediaAsset,referenceImage,pipeline},git/gitlabSync,mr/reviewRole,orchestrator/conductor,read/workspaceSnapshot}.ts`, `src/workspaces/{_data/types,_shell/Shell,content/[pieceId]/page,settings/page}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/{_helpers,integration/{aiRegistry,musicSfx,editorProfileCrypto}}.mts`, `docs/decisions/{0089,0090}-*.md`.

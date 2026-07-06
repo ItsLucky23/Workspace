@@ -31,12 +31,15 @@ try {
   process.env.WORKSPACES_ENC_KEY = 'a-completely-different-key';
   eq(sb.decryptBuffer(encWithKey), null, 'a different key cannot decrypt (auth-tag mismatch)');
 
-  // ---- no-key dev fallback still round-trips ----
+  // ---- no key → fail-closed (H2): encryptBuffer THROWS, never a plaintext envelope ----
   delete process.env.WORKSPACES_ENC_KEY;
-  const plainEnc = sb.encryptBuffer(secretTar);
-  assert(plainEnc[0] === 0x00, 'no key → the 0x00 (plaintext) dev envelope');
-  const plainDec = sb.decryptBuffer(plainEnc);
-  assert(plainDec !== null && plainDec.equals(secretTar), 'the no-key fallback still round-trips the bytes');
+  let threw = false;
+  try { sb.encryptBuffer(secretTar); } catch { threw = true; }
+  assert(threw, 'no key → encryptBuffer THROWS (H2 fail-closed, no 0x00 plaintext fallback)');
+  //? A legacy 0x00-plaintext blob (written before H2) still decrypts for migration.
+  const legacy = Buffer.concat([Buffer.from([0x00]), secretTar]);
+  const legacyDec = sb.decryptBuffer(legacy);
+  assert(legacyDec !== null && legacyDec.equals(secretTar), 'a legacy 0x00 blob still round-trips (migration)');
 
   // ---- empty ----
   eq(sb.decryptBuffer(Buffer.alloc(0)), null, 'an empty buffer → null');

@@ -234,6 +234,15 @@ export interface WorkspaceInsights {
 
 //? Content platform (ADR 0069, F4.2) — the content-lane snapshot: the in-flight content pieces + the
 //? media €-budget status, so the content UI + settings render from the snapshot.
+//? A produced media asset on a content piece (U-fix B) — what the detail page shows + lets you download.
+export interface ContentAssetSummary {
+  id: string;
+  kind: string;          // 'image'|'video'|'voice'|'music'|'sfx'|'render'|'model-3d'|…
+  url: string;           // '/media/<file>' (served by the backend) or a hosted provider url
+  status: string;        // 'pending'|'ready'|'error'
+  stub: boolean;         // produced in dummy mode (no key) — a placeholder, not real media
+}
+
 export interface ContentPieceSummary {
   id: string;
   title: string;
@@ -241,6 +250,7 @@ export interface ContentPieceSummary {
   stageId: string;
   status: string;
   channelId: string | null;
+  assets: ContentAssetSummary[];   // U-fix B: the piece's produced assets (surfaced so the UI can show/download them)
 }
 //? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).
 export interface ContentAnalyticsView {
