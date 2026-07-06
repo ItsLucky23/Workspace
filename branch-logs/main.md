@@ -1904,3 +1904,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/mediaRegistry.test.mts` **18/18** (defaults+override · stub-shape+cost · style/extra/reference-flow · video>image · unsupported-provider-reject · ref-video→gemini). `aiRegistry` **12/12** (nieuwe tekst-feature breekt niks). lint+build+ai:lint groen. ADR **0052**.
 
 **Files touched:** `server/media/{types,assignments,registry}.ts`, `server/media/providers/{fal,elevenlabs}.ts`, `server/ai/{types,assignments}.ts`, `tests/integration/mediaRegistry.test.mts`, `docs/decisions/0052-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 01:25 — Content-platform F0.4: style/preset-systeem (ADR 0053) — Fase 0 KLAAR
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F0.4 (laatste van Fase 0).
+
+**What I did:** het cross-cutting style-systeem.
+- **`server/content/styles.ts`** — `ensureDefaultStyles` (idempotente seed van globale `builtin`-styles, `workspaceId=null`), `resolveStyle` (per-workspace wint van globaal; geen key/match → null), `composeStylePrompt` (style-systemPrompt + vrije extra-instructie), `listStyles` (globaal + workspace, workspace schaduwt globaal). 9 globale defaults (image/reference-image/video/tts/script).
+- **`save-style` control-op** (B-23, workspaceSettings, Conductor-upsert per (workspace,feature,key)). Globale styles = seed-only.
+- **Threading:** styles worden op de CALL-SITE gecomposeerd (F1.x), niet in `runAiCompletion`'s signatuur — abstracties blijven orthogonaal.
+- **Verify:** `tests/integration/styleSystem.test.mts` **13/13** (idempotente seed · resolve globaal · unknown→null · compose-merge · per-workspace-override wint · listStyles-shadowing). rbac **122/122**. lint+build+ai:lint groen. ADR **0053**.
+- **🏁 Fase 0 (fundament) KLAAR** — data-model + €-budget + media-providers + style-systeem staan; de contracten voor Fase 1 (pipeline) zijn gepubliceerd.
+
+**Files touched:** `server/content/styles.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/styleSystem.test.mts`, `docs/decisions/0053-*.md`, `docs/AI_DECISIONS_INDEX.md`.

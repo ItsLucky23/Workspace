@@ -973,6 +973,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       });
       return;
     }
+    //? Save a per-workspace (brand) style (F0.4, ADR 0049) — upsert by (workspace, feature, key).
+    case 'save-style': {
+      const feature = str(payload, 'feature');
+      const key = str(payload, 'key');
+      const label = str(payload, 'label') ?? key;
+      const systemPrompt = str(payload, 'systemPrompt');
+      if (!feature || !key || !systemPrompt) return;
+      const existing = await prisma.stylePreset.findFirst({ where: { workspaceId: action.workspaceId, feature, key } });
+      if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
+      return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
+    }
     case 'skill-toggle': {
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
       if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });

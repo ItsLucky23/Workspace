@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (51)
+## Decisions (52)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -64,6 +64,7 @@
 | 0050 | Content-platform data model — projectType lane + 9 content models (F0.1) | 🟢 accepted | content, schema, data-model, projectType, expansion-f01 | — | `docs/decisions/0050-content-data-model.md` |
 | 0051 | Media €-budget + pre-generation guard (F0.2) | 🟢 accepted | content, budget, cost, metered, expansion-f02 | — | `docs/decisions/0051-media-budget-guard.md` |
 | 0052 | Media provider abstraction + stub adapters (F0.3) | 🟢 accepted | content, ai-provider, media, stub, expansion-f03 | — | `docs/decisions/0052-media-provider-abstraction.md` |
+| 0053 | Cross-cutting style/preset system (F0.4) | 🟢 accepted | content, style, preset, expansion-f04 | — | `docs/decisions/0053-style-preset-system.md` |
 
 ## Summaries
 
@@ -476,6 +477,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A parallel MEDIA layer** in `server/media/` mirroring `server/ai/`: `MediaFeature` (`image-gen`, `reference-image`, `video-gen`, `tts`, `music`, `sfx`, `avatar`, `model-3d`), `MediaProviderId` (`fal`, `elevenlabs`), `MediaGenerationRequest`/`Result` (asset + `costCents` + `stub` flag), `MediaProvider` interface, `DEFAULT_MEDIA_ASSIGNMENTS` + `resolveMediaAssignment` (per-workspace override seam), and `runMediaGeneration(req, overrides)` dispatch. 2. **Registry-level STUB fallback.** Each adapter's `available()` is false until its key env is present; when unavailable, `runMediaGeneration` returns a valid-SHAPED stub asset (`stub://<kind>/<feature>/<style>`) + a realistic declared `costCents` (video » image » voice). So the entire content pipeline runs end-to-end on dummy data, and the €-budget guard (F0.2) is exercised — without any keys. 3. **`reference-video-analysis` stays a TEXT `AiFeature`** on `gemini-api` (extends `server/ai` union + `DEFAULT_ASSIGNMENTS`) — it returns a beat/style BLUEPRINT (text/structured), not an asset, so it belongs with the text abstraction, not the media one.
 
 → `docs/decisions/0052-media-provider-abstraction.md`
+
+### 0053 — Cross-cutting style/preset system (F0.4)
+
+**0053** · accepted · tags: content, style, preset, expansion-f04 · 2026-07-06
+
+1. **`server/content/styles.ts`** — `ensureDefaultStyles` (idempotent seed of the global `builtin` styles, `workspaceId=null`), `resolveStyle(prisma, ws, feature, key)` (a per-workspace style with the same key WINS over the global; no key/no match → null), `composeStylePrompt(style, extra)` (style system-prompt + free-form extra instructions, joined), and `listStyles` (global + workspace, the workspace shadowing the global — for the picker UI). 2. **Per-workspace styles are written via a `save-style` control-op** (B-23; capability `workspaceSettings`; Conductor upserts by `(workspace, feature, key)`). Global styles are seed-only (`builtin`, not user-writable). 3. **Styles thread into gen at the CALL SITE, not into `runAiCompletion`'s signature.** The content pipeline (F1.x) resolves the style + composes the system prompt, then passes it as `req.system` (text) or `MediaGenerationRequest.style` (media). No feature signature changes.
+
+→ `docs/decisions/0053-style-preset-system.md`
 
 ## Code governed by decisions
 
