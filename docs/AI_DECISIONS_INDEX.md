@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (64)
+## Decisions (65)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -77,6 +77,7 @@
 | 0063 | Music + SFX generation (F2.5) | 🟢 accepted | content, music, sfx, audio, expansion-f25 | — | `docs/decisions/0063-music-sfx.md` |
 | 0064 | 3D-concepting generation (F2.6) | 🟢 accepted | content, 3d, media, expansion-f26 | — | `docs/decisions/0064-model-3d.md` |
 | 0065 | Publishing behind the B-23 approval gate + YouTube (F3.1) | 🟢 accepted | content, publish, youtube, b-23, expansion-f31 | — | `docs/decisions/0065-publish-gate.md` |
+| 0066 | TikTok publishing + IG/LinkedIn future-ready (F3.2) | 🟢 accepted | content, publish, tiktok, expansion-f32 | — | `docs/decisions/0066-publish-tiktok.md` |
 
 ## Summaries
 
@@ -593,6 +594,14 @@ Music + sfx generation ride the `content-gen-music` / `content-gen-sfx` ops (alr
 1. **`content-request-publish` creates a publish SUGGESTION** (`WorkspaceSuggestion(type:'publish', patch:{contentProjectId, assetId, platform})`) — it does NOT post. Accepting it (`accept-suggestion` → the new `'publish'` branch) makes the **Conductor** call `publishAsset` (the only writer of the `PublishJob`). The AI never publishes. 2. **A platform abstraction** (`server/content/publish.ts`) with `BUILT_PLATFORMS` (youtube, tiktok) + `FUTURE_PLATFORMS` (instagram, linkedin). A built platform with no key → a **dummy post** returning a `stub://<platform>/<asset>` external url; a future-ready platform → a `PublishJob(status:error, error:'platform.notBuilt')` (recorded, not posted). 3. **A `PublishJob` model** records each post (platform, status, externalUrl, error).
 
 → `docs/decisions/0065-publish-gate.md`
+
+### 0066 — TikTok publishing + IG/LinkedIn future-ready (F3.2)
+
+**0066** · accepted · tags: content, publish, tiktok, expansion-f32 · 2026-07-06
+
+TikTok is in `BUILT_PLATFORMS` (established in F3.1's abstraction) — it posts via the same gate + `publishAsset` (dummy, no key). Instagram + LinkedIn stay in `FUTURE_PLATFORMS`: a publish request for them records a `PublishJob(error:'platform.notBuilt')` — visible, never a silent post. No new engine code beyond F3.1's abstraction.
+
+→ `docs/decisions/0066-publish-tiktok.md`
 
 ## Code governed by decisions
 

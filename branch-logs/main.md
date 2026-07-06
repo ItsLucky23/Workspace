@@ -2037,3 +2037,12 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/publish.test.mts` **8/8** (request→suggestion, **niks gepost vóór accept** · accept→done YouTube-PublishJob(stub-url) + suggestion accepted · linkedin→platform.notBuilt). rbac **122/122**. lint+build+ai:lint groen. ADR **0065**. `cleanupWorkspace` + publishJob.
 
 **Files touched:** `prisma/schema.prisma`, `server/content/publish.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/_helpers.mts`, `tests/integration/publish.test.mts`, `docs/decisions/0065-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 06:05 — Content-platform F3.2: TikTok + IG/LinkedIn future-ready (ADR 0066)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F3.2.
+
+**What I did:** TikTok publiceren via dezelfde B-23-gate (zat al in `BUILT_PLATFORMS` sinds F3.1). Instagram + LinkedIn blijven `FUTURE_PLATFORMS` (publish-request → `PublishJob(error:'platform.notBuilt')`, zichtbaar, geen silent no-op). Geen nieuwe engine-code.
+- **Verify:** `tests/integration/publishTiktok.test.mts` **5/5** (abstractie: youtube+tiktok built / ig+linkedin future · TikTok-publish via gate → dummy-post). ADR **0066**.
+
+**Files touched:** `tests/integration/publishTiktok.test.mts`, `docs/decisions/0066-*.md`, `docs/AI_DECISIONS_INDEX.md`.
