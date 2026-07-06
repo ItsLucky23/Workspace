@@ -92,6 +92,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/bulkStatus/v1` | — | — | — |
 | `workspaces/changeRole/v1` | — | — | — |
 | `workspaces/contentControl/v1` | — | — | — |
+| `workspaces/contentSettings/v1` | — | — | — |
 | `workspaces/findingAction/v1` | — | — | — |
 | `workspaces/gitlabSettings/v1` | — | — | — |
 | `workspaces/invite/v1` | — | — | — |

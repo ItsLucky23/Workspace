@@ -89,6 +89,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'edit-budget': CAP.workspaceSettings,
   'edit-media-budget': CAP.workspaceSettings,
   'save-style': CAP.workspaceSettings,
+  'save-media-provider': CAP.workspaceSettings,
   'content-create': CAP.workTickets,
   'content-advance': CAP.workTickets,
   'content-archive': CAP.workTickets,

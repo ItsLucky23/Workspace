@@ -2276,3 +2276,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** lint + build groen, ai:lint schoon (i18n + doc-coverage + `@docs owner`). generateArtifacts ge-refresht. Asset-viewer = placeholder (per-piece asset-lijst = snapshot-extensie, browser-deferred). Control-op vuurt vanuit de UI achter confirm. Live gen = post-keys e2e.
 
 **Files touched:** `src/workspaces/_sync/contentControl_server_v1.ts` (nieuw), `src/workspaces/content/[pieceId]/page.tsx` (nieuw), `src/workspaces/_shell/WorkspacesProvider.tsx` (runContentOp), `src/workspaces/_shell/WorkspacesContext.tsx` (ctx-type), `src/_locales/{en,nl,de,fr}.json`, `src/_sockets/apiTypes.generated.ts` (regen), `docs/decisions/0085-content-create-ui.md`.
+
+## 2026-07-06 — DEPTH PROGRAM U3: content-settings (keys + €-budget + setup-flow)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item U3.
+
+**What I did:**
+- Nieuwe `save-media-provider`-control-op — slaat een ENCRYPTED provider-API-key op (`secretBox`→EnvVar `__provider_key_<id>`, secret) en/of een per-feature provider-override (EnvVar `__media_provider_<feature>`). RBAC: workspaceSettings.
+- `contentSettings_server_v1.ts`-sync-route dispatcht de workspace-settings content-ops (edit-media-budget/save-media-provider/save-style), whitelisted, via `dispatchControlSync` (B-23). Client-methodes `editMediaBudget`/`saveMediaProvider` op de ctx.
+- `content/settings/page.tsx` — first-run **setup-flow** (guided banner + KEY_SETUP_GUIDE-link + geldwaarschuwing), **provider-key-form** (Fal/ElevenLabs/Suno/Gemini; password-inputs, nooit teruggetoond) + media-**€-budget-form** (enable + cap in € + alert%, prefilled uit `content.mediaBudget`). Bereikbaar via Settings-knop op de content-board. i18n×4; alleen theme-tokens.
+
+**Verify:** `tests/integration/contentSettings.test.mts` **8/8** (encrypted-key-roundtrip, override, upsert-on-resave, budget-persist). rbac-completeness groen. Lint + build groen. Per-workspace key-consumptie in de adapters = post-keys follow-up.
+
+**Files touched:** `src/workspaces/_functions/controlApi.ts` (op), `server/control/rbac.ts`, `server/orchestrator/conductor.ts` (case), `src/workspaces/_sync/contentSettings_server_v1.ts` (nieuw), `src/workspaces/content/settings/page.tsx` (nieuw), `src/workspaces/content/page.tsx` (settings-knop), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSettings.test.mts` (nieuw), `docs/decisions/0086-content-settings-setup.md`.

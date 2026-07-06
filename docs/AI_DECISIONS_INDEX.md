@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (84)
+## Decisions (85)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -97,6 +97,7 @@
 | 0083 | Real YouTube + TikTok publishing (OAuth + upload) behind the B-23 gate | 🟢 accepted | content, publishing, oauth, youtube, tiktok, depth-program | — | `docs/decisions/0083-real-publishing-oauth.md` |
 | 0084 | Content UI — reachable board reading the content snapshot | 🟢 accepted | content, ui, frontend, depth-program | — | `docs/decisions/0084-content-ui-reach.md` |
 | 0085 | Content piece detail + generation controls firing control-ops | 🟢 accepted | content, ui, control-op, depth-program | — | `docs/decisions/0085-content-create-ui.md` |
+| 0086 | Content settings — provider keys + €-budget + setup flow | 🟢 accepted | content, settings, ui, control-op, depth-program | — | `docs/decisions/0086-content-settings-setup.md` |
 
 ## Summaries
 
@@ -773,6 +774,14 @@ A `content` nav item (Studio group, `wand-magic-sparkles`) + a real `src/workspa
 **One generic sync route** `contentControl_server_v1.ts` dispatches the content-op family (whitelisted: create/advance/archive + every gen op + assemble + request-publish) through the shared `dispatchControlSync` (RBAC + single-writer Conductor, B-23). A type-guard narrows the op to `ControlOp` — no cast. (Content ops previously had backend cases + tests but no client route.) **Client method** `runContentOp(op, contentProjectId, payload)` on the workspaces ctx fires `workspaces/contentControl` and refetches; typed on `WorkspacesCtx`. **`content/[pieceId]/page.tsx`** — a piece detail: header (format/stage/status), a "creative direction" panel (style + free-form instructions + reference URL), and a grid of generation actions (script · voice · images · reference-image · short-form · music · sfx · 3D · assemble). Each action fires its control-op **behind a `menuHandler.confirm`** with a cost warning (budget-aware). All text i18n ×4 (`workspaces.content.*`, 41 keys); theme tokens only.
 
 → `docs/decisions/0085-content-create-ui.md`
+
+### 0086 — Content settings — provider keys + €-budget + setup flow
+
+**0086** · accepted · tags: content, settings, ui, control-op, depth-program · 2026-07-06
+
+New `save-media-provider` control-op — stores an ENCRYPTED provider API key (`secretBox` → EnvVar `__provider_key_<providerId>`, `secret:true`) and/or a per-feature provider override (EnvVar `__media_provider_<feature>`). RBAC: `workspaceSettings`. (Per-workspace key CONSUMPTION by the adapters is a follow-up; this persists + lets the settings UI show what's configured.) A `contentSettings_server_v1.ts` sync route dispatches the workspace-settings content ops (edit-media-budget / save-media-provider / save-style), whitelisted, via `dispatchControlSync` (B-23). Client methods `editMediaBudget` / `saveMediaProvider` on the ctx. `content/settings/page.tsx` — a first-run **setup flow** (guided banner + a link to the KEY_SETUP_GUIDE + a money warning), a **provider-key form** (Fal / ElevenLabs / Suno / Gemini; password inputs, never shown back), and a media **€-budget form** (enable + cap in € + alert %, prefilled from `content.mediaBudget`). Reachable via a Settings button on the content board. i18n ×4; theme tokens only.
+
+→ `docs/decisions/0086-content-settings-setup.md`
 
 ## Code governed by decisions
 

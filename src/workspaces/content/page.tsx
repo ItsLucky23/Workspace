@@ -71,6 +71,10 @@ export default function Content() {
           <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.content.title' })}</h1>
           <span className="text-sm text-muted">{translate({ key: 'workspaces.content.subtitle' })}</span>
         </div>
+        <div className="flex items-center gap-3">
+        <button type="button" onClick={() => { navigate('content/settings'); }} title={translate({ key: 'workspaces.content.settings' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common text-sm flex items-center gap-2 cursor-pointer">
+          <Icon name="gear" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.settings' })}</span>
+        </button>
         {/* Media €-budget summary (F0.2) — always visible so a cost-sensitive user sees spend at a glance. */}
         <div className="hidden sm:block rounded-xl border border-container1-border bg-container1 px-3 py-2 min-w-52">
           <div className="flex items-center justify-between gap-3 text-xs">
@@ -84,6 +88,7 @@ export default function Content() {
               <div className={`h-full rounded-full ${budget.overAlert ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${String(pct)}%` }} />
             </div>
           )}
+        </div>
         </div>
       </div>
 

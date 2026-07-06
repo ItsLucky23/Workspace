@@ -995,6 +995,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
       return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
     }
+    //? Save per-workspace media settings (U3): an ENCRYPTED provider API key and/or a per-feature
+    //? provider override, both in the EnvVar store (secretBox). Keys are namespaced so they never clash
+    //? with the user's app env vars. (Per-workspace key CONSUMPTION by the providers is a follow-up; this
+    //? persists + lets the settings UI show what is configured.)
+    case 'save-media-provider': {
+      const providerId = str(payload, 'providerId');
+      const apiKey = str(payload, 'apiKey');
+      const feature = str(payload, 'feature');
+      if (providerId && apiKey) {
+        const key = `__provider_key_${providerId}`;
+        const value = encryptSecret(apiKey);
+        await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value, secret: true }, update: { value } });
+      }
+      if (feature && providerId) {
+        const key = `__media_provider_${feature}`;
+        await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: providerId, secret: false }, update: { value: providerId } });
+      }
+      return;
+    }
     //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content
     //? stages / archive it. The Conductor is the only writer of ContentProject.stageId/status (B-23).
     case 'content-create': {
