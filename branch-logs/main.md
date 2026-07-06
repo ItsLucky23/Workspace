@@ -1625,3 +1625,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0. (Volledige stage-injectie vereist een container-run; het pad is de bewezen contextDocs-seam.)
 
 **Files touched:** `server/orchestrator/{artifactContext.ts (nieuw),stageRunner.ts,conductor.ts}`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/ticketArtifact_server_v1.ts` (nieuw), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-06 02:45 — RAG-consistentie: workspace-chat gegrond + Sources-labels
+
+**Aanleiding:** analyse van de RAG-eenheid (user-zorg #11) vond dat de index wél één is (Sources' "Reindex code" schrijft dezelfde `RagEntry` die de coding-agent leest), maar de **consumptie gefragmenteerd**: de workspace-/Interviewer-chat claimde "repo-aware" maar riep `retrieve()` niet aan.
+
+**What I did:**
+- **`server/ai/workspaceChat.ts`** — `interpretChat` haalt nu de top-6 relevante code-chunks via de **gedeelde** `retrieve()` (zelfde index als coding-agent + Sources) en voegt ze aan de system-prompt toe → de Workspace-AI/Interviewer-chat beantwoordt code-vragen nu écht uit de repo i.p.v. blind. De chat-run verschijnt nu ook in de AI-activity-feed (`workspaceId`+`label` doorgegeven).
+- **Sources-label-fix** — `design-system`/`starter`-context-docs werden als `git` gelabeld. `InfoDoc['source']` uitgebreid + `asDocSource` (mappers) laat ze door + `SOURCE_TINT` kreeg tints (design-system = groen/actief). De actieve design-system-doc toont nu correct.
+
+**Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0.
+
+**Files touched:** `server/ai/workspaceChat.ts`, `server/read/mappers.ts`, `src/workspaces/sources/page.tsx`, `src/workspaces/_data/types.ts`.

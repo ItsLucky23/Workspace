@@ -388,7 +388,7 @@ export interface AgentSession {
 export interface InfoDoc {
   id: string;
   name: string;
-  source: 'generated' | 'git' | 'uploaded';
+  source: 'generated' | 'git' | 'uploaded' | 'starter' | 'design-system';
   updated: string;
   note: string;              // "frozen @ abc123" | "spec"
   summary: string;           // one-liner of what the file/skill contains

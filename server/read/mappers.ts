@@ -15,7 +15,7 @@ import { decryptSecret } from '../crypto/secretBox';
 const asPriority = (p: string | null | undefined): TicketPriority =>
   ((TICKET_PRIORITIES as readonly string[]).includes(p ?? '') ? p : 'normal') as TicketPriority;
 
-const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' ? s : 'git');
+const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' || s === 'uploaded' || s === 'starter' || s === 'design-system' ? s : 'git');
 
 //? Map an InfoSource row (mode='context-doc') → the frontend `InfoDoc`. `aiEditable` is
 //? backed by `enabled` (reused for docs: on = the AI may edit this file). Shared by the

@@ -8,6 +8,7 @@
 import { tryCatch } from '@luckystack/core';
 import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
+import { retrieve } from '../rag/index';
 //? The proposal shape is shared with the client (it crosses the aiChat API boundary).
 import type { ChatProposal } from '../../src/workspaces/_data/types';
 
@@ -38,18 +39,19 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
   };
 }
 
-function systemPrompt(ctx: Ctx): string {
+function systemPrompt(ctx: Ctx, codeContext: string): string {
   return [
-    'You are the Workspace-AI for a Kanban dev-orchestration board. Given the user message and the workspace state, either answer conversationally OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself.',
+    'You are the Workspace-AI for a Kanban dev-orchestration board. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below) OR propose EXACTLY ONE board action for the user to confirm. You never execute anything yourself.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
     '{"reply": string, "action": null | {"op": "bulk-move"|"assign"|"add-comment", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string}}',
     '- bulk-move: move ticketKeys to stageId (a stage id from the list). Use for pulling a high-priority/bugfix ticket forward.',
     '- assign: set assigneeId (a member id) on the single ticketKeys[0].',
     '- add-comment: post body on ticketKeys[0].',
-    'Only reference tickets/stages/members that exist below. If the request is ambiguous or not doable, set action=null and explain in reply.',
+    'Only reference tickets/stages/members that exist below. For a code/architecture question, answer in `reply` and set action=null. If ambiguous or not doable, set action=null and explain.',
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
+    ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions):\n${codeContext}`] : []),
   ].join('\n');
 }
 
@@ -100,7 +102,12 @@ function validate(raw: unknown, ctx: Ctx): ChatProposal | null {
 //? Interpret one chat message → a reply + an optional (validated) proposal.
 export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string): Promise<ChatResult> {
   const ctx = await loadCtx(prisma, workspaceId);
-  const res = await runAiCompletion('workspace-chat', { prompt: message, system: systemPrompt(ctx), timeoutMs: 90_000 });
+  //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
+  //? so "how does X work?" answers from real code instead of flying blind. Best-effort — empty when
+  //? nothing is indexed.
+  const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6));
+  const codeContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
+  const res = await runAiCompletion('workspace-chat', { prompt: message, system: systemPrompt(ctx, codeContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];

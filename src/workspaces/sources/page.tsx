@@ -23,6 +23,8 @@ const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   generated: 'bg-primary/12 text-primary',
   git: 'bg-container2 text-muted',
   uploaded: 'bg-warning/15 text-warning',
+  starter: 'bg-container2 text-common',
+  'design-system': 'bg-correct/15 text-correct',
 };
 
 function StageChips({ stages }: { stages?: string[] }) {
