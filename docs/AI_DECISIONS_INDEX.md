@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (49)
+## Decisions (50)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -62,6 +62,7 @@
 | 0048 | Review ergonomics — cross-ticket answer-queue + presence soft-claim | 🟢 accepted | review, answer-queue, presence, claim, expansion-g2 | — | `docs/decisions/0048-review-ergonomics.md` |
 | 0049 | Content-platform pivot — Workspaces as an all-in-1 AI content platform on the shared engine | 🟢 accepted | strategy, content, media, pivot, provider-abstraction, style-system | — | `docs/decisions/0049-content-platform-pivot.md` |
 | 0050 | Content-platform data model — projectType lane + 9 content models (F0.1) | 🟢 accepted | content, schema, data-model, projectType, expansion-f01 | — | `docs/decisions/0050-content-data-model.md` |
+| 0051 | Media €-budget + pre-generation guard (F0.2) | 🟢 accepted | content, budget, cost, metered, expansion-f02 | — | `docs/decisions/0051-media-budget-guard.md` |
 
 ## Summaries
 
@@ -458,6 +459,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A `projectType` on Project** (`'dev'` | `'content'`, default `'dev'`) selects the workflow lane. Zero migration for existing projects (default). 2. **Nine content models**, all tenant-scoped by **explicit `workspaceId` filtering** (NOT the `tenantDb` `$extends` auto-scoping): `Channel` (distribution target + house style), `ContentProject` (a content piece flowing the pipeline — `stageId`/`status` mirror Ticket so the generic stage-runner drives it), `ContentAsset` (a produced media asset), `Script` + `Beat` (narration + storyboard), `MediaJob` (async generation to a provider, `costCents` metered), `RenderJob` (Remotion assembly), `StylePreset` (a named style, `workspaceId` null = global default / set = per-workspace), `MediaSpend` (the €-cost ledger, cents). 3. **Media cost in CENTS** on `MediaJob`/`RenderJob`/`MediaSpend` — metered real-money €, distinct from the coding-agent token accounting (invariant #9).
 
 → `docs/decisions/0050-content-data-model.md`
+
+### 0051 — Media €-budget + pre-generation guard (F0.2)
+
+**0051** · accepted · tags: content, budget, cost, metered, expansion-f02 · 2026-07-06
+
+1. **A `MediaBudget` model** — ONE row per workspace (`@@unique workspaceId`), `capCents`/`spentCents`/`alertPct`/`enabled`, opt-in (disabled by default). Cents (Int) — no float money. 2. **A pure guard `checkMediaBudget(prisma, ws, costCents)`** (`server/media/budget.ts`) → `{ ok, reason?, unlimited, capCents, spentCents, remainingCents }`. No budget / `!enabled` / `capCents<=0` = **unlimited** (always ok). Over cap → `ok:false, reason:'media.budgetExceeded'`. Pure read; the caller records on success. `recordMediaSpend(...)` writes the `MediaSpend` €-ledger row + debits `spentCents`. `getMediaBudgetStatus(...)` exposes the status (incl. `overAlert`) for the settings UI + snapshot. 3. **The budget is set via an `edit-media-budget` control-op** (B-23 write path) — capability `workspaceSettings`, Conductor upserts the row. The user never writes the budget directly.
+
+→ `docs/decisions/0051-media-budget-guard.md`
 
 ## Code governed by decisions
 

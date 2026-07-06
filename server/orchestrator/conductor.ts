@@ -958,6 +958,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspaceBudget.updateMany({ where: { workspaceId: action.workspaceId }, data: { spent: 0, windowStartAt: new Date() } });
       return;
     }
+    //? Media €-budget (F0.2, ADR 0051) — upsert the per-workspace media cap/alert/enabled.
+    case 'edit-media-budget': {
+      const capCents = num(payload, 'capCents');
+      const alertPct = num(payload, 'alertPct');
+      const enabled = bool(payload, 'enabled');
+      const update: { capCents?: number; alertPct?: number; enabled: boolean } = { enabled };
+      if (capCents !== undefined) update.capCents = capCents;
+      if (alertPct !== undefined) update.alertPct = alertPct;
+      await prisma.mediaBudget.upsert({
+        where: { workspaceId: action.workspaceId },
+        create: { workspaceId: action.workspaceId, capCents: capCents ?? 0, alertPct: alertPct ?? 80, enabled },
+        update,
+      });
+      return;
+    }
     case 'skill-toggle': {
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
       if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });

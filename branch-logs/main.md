@@ -1881,3 +1881,14 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `prisma:db:push` + generate OK; `tests/integration/contentModel.test.mts` **18/18** (round-trip alle 9 modellen + row-isolatie tussen 2 workspaces + cents). lint+build+ai:lint groen. ADR **0050**.
 
 **Files touched:** `prisma/schema.prisma`, `tests/_helpers.mts`, `tests/integration/contentModel.test.mts`, `docs/decisions/0050-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 00:35 — Content-platform F0.2: €-budget + pre-generation guard (ADR 0051)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F0.2.
+
+**What I did:** de gemeterde media-€-guard.
+- **`MediaBudget`-model** (één per workspace, `capCents`/`spentCents`/`alertPct`/`enabled`, cents, opt-in). **`server/media/budget.ts`**: `checkMediaBudget` (puur — geen budget/disabled/cap≤0 = unlimited; over cap → `{ok:false, reason:'media.budgetExceeded'}`) + `recordMediaSpend` (€-ledger + debit) + `getMediaBudgetStatus` (voor UI/snapshot). Los van token-#9.
+- **`edit-media-budget` control-op** (B-23): union + `OP_CAPABILITY` (workspaceSettings) + Conductor-upsert. User schrijft het budget nooit direct.
+- **Verify:** `tests/integration/mediaBudget.test.mts` **12/12** (op zet cap · guard allow-binnen/block-over met typed reason · recordMediaSpend debit + ledger-rij · exact-fill toegestaan · disabled=unlimited). `rbac.test` **122/122** (robuuste asserties vangen de nieuwe op). lint+build+ai:lint groen. ADR **0051**.
+
+**Files touched:** `prisma/schema.prisma`, `server/media/budget.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/_helpers.mts`, `tests/integration/mediaBudget.test.mts`, `docs/decisions/0051-*.md`, `docs/AI_DECISIONS_INDEX.md`.

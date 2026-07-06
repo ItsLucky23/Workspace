@@ -1404,3 +1404,18 @@ model MediaSpend {
 
   @@index([workspaceId, createdAt])
 }
+
+//? The per-workspace media €-budget (F0.2, ADR 0051) — ONE row per workspace. `capCents`/`spentCents`
+//? in cents; `enabled=false` or `capCents<=0` = no cap. The pre-generation guard (server/media/budget.ts)
+//? blocks a gen that would push `spentCents` past `capCents`. Opt-in (disabled by default).
+model MediaBudget {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String   @unique @db.ObjectId
+  capCents      Int      @default(0)                // 0 or !enabled = unlimited
+  alertPct      Int      @default(80)
+  spentCents    Int      @default(0)                // running spend in the current window
+  windowStartAt DateTime @default(now())
+  enabled       Boolean  @default(false)            // opt-in
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

@@ -57,6 +57,8 @@ export type ControlOp =
   | 'index-memory'
   // user-app DB + migrations (ADR 0043)
   | 'db-connect' | 'db-migrate-create' | 'db-migrate-apply' | 'db-introspect'
+  // content platform (ADR 0049)
+  | 'edit-media-budget'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

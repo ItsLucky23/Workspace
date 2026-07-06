@@ -87,6 +87,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'mr-review': CAP.workTickets,
   'raise-cap': CAP.workspaceSettings,
   'edit-budget': CAP.workspaceSettings,
+  'edit-media-budget': CAP.workspaceSettings,
   'resume-spend': CAP.workspaceSettings,
   'skill-toggle': CAP.editPipeline,
   'save-stage-config': CAP.editPipeline,
