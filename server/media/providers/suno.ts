@@ -15,7 +15,7 @@ const LIVE_COST_CENTS = Number(process.env.SUNO_COST_CENTS ?? '') || 6;
 
 //? The music transport — produce a hosted audio URL for a prompt. Injectable for tests.
 export interface MusicTransport {
-  generate: (prompt: string, params: Record<string, unknown>) => Promise<{ url: string }>;
+  generate: (prompt: string, params: Record<string, unknown>, apiKey: string) => Promise<{ url: string }>;
 }
 
 const SUNO_BASE = (process.env.SUNO_BASE ?? '').trim() || 'https://api.suno.ai/v1';
@@ -24,9 +24,8 @@ const POLL_MS = Number(process.env.SUNO_POLL_MS ?? '') || 3000;
 
 //? The live Suno transport: submit a generation, poll the clip until it has an audio_url.
 export const realMusicTransport: MusicTransport = {
-  generate: async (prompt, params) => {
-    const key = (process.env.SUNO_KEY ?? '').trim();
-    const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  generate: async (prompt, params, apiKey) => {
+    const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
     const submitted = await withRetry(async () => {
       //? External Suno REST API — not a framework `/api/*` route.
       // eslint-disable-next-line luckystack/no-raw-fetch-in-src
@@ -55,11 +54,12 @@ export function createSunoProvider(transport: MusicTransport = realMusicTranspor
     id: 'suno',
     label: 'Suno',
     supports: SUPPORTED,
-    available: () => Promise.resolve(Boolean((process.env.SUNO_KEY ?? '').trim())),
+    available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.SUNO_KEY ?? '').trim())),
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (req.feature !== 'music') return { ok: false, providerId: 'suno', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const prompt = composeMediaPrompt(req) || (req.prompt ?? '');
-      const [err, out] = await tryCatch(() => transport.generate(prompt, req.params ?? {}));
+      const key = (req.apiKey ?? process.env.SUNO_KEY ?? '').trim();
+      const [err, out] = await tryCatch(() => transport.generate(prompt, req.params ?? {}, key));
       if (err || !out) return { ok: false, providerId: 'suno', costCents: 0, stub: false, error: `media.sunoFailed: ${err?.message ?? 'unknown'}` };
       const asset: MediaAsset = { kind: 'music', url: out.url, metadata: { feature: 'music', provider: 'suno' } };
       return { ok: true, asset, providerId: 'suno', costCents: LIVE_COST_CENTS, stub: false };

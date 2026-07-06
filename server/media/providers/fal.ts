@@ -103,7 +103,7 @@ export function extractFalAsset(feature: MediaFeature, result: Record<string, un
 //? The HTTP transport — submit a fal queue request and return the final result JSON. Injectable so
 //? `generate` is testable with a fixture (no network). The real one does submit → poll → fetch.
 export interface FalTransport {
-  submit: (model: string, input: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  submit: (model: string, input: Record<string, unknown>, apiKey: string) => Promise<Record<string, unknown>>;
 }
 
 const FAL_QUEUE_BASE = (process.env.FAL_QUEUE_BASE ?? '').trim() || 'https://queue.fal.run';
@@ -112,9 +112,8 @@ const POLL_MS = Number(process.env.FAL_POLL_MS ?? '') || 2000;
 
 //? The live fal.ai queue transport: POST the job, poll status until COMPLETED, GET the result.
 export const realFalTransport: FalTransport = {
-  submit: async (model, input) => {
-    const key = (process.env.FAL_KEY ?? '').trim();
-    const headers = { Authorization: `Key ${key}`, 'Content-Type': 'application/json' };
+  submit: async (model, input, apiKey) => {
+    const headers = { Authorization: `Key ${apiKey}`, 'Content-Type': 'application/json' };
     const submitted = await withRetry(async () => {
       //? External fal.ai REST API — not a framework `/api/*` route.
       // eslint-disable-next-line luckystack/no-raw-fetch-in-src
@@ -148,11 +147,12 @@ export function createFalProvider(transport: FalTransport = realFalTransport): M
     id: 'fal',
     label: 'Fal.ai',
     supports: SUPPORTED,
-    available: () => Promise.resolve(Boolean((process.env.FAL_KEY ?? '').trim())),
+    available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.FAL_KEY ?? '').trim())),
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const { model, input } = composeFalInput(req);
-      const [err, result] = await tryCatch(() => transport.submit(model, input));
+      const key = (req.apiKey ?? process.env.FAL_KEY ?? '').trim();
+      const [err, result] = await tryCatch(() => transport.submit(model, input, key));
       if (err || !result) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: `media.falFailed: ${err?.message ?? 'unknown'}` };
       const asset = extractFalAsset(req.feature, result);
       if (!asset) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.falNoAsset' };

@@ -2358,3 +2358,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **OPEN VRAAG:** tsc in de pre-commit-hook wieren (+~30s per commit) of AI-per-item-gate laten? Nu het laatste — jouw keuze.
 
 **Files touched:** `server/util/json.ts` (nw), `server/{ci/runner,content/{images,mediaAsset,referenceImage,pipeline},git/gitlabSync,mr/reviewRole,orchestrator/conductor,read/workspaceSnapshot}.ts`, `src/workspaces/{_data/types,_shell/Shell,content/[pieceId]/page,settings/page}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/{_helpers,integration/{aiRegistry,musicSfx,editorProfileCrypto}}.mts`, `docs/decisions/{0089,0090}-*.md`.
+
+## 2026-07-07 — Overnight-goal deel 2: FIX-A (per-workspace media-keys geconsumeerd)
+
+**User prompt:** /goal (nachtrun) — FIX-A: media-registry consumeert per-workspace key/override.
+
+**Wat ik deed (ADR 0091):** de in-app Settings key-form (`save-media-provider`, ADR 0086) sloeg keys wél op (`EnvVar __provider_key_<id>` encrypted + `__media_provider_<feature>` override) maar de registry las alleen `process.env` → in-app-keys deden niets. Nu: `MediaGenerationRequest.apiKey` + `MediaProvider.available(apiKey?)`; elke provider resolvet `apiKey ?? process.env.<KEY>` (per-workspace wint, env = fallback); transports kregen een trailing `apiKey`-param (fixtures met oude signatuur blijven assignable → provider-tests intact). Nieuw `server/media/workspaceKeys.ts` `loadWorkspaceMediaConfig` (1 query, decrypt via secretBox fail-closed). `runMediaGeneration` laadt bij `req.workspaceId` de config, merget de override, en threadt de gedecrypte key. Geen schema-change, B-23 intact (Conductor schrijft de key, registry leest alleen).
+
+**Verify:** nieuw `mediaWorkspaceKeys.test.mts` **8/8** (decrypt-round-trip + override-parse + key flipt dispatch van stub→live via bogus fal-endpoint, geen netwerk). falProvider 26/26, audioProviders/mediaRegistry/musicSfx/avatar/model3d/content groen. tsc 0 · lint · ai:lint · build groen.
+
+**Files touched:** `server/media/workspaceKeys.ts` (nw), `server/media/{registry,types}.ts`, `server/media/providers/{fal,elevenlabs,suno}.ts`, `tests/integration/mediaWorkspaceKeys.test.mts` (nw), `docs/decisions/0091-per-workspace-media-keys.md`.

@@ -38,6 +38,7 @@ export interface MediaGenerationRequest {
   params?: Record<string, unknown>;
   workspaceId?: string;           //? display/activity tag (no tenancy enforced here)
   label?: string;
+  apiKey?: string;                //? per-workspace key (decrypted from the EnvVar store) — overrides the env key
 }
 
 //? A produced asset. In stub mode `url` is a valid-shaped fake (`stub://…`).
@@ -62,6 +63,6 @@ export interface MediaProvider {
   id: MediaProviderId;
   label: string;
   supports: MediaFeature[];
-  available: () => Promise<boolean>;
+  available: (apiKey?: string) => Promise<boolean>;   //? `apiKey` = per-workspace key; falls back to the env key
   generate: (req: MediaGenerationRequest) => Promise<MediaGenerationResult>;
 }
