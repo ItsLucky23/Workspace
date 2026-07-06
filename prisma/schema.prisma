@@ -295,6 +295,33 @@ model ForgeConnection {
   @@index([workspaceId])
 }
 
+//? A persistent, long-running deployment of a project/service at a STABLE route (ADR 0037, item
+//? B1). Unlike the 30-min ticket preview, an Environment outlives any ticket: `dev`/`staging`/`prod`
+//? each run the pipeline-built image behind `<kind>-<service>.<workspace>.<domain>`. The Conductor
+//? is the only writer (B-23); the leader provisions the container (multi-instance-safe). One
+//? environment per (project, service, kind) — enforced in the deploy op (Mongo nullable-unique is
+//? unreliable, so no @@unique). `serviceId` null = the project root (single-service repo).
+model Environment {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String    @db.ObjectId
+  projectId      String    @db.ObjectId
+  serviceId      String?   @db.ObjectId            // null = project root (single-service)
+  kind           String                             // 'dev' | 'staging' | 'prod'
+  route          String                             // full host FQDN (<kind>-<service>.<ws>.<domain>)
+  imageRef       String?                            // the deployed image tag (Service/Project.baseImageRef)
+  containerName  String?                            // the running container name
+  branch         String?                            // the deployed branch (target branch by default)
+  status         String    @default("idle")         // 'idle'|'deploying'|'live'|'error'|'stopped'
+  healthUrl      String?                            // in-container readiness URL (localhost:<port>)
+  lastError      String?
+  lastDeployedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId, kind])
+}
+
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
 //? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).

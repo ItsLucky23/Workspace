@@ -28,6 +28,7 @@ import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
+import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
 import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
@@ -192,6 +193,8 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.pipelineStage.deleteMany({ where: { workspaceId } });
   await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
   await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
+  await prisma.environment.deleteMany({ where: { workspaceId } });
+  await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
   await prisma.workspace.delete({ where: { id: workspaceId } });
@@ -1031,6 +1034,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId');
       if (serviceId) await prisma.service.deleteMany({ where: { workspaceId: action.workspaceId, id: serviceId } });
       return;
+    }
+    //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).
+    case 'env-deploy': {
+      const deployProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      if (!deployProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
+      const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId') ?? null;
+      const kind = str(payload, 'kind') ?? 'dev';
+      const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind);
+      if (!envId) return { ok: false, status: 'error', error: 'env.noProject' };
+      return deployEnvironment(prisma, action.workspaceId, envId);
+    }
+    case 'env-teardown': {
+      const envId = str(target, 'envId') ?? str(payload, 'envId');
+      if (!envId) return { ok: false };
+      return teardownEnvironment(prisma, action.workspaceId, envId);
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {

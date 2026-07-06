@@ -44,4 +44,17 @@ export function previewRoute(input: { ticketKey: string; branch: string; contain
   };
 }
 
+//? Build the STABLE route for a persistent environment (ADR 0037, B1): host =
+//? `<kind>-<serviceSlug>.<baseDomain>`, target = `<containerName>:<port>`. Unlike previewRoute
+//? (keyed by ticket + branch, ephemeral), the id/host are stable across deploys so the URL never
+//? changes. `serviceSlug` falls back to the project slug for a single-service (project-root) env.
+export function envRoute(input: { envId: string; kind: string; serviceSlug: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
+  return {
+    id: `env-${input.envId}`.toLowerCase(),
+    host: `${deriveHostSlug(`${input.kind}-${input.serviceSlug}`)}.${baseDomain()}`,
+    target: `${input.containerName}:${String(input.port ?? 5173)}`,
+    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+  };
+}
+
 export type { ProxyProvider, ProxyRoute, ProxyResult } from './types';

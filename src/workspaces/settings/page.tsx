@@ -151,7 +151,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv } = useWorkspaces();
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? Fase 2: no backend persistence for web-push subscription yet — client-only toggle.
@@ -249,6 +249,27 @@ export default function AccountSettings() {
               <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
               <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
             </Row>
+          </Card>
+
+          {/* Environments (ADR 0037): deploy the active project to dev/staging/prod at a stable URL. */}
+          <Card title={translate({ key: 'workspaces.account.environmentsTitle' })} desc={translate({ key: 'workspaces.account.environmentsDesc' })}>
+            {['dev', 'staging', 'prod'].map((kind) => {
+              const env = environments.find((e) => e.kind === kind && e.serviceId === undefined);
+              return (
+                <Row key={kind}>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium text-title uppercase w-16">{kind}</span>
+                    {env
+                      ? <span className={`inline-flex items-center gap-1 text-xs ${env.status === 'live' ? 'text-correct' : (env.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${env.status === 'live' ? 'bg-correct' : (env.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} />{env.status}{env.status === 'live' && env.url ? <a href={env.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-1 truncate">{env.route}</a> : null}</span>
+                      : <span className="text-xs text-disabled">—</span>}
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <WsButton variant="secondary" disabled={!activeProject || env?.status === 'deploying'} onClick={() => { deployEnv({ kind }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>
+                    {env && <button type="button" onClick={() => { teardownEnv(env.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
+                  </span>
+                </Row>
+              );
+            })}
           </Card>
 
           <Card

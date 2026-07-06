@@ -19,6 +19,7 @@ import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
+import { baseDomain } from '../proxy';
 import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
@@ -30,7 +31,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary,
 } from '../../src/workspaces/_data/types';
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -136,6 +137,8 @@ export interface WorkspaceSnapshot {
   activeProjectId: string | null;
   //? The active project's declared services (monorepo build/deploy units, ADR 0035).
   services: ServiceSummary[];
+  //? The active project's persistent environments (dev/staging/prod deployments, ADR 0037).
+  environments: EnvironmentSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -185,7 +188,7 @@ export interface WorkspaceSnapshot {
 }
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
-  projects: [], services: [],
+  projects: [], services: [], environments: [],
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -230,6 +233,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const activeProjectId = wantProjectId && projectRows.some((p) => p.id === wantProjectId) ? wantProjectId : (projectRows[0]?.id ?? null);
     const projectScope = { projectId: activeProjectId ?? '000000000000000000000000' };
     const serviceRows = activeProjectId ? await tenantDb.service.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
+    const environmentRows = activeProjectId ? await tenantDb.environment.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
 
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
@@ -314,6 +318,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       projects: projectRows.map((p): ProjectSummary => ({ id: p.id, name: p.name, ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}) })),
       activeProjectId,
       services: serviceRows.map((s): ServiceSummary => ({ id: s.id, projectId: s.projectId, name: s.name, path: s.path })),
+      environments: environmentRows.map((e): EnvironmentSummary => ({
+        id: e.id, projectId: e.projectId, ...(e.serviceId ? { serviceId: e.serviceId } : {}), kind: e.kind, route: e.route, status: e.status,
+        url: `${baseDomain() === 'localhost' ? 'http' : 'https'}://${e.route}/`,
+        ...(e.lastError ? { lastError: e.lastError } : {}), ...(e.lastDeployedAt ? { lastDeployedAt: e.lastDeployedAt.toISOString() } : {}),
+      })),
       members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),

@@ -25,7 +25,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -38,6 +38,8 @@ interface Snap {
   projects: ProjectSummary[];
   activeProjectId: string | null;
   services: ServiceSummary[];
+  //? The active project's persistent environments (ADR 0037).
+  environments: EnvironmentSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -73,7 +75,7 @@ interface Snap {
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
-  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [],
+  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], environments: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
@@ -563,6 +565,24 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  //? Environments (ADR 0037): deploy the active project (or a service) to a dev/staging/prod env,
+  //? or tear one down. Deploy is slow (container launch + readiness) → refetch after it settles.
+  const deployEnvApi = useCallback((input: { kind: string; serviceId?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || !snap.activeProjectId) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-deploy', projectId: snap.activeProjectId ?? '', kind: input.kind, ...(input.serviceId ? { serviceId: input.serviceId } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
+  const teardownEnvApi = useCallback((envId: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-teardown', envId, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
@@ -757,6 +777,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createService: createServiceApi,
       deleteService: deleteServiceApi,
       connectForge: connectForgeApi,
+      environments: snap.environments,
+      deployEnv: deployEnvApi,
+      teardownEnv: teardownEnvApi,
       myInvites: snap.myInvites,
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
@@ -901,7 +924,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -45,6 +45,8 @@ export type ControlOp =
   | 'ticket-link-artifact' | 'ticket-unlink-artifact'
   // multi-project / multi-service (ADR 0035)
   | 'project-create' | 'service-create' | 'service-delete'
+  // environments / deploy (ADR 0037)
+  | 'env-deploy' | 'env-teardown'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

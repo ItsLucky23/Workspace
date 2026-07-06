@@ -104,6 +104,19 @@ export interface ProjectSummary {
   gitUrl?: string;
 }
 
+//? A persistent environment (ADR 0037): a dev/staging/prod deployment at a stable route.
+export interface EnvironmentSummary {
+  id: string;
+  projectId: string;
+  serviceId?: string;
+  kind: string;                 // 'dev' | 'staging' | 'prod'
+  route: string;                // stable host
+  status: string;               // 'idle'|'deploying'|'live'|'error'|'stopped'
+  url?: string;
+  lastError?: string;
+  lastDeployedAt?: string;
+}
+
 export interface PipelineStage {
   id: string;          // free stage id (e.g. 'impl'); custom stages allowed
   kind: StageKind;     // the typed semantic role (04b §12)

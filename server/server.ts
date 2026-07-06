@@ -145,6 +145,10 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Self-heal per-ticket proxy routes left dangling by a previous run (best-effort, does not
   //? block startup). Drops caddy `ws-route-*` entries whose upstream container is gone.
   void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
+  //? Re-assert the STABLE route for every live persistent environment (ADR 0037) — the reconcile
+  //? above prunes routes without a running container but never RE-ADDS one, so a proxy restart would
+  //? otherwise drop a live env's URL. Idempotent + best-effort; dynamic import (secrets-order, lesson 0010).
+  void import('./deploy/environment').then(({ reassertEnvironmentRoutes }) => reassertEnvironmentRoutes()).catch((e: unknown) => { console.error('[env] boot re-assert error:', e); });
   //? Periodically evict idle live editors + prune their routes (CapacityManager). Leader-gated.
   startEditorReaper();
   //? Continuously sync GitLab issues → tickets for every workspace with a linked repo. Leader-gated.

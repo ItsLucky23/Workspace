@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary,
 } from '../_data/types';
 
 export type WsView =
@@ -78,6 +78,10 @@ export interface WorkspacesCtx {
   deleteService: (serviceId: string) => void;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
+  //? Environments (ADR 0037): the active project's dev/staging/prod deployments + deploy/teardown.
+  environments: EnvironmentSummary[];
+  deployEnv: (input: { kind: string; serviceId?: string }) => void;
+  teardownEnv: (envId: string) => void;
   sprintCreate: (name: string) => void;
   //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
   myInvites: MyInvite[];
