@@ -108,6 +108,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'ci-run': CAP.workTickets,
   'ci-allow-red': CAP.demoteAdmin,
   'root-cause': CAP.workTickets,
+  'plan-critique': CAP.workTickets,
   'db-connect': CAP.workspaceSettings,
   'db-migrate-create': CAP.editPipeline,
   'db-migrate-apply': CAP.workspaceSettings,

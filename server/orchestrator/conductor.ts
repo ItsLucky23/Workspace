@@ -1141,6 +1141,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const artifact = await role.run({ workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
+    //? Plan-critique gate (ADR 0044): run the adversarial reasoning pass on a ticket's plan → a
+    //? WorkspaceSuggestion(type:'plan-critique') the human folds in before implement.
+    case 'plan-critique': {
+      const role = getAgentRole('plan-critique');
+      const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
+      if (!role || !ticketKey) return { ok: false };
+      const artifact = await role.run({ workspaceId: action.workspaceId, ticketKey, params: {} });
+      return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
+    }
     //? User-app DB + migrations (ADR 0043) — B-23: the Conductor writes the connection + applies migrations.
     case 'db-connect': {
       const dbProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));

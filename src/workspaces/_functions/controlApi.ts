@@ -51,6 +51,8 @@ export type ControlOp =
   | 'ci-run' | 'ci-allow-red'
   // AI rollback (ADR 0042)
   | 'root-cause'
+  // reasoning (ADR 0044)
+  | 'plan-critique'
   // user-app DB + migrations (ADR 0043)
   | 'db-connect' | 'db-migrate-create' | 'db-migrate-apply' | 'db-introspect'
   // notifications (18)

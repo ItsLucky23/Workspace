@@ -38,7 +38,10 @@ export type AiFeature =
   | 'mr-review'
   //? AI root-cause / rollback (ADR 0042) — given a symptom + recent merges, ranks the likely-culprit
   //? merge + explains → a `WorkspaceSuggestion(type:'rollback')`. Never reverts directly (B-23).
-  | 'root-cause';
+  | 'root-cause'
+  //? Plan-critique (ADR 0044) — an adversarial pass that attacks a ticket's plan (the CarryOver
+  //? envelope) BEFORE implement: what's missing / what breaks → a `WorkspaceSuggestion(type:'plan-critique')`.
+  | 'plan-critique';
 
 export interface AiCompletionRequest {
   prompt: string;

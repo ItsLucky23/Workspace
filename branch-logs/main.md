@@ -1782,3 +1782,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** de explorer-UI (tabellen browsen + gated query-runner), agent-gegenereerde migraties uit een schema-diff, dev-auto-apply-on-merge-trigger, per-rij data-browsing.
 
 **Files touched:** `prisma/schema.prisma`, `docs/decisions/0043-*.md`, `server/db/migrate.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/dbMigrate.test.mts`, `tests/_helpers.mts`.
+
+## 2026-07-06 20:15 — Expansion E1: reasoning first-class — plan-critique gate (ADR 0044)
+
+**User:** `/goal` (vervolg — item E1).
+
+**What I did:** twee delta's.
+- **Think-budget:** de per-stage reasoning-config (`modelCfg`: `effort` low→max + `maxTurns` + `autoEscalate` + escalatie-`rules`) blijkt **al gesurface't** in de pipeline-pagina (effort-`Segmented` + turns-input + auto-escalate). Geen werk nodig — E1 bevestigt dit als de think-budget-primitive.
+- **Plan-critique-gate:** nieuwe adversariële `plan-critique`-AgentRole (`AiFeature += 'plan-critique'`, mirror mr-review) — leest het ticket-plan (de laatste `CarryOver.envelope`: `summary` + `openQuestions`) via pure `extractPlan`, `buildCritiquePrompt` (adversarieel: "wat mist / wat breekt / welke aanname is riskant"), `runAiCompletion` → één `WorkspaceSuggestion(type:'plan-critique')` die de mens vóór implement invouwt. Read-only/advisory, nooit een tweede AI-window. Bij boot geregistreerd. `plan-critique`-control-op (ticketKey) via de `projectAdmin`-sync-route.
+- **Verify:** `tests/integration/planCritique.test.mts` — **6/6** (pure `extractPlan` summary+questions/leeg-envelope/geen-plan · `buildCritiquePrompt` adversarieel+bevat-plan · op runt zonder plan graceful · geen suggestie zonder plan). ADR **0044**.
+- **Follow-ups (in ADR):** plan-critique als optionele per-pipeline-gate (trigger op plan-stage-completion); reasoning-trace-view.
+
+**Files touched:** `docs/decisions/0044-*.md`, `server/reasoning/planCritiqueRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/planCritique.test.mts`.

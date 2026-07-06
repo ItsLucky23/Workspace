@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (42)
+## Decisions (43)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -55,6 +55,7 @@
 | 0041 | AI MR-review pass (propose→accept, never writes/approves) | 🟢 accepted | mr-review, ai, propose-accept, rag, b-23, expansion-c3 | — | `docs/decisions/0041-ai-mr-review.md` |
 | 0042 | AI-assisted rollback — root-cause role → propose→accept forward-revert + tracking ticket | 🟢 accepted | rollback, root-cause, ai, propose-accept, forward-revert, expansion-b3 | — | `docs/decisions/0042-ai-assisted-rollback.md` |
 | 0043 | User-app DB support + gated migrations | 🟢 accepted | database, migrations, explorer, gated-apply, expansion-d1 | — | `docs/decisions/0043-user-app-db-migrations.md` |
+| 0044 | Reasoning first-class — per-stage think-budget (surfaced) + plan-critique gate | 🟢 accepted | reasoning, plan-critique, think-budget, expansion-e1 | — | `docs/decisions/0044-reasoning-plan-critique.md` |
 
 ## Summaries
 
@@ -395,6 +396,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **`DbConnection` model** (per project, optionally per service/env; `kind` postgres/mysql/mongo; `urlEnc` ENCRYPTED via `secretBox`, never client-visible). The connection store the explorer + migrations resolve.
 
 → `docs/decisions/0043-user-app-db-migrations.md`
+
+### 0044 — Reasoning first-class — per-stage think-budget (surfaced) + plan-critique gate
+
+**0044** · accepted · tags: reasoning, plan-critique, think-budget, expansion-e1 · 2026-07-06
+
+1. **Think-budget is ALREADY surfaced — no new work.** The per-stage `modelCfg` (`StageModelChoice`: `model`/`effort` low→max/`maxTurns` + `autoEscalate` + escalation `rules`) is editable in the pipeline page today (`src/workspaces/pipeline/page.tsx` — the effort `Segmented` + the turns input + the auto-escalate rules). E1 confirms this is the think-budget primitive; it needs no change.
+
+→ `docs/decisions/0044-reasoning-plan-critique.md`
 
 ## Code governed by decisions
 
