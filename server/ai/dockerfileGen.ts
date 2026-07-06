@@ -51,6 +51,8 @@ export async function generateDockerfile(prisma: PrismaClient, workspaceId: stri
   const draftPath = path.join(workspaceDataDir(workspaceId), 'draft.Dockerfile');
   mkdirSync(path.dirname(draftPath), { recursive: true });
   writeFileSync(draftPath, dockerfile, 'utf8');
-  await prisma.project.updateMany({ where: { workspaceId }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
+  //? ADR 0035: write only the TARGET project (was updateMany over every project).
+  const proj = await prisma.project.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+  if (proj) await prisma.project.update({ where: { id: proj.id }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
   return { ok: true, dockerfile, path: draftPath };
 }

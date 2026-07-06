@@ -18,6 +18,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
+import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
 import { indexWorkspace } from '../rag';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
@@ -26,6 +27,7 @@ import { syncGitlabIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
+import { resolveProjectId } from './projectResolve';
 import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
@@ -190,6 +192,7 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.pipelineStage.deleteMany({ where: { workspaceId } });
   await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
   await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
+  await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
   await prisma.workspace.delete({ where: { id: workspaceId } });
 }
@@ -486,14 +489,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'quick-add': {
       const title = str(payload, 'title');
       if (!title) return;
-      const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId } });
-      if (!project) return;
+      //? Multi-project (ADR 0035): the ticket lands in the client's ACTIVE project
+      //? (threaded through the quick-add payload); falls back to the first project.
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!projectId) return;
       const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
       //? DEV-#### numbering starts at DEV-1 and auto-increments per workspace (Q6).
       const number = (last?.number ?? 0) + 1;
       const created = await prisma.ticket.create({
         data: {
-          workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+          workspaceId: action.workspaceId, projectId, key: `DEV-${String(number)}`, number,
           //? A user-created ticket ALWAYS enters the pipeline at `unrefined` — the
           //? Conductor (single writer) enforces this, so no client can place a
           //? ticket mid-pipeline regardless of what it sends. The AI moves it on.
@@ -508,7 +513,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const newAssignee = str(payload, 'assigneeId');
       if (newAssignee && newAssignee !== userId) await notifyAssignment(action.workspaceId, newAssignee, created.id, created.key);
       //? Automation (#2): a new ticket may fire `ticket.created` triggers (best-effort, off-chain).
-      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: project.id });
+      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId });
       //? Return the created row so realtime `_sync` write routes can broadcast the delta.
       return created;
     }
@@ -780,8 +785,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const token = str(payload, 'token');
       const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, gitUrl, ...(token ? { token } : {}) }));
       if (error) return { linked: false, gitUrl, error: error.message };
-      //? Persist the CLEAN url on the workspace's project (token is never stored here).
-      await prisma.project.updateMany({ where: { workspaceId: action.workspaceId }, data: { gitUrl } });
+      //? Persist the CLEAN url on the TARGET project only (ADR 0035 — was updateMany
+      //? over every project, which corrupted siblings once N>1). token is never stored.
+      const linkProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (linkProjectId) await prisma.project.update({ where: { id: linkProjectId }, data: { gitUrl } });
       return status;
     }
     case 'scan-docs': {
@@ -803,8 +810,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'scan-index': {
       //? RAG index (07 §D): read the linked repo's code, chunk + embed it, upsert the RagEntry
       //? store. Returns the index result (files/chunks/commit/embedder) as the delta.
-      const proj = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId }, select: { id: true } });
-      return indexWorkspace(prisma, action.workspaceId, proj?.id ? { projectId: proj.id } : {});
+      //? Multi-project (ADR 0035): index the active project (payload) or the first.
+      const indexProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      return indexWorkspace(prisma, action.workspaceId, indexProjectId ? { projectId: indexProjectId } : {});
     }
     case 'mr-create': {
       //? Built-in MR review (BUILTIN_MR_REVIEW): open/refresh the MR for a ticket's branch, return
@@ -965,26 +973,63 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (linkId) await prisma.ticketArtifactLink.deleteMany({ where: { workspaceId: action.workspaceId, id: linkId } });
       return;
     }
+    //? Multi-project / multi-service (ADR 0035) — B-23: the Conductor is the only writer.
+    case 'project-create': {
+      const name = str(payload, 'name');
+      if (!name) return;
+      const created = await prisma.project.create({
+        data: {
+          workspaceId: action.workspaceId, name,
+          gitlabPath: str(payload, 'gitlabPath') ?? '',
+          ...(str(payload, 'gitUrl') ? { gitUrl: str(payload, 'gitUrl') } : {}),
+        },
+      });
+      //? A fresh project owns its OWN pipeline (board columns) — seed the default stages
+      //? so its board is immediately usable (each project is an independent board, ADR 0035).
+      await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      return created;
+    }
+    case 'service-create': {
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      const name = str(payload, 'name');
+      if (!projectId || !name) return;
+      const created = await prisma.service.create({
+        data: {
+          workspaceId: action.workspaceId, projectId, name,
+          path: str(payload, 'path') ?? '.',
+          ...(str(payload, 'buildCmd') ? { buildCmd: str(payload, 'buildCmd') } : {}),
+          ...(str(payload, 'deployUnit') ? { deployUnit: str(payload, 'deployUnit') } : {}),
+        },
+      });
+      return created;
+    }
+    case 'service-delete': {
+      const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId');
+      if (serviceId) await prisma.service.deleteMany({ where: { workspaceId: action.workspaceId, id: serviceId } });
+      return;
+    }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {
       const id = str(target, 'findingId') ?? str(payload, 'findingId');
       if (!id) return;
       const finding = await prisma.interviewFinding.findFirst({ where: { workspaceId: action.workspaceId, id } });
       if (!finding || finding.ticketId) return;
-      const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId } });
-      if (!project) return;
+      //? Multi-project (ADR 0035): a finding is workspace-level → its ticket goes to the
+      //? active project (payload) or the first. Was a raw findFirst.
+      const findingProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!findingProjectId) return;
       const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
       const number = (last?.number ?? 0) + 1;
       const created = await prisma.ticket.create({
         data: {
-          workspaceId: action.workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+          workspaceId: action.workspaceId, projectId: findingProjectId, key: `DEV-${String(number)}`, number,
           title: finding.title, description: finding.summary, stageId: 'unrefined', status: 'idle',
           labels: [finding.area], creatorId: userId, priority: finding.severity === 'high' ? 'high' : 'normal',
         },
       });
       await prisma.interviewFinding.updateMany({ where: { workspaceId: action.workspaceId, id }, data: { status: 'accepted', ticketId: created.id } });
       await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, 'created the ticket from an Interviewer finding');
-      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: project.id });
+      void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: findingProjectId });
       return created;
     }
     case 'finding-dismiss': {

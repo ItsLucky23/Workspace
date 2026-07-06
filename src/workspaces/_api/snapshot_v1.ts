@@ -20,12 +20,12 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId?: string };
+  data: { workspaceId?: string; projectId?: string };
   user: SessionLayout;
   functions: Functions;
 }
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  const snapshot = await buildSnapshot(functions.db.prisma, user.id, data.workspaceId);
+  const snapshot = await buildSnapshot(functions.db.prisma, user.id, data.workspaceId, data.projectId);
   return { status: 'success', result: snapshot };
 };

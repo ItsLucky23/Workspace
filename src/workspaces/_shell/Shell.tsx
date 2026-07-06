@@ -202,6 +202,8 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
               <button type="button" onClick={() => { setWsOpen(false); navigate('workspace'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="users" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.manageMembers' })}</button>
           </Popover>
         </div>
+        {/* project switcher (ADR 0035 multi-project) */}
+        <ProjectSwitcher />
       </div>
 
       {/* search */}
@@ -308,6 +310,106 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void })
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
       </div>
+    </div>
+  );
+}
+
+//? Multi-project (ADR 0035): create a new project in the active workspace (name +
+//? optional git URL). The Conductor seeds its own default pipeline; the client
+//? refetches + can switch to it.
+function CreateProjectForm({ onCreate }: { onCreate: (input: { name: string; gitUrl?: string }) => void }) {
+  const translate = useTranslator();
+  const [name, setName] = useState('');
+  const [gitUrl, setGitUrl] = useState('');
+  const submit = () => { const n = name.trim(); if (!n) return; onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) }); void menuHandler.close(); };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createProject' })}</div>
+      <input
+        value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.shell.projectNamePh' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <input
+        value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.shell.projectGitUrlPh' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
+//? Multi-service (ADR 0035): declare a build/deploy unit within a project (name + path).
+function AddServiceForm({ projectId, onCreate }: { projectId: string; onCreate: (input: { projectId: string; name: string; path?: string }) => void }) {
+  const translate = useTranslator();
+  const [name, setName] = useState('');
+  const [servicePath, setServicePath] = useState('');
+  const submit = () => { const n = name.trim(); if (!n) return; onCreate({ projectId, name: n, ...(servicePath.trim() ? { path: servicePath.trim() } : {}) }); void menuHandler.close(); };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.addService' })}</div>
+      <input
+        value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.shell.serviceNamePh' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <input
+        value={servicePath} onChange={(e) => { setServicePath(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder={translate({ key: 'workspaces.shell.servicePathPh' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
+//? Multi-project (ADR 0035): the project switcher — sits next to the workspace switcher
+//? in the TopBar. Switches the active project (board/pipeline/sources re-scope), creates
+//? a new project, and lists/adds/removes the active project's services. Hidden until at
+//? least one project has loaded.
+function ProjectSwitcher() {
+  const { projects, activeProject, activeProjectId, setActiveProject, createProject, services, createService, deleteService } = useWorkspaces();
+  const translate = useTranslator();
+  const [open, setOpen] = useState(false);
+  const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
+  if (projects.length === 0) return null;
+  const openCreate = () => { setOpen(false); void menuHandler.open(<CreateProjectForm onCreate={createProject} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  const openAddService = () => { if (!activeProjectId) return; setOpen(false); void menuHandler.open(<AddServiceForm projectId={activeProjectId} onCreate={createService} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" onClick={() => { setOpen((o) => !o); }} className="flex items-center gap-2 rounded-xl px-2 h-9 hover:bg-container2 transition-colors cursor-pointer">
+        <Icon name="diagram-project" className="text-sm text-secondary" />
+        <span className="text-sm font-medium text-title max-w-40 truncate">{activeProject?.name ?? '—'}</span>
+        <Icon name="caret-down" className={`text-xs text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <Popover open={open} className="absolute left-0 mt-1 w-64 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
+        <div className="px-2.5 py-1.5 text-xs font-medium text-muted">{translate({ key: 'workspaces.shell.projects' })}</div>
+        {projects.map((p) => (
+          <button key={p.id} type="button" onClick={() => { setActiveProject(p.id); setOpen(false); }} className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer ${p.id === activeProjectId ? 'bg-container2' : 'hover:bg-container2'}`}>
+            <span className="flex items-center gap-2 text-sm text-title truncate"><Icon name="diagram-project" className="text-xs text-muted" /> {p.name}</span>
+            {p.id === activeProjectId && <Icon name="check" className="text-xs text-primary" />}
+          </button>
+        ))}
+        <button type="button" onClick={openCreate} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.createProject' })}</button>
+        <div className="my-1 h-px bg-divider" />
+        <div className="px-2.5 py-1.5 text-xs font-medium text-muted">{translate({ key: 'workspaces.shell.services' })}</div>
+        {services.length === 0
+          ? <div className="px-2.5 pb-1 text-xs text-disabled">{translate({ key: 'workspaces.shell.noServices' })}</div>
+          : services.map((s) => (
+            <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 hover:bg-container2">
+              <span className="flex items-center gap-2 text-sm text-title truncate"><Icon name="diagram-project" className="text-xs text-muted" /> {s.name} <span className="text-xs text-disabled truncate">{s.path}</span></span>
+              <button type="button" onClick={() => { deleteService(s.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="trash" className="text-xs" /></button>
+            </div>
+          ))}
+        <button type="button" onClick={openAddService} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.addService' })}</button>
+      </Popover>
     </div>
   );
 }

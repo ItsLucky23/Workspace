@@ -53,6 +53,7 @@ export async function buildProjectImage(prisma: PrismaClient, workspaceId: strin
     if (build.code !== 0) return { ok: false, error: `image.buildFailed: ${build.err.slice(0, 300)}` };
   }
   //? buildProjectImage is the SOLE writer of baseImageRef (dockerfileGen sets only the draft).
-  await prisma.project.updateMany({ where: { workspaceId }, data: { baseImageRef: tag } });
+  //? ADR 0035: write only the TARGET project (was updateMany over every project → corrupted siblings).
+  await prisma.project.update({ where: { id: project.id }, data: { baseImageRef: tag } });
   return { ok: true, tag };
 }

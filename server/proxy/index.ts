@@ -40,7 +40,7 @@ export function previewRoute(input: { ticketKey: string; branch: string; contain
     host: `${deriveHostSlug(input.branch)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
     //? Carry the workspace so edge-auth can verify membership on this preview subdomain.
-    ...(input.workspaceId !== undefined ? { workspaceId: input.workspaceId } : {}),
+    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
   };
 }
 

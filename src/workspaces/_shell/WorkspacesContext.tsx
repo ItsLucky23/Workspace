@@ -12,6 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
+  ProjectSummary, ServiceSummary,
 } from '../_data/types';
 
 export type WsView =
@@ -60,12 +61,21 @@ export interface WorkspacesCtx {
   chat: ChatMessage[];
   sendChat: (text: string) => void;
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
-  //? Workspaces: one project = one workspace. Switch the active one or create a
-  //? new (still-simple) workspace. Dummy data shared across them for now.
+  //? Workspaces: switch the active one or create a new workspace.
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
   createWorkspace: (name: string) => void;
+  //? Multi-project / multi-service (ADR 0035): a workspace holds N projects, each
+  //? optionally N services. The board/pipeline/sources render the ACTIVE project.
+  projects: ProjectSummary[];
+  activeProject: ProjectSummary | null;
+  activeProjectId: string | null;
+  setActiveProject: (id: string) => void;
+  services: ServiceSummary[];
+  createProject: (input: { name: string; gitUrl?: string; gitlabPath?: string }) => void;
+  createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
+  deleteService: (serviceId: string) => void;
   sprintCreate: (name: string) => void;
   //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
   myInvites: MyInvite[];

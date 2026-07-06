@@ -30,6 +30,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
+  ProjectSummary, ServiceSummary,
 } from '../../src/workspaces/_data/types';
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -129,6 +130,12 @@ export function stageConfigDelta(result: unknown): PipelineStageCfg | null {
 export interface WorkspaceSnapshot {
   workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType'>)[];
   activeWorkspaceId: string | null;
+  //? Multi-project (ADR 0035): the active workspace's projects + the selected one.
+  //? board/pipeline/tickets/sprints below are scoped to `activeProjectId`.
+  projects: ProjectSummary[];
+  activeProjectId: string | null;
+  //? The active project's declared services (monorepo build/deploy units, ADR 0035).
+  services: ServiceSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -177,7 +184,8 @@ export interface WorkspaceSnapshot {
   myInvites: MyInvite[];
 }
 
-const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInvites'> = {
+const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
+  projects: [], services: [],
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -193,7 +201,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'myInv
   ticketArtifactLinks: [],
 };
 
-export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string): Promise<WorkspaceSnapshot> {
+export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string, wantProjectId?: string): Promise<WorkspaceSnapshot> {
   const memberships = await prisma.workspaceMember.findMany({ where: { userId } });
   const wsIds = memberships.map((m) => m.workspaceId);
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
@@ -211,15 +219,24 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const myInvites: MyInvite[] = inviteRowsForMe.map((i) => ({ token: i.token, workspaceName: inviteWsName.get(i.workspaceId) ?? '—', role: asRole(i.roleKey) }));
 
   const activeWorkspaceId = wantWorkspaceId && wsIds.includes(wantWorkspaceId) ? wantWorkspaceId : (wsIds[0] ?? null);
-  if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, ...EMPTY, myInvites };
+  if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, activeProjectId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
+    //? Multi-project (ADR 0035): resolve the ACTIVE project first — the requested one
+    //? if it belongs to this workspace, else the oldest (the single-project era's only
+    //? project). board/pipeline/tickets/sprints are then scoped to it. A sentinel
+    //? ObjectId scopes to "nothing" for the (defensive) zero-project workspace.
+    const projectRows = await tenantDb.project.findMany({ orderBy: { createdAt: 'asc' } });
+    const activeProjectId = wantProjectId && projectRows.some((p) => p.id === wantProjectId) ? wantProjectId : (projectRows[0]?.id ?? null);
+    const projectScope = { projectId: activeProjectId ?? '000000000000000000000000' };
+    const serviceRows = activeProjectId ? await tenantDb.service.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
+
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
-      tenantDb.pipelineStage.findMany({ orderBy: { order: 'asc' } }),
-      tenantDb.ticket.findMany(),
-      tenantDb.sprint.findMany(),
+      tenantDb.pipelineStage.findMany({ where: projectScope, orderBy: { order: 'asc' } }),
+      tenantDb.ticket.findMany({ where: projectScope }),
+      tenantDb.sprint.findMany({ where: projectScope }),
       tenantDb.workspaceSuggestion.findMany({ where: { status: 'open' } }),
       tenantDb.workspaceBudget.findMany({ where: { enabled: true } }),
       tenantDb.infoSource.findMany(),
@@ -282,9 +299,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       id: s.id, name: s.name, kind: asSkillKind(s.kind), status: s.summary ?? '', model: s.model ?? undefined, on: s.enabled, description: s.summary ?? undefined, usedByStages: s.usedByStages,
     }));
 
-    //? Register-flow step A: the linked-repo status (on-disk bare clone under
-    //? data/workspaces/<id>/), keyed off the project's stored (clean) gitUrl.
-    const projectRow = await tenantDb.project.findFirst();
+    //? Register-flow step A: the ACTIVE project's linked-repo status (on-disk bare
+    //? clone), keyed off its stored (clean) gitUrl (ADR 0035 — was findFirst; the
+    //? on-disk clone stays workspace-keyed in A1, per-project physical repos land in A2).
+    const projectRow = projectRows.find((p) => p.id === activeProjectId) ?? null;
     const repo = await repoStatus(activeWorkspaceId, projectRow?.gitUrl ?? undefined);
     //? The active workspace's git strategy (normalized; DEFAULT when the field is unset).
     const activeWs = workspaceRows.find((w) => w.id === activeWorkspaceId);
@@ -292,7 +310,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const workspacePaused = activeWs?.paused === true;
 
     return {
-      workspaces, activeWorkspaceId, members, budget, docs, skills,
+      workspaces, activeWorkspaceId,
+      projects: projectRows.map((p): ProjectSummary => ({ id: p.id, name: p.name, ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}) })),
+      activeProjectId,
+      services: serviceRows.map((s): ServiceSummary => ({ id: s.id, projectId: s.projectId, name: s.name, path: s.path })),
+      members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),

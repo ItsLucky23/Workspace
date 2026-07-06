@@ -25,6 +25,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
+  ProjectSummary, ServiceSummary,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -33,6 +34,10 @@ const BASE = '/workspaces';
 interface Snap {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
+  //? Multi-project (ADR 0035): the workspace's projects + selected one + its services.
+  projects: ProjectSummary[];
+  activeProjectId: string | null;
+  services: ServiceSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -68,7 +73,8 @@ interface Snap {
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
-  workspaces: [], activeWorkspaceId: null, members: [], tickets: [], stages: [], sprints: [],
+  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [],
+  members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
@@ -139,6 +145,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [snap, setSnap] = useState<Snap>(EMPTY_SNAP);
   const [loading, setLoading] = useState(true);
   const [wantWorkspaceId, setWantWorkspaceId] = useState<string | undefined>();
+  //? Multi-project (ADR 0035): the client-selected project (mirrors wantWorkspaceId). A
+  //? stale id from another workspace is harmless — the server validates + falls back to
+  //? the first project. Cleared on workspace switch.
+  const [wantProjectId, setWantProjectId] = useState<string | undefined>();
   //? Realtime side-channels not part of the snapshot: the RAG code-index status
   //? (07 §D) and the built-in MR review views keyed by their source branch
   //? (BUILTIN_MR_REVIEW). Both are hydrated by their `_sync` delta callbacks below.
@@ -151,7 +161,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   const refetch = useCallback(() => {
     void (async () => {
-      const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wantWorkspaceId } });
+      const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wantWorkspaceId, projectId: wantProjectId } });
       //? Not logged in → go to the login page instead of leaking the onboarding UI
       //? (a logged-out visitor otherwise sees the "Create a workspace" form + only
       //? gets "you need to be logged in" after acting).
@@ -159,7 +169,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (res.status === 'success') setSnap(res.result);
       setLoading(false);
     })();
-  }, [wantWorkspaceId]);
+  }, [wantWorkspaceId, wantProjectId]);
   useEffect(() => { refetch(); }, [refetch]);
 
   //? ----- Realtime (milestone 1) -----------------------------------------------
@@ -505,6 +515,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       name: 'workspaces/quickAdd', version: 'v1',
       data: {
         title: input.title,
+        //? Multi-project (ADR 0035): the ticket lands in the active project.
+        ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}),
         ...(input.sprintId ? { sprintId: input.sprintId } : {}),
         ...(input.description === undefined ? {} : { description: input.description }),
         ...(input.labels && input.labels.length > 0 ? { labels: input.labels } : {}),
@@ -514,7 +526,34 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       receiver: room,
     });
-  }, [snap.activeWorkspaceId]);
+  }, [snap.activeWorkspaceId, snap.activeProjectId]);
+  //? Multi-project / multi-service admin writes (ADR 0035) → the projectAdmin `_sync`
+  //? route; the client refetches on success (these change rarely). project-create
+  //? switches to the new project once the refetch lands it.
+  const createProjectApi = useCallback((input: { name: string; gitUrl?: string; gitlabPath?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || input.name.trim().length === 0) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-create', name: input.name, ...(input.gitUrl ? { gitUrl: input.gitUrl } : {}), ...(input.gitlabPath ? { gitlabPath: input.gitlabPath } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+  const createServiceApi = useCallback((input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || input.name.trim().length === 0) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'service-create', projectId: input.projectId, name: input.name, ...(input.path ? { path: input.path } : {}), ...(input.buildCmd ? { buildCmd: input.buildCmd } : {}), ...(input.deployUnit ? { deployUnit: input.deployUnit } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+  const deleteServiceApi = useCallback((serviceId: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'service-delete', serviceId, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
@@ -697,8 +736,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       acceptChatProposal,
       workspaces: snap.workspaces,
       activeWorkspace,
-      setActiveWorkspace: (id) => { setWantWorkspaceId(id); setLoading(true); },
+      setActiveWorkspace: (id) => { setWantWorkspaceId(id); setWantProjectId(undefined); setLoading(true); },
       createWorkspace: (name) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() } })); },
+      //? Multi-project / multi-service (ADR 0035).
+      projects: snap.projects,
+      activeProject: snap.projects.find((p) => p.id === snap.activeProjectId) ?? snap.projects.at(0) ?? null,
+      activeProjectId: snap.activeProjectId,
+      setActiveProject: (id) => { setWantProjectId(id); setLoading(true); },
+      services: snap.services,
+      createProject: createProjectApi,
+      createService: createServiceApi,
+      deleteService: deleteServiceApi,
       myInvites: snap.myInvites,
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
@@ -843,7 +891,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

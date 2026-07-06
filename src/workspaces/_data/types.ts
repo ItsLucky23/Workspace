@@ -88,6 +88,22 @@ export interface Project {
   dockerfilePath?: string;                                 // optional per-project Dockerfile
 }
 
+//? A build+deploy unit within a project (monorepo services) — ADR 0035.
+export interface ServiceSummary {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+}
+
+//? The switcher-facing subset of a Project (ADR 0035 multi-project). The board /
+//? pipeline / sources render the ACTIVE project's data; this drives the shell picker.
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  gitUrl?: string;
+}
+
 export interface PipelineStage {
   id: string;          // free stage id (e.g. 'impl'); custom stages allowed
   kind: StageKind;     // the typed semantic role (04b §12)

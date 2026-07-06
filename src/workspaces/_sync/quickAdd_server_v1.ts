@@ -17,7 +17,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: string; clientRequestId: string };
+  clientInput: { title: string; projectId?: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -25,7 +25,7 @@ export interface SyncParams {
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
   const workspaceId = roomCode;
-  const { title, sprintId, description, labels, assigneeId, priority, clientRequestId } = clientInput;
+  const { title, projectId, sprintId, description, labels, assigneeId, priority, clientRequestId } = clientInput;
   if (!workspaceId || title.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
 
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
@@ -35,6 +35,7 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     workspaceId, op: 'quick-add', target: {},
     payload: {
       title,
+      ...(projectId ? { projectId } : {}),
       ...(sprintId ? { sprintId } : {}),
       ...(description === undefined ? {} : { description }),
       ...(labels && labels.length > 0 ? { labels } : {}),
