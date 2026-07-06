@@ -554,6 +554,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
+  const connectForgeApi = useCallback((input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'forge-connect', projectId: input.projectId, mode: input.mode, ...(input.baseUrl ? { baseUrl: input.baseUrl } : {}), ...(input.token ? { token: input.token } : {}), ...(input.repoPath ? { repoPath: input.repoPath } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
@@ -747,6 +756,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createProject: createProjectApi,
       createService: createServiceApi,
       deleteService: deleteServiceApi,
+      connectForge: connectForgeApi,
       myInvites: snap.myInvites,
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
@@ -891,7 +901,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

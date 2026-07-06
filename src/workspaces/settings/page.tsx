@@ -61,6 +61,39 @@ function resolveUser(text: string): string | null {
   return null;
 }
 
+//? Per-project forge connect form (ADR 0036) — pick GitLab/GitHub, enter repo + token (+ optional
+//? API base) for the ACTIVE project. Rendered in the menuHandler overlay from the Connections card.
+function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConnect: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void }) {
+  const translate = useTranslator();
+  const [mode, setMode] = useState<'gitlab' | 'github'>('github');
+  const [repoPath, setRepoPath] = useState('');
+  const [token, setToken] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const modeItems: DropdownItem[] = [{ label: 'GitHub', value: 'github' }, { label: 'GitLab', value: 'gitlab' }];
+  const submit = () => {
+    onConnect({ projectId, mode, ...(repoPath.trim() ? { repoPath: repoPath.trim() } : {}), ...(token.trim() ? { token: token.trim() } : {}), ...(baseUrl.trim() ? { baseUrl: baseUrl.trim() } : {}) });
+    void menuHandler.close();
+  };
+  const inputCls = `h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.account.forgeConnectTitle' })}</div>
+      <span className="text-sm text-muted -mt-2">{translate({ key: 'workspaces.account.forgeConnectFor' })}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-common">{translate({ key: 'workspaces.account.forgeProvider' })}</span>
+        <Dropdown size="sm" items={modeItems} value={mode} onChange={(it) => { setMode(it.value === 'gitlab' ? 'gitlab' : 'github'); }} />
+      </div>
+      <input value={repoPath} onChange={(e) => { setRepoPath(e.target.value); }} placeholder={translate({ key: 'workspaces.account.forgeRepoPathPh' })} className={inputCls} />
+      <input value={token} onChange={(e) => { setToken(e.target.value); }} type="password" placeholder={translate({ key: 'workspaces.account.forgeTokenPh' })} className={inputCls} />
+      <input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.account.forgeBaseUrlPh' })} className={inputCls} />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="circle-check" onClick={submit}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
   const translate = useTranslator();
   const { membersById } = useWorkspaces();
@@ -118,7 +151,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge } = useWorkspaces();
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? Fase 2: no backend persistence for web-push subscription yet — client-only toggle.
@@ -211,10 +244,10 @@ export default function AccountSettings() {
               <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.gitlab' })}</span>
               <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>
             </Row>
-            {/* Fase 2: GitHub is out of V1 scope (single-forge invariant — GitLab only) */}
+            {/* Per-project forge connect (ADR 0036): GitLab OR GitHub for the active project. */}
             <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}</span>
-              <WsButton variant="secondary" onClick={() => { /* Fase 2: GitHub connect — out of V1 scope */ }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
+              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
+              <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
             </Row>
           </Card>
 

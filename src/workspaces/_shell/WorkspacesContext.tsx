@@ -76,6 +76,8 @@ export interface WorkspacesCtx {
   createProject: (input: { name: string; gitUrl?: string; gitlabPath?: string }) => void;
   createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
   deleteService: (serviceId: string) => void;
+  //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
+  connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
   sprintCreate: (name: string) => void;
   //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
   myInvites: MyInvite[];
