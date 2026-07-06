@@ -2117,3 +2117,19 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Files touched:** `scripts/lintInvariants.mjs`, `server/deploy/environment.ts`, `docs/decisions/0073-tenant-scope-lint-guard.md`, `docs/AI_DECISIONS_INDEX.md`.
 
 **Gates:** lint groen, build groen, `ai:lint --selftest` 22/22. (Geen schema-delta → db:push/generateArtifacts n.v.t.)
+
+## 2026-07-06 — DEPTH PROGRAM H2: encryptie fail-closed (WORKSPACES_ENC_KEY verplicht)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item H2.
+
+**What I did:**
+- `secretBox`: de `plain:<base64>` fail-OPEN fallback verwijderd. `encryptSecret`/`encryptBuffer` **gooien** nu bij ontbrekende `WORKSPACES_ENC_KEY` — nooit meer plaintext at-rest.
+- Nieuwe `assertEncryptionConfigured()` gewired in `server.ts` (direct na secret-manager-resolutie) → server boot faalt luid als de key ontbreekt (hard-force). `encryptionConfigured()` geëxporteerd.
+- Migratie behouden: `decryptSecret`/`decryptBuffer` lezen nog legacy `plain:`/`0x00` (pre-hardening dev-data blijft leesbaar; re-save encrypt at rest).
+- `tests/_helpers.mts` zet een deterministische test-key ná secret-resolutie zodat alle integration-tests het echte fail-closed-pad draaien.
+
+**Verify:** `tests/unit/secretBox.test.mts` **14/14** (round-trip, tamper→null, encrypt/assert THROW zonder key, nooit `plain:`, legacy decrypt). Integration forgeConnect **13/13** + dbMigrate **8/8** groen (key-default werkt). Lint + build groen.
+
+**Developer-actie:** `WORKSPACES_ENC_KEY` MOET gezet zijn (secret-manager pointer of literal) anders boot de server niet — bewust fail-closed. (ADR 0074, KEY_SETUP_GUIDE volgt in D1.)
+
+**Files touched:** `server/crypto/secretBox.ts`, `server/server.ts`, `tests/_helpers.mts`, `tests/unit/secretBox.test.mts`, `docs/decisions/0074-encryption-fail-closed.md`, `docs/AI_DECISIONS_INDEX.md`.

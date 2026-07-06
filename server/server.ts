@@ -71,6 +71,11 @@ import { startLeaderElection } from './orchestrator/cluster';
     await sm.initSecretManager({ ...projectConfig.secretManager, source: 'remote' });
   }
 
+  //? H2 fail-closed: at-rest secret encryption is mandatory. Assert the key is present
+  //? (after secrets resolve) so the server never boots into a state where a stored
+  //? credential would land as plaintext. Throws a clear fatal when WORKSPACES_ENC_KEY is unset.
+  (await import('./crypto/secretBox')).assertEncryptionConfigured();
+
   //? Datadog adapter registration — uncomment together with the dd-trace block
   //? at the top of this file. `tracer` is the dd-trace instance from there.
   // const { createDatadogAdapter, registerErrorTracker } = await import('@luckystack/error-tracking');

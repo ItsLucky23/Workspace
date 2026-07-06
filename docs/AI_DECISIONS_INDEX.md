@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (72)
+## Decisions (73)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -85,6 +85,7 @@
 | 0071 | Per-channel brand-RAG + content-analytics (F5.1) | 🟢 accepted | content, rag, brand, analytics, expansion-f51 | — | `docs/decisions/0071-content-memory-analytics.md` |
 | 0072 | Depth program — real gen/render/publish + UI + platform hardening | 🟢 accepted | strategy, depth, hardening, content, ui, expansion-depth | — | `docs/decisions/0072-depth-program.md` |
 | 0073 | Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold) | 🟢 accepted | security, tenancy, hardening, ai-lint, depth-program | — | `docs/decisions/0073-tenant-scope-lint-guard.md` |
+| 0074 | Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory | 🟢 accepted | security, secrets, hardening, depth-program | — | `docs/decisions/0074-encryption-fail-closed.md` |
 
 ## Summaries
 
@@ -665,6 +666,14 @@ Run a `DEPTH_PROGRAM.md` `/goal` build (16 items, H→C→M→U→D) that: 1. **
 Chose branch (b) — a new diff-scoped `tenant-scope` `ai:lint` rule — plus fixing the one known unscoped call.
 
 → `docs/decisions/0073-tenant-scope-lint-guard.md`
+
+### 0074 — Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory
+
+**0074** · accepted · tags: security, secrets, hardening, depth-program · 2026-07-06
+
+Make at-rest encryption **fail-closed**:
+
+→ `docs/decisions/0074-encryption-fail-closed.md`
 
 ## Code governed by decisions
 

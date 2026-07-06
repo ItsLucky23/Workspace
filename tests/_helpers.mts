@@ -17,6 +17,10 @@ export async function db(): Promise<PrismaClient> {
   if (cached) return cached;
   const { initSecretManager } = await import('@luckystack/secret-manager');
   await initSecretManager({ url: process.env.LUCKYSTACK_SECRET_MANAGER_URL ?? '', token: { fromFile: '.secret-manager-token' }, envNames: () => true, source: 'remote' } as never);
+  //? H2 fail-closed: at-rest encryption is mandatory, so `encryptSecret` now THROWS without a key.
+  //? Guarantee a deterministic test key when the secret-manager didn't supply one (tests create
+  //? fresh data per run, so intra-run consistency is all that matters).
+  if ((process.env.WORKSPACES_ENC_KEY ?? '') === '') process.env.WORKSPACES_ENC_KEY = 'ws-test-enc-key-deterministic';
   const { getPrismaClient } = await import('@luckystack/core');
   cached = getPrismaClient();
   return cached;
