@@ -5,11 +5,30 @@
 
 import type { PrismaClient } from '@prisma/client';
 import { runAiCompletion } from '../ai/registry';
+import { extractJson, coerceBeats } from './jsonParse';
 
 export interface VideoBlueprint {
   pacing: string;
   styleHint: string;
   beats: { text: string; visualPrompt: string }[];
+}
+
+//? The structured-output directive so a live multimodal response is machine-parseable.
+const BLUEPRINT_FORMAT = 'Return ONLY a JSON object: {"pacing": "<how it is cut/paced>", "styleHint": "<the visual style>", "beats": [{"text": "<a narration beat for the NEW story>", "visualPrompt": "<a shot description>"}]}. No prose outside the JSON.';
+
+//? Parse a live blueprint response into a VideoBlueprint. Returns null when the model gave no usable
+//? beats (the caller falls back to the stub). Exported + pure for tests.
+export function parseBlueprint(text: string): VideoBlueprint | null {
+  const json = extractJson(text);
+  if (json === null || typeof json !== 'object') return null;
+  const o = json as { pacing?: unknown; styleHint?: unknown; beats?: unknown };
+  const beats = coerceBeats(o.beats);
+  if (beats.length === 0) return null;
+  return {
+    pacing: typeof o.pacing === 'string' && o.pacing.trim().length > 0 ? o.pacing.trim() : 'mirrored from the reference',
+    styleHint: typeof o.styleHint === 'string' && o.styleHint.trim().length > 0 ? o.styleHint.trim() : 'as per the reference',
+    beats,
+  };
 }
 
 export interface ReferenceVideoResult {
@@ -41,12 +60,13 @@ export async function analyzeReferenceVideo(
   args: { workspaceId: string; contentProjectId: string; referenceVideoUrl: string; newStory: string },
 ): Promise<ReferenceVideoResult> {
   const res = await runAiCompletion('reference-video-analysis', {
-    prompt: `Analyse the reference video at ${args.referenceVideoUrl} (its storytelling structure, pacing, visual style) and produce a blueprint to retell this NEW story in the same shape: ${args.newStory}`,
+    prompt: `Analyse the reference video at ${args.referenceVideoUrl} (its storytelling structure, pacing, visual style) and produce a blueprint to retell this NEW story in the same shape: ${args.newStory}\n\n${BLUEPRINT_FORMAT}`,
     workspaceId: args.workspaceId, label: 'Reference-video analysis',
   });
-  const stub = !res.ok;
-  //? Live parsing of the blueprint JSON is a keyed follow-up; the stub is the tested path.
-  const blueprint = stubBlueprint(args.referenceVideoUrl, args.newStory);
+  //? Parse the live blueprint; fall back to the stub when there's no key OR the model gave nothing usable.
+  const parsed = res.ok ? parseBlueprint(res.text) : null;
+  const stub = parsed === null;
+  const blueprint = parsed ?? stubBlueprint(args.referenceVideoUrl, args.newStory);
 
   //? Seed a Script + Beats FROM the blueprint (reference → new story in the same shape).
   const script = await prisma.script.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, title: 'From reference video', body: blueprint.beats.map((b) => b.text).join(' '), providerId: res.providerId } });

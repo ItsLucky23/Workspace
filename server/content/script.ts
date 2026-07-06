@@ -6,8 +6,12 @@
 import type { PrismaClient } from '@prisma/client';
 import { runAiCompletion } from '../ai/registry';
 import { resolveStyle, composeStylePrompt } from './styles';
+import { extractJson, coerceBeats } from './jsonParse';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
+
+//? The structured-output directive appended to the model prompt so a live response is machine-parseable.
+const SCRIPT_FORMAT = 'Return ONLY a JSON object: {"body": "<the full narration>", "beats": [{"text": "<one narration beat>", "visualPrompt": "<a vivid shot description for this beat>"}]}. 4–8 beats. No prose outside the JSON.';
 
 //? A valid-shaped STUB script from the brief (dummy-data mode) — a fixed 4-beat arc so downstream stages
 //? (voice, per-beat image, assembly) always have real structure to work on.
@@ -22,9 +26,20 @@ function stubScriptFromBrief(brief: string): ParsedScript {
   return { body: beats.map((b) => b.text).join(' '), beats };
 }
 
-//? Parse a live model's script text into body + beats (one beat per non-empty line). Only reached when a
-//? key is present; kept simple until the live prompt format is finalised (a keyed follow-up).
-function parseLiveScript(text: string): ParsedScript {
+//? Parse a live model's script response into body + structured beats. Prefers the requested JSON
+//? (`{body, beats:[{text, visualPrompt}]}`); falls back to a line-based parse (one beat per non-empty
+//? line) when the model returned prose. Exported + pure for tests.
+export function parseLiveScript(text: string): ParsedScript {
+  const json = extractJson(text);
+  if (json !== null && typeof json === 'object') {
+    const o = json as { body?: unknown; beats?: unknown };
+    const beats = coerceBeats(o.beats);
+    if (beats.length > 0) {
+      const body = typeof o.body === 'string' && o.body.trim().length > 0 ? o.body.trim() : beats.map((b) => b.text).join(' ');
+      return { body, beats };
+    }
+  }
+  //? Fallback: one beat per non-empty line (a model that ignored the JSON directive).
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const beats = (lines.length > 0 ? lines : ['(empty)']).map((l) => ({ text: l, visualPrompt: `a shot illustrating: ${l}` }));
   return { body: text.trim(), beats };
@@ -38,7 +53,7 @@ export async function generateScript(
   const style = await resolveStyle(prisma, args.workspaceId, 'script', args.styleKey);
   const system = composeStylePrompt(style, args.extraInstructions);
   const res = await runAiCompletion('script', {
-    prompt: args.brief,
+    prompt: `${args.brief}\n\n${SCRIPT_FORMAT}`,
     ...(system ? { system } : {}),
     workspaceId: args.workspaceId,
     label: 'Content script',

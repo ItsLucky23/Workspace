@@ -2211,3 +2211,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/audioProviders.test.mts` **19/19** (input-compositie, voice/sfx/music-assets, typed failures, `available()`-gates). mediaRegistry **18/18** + falProvider **19/19** onaangetast. Lint + build groen. Env-overridable (`ELEVENLABS_*`/`SUNO_*`/`WS_MEDIA_DIR`). Live gen = deferred post-keys e2e.
 
 **Files touched:** `server/media/providers/{elevenlabs,suno}.ts`, `server/media/{prompt,store,types,registry,assignments}.ts`, `server/media/providers/fal.ts` (re-export), `tests/unit/audioProviders.test.mts` (nieuw), `docs/decisions/0080-real-voice-music-gen.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM M3: echte structured LLM-parsing (script + reference-blueprint)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item M3.
+
+**What I did:**
+- Nieuwe `server/content/jsonParse.ts`: `extractJson` (robuust — ```json-fences, prose-wrapped, string-aware brace-matching, nooit throw → null) + `coerceBeats` (model-`beats` → `{text,visualPrompt}[]`, tolerant).
+- `parseLiveScript` (script.ts) prefereert nu de gevraagde JSON (`{body, beats:[…]}`), valt terug op line-based bij prose. Prompt krijgt `SCRIPT_FORMAT`-directive.
+- `parseBlueprint` (referenceVideo.ts) parset een echt `{pacing, styleHint, beats}`-blueprint; caller gebruikt het bij `res.ok`, valt alleen terug op de stub zonder key of bij niks-bruikbaars (was: ALTIJD de stub). Prompt krijgt `BLUEPRINT_FORMAT`.
+
+**Verify:** `tests/unit/contentParse.test.mts` **17/17** (JSON-extractie fenced/inline/prose/invalid, beat-coercion, script JSON-vs-line-fallback, blueprint parse/null). contentScript **8/8** + referenceVideo **6/6** (stub-pad) onaangetast. Lint + build groen. Live parsing = deferred post-keys e2e.
+
+**Files touched:** `server/content/jsonParse.ts` (nieuw), `server/content/script.ts`, `server/content/referenceVideo.ts`, `tests/unit/contentParse.test.mts` (nieuw), `docs/decisions/0081-real-llm-parsing.md`, `docs/AI_DECISIONS_INDEX.md`.

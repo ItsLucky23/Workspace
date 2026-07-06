@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (79)
+## Decisions (80)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -92,6 +92,7 @@
 | 0078 | Real CI YAML parse + PTY prompt-ready detection | 🟢 accepted | ci, yaml, pty, orchestrator, depth-program | — | `docs/decisions/0078-real-ci-yaml-pty-ready.md` |
 | 0079 | Real Fal.ai media generation behind available() (stub = no-key fallback) | 🟢 accepted | content, media, fal, generation, depth-program | — | `docs/decisions/0079-real-fal-media-gen.md` |
 | 0080 | Real ElevenLabs voice/sfx + Suno music behind available() | 🟢 accepted | content, media, elevenlabs, suno, generation, depth-program | — | `docs/decisions/0080-real-voice-music-gen.md` |
+| 0081 | Real structured LLM parsing for script + reference-video blueprint | 🟢 accepted | content, llm, parsing, depth-program | — | `docs/decisions/0081-real-llm-parsing.md` |
 
 ## Summaries
 
@@ -728,6 +729,14 @@ Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ 
 **ElevenLabs (voice + sfx):** live `generate()` composes the input (text = style + prompt + extra; voice id from params/env), calls the ElevenLabs REST API (tts → `/text-to-speech/<voice>`, sfx → `/sound-generation`) which returns raw audio BYTES, and persists them via a new `server/media/store.ts` (`data/media/<uuid>.mp3` → a served `/media/...` url). Transport injectable → fixture-tested. **Suno (music):** a NEW dedicated provider (`server/media/providers/suno.ts`) — `MediaProviderId` gains `'suno'`, registered in the registry, and `music` in the assignments now defaults to `'suno'`. Suno returns a HOSTED audio URL (submit → poll → url), so no local persistence. Transport injectable. **Shared:** `composeMediaPrompt` moved to `server/media/prompt.ts` (fal re-exports it) so all three adapters compose style/extra identically.
 
 → `docs/decisions/0080-real-voice-music-gen.md`
+
+### 0081 — Real structured LLM parsing for script + reference-video blueprint
+
+**0081** · accepted · tags: content, llm, parsing, depth-program · 2026-07-06
+
+New `server/content/jsonParse.ts`: `extractJson` robustly pulls the first JSON object out of an LLM response (```json fences, prose-wrapped, string-aware brace matching) — never throws (→ null on miss). `coerceBeats` maps a model's `beats` array into `{text, visualPrompt}[]`, tolerant of missing fields. `parseLiveScript` (script.ts) now prefers the requested JSON (`{body, beats:[…]}`) and falls back to the line-based parse when the model returned prose. The prompt appends a `SCRIPT_FORMAT` directive. `parseBlueprint` (referenceVideo.ts) parses a real `{pacing, styleHint, beats}` blueprint; the caller uses it when present and falls back to the stub only when there's no key OR nothing usable came back. The prompt appends a `BLUEPRINT_FORMAT` directive. Both parsers are exported + pure → unit-tested.
+
+→ `docs/decisions/0081-real-llm-parsing.md`
 
 ## Code governed by decisions
 
