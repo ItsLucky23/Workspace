@@ -1637,3 +1637,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** root+server-tsc 0 · eslint 0 · ai:lint 0.
 
 **Files touched:** `server/ai/workspaceChat.ts`, `server/read/mappers.ts`, `src/workspaces/sources/page.tsx`, `src/workspaces/_data/types.ts`.
+
+## 2026-07-06 03:30 — Master-programma: Expansion (ship/run/maintain/sharpen) — /goal-ready spec
+
+**User:** "Plan nu alles uit + voer daarna met een /goal-command alles uit en test het."
+
+**What I did:** twee achtergrond-digests gedraaid (1: volledige product-maturiteits-inventaris; 2: bestaande `_docs`-specs verteren zodat ik un-defer i.p.v. dubbel-ontwerp). Kern: **`V1_SCOPE.md` is de autoriteit**; de meeste ship-modules zijn al gespec't maar `⚑ DEFERRED/OUT`. Geschreven: **`src/workspaces/_docs/EXPANSION_PROGRAM.md`** — de source-of-truth voor een `/goal`-run:
+- 9 standing invariants (B-23, PTY-billing, forward-only rollback, kosten=tokens…).
+- 4 kruis-beslissingen (multi-service-vorm, deploy-target, forge-scope, environments) — 3 wachten op user-sign-off.
+- 13 items in 7 waves, elk met verdict (un-defer/inherit+delta/greenfield) · scope · aanpak · beslissing · verificatie. Un-deferd: quality-gates (BUILTIN_CI), analytics (PRODUCT_ANALYTICS), ergonomie (additions/05+06). Inherit+delta: AI-rollback (op GIT_STRATEGY §6), security-scan (CI-slot), AI-MR-review (op MR-surface), reasoning (op GOLDEN_PLAN), RAG (unificeren). Greenfield: environments/deploy, DB/migraties, en de tent-pole **multi-service (#9, reverst locked D12)**.
+- Uitvoervolgorde A1→B1→B2→C1→C2→C3→B3→D1→E1→E2→F1→G1→G2.
+
+**Files touched:** `src/workspaces/_docs/EXPANSION_PROGRAM.md` (nieuw).
