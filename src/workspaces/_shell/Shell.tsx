@@ -46,19 +46,25 @@ function notificationIcon(type: NotificationItem['type']): IconName {
 //? the panel width and wobble the board edge.
 const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
 
-interface NavDef { id: WsView; icon: IconName; label: string }
+//? Nav grouping (ADR 0068, F4.1) — a `group` per item declutters the (long, flat) main rail into labelled
+//? sections. The group header renders when the rail is expanded; collapsed shows a thin divider between
+//? groups. Groups render in GROUP_ORDER.
+type NavGroup = 'work' | 'build' | 'studio' | 'insights';
+interface NavDef { id: WsView; icon: IconName; label: string; group: NavGroup }
+export const GROUP_ORDER: NavGroup[] = ['work', 'build', 'studio', 'insights'];
+export const GROUP_LABELS: Record<NavGroup, string> = { work: 'Work', build: 'Build', studio: 'Studio', insights: 'Insights' };
 export const NAV_ITEMS: NavDef[] = [
-  { id: 'board', icon: 'table-columns', label: 'Board' },
-  { id: 'backlog', icon: 'list-check', label: 'Backlog' },
-  { id: 'terminals', icon: 'terminal', label: 'Terminals' },
-  { id: 'activity', icon: 'wave-square', label: 'Activity' },
-  { id: 'sources', icon: 'book-open', label: 'Sources' },
-  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline' },
-  { id: 'usage', icon: 'chart-column', label: 'Usage' },
-  { id: 'scheduled', icon: 'clock', label: 'Scheduled' },
-  { id: 'designer', icon: 'palette', label: 'Designer' },
-  { id: 'interviewer', icon: 'comments', label: 'Interviewer' },
-  { id: 'marketing', icon: 'bullhorn', label: 'Marketing' },
+  { id: 'board', icon: 'table-columns', label: 'Board', group: 'work' },
+  { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'work' },
+  { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'work' },
+  { id: 'activity', icon: 'wave-square', label: 'Activity', group: 'work' },
+  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'work' },
+  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'build' },
+  { id: 'scheduled', icon: 'clock', label: 'Scheduled', group: 'build' },
+  { id: 'designer', icon: 'palette', label: 'Designer', group: 'studio' },
+  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'studio' },
+  { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'studio' },
+  { id: 'usage', icon: 'chart-column', label: 'Usage', group: 'insights' },
 ];
 export const NAV_BOTTOM: NavDef[] = [
   { id: 'ai', icon: 'robot', label: 'Workspace-AI' },
@@ -115,7 +121,20 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
       >
         <Icon name={expanded ? 'angle-left' : 'angle-right'} className="text-xs" />
       </button>
-      <div className="flex-1 flex flex-col gap-1 px-2.5 py-2">{NAV_ITEMS.map((it) => renderItem(it))}</div>
+      <div className="flex-1 flex flex-col gap-1 px-2.5 py-2 overflow-y-auto">
+        {GROUP_ORDER.map((g, gi) => {
+          const items = NAV_ITEMS.filter((it) => it.group === g);
+          if (items.length === 0) return null;
+          return (
+            <div key={g} className="flex flex-col gap-1">
+              {expanded
+                ? <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled">{GROUP_LABELS[g]}</div>
+                : gi > 0 && <div className="mx-2 my-1 h-px bg-divider" />}
+              {items.map((it) => renderItem(it))}
+            </div>
+          );
+        })}
+      </div>
       <div className="flex flex-col gap-1 px-2.5 py-3 border-t border-divider">
         {/* Only the Workspace-AI toggle lives here now; Account/Settings moved into
             the user dropdown below (no separate gear icon — item 4). */}

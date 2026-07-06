@@ -2058,3 +2058,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **🏁 Fase 3 (publiceren + automatie) KLAAR.**
 
 **Files touched:** `server/content/ideatorRole.ts`, `server/server.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentAutomation.test.mts`, `docs/decisions/0067-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 06:45 — Content-platform F4.1: navbar-groepering (ADR 0068) — start Fase 4 (frontend)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F4.1.
+
+**What I did:** de platte 11-item-navrail hergroepeerd — elk `NavDef` krijgt een `group` (work/build/studio/insights); de rail rendert sectie-headers (expanded) of dunne dividers (collapsed) in `GROUP_ORDER`. Group-labels via variabele (`GROUP_LABELS[g]`, consistent met bestaande `it.label`, geen nieuwe i18n-debt). Alleen theme-tokens.
+- **Bewust follow-up (in ADR):** de rijkere contextuele 2e-navbar per gebied + `React.lazy`-view-splitting = uitgesteld (vereist browser-verificatie, nu deferred; risico zonder). Groepering levert de "minder rommelig"-intentie veilig.
+- **Verify:** lint+build+ai:lint groen (pure UI-groepering → build is de verificatie; visueel in de uitgestelde browser-pass). ADR **0068**.
+
+**Files touched:** `src/workspaces/_shell/Shell.tsx`, `docs/decisions/0068-*.md`, `docs/AI_DECISIONS_INDEX.md`.

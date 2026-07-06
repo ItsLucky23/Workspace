@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (66)
+## Decisions (67)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -79,6 +79,7 @@
 | 0065 | Publishing behind the B-23 approval gate + YouTube (F3.1) | 🟢 accepted | content, publish, youtube, b-23, expansion-f31 | — | `docs/decisions/0065-publish-gate.md` |
 | 0066 | TikTok publishing + IG/LinkedIn future-ready (F3.2) | 🟢 accepted | content, publish, tiktok, expansion-f32 | — | `docs/decisions/0066-publish-tiktok.md` |
 | 0067 | Content automation + conversational entry (F3.3) | 🟢 accepted | content, automation, cron, assistant, expansion-f33 | — | `docs/decisions/0067-content-automation.md` |
+| 0068 | Main-navbar grouping (F4.1) | 🟢 accepted | frontend, navbar, ux, expansion-f41 | — | `docs/decisions/0068-nav-grouping.md` |
 
 ## Summaries
 
@@ -611,6 +612,14 @@ TikTok is in `BUILT_PLATFORMS` (established in F3.1's abstraction) — it posts 
 1. **A schedulable `content-ideator` AgentRole** (`server/content/ideatorRole.ts`, `mutates:true`). A cron trigger (`action:'invoke-agent-role', params:{role:'content-ideator', theme?}`) fires it; because it `mutates`, the automation executor GATES it into an approval suggestion — it never writes content directly (B-23). Registered at boot in `server.ts`. 2. **A `content-from-brief` op** (B-23, `workTickets`) — the conversational quick-start: creates a content-lane `Project` + a first `ContentProject` piece from a chat brief in one op (on the user's accept). This is what the Assistant calls to "spin up a video about startup A".
 
 → `docs/decisions/0067-content-automation.md`
+
+### 0068 — Main-navbar grouping (F4.1)
+
+**0068** · accepted · tags: frontend, navbar, ux, expansion-f41 · 2026-07-06
+
+Each `NavDef` gets a `group` (`work` | `build` | `studio` | `insights`); the rail renders items grouped under section headers (expanded) or thin dividers (collapsed), in `GROUP_ORDER`. Group labels render via a variable (`GROUP_LABELS[g]`), matching the existing nav's variable-rendered `it.label` (no new i18n debt; consistent with the current pattern). Theme tokens only (`text-disabled`, `bg-divider`).
+
+→ `docs/decisions/0068-nav-grouping.md`
 
 ## Code governed by decisions
 
