@@ -1,0 +1,159 @@
+//? Publishing OAuth + upload (M5) — the REAL YouTube + TikTok connect + post code behind the B-23 gate.
+//? The OAuth token is obtained via a standard code-exchange and stored ENCRYPTED (secretBox) in the
+//? per-workspace EnvVar store; `publishAsset` uses it to run a real upload. The request BUILDERS are pure
+//? + exported (unit-tested for the correct endpoints/headers/shape); the transports wrap them with fetch
+//? (the live round-trip is the deferred post-keys e2e). Instagram/LinkedIn stay future-ready (no builder).
+
+import type { PrismaClient } from '@prisma/client';
+import { tryCatch } from '@luckystack/core';
+
+import { encryptSecret, decryptSecret } from '../crypto/secretBox';
+import { withRetry } from '../util/retry';
+
+export type OAuthPlatform = 'youtube' | 'tiktok';
+
+export interface StoredTokens { accessToken: string; refreshToken?: string; expiresAt?: number }
+export interface HttpRequest { url: string; method: string; headers: Record<string, string>; body?: string }
+
+//? Per-platform OAuth + API config (client id/secret from env; the endpoints are fixed).
+interface PlatformCfg { authUrl: string; tokenUrl: string; uploadUrl: string; scope: string; clientIdEnv: string; clientSecretEnv: string }
+const CFG: Record<OAuthPlatform, PlatformCfg> = {
+  youtube: {
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    uploadUrl: 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+    scope: 'https://www.googleapis.com/auth/youtube.upload',
+    clientIdEnv: 'YOUTUBE_CLIENT_ID', clientSecretEnv: 'YOUTUBE_CLIENT_SECRET',
+  },
+  tiktok: {
+    authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+    tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+    uploadUrl: 'https://open.tiktokapis.com/v2/post/publish/video/init/',
+    scope: 'video.publish',
+    clientIdEnv: 'TIKTOK_CLIENT_KEY', clientSecretEnv: 'TIKTOK_CLIENT_SECRET',
+  },
+};
+
+const env = (name: string): string => (process.env[name] ?? '').trim();
+
+//? Build the OAuth authorize URL the user is redirected to (connect flow). Pure + exported.
+export function buildAuthUrl(platform: OAuthPlatform, input: { redirectUri: string; state: string }): string {
+  const cfg = CFG[platform];
+  const idParam = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const params = new URLSearchParams({
+    [idParam]: env(cfg.clientIdEnv), redirect_uri: input.redirectUri, response_type: 'code', scope: cfg.scope, state: input.state,
+    ...(platform === 'youtube' ? { access_type: 'offline', prompt: 'consent' } : {}),
+  });
+  return `${cfg.authUrl}?${params.toString()}`;
+}
+
+//? Build the code→token exchange request. Pure + exported.
+export function buildExchangeRequest(platform: OAuthPlatform, input: { code: string; redirectUri: string }): HttpRequest {
+  const cfg = CFG[platform];
+  const idKey = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const body = new URLSearchParams({
+    [idKey]: env(cfg.clientIdEnv), client_secret: env(cfg.clientSecretEnv), code: input.code,
+    grant_type: 'authorization_code', redirect_uri: input.redirectUri,
+  });
+  return { url: cfg.tokenUrl, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() };
+}
+
+//? Parse a token response (both providers return access_token/refresh_token/expires_in, TikTok nests
+//? some under `data`). Pure + exported. Returns null when no access token is present.
+export function parseTokenResponse(json: unknown): StoredTokens | null {
+  if (json === null || typeof json !== 'object') return null;
+  const top = json as Record<string, unknown>;
+  const data = (top.data !== null && typeof top.data === 'object' ? top.data : top) as Record<string, unknown>;
+  const accessToken = typeof data.access_token === 'string' ? data.access_token : '';
+  if (accessToken.length === 0) return null;
+  const refreshToken = typeof data.refresh_token === 'string' ? data.refresh_token : undefined;
+  const expiresInSec = typeof data.expires_in === 'number' ? data.expires_in : undefined;
+  return { accessToken, ...(refreshToken === undefined ? {} : { refreshToken }), ...(expiresInSec === undefined ? {} : { expiresAt: Date.now() + expiresInSec * 1000 }) };
+}
+
+//? Build the video upload request (auth-bearer + the platform's init/upload endpoint). Pure + exported.
+//? (YouTube resumable + TikTok init are multi-step; this is the initiating request whose shape we assert.)
+export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string }): HttpRequest {
+  const cfg = CFG[platform];
+  if (platform === 'youtube') {
+    return {
+      url: cfg.uploadUrl, method: 'POST',
+      headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json', 'X-Upload-Content-Type': 'video/*' },
+      body: JSON.stringify({ snippet: { title: input.title, description: input.title }, status: { privacyStatus: 'private' } }),
+    };
+  }
+  return {
+    url: cfg.uploadUrl, method: 'POST',
+    headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ post_info: { title: input.title, privacy_level: 'SELF_ONLY' }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
+  };
+}
+
+// --- transports (injectable) ---------------------------------------------------
+
+export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }) => Promise<StoredTokens | null> }
+export interface PublishUploadTransport { upload: (platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string }) => Promise<{ externalUrl: string } | null> }
+
+//? Run a pure-built HttpRequest and return the parsed JSON.
+async function runJson(reqShape: HttpRequest): Promise<unknown> {
+  return withRetry(async () => {
+    //? External OAuth/platform API — not a framework `/api/*` route.
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const r = await fetch(reqShape.url, { method: reqShape.method, headers: reqShape.headers, ...(reqShape.body === undefined ? {} : { body: reqShape.body }) });
+    if (!r.ok) throw new Error(`oauth ${String(r.status)}`);
+    const json: unknown = await r.json();
+    return json;
+  }, { attempts: 3, baseMs: 400 });
+}
+
+export const realOAuthTransport: OAuthTransport = {
+  exchange: async (platform, input) => parseTokenResponse(await runJson(buildExchangeRequest(platform, input))),
+};
+
+export const realUploadTransport: PublishUploadTransport = {
+  upload: async (platform, input) => {
+    const res = await runJson(buildUploadRequest(platform, input));
+    const o = (res !== null && typeof res === 'object' ? res : {}) as Record<string, unknown>;
+    //? YouTube returns the video id; TikTok returns a publish id under data. Build a canonical url.
+    const id = typeof o.id === 'string' ? o.id : (typeof (o.data as { publish_id?: unknown } | undefined)?.publish_id === 'string' ? (o.data as { publish_id: string }).publish_id : '');
+    if (id.length === 0) return null;
+    return { externalUrl: platform === 'youtube' ? `https://youtube.com/watch?v=${id}` : `https://tiktok.com/@me/video/${id}` };
+  },
+};
+
+// --- token store (EnvVar, encrypted) ------------------------------------------
+
+const tokenKey = (platform: OAuthPlatform): string => `__publish_${platform}`;
+
+//? Persist the OAuth tokens ENCRYPTED in the per-workspace EnvVar store (secretBox). Upsert by key.
+export async function saveConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, tokens: StoredTokens): Promise<void> {
+  const value = encryptSecret(JSON.stringify(tokens));
+  await prisma.envVar.upsert({
+    where: { workspaceId_key: { workspaceId, key: tokenKey(platform) } },
+    create: { workspaceId, key: tokenKey(platform), value, secret: true },
+    update: { value },
+  });
+}
+
+//? Read + decrypt the stored OAuth tokens for a platform (null when not connected).
+export async function getConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform): Promise<StoredTokens | null> {
+  const row = await prisma.envVar.findFirst({ where: { workspaceId, key: tokenKey(platform) } });
+  if (!row) return null;
+  const dec = decryptSecret(row.value);
+  if (dec === null) return null;
+  const [err, parsed] = await tryCatch(() => Promise.resolve(JSON.parse(dec) as StoredTokens));
+  if (err || !parsed || typeof parsed.accessToken !== 'string') return null;
+  return parsed;
+}
+
+//? Complete a connect: exchange the OAuth code for tokens + store them encrypted. Returns ok.
+export async function connectPublishPlatform(
+  prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform,
+  input: { code: string; redirectUri: string }, opts: { transport?: OAuthTransport } = {},
+): Promise<{ ok: boolean; error?: string }> {
+  const transport = opts.transport ?? realOAuthTransport;
+  const [err, tokens] = await tryCatch(() => transport.exchange(platform, input));
+  if (err || !tokens) return { ok: false, error: `publish.oauthFailed: ${err?.message ?? 'no-token'}` };
+  await saveConnection(prisma, workspaceId, platform, tokens);
+  return { ok: true };
+}

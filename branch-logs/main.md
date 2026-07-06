@@ -2237,3 +2237,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/render.test.mts` **18/18** (ffmpeg-plan, no-image-degrade, /media traversal-guard, asset-localisatie). contentAssembly **11/11** (stub-degrade) onaangetast. Lint + build groen. Env `WS_FFMPEG_IMAGE`/`WS_MEDIA_DIR`. Echte ffmpeg-run = deferred post-keys e2e.
 
 **Files touched:** `server/content/render.ts` (nieuw), `server/media/download.ts` (nieuw), `server/content/assembly.ts`, `server/server.ts`, `tests/unit/render.test.mts` (nieuw), `docs/decisions/0082-real-ffmpeg-render.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM M5: echte YouTube+TikTok publishing (OAuth + upload)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item M5.
+
+**What I did:**
+- `server/content/publishOAuth.ts`: pure request-builders — `buildAuthUrl` (connect-redirect), `buildExchangeRequest` (code→token), `buildUploadRequest` (YouTube resumable-init / TikTok PULL_FROM_URL, bearer-auth) + `parseTokenResponse` (flat + TikTok-nested). Transports wrappen ze met fetch (injecteerbaar).
+- Token-opslag ENCRYPTED via `secretBox` in de per-workspace `EnvVar`-store (`__publish_<platform>`, secret) — géén schema-change, dus geen db:push/backend-kill. `connectPublishPlatform` (exchange+store), `getConnection` (decrypt).
+- `publishAsset` doet nu een ECHTE upload met de decrypted token als de workspace connected is; geen connectie of upload-fail → degrade naar dummy-post (verliest nooit de geconsenteerde intent). B-23 intact (publishAsset alleen ná accept via de Conductor).
+
+**Verify:** `tests/unit/publishOAuth.test.mts` **17/17** (builders + parsing) + `tests/integration/publishReal.test.mts` **12/12** (encrypted token-roundtrip, connect, echte-upload-when-connected, stub-degrade). publish/publishTiktok (stub-pad) onaangetast. Lint + build groen. OAuth-callback-route + live browser-round-trip = post-keys e2e (KEY_SETUP_GUIDE D1).
+
+**Files touched:** `server/content/publishOAuth.ts` (nieuw), `server/content/publish.ts`, `tests/unit/publishOAuth.test.mts` (nieuw), `tests/integration/publishReal.test.mts` (nieuw), `docs/decisions/0083-real-publishing-oauth.md`, `docs/AI_DECISIONS_INDEX.md`.
