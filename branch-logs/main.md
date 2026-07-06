@@ -1857,3 +1857,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Openstaand (volgende fase):** de `validation='relaxed'`-workaround op `updatePreferences` weghalen + de prefs-save-repro (`notifyOnAssignment:false`) + login-flow testen; daarna de volledige **browser-verificatie** (agent-browser voor app-UI, Playwright MCP voor het editor-subdomein) van alle 14 Expansion-items — wacht op de user's grote prompt.
 
 **Files touched:** `package.json`, `package-lock.json`.
+
+## 2026-07-06 23:30 — Content-platform pivot: scope gelockt + ADR 0049 + CONTENT_PLATFORM_PROGRAM
+
+**User:** meerdere scoping-rondes → alles concreet vastleggen + een kant-en-klare `/goal`-command (<3.5k tokens).
+
+**What I did:** de strategische pivot (dev-tool → all-in-1 AI content-platform) vastgelegd als bron-of-truth voor de volgende autonome run — nog GEEN code, alleen de spec.
+- **ADR 0049** — content = een `projectType`-lane op dezelfde engine (Conductor/RBAC/RAG/cron/B-23); provider-abstractie (ADR 0007) als router met **Fal.ai + ElevenLabs + Remotion + Gemini**; **cross-cutting style/preset-systeem** (`StyleRegistry` per feature, `feature+input+style+extra`); **€-budget** gemeterd; publiceren achter **B-23 approval-gate** (YouTube+TikTok gebouwd/dummy, IG+LinkedIn future); één `/goal`-run met **stub/dummy-mode-tests** (geen keys). Rejected: apart product, zelf modellen hosten, één externe all-in-1-vendor, live-AI-tests nu.
+- **`src/workspaces/_docs/CONTENT_PLATFORM_PROGRAM.md`** — het gefaseerde per-item build-spec (Fase 0 fundament/style/budget → 1 pipeline → 2 modaliteiten incl. **referentie-fotorealisme #1** → 3 publish/automatie → 4 frontend/navbar-refactor/copilot → 5 geheugen), elk schema→engine→client→**dummy-test**→ADR→commit, met de volledige constraints (Dutch, commit-per-item ItsLucky23 geen co-author, niet pushen, stub-mode, min human-input, i18n ×4, geen casts, B-23).
+- **Geheugen** `[[workspaces-content-platform-pivot]]` bijgewerkt met alle gelockte beslissingen (productvorm+navbar-refactor+lazy-load, providers, dummy-testing, platforms, €-budget, style-systeem).
+- **Verify:** n.v.t. (spec-only, geen code); `ai:decisions` = 48 ADRs. De `/goal`-command staat klaar voor de user om te draaien (ik roep `/goal` nooit zelf aan).
+
+**Files touched:** `docs/decisions/0049-*.md`, `docs/AI_DECISIONS_INDEX.md`, `src/workspaces/_docs/CONTENT_PLATFORM_PROGRAM.md`.
