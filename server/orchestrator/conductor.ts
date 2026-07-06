@@ -26,6 +26,7 @@ import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
 import { generateReferenceImage } from '../content/referenceImage';
+import { generateShortForm } from '../content/shortForm';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1068,6 +1069,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId } });
       if (!piece) return;
       await assembleContent(prisma, { workspaceId: action.workspaceId, contentProjectId });
+      return;
+    }
+    //? Short-form clip (F2.2, ADR 0049) — a hook-driven vertical video via video-gen.
+    case 'content-gen-shortform': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const prompt = str(payload, 'prompt');
+      if (!contentProjectId || !prompt) return;
+      await generateShortForm(prisma, {
+        workspaceId: action.workspaceId, contentProjectId, prompt,
+        ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
+        ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
+      });
       return;
     }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.

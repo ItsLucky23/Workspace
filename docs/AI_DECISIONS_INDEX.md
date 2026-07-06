@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (58)
+## Decisions (59)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -71,6 +71,7 @@
 | 0057 | Per-beat image generation (F1.4) | 🟢 accepted | content, image, media, budget, expansion-f14 | — | `docs/decisions/0057-content-beat-images.md` |
 | 0058 | Assembly / render — the complete downloadable output (F1.5) | 🟢 accepted | content, assembly, remotion, render, expansion-f15 | — | `docs/decisions/0058-content-assembly.md` |
 | 0059 | Reference-driven photorealistic image generation (F2.1, #1 feature) | 🟢 accepted | content, image, reference, photoreal, expansion-f21 | — | `docs/decisions/0059-reference-image.md` |
+| 0060 | Short-form clip generation (F2.2) | 🟢 accepted | content, video, short-form, expansion-f22 | — | `docs/decisions/0060-short-form-clips.md` |
 
 ## Summaries
 
@@ -539,6 +540,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 `server/content/referenceImage.ts` `generateReferenceImage` runs the metered path: `checkMediaBudget('reference-image')` → `runMediaGeneration({feature:'reference-image', referenceUrl, style, extraInstructions})` (stub) → an image `ContentAsset` (`metadata.hasReference`) + a `MediaJob` (records the `referenceUrl` + `styleId`) → `recordMediaSpend`. **The style defaults to `realistisch`** unless overridden (realism is the priority). Driven by the `content-gen-reference-image` op (B-23, `workTickets`), which requires a `referenceUrl`.
 
 → `docs/decisions/0059-reference-image.md`
+
+### 0060 — Short-form clip generation (F2.2)
+
+**0060** · accepted · tags: content, video, short-form, expansion-f22 · 2026-07-06
+
+`server/content/shortForm.ts` `generateShortForm` runs the metered path (`checkMediaBudget('video-gen')` → `runMediaGeneration({feature:'video-gen'})` stub → video `ContentAsset` + `MediaJob` + spend), derives a `hook` + `captions` from the prompt (stub; a live hook-writer lands with keys), and stores them on the asset metadata (`format:'short'`). Driven by `content-gen-shortform` (B-23, `workTickets`, requires a `prompt`).
+
+→ `docs/decisions/0060-short-form-clips.md`
 
 ## Code governed by decisions
 

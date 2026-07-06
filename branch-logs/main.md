@@ -1981,3 +1981,12 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/referenceImage.test.mts` **10/10** (reference-conditioned · realistisch toegepast · extra-instructie flow · MediaJob referenceUrl+fal+asset · budget 5c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0059**.
 
 **Files touched:** `server/content/referenceImage.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/referenceImage.test.mts`, `docs/decisions/0059-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 04:15 — Content-platform F2.2: short-form clips (ADR 0060)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.2.
+
+**What I did:** `server/content/shortForm.ts` `generateShortForm` — gemeterde keten (budget→`video-gen`-stub→video-`ContentAsset`+MediaJob+spend) + afgeleide **hook + captions** uit de prompt, `format:'short'`, style toegepast. `content-gen-shortform` op (B-23, workTickets, vereist prompt).
+- **Verify:** `tests/integration/shortForm.test.mts` **9/9** (video-clip fal · hook+captions · format short · style · budget 40c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0060**.
+
+**Files touched:** `server/content/shortForm.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/shortForm.test.mts`, `docs/decisions/0060-*.md`, `docs/AI_DECISIONS_INDEX.md`.
