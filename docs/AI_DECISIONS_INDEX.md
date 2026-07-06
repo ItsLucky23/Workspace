@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (70)
+## Decisions (71)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -83,6 +83,7 @@
 | 0069 | Content lane in the snapshot (F4.2) | 🟢 accepted | content, snapshot, ui, expansion-f42 | — | `docs/decisions/0069-content-snapshot-ui.md` |
 | 0070 | AI-drives-UI copilot — propose a directive, never write (F4.3) | 🟢 accepted | content, copilot, assistant, b-23, expansion-f43 | — | `docs/decisions/0070-copilot.md` |
 | 0071 | Per-channel brand-RAG + content-analytics (F5.1) | 🟢 accepted | content, rag, brand, analytics, expansion-f51 | — | `docs/decisions/0071-content-memory-analytics.md` |
+| 0072 | Depth program — real gen/render/publish + UI + platform hardening | 🟢 accepted | strategy, depth, hardening, content, ui, expansion-depth | — | `docs/decisions/0072-depth-program.md` |
 
 ## Summaries
 
@@ -647,6 +648,14 @@ A `copilot-propose` op (B-23, `workTickets`) creates a `WorkspaceSuggestion(type
 1. **Per-channel brand memory** (`server/content/brandMemory.ts`) reuses the SINGLE unified RAG store + `retrieve()` under a per-channel sentinel commit `brand:<channelId>` (mirrors the institutional-memory sentinel, ADR 0045). `indexChannelBrand` (re-)indexes a channel's brand snippets; `retrieveChannelBrand` retrieves them for that channel only — no parallel index, no cross-channel leakage. 2. **A PURE content-analytics fold** (`server/content/contentAnalytics.ts` `computeContentAnalytics`) over pieces + media spend + publish jobs → `totalPieces`, `doneCount`, `publishedCount`, `byStage`, `byFormat`, `totalCostCents`, `costByFeature`. Deterministic → testable; views/CTR are placeholders until platform keys land.
 
 → `docs/decisions/0071-content-memory-analytics.md`
+
+### 0072 — Depth program — real gen/render/publish + UI + platform hardening
+
+**0072** · accepted · tags: strategy, depth, hardening, content, ui, expansion-depth · 2026-07-07
+
+Run a `DEPTH_PROGRAM.md` `/goal` build (16 items, H→C→M→U→D) that: 1. **Hardens the platform first** — fold every `workspaceId` model into the tenant isolation guarantee (or lint it) so it can never leak; hard-force `WORKSPACES_ENC_KEY` (fail-closed). 2. **Fixes the code-side edges** — MR merge/rollback push-to-origin, container readiness probes (no fire-and-forget), retry/backoff + pagination, a real CI-YAML parser + PTY prompt-ready detection. (Docker-dependency is ACCEPTED — no fix.) 3. **Writes the REAL content code behind every `available()` gate** — real Fal/Replicate + ElevenLabs + Suno + Gemini generation, a real ffmpeg (Docker) render pipeline, real YouTube/TikTok OAuth + upload. The stub becomes PURELY the no-key fallback. 4. **Builds the content UI** — reachable (`content` WsView + nav + route), rich but clear for non-technical first-time users, with a style-picker, asset viewer, a provider-key + €-budget settings form, and a setup flow. 5. **Ships a `KEY_SETUP_GUIDE.md`** (how to get each key + where + cost warnings).
+
+→ `docs/decisions/0072-depth-program.md`
 
 ## Code governed by decisions
 
