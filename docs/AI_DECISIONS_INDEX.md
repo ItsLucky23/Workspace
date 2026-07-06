@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (50)
+## Decisions (51)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -63,6 +63,7 @@
 | 0049 | Content-platform pivot — Workspaces as an all-in-1 AI content platform on the shared engine | 🟢 accepted | strategy, content, media, pivot, provider-abstraction, style-system | — | `docs/decisions/0049-content-platform-pivot.md` |
 | 0050 | Content-platform data model — projectType lane + 9 content models (F0.1) | 🟢 accepted | content, schema, data-model, projectType, expansion-f01 | — | `docs/decisions/0050-content-data-model.md` |
 | 0051 | Media €-budget + pre-generation guard (F0.2) | 🟢 accepted | content, budget, cost, metered, expansion-f02 | — | `docs/decisions/0051-media-budget-guard.md` |
+| 0052 | Media provider abstraction + stub adapters (F0.3) | 🟢 accepted | content, ai-provider, media, stub, expansion-f03 | — | `docs/decisions/0052-media-provider-abstraction.md` |
 
 ## Summaries
 
@@ -467,6 +468,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A `MediaBudget` model** — ONE row per workspace (`@@unique workspaceId`), `capCents`/`spentCents`/`alertPct`/`enabled`, opt-in (disabled by default). Cents (Int) — no float money. 2. **A pure guard `checkMediaBudget(prisma, ws, costCents)`** (`server/media/budget.ts`) → `{ ok, reason?, unlimited, capCents, spentCents, remainingCents }`. No budget / `!enabled` / `capCents<=0` = **unlimited** (always ok). Over cap → `ok:false, reason:'media.budgetExceeded'`. Pure read; the caller records on success. `recordMediaSpend(...)` writes the `MediaSpend` €-ledger row + debits `spentCents`. `getMediaBudgetStatus(...)` exposes the status (incl. `overAlert`) for the settings UI + snapshot. 3. **The budget is set via an `edit-media-budget` control-op** (B-23 write path) — capability `workspaceSettings`, Conductor upserts the row. The user never writes the budget directly.
 
 → `docs/decisions/0051-media-budget-guard.md`
+
+### 0052 — Media provider abstraction + stub adapters (F0.3)
+
+**0052** · accepted · tags: content, ai-provider, media, stub, expansion-f03 · 2026-07-06
+
+1. **A parallel MEDIA layer** in `server/media/` mirroring `server/ai/`: `MediaFeature` (`image-gen`, `reference-image`, `video-gen`, `tts`, `music`, `sfx`, `avatar`, `model-3d`), `MediaProviderId` (`fal`, `elevenlabs`), `MediaGenerationRequest`/`Result` (asset + `costCents` + `stub` flag), `MediaProvider` interface, `DEFAULT_MEDIA_ASSIGNMENTS` + `resolveMediaAssignment` (per-workspace override seam), and `runMediaGeneration(req, overrides)` dispatch. 2. **Registry-level STUB fallback.** Each adapter's `available()` is false until its key env is present; when unavailable, `runMediaGeneration` returns a valid-SHAPED stub asset (`stub://<kind>/<feature>/<style>`) + a realistic declared `costCents` (video » image » voice). So the entire content pipeline runs end-to-end on dummy data, and the €-budget guard (F0.2) is exercised — without any keys. 3. **`reference-video-analysis` stays a TEXT `AiFeature`** on `gemini-api` (extends `server/ai` union + `DEFAULT_ASSIGNMENTS`) — it returns a beat/style BLUEPRINT (text/structured), not an asset, so it belongs with the text abstraction, not the media one.
+
+→ `docs/decisions/0052-media-provider-abstraction.md`
 
 ## Code governed by decisions
 

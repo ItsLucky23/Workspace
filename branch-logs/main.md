@@ -1892,3 +1892,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/mediaBudget.test.mts` **12/12** (op zet cap · guard allow-binnen/block-over met typed reason · recordMediaSpend debit + ledger-rij · exact-fill toegestaan · disabled=unlimited). `rbac.test` **122/122** (robuuste asserties vangen de nieuwe op). lint+build+ai:lint groen. ADR **0051**.
 
 **Files touched:** `prisma/schema.prisma`, `server/media/budget.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/_helpers.mts`, `tests/integration/mediaBudget.test.mts`, `docs/decisions/0051-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 01:00 — Content-platform F0.3: media provider-abstractie + stub-adapters (ADR 0052)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F0.3.
+
+**What I did:** de asset-producerende media-laag (parallel aan de tekst-AI-abstractie).
+- **`server/media/{types,assignments,registry}.ts`** + **`providers/{fal,elevenlabs}.ts`** — `MediaFeature` (image-gen/reference-image/video-gen/tts/music/sfx/avatar/model-3d), `MediaProviderId` (fal/elevenlabs), `MediaGenerationRequest/Result` (asset + `costCents` + `stub`), `runMediaGeneration` met **registry-level stub-fallback**: geen key → `available()` false → valid-shaped stub-asset (`stub://kind/feature/style`) + declared cost (video » image » voice). Zo draait de hele pipeline op dummy-data + wordt de €-guard geoefend, zónder keys. Per-workspace override-seam aanwezig.
+- **`reference-video-analysis`** toegevoegd als **tekst-`AiFeature`** (geeft een blueprint, geen asset) op gemini-api (`server/ai/{types,assignments}.ts`).
+- **Bewuste afwijking (Rule 3b, in ADR):** media = een PARALLELLE laag i.p.v. de literal "extend AiFeature" — media-output is een asset, niet `text`; forceren door `runAiCompletion` = hack. Doel-intentie (provider-abstractie + stub/defaults/override) behouden.
+- **Verify:** `tests/integration/mediaRegistry.test.mts` **18/18** (defaults+override · stub-shape+cost · style/extra/reference-flow · video>image · unsupported-provider-reject · ref-video→gemini). `aiRegistry` **12/12** (nieuwe tekst-feature breekt niks). lint+build+ai:lint groen. ADR **0052**.
+
+**Files touched:** `server/media/{types,assignments,registry}.ts`, `server/media/providers/{fal,elevenlabs}.ts`, `server/ai/{types,assignments}.ts`, `tests/integration/mediaRegistry.test.mts`, `docs/decisions/0052-*.md`, `docs/AI_DECISIONS_INDEX.md`.

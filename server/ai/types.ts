@@ -41,7 +41,10 @@ export type AiFeature =
   | 'root-cause'
   //? Plan-critique (ADR 0044) — an adversarial pass that attacks a ticket's plan (the CarryOver
   //? envelope) BEFORE implement: what's missing / what breaks → a `WorkspaceSuggestion(type:'plan-critique')`.
-  | 'plan-critique';
+  | 'plan-critique'
+  //? Reference-video analysis (ADR 0049, F2.3) — a multimodal model watches a reference video and returns
+  //? a TEXT/structured beat + style BLUEPRINT (not an asset) that seeds a new script. Defaults to Gemini.
+  | 'reference-video-analysis';
 
 export interface AiCompletionRequest {
   prompt: string;

@@ -32,6 +32,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'root-cause': 'claude-cli',
   //? Plan-critique reasoning — always-available Claude CLI default, overridable per workspace.
   'plan-critique': 'claude-cli',
+  //? Reference-video analysis — multimodal video understanding → defaults to Gemini (video-capable).
+  'reference-video-analysis': 'gemini-api',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a
