@@ -4,7 +4,7 @@
 > the lifecycle plus reasoning/knowledge sharpening. Written to drive a `/goal` run: work the items in
 > order, one at a time, each committed + tested before the next. Mirrors the earlier 14-item `/goal`.
 >
-> **Status:** DRAFT — the four cross-cutting decisions in §2 must be signed off before the gated items run.
+> **Status:** EXECUTION-READY — the four cross-cutting decisions in §2 are DECIDED (user, 2026-07-06).
 > Last updated 2026-07-06.
 
 ---
@@ -46,11 +46,11 @@ Tailwind tokens, surgical changes, lint+build, branch-log, decision/lessons memo
 
 ---
 
-## 2. Cross-cutting decisions — SIGN OFF BEFORE THE GATED ITEMS
+## 2. Cross-cutting decisions — ✅ DECIDED (user, 2026-07-06)
 
-These four shape multiple items. Recommendation given; the ⛳ ones need the user. Once decided → each becomes an ADR.
+All four are locked below (each becomes an ADR when its item runs).
 
-### 2.1 ⛳ Multi-service shape (the tent-pole — item A1)
+### 2.1 ✅ Multi-service shape (the tent-pole — item A1) → **(c) both, incremental**
 A workspace is **one project = one repo** today (locked D12 / features/01 / features/22). The user's real case:
 a Java backend separate from an HTML frontend — *"2 repos together OR separate, and services instead of one
 monorepo."* Options:
@@ -58,28 +58,29 @@ monorepo."* Options:
 - **(b) Monorepo-with-services** — one repo, N declared **`Service`s** (path + build + deploy unit), each
   independently buildable/deployable/previewable.
 - **(c) Both** — N repos, each optionally holding N services. Most complete, most work.
-> **Recommendation: (c), built incrementally — first (a) polyrepo (N projects/workspace, reverses D12), then
-> layer (b) services onto a project.** Reason: the user described both; (a) is the smaller schema move and
-> unblocks the "two separate repos" case immediately, (b) adds the service granularity deploy needs. Needs an
-> **ADR reversing D12**.
+> **✅ DECIDED: (c), built incrementally — first (a) polyrepo (N projects/workspace, reverses D12), then
+> layer (b) services onto a project.** (a) unblocks the "two separate repos" case immediately; (b) adds the
+> service granularity deploy needs. Needs an **ADR reversing D12** (in A1).
 
-### 2.2 ⛳ Deploy target / infra (items B1–B2)
+### 2.2 ✅ Deploy target / infra (items B1–B2) → **same-host + seam + downloadable builds**
 Where do the user's apps actually run? 08_DEPLOYMENT already gives the substrate (Caddy pool, per-workspace
 container supervision, `<slug>.<domain>` routing). Options:
 - **(a) Same host, long-running containers behind the existing proxy** at `<env>-<service>.<workspace>.<domain>`
   (reuses imageBuild + proxy + egress; matches the memory's `workspace.keetlerop.nl` + wildcard-subdomain host).
 - **(b) An external target** (a VPS/cloud/k8s the operator configures per workspace).
-> **Recommendation: (a) for V1 of deploy** — a persistent per-environment container on the same host, promoted
-> from the same image the pipeline already builds. (b) becomes a later `DeployTarget` provider seam (mirror the
-> `ForgeProvider` pattern) so cloud targets slot in without reworking the flow.
+> **✅ DECIDED: (a) same-host persistent per-environment containers**, promoted from the pipeline-built image,
+> **PLUS a `DeployTarget` seam** (mirror `ForgeProvider`) for later external targets, **PLUS downloadable
+> build artifacts** — the user must be able to **export a build (the image tarball / built bundle) to
+> self-host elsewhere**. So B2 delivers: deploy-to-same-host + a "download build" export, with the external
+> seam stubbed.
 
-### 2.3 ⛳ Forge scope (touches Wave C)
+### 2.3 ✅ Forge scope (touches Wave A + C) → **un-defer GitHub NOW**
 The `ForgeProvider` seam (6 caps × GitLab/GitHub/Builtin) is designed; only **GitLab is built**; GitHub is
 design-now/build-later. The user will "really think about" whether both are needed once we deploy.
-> **Recommendation: keep GitLab-only for this expansion; leave the seam.** Deploy/CD/AI-review are built
-> forge-agnostically against the seam so un-deferring GitHubForge later is additive. (Note: multi-service #9
-> stresses the one-repo-per-workspace forge model — A1's ADR must address how `ForgeConnection` maps to N
-> projects.)
+> **✅ DECIDED: un-defer GitHubForge THIS round (new item A2).** Build the GitHub `ForgeProvider` so a
+> per-project `ForgeConnection` can be GitLab OR GitHub. Deploy/CD/AI-review stay forge-agnostic against the
+> seam. A1's ADR defines how `ForgeConnection` maps to N projects; A2 adds the GitHub provider. (`forgeMode`
+> becomes per-project, not per-workspace, given multi-project.)
 
 ### 2.4 Environments set (item B1)
 > **Recommendation (no user block needed unless you disagree): a small fixed ladder `dev → staging → prod`
@@ -106,6 +107,17 @@ approach · decision · verify. Schema-first within each item (waterfall).
 - **Verify:** two projects in one workspace, each own board/pipeline; a monorepo project with 2 services each
   buildable; unit tests on the project-scoping helpers; existing single-project workspaces still load (backfill test).
 
+**A2 · GitHubForge (un-defer)** — *inherit the `ForgeProvider` seam; build the GitHub provider.*
+- **Scope:** a per-project `ForgeConnection` can be GitLab OR GitHub; the 6 capabilities (boardSync/repoHosting/
+  mergeRequests/ci/webhooks/auth) work for GitHub.
+- **Approach:** follow FORGE_ABSTRACTION exactly — add `GitHubForge` alongside the built `GitLabForge`, per-project
+  `forgeMode` (now per-project after A1, was per-workspace), `ForgeConnection` row, single-forge-per-project (no
+  mixed SoT). Issues↔tickets sync, MR/PR create + status, webhooks. No mode-switching after connect (immutable
+  in this round).
+- **Decision:** §2.3 — GitHub in now; `forgeMode` per-project; GitLab columns untouched (additive).
+- **Verify:** a GitHub-backed project ingests issues → tickets, opens a PR on approval, receives webhook events;
+  a GitLab project in the same workspace is unaffected. Integration test per provider.
+
 ### Wave B — Ship: environments · deploy · rollback  *(themes 1,2,3)*
 
 **B1 · Environments + persistent app server** — *greenfield.*
@@ -119,15 +131,20 @@ approach · decision · verify. Schema-first within each item (waterfall).
 - **Verify:** deploy a built image to `dev` → reachable at its route → health-check green; teardown; a second
   env is isolated. Integration test on the Environment control-ops.
 
-**B2 · Deploy / CD** — *greenfield (reuses B1 + CI).*
-- **Scope:** build → deploy a service to an environment; **promote** dev→staging→prod (gated); health-gated rollout.
+**B2 · Deploy / CD + downloadable builds** — *greenfield (reuses B1 + CI).*
+- **Scope:** build → deploy a service to an environment; **promote** dev→staging→prod (gated); health-gated
+  rollout; **export a build** (image tarball / built bundle) for the user to self-host elsewhere.
 - **Approach:** a `deploy` / `promote` control-op (B-23: human clicks, Conductor executes). `prod` requires
   approval + green CI (Wave C) + a passing health check; `dev` auto-deploys on merge (via an existing
-  `WorkspaceTrigger` matcher — no new verb). Emits `TicketEvent(type:'deploy')`. Later: a `DeployTarget` seam
-  for external targets (§2.2 b).
-- **Decision:** promotion ladder gated at prod; dev auto on merge.
+  `WorkspaceTrigger` matcher — no new verb). Emits `TicketEvent(type:'deploy')`. **Build export:** a
+  `build-export` op produces a downloadable artifact from the pipeline-built image (`docker save` tarball
+  and/or the built dist bundle) → a signed, TTL'd download link (self-host-anywhere). A `DeployTarget` seam is
+  stubbed for later external targets (§2.2).
+- **Decision:** promotion ladder gated at prod; dev auto on merge; build-export produces a downloadable image
+  tarball + dist bundle.
 - **Verify:** merge → dev auto-deploys; promote to staging (manual) → prod blocked until green CI + approval →
-  approve → prod live; health-fail aborts + surfaces. e2e via the control-ops.
+  approve → prod live; health-fail aborts + surfaces; **download a build artifact → it runs standalone
+  elsewhere**. e2e via the control-ops.
 
 **B3 · AI-assisted rollback + auto-ticket** — *inherit GIT_STRATEGY §6 plumbing; AI-driver is the delta.*
 - **Scope:** operator says "prod X is broken" → an AI root-cause pass finds the suspect merge(s) → **proposes**
@@ -239,11 +256,12 @@ approach · decision · verify. Schema-first within each item (waterfall).
 
 ## 4. Deprioritized / explicitly not now
 - **€-cost hard-blocking** (theme "cost") — token-usage display suffices (invariant #9). PARKED.
-- **GitHub forge build** — seam stays; build later (§2.3).
-- **External deploy targets** — the `DeployTarget` seam is designed in B2 but only the same-host provider is built.
+- **External deploy targets** — the `DeployTarget` seam is stubbed in B2 but only the same-host provider +
+  build-download are built now (§2.2).
 - **HORIZON additions** (`11_scheduling_priority`, `14_predictive_budget`) — not in this program.
 
-## 5. Suggested execution order for `/goal`
-`A1` → `B1` → `B2` → `C1` → `C2` → `C3` → `B3` → `D1` → `E1` → `E2` → `F1` → `G1` → `G2`.
-(Ship substrate first; gates before the gated promote depends on them; rollback after deploy+CI exist; then DB,
-reasoning/RAG, scaffolding, insight/ergonomics.) Each item = schema→engine→client→verify→commit, branch-logged.
+## 5. Execution order for `/goal`
+`A1` → `A2` → `B1` → `B2` → `C1` → `C2` → `C3` → `B3` → `D1` → `E1` → `E2` → `F1` → `G1` → `G2`.
+(Multi-project + GitHub forge first — they reshape the project model everything hangs off; then ship substrate;
+gates before the promote that depends on them; rollback after deploy+CI exist; then DB, reasoning/RAG,
+scaffolding, insight/ergonomics.) Each item = schema→engine→client→verify→commit, branch-logged, with its ADR.
