@@ -23,7 +23,7 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore
 import { indexWorkspace } from '../rag';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
-import { syncGitlabIssues } from '../git/gitlabSync';
+import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
@@ -710,11 +710,35 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return;
     }
     case 'gitlab-resync': {
-      //? Pull the linked project's open GitLab issues + upsert them as tickets (ingestion), then
-      //? broadcast the touched tickets so the board updates live.
-      const res = await syncGitlabIssues(prisma, action.workspaceId);
+      //? Pull the ACTIVE project's open forge issues (GitLab | GitHub) + upsert them as tickets
+      //? (ingestion), then broadcast the touched tickets so the board updates live (ADR 0036).
+      const resyncProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!resyncProjectId) return { ok: false, synced: 0, keys: [], error: 'forge.notConfigured' };
+      const res = await syncForgeIssues(prisma, action.workspaceId, resyncProjectId);
       if (res.ok && res.keys.length > 0) await broadcastTicketDelta(prisma, action.workspaceId, res.keys);
       return res;
+    }
+    //? Per-project forge connection (ADR 0036) — B-23: the Conductor writes the ForgeConnection.
+    case 'forge-connect': {
+      const forgeProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      const modeRaw = str(payload, 'mode');
+      const mode = modeRaw === 'github' ? 'github' : 'gitlab';
+      if (!forgeProjectId) return;
+      const token = str(payload, 'token');
+      const baseUrl = str(payload, 'baseUrl');
+      const repoPath = str(payload, 'repoPath');
+      const data = {
+        mode,
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(repoPath ? { repoPath } : {}),
+        ...(token ? { tokenEnc: encryptSecret(token) } : {}),
+        status: 'connected',
+      };
+      const existing = await prisma.forgeConnection.findFirst({ where: { projectId: forgeProjectId }, select: { id: true } });
+      await (existing
+        ? prisma.forgeConnection.update({ where: { id: existing.id }, data })
+        : prisma.forgeConnection.create({ data: { workspaceId: action.workspaceId, projectId: forgeProjectId, ...data } }));
+      return;
     }
     case 'save-git-config': {
       //? Persist the per-workspace git strategy + push policy (branchStrategy.ts). Normalize

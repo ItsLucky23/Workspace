@@ -270,6 +270,31 @@ model Service {
   @@index([projectId])
 }
 
+//? Per-project forge connection (ADR 0036, item A2 — GitHubForge). Generalizes the
+//? workspace GitLab fields (`Workspace.forgeType`/`gitlabUrl`/`gitlabTokenEnc`) to a
+//? PER-PROJECT row so a workspace can mix GitLab + GitHub projects (multi-project, ADR
+//? 0035). `mode` picks the provider. When a project has NO ForgeConnection, forge
+//? resolution falls back to the workspace GitLab fields (zero migration for existing
+//? single-forge workspaces — FORGE_ABSTRACTION §6 Q-FORGE-DATAMODEL). Deviates from the
+//? doc's per-WORKSPACE `@@unique([workspaceId])` design — per-project is forced by A1;
+//? the builtin-mode fields (builtinRepoRef/ciRunner) are omitted (a separate build target).
+model ForgeConnection {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String   @db.ObjectId               // tenant (runInTenant row-isolation)
+  projectId     String   @db.ObjectId
+  mode          String                               // 'gitlab' | 'github'
+  baseUrl       String?                              // forge API base (gitlab.com / api.github.com / self-hosted)
+  repoPath      String?                              // "owner/repo" (supersedes Project.gitlabPath when set)
+  tokenEnc      String?                              // ENCRYPTED PAT (B-07 generalized): GitLab PAT | GitHub PAT
+  webhookSecret String?                              // HMAC secret for inbound webhook verification
+  status        String   @default("disconnected")    // 'connected' | 'disconnected' | 'error'
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([projectId])                              // one forge per project (single-forge rule, §4)
+  @@index([workspaceId])
+}
+
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
 //? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).

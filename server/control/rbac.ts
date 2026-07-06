@@ -74,6 +74,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'save-git-config': CAP.workspaceSettings,
   'gitlab-verify': CAP.workspaceSettings,
   'gitlab-resync': CAP.workspaceSettings,
+  'forge-connect': CAP.workspaceSettings,
   'link-repo': CAP.workspaceSettings,
   'scan-docs': CAP.editPipeline,
   'scan-index': CAP.editPipeline,

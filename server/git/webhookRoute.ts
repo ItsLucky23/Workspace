@@ -5,11 +5,22 @@
 //? is DISABLED (503), a secure default (no unauthenticated write path). Provider is auto-detected
 //? (GitHub via `X-GitHub-Event`, else GitLab). Best-effort: a bad body is a 400, never a crash.
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { registerCustomRoute, registerOriginExemptPath } from '@luckystack/server';
 
 import { broadcastTicketDelta } from '../read/broadcast';
 import { parseWebhookEvent, ingestIssueEvent } from './webhookIngest';
+
+//? Verify GitHub's `X-Hub-Signature-256` (`sha256=<hex>` = HMAC-SHA256 of the RAW body with the
+//? shared secret). Constant-time compare; any length/format mismatch is a reject.
+function verifyGithubHmac(secret: string, raw: string, signature: string): boolean {
+  const expected = `sha256=${createHmac('sha256', secret).update(raw).digest('hex')}`;
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 interface Res { statusCode: number; setHeader: (k: string, v: string) => void; end: (b?: string) => void }
 const send = (res: Res, code: number, msg: string): void => { res.statusCode = code; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ status: code < 300 ? 'ok' : 'error', message: msg })); };
@@ -41,15 +52,22 @@ export function registerForgeWebhook(): void {
     //? Secure default: no configured secret ⇒ endpoint disabled.
     const secret = process.env.WS_WEBHOOK_SECRET ?? '';
     if (secret.length === 0) { send(res, 503, 'webhook not configured'); return true; }
-    const headers = req.headers as Record<string, string | string[] | undefined>;
-    const presented = (headers['x-webhook-secret'] ?? headers['x-gitlab-token'] ?? '');
-    if ((Array.isArray(presented) ? presented[0] : presented) !== secret) { send(res, 401, 'bad secret'); return true; }
     if (workspaceId.length === 0) { send(res, 400, 'missing workspace'); return true; }
+    const headers = req.headers as Record<string, string | string[] | undefined>;
+    const hdr = (k: string): string => { const v = headers[k]; return (Array.isArray(v) ? v[0] : v) ?? ''; };
 
-    const ghEventRaw = headers['x-github-event'];
-    const ghEvent = Array.isArray(ghEventRaw) ? ghEventRaw[0] : ghEventRaw;
+    //? Read the RAW body first — GitHub's HMAC is computed over it (must verify before parse).
     const [, raw] = await tryCatch(() => readBody(req as { on: (ev: string, cb: (c?: unknown) => void) => void }));
-    const [parseErr, body] = tryCatchSync(() => JSON.parse(raw ?? '') as unknown);
+    const rawBody = raw ?? '';
+
+    //? Auth: GitHub presents `X-Hub-Signature-256` (HMAC over the body); GitLab/others present the
+    //? shared secret in plaintext (`X-Gitlab-Token` / `X-Webhook-Secret`). Accept whichever matches.
+    const ghSig = hdr('x-hub-signature-256');
+    const authed = ghSig.length > 0 ? verifyGithubHmac(secret, rawBody, ghSig) : (hdr('x-webhook-secret') || hdr('x-gitlab-token')) === secret;
+    if (!authed) { send(res, 401, 'bad secret'); return true; }
+
+    const ghEvent = hdr('x-github-event') || undefined;
+    const [parseErr, body] = tryCatchSync(() => JSON.parse(rawBody) as unknown);
     if (parseErr) { send(res, 400, 'bad json'); return true; }
 
     const event = parseWebhookEvent(body, ghEvent);

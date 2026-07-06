@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (34)
+## Decisions (35)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -47,6 +47,7 @@
 | 0033 | Studio — AI design + marketing module (brief → artifacts via provider layer + AgentRoles) | 🟢 accepted | workspaces, studio, ai, marketing, design, provider-abstraction, agent-roles | — | `docs/decisions/0033-studio-design-marketing-module.md` |
 | 0034 | Tool-module ↔ pipeline coupling (design-system, interview findings, ticket↔artifact) | 🟢 accepted | pipeline, designer, interviewer, studio, coupling, injection, b-23 | — | `docs/decisions/0034-tool-module-pipeline-coupling.md` |
 | 0035 | Multi-project / multi-service workspaces (reverses D12 "one project per workspace") | 🟢 accepted | multi-project, multi-service, polyrepo, forge, tenancy, schema, expansion-a1 | — | `docs/decisions/0035-multi-project-multi-service.md` |
+| 0036 | GitHubForge + per-project forge connection (un-defer) | 🟢 accepted | forge, github, gitlab, multi-project, webhooks, expansion-a2 | — | `docs/decisions/0036-github-forge-per-project.md` |
 
 ## Summaries
 
@@ -323,6 +324,14 @@ A self-contained `deploy/` stack + a DR runbook:
 Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally declares **N services** (a build+deploy unit). Built incrementally per the user's decision (2026-07-06): **(a) polyrepo first, then (b) services layered on**.
 
 → `docs/decisions/0035-multi-project-multi-service.md`
+
+### 0036 — GitHubForge + per-project forge connection (un-defer)
+
+**0036** · accepted · tags: forge, github, gitlab, multi-project, webhooks, expansion-a2 · 2026-07-06
+
+1. **Per-project `ForgeConnection`** (`mode` `'gitlab' | 'github'`, `baseUrl`, `repoPath`, `tokenEnc`, `webhookSecret`, `status`; `@@unique([projectId])`). This adapts the doc's `ForgeConnection` (which was per-workspace) to per-project — **forced by A1**; the builtin-mode fields (`builtinRepoRef`, `ciRunner`) are omitted (built-in git hosting is a separate build target). Per `Q-FORGE-DATAMODEL`, the existing GitLab columns are **untouched**: when a project has no `ForgeConnection`, forge resolution falls back to the workspace GitLab fields (zero migration / zero regression for existing single-forge workspaces).
+
+→ `docs/decisions/0036-github-forge-per-project.md`
 
 ## Code governed by decisions
 

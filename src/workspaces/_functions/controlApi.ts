@@ -34,6 +34,7 @@ export type ControlOp =
   // workspace settings (15/19/22)
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration'
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
+  | 'forge-connect'
   | 'save-git-config'
   | 'link-repo' | 'scan-docs' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve'
