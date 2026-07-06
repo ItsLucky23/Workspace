@@ -236,6 +236,7 @@ model Project {
   id                String       @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId       String       @db.ObjectId
   name              String
+  projectType       String       @default("dev")            // ADR 0049 — 'dev' | 'content' (picks the workflow lane)
   gitlabPath        String                                    // e.g. "youcomm/app"
   gitUrl            String?                                    // the linked repo url (alongside gitlabPath)
   linkedFiles       LinkedFile[]                              // D9/D19 — GENERATE vs LINK
@@ -1228,4 +1229,178 @@ model Approval {
 
   @@unique([workspaceId, mergeRequestId, userId])
   @@index([workspaceId, mergeRequestId])
+}
+
+// ============================================================================
+// Content platform (ADR 0049 — the `content` projectType lane). Tenant-scoped by
+// explicit `workspaceId` filtering (the Conductor uses raw prisma), matching the
+// other feature models (Service/ForgeConnection/Studio*). Media cost is in CENTS
+// (metered €), distinct from the coding-agent token accounting (invariant #9).
+// ============================================================================
+
+//? A distribution channel (e.g. a YouTube/TikTok account) — the brand/style home a
+//? content project publishes to. `platform` picks the posting adapter. `defaultStyleId`
+//? seeds the channel's house style for new pieces.
+model Channel {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  projectId      String   @db.ObjectId
+  name           String
+  platform       String   @default("none")          // 'youtube' | 'tiktok' | 'instagram' | 'linkedin' | 'none'
+  handle         String?                             // @handle on the platform
+  description    String?
+  brandVoice     String?                             // one-line house voice (seeds gen)
+  defaultStyleId String?  @db.ObjectId               // → StylePreset.id (house style)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([workspaceId, projectId])
+}
+
+//? A single content PIECE flowing through the content-pipeline (the content-lane analog
+//? of a Ticket). `stageId`/`status` mirror Ticket so the generic stage-runner (F1.1) can
+//? drive it. `format` picks the pipeline shape; `styleId` the default style.
+model ContentProject {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  projectId   String   @db.ObjectId
+  channelId   String?  @db.ObjectId
+  title       String
+  brief       String?                               // the human brief / prompt
+  format      String   @default("faceless")         // 'faceless' | 'short' | 'explainer' | 'ad' | 'avatar' | 'image'
+  stageId     String   @default("idea")             // content pipeline column
+  status      String   @default("idle")             // idle|busy|needs-input|done|paused|stuck
+  styleId     String?  @db.ObjectId                 // → StylePreset.id (default style for this piece)
+  needsInput  String?                               // denormalized open question (answer-queue)
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, projectId, stageId])
+  @@index([workspaceId, archived])
+}
+
+//? A produced media asset attached to a content piece (an image, clip, voiceover, render,
+//? 3d mesh, …). `url`/`storageRef` point at the output; in stub/dummy mode these are
+//? valid-shaped fakes. `metadata` is kind-specific.
+model ContentAsset {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  kind             String                            // 'image'|'video'|'voice'|'music'|'sfx'|'avatar'|'model-3d'|'render'|'script'
+  url              String?
+  storageRef       String?
+  metadata         Json?
+  mediaJobId       String?  @db.ObjectId
+  status           String   @default("ready")        // 'pending' | 'ready' | 'error'
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([workspaceId, contentProjectId])
+}
+
+//? The narration script for a content piece (F1.2). `body` is the full text; `Beat`s split it.
+model Script {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  title            String?
+  body             String
+  styleId          String?  @db.ObjectId
+  providerId       String?
+  status           String   @default("ready")        // 'generating' | 'ready' | 'error'
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([workspaceId, contentProjectId])
+}
+
+//? One storyboard beat of a script (a sentence/shot). `visualPrompt` drives the per-beat
+//? image/clip; `imageAssetId` links the produced visual; `durationMs` times the montage.
+model Beat {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  scriptId         String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  order            Int
+  text             String
+  visualPrompt     String?
+  imageAssetId     String?  @db.ObjectId
+  durationMs       Int?
+  createdAt        DateTime @default(now())
+
+  @@index([workspaceId, scriptId, order])
+}
+
+//? A queued/async generation job to a media provider (F0.3). In stub/dummy mode it resolves
+//? to a valid-shaped fake asset + a declared `costCents` (so the €-budget guard is testable).
+model MediaJob {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String?  @db.ObjectId
+  feature          String                            // AiFeature: image-gen|video-gen|tts|music|sfx|avatar|model-3d|reference-image|reference-video-analysis
+  providerId       String                            // resolved provider (fal|elevenlabs|gemini-media|…)
+  styleId          String?  @db.ObjectId
+  input            Json                              // { prompt?, referenceUrl?, extraInstructions?, … }
+  params           Json?
+  status           String   @default("queued")       // 'queued' | 'running' | 'done' | 'error'
+  resultAssetId    String?  @db.ObjectId
+  costCents        Int      @default(0)              // metered € cost, in cents
+  error            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, contentProjectId])
+}
+
+//? The Remotion assembly/render job (F1.5) — composes beats+voice+images into the final
+//? downloadable asset. Stub render in dummy mode.
+model RenderJob {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  composition      String   @default("faceless")     // the Remotion composition id
+  input            Json                              // the timeline (beats + assets + timing)
+  status           String   @default("queued")       // 'queued' | 'running' | 'done' | 'error'
+  resultAssetId    String?  @db.ObjectId
+  costCents        Int      @default(0)
+  error            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([workspaceId, contentProjectId])
+}
+
+//? A named STYLE for a feature (ADR 0049 cross-cutting style system). `workspaceId` null =
+//? a global default style; non-null = a per-workspace (brand) style. `systemPrompt` is the
+//? curated preset a generation composes with its input + free-form extra instructions.
+model StylePreset {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String?  @db.ObjectId                 // null = global default; set = per-workspace
+  feature      String                                // the AiFeature this style applies to
+  key          String                                // stable slug, e.g. 'realistisch'
+  label        String
+  systemPrompt String
+  params       Json?                                 // optional provider/model params
+  builtin      Boolean  @default(false)              // seeded default (not user-deletable)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([workspaceId, feature])
+}
+
+//? A metered media-spend record (ADR 0049) — one row per generation, cost in cents (€).
+//? The per-workspace cap/alert + the pre-generation guard live in F0.2 (MediaBudget).
+model MediaSpend {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String?  @db.ObjectId
+  mediaJobId       String?  @db.ObjectId
+  feature          String
+  providerId       String
+  costCents        Int
+  createdAt        DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
 }

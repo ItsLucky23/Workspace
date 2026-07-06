@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (48)
+## Decisions (49)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -61,6 +61,7 @@
 | 0047 | Delivery analytics — on-request fold over the append-only log (tokens, not €) | 🟢 accepted | analytics, insights, tokens, expansion-g1 | — | `docs/decisions/0047-delivery-analytics.md` |
 | 0048 | Review ergonomics — cross-ticket answer-queue + presence soft-claim | 🟢 accepted | review, answer-queue, presence, claim, expansion-g2 | — | `docs/decisions/0048-review-ergonomics.md` |
 | 0049 | Content-platform pivot — Workspaces as an all-in-1 AI content platform on the shared engine | 🟢 accepted | strategy, content, media, pivot, provider-abstraction, style-system | — | `docs/decisions/0049-content-platform-pivot.md` |
+| 0050 | Content-platform data model — projectType lane + 9 content models (F0.1) | 🟢 accepted | content, schema, data-model, projectType, expansion-f01 | — | `docs/decisions/0050-content-data-model.md` |
 
 ## Summaries
 
@@ -449,6 +450,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 *Add a content lane on the existing engine.** A `projectType` (`dev` | `content` | …) selects the workflow lane; the same Conductor, realtime, RBAC, RAG, cron/automation, control-ops and B-23 single-writer serve both. Content is NOT a separate product — one app, distinct workflow surfaces. Concretely:
 
 → `docs/decisions/0049-content-platform-pivot.md`
+
+### 0050 — Content-platform data model — projectType lane + 9 content models (F0.1)
+
+**0050** · accepted · tags: content, schema, data-model, projectType, expansion-f01 · 2026-07-06
+
+1. **A `projectType` on Project** (`'dev'` | `'content'`, default `'dev'`) selects the workflow lane. Zero migration for existing projects (default). 2. **Nine content models**, all tenant-scoped by **explicit `workspaceId` filtering** (NOT the `tenantDb` `$extends` auto-scoping): `Channel` (distribution target + house style), `ContentProject` (a content piece flowing the pipeline — `stageId`/`status` mirror Ticket so the generic stage-runner drives it), `ContentAsset` (a produced media asset), `Script` + `Beat` (narration + storyboard), `MediaJob` (async generation to a provider, `costCents` metered), `RenderJob` (Remotion assembly), `StylePreset` (a named style, `workspaceId` null = global default / set = per-workspace), `MediaSpend` (the €-cost ledger, cents). 3. **Media cost in CENTS** on `MediaJob`/`RenderJob`/`MediaSpend` — metered real-money €, distinct from the coding-agent token accounting (invariant #9).
+
+→ `docs/decisions/0050-content-data-model.md`
 
 ## Code governed by decisions
 

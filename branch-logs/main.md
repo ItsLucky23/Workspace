@@ -1869,3 +1869,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** n.v.t. (spec-only, geen code); `ai:decisions` = 48 ADRs. De `/goal`-command staat klaar voor de user om te draaien (ik roep `/goal` nooit zelf aan).
 
 **Files touched:** `docs/decisions/0049-*.md`, `docs/AI_DECISIONS_INDEX.md`, `src/workspaces/_docs/CONTENT_PLATFORM_PROGRAM.md`.
+
+## 2026-07-07 00:10 — Content-platform F0.1: data-model + projectType (ADR 0050)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F0.1 (schema-first fundament).
+
+**What I did:** het content-datamodel gepubliceerd (schema-first).
+- **`projectType`** op Project (`'dev'`|`'content'`, default dev, zero-migration) + **9 content-modellen**: `Channel`, `ContentProject` (content-piece, `stageId`/`status` spiegelen Ticket → generieke stage-runner in F1.1), `ContentAsset`, `Script`+`Beat`, `MediaJob` (async gen, `costCents`), `RenderJob` (Remotion), `StylePreset` (`workspaceId` null=global / set=per-workspace), `MediaSpend` (€-ledger, cents). Media-kosten in **cents** (gemeterd €, los van token-#9).
+- **Tenant:** expliciete `workspaceId`-filtering (NIET `tenantDb`/`TENANT_MODELS`) — volgt het feature-model-precedent (Service/Forge/Studio). `cleanupWorkspace` uitgebreid (children vóór parents).
+- **OPEN VRAAG (gelogd):** bewust GEEN content-project auto-geseed in `createBlankWorkspace` (zou ~30 tests breken op project-count); content-projecten on-demand via control-op (F1.1). Herzien indien een default content-project gewenst is.
+- **Verify:** `prisma:db:push` + generate OK; `tests/integration/contentModel.test.mts` **18/18** (round-trip alle 9 modellen + row-isolatie tussen 2 workspaces + cents). lint+build+ai:lint groen. ADR **0050**.
+
+**Files touched:** `prisma/schema.prisma`, `tests/_helpers.mts`, `tests/integration/contentModel.test.mts`, `docs/decisions/0050-*.md`, `docs/AI_DECISIONS_INDEX.md`.
