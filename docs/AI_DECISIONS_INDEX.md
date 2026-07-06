@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (82)
+## Decisions (83)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -95,6 +95,7 @@
 | 0081 | Real structured LLM parsing for script + reference-video blueprint | 🟢 accepted | content, llm, parsing, depth-program | — | `docs/decisions/0081-real-llm-parsing.md` |
 | 0082 | Real ffmpeg (Docker) render pipeline + media download route | 🟢 accepted | content, render, ffmpeg, docker, download, depth-program | — | `docs/decisions/0082-real-ffmpeg-render.md` |
 | 0083 | Real YouTube + TikTok publishing (OAuth + upload) behind the B-23 gate | 🟢 accepted | content, publishing, oauth, youtube, tiktok, depth-program | — | `docs/decisions/0083-real-publishing-oauth.md` |
+| 0084 | Content UI — reachable board reading the content snapshot | 🟢 accepted | content, ui, frontend, depth-program | — | `docs/decisions/0084-content-ui-reach.md` |
 
 ## Summaries
 
@@ -755,6 +756,14 @@ New `server/content/render.ts`: `buildFfmpegPlan` (pure) builds an ffmpeg **conc
 New `server/content/publishOAuth.ts`: PURE request builders — `buildAuthUrl` (connect redirect), `buildExchangeRequest` (code→token), `buildUploadRequest` (YouTube resumable init / TikTok PULL_FROM_URL, bearer auth) — plus `parseTokenResponse` (flat + TikTok-nested). Transports wrap them with fetch (injectable; the live round-trip is the deferred post-keys e2e). **Token storage** is ENCRYPTED via `secretBox` in the per-workspace `EnvVar` store (`__publish_<platform>`, `secret:true`) — no schema change, so no `db:push`/backend-kill. `connectPublishPlatform` exchanges the code + stores; `getConnection` decrypts. `publishAsset` now runs a REAL upload with the decrypted token when the workspace is connected; a missing connection OR an upload failure degrades to the dummy post (never loses the consented intent). The B-23 gate is unchanged: `publishAsset` still only runs after a publish suggestion is accepted (Conductor).
 
 → `docs/decisions/0083-real-publishing-oauth.md`
+
+### 0084 — Content UI — reachable board reading the content snapshot
+
+**0084** · accepted · tags: content, ui, frontend, depth-program · 2026-07-06
+
+A `content` nav item (Studio group, `wand-magic-sparkles`) + a real `src/workspaces/content/page.tsx` route (the generic `pathForView`/`viewFromPath` already route `content` → `/workspaces/content`; `VIEW_LABELS` gains `content`). `WsView` already accepted `(string & {})`, so no type change. The page renders a **content board**: 6 pipeline columns (idea → script → media → assemble → review → publish, mirroring server `CONTENT_STAGES`) reading `content.pieces` by `stageId`, each piece a card (title, format chip, status dot), plus a media **€-budget** summary bar (spent/cap/alert from `content.mediaBudget`). Clear empty-state for first-time users. All text via `useTranslator` (`workspaces.content.*`, 16 keys × en/nl/de/fr); only theme tokens + semantic status colors.
+
+→ `docs/decisions/0084-content-ui-reach.md`
 
 ## Code governed by decisions
 

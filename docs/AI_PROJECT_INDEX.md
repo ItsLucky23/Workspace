@@ -154,7 +154,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/projectAdmin/v1`
 - … +20 more
 
-## Pages (24)
+## Pages (25)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -171,6 +171,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/activity` | workspaces | — | `workspaces/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
 | `/workspaces/backlog` | workspaces | — | `workspaces/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
 | `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
+| `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |
 | `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
 | `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
 | `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer/designer roles turn a |

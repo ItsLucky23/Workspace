@@ -2250,3 +2250,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/publishOAuth.test.mts` **17/17** (builders + parsing) + `tests/integration/publishReal.test.mts` **12/12** (encrypted token-roundtrip, connect, echte-upload-when-connected, stub-degrade). publish/publishTiktok (stub-pad) onaangetast. Lint + build groen. OAuth-callback-route + live browser-round-trip = post-keys e2e (KEY_SETUP_GUIDE D1).
 
 **Files touched:** `server/content/publishOAuth.ts` (nieuw), `server/content/publish.ts`, `tests/unit/publishOAuth.test.mts` (nieuw), `tests/integration/publishReal.test.mts` (nieuw), `docs/decisions/0083-real-publishing-oauth.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM U1: content-UI bereikbaar (board + €-budget)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item U1.
+
+**What I did:**
+- `content`-nav-item (Studio-groep, `wand-magic-sparkles`) + echte `src/workspaces/content/page.tsx`-route (generieke `pathForView` routet 'content' → `/workspaces/content`; `VIEW_LABELS += content`). `WsView` accepteerde al `(string & {})` → geen type-change.
+- De page rendert een **content-board**: 6 pipeline-kolommen (idea→script→generate→assemble→review→publish, spiegelt server `CONTENT_STAGES`) die `content.pieces` per `stageId` lezen, elk stuk een card (titel, format-chip, status-dot) + een media-**€-budget**-balk (spent/cap/alert uit `content.mediaBudget`). Duidelijke empty-state. Alle tekst via `useTranslator` (`workspaces.content.*`, 16 keys × en/nl/de/fr); alleen theme-tokens + semantische status-kleuren.
+- De `snapshot.content` (dode state) wordt nu GELEZEN.
+
+**Verify:** lint + build groen; ai:lint (i18n/doc-coverage) schoon op de page. Visuele check browser-deferred; de render-van-snapshot + i18n×4 is de code-level verify. U2 voegt de piece-detail (card's `content/<id>`-target) toe.
+
+**Files touched:** `src/workspaces/content/page.tsx` (nieuw), `src/workspaces/_shell/Shell.tsx` (nav), `src/workspaces/_shell/WorkspacesProvider.tsx` (VIEW_LABELS), `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0084-content-ui-reach.md`.

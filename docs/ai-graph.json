@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 170,
-    "edges": 241,
+    "nodes": 171,
+    "edges": 245,
     "symbols": 204,
     "callEdges": 32
   },
@@ -744,6 +744,11 @@
       "route": null
     },
     {
+      "id": "workspaces/content/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
       "id": "workspaces/designer/animations.ts",
       "kind": "other",
       "route": null
@@ -1381,6 +1386,22 @@
       "to": "workspaces/board/[ticketId]/FileDiffViewer.tsx"
     },
     {
+      "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/designer/animations.ts",
       "to": "workspaces/designer/styles.ts"
     },
@@ -1842,6 +1863,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Styles.tsx",
@@ -2120,6 +2142,7 @@
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -2154,6 +2177,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Styles.tsx",
@@ -2187,6 +2211,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Styles.tsx",
@@ -2243,6 +2268,7 @@
       "workspaces/board/[ticketId]/DiffView.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -2302,6 +2328,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -2413,38 +2440,38 @@
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 36,
-      "directDependents": 24
+      "dependents": 37,
+      "directDependents": 25
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 33,
-      "directDependents": 28
+      "dependents": 34,
+      "directDependents": 29
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 32,
-      "directDependents": 22
+      "dependents": 33,
+      "directDependents": 23
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 30,
+      "dependents": 31,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 29,
+      "dependents": 30,
       "directDependents": 7
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 28,
-      "directDependents": 23
+      "dependents": 29,
+      "directDependents": 24
     },
     {
       "id": "_components/ConfirmMenu.tsx",

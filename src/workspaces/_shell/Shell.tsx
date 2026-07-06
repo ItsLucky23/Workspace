@@ -61,6 +61,7 @@ export const NAV_ITEMS: NavDef[] = [
   { id: 'sources', icon: 'book-open', label: 'Sources', group: 'work' },
   { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'build' },
   { id: 'scheduled', icon: 'clock', label: 'Scheduled', group: 'build' },
+  { id: 'content', icon: 'wand-magic-sparkles', label: 'Content', group: 'studio' },
   { id: 'designer', icon: 'palette', label: 'Designer', group: 'studio' },
   { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'studio' },
   { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'studio' },

@@ -23,7 +23,7 @@ _(The main features/areas of the app and what each is for. The AI keeps this in 
 
 _(Domain terms used in this project, so the AI + the team use the same vocabulary.)_
 
-## Pages by area (24)
+## Pages by area (25)
 
 ### (root)
 
@@ -82,6 +82,7 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 | `/workspaces/activity` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/activity/page.tsx` |
 | `/workspaces/backlog` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/backlog/page.tsx` |
 | `/workspaces/board/[ticketId]` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/board/[ticketId]/page.tsx` |
+| `/workspaces/content` | the Content studio — a board of your AI content pieces (script → media → assemble → review → publish) with the media €-budget, so a non-technical user sees everything they've made. | `workspaces/content/page.tsx` |
 | `/workspaces/designer` | Designer — a broad visual editor for the whole product UI, not just a component list. Sections (Components / Styles / Animations / Themes / Typography) all preview under one active theme + style, so you can see, compare and edit every part of the visual language — by hand for the simple knobs, and (theme) by AI. Built on the pluggable AI-provider layer + our real component library, so anything the coding-agent ships shows up here automatically. | `workspaces/designer/page.tsx` |
 | `/workspaces/interviewer` | Interviewer — ask the AI anything about THIS codebase and think through new plans together. It has repo context (via the Workspace-AI), so you can ask "how does the auth flow work?", "what's worth improving?", or "work out a plan for feature X" and get a worked-out answer. Deeper RAG search + structured question/idea cards land in a following phase; this is the free-form planning chat on top of the existing repo-aware `workspaces/aiChat` backend. | `workspaces/interviewer/page.tsx` |
 | `/workspaces/marketing` | Marketing — take your product to market. The AI marketer/designer roles turn a short product brief into a landing page, marketing copy, a brand kit, email sequences, ad sets, a social calendar and naming — each live-previewed. (Video generation lands in a later phase behind the pluggable provider layer.) This currently renders the shared Studio generator; the Designer-only kinds migrate into the Designer skill-loop as that lands. | `workspaces/marketing/page.tsx` |
