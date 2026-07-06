@@ -98,6 +98,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-assemble': CAP.workTickets,
   'content-gen-reference-image': CAP.workTickets,
   'content-gen-shortform': CAP.workTickets,
+  'content-analyze-reference-video': CAP.workTickets,
   'resume-spend': CAP.workspaceSettings,
   'skill-toggle': CAP.editPipeline,
   'save-stage-config': CAP.editPipeline,

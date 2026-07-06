@@ -27,6 +27,7 @@ import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
 import { generateReferenceImage } from '../content/referenceImage';
 import { generateShortForm } from '../content/shortForm';
+import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1081,6 +1082,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
         ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
       });
+      return;
+    }
+    //? Reference-video analysis (F2.3, ADR 0049) — a reference video → a blueprint that seeds a new script.
+    case 'content-analyze-reference-video': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const referenceVideoUrl = str(payload, 'referenceVideoUrl');
+      const newStory = str(payload, 'newStory') ?? str(payload, 'story');
+      if (!contentProjectId || !referenceVideoUrl || !newStory) return;
+      await analyzeReferenceVideo(prisma, { workspaceId: action.workspaceId, contentProjectId, referenceVideoUrl, newStory });
       return;
     }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.

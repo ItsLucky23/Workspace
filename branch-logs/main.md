@@ -1990,3 +1990,12 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/shortForm.test.mts` **9/9** (video-clip fal · hook+captions · format short · style · budget 40c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0060**.
 
 **Files touched:** `server/content/shortForm.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/shortForm.test.mts`, `docs/decisions/0060-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 04:35 — Content-platform F2.3: referentie-video-analyse (ADR 0061)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.3.
+
+**What I did:** `server/content/referenceVideo.ts` `analyzeReferenceVideo` — `reference-video-analysis` (Gemini) → `VideoBlueprint` (pacing/styleHint/beats) → seedt een `Script` (titel "From reference video") + Beats voor de NIEUWE story in de vorm van de referentie. Content-lokale stub. `content-analyze-reference-video` op (B-23, workTickets, vereist referenceVideoUrl+newStory).
+- **Verify:** `tests/integration/referenceVideo.test.mts` **6/6** (gemini-seeded script · 4-beat-arc · nieuwe story (coffee) drijft de beats · hook-first vorm van de referentie). rbac **122/122**. lint+build+ai:lint groen. ADR **0061**.
+
+**Files touched:** `server/content/referenceVideo.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/referenceVideo.test.mts`, `docs/decisions/0061-*.md`, `docs/AI_DECISIONS_INDEX.md`.

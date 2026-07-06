@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (59)
+## Decisions (60)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -72,6 +72,7 @@
 | 0058 | Assembly / render — the complete downloadable output (F1.5) | 🟢 accepted | content, assembly, remotion, render, expansion-f15 | — | `docs/decisions/0058-content-assembly.md` |
 | 0059 | Reference-driven photorealistic image generation (F2.1, #1 feature) | 🟢 accepted | content, image, reference, photoreal, expansion-f21 | — | `docs/decisions/0059-reference-image.md` |
 | 0060 | Short-form clip generation (F2.2) | 🟢 accepted | content, video, short-form, expansion-f22 | — | `docs/decisions/0060-short-form-clips.md` |
+| 0061 | Reference-video analysis → blueprint that seeds a script (F2.3) | 🟢 accepted | content, reference-video, gemini, blueprint, expansion-f23 | — | `docs/decisions/0061-reference-video-analysis.md` |
 
 ## Summaries
 
@@ -548,6 +549,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 `server/content/shortForm.ts` `generateShortForm` runs the metered path (`checkMediaBudget('video-gen')` → `runMediaGeneration({feature:'video-gen'})` stub → video `ContentAsset` + `MediaJob` + spend), derives a `hook` + `captions` from the prompt (stub; a live hook-writer lands with keys), and stores them on the asset metadata (`format:'short'`). Driven by `content-gen-shortform` (B-23, `workTickets`, requires a `prompt`).
 
 → `docs/decisions/0060-short-form-clips.md`
+
+### 0061 — Reference-video analysis → blueprint that seeds a script (F2.3)
+
+**0061** · accepted · tags: content, reference-video, gemini, blueprint, expansion-f23 · 2026-07-06
+
+`server/content/referenceVideo.ts` `analyzeReferenceVideo` calls the `reference-video-analysis` text AiFeature (Gemini, video-capable), producing a `VideoBlueprint` (`pacing`, `styleHint`, `beats[]`), then SEEDS a `Script` (title "From reference video") + `Beat`s from it — the NEW story in the reference's shape. Content-local stub (no key). Driven by `content-analyze-reference-video` (B-23, `workTickets`, requires `referenceVideoUrl` + `newStory`).
+
+→ `docs/decisions/0061-reference-video-analysis.md`
 
 ## Code governed by decisions
 
