@@ -2008,3 +2008,12 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/avatar.test.mts` **6/6** (avatar-asset fal · MediaJob linked · budget 30c · block-pad). rbac **122/122**. lint+build+ai:lint groen. ADR **0062**.
 
 **Files touched:** `server/content/mediaAsset.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/avatar.test.mts`, `docs/decisions/0062-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 05:10 — Content-platform F2.5: muziek + SFX (ADR 0063)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.5.
+
+**What I did:** muziek + sfx via de al-gewirede `content-gen-music`/`content-gen-sfx`-ops (gedeelde `generateMediaAsset`, elevenlabs-stub). Geen nieuwe engine-code — test + ADR. Suno-provider + mixing-in-render = follow-up.
+- **Verify:** `tests/integration/musicSfx.test.mts` **6/6** (music-asset elevenlabs · sfx-asset · budget 6+1=7c). ADR **0063**. (lint+build+ai:lint groen sinds F2.4 — geen src/server-wijziging.)
+
+**Files touched:** `tests/integration/musicSfx.test.mts`, `docs/decisions/0063-*.md`, `docs/AI_DECISIONS_INDEX.md`.
