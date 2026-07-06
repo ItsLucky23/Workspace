@@ -31,7 +31,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
 } from '../../src/workspaces/_data/types';
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -139,6 +139,8 @@ export interface WorkspaceSnapshot {
   services: ServiceSummary[];
   //? The active project's persistent environments (dev/staging/prod deployments, ADR 0037).
   environments: EnvironmentSummary[];
+  //? The active project's recent downloadable build exports (ADR 0038).
+  buildArtifacts: BuildArtifactSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -188,7 +190,7 @@ export interface WorkspaceSnapshot {
 }
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
-  projects: [], services: [], environments: [],
+  projects: [], services: [], environments: [], buildArtifacts: [],
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -234,6 +236,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const projectScope = { projectId: activeProjectId ?? '000000000000000000000000' };
     const serviceRows = activeProjectId ? await tenantDb.service.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const environmentRows = activeProjectId ? await tenantDb.environment.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
+    const buildArtifactRows = activeProjectId ? await tenantDb.buildArtifact.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
 
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
@@ -322,6 +325,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: e.id, projectId: e.projectId, ...(e.serviceId ? { serviceId: e.serviceId } : {}), kind: e.kind, route: e.route, status: e.status,
         url: `${baseDomain() === 'localhost' ? 'http' : 'https'}://${e.route}/`,
         ...(e.lastError ? { lastError: e.lastError } : {}), ...(e.lastDeployedAt ? { lastDeployedAt: e.lastDeployedAt.toISOString() } : {}),
+      })),
+      buildArtifacts: buildArtifactRows.map((b): BuildArtifactSummary => ({
+        id: b.id, projectId: b.projectId, kind: b.kind, status: b.status, sizeBytes: b.sizeBytes,
+        ...(b.status === 'ready' ? { downloadUrl: `/downloads/build/${b.downloadToken}` } : {}),
+        ...(b.error ? { error: b.error } : {}), createdAt: b.createdAt.toISOString(),
       })),
       members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),

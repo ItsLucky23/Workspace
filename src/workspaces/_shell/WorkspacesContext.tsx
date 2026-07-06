@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
 } from '../_data/types';
 
 export type WsView =
@@ -82,6 +82,10 @@ export interface WorkspacesCtx {
   environments: EnvironmentSummary[];
   deployEnv: (input: { kind: string; serviceId?: string }) => void;
   teardownEnv: (envId: string) => void;
+  //? Deploy/CD (ADR 0038): promote up the ladder + export a downloadable build.
+  promoteEnv: (input: { fromKind: string; approved?: boolean }) => void;
+  buildArtifacts: BuildArtifactSummary[];
+  exportBuild: (kind: string) => void;
   sprintCreate: (name: string) => void;
   //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
   myInvites: MyInvite[];

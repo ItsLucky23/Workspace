@@ -29,6 +29,8 @@ import { dockerAvailable } from '../container/runtime';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
+import { promoteEnvironment } from '../deploy/promote';
+import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
@@ -194,6 +196,7 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
   await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
   await prisma.environment.deleteMany({ where: { workspaceId } });
+  await prisma.buildArtifact.deleteMany({ where: { workspaceId } });
   await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
@@ -1049,6 +1052,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const envId = str(target, 'envId') ?? str(payload, 'envId');
       if (!envId) return { ok: false };
       return teardownEnvironment(prisma, action.workspaceId, envId);
+    }
+    //? Promote up the dev→staging→prod ladder (ADR 0038) — deploys the SOURCE env's tested image to the
+    //? next stage; prod is gated on an explicit approval + a live source (B-23).
+    case 'env-promote': {
+      const promoteProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      if (!promoteProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
+      const fromKind = str(payload, 'fromKind') ?? 'dev';
+      const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId') ?? null;
+      return promoteEnvironment(prisma, action.workspaceId, promoteProjectId, serviceId, fromKind, { approved: bool(payload, 'approved') });
+    }
+    //? Export a project's built image as a downloadable tarball (ADR 0038) — self-host-anywhere.
+    case 'build-export': {
+      const exportProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      if (!exportProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
+      return buildExport(prisma, action.workspaceId, exportProjectId, str(payload, 'kind') ?? 'image', Date.now());
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {

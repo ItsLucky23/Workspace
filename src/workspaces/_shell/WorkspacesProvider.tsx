@@ -25,7 +25,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -40,6 +40,8 @@ interface Snap {
   services: ServiceSummary[];
   //? The active project's persistent environments (ADR 0037).
   environments: EnvironmentSummary[];
+  //? The active project's downloadable build exports (ADR 0038).
+  buildArtifacts: BuildArtifactSummary[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -75,7 +77,7 @@ interface Snap {
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
-  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], environments: [],
+  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], environments: [], buildArtifacts: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
@@ -583,6 +585,24 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  //? Promote up the dev→staging→prod ladder (ADR 0038); prod needs `approved`. Slow → refetch after.
+  const promoteEnvApi = useCallback((input: { fromKind: string; approved?: boolean }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || !snap.activeProjectId) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-promote', projectId: snap.activeProjectId ?? '', fromKind: input.fromKind, ...(input.approved ? { approved: true } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
+  //? Export the active project's built image as a downloadable tarball (ADR 0038).
+  const exportBuildApi = useCallback((kind: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || !snap.activeProjectId) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'build-export', projectId: snap.activeProjectId ?? '', kind, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
@@ -780,6 +800,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       environments: snap.environments,
       deployEnv: deployEnvApi,
       teardownEnv: teardownEnvApi,
+      promoteEnv: promoteEnvApi,
+      buildArtifacts: snap.buildArtifacts,
+      exportBuild: exportBuildApi,
       myInvites: snap.myInvites,
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
@@ -924,7 +947,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

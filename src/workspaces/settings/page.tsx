@@ -151,7 +151,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild } = useWorkspaces();
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? Fase 2: no backend persistence for web-push subscription yet — client-only toggle.
@@ -264,12 +264,25 @@ export default function AccountSettings() {
                       : <span className="text-xs text-disabled">—</span>}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
+                    {env?.status === 'live' && kind !== 'prod' && (
+                      <button type="button" onClick={() => { const toProd = kind === 'staging'; if (!toProd) { promoteEnv({ fromKind: kind }); return; } void menuHandler.confirm({ title: translate({ key: 'workspaces.account.promote' }), content: `${kind} → prod` }).then((ok) => { if (ok) promoteEnv({ fromKind: kind, approved: true }); }); }} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.account.promote' })}</button>
+                    )}
                     <WsButton variant="secondary" disabled={!activeProject || env?.status === 'deploying'} onClick={() => { deployEnv({ kind }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>
                     {env && <button type="button" onClick={() => { teardownEnv(env.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
                   </span>
                 </Row>
               );
             })}
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.buildExports' })}</span>
+              <WsButton variant="secondary" disabled={!activeProject} onClick={() => { exportBuild('image'); }}>{translate({ key: 'workspaces.account.exportBuild' })}</WsButton>
+            </Row>
+            {buildArtifacts.map((b) => (
+              <Row key={b.id}>
+                <span className="flex items-center gap-2 text-sm text-title min-w-0"><Icon name="diagram-project" className="text-muted" /> {b.kind} <span className="text-xs text-muted">{b.status}{b.sizeBytes > 0 ? ` · ${String(Math.round(b.sizeBytes / 1_048_576))} MB` : ''}</span></span>
+                {b.status === 'ready' && b.downloadUrl ? <a href={b.downloadUrl} className="text-xs text-primary hover:underline shrink-0">{translate({ key: 'workspaces.account.download' })}</a> : <span className="text-xs text-disabled shrink-0">{b.error ?? '—'}</span>}
+              </Row>
+            ))}
           </Card>
 
           <Card

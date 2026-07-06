@@ -43,7 +43,8 @@ export async function ensureEnvironment(prisma: PrismaClient, workspaceId: strin
 
 //? Deploy (or redeploy) an environment: launch a persistent container running the deploy branch, start
 //? the serve command, wait for readiness, then flip the STABLE route to it. Status: deploying→live|error.
-export async function deployEnvironment(prisma: PrismaClient, workspaceId: string, envId: string): Promise<DeployResult> {
+//? `opts.imageRef` PINS the image (promotion deploys the exact image the source env was tested on, ADR 0038).
+export async function deployEnvironment(prisma: PrismaClient, workspaceId: string, envId: string, opts: { imageRef?: string } = {}): Promise<DeployResult> {
   const env = await prisma.environment.findFirst({ where: { id: envId, workspaceId } });
   if (!env) return { ok: false, status: 'error', error: 'env.notFound' };
   if (!(await dockerAvailable())) {
@@ -59,7 +60,7 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
     env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true } }) : Promise.resolve(null),
   ]);
   const branch = normalizeGitConfig(ws?.gitConfig ?? null).targetBranch;
-  const image = service?.baseImageRef ?? project?.baseImageRef ?? undefined;
+  const image = opts.imageRef ?? service?.baseImageRef ?? project?.baseImageRef ?? undefined;
   const devCmd = ((service?.devCommand ?? project?.devCommand) ?? '').trim() || 'npm run dev';
 
   const container = await launchTicketContainer({ workspaceId, ticketKey: envKey(envId), branch, ...(image ? { image } : {}) });

@@ -102,6 +102,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'service-delete': CAP.workspaceSettings,
   'env-deploy': CAP.workspaceSettings,
   'env-teardown': CAP.workspaceSettings,
+  'env-promote': CAP.workspaceSettings,
+  'build-export': CAP.workspaceSettings,
   'mark-read': null,
   pause: CAP.workTickets,
   resume: CAP.workTickets,

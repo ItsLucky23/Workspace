@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (36)
+## Decisions (37)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -49,6 +49,7 @@
 | 0035 | Multi-project / multi-service workspaces (reverses D12 "one project per workspace") | 🟢 accepted | multi-project, multi-service, polyrepo, forge, tenancy, schema, expansion-a1 | — | `docs/decisions/0035-multi-project-multi-service.md` |
 | 0036 | GitHubForge + per-project forge connection (un-defer) | 🟢 accepted | forge, github, gitlab, multi-project, webhooks, expansion-a2 | — | `docs/decisions/0036-github-forge-per-project.md` |
 | 0037 | Persistent environments (dev/staging/prod) + deploy control-op | 🟢 accepted | deploy, environments, containers, proxy, multi-project, expansion-b1 | — | `docs/decisions/0037-environments-persistent-server.md` |
+| 0038 | Deploy/CD — promote ladder + downloadable build export | 🟢 accepted | deploy, cd, promote, build-export, download, expansion-b2 | — | `docs/decisions/0038-deploy-cd-downloadable-builds.md` |
 
 ## Summaries
 
@@ -341,6 +342,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **`Environment` model** (`workspaceId`, `projectId`, `serviceId?`, `kind`, `route`, `imageRef?`, `containerName?`, `branch?`, `status`, `healthUrl?`, `lastError?`, `lastDeployedAt?`). One environment per (project, service, kind); `serviceId` null = the project root (single-service repo). Uniqueness is enforced in the deploy op (Mongo nullable-unique is unreliable), not a `@@unique`.
 
 → `docs/decisions/0037-environments-persistent-server.md`
+
+### 0038 — Deploy/CD — promote ladder + downloadable build export
+
+**0038** · accepted · tags: deploy, cd, promote, build-export, download, expansion-b2 · 2026-07-06
+
+1. **Promote ladder (`env-promote`).** `promoteEnvironment(project, service, fromKind, {approved})` deploys the next stage with the SOURCE env's EXACT image pinned (`deployEnvironment(..., {imageRef})`) — what you tested on dev is what ships, not a fresh branch pull. Gates: the source must be **live** (a health signal — you can't promote a broken build), and **prod requires an explicit approval** (B-23 confirm). The green-CI gate is a documented HOOK that C1 (BUILTIN_CI) fills — left as an explicit TODO in `promote.ts` rather than faking a check that doesn't exist yet.
+
+→ `docs/decisions/0038-deploy-cd-downloadable-builds.md`
 
 ## Code governed by decisions
 

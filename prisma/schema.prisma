@@ -322,6 +322,30 @@ model Environment {
   @@index([projectId, kind])
 }
 
+//? A downloadable build export (ADR 0038, item B2) — the user must be able to EXPORT a build (the
+//? pipeline-built image as a `docker save` tarball, or the built dist bundle) to self-host elsewhere.
+//? The Conductor produces it (B-23); it's served over a signed, TTL'd, token-gated download link
+//? (`/downloads/build/<token>`), never a public path. `filePath` is the on-disk artifact under the
+//? workspace data dir; the row tracks build status + expiry so stale artifacts can be pruned.
+model BuildArtifact {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String    @db.ObjectId
+  projectId     String    @db.ObjectId
+  kind          String                              // 'image' (docker save tarball) | 'bundle' (dist)
+  imageRef      String?                             // the source image tag (kind='image')
+  filePath      String?                             // on-disk artifact path (kind + hash)
+  downloadToken String                              // single-use-ish signed token for the download link
+  sizeBytes     Int       @default(0)
+  status        String    @default("building")      // 'building' | 'ready' | 'error'
+  error         String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([downloadToken])
+}
+
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
 //? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).

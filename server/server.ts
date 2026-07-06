@@ -48,6 +48,7 @@ import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
+import { registerBuildDownload } from './deploy/downloadRoute';
 import { registerStudioRoles } from './studio/roles';
 import { registerInterviewerRole } from './interviewer/role';
 import { registerScraperRole } from './scraper/role';
@@ -113,6 +114,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
   //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
   registerForgeWebhook();
+  //? Build-artifact downloads (ADR 0038): GET /downloads/build/<token> serves a `docker save` tarball
+  //? over a signed, TTL'd, token-gated link so a user can export a build to self-host elsewhere.
+  registerBuildDownload();
 
   const server = await bootstrapLuckyStack({
     //? Single-instance backend port from config.ports.ts. Sits BELOW a positional

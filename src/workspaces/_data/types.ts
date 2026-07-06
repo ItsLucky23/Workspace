@@ -117,6 +117,18 @@ export interface EnvironmentSummary {
   lastDeployedAt?: string;
 }
 
+//? A downloadable build export (ADR 0038): a docker-save tarball behind a signed TTL'd link.
+export interface BuildArtifactSummary {
+  id: string;
+  projectId: string;
+  kind: string;                 // 'image' | 'bundle'
+  status: string;               // 'building' | 'ready' | 'error'
+  downloadUrl?: string;         // present when ready
+  sizeBytes: number;
+  error?: string;
+  createdAt: string;
+}
+
 export interface PipelineStage {
   id: string;          // free stage id (e.g. 'impl'); custom stages allowed
   kind: StageKind;     // the typed semantic role (04b §12)
