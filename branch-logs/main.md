@@ -1929,3 +1929,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/contentPipeline.test.mts` **10/10** (content-project heeft 0 board-stages · piece created + advanced next/expliciet/past-publish→done + archived, alles via control-ops). rbac **122/122**. lint+build+ai:lint groen. ADR **0054**.
 
 **Files touched:** `server/content/pipeline.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentPipeline.test.mts`, `docs/decisions/0054-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 02:15 — Content-platform F1.2: script + beats (ADR 0055)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F1.2.
+
+**What I did:** script-generatie met content-lokale stub-fallback.
+- **`server/content/script.ts`** — `generateScript` resolvet de `script`-style + composeert de system-prompt, roept `runAiCompletion('script',…)` en schrijft een `Script` + geordende `Beat`-rijen (elke beat draagt een `visualPrompt` voor F1.4). Geen key → **content-lokale stub** (4-beat-arc uit de brief), NIET in `runAiCompletion` (zodat de coding-agent nooit stilletjes stubt).
+- **`script` tekst-`AiFeature`** (default gemini-api). Script slaat providerId op + linkt de styleId.
+- **`content-gen-script` control-op** (B-23, workTickets) — Conductor roept generateScript.
+- **Verify:** `tests/integration/contentScript.test.mts` **8/8** (script+4 geordende beats · style resolved+linked · provider recorded · beats reflecteren de brief + visual-prompts). rbac **122/122**, aiRegistry **12/12**. lint+build+ai:lint groen. ADR **0055**.
+
+**Files touched:** `server/content/script.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentScript.test.mts`, `docs/decisions/0055-*.md`, `docs/AI_DECISIONS_INDEX.md`.

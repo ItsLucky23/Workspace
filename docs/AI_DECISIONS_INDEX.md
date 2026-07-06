@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (53)
+## Decisions (54)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -66,6 +66,7 @@
 | 0052 | Media provider abstraction + stub adapters (F0.3) | 🟢 accepted | content, ai-provider, media, stub, expansion-f03 | — | `docs/decisions/0052-media-provider-abstraction.md` |
 | 0053 | Cross-cutting style/preset system (F0.4) | 🟢 accepted | content, style, preset, expansion-f04 | — | `docs/decisions/0053-style-preset-system.md` |
 | 0054 | Generic content-pipeline — fixed stage sequence + control-ops (F1.1) | 🟢 accepted | content, pipeline, control-ops, expansion-f11 | — | `docs/decisions/0054-content-pipeline.md` |
+| 0055 | Content script + beats generation with a stub fallback (F1.2) | 🟢 accepted | content, script, ai, stub, expansion-f12 | — | `docs/decisions/0055-content-script-generation.md` |
 
 ## Summaries
 
@@ -494,6 +495,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A FIXED ordered content-stage sequence** (`server/content/pipeline.ts`): `idea → script → generate → assemble → review → publish`, with `nextContentStage`/`isContentStage` helpers. Unlike the dev board (per-project `PipelineStage` rows), the content stages are a code constant — the sequence is uniform across content pieces (per-stage CONFIG comes later, F4). 2. **Three control-ops** (B-23; capability `workTickets`): `content-create` (make a `ContentProject` at `idea`), `content-advance` (→ an explicit `toStage`, else the next stage; past `publish` → `status:done`), `content-archive` (soft). The **Conductor is the only writer** of `stageId`/`status`. 3. **`project-create` gains `projectType`** — `projectType:'content'` makes a content-lane project (NO board pipeline seeded); default stays `dev` (a board + its `PipelineStage`s). Zero change for existing dev flows.
 
 → `docs/decisions/0054-content-pipeline.md`
+
+### 0055 — Content script + beats generation with a stub fallback (F1.2)
+
+**0055** · accepted · tags: content, script, ai, stub, expansion-f12 · 2026-07-06
+
+1. **A content-script service `server/content/script.ts`** — `generateScript(prisma, { workspaceId, contentProjectId, brief, styleKey?, extraInstructions? })` resolves the `script` style + composes the system prompt (F0.4), calls `runAiCompletion('script', …)`, then writes a `Script` + ordered `Beat` rows and returns `{ scriptId, beatCount, stub, providerId }`. 2. **A CONTENT-LOCAL stub fallback.** When the provider is unavailable (no key), `generateScript` produces a valid-shaped 4-beat script from the brief (dummy-data mode) — the stub lives in the content layer, NOT in `runAiCompletion`, so the global text abstraction (incl. the coding agent) never silently stubs. 3. **`script` is a text `AiFeature`** (default `gemini-api` — non-coding bulk text, overridable). The `Script` records the resolved `providerId` + links the resolved `styleId`. 4. **Driven by a `content-gen-script` control-op** (B-23, `workTickets`) — the Conductor calls `generateScript` for the piece.
+
+→ `docs/decisions/0055-content-script-generation.md`
 
 ## Code governed by decisions
 

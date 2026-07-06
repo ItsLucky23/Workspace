@@ -44,7 +44,10 @@ export type AiFeature =
   | 'plan-critique'
   //? Reference-video analysis (ADR 0049, F2.3) — a multimodal model watches a reference video and returns
   //? a TEXT/structured beat + style BLUEPRINT (not an asset) that seeds a new script. Defaults to Gemini.
-  | 'reference-video-analysis';
+  | 'reference-video-analysis'
+  //? Content script generation (ADR 0049, F1.2) — a non-coding text feature that writes a narration script
+  //? (+ storyboard beats) from a brief. Defaults to Gemini; the content-script service stubs when no key.
+  | 'script';
 
 export interface AiCompletionRequest {
   prompt: string;
