@@ -2186,3 +2186,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/ciParse.test.mts` **16/16** (backward-compat + echte gitlab-ci + tree + errors) + `tests/unit/ptyReady.test.mts` **8/8** (markers + early-exit + bounded-timeout). ciGate **12/12** onaangetast. Lint + build groen. Live PTY-handshake = deferred post-keys e2e.
 
 **Files touched:** `server/ci/parse.ts` (herschreven), `server/orchestrator/ptyReady.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `tests/unit/ciParse.test.mts` (nieuw), `tests/unit/ptyReady.test.mts` (nieuw), `docs/decisions/0078-real-ci-yaml-pty-ready.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM M1: echte Fal.ai media-gen (image/video/3d/reference)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item M1.
+
+**What I did:**
+- `server/media/providers/fal.ts` heeft nu een LIVE `generate()`: compose prompt (style-systemprompt + prompt + extra, ADR 0053) → fal model+input (reference-image/3d dragen `image_url`) → echte fal.ai **queue**-request (submit → poll status → fetch result, met retry/backoff) → asset-URL-extractie per model-shape (`images[]`/`video`/`model_mesh`) + gemeterde €-kosten.
+- HTTP-transport = injecteerbare `FalTransport` → `generate` + pure helpers (`composeFalInput`/`extractFalAsset`/`liveMediaCostCents`) fixture-getest (geen key, geen netwerk). `available()` gate't nog steeds op `FAL_KEY` → geen key ⇒ registry roept `generate` nooit aan, valt terug op de valid-shaped stub.
+
+**Verify:** `tests/unit/falProvider.test.mts` **19/19** (prompt-compositie, request-shape incl. reference image_url, per-model asset-extractie, typed failures, `available()`-gate). mediaRegistry **18/18** (stub-fallback) onaangetast. Lint + build groen. Model-ids + kosten env-overridable (`FAL_MODEL_*`/`FAL_COST_*`). Live fal.ai-gen = deferred post-keys e2e.
+
+**Files touched:** `server/media/providers/fal.ts` (herschreven), `tests/unit/falProvider.test.mts` (nieuw), `docs/decisions/0079-real-fal-media-gen.md`, `docs/AI_DECISIONS_INDEX.md`.

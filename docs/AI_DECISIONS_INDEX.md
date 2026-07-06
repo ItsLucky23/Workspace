@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (77)
+## Decisions (78)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -90,6 +90,7 @@
 | 0076 | Preview/editor serve paths wait for readiness (no fire-and-forget) | 🟢 accepted | containers, preview, editor, reliability, depth-program | — | `docs/decisions/0076-container-readiness-probes.md` |
 | 0077 | Forge issue-sync paginates + retries; git push retries | 🟢 accepted | forge, git, reliability, pagination, depth-program | — | `docs/decisions/0077-forge-retry-pagination.md` |
 | 0078 | Real CI YAML parse + PTY prompt-ready detection | 🟢 accepted | ci, yaml, pty, orchestrator, depth-program | — | `docs/decisions/0078-real-ci-yaml-pty-ready.md` |
+| 0079 | Real Fal.ai media generation behind available() (stub = no-key fallback) | 🟢 accepted | content, media, fal, generation, depth-program | — | `docs/decisions/0079-real-fal-media-gen.md` |
 
 ## Summaries
 
@@ -710,6 +711,14 @@ Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ 
 **Real YAML:** a dep-free recursive YAML-subset parser (`parseYamlSubset`) handles block mappings at any consistent indent, block sequences (`- item`), inline flow arrays, quoted scalars, and comments. `parseCiYaml` reads it into the same `CiSpec`, accepting BOTH the documented `jobs:`-wrapped shape (backward compatible) AND a real `.gitlab-ci.yml` (top-level jobs, reserved keys like `variables:` skipped, snake_case `allow_failure`). Still no js-yaml (a transitive dep is a boot-crash risk) and still pure + total (a bad config → `{ok:false}`, never throws). **PTY prompt-ready:** `server/orchestrator/ptyReady.ts` scans the accumulated PTY output for the CLI's trust/ready markers; `waitForOutput` early-exits as soon as one appears, with a ceiling so a wrong/missing marker DEGRADES to a bounded wait (never a hang, never worse than the old fixed wait). `stageRunner` accumulates `term.onData` and gates the trust-confirm + kickoff on detection.
 
 → `docs/decisions/0078-real-ci-yaml-pty-ready.md`
+
+### 0079 — Real Fal.ai media generation behind available() (stub = no-key fallback)
+
+**0079** · accepted · tags: content, media, fal, generation, depth-program · 2026-07-06
+
+`server/media/providers/fal.ts` now has a LIVE `generate()`: it composes the prompt (style system-prompt + prompt + extra instructions, ADR 0053), builds the fal model + input (reference-image/model-3d carry the reference as `image_url`), runs a real fal.ai **queue** request (submit → poll status → fetch result, with retry/backoff), and extracts the produced asset URL per model shape (`images[]`/`video`/`model_mesh`) + a metered € cost. The HTTP transport is an injectable `FalTransport` so `generate` + the pure helpers (`composeFalInput`/`extractFalAsset`/`liveMediaCostCents`) are unit-tested with FIXTURES — no key, no network. The real transport (`realFalTransport`) is used by default. `available()` still gates on `FAL_KEY`: no key → the registry never calls `generate` and returns the valid-shaped stub, so the dummy-data pipeline stays green.
+
+→ `docs/decisions/0079-real-fal-media-gen.md`
 
 ## Code governed by decisions
 
