@@ -21,6 +21,8 @@ import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
+import { postAiReviewFindings } from '../mr/reviewRole';
+import { getAgentRole } from '../automation/agentRoles';
 import { indexWorkspace } from '../rag';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
@@ -958,6 +960,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Automation (#2): accepting an 'automation' suggestion EXECUTES the gated action it carries
       //? (the human consent the ActionExecutor's approval gate deferred to — B-23 single-writer).
       if (suggestion?.type === 'automation') await executeGatedAction(prisma, action.workspaceId, suggestion.patch);
+      //? AI MR-review (ADR 0041): accepting posts each proposed finding as a ReviewComment(authorKind:'ai').
+      //? The AI never wrote it — the Conductor does, on human consent (B-23).
+      if (suggestion?.type === 'mr-review') await postAiReviewFindings(prisma, action.workspaceId, suggestion.patch);
       return;
     }
     // ---- automation triggers (#2) ----
@@ -1086,6 +1091,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'ci-allow-red': {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { allowMergeOnRedCI: bool(payload, 'enabled') } });
       return;
+    }
+    //? AI MR-review (ADR 0041): run the reviewer role on a ticket's MR → it PROPOSES findings as a
+    //? WorkspaceSuggestion(type:'mr-review'). The human accepts to post them (B-23). AI never writes here.
+    case 'mr-review': {
+      const role = getAgentRole('mr-review');
+      if (!role) return { ok: false };
+      const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
+      const mrId = str(payload, 'mrId');
+      const artifact = await role.run({ workspaceId: action.workspaceId, ...(ticketKey ? { ticketKey } : {}), params: mrId ? { mrId } : {} });
+      return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {

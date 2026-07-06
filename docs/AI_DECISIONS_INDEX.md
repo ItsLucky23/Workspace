@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (39)
+## Decisions (40)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -52,6 +52,7 @@
 | 0038 | Deploy/CD — promote ladder + downloadable build export | 🟢 accepted | deploy, cd, promote, build-export, download, expansion-b2 | — | `docs/decisions/0038-deploy-cd-downloadable-builds.md` |
 | 0039 | Built-in CI + quality gates (green/red blocking merge & promote) | 🟢 accepted | ci, quality-gates, merge-gate, promote, expansion-c1 | — | `docs/decisions/0039-builtin-ci-quality-gates.md` |
 | 0040 | Security & dependency scanning — first-class CI job types | 🟢 accepted | ci, security, dependency-audit, secret-scan, expansion-c2 | — | `docs/decisions/0040-security-dependency-scanning.md` |
+| 0041 | AI MR-review pass (propose→accept, never writes/approves) | 🟢 accepted | mr-review, ai, propose-accept, rag, b-23, expansion-c3 | — | `docs/decisions/0041-ai-mr-review.md` |
 
 ## Summaries
 
@@ -368,6 +369,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **First-class scanner job types on the C1 runner** — a CI job gains a `type` (`script` default, plus `dep-audit` / `sca` / `secret-scan`). A scanner job needs NO `script` (its command comes from its type: `npm audit --json` for dep-audit; a credential-pattern `grep` for secret-scan). Results are PARSED into typed findings + a max severity (`server/ci/security.ts` pure parsers), stored on the `PipelineJob` (`severity`, `findings`) and rolled up to `PipelineRun.maxSeverity` — not freeform log-grepping.
 
 → `docs/decisions/0040-security-dependency-scanning.md`
+
+### 0041 — AI MR-review pass (propose→accept, never writes/approves)
+
+**0041** · accepted · tags: mr-review, ai, propose-accept, rag, b-23, expansion-c3 · 2026-07-06
+
+1. **A non-coding `mr-review` AgentRole** (provider abstraction, ADR 0007 — new `AiFeature 'mr-review'`), mirroring the interviewer role. `run`: load the MR + `branchDiff` → `parseUnifiedDiff`, `retrieve()` the shared RAG for grounding, `runAiCompletion('mr-review', …)`, parse findings, and *validate every finding's line anchor against the real diff** (drop hallucinated line numbers). It emits ONE `WorkspaceSuggestion(type:'mr-review')` carrying `{ mrId, findings[] }` in its `patch`.
+
+→ `docs/decisions/0041-ai-mr-review.md`
 
 ## Code governed by decisions
 

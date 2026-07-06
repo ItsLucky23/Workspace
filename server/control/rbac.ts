@@ -84,6 +84,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'mr-merge': CAP.workTickets,
   'mr-rollback': CAP.workTickets,
   'mr-resolve': CAP.workTickets,
+  'mr-review': CAP.workTickets,
   'raise-cap': CAP.workspaceSettings,
   'edit-budget': CAP.workspaceSettings,
   'resume-spend': CAP.workspaceSettings,

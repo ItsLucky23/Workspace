@@ -37,7 +37,7 @@ export type ControlOp =
   | 'forge-connect'
   | 'save-git-config'
   | 'link-repo' | 'scan-docs' | 'scan-index'
-  | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve'
+  | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config'
   | 'trigger-save' | 'trigger-toggle' | 'trigger-delete' | 'trigger-run'

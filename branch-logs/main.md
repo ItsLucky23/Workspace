@@ -1741,3 +1741,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** externe scanner-provider (Snyk e.d.) als `runnerKind`-seam, security-findings-UI-paneel (zelfde als de C1 CI-chip).
 
 **Files touched:** `prisma/schema.prisma`, `docs/decisions/0040-*.md`, `server/ci/{security,parse,runner,gate}.ts`, `server/deploy/promote.ts`, `tests/integration/securityScan.test.mts`.
+
+## 2026-07-06 18:15 — Expansion C3: AI MR-review pass (ADR 0041)
+
+**User:** `/goal` (vervolg — item C3). Un-defert BUILTIN_MR_REVIEW (white space).
+
+**What I did:** een AI die MR's reviewt via **propose→accept** — nooit zelf schrijven/approven (B-23). Het schema bleek al verbreed (`ReviewComment.authorKind:'ai'` + optionele `authorId`).
+- **AI-feature:** `AiFeature += 'mr-review'` (+ `DEFAULT_ASSIGNMENTS`). Geen schema-wijziging.
+- **Role:** `server/mr/reviewRole.ts` `registerMrReviewRole` (mirror interviewer, `mutates:false`) — laadt MR + `branchDiff`→`parseUnifiedDiff`, RAG-grondt via `retrieve()`, `runAiCompletion('mr-review')`, parset `- [path:line] body`-findings, **valideert elke line-anchor tegen de echte diff** (dropt gehallucineerde regels), emit één `WorkspaceSuggestion(type:'mr-review', patch:{mrId, findings})`. Geregistreerd bij boot.
+- **Accept-brug (B-23):** de `accept-suggestion`-handler krijgt een `type==='mr-review'`-branch → `postAiReviewFindings` plaatst elke finding als een echte `ReviewComment(authorKind:'ai')` (geen authorId). De AI schrijft nooit direct; de Conductor doet het op menselijke consent. Approve/merge blijven human-only + approval-gated.
+- **Trigger:** `mr-review`-control-op via de `mrAction`-sync-route (`review`-actie); een `WorkspaceTrigger(invoke-agent-role, role:'mr-review')` kan het auto-triggeren. Hergebruikt bestaande UI (suggesties-lijst + MR-review-paneel toont `authorKind:'ai'`-comments al) — geen nieuwe client-UI.
+- **Verify:** `tests/integration/mrReview.test.mts` — **9/9** (parser + diff-validatie dropt hallucinatie · accept plaatst 1 AI-comment per finding met `authorKind:'ai'`/geen authorId · suggestie→accepted · MR blijft **open**, **0 approvals** — AI approveert/merget nooit). ADR **0041**.
+- **Follow-ups (in ADR):** auto-trigger op `mr.updated`, per-finding accept/dismiss-UI.
+
+**Files touched:** `docs/decisions/0041-*.md`, `server/mr/reviewRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/mrAction_server_v1.ts`, `tests/integration/mrReview.test.mts`, `tests/_helpers.mts`.

@@ -32,7 +32,10 @@ export type AiFeature =
   //? an agent role). Non-coding one-shot completion.
   | 'interviewer'
   //? Web scraper (Marketing reach) — summarises a fetched page for outreach. Schedulable role.
-  | 'scraper';
+  | 'scraper'
+  //? AI MR-review (ADR 0041) — reads an MR diff (RAG-grounded) + proposes line-anchored review
+  //? findings a human accepts to post as `ReviewComment(authorKind:'ai')`. Never approves/merges.
+  | 'mr-review';
 
 export interface AiCompletionRequest {
   prompt: string;

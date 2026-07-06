@@ -24,7 +24,7 @@ export interface SyncParams {
 }
 
 const OP: Record<string, ControlOp> = {
-  create: 'mr-create', comment: 'mr-comment', approve: 'mr-approve', merge: 'mr-merge', rollback: 'mr-rollback', resolve: 'mr-resolve',
+  create: 'mr-create', comment: 'mr-comment', approve: 'mr-approve', merge: 'mr-merge', rollback: 'mr-rollback', resolve: 'mr-resolve', review: 'mr-review',
 };
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
