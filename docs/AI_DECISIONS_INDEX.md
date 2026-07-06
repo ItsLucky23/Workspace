@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (76)
+## Decisions (77)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -89,6 +89,7 @@
 | 0075 | Server-side merge/rollback pushes the target to origin | 🟢 accepted | git, mr, forge, depth-program | — | `docs/decisions/0075-mr-push-to-origin.md` |
 | 0076 | Preview/editor serve paths wait for readiness (no fire-and-forget) | 🟢 accepted | containers, preview, editor, reliability, depth-program | — | `docs/decisions/0076-container-readiness-probes.md` |
 | 0077 | Forge issue-sync paginates + retries; git push retries | 🟢 accepted | forge, git, reliability, pagination, depth-program | — | `docs/decisions/0077-forge-retry-pagination.md` |
+| 0078 | Real CI YAML parse + PTY prompt-ready detection | 🟢 accepted | ci, yaml, pty, orchestrator, depth-program | — | `docs/decisions/0078-real-ci-yaml-pty-ready.md` |
 
 ## Summaries
 
@@ -701,6 +702,14 @@ Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ 
 **Pagination:** a pure `accumulatePages(fetchPage, {perPage, maxPages})` follows `page=1..` until a short page or a safety cap (`MAX_ISSUE_PAGES=20` → 2000 issues). Hitting the cap sets `capped` and the caller `console.warn`s it — **never a silent truncation**. Both GitLab + GitHub sync use it. **Retry:** each page fetch + `pushBranch` (push-on-approval) run through `withRetry` (ADR 0075). `isTransientForgeError` retries only 5xx/429/network — a 4xx (bad token / not-found) fails fast. Both helpers exported for a network-free unit test.
 
 → `docs/decisions/0077-forge-retry-pagination.md`
+
+### 0078 — Real CI YAML parse + PTY prompt-ready detection
+
+**0078** · accepted · tags: ci, yaml, pty, orchestrator, depth-program · 2026-07-06
+
+**Real YAML:** a dep-free recursive YAML-subset parser (`parseYamlSubset`) handles block mappings at any consistent indent, block sequences (`- item`), inline flow arrays, quoted scalars, and comments. `parseCiYaml` reads it into the same `CiSpec`, accepting BOTH the documented `jobs:`-wrapped shape (backward compatible) AND a real `.gitlab-ci.yml` (top-level jobs, reserved keys like `variables:` skipped, snake_case `allow_failure`). Still no js-yaml (a transitive dep is a boot-crash risk) and still pure + total (a bad config → `{ok:false}`, never throws). **PTY prompt-ready:** `server/orchestrator/ptyReady.ts` scans the accumulated PTY output for the CLI's trust/ready markers; `waitForOutput` early-exits as soon as one appears, with a ceiling so a wrong/missing marker DEGRADES to a bounded wait (never a hang, never worse than the old fixed wait). `stageRunner` accumulates `term.onData` and gates the trust-confirm + kickoff on detection.
+
+→ `docs/decisions/0078-real-ci-yaml-pty-ready.md`
 
 ## Code governed by decisions
 

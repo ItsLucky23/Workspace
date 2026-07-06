@@ -2174,3 +2174,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/forgePagination.test.mts` **14/14** (short-page stop, multi-page concat = de >100-fix, cap-reporting, transient-classifier). forgeConnect **13/13** onaangetast. Lint + build groen. Live multi-page sync = deferred post-keys e2e.
 
 **Files touched:** `server/git/gitlabSync.ts`, `server/git/repoStore.ts`, `tests/unit/forgePagination.test.mts` (nieuw), `docs/decisions/0077-forge-retry-pagination.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM C4: echte CI-YAML-parse + PTY prompt-ready detectie
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item C4.
+
+**What I did:**
+- `server/ci/parse.ts` herschreven rond een dep-vrije recursieve YAML-subset-parser (`parseYamlSubset`): block-mappings op elke consistente indent, block-sequences (`- item`), inline flow-arrays, quoted scalars, comments. `parseCiYaml` accepteert nu BEIDE de gedocumenteerde `jobs:`-wrapped shape (backward-compat) ÉN een echte `.gitlab-ci.yml` (top-level jobs, reserved keys als `variables:` overgeslagen, snake_case `allow_failure`). Nog steeds geen js-yaml, puur + totaal.
+- `server/orchestrator/ptyReady.ts`: prompt-ready detectie (trust/ready-markers) + `waitForOutput` (early-exit-on-detect, ceiling-fallback → nooit een hang, nooit slechter dan de oude vaste wait). `stageRunner` accumuleert `term.onData` en gate't trust-confirm + kickoff op detectie i.p.v. blind `wait(7000)`/`wait(3000)`.
+
+**Verify:** `tests/unit/ciParse.test.mts` **16/16** (backward-compat + echte gitlab-ci + tree + errors) + `tests/unit/ptyReady.test.mts` **8/8** (markers + early-exit + bounded-timeout). ciGate **12/12** onaangetast. Lint + build groen. Live PTY-handshake = deferred post-keys e2e.
+
+**Files touched:** `server/ci/parse.ts` (herschreven), `server/orchestrator/ptyReady.ts` (nieuw), `server/orchestrator/stageRunner.ts`, `tests/unit/ciParse.test.mts` (nieuw), `tests/unit/ptyReady.test.mts` (nieuw), `docs/decisions/0078-real-ci-yaml-pty-ready.md`, `docs/AI_DECISIONS_INDEX.md`.

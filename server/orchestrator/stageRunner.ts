@@ -22,6 +22,7 @@ import { retrieve } from '../rag';
 import { recordTurnSpend } from '../spend/record';
 import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
+import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -101,10 +102,18 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   //? Object property (not a local) so TS doesn't treat the onExit-mutated flag as constant.
   const state = { exited: false };
   term.onExit(() => { state.exited = true; });
-  term.onData(() => { /* drained; the turn is captured via the Stop hook, not the PTY */ });
+  //? Accumulate PTY output (capped) so prompt-ready detection can scan it — the TURN result still
+  //? comes from the Stop hook, not the PTY (C4 only uses the stream to time the handshake).
+  const buf = { text: '' };
+  term.onData((d: string) => { buf.text = (buf.text + d).slice(-8000); });
 
-  await wait(7000); term.write('\r'); await wait(3000);   // boot + confirm folder-trust
-  term.write(kickoff); await wait(1500); term.write('\r'); await wait(2500); term.write('\r');
+  //? Boot handshake — wait until the trust prompt OR the input prompt actually appears (early-exit),
+  //? with a ceiling so a wrong/missing marker degrades to a bounded wait rather than a hang (C4).
+  await waitForOutput(() => buf.text, matchesTrustOrReady, { timeoutMs: 12_000 });
+  term.write('\r'); // confirm folder-trust (harmless if already trusted)
+  //? Then wait for the input prompt to be ready before sending the kickoff.
+  await waitForOutput(() => buf.text, matchesReady, { timeoutMs: 8000 });
+  term.write(kickoff); await wait(1200); term.write('\r'); await wait(1500); term.write('\r');
 
   //? Poll for the Stop-hook capture (turn end) up to the timeout.
   const deadline = Date.now() + timeoutMs;
