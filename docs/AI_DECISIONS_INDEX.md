@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (65)
+## Decisions (66)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -78,6 +78,7 @@
 | 0064 | 3D-concepting generation (F2.6) | 🟢 accepted | content, 3d, media, expansion-f26 | — | `docs/decisions/0064-model-3d.md` |
 | 0065 | Publishing behind the B-23 approval gate + YouTube (F3.1) | 🟢 accepted | content, publish, youtube, b-23, expansion-f31 | — | `docs/decisions/0065-publish-gate.md` |
 | 0066 | TikTok publishing + IG/LinkedIn future-ready (F3.2) | 🟢 accepted | content, publish, tiktok, expansion-f32 | — | `docs/decisions/0066-publish-tiktok.md` |
+| 0067 | Content automation + conversational entry (F3.3) | 🟢 accepted | content, automation, cron, assistant, expansion-f33 | — | `docs/decisions/0067-content-automation.md` |
 
 ## Summaries
 
@@ -602,6 +603,14 @@ Music + sfx generation ride the `content-gen-music` / `content-gen-sfx` ops (alr
 TikTok is in `BUILT_PLATFORMS` (established in F3.1's abstraction) — it posts via the same gate + `publishAsset` (dummy, no key). Instagram + LinkedIn stay in `FUTURE_PLATFORMS`: a publish request for them records a `PublishJob(error:'platform.notBuilt')` — visible, never a silent post. No new engine code beyond F3.1's abstraction.
 
 → `docs/decisions/0066-publish-tiktok.md`
+
+### 0067 — Content automation + conversational entry (F3.3)
+
+**0067** · accepted · tags: content, automation, cron, assistant, expansion-f33 · 2026-07-06
+
+1. **A schedulable `content-ideator` AgentRole** (`server/content/ideatorRole.ts`, `mutates:true`). A cron trigger (`action:'invoke-agent-role', params:{role:'content-ideator', theme?}`) fires it; because it `mutates`, the automation executor GATES it into an approval suggestion — it never writes content directly (B-23). Registered at boot in `server.ts`. 2. **A `content-from-brief` op** (B-23, `workTickets`) — the conversational quick-start: creates a content-lane `Project` + a first `ContentProject` piece from a chat brief in one op (on the user's accept). This is what the Assistant calls to "spin up a video about startup A".
+
+→ `docs/decisions/0067-content-automation.md`
 
 ## Code governed by decisions
 

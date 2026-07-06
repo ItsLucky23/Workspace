@@ -1123,6 +1123,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
       return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform } } });
     }
+    //? Conversational quick-start (F3.3, ADR 0067) — the Assistant spins up a content project + a first
+    //? piece from a chat brief in one op (on the user's accept).
+    case 'content-from-brief': {
+      const brief = str(payload, 'brief');
+      if (!brief) return;
+      const project = await prisma.project.create({ data: { workspaceId: action.workspaceId, name: str(payload, 'channelName') ?? 'Content', projectType: 'content', gitlabPath: '' } });
+      return prisma.contentProject.create({ data: { workspaceId: action.workspaceId, projectId: project.id, title: str(payload, 'title') ?? 'New content', brief, format: str(payload, 'format') ?? 'faceless' } });
+    }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.
     case 'content-gen-reference-image': {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');

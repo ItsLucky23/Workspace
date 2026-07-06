@@ -52,6 +52,7 @@ import { registerBuildDownload } from './deploy/downloadRoute';
 import { registerStudioRoles } from './studio/roles';
 import { registerInterviewerRole } from './interviewer/role';
 import { registerScraperRole } from './scraper/role';
+import { registerContentIdeatorRole } from './content/ideatorRole';
 import { registerMrReviewRole } from './mr/reviewRole';
 import { registerRootCauseRole } from './mr/rootCauseRole';
 import { registerPlanCritiqueRole } from './reasoning/planCritiqueRole';
@@ -117,6 +118,7 @@ import { startLeaderElection } from './orchestrator/cluster';
   registerPlanCritiqueRole();
   //? Marketing reach: register the schedulable web-scraper role.
   registerScraperRole();
+  registerContentIdeatorRole();
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue
   //? ingest. Pre-params + shared-secret gated (WS_WEBHOOK_SECRET); disabled when unset.
   registerForgeWebhook();

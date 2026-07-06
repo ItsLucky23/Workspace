@@ -2046,3 +2046,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/publishTiktok.test.mts` **5/5** (abstractie: youtube+tiktok built / ig+linkedin future · TikTok-publish via gate → dummy-post). ADR **0066**.
 
 **Files touched:** `tests/integration/publishTiktok.test.mts`, `docs/decisions/0066-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 06:25 — Content-platform F3.3: automatie + conversational entry (ADR 0067) — Fase 3 KLAAR
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F3.3 (laatste van Fase 3).
+
+**What I did:** de twee entry-modes.
+- **`content-ideator` AgentRole** (`server/content/ideatorRole.ts`, `mutates:true`, registered in `server.ts`) — een cron-trigger (`invoke-agent-role`, role=content-ideator) wordt door de automatie-executor **gegate naar een approval-suggestie** (geen directe content-write, B-23).
+- **`content-from-brief` op** (B-23, workTickets) — conversational quick-start: maakt een content-lane-`Project` + eerste `ContentProject`-piece uit een chat-brief in één op (op user-accept). Wat de Assistant aanroept voor "maak een video over startup A".
+- **Verify:** `tests/integration/contentAutomation.test.mts` **7/7** (geplande rol → suggestie, **0 directe content-write** · content-from-brief → content-project+piece met brief). rbac **122/122**. lint+build+ai:lint groen. ADR **0067**.
+- **🏁 Fase 3 (publiceren + automatie) KLAAR.**
+
+**Files touched:** `server/content/ideatorRole.ts`, `server/server.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentAutomation.test.mts`, `docs/decisions/0067-*.md`, `docs/AI_DECISIONS_INDEX.md`.
