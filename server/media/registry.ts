@@ -6,11 +6,13 @@
 import { resolveMediaAssignment, defaultMediaAssignments } from './assignments';
 import { falProvider } from './providers/fal';
 import { elevenlabsProvider } from './providers/elevenlabs';
+import { sunoProvider } from './providers/suno';
 import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProvider, MediaProviderId } from './types';
 
 const MEDIA_PROVIDERS: Record<MediaProviderId, MediaProvider> = {
   fal: falProvider,
   elevenlabs: elevenlabsProvider,
+  suno: sunoProvider,
 };
 
 //? The asset kind produced by each feature (drives ContentAsset.kind + the stub shape).

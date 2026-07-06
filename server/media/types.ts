@@ -17,10 +17,10 @@ export type MediaFeature =
   | 'avatar'
   | 'model-3d';
 
-//? A concrete media backend. `fal` = the image/video/3d gateway; `elevenlabs` = voice/sfx/music.
-//? (Assembly/render is Remotion — a distinct path in F1.5, not a gen provider. Avatar/music get
-//? dedicated providers — HeyGen/Suno — later; they default to the gateway/voice adapter for now.)
-export type MediaProviderId = 'fal' | 'elevenlabs';
+//? A concrete media backend. `fal` = the image/video/3d gateway; `elevenlabs` = voice/sfx; `suno` =
+//? music (M2). (Assembly/render is ffmpeg — a distinct path in M4, not a gen provider. Avatar gets a
+//? dedicated provider — HeyGen — later; it defaults to the gateway for now.)
+export type MediaProviderId = 'fal' | 'elevenlabs' | 'suno';
 
 //? The resolved style a generation composes with (from the StylePreset registry, ADR 0049).
 export interface MediaStyle {

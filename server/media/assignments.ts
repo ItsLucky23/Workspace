@@ -5,8 +5,8 @@
 import type { MediaFeature, MediaProviderId } from './types';
 
 //? Defaults: the Fal gateway for image/video/3d/avatar (one key, many models), ElevenLabs for
-//? voice/sfx/music. Avatar (HeyGen) + music (Suno) get dedicated providers later; they route to
-//? the gateway/voice adapter for now (overridable per workspace once those adapters land).
+//? voice/sfx, Suno for music (M2). Avatar (HeyGen) gets a dedicated provider later; it routes to the
+//? gateway for now (overridable per workspace once that adapter lands).
 const DEFAULT_MEDIA_ASSIGNMENTS: Record<MediaFeature, MediaProviderId> = {
   'image-gen': 'fal',
   'reference-image': 'fal',
@@ -15,7 +15,7 @@ const DEFAULT_MEDIA_ASSIGNMENTS: Record<MediaFeature, MediaProviderId> = {
   'avatar': 'fal',
   'tts': 'elevenlabs',
   'sfx': 'elevenlabs',
-  'music': 'elevenlabs',
+  'music': 'suno',
 };
 
 //? Resolve the provider for a media feature. `overrides` = the per-workspace map (unset → default).

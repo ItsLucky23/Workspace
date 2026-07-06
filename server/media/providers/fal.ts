@@ -8,7 +8,11 @@
 import { sleep, tryCatch } from '@luckystack/core';
 
 import { withRetry } from '../../util/retry';
+import { composeMediaPrompt } from '../prompt';
 import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProvider, MediaAsset } from '../types';
+
+//? Re-exported so the fal test + callers can import the shared prompt composer from here.
+export { composeMediaPrompt } from '../prompt';
 
 const SUPPORTED: MediaFeature[] = ['image-gen', 'reference-image', 'video-gen', 'model-3d', 'avatar'];
 
@@ -33,15 +37,6 @@ function falModelFor(feature: MediaFeature): string {
     'tts': '', 'music': '', 'sfx': '',
   };
   return models[feature];
-}
-
-//? Compose the final text prompt: the resolved style's system-prompt + the caller's prompt + the
-//? user's free-form extra instructions (ADR 0053). Pure + exported for tests.
-export function composeMediaPrompt(req: MediaGenerationRequest): string {
-  return [req.style?.systemPrompt, req.prompt, req.extraInstructions]
-    .map((s) => (s ?? '').trim())
-    .filter((s) => s.length > 0)
-    .join('. ');
 }
 
 //? Build the fal model id + input body for a request. `reference-image` carries the reference as

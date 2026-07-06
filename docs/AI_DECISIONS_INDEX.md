@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (78)
+## Decisions (79)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -91,6 +91,7 @@
 | 0077 | Forge issue-sync paginates + retries; git push retries | 🟢 accepted | forge, git, reliability, pagination, depth-program | — | `docs/decisions/0077-forge-retry-pagination.md` |
 | 0078 | Real CI YAML parse + PTY prompt-ready detection | 🟢 accepted | ci, yaml, pty, orchestrator, depth-program | — | `docs/decisions/0078-real-ci-yaml-pty-ready.md` |
 | 0079 | Real Fal.ai media generation behind available() (stub = no-key fallback) | 🟢 accepted | content, media, fal, generation, depth-program | — | `docs/decisions/0079-real-fal-media-gen.md` |
+| 0080 | Real ElevenLabs voice/sfx + Suno music behind available() | 🟢 accepted | content, media, elevenlabs, suno, generation, depth-program | — | `docs/decisions/0080-real-voice-music-gen.md` |
 
 ## Summaries
 
@@ -719,6 +720,14 @@ Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ 
 `server/media/providers/fal.ts` now has a LIVE `generate()`: it composes the prompt (style system-prompt + prompt + extra instructions, ADR 0053), builds the fal model + input (reference-image/model-3d carry the reference as `image_url`), runs a real fal.ai **queue** request (submit → poll status → fetch result, with retry/backoff), and extracts the produced asset URL per model shape (`images[]`/`video`/`model_mesh`) + a metered € cost. The HTTP transport is an injectable `FalTransport` so `generate` + the pure helpers (`composeFalInput`/`extractFalAsset`/`liveMediaCostCents`) are unit-tested with FIXTURES — no key, no network. The real transport (`realFalTransport`) is used by default. `available()` still gates on `FAL_KEY`: no key → the registry never calls `generate` and returns the valid-shaped stub, so the dummy-data pipeline stays green.
 
 → `docs/decisions/0079-real-fal-media-gen.md`
+
+### 0080 — Real ElevenLabs voice/sfx + Suno music behind available()
+
+**0080** · accepted · tags: content, media, elevenlabs, suno, generation, depth-program · 2026-07-06
+
+**ElevenLabs (voice + sfx):** live `generate()` composes the input (text = style + prompt + extra; voice id from params/env), calls the ElevenLabs REST API (tts → `/text-to-speech/<voice>`, sfx → `/sound-generation`) which returns raw audio BYTES, and persists them via a new `server/media/store.ts` (`data/media/<uuid>.mp3` → a served `/media/...` url). Transport injectable → fixture-tested. **Suno (music):** a NEW dedicated provider (`server/media/providers/suno.ts`) — `MediaProviderId` gains `'suno'`, registered in the registry, and `music` in the assignments now defaults to `'suno'`. Suno returns a HOSTED audio URL (submit → poll → url), so no local persistence. Transport injectable. **Shared:** `composeMediaPrompt` moved to `server/media/prompt.ts` (fal re-exports it) so all three adapters compose style/extra identically.
+
+→ `docs/decisions/0080-real-voice-music-gen.md`
 
 ## Code governed by decisions
 

@@ -2198,3 +2198,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/falProvider.test.mts` **19/19** (prompt-compositie, request-shape incl. reference image_url, per-model asset-extractie, typed failures, `available()`-gate). mediaRegistry **18/18** (stub-fallback) onaangetast. Lint + build groen. Model-ids + kosten env-overridable (`FAL_MODEL_*`/`FAL_COST_*`). Live fal.ai-gen = deferred post-keys e2e.
 
 **Files touched:** `server/media/providers/fal.ts` (herschreven), `tests/unit/falProvider.test.mts` (nieuw), `docs/decisions/0079-real-fal-media-gen.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM M2: echte ElevenLabs (voice/sfx) + Suno (music)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item M2.
+
+**What I did:**
+- **ElevenLabs (voice+sfx):** live `generate()` — input-compositie (text = style+prompt+extra; voiceId uit params/env) → ElevenLabs REST (tts `/text-to-speech/<voice>`, sfx `/sound-generation`) geeft audio-BYTES → gepersisteerd via nieuwe `server/media/store.ts` (`data/media/<uuid>.mp3` → served `/media/...` url). Transport injecteerbaar → fixture-getest.
+- **Suno (music):** NIEUWE dedicated provider — `MediaProviderId += 'suno'`, geregistreerd, `music`-assignment → `suno`. Suno geeft hosted url (submit→poll→url), geen persistence. Transport injecteerbaar.
+- Gedeelde `composeMediaPrompt` naar `server/media/prompt.ts` (fal re-exporteert) zodat alle 3 adapters style/extra identiek composen.
+
+**Verify:** `tests/unit/audioProviders.test.mts` **19/19** (input-compositie, voice/sfx/music-assets, typed failures, `available()`-gates). mediaRegistry **18/18** + falProvider **19/19** onaangetast. Lint + build groen. Env-overridable (`ELEVENLABS_*`/`SUNO_*`/`WS_MEDIA_DIR`). Live gen = deferred post-keys e2e.
+
+**Files touched:** `server/media/providers/{elevenlabs,suno}.ts`, `server/media/{prompt,store,types,registry,assignments}.ts`, `server/media/providers/fal.ts` (re-export), `tests/unit/audioProviders.test.mts` (nieuw), `docs/decisions/0080-real-voice-music-gen.md`, `docs/AI_DECISIONS_INDEX.md`.
