@@ -5,7 +5,7 @@
 //? with 2-space job names + 4-space fields; arrays inline `[a, "b"]`) — no js-yaml (no types, and a
 //? transitive dep is a boot-crash risk). Anything outside the documented shape is ignored, not guessed.
 
-export interface CiJob { name: string; stage: string; script: string[]; needs: string[]; image: string; allowFailure: boolean }
+export interface CiJob { name: string; stage: string; type: string; script: string[]; needs: string[]; image: string; allowFailure: boolean }
 export interface CiSpec { version: number; stages: string[]; jobs: CiJob[] }
 export type ParseResult = { ok: true; spec: CiSpec } | { ok: false; error: string };
 
@@ -16,6 +16,8 @@ function inlineArray(v: string): string[] {
   return t.slice(1, -1).split(',').map((s) => s.trim().replaceAll(/^['"]|['"]$/g, '')).filter((s) => s.length > 0);
 }
 
+//? A scanner job (ADR 0040) supplies its command from its TYPE, so it needs no `script`.
+const isScanner = (t: string | undefined): boolean => t === 'dep-audit' || t === 'secret-scan' || t === 'sca';
 //? The indentation (leading spaces) of a line.
 const indentOf = (line: string): number => line.length - line.trimStart().length;
 //? Split `key: value` at the FIRST colon; value may be empty (a block-opening key).
@@ -41,8 +43,8 @@ export function parseCiYaml(body: string): ParseResult {
   let inJobs = false;
   let current: Partial<CiJob> & { name?: string } = {};
   const flush = (): void => {
-    if (current.name && (current.script?.length ?? 0) > 0) {
-      jobs.push({ name: current.name, stage: current.stage ?? (stages[0] ?? 'test'), script: current.script ?? [], needs: current.needs ?? [], image: current.image ?? 'project', allowFailure: current.allowFailure ?? false });
+    if (current.name && ((current.script?.length ?? 0) > 0 || isScanner(current.type))) {
+      jobs.push({ name: current.name, stage: current.stage ?? (stages[0] ?? 'test'), type: current.type ?? 'script', script: current.script ?? [], needs: current.needs ?? [], image: current.image ?? 'project', allowFailure: current.allowFailure ?? false });
     }
     current = {};
   };
@@ -81,6 +83,10 @@ export function parseCiYaml(body: string): ParseResult {
       current.stage = value.replaceAll(/^['"]|['"]$/g, '');
       break;
       }
+      case 'type': {
+      current.type = value.replaceAll(/^['"]|['"]$/g, '');
+      break;
+      }
       case 'image': {
       current.image = value.replaceAll(/^['"]|['"]$/g, '');
       break;
@@ -105,7 +111,7 @@ export function parseCiYaml(body: string): ParseResult {
   flush();
 
   if (stages.length === 0) return { ok: false, error: 'ci.noStages' };
-  const runnable = jobs.filter((j) => stages.includes(j.stage) && j.script.length > 0);
+  const runnable = jobs.filter((j) => stages.includes(j.stage) && (j.script.length > 0 || isScanner(j.type)));
   if (runnable.length === 0) return { ok: false, error: 'ci.noRunnableJobs' };
   return { ok: true, spec: { version, stages, jobs: runnable } };
 }

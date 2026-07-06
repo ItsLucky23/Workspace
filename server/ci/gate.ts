@@ -5,6 +5,8 @@
 
 import type { PrismaClient } from '@prisma/client';
 
+import { SEVERITY_RANK } from './security';
+
 export interface CiGate { gated: boolean; status: string; reason?: string }
 
 //? The CI gate for an MR: given its CURRENT head, is the latest run green? A stale-head green does NOT
@@ -34,4 +36,12 @@ export async function ciGreenForProject(prisma: PrismaClient, workspaceId: strin
 export async function allowMergeOnRedCI(prisma: PrismaClient, workspaceId: string): Promise<boolean> {
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { allowMergeOnRedCI: true } });
   return ws?.allowMergeOnRedCI === true;
+}
+
+//? Security gate for a prod promote (ADR 0040): does the latest run carry a high/critical finding?
+//? Report-only on dev/merge — only prod-promote is blocked. No run / low severity ⇒ not blocked.
+export async function securityBlocksProdPromote(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<boolean> {
+  const run = await prisma.pipelineRun.findFirst({ where: { workspaceId, projectId }, orderBy: { startedAt: 'desc' }, select: { maxSeverity: true } });
+  const sev = run?.maxSeverity ?? 'none';
+  return (SEVERITY_RANK[sev] ?? 0) >= (SEVERITY_RANK.high ?? 3);
 }

@@ -7,7 +7,7 @@
 import type { PrismaClient } from '@prisma/client';
 
 import { ensureEnvironment, deployEnvironment, type DeployResult } from './environment';
-import { ciGreenForProject } from '../ci/gate';
+import { ciGreenForProject, securityBlocksProdPromote } from '../ci/gate';
 
 //? The fixed ladder: dev → staging → prod (§2.4). null = no next stage.
 const NEXT_KIND: Record<string, string | undefined> = { dev: 'staging', staging: 'prod' };
@@ -26,6 +26,8 @@ export async function promoteEnvironment(prisma: PrismaClient, workspaceId: stri
   //? latest project run actually failed/is running (no CI configured ⇒ green — opt-in).
   if (toKind === 'prod' && opts.approved !== true) return { ok: false, status: 'blocked', error: 'promote.prodNeedsApproval' };
   if (toKind === 'prod' && !(await ciGreenForProject(prisma, workspaceId, projectId))) return { ok: false, status: 'blocked', error: 'promote.needsGreenCi' };
+  //? Security gate (ADR 0040): a high/critical scanner finding blocks the prod promote (report-only below).
+  if (toKind === 'prod' && (await securityBlocksProdPromote(prisma, workspaceId, projectId))) return { ok: false, status: 'blocked', error: 'promote.securityFindings' };
 
   const targetId = await ensureEnvironment(prisma, workspaceId, projectId, serviceId, toKind);
   if (!targetId) return { ok: false, status: 'error', error: 'promote.noTarget' };

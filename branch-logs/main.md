@@ -1726,3 +1726,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** parallelle DAG-scheduler, live `/pty`-log-streaming, de CI-chip-UI (status surfacet nu al via de CI-TicketEvents). C2 bouwt eerste-klas CI-job-**types** op deze runner.
 
 **Files touched:** `prisma/schema.prisma`, `docs/decisions/0039-*.md`, `server/ci/{parse,runner,gate}.ts`, `server/git/repoStore.ts`, `server/mr/service.ts`, `server/deploy/promote.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/ciGate.test.mts`, `tests/_helpers.mts`.
+
+## 2026-07-06 17:30 — Expansion C2: security & dependency scanning (ADR 0040)
+
+**User:** `/goal` (vervolg — item C2). Beslissing eerder: bouw security-scanning **direct in de pipeline** (beter dan cron/handmatige tickets).
+
+**What I did:** eerste-klas scanner-job-**types** op de C1-runner (erft de hele runner/DAG; alleen de job-types zijn nieuw).
+- **Schema:** `PipelineJob.jobType`/`severity`/`findings` + `PipelineRun.maxSeverity`.
+- **Parser:** `CiJob` krijgt `type` (`script`|`dep-audit`|`secret-scan`|`sca`); een scanner-job heeft **geen script** nodig (commando komt uit z'n type).
+- **Security-module:** `server/ci/security.ts` — `scannerCommand` (`npm audit --json` / secret-pattern-`grep`) + **pure parsers** `parseDepAudit` (npm v7 `.vulnerabilities` + v6 `.advisories`, dropt info) + `parseSecretScan` (elke match = high) → getypeerde findings + max-severity. `SEVERITY_RANK`, `severityBlocksProd`.
+- **Runner:** een scanner-job draait z'n commando + parset findings → slaat `severity`+`findings` op de job op, rolt op naar `PipelineRun.maxSeverity`. **Report-only voor de run-status** (job blijft groen → blokkeert merge niet); de severity is een aparte prod-gate.
+- **Gate:** `securityBlocksProdPromote` in de prod-promote (naast approval + groene CI) → high/critical blokkeert prod (`promote.securityFindings`), report-only op dev/merge. De prod-gate heeft nu **drie** checks.
+- **Verify:** `tests/integration/securityScan.test.mts` — **9/9** (parsers dep-audit-rollup/info-drop/secret-scan-high/severityBlocksProd/scannerCommand · scanner-ci.yml-zonder-script · high blokkeert prod · moderate report-only). ADR **0040**.
+- **Follow-ups (in ADR):** externe scanner-provider (Snyk e.d.) als `runnerKind`-seam, security-findings-UI-paneel (zelfde als de C1 CI-chip).
+
+**Files touched:** `prisma/schema.prisma`, `docs/decisions/0040-*.md`, `server/ci/{security,parse,runner,gate}.ts`, `server/deploy/promote.ts`, `tests/integration/securityScan.test.mts`.

@@ -381,6 +381,7 @@ model PipelineRun {
   commitHash     String                             // frozen baseline (DH5) — a stale-commit green must NOT gate-pass
   trigger        String                             // 'merge' | 'mr-update' | 'stage-complete' | 'manual'
   status         String    @default("running")      // 'running' | 'success' | 'failed' | 'canceled'
+  maxSeverity    String?                            // ADR 0040 — highest security finding severity in the run (critical|high|moderate|low|none)
   startedAt      DateTime  @default(now())
   finishedAt     DateTime?
   artifacts      Json?
@@ -398,10 +399,13 @@ model PipelineJob {
   pipelineRunId String    @db.ObjectId
   name          String                              // 'lint' | 'unit' | 'build' (from ci.yml)
   stage         String
+  jobType       String    @default("script")        // ADR 0040 — 'script' | 'dep-audit' | 'secret-scan' | 'sca'
   needs         String[]                            // DAG edges
   script        String[]                            // the commands (run in the job container)
   imageRef      String                              // resolved image tag (audit)
   status        String    @default("pending")       // 'pending'|'running'|'success'|'failed'|'skipped'|'canceled'
+  severity      String?                             // ADR 0040 — highest finding severity for a scanner job
+  findings      Json?                               // ADR 0040 — parsed scanner findings (bounded)
   allowFailure  Boolean   @default(false)
   containerId   String?
   exitCode      Int?

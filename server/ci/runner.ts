@@ -10,6 +10,7 @@ import type { PrismaClient } from '@prisma/client';
 import { launchTicketContainer, teardownTicketContainer, docker, dockerAvailable } from '../container/runtime';
 import { showRepoFile } from '../git/repoStore';
 import { parseCiYaml, specFingerprint } from './parse';
+import { isScannerType, scannerCommand, parseScan, higherSeverity } from './security';
 
 export interface CiRunResult { status: string; runId?: string; error?: string }
 
@@ -49,7 +50,7 @@ export async function runPipeline(prisma: PrismaClient, workspaceId: string, pro
   //? optimization); resolve the image tag for audit (the actual image is the container's L2/L1).
   const ordered = spec.jobs.toSorted((a, b) => spec.stages.indexOf(a.stage) - spec.stages.indexOf(b.stage));
   const jobRows = await Promise.all(ordered.map((j) => prisma.pipelineJob.create({
-    data: { workspaceId, pipelineRunId: run.id, name: j.name, stage: j.stage, needs: j.needs, script: j.script, imageRef: j.image, allowFailure: j.allowFailure, status: 'pending' },
+    data: { workspaceId, pipelineRunId: run.id, name: j.name, stage: j.stage, jobType: j.type, needs: j.needs, script: j.script, imageRef: j.image, allowFailure: j.allowFailure, status: 'pending' },
   })));
   const pairs = ordered.map((job, i) => ({ job, row: jobRows[i] }));
 
@@ -69,10 +70,22 @@ export async function runPipeline(prisma: PrismaClient, workspaceId: string, pro
   }
 
   let anyRequiredFailed = false;
+  let runMaxSeverity = 'none';
   for (const { job, row } of pairs) {
     if (!row) continue;
     await prisma.pipelineJob.update({ where: { id: row.id }, data: { status: 'running', startedAt: new Date(), containerId: container.containerId } });
-    const res = await docker(['exec', '-w', '/work', container.name, 'sh', '-lc', job.script.join(' && ')]);
+    //? A SCANNER job (ADR 0040) runs its type's command + parses findings (report-only — it stays green;
+    //? the SEVERITY gates the prod promote). A plain job gates on the exit code (C1).
+    const scanner = isScannerType(job.type);
+    const command = scanner ? scannerCommand(job.type) : job.script.join(' && ');
+    const res = await docker(['exec', '-w', '/work', container.name, 'sh', '-lc', command]);
+    if (scanner) {
+      const scan = parseScan(job.type, res.out);
+      runMaxSeverity = higherSeverity(runMaxSeverity, scan.maxSeverity);
+      await prisma.pipelineJob.update({ where: { id: row.id }, data: { status: 'success', exitCode: res.code, severity: scan.maxSeverity, findings: scan.findings, logTail: `${String(scan.findings.length)} finding(s)`, finishedAt: new Date() } });
+      await recordCiEvent(prisma, workspaceId, ticketId, `CI ${job.name}: ${String(scan.findings.length)} finding(s) (${scan.maxSeverity})`, { pipelineRunId: run.id, jobName: job.name, jobType: job.type, severity: scan.maxSeverity, findings: scan.findings.length });
+      continue;
+    }
     const ok = res.code === 0;
     if (!ok && !job.allowFailure) anyRequiredFailed = true;
     await prisma.pipelineJob.update({ where: { id: row.id }, data: { status: ok ? 'success' : 'failed', exitCode: res.code, logTail: (res.out + res.err).slice(-2000), finishedAt: new Date() } });
@@ -81,7 +94,7 @@ export async function runPipeline(prisma: PrismaClient, workspaceId: string, pro
 
   await teardownTicketContainer(workspaceId, `ci-${run.id}`).catch(() => null);
   const status = anyRequiredFailed ? 'failed' : 'success';
-  await prisma.pipelineRun.update({ where: { id: run.id }, data: { status, finishedAt: new Date() } });
+  await prisma.pipelineRun.update({ where: { id: run.id }, data: { status, maxSeverity: runMaxSeverity, finishedAt: new Date() } });
   await recordCiEvent(prisma, workspaceId, ticketId, `CI ${status}`, { pipelineRunId: run.id, status });
   return { status, runId: run.id };
 }

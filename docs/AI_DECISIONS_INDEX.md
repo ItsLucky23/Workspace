@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (38)
+## Decisions (39)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -51,6 +51,7 @@
 | 0037 | Persistent environments (dev/staging/prod) + deploy control-op | 🟢 accepted | deploy, environments, containers, proxy, multi-project, expansion-b1 | — | `docs/decisions/0037-environments-persistent-server.md` |
 | 0038 | Deploy/CD — promote ladder + downloadable build export | 🟢 accepted | deploy, cd, promote, build-export, download, expansion-b2 | — | `docs/decisions/0038-deploy-cd-downloadable-builds.md` |
 | 0039 | Built-in CI + quality gates (green/red blocking merge & promote) | 🟢 accepted | ci, quality-gates, merge-gate, promote, expansion-c1 | — | `docs/decisions/0039-builtin-ci-quality-gates.md` |
+| 0040 | Security & dependency scanning — first-class CI job types | 🟢 accepted | ci, security, dependency-audit, secret-scan, expansion-c2 | — | `docs/decisions/0040-security-dependency-scanning.md` |
 
 ## Summaries
 
@@ -359,6 +360,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **Three models, exactly per BUILTIN_CI §9** — `Pipeline` (a project's `.workspaces/ci.yml` definition, one active per project), `PipelineRun` (one execution at a frozen commit; `status` gates), `PipelineJob` (one job = a container exec). ⚠ `Pipeline` is UNRELATED to `PipelineStage` (board columns) — same word, different concept; the schema carries a loud comment.
 
 → `docs/decisions/0039-builtin-ci-quality-gates.md`
+
+### 0040 — Security & dependency scanning — first-class CI job types
+
+**0040** · accepted · tags: ci, security, dependency-audit, secret-scan, expansion-c2 · 2026-07-06
+
+1. **First-class scanner job types on the C1 runner** — a CI job gains a `type` (`script` default, plus `dep-audit` / `sca` / `secret-scan`). A scanner job needs NO `script` (its command comes from its type: `npm audit --json` for dep-audit; a credential-pattern `grep` for secret-scan). Results are PARSED into typed findings + a max severity (`server/ci/security.ts` pure parsers), stored on the `PipelineJob` (`severity`, `findings`) and rolled up to `PipelineRun.maxSeverity` — not freeform log-grepping.
+
+→ `docs/decisions/0040-security-dependency-scanning.md`
 
 ## Code governed by decisions
 
