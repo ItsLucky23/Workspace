@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (62)
+## Decisions (63)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -75,6 +75,7 @@
 | 0061 | Reference-video analysis → blueprint that seeds a script (F2.3) | 🟢 accepted | content, reference-video, gemini, blueprint, expansion-f23 | — | `docs/decisions/0061-reference-video-analysis.md` |
 | 0062 | Shared single-asset gen + avatar (F2.4) | 🟢 accepted | content, avatar, media, expansion-f24 | — | `docs/decisions/0062-media-asset-avatar.md` |
 | 0063 | Music + SFX generation (F2.5) | 🟢 accepted | content, music, sfx, audio, expansion-f25 | — | `docs/decisions/0063-music-sfx.md` |
+| 0064 | 3D-concepting generation (F2.6) | 🟢 accepted | content, 3d, media, expansion-f26 | — | `docs/decisions/0064-model-3d.md` |
 
 ## Summaries
 
@@ -575,6 +576,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 Music + sfx generation ride the `content-gen-music` / `content-gen-sfx` ops (already wired in F2.4's shared Conductor case → `generateMediaAsset` with feature `music`/`sfx`). Both default to the ElevenLabs adapter (stub, no key). Music (Suno) gets a dedicated provider later; for now it routes to the voice adapter's stub.
 
 → `docs/decisions/0063-music-sfx.md`
+
+### 0064 — 3D-concepting generation (F2.6)
+
+**0064** · accepted · tags: content, 3d, media, expansion-f26 · 2026-07-06
+
+3D generation rides the `content-gen-3d` op (wired in F2.4's shared Conductor case → `generateMediaAsset` with feature `model-3d`, default fal/Meshy-class provider, stub). No new engine code.
+
+→ `docs/decisions/0064-model-3d.md`
 
 ## Code governed by decisions
 

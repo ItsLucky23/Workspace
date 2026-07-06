@@ -2017,3 +2017,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/musicSfx.test.mts` **6/6** (music-asset elevenlabs · sfx-asset · budget 6+1=7c). ADR **0063**. (lint+build+ai:lint groen sinds F2.4 — geen src/server-wijziging.)
 
 **Files touched:** `tests/integration/musicSfx.test.mts`, `docs/decisions/0063-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 05:25 — Content-platform F2.6: 3D-concepting (ADR 0064) — Fase 2 KLAAR
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F2.6 (laatste van Fase 2).
+
+**What I did:** 3D via de al-gewirede `content-gen-3d`-op (gedeelde `generateMediaAsset`, feature `model-3d`, fal-stub). Concepting-grade, laagste prio. Geen nieuwe engine-code.
+- **Verify:** `tests/integration/model3d.test.mts` **5/5** (model-3d-asset fal · MediaJob linked · budget 20c). ADR **0064**.
+- **🏁 Fase 2 (alle modaliteiten) KLAAR** — faceless-pipeline · referentie-fotorealisme · short-form · referentie-video-analyse · avatar · muziek/sfx · 3d. Alles gemeterd + style-driven op dummy-data.
+
+**Files touched:** `tests/integration/model3d.test.mts`, `docs/decisions/0064-*.md`, `docs/AI_DECISIONS_INDEX.md`.
