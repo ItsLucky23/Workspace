@@ -2162,3 +2162,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/containerReady.test.mts` **6/6** (ready-op-Nde-poll + stopt, uitputting, `acceptAnyStatus`-probe-shape). environments **7/7** onaangetast. Lint + build groen. Live-probe tegen echte container = deferred post-keys e2e.
 
 **Files touched:** `server/container/health.ts`, `server/container/previewSession.ts`, `server/container/editorSession.ts`, `tests/unit/containerReady.test.mts` (nieuw), `docs/decisions/0076-container-readiness-probes.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM C3: forge issue-sync pagineert + retry; git push retry
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item C3.
+
+**What I did:**
+- Pure `accumulatePages(fetchPage, {perPage,maxPages})` in `gitlabSync.ts`: volgt `page=1..` tot een korte pagina of de safety-cap (`MAX_ISSUE_PAGES=20` → 2000 issues). Cap-hit → `capped` + `console.warn` (nooit silent trunceren). GitLab + GitHub sync gebruiken 'm — de >100-issue silent-drop is weg.
+- `isTransientForgeError`: retry alleen 5xx/429/netwerk; 4xx (bad token/404) faalt fast. Elke pagina-fetch + `pushBranch` (push-on-approval) door `withRetry` (ADR 0075).
+
+**Verify:** `tests/unit/forgePagination.test.mts` **14/14** (short-page stop, multi-page concat = de >100-fix, cap-reporting, transient-classifier). forgeConnect **13/13** onaangetast. Lint + build groen. Live multi-page sync = deferred post-keys e2e.
+
+**Files touched:** `server/git/gitlabSync.ts`, `server/git/repoStore.ts`, `tests/unit/forgePagination.test.mts` (nieuw), `docs/decisions/0077-forge-retry-pagination.md`, `docs/AI_DECISIONS_INDEX.md`.

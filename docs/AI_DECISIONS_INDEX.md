@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (75)
+## Decisions (76)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -88,6 +88,7 @@
 | 0074 | Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory | 🟢 accepted | security, secrets, hardening, depth-program | — | `docs/decisions/0074-encryption-fail-closed.md` |
 | 0075 | Server-side merge/rollback pushes the target to origin | 🟢 accepted | git, mr, forge, depth-program | — | `docs/decisions/0075-mr-push-to-origin.md` |
 | 0076 | Preview/editor serve paths wait for readiness (no fire-and-forget) | 🟢 accepted | containers, preview, editor, reliability, depth-program | — | `docs/decisions/0076-container-readiness-probes.md` |
+| 0077 | Forge issue-sync paginates + retries; git push retries | 🟢 accepted | forge, git, reliability, pagination, depth-program | — | `docs/decisions/0077-forge-retry-pagination.md` |
 
 ## Summaries
 
@@ -692,6 +693,14 @@ New `pushRef(workspaceId, gitUrl, token, ref)` in `repoStore` pushes a branch st
 Parametrized `waitForContainerReady(containerName, port, opts)` — `opts` = `{ attempts, delayMs, acceptAnyStatus, run }`. `acceptAnyStatus` drops curl's `-f` so a token-gated `401` (openvscode's root before the connection-token) still counts as bound; `run` is an injectable probe runner so the retry loop is unit-testable without Docker. `openPreviewForTicket` now probes `PREVIEW_PORT` after starting the dev server and returns `preview.notReady` on timeout INSTEAD of flipping the route to a dead URL. `openEditorForTicket` now probes `EDITOR_IN_CONTAINER_PORT` (with `acceptAnyStatus`) after `startEditorInContainer` and returns `editor.notReady` on timeout before flipping the route. The deploy path (`environment.ts`) already called the probe — unchanged (the new default `opts` is backward-compatible).
 
 → `docs/decisions/0076-container-readiness-probes.md`
+
+### 0077 — Forge issue-sync paginates + retries; git push retries
+
+**0077** · accepted · tags: forge, git, reliability, pagination, depth-program · 2026-07-06
+
+**Pagination:** a pure `accumulatePages(fetchPage, {perPage, maxPages})` follows `page=1..` until a short page or a safety cap (`MAX_ISSUE_PAGES=20` → 2000 issues). Hitting the cap sets `capped` and the caller `console.warn`s it — **never a silent truncation**. Both GitLab + GitHub sync use it. **Retry:** each page fetch + `pushBranch` (push-on-approval) run through `withRetry` (ADR 0075). `isTransientForgeError` retries only 5xx/429/network — a 4xx (bad token / not-found) fails fast. Both helpers exported for a network-free unit test.
+
+→ `docs/decisions/0077-forge-retry-pagination.md`
 
 ## Code governed by decisions
 

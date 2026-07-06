@@ -10,8 +10,37 @@ import type { PrismaClient } from '@prisma/client';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { isLeader } from '../orchestrator/cluster';
 import { resolveForge, type ResolvedForge } from './forgeResolve';
+import { withRetry } from '../util/retry';
 
 const SYNC_INTERVAL_MS = Number(process.env.WS_GITLAB_SYNC_MIN ?? '5') * 60_000;
+const PER_PAGE = 100;
+const MAX_ISSUE_PAGES = 20; // safety cap — 2000 open issues; a hit is LOGGED, never silently dropped (C3).
+
+//? Retry ONLY transient forge failures — a 5xx/429/network blip is worth a retry; a 4xx (bad token,
+//? not-found) is permanent and must fail fast. Exported for tests.
+export function isTransientForgeError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  const m = /\b(\d{3})\b/.exec(msg);
+  if (!m) return true; // no HTTP status → a network/parse error → transient
+  const code = Number(m[1]);
+  return code === 429 || code >= 500;
+}
+
+//? Follow `page=1..` until a short page (fewer than `perPage`) or the safety cap — so a project with
+//? >100 open issues is NOT silently truncated to the first page. `capped` signals the cap was hit so
+//? the caller can surface it (never silent). Pure over an injected page fetcher → tested without a
+//? network (C3).
+export async function accumulatePages<T>(fetchPage: (page: number) => Promise<T[]>, opts: { perPage?: number; maxPages?: number } = {}): Promise<{ rows: T[]; capped: boolean }> {
+  const perPage = opts.perPage ?? PER_PAGE;
+  const maxPages = opts.maxPages ?? MAX_ISSUE_PAGES;
+  const rows: T[] = [];
+  for (let page = 1; page <= maxPages; page += 1) {
+    const pageRows = await fetchPage(page);
+    rows.push(...pageRows);
+    if (pageRows.length < perPage) return { rows, capped: false };
+  }
+  return { rows, capped: true };
+}
 
 export interface GitlabSyncResult { ok: boolean; synced: number; keys: string[]; error?: string }
 
@@ -55,11 +84,15 @@ function fetchIssues(forge: ResolvedForge): Promise<ForgeIssue[]> {
 }
 
 async function fetchGitlabIssues(base: string, path: string, token: string): Promise<ForgeIssue[]> {
-  //? External GitLab REST API (its own /api/v4) — not a framework `/api/*` route.
-  // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-  const res = await fetch(`${base}/api/v4/projects/${encodeURIComponent(path)}/issues?state=opened&per_page=100`, { headers: { 'PRIVATE-TOKEN': token } });
-  if (!res.ok) throw new Error(`gitlab ${String(res.status)}`);
-  return (await res.json()) as ForgeIssue[];
+  const { rows, capped } = await accumulatePages<ForgeIssue>((page) => withRetry(async () => {
+    //? External GitLab REST API (its own /api/v4) — not a framework `/api/*` route.
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const res = await fetch(`${base}/api/v4/projects/${encodeURIComponent(path)}/issues?state=opened&per_page=${String(PER_PAGE)}&page=${String(page)}`, { headers: { 'PRIVATE-TOKEN': token } });
+    if (!res.ok) throw new Error(`gitlab ${String(res.status)}`);
+    return (await res.json()) as ForgeIssue[];
+  }, { attempts: 3, baseMs: 300, retryable: isTransientForgeError }));
+  if (capped) console.warn(`[gitlabSync] issue sync hit the ${String(MAX_ISSUE_PAGES)}-page cap for ${path} — issues beyond ${String(MAX_ISSUE_PAGES * PER_PAGE)} were NOT synced this run.`);
+  return rows;
 }
 
 interface GithubIssue { number: number; title: string; body?: string | null; labels?: { name?: string }[]; html_url?: string; state?: string; pull_request?: unknown }
@@ -75,11 +108,15 @@ export function mapGithubIssues(rows: GithubIssue[]): ForgeIssue[] {
 }
 
 async function fetchGithubIssues(base: string, path: string, token: string): Promise<ForgeIssue[]> {
-  //? External GitHub REST API — not a framework `/api/*` route. `path` = "owner/repo".
-  // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-  const res = await fetch(`${base}/repos/${path}/issues?state=open&per_page=100`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
-  if (!res.ok) throw new Error(`github ${String(res.status)}`);
-  return mapGithubIssues((await res.json()) as GithubIssue[]);
+  const { rows, capped } = await accumulatePages<GithubIssue>((page) => withRetry(async () => {
+    //? External GitHub REST API — not a framework `/api/*` route. `path` = "owner/repo".
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const res = await fetch(`${base}/repos/${path}/issues?state=open&per_page=${String(PER_PAGE)}&page=${String(page)}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
+    if (!res.ok) throw new Error(`github ${String(res.status)}`);
+    return (await res.json()) as GithubIssue[];
+  }, { attempts: 3, baseMs: 300, retryable: isTransientForgeError }));
+  if (capped) console.warn(`[gitlabSync] issue sync hit the ${String(MAX_ISSUE_PAGES)}-page cap for ${path} — issues beyond ${String(MAX_ISSUE_PAGES * PER_PAGE)} were NOT synced this run.`);
+  return mapGithubIssues(rows);
 }
 
 //? Push-back — post a comment on the ticket's source issue (the AI reporting an MR opened / the

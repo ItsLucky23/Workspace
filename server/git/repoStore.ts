@@ -330,7 +330,8 @@ async function cleanupWorktree(bare: string, wt: string): Promise<void> {
 //? ticket's worktree, where the AI's commits live. Throws a scrubbed error on failure.
 export async function pushBranch(input: { workspaceId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
   const wt = worktreePath(input.workspaceId, input.ticketKey);
-  await git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`]);
+  //? Bounded retry/backoff so a transient network blip doesn't drop an approved push (C3).
+  await withRetry(() => git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`]), { attempts: 3, baseMs: 200 });
 }
 
 //? Push a branch ref straight from the BARE clone to origin (C1). Used after a server-side
