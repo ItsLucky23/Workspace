@@ -47,6 +47,8 @@ export type ControlOp =
   | 'project-create' | 'service-create' | 'service-delete'
   // environments / deploy (ADR 0037/0038)
   | 'env-deploy' | 'env-teardown' | 'env-promote' | 'build-export'
+  // CI / quality gates (ADR 0039)
+  | 'ci-run' | 'ci-allow-red'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

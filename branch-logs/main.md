@@ -1711,3 +1711,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** `dev` auto-deploy-on-merge = een `WorkspaceTrigger`-matcher op `mr.merged` (thin automation-wiring, configureerbaar/opt-in) → volgende pass; `bundle`-export + externe `DeployTarget`-provider = later; de fysieke repoStore per-project clone-rekey blijft de bekende follow-up. Nevenfix: `forgeConnection`+`buildArtifact` toegevoegd aan de workspace-teardown.
 
 **Files touched:** `prisma/schema.prisma`, `docs/decisions/0038-*.md`, `server/deploy/{environment,promote,buildExport,downloadRoute}.ts`, `server/read/workspaceSnapshot.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/deployCd.test.mts`, `tests/_helpers.mts`.
+
+## 2026-07-06 16:45 — Expansion C1: built-in CI + quality gates (ADR 0039)
+
+**User:** `/goal` (vervolg — item C1). Un-defert het gespec'te `BUILTIN_CI_PIPELINES`.
+
+**What I did:** de groene/rode CI-gate die B2's prod-promote-TODO invult + de merge blokkeert.
+- **Schema:** `Pipeline`/`PipelineRun`/`PipelineJob` (exact per BUILTIN_CI §9; `Pipeline` ≠ het board-`PipelineStage` — luide comment) + `Workspace.allowMergeOnRedCI` (admin-override).
+- **Parser:** `server/ci/parse.ts` — een **dep-vrije** ci.yml-parser voor de gedocumenteerde subset (geen js-yaml: geen types + transitive-dep-bootrisico). Puur + totaal.
+- **Runner:** `server/ci/runner.ts` `runPipeline` — leest ci.yml op de frozen commit, maakt run+jobs, launcht één job-container (`launchTicketContainer`, "borrowed not built"), voert scripts uit via `docker exec` in stage-volgorde, logt `TicketEvent(type:'ci')` per job, rolt op. Geen ci.yml → 'none'; geen docker → 'canceled' (blokkeert niet als rood). `showRepoFile`-helper toegevoegd aan repoStore.
+- **Gate:** `server/ci/gate.ts` — `ciGateForMr` (rood/running/**stale** blokkeert; groen passeert; geen run → open) in **`mergeMr`** (na de approval-gate, met de admin-override; nieuwe `reason`-waarden `ci-red`/`ci-running`/`ci-stale`). `ciGreenForProject` vult de **B2 prod-promote-hook** (`promote.needsGreenCi`).
+- **Control-ops:** `ci-run` (draait CI op een ticket-MR-head) + `ci-allow-red` (toggle override, demoteAdmin-cap) via de `projectAdmin`-sync-route + conductor.
+- **Verify:** `tests/integration/ciGate.test.mts` — **12/12** (parser valid/empty/no-jobs/needs-DAG · merge-gate rood-blokkeert/groen-passeert/stale-blokkeert · override off→on · project-green-CI-gate · rode CI blokkeert prod-promote). ADR **0039**.
+- **Follow-ups (in ADR):** parallelle DAG-scheduler, live `/pty`-log-streaming, de CI-chip-UI (status surfacet nu al via de CI-TicketEvents). C2 bouwt eerste-klas CI-job-**types** op deze runner.
+
+**Files touched:** `prisma/schema.prisma`, `docs/decisions/0039-*.md`, `server/ci/{parse,runner,gate}.ts`, `server/git/repoStore.ts`, `server/mr/service.ts`, `server/deploy/promote.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/ciGate.test.mts`, `tests/_helpers.mts`.

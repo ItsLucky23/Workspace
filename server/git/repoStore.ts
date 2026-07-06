@@ -130,6 +130,15 @@ export async function repoHead(workspaceId: string): Promise<string> {
   return git(['--git-dir', bare, 'rev-parse', 'HEAD']).catch(() => '');
 }
 
+//? Read a single file's contents at `ref` straight from the bare clone (e.g. `.workspaces/ci.yml`).
+//? '' when unlinked or the file is absent at that ref. Bounded to 60k chars.
+export async function showRepoFile(workspaceId: string, ref: string, filePath: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId);
+  if (!existsSync(bare)) return '';
+  const out = await git(['--git-dir', bare, 'show', `${ref}:${filePath}`]).catch(() => '');
+  return out.slice(0, 60_000);
+}
+
 //? Unified diff of `source` against `target` (three-dot = changes on source since it forked) from
 //? the bare clone — the MR review diff. '' when unlinked or a ref is missing.
 export async function branchDiff(workspaceId: string, target: string, source: string): Promise<string> {

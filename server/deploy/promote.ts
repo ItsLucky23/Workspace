@@ -7,6 +7,7 @@
 import type { PrismaClient } from '@prisma/client';
 
 import { ensureEnvironment, deployEnvironment, type DeployResult } from './environment';
+import { ciGreenForProject } from '../ci/gate';
 
 //? The fixed ladder: dev → staging → prod (§2.4). null = no next stage.
 const NEXT_KIND: Record<string, string | undefined> = { dev: 'staging', staging: 'prod' };
@@ -21,9 +22,10 @@ export async function promoteEnvironment(prisma: PrismaClient, workspaceId: stri
   if (!source) return { ok: false, status: 'error', error: 'promote.noSource' };
   //? Health gate: only a LIVE source can be promoted (you can't ship a broken build forward).
   if (source.status !== 'live') return { ok: false, status: 'blocked', error: 'promote.sourceNotLive' };
-  //? prod gate: explicit approval (B-23). NOTE (C1): also require green CI here once BUILTIN_CI lands —
-  //?   `if (toKind === 'prod' && !(await ciGreen(projectId))) return blocked 'promote.needsGreenCi'`.
+  //? prod gate (ADR 0038/0039): explicit approval (B-23) AND green CI. Green-CI blocks only when the
+  //? latest project run actually failed/is running (no CI configured ⇒ green — opt-in).
   if (toKind === 'prod' && opts.approved !== true) return { ok: false, status: 'blocked', error: 'promote.prodNeedsApproval' };
+  if (toKind === 'prod' && !(await ciGreenForProject(prisma, workspaceId, projectId))) return { ok: false, status: 'blocked', error: 'promote.needsGreenCi' };
 
   const targetId = await ensureEnvironment(prisma, workspaceId, projectId, serviceId, toKind);
   if (!targetId) return { ok: false, status: 'error', error: 'promote.noTarget' };

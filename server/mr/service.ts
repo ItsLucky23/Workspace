@@ -8,13 +8,14 @@ import type { PrismaClient, MergeRequest } from '@prisma/client';
 
 import { normalizeGitConfig } from '../git/branchStrategy';
 import { branchDiff, branchHead, mergeBranches, revertMergeCommit } from '../git/repoStore';
+import { ciGateForMr, allowMergeOnRedCI } from '../ci/gate';
 import { parseUnifiedDiff, type MrDiff } from './diff';
 
 //? The outcome of a merge/rollback attempt — the caller maps `reason` to a UI message. `conflict`
 //? carries the unmerged files. Never throws; the real git-merge is done under the caller's lease.
 export type MergeMrResult =
   | { ok: true; sha?: string }
-  | { ok: false; reason: 'not-open' | 'no-approval' | 'conflict' | 'not-linked' | 'nothing-to-merge' | 'error'; files?: string[]; message?: string };
+  | { ok: false; reason: 'not-open' | 'no-approval' | 'ci-red' | 'ci-running' | 'ci-stale' | 'conflict' | 'not-linked' | 'nothing-to-merge' | 'error'; files?: string[]; message?: string };
 
 export interface MrThreadView {
   id: string; filePath: string | null; line: number | null; side: string; resolved: boolean;
@@ -106,6 +107,13 @@ export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRe
   const approvals = await prisma.approval.findMany({ where: { workspaceId, mergeRequestId }, select: { headSha: true } });
   const hasFreshApproval = approvals.some((a) => (a.headSha ?? '') === mr.headSha);
   if (!hasFreshApproval) return { ok: false, reason: 'no-approval' };
+
+  //? CI gate (ADR 0039): a required run that is red/running/stale blocks the merge — unless the Admin
+  //? `allowMergeOnRedCI` override is on (unwedges a broken runner). No run ⇒ not gated (CI is opt-in).
+  const gate = await ciGateForMr(prisma, workspaceId, mergeRequestId, mr.headSha);
+  if (gate.gated && !(await allowMergeOnRedCI(prisma, workspaceId))) {
+    return { ok: false, reason: gate.reason === 'ci-running' ? 'ci-running' : (gate.reason === 'ci-stale' ? 'ci-stale' : 'ci-red') };
+  }
 
   const outcome = await mergeBranches(workspaceId, mr.targetBranch, mr.sourceBranch, mr.mergeStrategy);
   if (!outcome.ok) {

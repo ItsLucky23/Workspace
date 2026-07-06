@@ -161,6 +161,7 @@ model Workspace {
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)
   paused                Boolean  @default(false)          // pause-all: when true the engine provisions NO new autonomous turns (C2)
+  allowMergeOnRedCI     Boolean  @default(false)          // ADR 0039 — Admin override: allow merge/promote while a required CI run is red (unwedges a broken runner)
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -344,6 +345,71 @@ model BuildArtifact {
   @@index([workspaceId])
   @@index([projectId])
   @@index([downloadToken])
+}
+
+// ============================================================================
+// Built-in CI (ADR 0039, item C1) — un-defers BUILTIN_CI_PIPELINES §9.
+//
+// ⚠ NAME-CLASH: `Pipeline` here is a project's `.workspaces/ci.yml` CI definition —
+// UNRELATED to `PipelineStage` (the Kanban board columns: refine/plan/code/test/review).
+// Same word, different concept. A CI job DAG that gates merge + prod-promote.
+// ============================================================================
+
+//? A project's CI definition, parsed from `.workspaces/ci.yml` (one active per project).
+model Pipeline {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  projectId   String   @db.ObjectId
+  specHash    String                              // content-hash of the parsed ci.yml (reuse/invalidate)
+  stages      String[]                            // ordered stage names from the spec
+  enabled     Boolean  @default(true)
+  runnerKind  String   @default("builtin")        // 'builtin' (container jobs) | 'external' (delegated)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, projectId])
+}
+
+//? One CI execution at a frozen commit. `status` rolls up the jobs; it GATES merge/promote.
+model PipelineRun {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String    @db.ObjectId
+  pipelineId     String    @db.ObjectId
+  projectId      String    @db.ObjectId            // denormalized for the project-level "latest green?" gate
+  ticketId       String?   @db.ObjectId            // DEV-#### ticket this run gates (null = branch-only)
+  mergeRequestId String?   @db.ObjectId            // links to MergeRequest for the MR check-list + merge gate
+  commitHash     String                             // frozen baseline (DH5) — a stale-commit green must NOT gate-pass
+  trigger        String                             // 'merge' | 'mr-update' | 'stage-complete' | 'manual'
+  status         String    @default("running")      // 'running' | 'success' | 'failed' | 'canceled'
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  artifacts      Json?
+
+  @@index([workspaceId, pipelineId, status])
+  @@index([workspaceId, mergeRequestId])
+  @@index([workspaceId, projectId, status])
+}
+
+//? One job within a run (a container exec for the builtin runner). `status` is a run-state projection;
+//? the seq-ordered `TicketEvent(type:'ci')` is the surface-rendering truth (BUILTIN_CI §9 invariant).
+model PipelineJob {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String    @db.ObjectId
+  pipelineRunId String    @db.ObjectId
+  name          String                              // 'lint' | 'unit' | 'build' (from ci.yml)
+  stage         String
+  needs         String[]                            // DAG edges
+  script        String[]                            // the commands (run in the job container)
+  imageRef      String                              // resolved image tag (audit)
+  status        String    @default("pending")       // 'pending'|'running'|'success'|'failed'|'skipped'|'canceled'
+  allowFailure  Boolean   @default(false)
+  containerId   String?
+  exitCode      Int?
+  logTail       String?                             // last chunk of stdout/err (bounded, for the UI)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  @@index([workspaceId, pipelineRunId, status])
 }
 
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----

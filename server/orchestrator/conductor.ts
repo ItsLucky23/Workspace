@@ -19,7 +19,8 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
-import { cloneRepo, addWorktree, isLinked, listRepoDocs } from '../git/repoStore';
+import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
+import { runPipeline } from '../ci/runner';
 import { indexWorkspace } from '../rag';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
@@ -197,6 +198,9 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
   await prisma.environment.deleteMany({ where: { workspaceId } });
   await prisma.buildArtifact.deleteMany({ where: { workspaceId } });
+  await prisma.pipelineJob.deleteMany({ where: { workspaceId } });
+  await prisma.pipelineRun.deleteMany({ where: { workspaceId } });
+  await prisma.pipeline.deleteMany({ where: { workspaceId } });
   await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
@@ -1067,6 +1071,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const exportProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
       if (!exportProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
       return buildExport(prisma, action.workspaceId, exportProjectId, str(payload, 'kind') ?? 'image', Date.now());
+    }
+    //? Run the project's CI at a ticket's MR head (ADR 0039) — feeds the merge/promote gate.
+    case 'ci-run': {
+      const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
+      if (!ticketKey) return { status: 'none', error: 'ci.noTicket' };
+      const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { id: true, projectId: true, branch: true } });
+      if (!ticket?.branch) return { status: 'none', error: 'ci.notActivated' };
+      const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId: action.workspaceId, ticketId: ticket.id }, orderBy: { createdAt: 'desc' }, select: { id: true, headSha: true } });
+      const commitHash = mr?.headSha ?? (await branchHead(action.workspaceId, ticket.branch));
+      return runPipeline(prisma, action.workspaceId, ticket.projectId, { branch: ticket.branch, commitHash, ticketId: ticket.id, mergeRequestId: mr?.id ?? null, trigger: str(payload, 'trigger') ?? 'manual' });
+    }
+    //? Admin override (ADR 0039): allow merge/promote while a required CI run is red (unwedge a broken runner).
+    case 'ci-allow-red': {
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { allowMergeOnRedCI: bool(payload, 'enabled') } });
+      return;
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.
     case 'finding-to-ticket': {

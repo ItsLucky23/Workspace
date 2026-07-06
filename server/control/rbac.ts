@@ -104,6 +104,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'env-teardown': CAP.workspaceSettings,
   'env-promote': CAP.workspaceSettings,
   'build-export': CAP.workspaceSettings,
+  'ci-run': CAP.workTickets,
+  'ci-allow-red': CAP.demoteAdmin,
   'mark-read': null,
   pause: CAP.workTickets,
   resume: CAP.workTickets,

@@ -11,10 +11,10 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const OPS = new Set<string>(['project-create', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-promote', 'build-export']);
+const OPS = new Set<string>(['project-create', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-promote', 'build-export', 'ci-run', 'ci-allow-red']);
 
 export interface SyncParams {
-  clientInput: { op: string; clientRequestId: string; projectId?: string; serviceId?: string; envId?: string; kind?: string; fromKind?: string; approved?: boolean; name?: string; gitUrl?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string };
+  clientInput: { op: string; clientRequestId: string; projectId?: string; serviceId?: string; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; trigger?: string; name?: string; gitUrl?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
