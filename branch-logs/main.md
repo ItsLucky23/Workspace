@@ -2327,3 +2327,19 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/unit/falProvider.test.mts` **26/26** (7 nieuwe cheap-mode-assertions: schnell-model, square/4-steps/1-image, param-override wint, off-by-default). Lint + build groen.
 
 **Files touched:** `server/media/providers/fal.ts`, `tests/unit/falProvider.test.mts`, `docs/KEY_SETUP_GUIDE.md`, `.env.local_template`.
+
+## 2026-07-06 — Post-Depth audit + regressie-fix: client-snapshot-default + tsc-bevinding
+
+**User prompt:** test alles e2e, kijk of er diepgaande onderdelen missen, fix wat niet werkt.
+
+**Audit (3 parallelle agents):** Depth-code zelf solide (geen `notImplemented` in live-paden, geen verborgen casts, H2/tenant-scope/download-keten correct). Echte gaten: (A) media-registry leest per-workspace key/override nooit uit de EnvVar-store → in-app-form drijft geen generatie (env-keys werken wél); (B) `ContentSnapshot` draagt geen `ContentAsset`-rijen → asset-viewer is dode placeholder, geen download; (C) geen UI-trigger voor `content-request-publish` + geen OAuth-callback-route; (D) render docker `-v C:\…` breekt op Windows; (E) `previewSession` pakt eerste project i.p.v. ticket-project (pre-Depth).
+
+**KRITIEK ontdekt:** `npm run build` = vite (géén type-check); de echte `npm run typecheck` (tsc) is **rood — 22 fouten**, waarvan **19 pre-existing** (ci/runner, mr/reviewRole, content/images|mediaAsset|referenceImage, gitlabSync:140, conductor save-style/copilot, Shell NAV_BOTTOM, settings — het project gate't op vite+eslint, niet op tsc).
+
+**Wat ik nu fixte (mijn 3 regressies):**
+- `WorkspacesProvider.tsx:96/182` — client `EMPTY_SNAP.content` miste de U4-velden `analytics/styles/channels` (server-default was wél bijgewerkt) → **runtime-crash-risico op de insights-page bij lege snapshot.** Toegevoegd.
+- `:984` — `generateArtifacts` niet gedraaid na U4 (contentSettings-route kreeg `channelId/brandVoice`) → generated types misten die velden. Geregenereerd.
+
+**Verify:** tsc 22→19 (mijn 3 weg), lint groen. De 19 resterende zijn pre-existing (rapport + fix-aanbod apart).
+
+**Files touched:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/_sockets/apiTypes.generated.ts` (regen, gitignored).
