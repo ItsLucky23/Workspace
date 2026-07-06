@@ -2079,3 +2079,13 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** `tests/integration/contentSnapshot.test.mts` **7/7** (piece + budget-status in `snapshot.content` · archived-piece valt eruit). Bestaande `snapshot.test` **21/21** (additief). lint+build+ai:lint groen. ADR **0069**.
 
 **Files touched:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/contentSnapshot.test.mts`, `docs/decisions/0069-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 07:35 — Content-platform F4.3: AI-drives-UI copilot (ADR 0070) — Fase 4 KLAAR
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F4.3 (laatste van Fase 4).
+
+**What I did:** de copilot als **propose-model** (geen pixel-clicking van eigen UI). `copilot-propose` op (B-23, workTickets) maakt een `WorkspaceSuggestion(type:'copilot', patch:{navigate, prefill, op})` — de UI-directive (waar navigeren + welk formulier pre-fillen + welke onderliggende control-op). Copilot schrijft **niks authoritatief**; de client past navigate/prefill toe, de user bevestigt de echte op (Conductor schrijft). Geen nieuwe verb/entity (invariant #2 — hergebruikt de suggestie-surface).
+- **Verify:** `tests/integration/copilot.test.mts` **7/7** (copilot-proposal → suggestie met navigate+prefill+op, **0 authoritatieve write** · bevestigen van de op → content-piece door Conductor). rbac **122/122**. lint+build+ai:lint groen. ADR **0070**.
+- **🏁 Fase 4 (frontend/UX) KLAAR** (rijke pagina-UI + settings-form + de-echte-copilot-UI = browser-deferred, backend-modellen bewezen).
+
+**Files touched:** `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/copilot.test.mts`, `docs/decisions/0070-*.md`, `docs/AI_DECISIONS_INDEX.md`.

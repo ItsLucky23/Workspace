@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (68)
+## Decisions (69)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -81,6 +81,7 @@
 | 0067 | Content automation + conversational entry (F3.3) | 🟢 accepted | content, automation, cron, assistant, expansion-f33 | — | `docs/decisions/0067-content-automation.md` |
 | 0068 | Main-navbar grouping (F4.1) | 🟢 accepted | frontend, navbar, ux, expansion-f41 | — | `docs/decisions/0068-nav-grouping.md` |
 | 0069 | Content lane in the snapshot (F4.2) | 🟢 accepted | content, snapshot, ui, expansion-f42 | — | `docs/decisions/0069-content-snapshot-ui.md` |
+| 0070 | AI-drives-UI copilot — propose a directive, never write (F4.3) | 🟢 accepted | content, copilot, assistant, b-23, expansion-f43 | — | `docs/decisions/0070-copilot.md` |
 
 ## Summaries
 
@@ -629,6 +630,14 @@ Each `NavDef` gets a `group` (`work` | `build` | `studio` | `insights`); the rai
 The snapshot gains `content: ContentSnapshot` — `pieces` (the non-archived `ContentProject`s: id/title/format/stageId/status/channelId) + `mediaBudget` (the `getMediaBudgetStatus` fold: enabled/cap/spent/alert/overAlert). Content models scope by explicit `workspaceId` (via `currentWorkspaceId()` inside `runInTenant`), matching the feature-model pattern (ADR 0050) — NOT `tenantDb` (content isn't in `TENANT_MODELS`). Threaded through `WorkspacesProvider` + `WorkspacesContext` so any content surface reads `content` from context.
 
 → `docs/decisions/0069-content-snapshot-ui.md`
+
+### 0070 — AI-drives-UI copilot — propose a directive, never write (F4.3)
+
+**0070** · accepted · tags: content, copilot, assistant, b-23, expansion-f43 · 2026-07-06
+
+A `copilot-propose` op (B-23, `workTickets`) creates a `WorkspaceSuggestion(type:'copilot', patch:{navigate, prefill, op})` — the UI directive: WHERE to navigate, WHAT to pre-fill a form with, and the underlying control-op the user would confirm. The copilot **writes nothing authoritative** — only the proposal. The client (browser-deferred) reads it, navigates + pre-fills, and the user taps the real control-op (which the Conductor executes). This is "AI drives, human confirms".
+
+→ `docs/decisions/0070-copilot.md`
 
 ## Code governed by decisions
 

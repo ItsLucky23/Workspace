@@ -1123,6 +1123,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
       return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform } } });
     }
+    //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
+    //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the
+    //? client applies the navigate/pre-fill guidance, and the user confirms the underlying control-op.
+    case 'copilot-propose': {
+      const navigate = str(payload, 'navigate');
+      const op = str(payload, 'op');
+      return prisma.workspaceSuggestion.create({
+        data: {
+          workspaceId: action.workspaceId, type: 'copilot',
+          title: str(payload, 'title') ?? 'Copilot suggestion',
+          body: str(payload, 'note') ?? 'The assistant suggests an action — review and confirm.',
+          patch: { navigate: navigate ?? null, prefill: asRec(payload.prefill), op: op ?? null },
+        },
+      });
+    }
     //? Conversational quick-start (F3.3, ADR 0067) — the Assistant spins up a content project + a first
     //? piece from a chat brief in one op (on the user's accept).
     case 'content-from-brief': {
