@@ -110,6 +110,7 @@ export async function teardownEnvironment(prisma: PrismaClient, workspaceId: str
 export async function reassertEnvironmentRoutes(): Promise<number> {
   if (!(await dockerAvailable())) return 0;
   const prisma = getPrismaClient();
+  // luckystack-allow tenant-scope: leader-gated boot self-heal — re-asserts routes for EVERY workspace's live envs cross-tenant by design (H1).
   const live = await prisma.environment.findMany({ where: { status: 'live', containerName: { not: null } } });
   let reasserted = 0;
   for (const env of live) {

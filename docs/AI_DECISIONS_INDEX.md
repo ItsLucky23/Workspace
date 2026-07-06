@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (71)
+## Decisions (72)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -84,6 +84,7 @@
 | 0070 | AI-drives-UI copilot — propose a directive, never write (F4.3) | 🟢 accepted | content, copilot, assistant, b-23, expansion-f43 | — | `docs/decisions/0070-copilot.md` |
 | 0071 | Per-channel brand-RAG + content-analytics (F5.1) | 🟢 accepted | content, rag, brand, analytics, expansion-f51 | — | `docs/decisions/0071-content-memory-analytics.md` |
 | 0072 | Depth program — real gen/render/publish + UI + platform hardening | 🟢 accepted | strategy, depth, hardening, content, ui, expansion-depth | — | `docs/decisions/0072-depth-program.md` |
+| 0073 | Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold) | 🟢 accepted | security, tenancy, hardening, ai-lint, depth-program | — | `docs/decisions/0073-tenant-scope-lint-guard.md` |
 
 ## Summaries
 
@@ -656,6 +657,14 @@ A `copilot-propose` op (B-23, `workTickets`) creates a `WorkspaceSuggestion(type
 Run a `DEPTH_PROGRAM.md` `/goal` build (16 items, H→C→M→U→D) that: 1. **Hardens the platform first** — fold every `workspaceId` model into the tenant isolation guarantee (or lint it) so it can never leak; hard-force `WORKSPACES_ENC_KEY` (fail-closed). 2. **Fixes the code-side edges** — MR merge/rollback push-to-origin, container readiness probes (no fire-and-forget), retry/backoff + pagination, a real CI-YAML parser + PTY prompt-ready detection. (Docker-dependency is ACCEPTED — no fix.) 3. **Writes the REAL content code behind every `available()` gate** — real Fal/Replicate + ElevenLabs + Suno + Gemini generation, a real ffmpeg (Docker) render pipeline, real YouTube/TikTok OAuth + upload. The stub becomes PURELY the no-key fallback. 4. **Builds the content UI** — reachable (`content` WsView + nav + route), rich but clear for non-technical first-time users, with a style-picker, asset viewer, a provider-key + €-budget settings form, and a setup flow. 5. **Ships a `KEY_SETUP_GUIDE.md`** (how to get each key + where + cost warnings).
 
 → `docs/decisions/0072-depth-program.md`
+
+### 0073 — Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold)
+
+**0073** · accepted · tags: security, tenancy, hardening, ai-lint, depth-program · 2026-07-06
+
+Chose branch (b) — a new diff-scoped `tenant-scope` `ai:lint` rule — plus fixing the one known unscoped call.
+
+→ `docs/decisions/0073-tenant-scope-lint-guard.md`
 
 ## Code governed by decisions
 

@@ -2102,3 +2102,18 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **🏁 CONTENT PLATFORM PROGRAM COMPLEET — alle 22 items (F0.1–F5.1) gebouwd, getest, gecommit.** ADRs 0049–0071. ~230 dummy-data integratie-assertions groen. De content-lane draait end-to-end op dummy-data: brief (pipeline of chat) → script → voice → beelden → montage → complete downloadbare asset → publish-suggestie achter de B-23-gate, budget-guarded + style-driven, over alle modaliteiten. Frontend-items (F4.1–4.3) leverden de testbare/backend-kern; rijke pagina-UI + settings-form + live-copilot-UX = browser-deferred. Live-AI-verificatie = keyed follow-up.
 
 **Files touched:** `server/content/brandMemory.ts`, `server/content/contentAnalytics.ts`, `src/workspaces/_docs/CONTENT_PLATFORM_PROGRAM.md`, `tests/integration/contentMemory.test.mts`, `docs/decisions/0071-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-06 — DEPTH PROGRAM H1: tenant-isolation lint-guard
+
+**User prompt:** `/goal` — Voltooi ALLES in DEPTH_PROGRAM.md (echte diepgang + hardening). Item H1.
+
+**What I did:**
+- Nieuwe diff-scoped **`tenant-scope`** `ai:lint`-regel (`scripts/lintInvariants.mjs`): een plain-`prisma.<model>.<read|write>(` op één van de **55** `workspaceId`-dragende modellen zónder `workspaceId`-constraint op de call-regel = finding. `tenantDb.*` is exempt; een bewuste cross-tenant sweep documenteert zichzelf met `// luckystack-allow tenant-scope: <why>`.
+- De enige écht-unscoped cross-tenant call — `reassertEnvironmentRoutes`'s `environment.findMany({status:'live'})` (leader-gated boot self-heal, sweept élke workspace by design) — gemarkeerd met de allow-comment.
+- 6 selftest-cases toegevoegd (flag unscoped read/create, pass scoped read, pass `tenantDb`, honor suppression, negeer non-server). `ai:lint --selftest` **22/22**.
+
+**Keuze (ADR 0073):** lint-branch i.p.v. de 55-model `tenantDb`-fold (163 call-sites/29 files, zou de legitieme cross-tenant sweeps breken). Diff-scoped ⇒ bestaande legacy niet retroactief geblokkeerd; élke NIEUWE vergeten filter wél gevangen. OPEN follow-up: legacy call-sites incrementeel naar `tenantDb` migreren (audit-lijst ~100).
+
+**Files touched:** `scripts/lintInvariants.mjs`, `server/deploy/environment.ts`, `docs/decisions/0073-tenant-scope-lint-guard.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+**Gates:** lint groen, build groen, `ai:lint --selftest` 22/22. (Geen schema-delta → db:push/generateArtifacts n.v.t.)

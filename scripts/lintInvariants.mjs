@@ -44,6 +44,31 @@ const CONFIG_FILE = path.join(REPO_ROOT, "luckystack.invariants.json");
 
 const isTs = (p) => /\.(ts|tsx)$/.test(p) && !p.endsWith(".d.ts");
 const isTsx = (p) => p.endsWith(".tsx");
+// Server-side orchestrator code (where the tenant-scope guarantee must hold).
+const isServer = (p) => isTs(p) && /(^|\/)server\//.test(p) && !p.endsWith(".tests.ts");
+
+// Every Prisma model carrying a `workspaceId` scalar (camelCase accessor form),
+// derived from prisma/schema.prisma. A plain-`prisma.<model>` read/write on one of
+// these that does NOT constrain by `workspaceId` risks a silent cross-tenant leak
+// (H1 / GAP_ANALYSIS cross-cutting #1). The tenant-scoped client `tenantDb.*` injects
+// the filter automatically and is exempt; a deliberate cross-tenant sweep (a
+// leader-gated boot self-heal) documents itself with `// luckystack-allow tenant-scope: <why>`.
+const TENANT_MODELS_CAMEL = [
+  "agentSession", "approval", "beat", "buildArtifact", "carryOver", "channel",
+  "contentAsset", "contentProject", "dbConnection", "designArtifact", "envVar",
+  "environment", "forgeConnection", "handoff", "infoSource", "integrationTool",
+  "interviewFinding", "invite", "mediaBudget", "mediaJob", "mediaSpend",
+  "mergeRequest", "migration", "notification", "pipelineJob", "pipelineRun",
+  "pipelineStage", "pipeline", "project", "publishJob", "questionSet", "ragEntry",
+  "renderJob", "reviewComment", "reviewThread", "script", "service", "spendRecord",
+  "sprint", "studioArtifact", "studioBrandLibrary", "studioBrief", "stylePreset",
+  "ticketArtifactLink", "ticketEvent", "ticketLink", "ticketReference", "ticket",
+  "workspaceBudget", "workspaceMember", "workspaceNote", "workspaceRole",
+  "workspaceSignal", "workspaceSuggestion", "workspaceTrigger",
+];
+const TENANT_ACCESS_RE = new RegExp(
+  `\\bprisma\\.(${TENANT_MODELS_CAMEL.join("|")})\\.(find\\w*|update\\w*|delete\\w*|upsert|count|aggregate|groupBy|create\\w*)\\b`,
+);
 
 const RULES = [
   {
@@ -93,6 +118,20 @@ const RULES = [
       if (inner.length < 4 && !inner.includes(" ")) return null;
       if (/^[A-Z0-9_ ]+$/.test(inner) && !inner.includes(" ")) return null;
       return `hardcoded user-facing text "${inner.slice(0, 40)}" — wrap it in useTranslator (Rule 13).`;
+    },
+  },
+  {
+    id: "tenant-scope",
+    description: "A plain-`prisma` read/write on a `workspaceId` model must constrain by `workspaceId` (use `tenantDb.*` or filter explicitly) — H1 tenant-isolation guard.",
+    applies: isServer,
+    find: (text) => {
+      const m = text.match(TENANT_ACCESS_RE);
+      if (!m) return null;
+      // The call is safe when this line also carries the workspace scope (an
+      // explicit `workspaceId` in the where/data). `tenantDb.*` never matches
+      // TENANT_ACCESS_RE (it keys off the literal `prisma.` receiver) so it is exempt.
+      if (/workspaceId/.test(text)) return null;
+      return `plain \`prisma.${m[1]}.${m[2]}\` on a tenant-scoped model without a \`workspaceId\` constraint — use \`tenantDb.${m[1]}\` or add the filter; a deliberate cross-tenant sweep needs \`// luckystack-allow tenant-scope: <why>\` (H1).`;
     },
   },
 ];
@@ -311,6 +350,12 @@ const runSelfTest = () => {
     ["arbitrary color flagged", checkLine("src/p.tsx", "className={`bg-[#ffffff] p-4`}").some((f) => f.rule === "no-arbitrary-color")],
     ["theme token ok", checkLine("src/p.tsx", "className={`bg-primary text-title p-4`}").every((f) => f.rule !== "no-arbitrary-color")],
     ["generated file skipped", checkLine("src/_sockets/apiTypes.generated.ts", "const x = y as any;").length === 0],
+    ["tenant-scope: unscoped read flagged", checkLine("server/content/publish.ts", "  const rows = await prisma.channel.findMany({ orderBy: { createdAt: 'asc' } });").some((f) => f.rule === "tenant-scope")],
+    ["tenant-scope: scoped read ok", checkLine("server/content/publish.ts", "  const rows = await prisma.channel.findMany({ where: { workspaceId } });").every((f) => f.rule !== "tenant-scope")],
+    ["tenant-scope: tenantDb ok", checkLine("server/content/publish.ts", "  const rows = await tenantDb.channel.findMany({});").every((f) => f.rule !== "tenant-scope")],
+    ["tenant-scope: suppression works", checkLine("server/deploy/environment.ts", "  const live = await prisma.environment.findMany({ where: { status: 'live' } }); // luckystack-allow tenant-scope: leader-gated boot sweep").every((f) => f.rule !== "tenant-scope")],
+    ["tenant-scope: non-server ignored", checkLine("src/x/foo.ts", "  const rows = await prisma.channel.findMany({});").every((f) => f.rule !== "tenant-scope")],
+    ["tenant-scope: unscoped create flagged", checkLine("server/content/images.ts", "  await prisma.contentAsset.create({ data: { url } });").some((f) => f.rule === "tenant-scope")],
     ["request-wrapper message", checkLine("src/foo.ts", "apiRequest({ name: n as any });").some((f) => f.rule === "no-as-any" && /wrap/.test(f.message))],
     ["doc-coverage: api missing summary+owner", checkDocCoverageFile("src/x/_api/get_v1.ts", "export const main = () => {};").length === 2],
     ["doc-coverage: api complete ok", checkDocCoverageFile("src/x/_api/get_v1.ts", "//? Fetch a user.\n/** @docs owner alice */\nexport const main = () => {};").length === 0],
