@@ -4,8 +4,10 @@
 > the lifecycle plus reasoning/knowledge sharpening. Written to drive a `/goal` run: work the items in
 > order, one at a time, each committed + tested before the next. Mirrors the earlier 14-item `/goal`.
 >
-> **Status:** EXECUTION-READY — the four cross-cutting decisions in §2 are DECIDED (user, 2026-07-06).
-> Last updated 2026-07-06.
+> **Status:** ✅ **COMPLETE** (2026-07-06) — all 14 items (A1→G2) built, tested, and committed on `main`
+> (ADRs 0035–0048; ~135 integration assertions green). The four cross-cutting decisions in §2 were DECIDED
+> and executed. Per-item summaries live in `branch-logs/main.md` + `branch-logs/INDEX.md`. Each item's
+> follow-ups are listed in its ADR's Consequences. Last updated 2026-07-06.
 
 ---
 

@@ -641,8 +641,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'sprint-create': {
       const name = str(payload, 'name');
       if (!name) return;
+      //? Multi-project (ADR 0035): a sprint belongs to the active project's board.
+      const sprintProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!sprintProjectId) return;
       //? Return the created sprint so the realtime `_sync` route broadcasts it.
-      return prisma.sprint.create({ data: { workspaceId: action.workspaceId, name, active: bool(payload, 'active') } });
+      return prisma.sprint.create({ data: { workspaceId: action.workspaceId, projectId: sprintProjectId, name, active: bool(payload, 'active') } });
     }
     case 'sprint-edit': {
       const sprintId = str(target, 'sprintId'); const name = str(payload, 'name');

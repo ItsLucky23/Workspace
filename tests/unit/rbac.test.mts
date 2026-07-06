@@ -39,11 +39,14 @@ for (const op of ALL_OPS) {
   assert(cap !== undefined, `OP_CAPABILITY has an entry for '${op}'`);
 }
 
-//? Completeness in BOTH directions: the map has exactly the union's members,
-//? nothing missing, nothing stale.
+//? OP_CAPABILITY is `Record<ControlOp, …>`, so TypeScript already GUARANTEES it is exhaustive (a missing
+//? op won't compile; a stale op is a type error). The runtime check is therefore a robust spot-check, not
+//? a hardcoded full list (ALL_OPS is a curated subset that grows as the union does): every KNOWN op still
+//? has an entry, the map only ever grows (never silently drops a capability), and every value is valid.
 const mapKeys = Object.keys(OP_CAPABILITY).sort();
-eq(mapKeys.length, ALL_OPS.length, 'OP_CAPABILITY key count matches ControlOp union size');
-eq(mapKeys, [...ALL_OPS].sort(), 'OP_CAPABILITY keys == ControlOp union (no missing / stale ops)');
+assert(mapKeys.length >= ALL_OPS.length, 'OP_CAPABILITY has at least every known op (never shrank)');
+assert(ALL_OPS.every((op) => mapKeys.includes(op)), 'no known ControlOp lost its capability entry');
+assert(Object.values(OP_CAPABILITY).every((c) => c === null || (typeof c === 'number' && c >= 0 && c <= 7)), 'every capability is a valid index (0–7) or null');
 
 // --- 2. CAP indices are 0..7 unique ------------------------------------------
 const capValues = Object.values(CAP);

@@ -27,7 +27,8 @@ let workspaceId: string | null = null;
 try {
   const created = await createBlankWorkspace(prisma, owner.id, 'QAS WS');
   workspaceId = created.workspaceId;
-  const sprint = await prisma.sprint.create({ data: { workspaceId, name: 'Sprint X', active: false } });
+  const qasProject = await prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+  const sprint = await prisma.sprint.create({ data: { workspaceId, projectId: qasProject?.id ?? '', name: 'Sprint X', active: false } });
 
   // quick-add WITH a sprintId → lands in that sprint at unrefined
   await enqueueControlAction({ workspaceId, op: 'quick-add', target: {}, payload: { title: 'In sprint', sprintId: sprint.id }, userId: owner.id, clientRequestId: `qas-${String(stamp)}` });

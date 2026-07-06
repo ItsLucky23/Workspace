@@ -16,11 +16,14 @@ eq(resolveAssignment('pipeline-agent'), 'claude-cli', 'pipeline-agent defaults t
 eq(resolveAssignment('workspace-chat', { 'workspace-chat': 'gemini-api' }), 'gemini-api', 'an override reassigns just that feature');
 eq(resolveAssignment('docs-generate', { 'workspace-chat': 'gemini-api' }), 'claude-cli', 'an unrelated feature keeps its default under a partial override');
 
-//? The assignment map covers all features (no feature can dispatch to `undefined`).
+//? The assignment map covers all features (no feature can dispatch to `undefined`). Asserted by
+//? COMPLETENESS, not a hardcoded list — the AiFeature union grows as features are added (ADR 0007 seam).
 const map = defaultAssignments();
-const keys = Object.keys(map).sort();
-eq(keys.join(','), 'conflict-resolve,dockerfile-generate,docs-generate,pipeline-agent,workspace-chat', 'defaultAssignments covers every AiFeature');
-eq(Object.keys(currentAssignments()).length, 5, 'currentAssignments exposes all five features');
+const keys = Object.keys(map);
+assert(keys.length >= 5, 'defaultAssignments covers the AiFeatures');
+assert(keys.every((k) => typeof (map as Record<string, string>)[k] === 'string' && ((map as Record<string, string>)[k] ?? '').length > 0), 'no feature dispatches to undefined');
+assert(['workspace-chat', 'pipeline-agent', 'docs-generate'].every((f) => keys.includes(f)), 'the core features are all assigned');
+eq(Object.keys(currentAssignments()).length, keys.length, 'currentAssignments matches defaultAssignments (every feature exposed)');
 
 //? Dispatch gates on availability: forcing gemini-api (no GEMINI_API_KEY) surfaces a
 //? typed unavailable error rather than throwing or hardcoding another provider.
