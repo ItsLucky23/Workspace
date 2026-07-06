@@ -1,7 +1,10 @@
 # DEPTH PROGRAM — the `/goal` build spec (real depth + hardening)
 
-> **Status:** LOCKED & EXECUTION-READY (2026-07-07). Source of truth for the autonomous `/goal` run that
-> turns the hollow content skeleton into a REAL, usable product + hardens the platform. Grounding: `GAP_ANALYSIS.md`.
+> **Status:** ✅ COMPLETE (2026-07-06). All 16 items H1→D1 built, tested, committed on `main` (not pushed),
+> ADRs 0073–0088. Per-item summary at the bottom. The content platform now has a real live-code path behind
+> every `available()` gate (stub = pure no-key fallback) + a reachable, rich UI + a key-setup guide; adding
+> keys + budget makes it produce + post real content. The complete LIVE e2e is the user-triggered post-keys
+> acceptance step. Grounding: `GAP_ANALYSIS.md`.
 > Precedence: this doc → `GAP_ANALYSIS.md` → `CLAUDE.md` → the nine Workspaces invariants. A real conflict
 > with no resolution = a flag to the user, never a silent pick.
 
@@ -103,3 +106,23 @@ build for U) + an ADR + a branch-log entry. `DEPTH_PROGRAM.md` marked COMPLETE w
 download → publish behind the gate), with a real live code path behind every `available()` gate and a key-setup
 guide, so adding keys + budget makes it actually produce + post real content. The live e2e is the user-triggered
 post-keys acceptance step.
+
+## 4. Completion log (per item — ADRs 0073–0088)
+- **H1** (0073) — `tenant-scope` ai:lint guard: unscoped plain-`prisma` on a `workspaceId` model is a finding; `environment.findMany` sweep marked. selftest 22/22.
+- **H2** (0074) — fail-closed encryption: `secretBox` throws without `WORKSPACES_ENC_KEY` (no `plain:`), boot-assert; legacy decrypt kept. secretBox 14/14.
+- **C1** (0075) — merge/rollback push to origin: `pushRef` (bare-repo push, retry) + `pushMergedTarget`; local-only=skip. mergePush 6/6, retry 8/8.
+- **C2** (0076) — readiness probes: `waitForContainerReady` parametrised; preview/editor wait (no fire-and-forget). containerReady 6/6.
+- **C3** (0077) — forge pagination + retry: `accumulatePages` (no silent >100 drop) + transient-only retry + `pushBranch` retry. forgePagination 14/14.
+- **C4** (0078) — real CI YAML (`parseYamlSubset`, block-seq/top-level jobs) + PTY prompt-ready detection. ciParse 16/16, ptyReady 8/8.
+- **M1** (0079) — real Fal.ai gen (image/video/3d/reference): queue submit→poll→fetch, injectable transport. falProvider 19/19.
+- **M2** (0080) — real ElevenLabs (voice/sfx→media-store) + Suno music provider; shared `prompt.ts`/`store.ts`. audioProviders 19/19.
+- **M3** (0081) — real structured LLM parsing: `jsonParse` + `parseLiveScript`/`parseBlueprint` JSON-first. contentParse 17/17.
+- **M4** (0082) — real ffmpeg render (Docker) `buildFfmpegPlan`+`renderTimeline` + `/media` stream route. render 18/18.
+- **M5** (0083) — real YouTube+TikTok OAuth + upload (pure builders, encrypted token in EnvVar), B-23. publishOAuth 17/17, publishReal 12/12.
+- **U1** (0084) — content nav + `content/page.tsx` board reading `snapshot.content`; i18n×4.
+- **U2** (0085) — piece detail + generation controls firing `contentControl` ops behind confirm.
+- **U3** (0086) — settings: `save-media-provider` (encrypted key) + €-budget form + setup flow. contentSettings 8/8.
+- **U4** (0087) — insights dashboard + style library + brand editor (`content-edit-brand` + snapshot folds). contentInsights 10/10.
+- **D1** (0088) — `docs/KEY_SETUP_GUIDE.md` + program close-out.
+
+**Deferred (user-triggered):** the complete LIVE e2e once keys + budget are in place (boot with keys → real container + real AI/media turn → real render → real sandbox post).

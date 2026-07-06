@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (86)
+## Decisions (87)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -99,6 +99,7 @@
 | 0085 | Content piece detail + generation controls firing control-ops | 🟢 accepted | content, ui, control-op, depth-program | — | `docs/decisions/0085-content-create-ui.md` |
 | 0086 | Content settings — provider keys + €-budget + setup flow | 🟢 accepted | content, settings, ui, control-op, depth-program | — | `docs/decisions/0086-content-settings-setup.md` |
 | 0087 | Content insights dashboard + style library + brand editor | 🟢 accepted | content, insights, analytics, brand, ui, depth-program | — | `docs/decisions/0087-content-insights-brand.md` |
+| 0088 | KEY_SETUP_GUIDE + Depth Program complete | 🟢 accepted | docs, content, keys, depth-program | — | `docs/decisions/0088-key-setup-guide.md` |
 
 ## Summaries
 
@@ -791,6 +792,14 @@ New `save-media-provider` control-op — stores an ENCRYPTED provider API key (`
 **Snapshot extension:** `ContentSnapshot` gains `analytics` (from `computeContentAnalytics` over the workspace's pieces + media spend + publish jobs), `styles` (StylePreset — this workspace's + the global defaults), and `channels` (id/name/platform/brandVoice). Built in `workspaceSnapshot.ts`. **`content-edit-brand` control-op** — updates a `Channel.brandVoice` + re-indexes the snippet into brand-RAG (`indexChannelBrand`, F5.1) so every generation for the channel can ground on it. RBAC: `workspaceSettings`; dispatched via the `contentSettings` route (B-23); ctx method `editChannelBrand`. **`content/insights/page.tsx`** — an analytics dashboard (pieces/done/published/spend stat cards + pieces-by-stage bars + cost-by-feature), the style library (built-in vs custom), and a per-channel brand-voice editor. Reachable via an Insights button on the content board. i18n ×4; theme tokens only.
 
 → `docs/decisions/0087-content-insights-brand.md`
+
+### 0088 — KEY_SETUP_GUIDE + Depth Program complete
+
+**0088** · accepted · tags: docs, content, keys, depth-program · 2026-07-06
+
+`docs/KEY_SETUP_GUIDE.md` — per provider (Fal, ElevenLabs, Suno, Gemini, YouTube, TikTok): where to get the key, where to put it (the encrypted in-app settings form OR `.env.local`), the env var names, and a *cost warning** (video/3D are the expensive ones; set a €-cap first). It leads with the two load-bearing rules: `WORKSPACES_ENC_KEY` is a boot requirement (H2), and set a media €-budget cap before adding any key. Linked from the U3 settings setup flow. ffmpeg render (Docker, no key) + the safe dummy-mode default are documented so the reader understands what already works without keys.
+
+→ `docs/decisions/0088-key-setup-guide.md`
 
 ## Code governed by decisions
 

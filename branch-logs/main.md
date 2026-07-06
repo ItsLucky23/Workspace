@@ -2302,3 +2302,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/integration/contentInsights.test.mts` **10/10** (analytics/channels-folds + brand-op: channel-update + brand-RAG-index + snapshot-reflectie). contentSnapshot 7/7 + snapshot 21/21 + rbac onaangetast. Lint + build groen. **Fase U KLAAR.**
 
 **Files touched:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts` (op), `server/control/rbac.ts`, `server/orchestrator/conductor.ts` (case+import), `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/content/insights/page.tsx` (nieuw), `src/workspaces/content/page.tsx` (insights-knop), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentInsights.test.mts` (nieuw), `docs/decisions/0087-content-insights-brand.md`.
+
+## 2026-07-06 — DEPTH PROGRAM D1: KEY_SETUP_GUIDE + programma-afsluiting (COMPLEET)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item D1 (laatste).
+
+**What I did:**
+- `docs/KEY_SETUP_GUIDE.md` — plain-language per provider (Fal/ElevenLabs/Suno/Gemini/YouTube/TikTok): waar je de key haalt, waar je 'm zet (encrypted in-app settings-form OF `.env.local`), env-var-namen + een **kostenwaarschuwing** (video/3D zijn de dure; zet eerst een €-cap). Leidt met de twee load-bearing regels: `WORKSPACES_ENC_KEY` boot-vereist (H2) + zet een media-€-budget-cap vóór elke key. Gelinkt vanuit de U3-setup-flow. ffmpeg-render (Docker, geen key) + de safe dummy-mode-default gedocumenteerd.
+- `DEPTH_PROGRAM.md` op **COMPLETE** + per-item completion-log (ADRs 0073–0088). Geheugen `workspaces-content-platform-pivot` bijgewerkt naar COMPLETE.
+
+**🏁 DEPTH PROGRAM COMPLEET — 16/16 items (H1→D1), ADRs 0073–0088, op `main` (niet gepusht).** Elk `available()`-gate heeft nu een echt live-code-pad (stub = puur no-key-fallback); content-platform bereikbaar+bruikbaar (nav→create→generate(stub)→assemble→download→publish achter de gate) + key-setup-guide. **Deferred (user-triggered): de complete LIVE e2e zodra keys+budget staan.**
+
+**Files touched:** `docs/KEY_SETUP_GUIDE.md` (nieuw), `docs/decisions/0088-key-setup-guide.md` (nieuw), `src/workspaces/_docs/DEPTH_PROGRAM.md` (COMPLETE + log), `docs/AI_DECISIONS_INDEX.md`.
