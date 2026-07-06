@@ -1832,3 +1832,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** agent-quality-trend (vereist een quality-signaal per turn), per-project-scoping, een precieze completion-timestamp.
 
 **Files touched:** `docs/decisions/0047-*.md`, `server/obs/analytics.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/usage/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/analytics.test.mts`.
+
+## 2026-07-06 22:15 — Expansion G2: review-ergonomie — answer-queue + presence-claim (ADR 0048) — LAATSTE ITEM
+
+**User:** `/goal` (vervolg — item G2, het laatste). Un-defert additions/05+06.
+
+**What I did:** het afsluitende item.
+- **Answer-queue:** een snapshot-afgeleide **cross-ticket-view** — elk ticket dat op een vraag geparkeerd staat (`Ticket.needsInput` gezet of status `needs-input`) verschijnt in `snapshot.answerQueue` ({ticketKey, title, question, priority}, hoogste prio eerst) — één queue die de reviewer afwerkt i.p.v. per-ticket zoeken. Puur, geen write-pad.
+- **Soft-claim:** de presence-relay (`_sync/presence`) krijgt een `claiming`-flag — een reviewer die antwoordt broadcast `{viewing:true, claiming:true}`; de client toont "X antwoordt" + kan de answer-input voor anderen disablen. Ephemeral + idempotent (zoals viewing), niet-authoritatief (geen Conductor-write, geen harde lock). Context: `answerQueue` + `claimTicket` + `claimedBy` (afgeleid uit presence).
+- **Verify:** `tests/integration/answerQueue.test.mts` — **5/5** (presence-relay broadcast `claiming:true` · geparkeerd ticket ín de queue · normaal ticket eruit · queue-item draagt de vraag + prioriteit). ADR **0048**.
+- **Follow-ups (in ADR):** de dedicated swipe/stack-answer-queue-UI, per-project-scope, een "typing"-indicator bovenop de claim.
+
+**🏁 EXPANSION PROGRAM COMPLEET — alle 14 items (A1–G2) gebouwd, getest, gecommit.** ADRs 0035–0048. ~135 integratie-assertions groen. Zie de INDEX voor de per-item-samenvatting.
+
+**Files touched:** `docs/decisions/0048-*.md`, `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/presence_server_v1.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/answerQueue.test.mts`.

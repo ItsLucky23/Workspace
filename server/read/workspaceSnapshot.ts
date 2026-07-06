@@ -33,8 +33,11 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem,
 } from '../../src/workspaces/_data/types';
+
+//? Priority rank for the answer-queue ordering (ADR 0048 — urgent first).
+const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1, low: 0 };
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
 const jsonStr = (v: unknown, key: string): string => (v !== null && typeof v === 'object' && typeof (v as Record<string, unknown>)[key] === 'string' ? ((v as Record<string, string>)[key] ?? '') : '');
@@ -173,6 +176,8 @@ export interface WorkspaceSnapshot {
   insights: WorkspaceInsights;
   //? Delivery analytics (ADR 0047): the fuller fold for the analytics dashboard.
   analytics: WorkspaceAnalytics;
+  //? Review ergonomics (ADR 0048): the cross-ticket answer-queue — tickets parked on a question.
+  answerQueue: AnswerQueueItem[];
   //? Automation (#2): the workspace's triggers.
   triggers: WorkspaceTrigger[];
   //? Scheduled tasks: the agent roles a trigger can run (registered at boot; global, not per-workspace).
@@ -202,6 +207,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
+  answerQueue: [],
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -353,6 +359,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         return mapped;
       }),
       usage, insights, analytics,
+      //? Review ergonomics (ADR 0048): the cross-ticket answer-queue — every ticket parked on a question
+      //? (needs-input), in one place the reviewer drains. Highest priority first.
+      answerQueue: ticketRows
+        .filter((t) => !t.archived && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'))
+        .map((t): AnswerQueueItem => ({ ticketKey: t.key, title: t.title, question: t.needsInput ?? '', priority: t.priority }))
+        .toSorted((a, b) => (PRIORITY_RANK[b.priority] ?? 1) - (PRIORITY_RANK[a.priority] ?? 1)),
       triggers: triggerRows.map((t): WorkspaceTrigger => ({
         id: t.id, workspaceId: t.workspaceId, enabled: t.enabled, name: t.name, on: asTriggerOn(t.on), action: asTriggerAction(t.action),
         match: t.match, params: t.params, requiresApproval: t.requiresApproval,

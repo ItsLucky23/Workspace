@@ -25,7 +25,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -67,6 +67,7 @@ interface Snap {
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
   analytics: WorkspaceAnalytics;
+  answerQueue: AnswerQueueItem[];
   triggers: WorkspaceTrigger[];
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   aiRuns: AiRun[];
@@ -90,6 +91,7 @@ const EMPTY_SNAP: Snap = {
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
+  answerQueue: [],
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -165,7 +167,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [mrByBranch, setMrByBranch] = useState<Record<string, MrView>>({});
   //? Realtime presence (#17): userId → who they're viewing + when last seen. Fed by the
   //? `workspaces/presence` relay; a `tick` state prunes stale entries so a crashed viewer drops.
-  const [presence, setPresence] = useState<Record<string, { ticketKey: string; lastSeen: number }>>({});
+  const [presence, setPresence] = useState<Record<string, { ticketKey: string; lastSeen: number; claiming?: boolean }>>({});
   const [, setPresenceTick] = useState(0);
 
   const refetch = useCallback(() => {
@@ -242,7 +244,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (serverOutput.status !== 'success') return;
       const p = serverOutput.presence;
       setPresence((prev) => {
-        if (p.viewing) return { ...prev, [p.userId]: { ticketKey: p.ticketKey, lastSeen: Date.now() } };
+        if (p.viewing) return { ...prev, [p.userId]: { ticketKey: p.ticketKey, lastSeen: Date.now(), claiming: p.claiming } };
         //? Clean leave → drop this user's entry (only if it was on this ticket). Rebuild without
         //? the key (no `delete`) so the reducer stays pure.
         if (prev[p.userId]?.ticketKey !== p.ticketKey) return prev;
@@ -627,6 +629,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/presence', version: 'v1', data: { ticketKey, viewing, clientRequestId: nextReqId() }, receiver: room });
   }, [snap.activeWorkspaceId]);
+  //? Review ergonomics (ADR 0048): soft-claim a ticket's question (I'm answering) so others don't
+  //? double-answer. Ephemeral via the presence relay; `claiming:false` releases. Idempotent.
+  const claimTicketApi = useCallback((ticketKey: string, claiming: boolean) => {
+    const room = snap.activeWorkspaceId;
+    if (room) void syncRequest({ name: 'workspaces/presence', version: 'v1', data: { ticketKey, viewing: true, claiming, clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
 
   //? RAG reindex (07 §D) — mirror scanDocs: fire the scan-index sync; the delta callback
   //? above stores the returned status. Fire-and-forget.
@@ -884,6 +892,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       answerInput: (ticketId, answer) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, clientRequestId: nextReqId() }, receiver: room }); },
       setTicketPresence,
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
+      //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
+      answerQueue: snap.answerQueue,
+      claimTicket: claimTicketApi,
+      //? Who (if anyone) has soft-claimed this ticket's question (is answering it) — null if free.
+      claimedBy: (ticketKey: string): string | null => (Object.entries(presence).find(([, v]) => v.ticketKey === ticketKey && v.claiming === true)?.[0]) ?? null,
       archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
       bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkStatus: (ids, status) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds: ids, status, clientRequestId: nextReqId() }, receiver: room }); },
@@ -964,7 +977,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem,
 } from '../_data/types';
 
 export type WsView =
@@ -147,6 +147,10 @@ export interface WorkspacesCtx {
   //? + close), and read the OTHER users currently viewing a ticket (self excluded).
   setTicketPresence: (ticketKey: string, viewing: boolean) => void;
   viewersOf: (ticketKey: string) => string[];
+  //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim (who's answering).
+  answerQueue: AnswerQueueItem[];
+  claimTicket: (ticketKey: string, claiming: boolean) => void;
+  claimedBy: (ticketKey: string) => string | null;
   archiveTicket: (id: string) => void;
   bulkMove: (ids: string[], stageId: string) => void;
   bulkStatus: (ids: string[], status: string) => void;

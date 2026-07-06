@@ -12,14 +12,17 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { ticketKey: string; viewing: boolean; clientRequestId: string };
+  //? `claiming` (ADR 0048): a soft-claim — this user is ANSWERING the ticket's question. Ephemeral, like
+  //? viewing; the client renders "X is answering" + disables the answer input for others (idempotent —
+  //? re-announcing the same claim is a no-op).
+  clientInput: { ticketKey: string; viewing: boolean; claiming?: boolean; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = ({ clientInput, user }: SyncParams): SyncServerResponse => {
-  const { ticketKey, viewing } = clientInput;
+  const { ticketKey, viewing, claiming } = clientInput;
   if (!ticketKey) return { status: 'error', errorCode: 'sync.invalidRequest' };
-  return { status: 'success', presence: { userId: user.id, ticketKey, viewing } };
+  return { status: 'success', presence: { userId: user.id, ticketKey, viewing, claiming: claiming === true } };
 };
