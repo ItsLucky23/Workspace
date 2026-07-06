@@ -20,6 +20,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { getTemplate } from '../scaffold/templates';
+import { nextContentStage, isContentStage } from '../content/pipeline';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -984,6 +985,38 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
       return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
     }
+    //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content
+    //? stages / archive it. The Conductor is the only writer of ContentProject.stageId/status (B-23).
+    case 'content-create': {
+      const projectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      const title = str(payload, 'title');
+      if (!projectId || !title) return;
+      return prisma.contentProject.create({
+        data: {
+          workspaceId: action.workspaceId, projectId, title,
+          ...(str(payload, 'brief') ? { brief: str(payload, 'brief') } : {}),
+          ...(str(payload, 'format') ? { format: str(payload, 'format') } : {}),
+          ...(str(payload, 'channelId') ? { channelId: str(payload, 'channelId') } : {}),
+          ...(str(payload, 'styleId') ? { styleId: str(payload, 'styleId') } : {}),
+        },
+      });
+    }
+    case 'content-advance': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId } });
+      if (!piece) return;
+      const toStage = str(payload, 'toStage');
+      const dest = toStage && isContentStage(toStage) ? toStage : nextContentStage(piece.stageId);
+      //? Past `publish` (no next stage) → mark the piece done.
+      if (!dest) return prisma.contentProject.update({ where: { id: piece.id }, data: { status: 'done' } });
+      return prisma.contentProject.update({ where: { id: piece.id }, data: { stageId: dest, status: 'idle' } });
+    }
+    case 'content-archive': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: true } });
+      return;
+    }
     case 'skill-toggle': {
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
       if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });
@@ -1085,16 +1118,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'project-create': {
       const name = str(payload, 'name');
       if (!name) return;
+      //? ADR 0049 — a project is a dev board OR a content lane (projectType).
+      const projectType = str(payload, 'projectType') === 'content' ? 'content' : 'dev';
       const created = await prisma.project.create({
         data: {
-          workspaceId: action.workspaceId, name,
+          workspaceId: action.workspaceId, name, projectType,
           gitlabPath: str(payload, 'gitlabPath') ?? '',
           ...(str(payload, 'gitUrl') ? { gitUrl: str(payload, 'gitUrl') } : {}),
         },
       });
-      //? A fresh project owns its OWN pipeline (board columns) — seed the default stages
-      //? so its board is immediately usable (each project is an independent board, ADR 0035).
-      await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      //? A dev project owns its OWN board pipeline (ADR 0035); a content project uses the fixed
+      //? content-stage sequence (F1.1), so it needs no board columns.
+      if (projectType !== 'content') await createDefaultPipeline(prisma, action.workspaceId, created.id);
       return created;
     }
     case 'service-create': {

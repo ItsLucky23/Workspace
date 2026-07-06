@@ -59,6 +59,7 @@ export type ControlOp =
   | 'db-connect' | 'db-migrate-create' | 'db-migrate-apply' | 'db-introspect'
   // content platform (ADR 0049)
   | 'edit-media-budget' | 'save-style'
+  | 'content-create' | 'content-advance' | 'content-archive'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

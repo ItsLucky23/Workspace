@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (52)
+## Decisions (53)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -65,6 +65,7 @@
 | 0051 | Media €-budget + pre-generation guard (F0.2) | 🟢 accepted | content, budget, cost, metered, expansion-f02 | — | `docs/decisions/0051-media-budget-guard.md` |
 | 0052 | Media provider abstraction + stub adapters (F0.3) | 🟢 accepted | content, ai-provider, media, stub, expansion-f03 | — | `docs/decisions/0052-media-provider-abstraction.md` |
 | 0053 | Cross-cutting style/preset system (F0.4) | 🟢 accepted | content, style, preset, expansion-f04 | — | `docs/decisions/0053-style-preset-system.md` |
+| 0054 | Generic content-pipeline — fixed stage sequence + control-ops (F1.1) | 🟢 accepted | content, pipeline, control-ops, expansion-f11 | — | `docs/decisions/0054-content-pipeline.md` |
 
 ## Summaries
 
@@ -485,6 +486,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **`server/content/styles.ts`** — `ensureDefaultStyles` (idempotent seed of the global `builtin` styles, `workspaceId=null`), `resolveStyle(prisma, ws, feature, key)` (a per-workspace style with the same key WINS over the global; no key/no match → null), `composeStylePrompt(style, extra)` (style system-prompt + free-form extra instructions, joined), and `listStyles` (global + workspace, the workspace shadowing the global — for the picker UI). 2. **Per-workspace styles are written via a `save-style` control-op** (B-23; capability `workspaceSettings`; Conductor upserts by `(workspace, feature, key)`). Global styles are seed-only (`builtin`, not user-writable). 3. **Styles thread into gen at the CALL SITE, not into `runAiCompletion`'s signature.** The content pipeline (F1.x) resolves the style + composes the system prompt, then passes it as `req.system` (text) or `MediaGenerationRequest.style` (media). No feature signature changes.
 
 → `docs/decisions/0053-style-preset-system.md`
+
+### 0054 — Generic content-pipeline — fixed stage sequence + control-ops (F1.1)
+
+**0054** · accepted · tags: content, pipeline, control-ops, expansion-f11 · 2026-07-06
+
+1. **A FIXED ordered content-stage sequence** (`server/content/pipeline.ts`): `idea → script → generate → assemble → review → publish`, with `nextContentStage`/`isContentStage` helpers. Unlike the dev board (per-project `PipelineStage` rows), the content stages are a code constant — the sequence is uniform across content pieces (per-stage CONFIG comes later, F4). 2. **Three control-ops** (B-23; capability `workTickets`): `content-create` (make a `ContentProject` at `idea`), `content-advance` (→ an explicit `toStage`, else the next stage; past `publish` → `status:done`), `content-archive` (soft). The **Conductor is the only writer** of `stageId`/`status`. 3. **`project-create` gains `projectType`** — `projectType:'content'` makes a content-lane project (NO board pipeline seeded); default stays `dev` (a board + its `PipelineStage`s). Zero change for existing dev flows.
+
+→ `docs/decisions/0054-content-pipeline.md`
 
 ## Code governed by decisions
 

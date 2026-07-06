@@ -1917,3 +1917,15 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **🏁 Fase 0 (fundament) KLAAR** — data-model + €-budget + media-providers + style-systeem staan; de contracten voor Fase 1 (pipeline) zijn gepubliceerd.
 
 **Files touched:** `server/content/styles.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/styleSystem.test.mts`, `docs/decisions/0053-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 01:50 — Content-platform F1.1: generieke content-pipeline (ADR 0054)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F1.1 (start Fase 1).
+
+**What I did:** de content-pipeline-engine.
+- **`server/content/pipeline.ts`** — vaste stage-sequence `idea→script→generate→assemble→review→publish` (code-constant, geen board-`PipelineStage`s) + `nextContentStage`/`isContentStage`.
+- **3 control-ops** (B-23, workTickets): `content-create` (piece op `idea`), `content-advance` (expliciete `toStage` of next; voorbij `publish`→`status:done`), `content-archive` (soft). Conductor = enige writer van stageId/status.
+- **`project-create` + `projectType`** — `projectType:'content'` = content-lane (géén board-pipeline geseed); default `dev` ongewijzigd.
+- **Verify:** `tests/integration/contentPipeline.test.mts` **10/10** (content-project heeft 0 board-stages · piece created + advanced next/expliciet/past-publish→done + archived, alles via control-ops). rbac **122/122**. lint+build+ai:lint groen. ADR **0054**.
+
+**Files touched:** `server/content/pipeline.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `tests/integration/contentPipeline.test.mts`, `docs/decisions/0054-*.md`, `docs/AI_DECISIONS_INDEX.md`.
