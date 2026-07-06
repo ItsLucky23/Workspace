@@ -21,9 +21,11 @@ export interface PreviewResult { ok: boolean; url?: string; host?: string; error
 //? preview route. Idempotent: re-opening reuses the container + replaces the route.
 export async function openPreviewForTicket(workspaceId: string, ticketKey: string): Promise<PreviewResult> {
   const prisma = getPrismaClient();
-  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true } });
+  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true, projectId: true } });
   if (!ticket?.branch) return { ok: false, error: 'preview.notActivated' };
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true, devCommand: true } });
+  //? The ticket's OWN project (FIX-E) — not `findFirst` (which picks the workspace's oldest project and
+  //? would run the wrong image/dev-command in a multi-project workspace, ADR 0035).
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, devCommand: true } });
   const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
   if (!container) return { ok: false, error: 'preview.noContainer' };
 

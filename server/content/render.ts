@@ -44,7 +44,11 @@ export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, l
 //? The ffmpeg runner — runs the container with MEDIA_DIR mounted at /media. Injectable for tests.
 export type FfmpegRunner = (args: string[]) => Promise<{ code: number; err: string }>;
 
-const dockerFfmpegRunner: FfmpegRunner = (args) => docker(['run', '--rm', '-v', `${MEDIA_DIR}:/media`, FFMPEG_IMAGE, ...args]).then((r) => ({ code: r.code, err: r.err }));
+//? Docker's `-v` host path must use forward slashes: a Windows `C:\…` path with backslashes confuses the
+//? volume parser (FIX-D). The drive-letter colon is fine; on POSIX this is a no-op (no backslashes).
+const dockerHostPath = (p: string): string => p.replaceAll('\\', '/');
+
+const dockerFfmpegRunner: FfmpegRunner = (args) => docker(['run', '--rm', '-v', `${dockerHostPath(MEDIA_DIR)}:/media`, FFMPEG_IMAGE, ...args]).then((r) => ({ code: r.code, err: r.err }));
 
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).

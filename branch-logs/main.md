@@ -2368,3 +2368,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** nieuw `mediaWorkspaceKeys.test.mts` **8/8** (decrypt-round-trip + override-parse + key flipt dispatch van stub→live via bogus fal-endpoint, geen netwerk). falProvider 26/26, audioProviders/mediaRegistry/musicSfx/avatar/model3d/content groen. tsc 0 · lint · ai:lint · build groen.
 
 **Files touched:** `server/media/workspaceKeys.ts` (nw), `server/media/{registry,types}.ts`, `server/media/providers/{fal,elevenlabs,suno}.ts`, `tests/integration/mediaWorkspaceKeys.test.mts` (nw), `docs/decisions/0091-per-workspace-media-keys.md`.
+
+## 2026-07-07 — Overnight-goal deel 3: FIX-D + FIX-E (kleine correctheids-fixes)
+
+**User prompt:** /goal (nachtrun) — FIX-D (render docker -v Windows-pad) + FIX-E (previewSession ticket-project).
+
+**Wat ik deed:**
+- **FIX-D:** `server/content/render.ts` — de ffmpeg-docker-mount `${MEDIA_DIR}:/media` breekt op Windows (backslash-pad verwart de `-v`-volume-parser). Nieuwe `dockerHostPath()` normaliseert naar forward-slashes (drive-letter-colon blijft; POSIX = no-op).
+- **FIX-E:** `server/container/previewSession.ts` — pakte `project.findFirst({ where: { workspaceId } })` = oudste project i.p.v. dat van de ticket → verkeerde image/dev-command in een multi-project workspace (ADR 0035). Nu ge-scope't op `ticket.projectId`.
+
+**Verify:** render 18/18, environments 7/7, tsc 0 · lint · ai:lint · build groen. Geen ADR (correctheids-fixes onder ADR 0035's principe).
+
+**GERAPPORTEERD (niet aangeraakt — surgical/andere-AI-scope):** hetzelfde `-v ${hostPad}`-patroon staat ook in `server/container/runtime.ts` (auth/mirror-mounts) + `server/container/egress.ts`; die draaien op de user's Windows-Docker-Desktop (werken kennelijk), dus niet mee-veranderd. Overweeg `dockerHostPath` daar te hergebruiken als een mount ooit faalt.
+
+**Files touched:** `server/content/render.ts`, `server/container/previewSession.ts`.
