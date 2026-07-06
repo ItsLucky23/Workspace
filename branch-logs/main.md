@@ -1794,3 +1794,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** plan-critique als optionele per-pipeline-gate (trigger op plan-stage-completion); reasoning-trace-view.
 
 **Files touched:** `docs/decisions/0044-*.md`, `server/reasoning/planCritiqueRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/planCritique.test.mts`.
+
+## 2026-07-06 20:45 — Expansion E2: RAG sharpen — institutioneel geheugen + wiring (ADR 0045)
+
+**User:** `/goal` (vervolg — item E2). Eerdere vraag: is de RAG singulier + door alle AIs gebruikt?
+
+**What I did:** de index is al **singulier** (één `RagEntry` + één `retrieve()` + één embedder); chat was al gegrond. E2 maakt de wiring af.
+- **Institutioneel geheugen:** `server/rag/memory.ts` indexeert de Handoffs (summary/decisions/gotchas/next) + CarryOvers (summary/openQuestions) in **dezelfde** RAG-store onder een sentinel-commit `institutional-memory`. `retrieveMemory` hergebruikt de ene `retrieve()` met die sentinel — prior learnings surfacen via hetzelfde pad, geen tweede index. Pure `handoffText`/`carryText`.
+- **Re-index on merge:** een geslaagde `mr-merge` vuurt best-effort een re-index van de code-RAG + het geheugen (off-path, blokkeert de merge niet). Was manual-only.
+- **Wiring in surfaces:** de plan-critique-role (E1) grondt z'n kritiek nu in `retrieveMemory` (herhaalde fouten = hoogste-waarde-gaten). (mr-review gebruikte al `retrieve()`.) `index-memory`-control-op (on-demand).
+- **Verify:** `tests/integration/institutionalMemory.test.mts` — **7/7** (pure renderers · `index-memory` indexeert Handoff+CarryOver in de unified store onder de sentinel · `retrieveMemory` surfacet de Redis-sessie-learning). ADR **0045**.
+- **Follow-ups (in ADR):** Studio/docs-gen-grounding, per-write incrementele memory-upsert, Mongo `$vectorSearch`-swap.
+
+**Files touched:** `docs/decisions/0045-*.md`, `server/rag/memory.ts`, `server/reasoning/planCritiqueRole.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/institutionalMemory.test.mts`.

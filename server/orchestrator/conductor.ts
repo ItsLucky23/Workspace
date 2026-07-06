@@ -25,6 +25,7 @@ import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
 import { applyMigration, introspectDb } from '../db/migrate';
 import { indexWorkspace } from '../rag';
+import { indexInstitutionalMemory } from '../rag/memory';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncForgeIssues } from '../git/gitlabSync';
@@ -912,6 +913,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? switch does), so merges are serial. Attach the outcome to the fresh view so the client can
       //? toast success / no-approval / conflict.
       const merge = await mergeMr(prisma, action.workspaceId, mrId);
+      //? Incremental re-index on merge (ADR 0045): the target branch advanced, so refresh the RAG code
+      //? index + the institutional memory (best-effort, off the caller's path — never blocks the merge).
+      if (merge.ok) void (async () => {
+        const reindexProjectId = await resolveProjectId(prisma, action.workspaceId);
+        await indexWorkspace(prisma, action.workspaceId, reindexProjectId ? { projectId: reindexProjectId } : {}).catch(() => null);
+        await indexInstitutionalMemory(prisma, action.workspaceId).catch(() => null);
+      })();
       const view = await mrForTicket(prisma, action.workspaceId, ticketKey);
       return view ? { ...view, actionResult: { ok: merge.ok, ...(merge.ok ? {} : { reason: merge.reason, ...(merge.files ? { files: merge.files } : {}) }) } } : null;
     }
@@ -1140,6 +1148,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!role) return { ok: false };
       const artifact = await role.run({ workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
+    }
+    //? Institutional memory (ADR 0045): (re)index the workspace's Handoffs + CarryOvers into the RAG so
+    //? prior learnings surface in later tickets. Also fires incrementally on merge.
+    case 'index-memory': {
+      return indexInstitutionalMemory(prisma, action.workspaceId);
     }
     //? Plan-critique gate (ADR 0044): run the adversarial reasoning pass on a ticket's plan → a
     //? WorkspaceSuggestion(type:'plan-critique') the human folds in before implement.

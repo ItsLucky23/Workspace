@@ -53,6 +53,8 @@ export type ControlOp =
   | 'root-cause'
   // reasoning (ADR 0044)
   | 'plan-critique'
+  // RAG / institutional memory (ADR 0045)
+  | 'index-memory'
   // user-app DB + migrations (ADR 0043)
   | 'db-connect' | 'db-migrate-create' | 'db-migrate-apply' | 'db-introspect'
   // notifications (18)

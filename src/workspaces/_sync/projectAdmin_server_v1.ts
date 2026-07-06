@@ -11,7 +11,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const OPS = new Set<string>(['project-create', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-promote', 'build-export', 'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'db-connect', 'db-migrate-create', 'db-migrate-apply', 'db-introspect']);
+const OPS = new Set<string>(['project-create', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-promote', 'build-export', 'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'index-memory', 'db-connect', 'db-migrate-create', 'db-migrate-apply', 'db-introspect']);
 
 export interface SyncParams {
   clientInput: { op: string; clientRequestId: string; projectId?: string; serviceId?: string; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; trigger?: string; symptom?: string; name?: string; gitUrl?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string; url?: string; envKind?: string; sql?: string; rollbackSql?: string; migrationId?: string; connectionId?: string };
