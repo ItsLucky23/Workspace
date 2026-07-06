@@ -93,7 +93,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [] },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [], publishTargets: [] },
   triggers: [],
   agentRoles: [],
   aiRuns: [],

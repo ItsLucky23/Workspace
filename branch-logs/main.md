@@ -2382,3 +2382,20 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **GERAPPORTEERD (niet aangeraakt — surgical/andere-AI-scope):** hetzelfde `-v ${hostPad}`-patroon staat ook in `server/container/runtime.ts` (auth/mirror-mounts) + `server/container/egress.ts`; die draaien op de user's Windows-Docker-Desktop (werken kennelijk), dus niet mee-veranderd. Overweeg `dockerHostPath` daar te hergebruiken als een mount ooit faalt.
 
 **Files touched:** `server/content/render.ts`, `server/container/previewSession.ts`.
+
+## 2026-07-07 — Overnight-goal deel 4: FIX-C (publishing bereikbaar — OAuth-connect + publish-trigger)
+
+**User prompt:** /goal (nachtrun) — FIX-C: publish-trigger-UI + OAuth-callback-route.
+
+**Wat ik deed (ADR 0092):** M5 (ADR 0083) had de server-helft van YouTube/TikTok-publishing af maar het was ONBEREIKBAAR (geen OAuth-callback-route, geen UI-trigger). Nu:
+- **`server/content/publishRoute.ts`** — `GET /content/oauth/<platform>/start` (session-authed + workspaceSettings-gated → 302 naar consent) + `/callback` (origin-exempt external redirect → exchange + store token → 302 terug naar settings). `state` = `encryptSecret({workspaceId,userId,platform,exp})` (CSRF-safe + draagt de workspace). Geregistreerd in server.ts. `WS_PUBLIC_URL` voor de redirect_uri (+ .env_template).
+- **Snapshot:** `content.publishTargets` (youtube/tiktok + connected?) uit `__publish_<platform>` EnvVars.
+- **Settings-UI:** Publishing-connections-sectie (Connect-knop / Connected-badge).
+- **Piece-detail-UI:** publish-knop per connected platform op een afgeronde render → `content-request-publish` achter een confirm (B-23: alleen een suggestie; post gebeurt op accept).
+- i18n ×4 (8 keys).
+
+**B-23:** de callback slaat de user's EIGEN OAuth-credential op (net zelf toestemming gegeven, login-achtig) → schrijft direct; de publish-ACTIE blijft volledig B-23-gated (suggestie → accept → Conductor post).
+
+**Verify:** nieuw `publishOAuthRoute.test.mts` **8/8** (state round-trip + tamper/wrong-key/garbage/bad-platform → null). publish 5/5 (publishOAuth 17/17), snapshot 21/21. tsc 0 · lint · ai:lint · build groen.
+
+**Files touched:** `server/content/publishRoute.ts` (nw), `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `.env_template`, `tests/integration/publishOAuthRoute.test.mts` (nw), `docs/decisions/0092-publishing-oauth-connect-flow.md`.

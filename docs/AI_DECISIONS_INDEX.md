@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (90)
+## Decisions (91)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -103,6 +103,7 @@
 | 0089 | tsc is a delivery gate; Prisma-Json writes go through jsonInput, never a cast | 🟢 accepted | tooling, typing, testing, prisma | — | `docs/decisions/0089-typecheck-gate-and-json-input.md` |
 | 0090 | Tests run a stub provider world by default; live-AI is opt-in via enableLiveProviders() | 🟢 accepted | testing, ai, media, providers | — | `docs/decisions/0090-deterministic-test-provider-world.md` |
 | 0091 | The media registry consumes per-workspace keys + overrides, threaded through the provider | 🟢 accepted | media, providers, secrets, multi-tenancy | — | `docs/decisions/0091-per-workspace-media-keys.md` |
+| 0092 | Publishing is reachable via an OAuth connect flow + an in-app publish trigger | 🟢 accepted | content, publishing, oauth, http, b-23 | — | `docs/decisions/0092-publishing-oauth-connect-flow.md` |
 
 ## Summaries
 
@@ -827,6 +828,14 @@ The default test world is **stub**; a live-AI test **opts in**.
 Keys are **threaded through the request**, not read from a global:
 
 → `docs/decisions/0091-per-workspace-media-keys.md`
+
+### 0092 — Publishing is reachable via an OAuth connect flow + an in-app publish trigger
+
+**0092** · accepted · tags: content, publishing, oauth, http, b-23 · 2026-07-07
+
+Two HTTP routes + two UI affordances close the loop:
+
+→ `docs/decisions/0092-publishing-oauth-connect-flow.md`
 
 ## Code governed by decisions
 

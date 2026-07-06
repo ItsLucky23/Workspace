@@ -43,11 +43,16 @@ const ACTIONS: GenAction[] = [
   { op: 'content-assemble', labelKey: 'workspaces.content.actAssemble', icon: 'diagram-project' },
 ];
 
-//? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge
-//? and an open/download link when the media is reachable.
-function AssetCard({ asset, translate }: { asset: ContentAssetSummary; translate: ReturnType<typeof useTranslator> }) {
+//? A publishable asset is a finished, reachable video/render (the thing you post to a platform).
+const isPublishable = (asset: ContentAssetSummary): boolean => (asset.kind === 'render' || asset.kind === 'video') && asset.status === 'ready';
+
+//? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
+//? an open/download link when reachable, and — for a finished render — a publish button per connected
+//? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
+function AssetCard({ asset, connectedPlatforms, onPublish, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
+  const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
   return (
     <div className="rounded-xl border border-container2-border bg-container2 overflow-hidden flex flex-col">
       <div className="aspect-square bg-container1 flex items-center justify-center relative">
@@ -72,6 +77,15 @@ function AssetCard({ asset, translate }: { asset: ContentAssetSummary; translate
           <span className="text-[10px] text-disabled capitalize shrink-0">{asset.status}</span>
         )}
       </div>
+      {canPublish && (
+        <div className="flex flex-wrap gap-1 px-2 pb-2">
+          {connectedPlatforms.map((platform) => (
+            <button key={platform} type="button" onClick={() => { onPublish(asset.id, platform); }} className="rounded-md bg-primary/10 text-primary px-1.5 py-1 text-[10px] font-semibold capitalize hover:bg-primary/20 cursor-pointer flex items-center gap-1">
+              <Icon name="paper-plane" /> {platform}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -106,6 +120,17 @@ export default function ContentPiece({ params }: { params: Record<string, string
       if (action.needsPrompt) payload.prompt = extra.trim() || piece.title;
       if (action.needsRef && referenceUrl.trim()) payload.referenceUrl = referenceUrl.trim();
       runContentOp(action.op, piece.id, payload);
+    })();
+  };
+
+  //? Request publish of a finished render to a connected platform. Confirmed (it's public + hard to undo),
+  //? then fired as content-request-publish — which only PROPOSES it; the post happens on accept (B-23).
+  const connectedPlatforms = content.publishTargets.filter((t) => t.connected).map((t) => t.platform);
+  const requestPublish = (assetId: string, platform: string) => {
+    void (async () => {
+      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishConfirmTitle' }), content: translate({ key: 'workspaces.content.publishConfirmBody' }) });
+      if (!ok) return;
+      runContentOp('content-request-publish', piece.id, { assetId, platform });
     })();
   };
 
@@ -176,7 +201,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} translate={translate} />)}
                 </div>
               )}
             </div>

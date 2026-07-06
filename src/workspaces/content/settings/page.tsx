@@ -8,8 +8,15 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { backendUrl } from '../../../../config';
 
 export const template = 'workspaces';
+
+//? Publish platforms that have a real connect + upload flow (M5). Instagram/LinkedIn are future-ready.
+const PUBLISH_PLATFORMS: { id: string; nameKey: string }[] = [
+  { id: 'youtube', nameKey: 'workspaces.content.platformYoutube' },
+  { id: 'tiktok', nameKey: 'workspaces.content.platformTiktok' },
+];
 
 const PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'fal', nameKey: 'workspaces.content.providerFal', descKey: 'workspaces.content.providerFalDesc' },
@@ -46,8 +53,14 @@ function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (k
 }
 
 export default function ContentSettings() {
-  const { content, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
+  const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
   const translate = useTranslator();
+
+  //? Start the OAuth connect: send the browser to the backend `start` route, which redirects to the
+  //? platform's consent screen and (via the callback) stores the token, then returns here.
+  const connectPlatform = (platform: string) => {
+    globalThis.location.href = `${backendUrl}/content/oauth/${platform}/start?ws=${encodeURIComponent(activeWorkspace.id)}`;
+  };
   const budget = content.mediaBudget;
   const [enabled, setEnabled] = useState(budget.enabled);
   const [capEuros, setCapEuros] = useState((budget.capCents / 100).toString());
@@ -122,6 +135,31 @@ export default function ContentSettings() {
             <div className="mt-4 flex items-center gap-3">
               <button type="button" onClick={saveBudget} className="rounded-lg bg-primary text-title-primary px-4 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.content.budgetSave' })}</button>
               {budgetSaved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.budgetSaved' })}</span>}
+            </div>
+          </section>
+
+          {/* Publishing connections (FIX-C) — connect an account so a finished render can be posted (B-23 gated). */}
+          <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+            <div className="mb-3">
+              <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.publishTitle' })}</div>
+              <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.publishDesc' })}</div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {PUBLISH_PLATFORMS.map((p) => {
+                const connected = content.publishTargets.find((t) => t.platform === p.id)?.connected ?? false;
+                return (
+                  <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-container2-border bg-container2 px-3 py-2.5">
+                    <span className="text-sm font-medium text-title">{translate({ key: p.nameKey })}</span>
+                    {connected ? (
+                      <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.publishConnected' })}</span>
+                    ) : (
+                      <button type="button" onClick={() => { connectPlatform(p.id); }} className="rounded-lg border border-primary-border bg-primary/10 text-primary px-3 py-1.5 text-sm font-medium hover:bg-primary/20 cursor-pointer flex items-center gap-1.5">
+                        <Icon name="link" /> {translate({ key: 'workspaces.content.publishConnect' })}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>

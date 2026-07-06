@@ -6,7 +6,7 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 86,744 tokens if all loaded)
+## Artifact sizes (total ≈ 86,869 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
@@ -14,7 +14,7 @@
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
 | `capabilities` — `docs/AI_CAPABILITIES.md` | 4,250 | 17,000 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 6,451 | 25,803 | Routes/pages/helpers/components + test coverage. |
-| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 26,739 | 106,956 | Why-it-is-this-way (ADRs). |
+| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 26,864 | 107,455 | Why-it-is-this-way (ADRs). |
 | `lessons` — `docs/AI_LESSONS_INDEX.md` | 3,327 | 13,307 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,176 | 4,703 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
@@ -43,7 +43,7 @@ _Adding a page: match an existing template/component + state the intent._
 
 _Auditing: lean on the why-record + risky hubs, not every page intent._
 
-- **Load** (≈ 44,720 tokens): `contract`, `decisions`, `project-index`
+- **Load** (≈ 44,845 tokens): `contract`, `decisions`, `project-index`
 - **Query via MCP** (don't read whole): `god_nodes`, `blast_radius`, `get_decision`, `list_decisions('security')`
 
 ### `debug`

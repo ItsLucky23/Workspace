@@ -266,6 +266,9 @@ export interface ContentAnalyticsView {
 export interface ContentStyleSummary { key: string; label: string; feature: string; builtin: boolean }
 //? A channel + its brand voice (U4) — the per-channel brand snippet that feeds brand-RAG.
 export interface ContentChannelSummary { id: string; name: string; platform: string; brandVoice: string }
+//? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,
+//? so the settings UI shows connect/connected and the piece-detail only offers publish to a live target.
+export interface PublishTargetSummary { platform: string; connected: boolean }
 
 export interface ContentSnapshot {
   pieces: ContentPieceSummary[];
@@ -273,6 +276,7 @@ export interface ContentSnapshot {
   analytics: ContentAnalyticsView;      // U4: the content-analytics dashboard fold
   styles: ContentStyleSummary[];        // U4: the style library
   channels: ContentChannelSummary[];    // U4: channels + their brand voice
+  publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
 }
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a
