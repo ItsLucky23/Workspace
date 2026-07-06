@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (67)
+## Decisions (68)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -80,6 +80,7 @@
 | 0066 | TikTok publishing + IG/LinkedIn future-ready (F3.2) | 🟢 accepted | content, publish, tiktok, expansion-f32 | — | `docs/decisions/0066-publish-tiktok.md` |
 | 0067 | Content automation + conversational entry (F3.3) | 🟢 accepted | content, automation, cron, assistant, expansion-f33 | — | `docs/decisions/0067-content-automation.md` |
 | 0068 | Main-navbar grouping (F4.1) | 🟢 accepted | frontend, navbar, ux, expansion-f41 | — | `docs/decisions/0068-nav-grouping.md` |
+| 0069 | Content lane in the snapshot (F4.2) | 🟢 accepted | content, snapshot, ui, expansion-f42 | — | `docs/decisions/0069-content-snapshot-ui.md` |
 
 ## Summaries
 
@@ -620,6 +621,14 @@ TikTok is in `BUILT_PLATFORMS` (established in F3.1's abstraction) — it posts 
 Each `NavDef` gets a `group` (`work` | `build` | `studio` | `insights`); the rail renders items grouped under section headers (expanded) or thin dividers (collapsed), in `GROUP_ORDER`. Group labels render via a variable (`GROUP_LABELS[g]`), matching the existing nav's variable-rendered `it.label` (no new i18n debt; consistent with the current pattern). Theme tokens only (`text-disabled`, `bg-divider`).
 
 → `docs/decisions/0068-nav-grouping.md`
+
+### 0069 — Content lane in the snapshot (F4.2)
+
+**0069** · accepted · tags: content, snapshot, ui, expansion-f42 · 2026-07-06
+
+The snapshot gains `content: ContentSnapshot` — `pieces` (the non-archived `ContentProject`s: id/title/format/stageId/status/channelId) + `mediaBudget` (the `getMediaBudgetStatus` fold: enabled/cap/spent/alert/overAlert). Content models scope by explicit `workspaceId` (via `currentWorkspaceId()` inside `runInTenant`), matching the feature-model pattern (ADR 0050) — NOT `tenantDb` (content isn't in `TENANT_MODELS`). Threaded through `WorkspacesProvider` + `WorkspacesContext` so any content surface reads `content` from context.
+
+→ `docs/decisions/0069-content-snapshot-ui.md`
 
 ## Code governed by decisions
 

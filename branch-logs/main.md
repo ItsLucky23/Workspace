@@ -2068,3 +2068,14 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Verify:** lint+build+ai:lint groen (pure UI-groepering → build is de verificatie; visueel in de uitgestelde browser-pass). ADR **0068**.
 
 **Files touched:** `src/workspaces/_shell/Shell.tsx`, `docs/decisions/0068-*.md`, `docs/AI_DECISIONS_INDEX.md`.
+
+## 2026-07-07 07:15 — Content-platform F4.2: content-lane in de snapshot (ADR 0069)
+
+**User:** `/goal` CONTENT_PLATFORM_PROGRAM — item F4.2.
+
+**What I did:** de content-state in de workspace-snapshot gewired (de testbare, enablende kern; de rijke pagina-UI + settings-form zijn browser-deferred).
+- **`snapshot.content: ContentSnapshot`** — `pieces` (non-archived ContentProjects: id/title/format/stageId/status/channelId) + `mediaBudget` (`getMediaBudgetStatus`). Content scoopt via expliciete `workspaceId` (`currentWorkspaceId()` binnen `runInTenant`, feature-model-patroon 0050 — NIET tenantDb). Client: provider + context threaden `content`.
+- **Bug gevonden+gefixt:** eerst `workspaceId` (bestond niet in scope → error-typed lint) i.p.v. `currentWorkspaceId()`.
+- **Verify:** `tests/integration/contentSnapshot.test.mts` **7/7** (piece + budget-status in `snapshot.content` · archived-piece valt eruit). Bestaande `snapshot.test` **21/21** (additief). lint+build+ai:lint groen. ADR **0069**.
+
+**Files touched:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/contentSnapshot.test.mts`, `docs/decisions/0069-*.md`, `docs/AI_DECISIONS_INDEX.md`.

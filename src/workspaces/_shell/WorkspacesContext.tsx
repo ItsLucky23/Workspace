@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 
 export type WsView =
@@ -198,6 +198,7 @@ export interface WorkspacesCtx {
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
   analytics: WorkspaceAnalytics;       // ADR 0047: the fuller delivery-analytics fold
+  content: ContentSnapshot;            // ADR 0069: the content-lane pieces + media €-budget status
   triggers: WorkspaceTrigger[];        // #2: automation triggers
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[]; // schedulable roles
   aiRuns: AiRun[];                     // central AI-activity feed (Workspace-AI panel "Activity" tab)

@@ -232,6 +232,21 @@ export interface WorkspaceInsights {
   avgCycleHours: number; throughput7d: number; avgTokensPerTicket: number; doneCount: number; openCount: number;
 }
 
+//? Content platform (ADR 0069, F4.2) — the content-lane snapshot: the in-flight content pieces + the
+//? media €-budget status, so the content UI + settings render from the snapshot.
+export interface ContentPieceSummary {
+  id: string;
+  title: string;
+  format: string;
+  stageId: string;
+  status: string;
+  channelId: string | null;
+}
+export interface ContentSnapshot {
+  pieces: ContentPieceSummary[];
+  mediaBudget: { enabled: boolean; capCents: number; spentCents: number; alertPct: number; overAlert: boolean };
+}
+
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a
 //? question, surfaced in a single queue the reviewer swipes/stacks through.
 export interface AnswerQueueItem {

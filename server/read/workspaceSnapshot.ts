@@ -13,7 +13,7 @@
 
 import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
 
-import { runInTenant } from '../tenant/tenantContext';
+import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
@@ -33,8 +33,9 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot,
 } from '../../src/workspaces/_data/types';
+import { getMediaBudgetStatus } from '../media/budget';
 
 //? Priority rank for the answer-queue ordering (ADR 0048 — urgent first).
 const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1, low: 0 };
@@ -178,6 +179,8 @@ export interface WorkspaceSnapshot {
   analytics: WorkspaceAnalytics;
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue — tickets parked on a question.
   answerQueue: AnswerQueueItem[];
+  //? Content platform (ADR 0069): the content-lane pieces + media €-budget status.
+  content: ContentSnapshot;
   //? Automation (#2): the workspace's triggers.
   triggers: WorkspaceTrigger[];
   //? Scheduled tasks: the agent roles a trigger can run (registered at boot; global, not per-workspace).
@@ -208,6 +211,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -316,6 +320,15 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
 
+    //? Content platform (ADR 0069): the in-flight content pieces + the media €-budget status. Content
+    //? models scope by explicit `workspaceId` (not tenantDb — feature-model pattern, ADR 0050).
+    const contentWsId = currentWorkspaceId();
+    const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
+    const contentSnapshot: ContentSnapshot = {
+      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId })),
+      mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
+    };
+
     const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));
     const skills: SkillEntry[] = sourceRows.filter((s) => s.mode === 'skill').map((s) => ({
       id: s.id, name: s.name, kind: asSkillKind(s.kind), status: s.summary ?? '', model: s.model ?? undefined, on: s.enabled, description: s.summary ?? undefined, usedByStages: s.usedByStages,
@@ -365,6 +378,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         .filter((t) => !t.archived && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'))
         .map((t): AnswerQueueItem => ({ ticketKey: t.key, title: t.title, question: t.needsInput ?? '', priority: t.priority }))
         .toSorted((a, b) => (PRIORITY_RANK[b.priority] ?? 1) - (PRIORITY_RANK[a.priority] ?? 1)),
+      //? Content platform (ADR 0069): the content-lane pieces + media €-budget status.
+      content: contentSnapshot,
       triggers: triggerRows.map((t): WorkspaceTrigger => ({
         id: t.id, workspaceId: t.workspaceId, enabled: t.enabled, name: t.name, on: asTriggerOn(t.on), action: asTriggerAction(t.action),
         match: t.match, params: t.params, requiresApproval: t.requiresApproval,

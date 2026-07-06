@@ -25,7 +25,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -68,6 +68,7 @@ interface Snap {
   insights: WorkspaceInsights;
   analytics: WorkspaceAnalytics;
   answerQueue: AnswerQueueItem[];
+  content: ContentSnapshot;
   triggers: WorkspaceTrigger[];
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   aiRuns: AiRun[];
@@ -92,6 +93,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -894,6 +896,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
       answerQueue: snap.answerQueue,
+      content: snap.content,
       claimTicket: claimTicketApi,
       //? Who (if anyone) has soft-claimed this ticket's question (is answering it) — null if free.
       claimedBy: (ticketKey: string): string | null => (Object.entries(presence).find(([, v]) => v.ticketKey === ticketKey && v.claiming === true)?.[0]) ?? null,
