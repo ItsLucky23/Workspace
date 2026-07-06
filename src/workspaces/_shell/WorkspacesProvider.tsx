@@ -980,6 +980,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? Edit a channel's brand voice (U4) → updates the channel + re-indexes brand-RAG (B-23).
+      editChannelBrand: (channelId, brandVoice) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-brand', channelId, brandVoice, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       docs: snap.docs,
       skills: snap.skills,
       invites: snap.invites,

@@ -157,7 +157,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/mrAction/v1`
 - … +22 more
 
-## Pages (27)
+## Pages (28)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -176,6 +176,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
 | `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |
 | `/workspaces/content/[pieceId]` | workspaces | — | `workspaces/content/[pieceId]/page.tsx` | intent: a content piece's detail — its stage/status, the generation controls (write · voice · images · |
+| `/workspaces/content/insights` | workspaces | — | `workspaces/content/insights/page.tsx` | intent: content insights — how much you've made and what it cost (analytics), your style library, and |
 | `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: content setup & settings — connect your AI media provider keys (encrypted) and set a media |
 | `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
 | `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |

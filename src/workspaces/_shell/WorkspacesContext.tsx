@@ -229,6 +229,7 @@ export interface WorkspacesCtx {
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId: string; apiKey?: string; feature?: string }) => void;
+  editChannelBrand: (channelId: string, brandVoice: string) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES

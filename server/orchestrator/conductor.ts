@@ -31,6 +31,7 @@ import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
 import type { MediaFeature } from '../media/types';
 import { publishAsset, isPublishPlatform } from '../content/publish';
+import { indexChannelBrand } from '../content/brandMemory';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1012,6 +1013,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const key = `__media_provider_${feature}`;
         await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: providerId, secret: false }, update: { value: providerId } });
       }
+      return;
+    }
+    //? Edit a channel's brand voice (U4) — update the field + re-index the brand snippet into brand-RAG
+    //? (F5.1) so every generation for the channel can ground on it. The Conductor is the only writer (B-23).
+    case 'content-edit-brand': {
+      const channelId = str(payload, 'channelId');
+      const brandVoice = str(payload, 'brandVoice') ?? '';
+      if (!channelId) return;
+      await prisma.channel.updateMany({ where: { workspaceId: action.workspaceId, id: channelId }, data: { brandVoice } });
+      await indexChannelBrand(prisma, action.workspaceId, channelId, brandVoice.trim() ? [brandVoice.trim()] : []);
       return;
     }
     //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content

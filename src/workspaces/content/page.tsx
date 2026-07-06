@@ -72,6 +72,9 @@ export default function Content() {
           <span className="text-sm text-muted">{translate({ key: 'workspaces.content.subtitle' })}</span>
         </div>
         <div className="flex items-center gap-3">
+        <button type="button" onClick={() => { navigate('content/insights'); }} title={translate({ key: 'workspaces.content.insights' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common text-sm flex items-center gap-2 cursor-pointer">
+          <Icon name="chart-column" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.insights' })}</span>
+        </button>
         <button type="button" onClick={() => { navigate('content/settings'); }} title={translate({ key: 'workspaces.content.settings' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common text-sm flex items-center gap-2 cursor-pointer">
           <Icon name="gear" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.settings' })}</span>
         </button>

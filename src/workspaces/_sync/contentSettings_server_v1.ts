@@ -13,7 +13,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style']);
+const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style', 'content-edit-brand']);
 const isSettingsOp = (op: string): op is ControlOp => SETTINGS_OPS.has(op);
 
 export interface SyncParams {
@@ -22,6 +22,7 @@ export interface SyncParams {
     capCents?: number; alertPct?: number; enabled?: boolean;
     providerId?: string; apiKey?: string; feature?: string;
     key?: string; label?: string; systemPrompt?: string;
+    channelId?: string; brandVoice?: string;
   };
   user: SessionLayout;
   functions: Functions;

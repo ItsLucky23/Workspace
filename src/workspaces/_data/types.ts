@@ -242,9 +242,27 @@ export interface ContentPieceSummary {
   status: string;
   channelId: string | null;
 }
+//? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).
+export interface ContentAnalyticsView {
+  totalPieces: number;
+  doneCount: number;
+  publishedCount: number;
+  byStage: { stage: string; count: number }[];
+  byFormat: { format: string; count: number }[];
+  totalCostCents: number;
+  costByFeature: { feature: string; cents: number }[];
+}
+//? A style-library entry (U4) — a named style preset (global or per-workspace/brand).
+export interface ContentStyleSummary { key: string; label: string; feature: string; builtin: boolean }
+//? A channel + its brand voice (U4) — the per-channel brand snippet that feeds brand-RAG.
+export interface ContentChannelSummary { id: string; name: string; platform: string; brandVoice: string }
+
 export interface ContentSnapshot {
   pieces: ContentPieceSummary[];
   mediaBudget: { enabled: boolean; capCents: number; spentCents: number; alertPct: number; overAlert: boolean };
+  analytics: ContentAnalyticsView;      // U4: the content-analytics dashboard fold
+  styles: ContentStyleSummary[];        // U4: the style library
+  channels: ContentChannelSummary[];    // U4: channels + their brand voice
 }
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a

@@ -26,6 +26,7 @@ import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/b
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
 import { computeAnalytics } from '../obs/analytics';
+import { computeContentAnalytics } from '../content/contentAnalytics';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -211,7 +212,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false } },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [] },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -324,9 +325,24 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? models scope by explicit `workspaceId` (not tenantDb — feature-model pattern, ADR 0050).
     const contentWsId = currentWorkspaceId();
     const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
+    //? U4 folds: content-analytics (over pieces + media spend + publish jobs), the style library (this
+    //? workspace's + the global defaults), and channels + their brand voice.
+    const [mediaSpendRows, publishJobRows, styleRows, channelRows] = await Promise.all([
+      prisma.mediaSpend.findMany({ where: { workspaceId: contentWsId } }),
+      prisma.publishJob.findMany({ where: { workspaceId: contentWsId } }),
+      prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
+      prisma.channel.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
+    ]);
     const contentSnapshot: ContentSnapshot = {
       pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId })),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
+      analytics: computeContentAnalytics(
+        contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),
+        mediaSpendRows.map((s) => ({ feature: s.feature, costCents: s.costCents })),
+        publishJobRows.map((j) => ({ status: j.status })),
+      ),
+      styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin })),
+      channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice ?? '' })),
     };
 
     const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));

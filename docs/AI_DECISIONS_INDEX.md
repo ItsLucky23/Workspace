@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (85)
+## Decisions (86)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -98,6 +98,7 @@
 | 0084 | Content UI — reachable board reading the content snapshot | 🟢 accepted | content, ui, frontend, depth-program | — | `docs/decisions/0084-content-ui-reach.md` |
 | 0085 | Content piece detail + generation controls firing control-ops | 🟢 accepted | content, ui, control-op, depth-program | — | `docs/decisions/0085-content-create-ui.md` |
 | 0086 | Content settings — provider keys + €-budget + setup flow | 🟢 accepted | content, settings, ui, control-op, depth-program | — | `docs/decisions/0086-content-settings-setup.md` |
+| 0087 | Content insights dashboard + style library + brand editor | 🟢 accepted | content, insights, analytics, brand, ui, depth-program | — | `docs/decisions/0087-content-insights-brand.md` |
 
 ## Summaries
 
@@ -782,6 +783,14 @@ A `content` nav item (Studio group, `wand-magic-sparkles`) + a real `src/workspa
 New `save-media-provider` control-op — stores an ENCRYPTED provider API key (`secretBox` → EnvVar `__provider_key_<providerId>`, `secret:true`) and/or a per-feature provider override (EnvVar `__media_provider_<feature>`). RBAC: `workspaceSettings`. (Per-workspace key CONSUMPTION by the adapters is a follow-up; this persists + lets the settings UI show what's configured.) A `contentSettings_server_v1.ts` sync route dispatches the workspace-settings content ops (edit-media-budget / save-media-provider / save-style), whitelisted, via `dispatchControlSync` (B-23). Client methods `editMediaBudget` / `saveMediaProvider` on the ctx. `content/settings/page.tsx` — a first-run **setup flow** (guided banner + a link to the KEY_SETUP_GUIDE + a money warning), a **provider-key form** (Fal / ElevenLabs / Suno / Gemini; password inputs, never shown back), and a media **€-budget form** (enable + cap in € + alert %, prefilled from `content.mediaBudget`). Reachable via a Settings button on the content board. i18n ×4; theme tokens only.
 
 → `docs/decisions/0086-content-settings-setup.md`
+
+### 0087 — Content insights dashboard + style library + brand editor
+
+**0087** · accepted · tags: content, insights, analytics, brand, ui, depth-program · 2026-07-06
+
+**Snapshot extension:** `ContentSnapshot` gains `analytics` (from `computeContentAnalytics` over the workspace's pieces + media spend + publish jobs), `styles` (StylePreset — this workspace's + the global defaults), and `channels` (id/name/platform/brandVoice). Built in `workspaceSnapshot.ts`. **`content-edit-brand` control-op** — updates a `Channel.brandVoice` + re-indexes the snippet into brand-RAG (`indexChannelBrand`, F5.1) so every generation for the channel can ground on it. RBAC: `workspaceSettings`; dispatched via the `contentSettings` route (B-23); ctx method `editChannelBrand`. **`content/insights/page.tsx`** — an analytics dashboard (pieces/done/published/spend stat cards + pieces-by-stage bars + cost-by-feature), the style library (built-in vs custom), and a per-channel brand-voice editor. Reachable via an Insights button on the content board. i18n ×4; theme tokens only.
+
+→ `docs/decisions/0087-content-insights-brand.md`
 
 ## Code governed by decisions
 

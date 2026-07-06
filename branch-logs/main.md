@@ -2289,3 +2289,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** `tests/integration/contentSettings.test.mts` **8/8** (encrypted-key-roundtrip, override, upsert-on-resave, budget-persist). rbac-completeness groen. Lint + build groen. Per-workspace key-consumptie in de adapters = post-keys follow-up.
 
 **Files touched:** `src/workspaces/_functions/controlApi.ts` (op), `server/control/rbac.ts`, `server/orchestrator/conductor.ts` (case), `src/workspaces/_sync/contentSettings_server_v1.ts` (nieuw), `src/workspaces/content/settings/page.tsx` (nieuw), `src/workspaces/content/page.tsx` (settings-knop), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSettings.test.mts` (nieuw), `docs/decisions/0086-content-settings-setup.md`.
+
+## 2026-07-06 — DEPTH PROGRAM U4: content-insights + style-library + brand-editor
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item U4.
+
+**What I did:**
+- **Snapshot-uitbreiding:** `ContentSnapshot` krijgt `analytics` (via `computeContentAnalytics` over pieces+media-spend+publish-jobs), `styles` (StylePreset — workspace + globale defaults) en `channels` (id/name/platform/brandVoice). Gebouwd in `workspaceSnapshot.ts`.
+- **`content-edit-brand`-control-op** — update `Channel.brandVoice` + herindexeert de snippet in brand-RAG (`indexChannelBrand`, F5.1). RBAC workspaceSettings; via de `contentSettings`-route (B-23); ctx-methode `editChannelBrand`.
+- **`content/insights/page.tsx`** — analytics-dashboard (pieces/done/published/spend-stat-cards + pieces-per-fase-bars + kosten-per-feature), style-bibliotheek (builtin vs custom) + per-kanaal brand-voice-editor. Bereikbaar via Insights-knop op de content-board. i18n×4; alleen theme-tokens.
+
+**Verify:** `tests/integration/contentInsights.test.mts` **10/10** (analytics/channels-folds + brand-op: channel-update + brand-RAG-index + snapshot-reflectie). contentSnapshot 7/7 + snapshot 21/21 + rbac onaangetast. Lint + build groen. **Fase U KLAAR.**
+
+**Files touched:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts` (op), `server/control/rbac.ts`, `server/orchestrator/conductor.ts` (case+import), `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/content/insights/page.tsx` (nieuw), `src/workspaces/content/page.tsx` (insights-knop), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentInsights.test.mts` (nieuw), `docs/decisions/0087-content-insights-brand.md`.
