@@ -35,7 +35,10 @@ export type AiFeature =
   | 'scraper'
   //? AI MR-review (ADR 0041) — reads an MR diff (RAG-grounded) + proposes line-anchored review
   //? findings a human accepts to post as `ReviewComment(authorKind:'ai')`. Never approves/merges.
-  | 'mr-review';
+  | 'mr-review'
+  //? AI root-cause / rollback (ADR 0042) — given a symptom + recent merges, ranks the likely-culprit
+  //? merge + explains → a `WorkspaceSuggestion(type:'rollback')`. Never reverts directly (B-23).
+  | 'root-cause';
 
 export interface AiCompletionRequest {
   prompt: string;

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (40)
+## Decisions (41)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -53,6 +53,7 @@
 | 0039 | Built-in CI + quality gates (green/red blocking merge & promote) | 🟢 accepted | ci, quality-gates, merge-gate, promote, expansion-c1 | — | `docs/decisions/0039-builtin-ci-quality-gates.md` |
 | 0040 | Security & dependency scanning — first-class CI job types | 🟢 accepted | ci, security, dependency-audit, secret-scan, expansion-c2 | — | `docs/decisions/0040-security-dependency-scanning.md` |
 | 0041 | AI MR-review pass (propose→accept, never writes/approves) | 🟢 accepted | mr-review, ai, propose-accept, rag, b-23, expansion-c3 | — | `docs/decisions/0041-ai-mr-review.md` |
+| 0042 | AI-assisted rollback — root-cause role → propose→accept forward-revert + tracking ticket | 🟢 accepted | rollback, root-cause, ai, propose-accept, forward-revert, expansion-b3 | — | `docs/decisions/0042-ai-assisted-rollback.md` |
 
 ## Summaries
 
@@ -377,6 +378,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **A non-coding `mr-review` AgentRole** (provider abstraction, ADR 0007 — new `AiFeature 'mr-review'`), mirroring the interviewer role. `run`: load the MR + `branchDiff` → `parseUnifiedDiff`, `retrieve()` the shared RAG for grounding, `runAiCompletion('mr-review', …)`, parse findings, and *validate every finding's line anchor against the real diff** (drop hallucinated line numbers). It emits ONE `WorkspaceSuggestion(type:'mr-review')` carrying `{ mrId, findings[] }` in its `patch`.
 
 → `docs/decisions/0041-ai-mr-review.md`
+
+### 0042 — AI-assisted rollback — root-cause role → propose→accept forward-revert + tracking ticket
+
+**0042** · accepted · tags: rollback, root-cause, ai, propose-accept, forward-revert, expansion-b3 · 2026-07-06
+
+1. **A non-coding `root-cause` AgentRole** (provider abstraction — new `AiFeature 'root-cause'`), mirroring the mr-review/interviewer roles. `run`: given a `symptom` + the recent merged MRs (newest first), `runAiCompletion('root-cause', …)` ranks the single most-likely culprit + explains why + what to verify. It parses `CULPRIT: <mr-number>` / `REASON: …` (pure `parseCulprit`), maps the number to the MR, and emits ONE `WorkspaceSuggestion(type:'rollback', patch:{ mrId, symptom, reason })`. It NEVER reverts.
+
+→ `docs/decisions/0042-ai-assisted-rollback.md`
 
 ## Code governed by decisions
 

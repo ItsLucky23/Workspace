@@ -49,6 +49,8 @@ export type ControlOp =
   | 'env-deploy' | 'env-teardown' | 'env-promote' | 'build-export'
   // CI / quality gates (ADR 0039)
   | 'ci-run' | 'ci-allow-red'
+  // AI rollback (ADR 0042)
+  | 'root-cause'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

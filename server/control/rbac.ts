@@ -107,6 +107,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'build-export': CAP.workspaceSettings,
   'ci-run': CAP.workTickets,
   'ci-allow-red': CAP.demoteAdmin,
+  'root-cause': CAP.workTickets,
   'mark-read': null,
   pause: CAP.workTickets,
   resume: CAP.workTickets,

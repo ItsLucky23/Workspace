@@ -53,6 +53,7 @@ import { registerStudioRoles } from './studio/roles';
 import { registerInterviewerRole } from './interviewer/role';
 import { registerScraperRole } from './scraper/role';
 import { registerMrReviewRole } from './mr/reviewRole';
+import { registerRootCauseRole } from './mr/rootCauseRole';
 import { startLeaderElection } from './orchestrator/cluster';
 
 (async () => {
@@ -111,6 +112,7 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Interviewer: register the schedulable idea-proposing role (so a cron trigger can run it).
   registerInterviewerRole();
   registerMrReviewRole();
+  registerRootCauseRole();
   //? Marketing reach: register the schedulable web-scraper role.
   registerScraperRole();
   //? Forge webhooks (#10): POST /webhooks/forge/<workspaceId> for continuous GitLab/GitHub issue

@@ -28,6 +28,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'scraper': 'claude-cli',
   //? AI MR-review reasoning — always-available Claude CLI default, overridable per workspace.
   'mr-review': 'claude-cli',
+  //? AI root-cause / rollback reasoning — always-available Claude CLI default, overridable.
+  'root-cause': 'claude-cli',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a

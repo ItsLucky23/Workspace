@@ -248,6 +248,31 @@ async function recordTicketEvent(workspaceId: string, ticketId: string, type: st
   if (error) console.error('[conductor] recordTicketEvent failed:', error);
 }
 
+//? Accept an AI rollback suggestion (ADR 0042): forward-revert the ranked culprit MR (best-effort — a
+//? no-op without a linked repo) + draft a `DEV-####` tracking ticket pre-filled from the analysis. The AI
+//? never reverts; the Conductor does, on human consent (B-23). Returns the created ticket for the delta.
+async function acceptRollback(workspaceId: string, userId: string, patch: unknown): Promise<unknown> {
+  const p = (patch !== null && typeof patch === 'object') ? (patch as Record<string, unknown>) : {};
+  const mrId = typeof p.mrId === 'string' ? p.mrId : '';
+  const symptom = typeof p.symptom === 'string' && p.symptom.length > 0 ? p.symptom : 'a production regression';
+  const reason = typeof p.reason === 'string' ? p.reason : '';
+  if (mrId) await tryCatch(() => rollbackMr(prisma, workspaceId, mrId));
+  const projectId = await resolveProjectId(prisma, workspaceId);
+  if (!projectId) return { ok: true };
+  const last = await prisma.ticket.findFirst({ where: { workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
+  const number = (last?.number ?? 0) + 1;
+  const created = await prisma.ticket.create({
+    data: {
+      workspaceId, projectId, key: `DEV-${String(number)}`, number,
+      title: `Rollback follow-up: ${symptom}`.slice(0, 120), description: reason.length > 0 ? reason : null,
+      stageId: 'unrefined', status: 'idle', labels: ['rollback'], creatorId: userId, priority: 'high',
+    },
+  });
+  await recordTicketEvent(workspaceId, created.id, 'status-change', userId, 'created the tracking ticket from an AI rollback');
+  void fireEvent(prisma, workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId });
+  return created;
+}
+
 //? Resolve DEV-#### keys → ticket ObjectIds (TicketEvent.ticketId is an ObjectId,
 //? but the board/bulk ops address tickets by their human `key`).
 async function ticketIdsForKeys(workspaceId: string, keys: string[]): Promise<{ id: string; key: string }[]> {
@@ -963,6 +988,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? AI MR-review (ADR 0041): accepting posts each proposed finding as a ReviewComment(authorKind:'ai').
       //? The AI never wrote it — the Conductor does, on human consent (B-23).
       if (suggestion?.type === 'mr-review') await postAiReviewFindings(prisma, action.workspaceId, suggestion.patch);
+      //? AI rollback (ADR 0042): accepting reverts the ranked culprit MR (forward `git revert -m 1`, #7) +
+      //? drafts a tracking ticket. The AI never reverted — the Conductor does, on human consent (B-23).
+      if (suggestion?.type === 'rollback') return acceptRollback(action.workspaceId, userId, suggestion.patch);
       return;
     }
     // ---- automation triggers (#2) ----
@@ -1100,6 +1128,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
       const mrId = str(payload, 'mrId');
       const artifact = await role.run({ workspaceId: action.workspaceId, ...(ticketKey ? { ticketKey } : {}), params: mrId ? { mrId } : {} });
+      return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
+    }
+    //? AI root-cause / rollback (ADR 0042): run the role on a symptom → it PROPOSES a rollback as a
+    //? WorkspaceSuggestion(type:'rollback'). The human accepts to revert + get a tracking ticket (B-23).
+    case 'root-cause': {
+      const role = getAgentRole('root-cause');
+      if (!role) return { ok: false };
+      const artifact = await role.run({ workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
     //? Interviewer findings (ADR 0034) — B-23: the human turns a finding into a ticket / dismisses it.

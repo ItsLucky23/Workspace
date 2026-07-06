@@ -1755,3 +1755,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** auto-trigger op `mr.updated`, per-finding accept/dismiss-UI.
 
 **Files touched:** `docs/decisions/0041-*.md`, `server/mr/reviewRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/mrAction_server_v1.ts`, `tests/integration/mrReview.test.mts`, `tests/_helpers.mts`.
+
+## 2026-07-06 19:00 — Expansion B3: AI-assisted rollback + auto-ticket (ADR 0042)
+
+**User:** `/goal` (vervolg — item B3). Beslissing eerder: "X doet het niet meer" → AI vogelt uit welke changes → rolt terug → maakt ticket.
+
+**What I did:** een AI-driver op de bestaande forward-revert-plumbing.
+- **AI-feature:** `AiFeature += 'root-cause'` (+ `DEFAULT_ASSIGNMENTS`).
+- **Role:** `server/mr/rootCauseRole.ts` `registerRootCauseRole` (mirror mr-review, `mutates:false`) — gegeven een `symptom` + de recente merged MRs, `runAiCompletion('root-cause')` rankt de waarschijnlijkste culprit-merge + legt uit; pure `parseCulprit` (`CULPRIT: <nr>`/`REASON:`) → mapt naar de MR → één `WorkspaceSuggestion(type:'rollback', patch:{mrId,symptom,reason})`. Reverteert nooit zelf.
+- **Accept-brug (B-23):** `accept-suggestion` krijgt een `rollback`-branch → `acceptRollback`: draait de **bestaande** `rollbackMr` (forward `git revert -m 1`, #7, best-effort) op de culprit + maakt een `DEV-####` tracking-ticket voorgevuld uit de analyse (`labels:['rollback']`, high priority, reason als description, entert `unrefined`), vuurt `ticket.created`. De AI reverteert nooit direct; de Conductor doet het op consent.
+- **Trigger:** `root-cause`-control-op (symptom) via de `projectAdmin`-sync-route. Role bij boot geregistreerd.
+- **Verify:** `tests/integration/aiRollback.test.mts` — **9/9** (parseCulprit nr/reason/geen-culprit · accept maakt tracking-ticket met rollback-label/high/symptoom-voorgevuld/unrefined · precies 1 ticket · suggestie→accepted). ADR **0042**.
+- **Follow-ups (in ADR):** auto-propose `WorkspaceTrigger` op een deploy/health-fail-signaal (B1's health-check + Environment-status is de hook); per-culprit confidence/diff-view in de suggestie-UI. `accept-suggestion` dispatcht nu 3 types: automation/mr-review/rollback.
+
+**Files touched:** `docs/decisions/0042-*.md`, `server/mr/rootCauseRole.ts`, `server/ai/{types,assignments}.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/server.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/aiRollback.test.mts`.
