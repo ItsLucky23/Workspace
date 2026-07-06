@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (44)
+## Decisions (45)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -57,6 +57,7 @@
 | 0043 | User-app DB support + gated migrations | 🟢 accepted | database, migrations, explorer, gated-apply, expansion-d1 | — | `docs/decisions/0043-user-app-db-migrations.md` |
 | 0044 | Reasoning first-class — per-stage think-budget (surfaced) + plan-critique gate | 🟢 accepted | reasoning, plan-critique, think-budget, expansion-e1 | — | `docs/decisions/0044-reasoning-plan-critique.md` |
 | 0045 | RAG sharpen — institutional memory + wire into surfaces + re-index on merge | 🟢 accepted | rag, institutional-memory, retrieve, expansion-e2 | — | `docs/decisions/0045-rag-institutional-memory.md` |
+| 0046 | Greenfield scaffolding — curated stack templates + project-from-template | 🟢 accepted | scaffolding, templates, onboarding, expansion-f1 | — | `docs/decisions/0046-greenfield-scaffolding.md` |
 
 ## Summaries
 
@@ -413,6 +414,14 @@ Reverse D12. A workspace holds **N projects** (polyrepo); a project optionally d
 1. **Institutional memory on the same store.** `server/rag/memory.ts` indexes the workspace's `Handoff` (summary/decisions/gotchas/next) + `CarryOver` (summary/open-questions) envelopes into `RagEntry` under a reserved sentinel commit `institutional-memory`. `retrieveMemory()` reuses the single `retrieve()` with that sentinel — so prior learnings surface via the SAME retrieval path, no second index. Frozen- per-"commit" replace (mirrors code indexing). Un-defers `additions/03_institutional_memory`.
 
 → `docs/decisions/0045-rag-institutional-memory.md`
+
+### 0046 — Greenfield scaffolding — curated stack templates + project-from-template
+
+**0046** · accepted · tags: scaffolding, templates, onboarding, expansion-f1 · 2026-07-06
+
+1. **A small CURATED template catalog** (`server/scaffold/templates.ts`) — a few reviewed stacks (node-api, react-vite, python-fastapi), each carrying the seed config a fresh project needs: a base image hint, a dev command, and starter convention docs. Pure data + `listTemplates()`/`getTemplate()`. A cross-workspace template marketplace is later (features/01 B-O4).
+
+→ `docs/decisions/0046-greenfield-scaffolding.md`
 
 ## Code governed by decisions
 

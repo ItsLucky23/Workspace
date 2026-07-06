@@ -42,6 +42,8 @@ interface Snap {
   environments: EnvironmentSummary[];
   //? The active project's downloadable build exports (ADR 0038).
   buildArtifacts: BuildArtifactSummary[];
+  //? Greenfield scaffolding (ADR 0046): the curated stack templates.
+  templates: { key: string; label: string; description: string }[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -78,6 +80,7 @@ interface Snap {
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], environments: [], buildArtifacts: [],
+  templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
@@ -542,6 +545,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  //? Greenfield scaffolding (ADR 0046): create a fresh project from a curated stack template.
+  const createFromTemplateApi = useCallback((input: { name: string; template: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || input.name.trim().length === 0) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   const createServiceApi = useCallback((input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || input.name.trim().length === 0) return;
@@ -793,7 +805,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activeProjectId: snap.activeProjectId,
       setActiveProject: (id) => { setWantProjectId(id); setLoading(true); },
       services: snap.services,
+      templates: snap.templates,
       createProject: createProjectApi,
+      createFromTemplate: createFromTemplateApi,
       createService: createServiceApi,
       deleteService: deleteServiceApi,
       connectForge: connectForgeApi,
@@ -947,7 +961,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

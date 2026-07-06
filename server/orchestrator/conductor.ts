@@ -19,6 +19,7 @@ import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
+import { getTemplate } from '../scaffold/templates';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -1085,6 +1086,28 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId');
       if (serviceId) await prisma.service.deleteMany({ where: { workspaceId: action.workspaceId, id: serviceId } });
       return;
+    }
+    //? Greenfield scaffolding (ADR 0046): create a fresh project FROM a curated stack template — seeds the
+    //? project's image/devCommand + its starter convention docs (as InfoSources) + its own default pipeline.
+    case 'project-from-template': {
+      const name = str(payload, 'name'); const templateKey = str(payload, 'template');
+      if (!name || !templateKey) return;
+      const template = getTemplate(templateKey);
+      if (!template) return;
+      const created = await prisma.project.create({
+        data: {
+          workspaceId: action.workspaceId, name, gitlabPath: '',
+          ...(template.baseImageRef ? { baseImageRef: template.baseImageRef } : {}),
+          devCommand: template.devCommand,
+        },
+      });
+      //? Seed the template's starter convention docs as context-doc InfoSources (visible in Sources,
+      //? injectable into the coding agent — the 'starter' source pattern).
+      for (const doc of template.starterDocs) {
+        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: doc.name, content: doc.content, summary: `Starter (${template.label})`, note: 'template', enabled: true, usedByStages: [] } });
+      }
+      await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      return created;
     }
     //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).
     case 'env-deploy': {

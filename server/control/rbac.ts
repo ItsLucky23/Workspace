@@ -99,6 +99,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'ticket-link-artifact': CAP.workTickets,
   'ticket-unlink-artifact': CAP.workTickets,
   'project-create': CAP.workspaceSettings,
+  'project-from-template': CAP.workspaceSettings,
   'service-create': CAP.workspaceSettings,
   'service-delete': CAP.workspaceSettings,
   'env-deploy': CAP.workspaceSettings,

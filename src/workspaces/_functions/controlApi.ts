@@ -43,8 +43,8 @@ export type ControlOp =
   | 'trigger-save' | 'trigger-toggle' | 'trigger-delete' | 'trigger-run'
   | 'finding-to-ticket' | 'finding-dismiss'
   | 'ticket-link-artifact' | 'ticket-unlink-artifact'
-  // multi-project / multi-service (ADR 0035)
-  | 'project-create' | 'service-create' | 'service-delete'
+  // multi-project / multi-service (ADR 0035) + scaffolding (ADR 0046)
+  | 'project-create' | 'service-create' | 'service-delete' | 'project-from-template'
   // environments / deploy (ADR 0037/0038)
   | 'env-deploy' | 'env-teardown' | 'env-promote' | 'build-export'
   // CI / quality gates (ADR 0039)

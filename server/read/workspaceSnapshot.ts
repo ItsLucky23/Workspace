@@ -20,6 +20,7 @@ import { listAiRuns } from '../ai/activity';
 import { formatTime, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
+import { listTemplates } from '../scaffold/templates';
 import { decryptSecret } from '../crypto/secretBox';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
@@ -141,6 +142,8 @@ export interface WorkspaceSnapshot {
   environments: EnvironmentSummary[];
   //? The active project's recent downloadable build exports (ADR 0038).
   buildArtifacts: BuildArtifactSummary[];
+  //? Greenfield scaffolding (ADR 0046): the curated stack templates for "new project from template".
+  templates: { key: string; label: string; description: string }[];
   members: Member[];
   tickets: Ticket[];
   stages: PipelineStage[];
@@ -190,7 +193,7 @@ export interface WorkspaceSnapshot {
 }
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
-  projects: [], services: [], environments: [], buildArtifacts: [],
+  projects: [], services: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -331,6 +334,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.status === 'ready' ? { downloadUrl: `/downloads/build/${b.downloadToken}` } : {}),
         ...(b.error ? { error: b.error } : {}), createdAt: b.createdAt.toISOString(),
       })),
+      templates: listTemplates(),
       members, budget, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),

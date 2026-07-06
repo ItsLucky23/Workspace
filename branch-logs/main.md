@@ -1807,3 +1807,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 - **Follow-ups (in ADR):** Studio/docs-gen-grounding, per-write incrementele memory-upsert, Mongo `$vectorSearch`-swap.
 
 **Files touched:** `docs/decisions/0045-*.md`, `server/rag/memory.ts`, `server/reasoning/planCritiqueRole.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `tests/integration/institutionalMemory.test.mts`.
+
+## 2026-07-06 21:15 — Expansion F1: greenfield scaffolding + templates (ADR 0046)
+
+**User:** `/goal` (vervolg — item F1).
+
+**What I did:** "nieuw project uit een stack-template" (de GENERATE-kant), bovenop A1's project-model.
+- **Catalogus:** `server/scaffold/templates.ts` — een klein gecureerd set (node-api / react-vite / python-fastapi), elk met base-image-hint + devCommand + starter-conventie-docs. Puur `listTemplates`/`getTemplate`.
+- **Op:** `project-from-template` — maakt een vers `Project` (A1-model) met de template-`devCommand`/`baseImageRef`, seed't de starter-docs als `InfoSource(source:'starter')` (zichtbaar in Sources, injecteerbaar in de coding-agent) + de eigen default-pipeline (`createDefaultPipeline`). Catalogus in de snapshot (`templates[]`).
+- **Welcome:** de data + methode zijn gewired (context `templates` + `createFromTemplate`); de first-run wizard-UI (picker op `templates[]`) is de resterende UX-laag → follow-up.
+- **Verify:** `tests/integration/scaffold.test.mts` — **8/8** (catalogus ≥3 + key/label · `getTemplate` full/null · `project-from-template` maakt project + template-devCommand + starter-docs als InfoSources + eigen unrefined-pipeline). ADR **0046**.
+- **Follow-ups (in ADR):** de welcome-wizard-UI, echte repo/file-tree-generatie (git-server), user-templates/marketplace.
+
+**Files touched:** `docs/decisions/0046-*.md`, `server/scaffold/templates.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `tests/integration/scaffold.test.mts`.

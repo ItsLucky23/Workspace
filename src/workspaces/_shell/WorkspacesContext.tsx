@@ -74,6 +74,9 @@ export interface WorkspacesCtx {
   setActiveProject: (id: string) => void;
   services: ServiceSummary[];
   createProject: (input: { name: string; gitUrl?: string; gitlabPath?: string }) => void;
+  //? Greenfield scaffolding (ADR 0046): the curated stack templates + create-from-template.
+  templates: { key: string; label: string; description: string }[];
+  createFromTemplate: (input: { name: string; template: string }) => void;
   createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
   deleteService: (serviceId: string) => void;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
