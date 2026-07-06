@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 171,
-    "edges": 245,
-    "symbols": 204,
-    "callEdges": 32
+    "nodes": 173,
+    "edges": 250,
+    "symbols": 207,
+    "callEdges": 33
   },
   "nodes": [
     {
@@ -584,6 +584,11 @@
       "route": "sync/workspaces/changeRole/v1"
     },
     {
+      "id": "workspaces/_sync/contentControl_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/contentControl/v1"
+    },
+    {
       "id": "workspaces/_sync/findingAction_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/findingAction/v1"
@@ -740,6 +745,11 @@
     },
     {
       "id": "workspaces/board/[ticketId]/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/[pieceId]/page.tsx",
       "kind": "page",
       "route": null
     },
@@ -1250,6 +1260,10 @@
       "to": "workspaces/_shell/WorkspacesShell.tsx"
     },
     {
+      "from": "workspaces/_sync/contentControl_server_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
       "from": "workspaces/_sync/mrAction_server_v1.ts",
       "to": "workspaces/_functions/controlApi.ts"
     },
@@ -1384,6 +1398,22 @@
     {
       "from": "workspaces/board/[ticketId]/page.tsx",
       "to": "workspaces/board/[ticketId]/FileDiffViewer.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/page.tsx",
@@ -1863,6 +1893,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -1893,6 +1924,7 @@
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
@@ -2061,6 +2093,7 @@
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
@@ -2142,6 +2175,7 @@
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -2177,6 +2211,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -2211,6 +2246,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -2268,6 +2304,7 @@
       "workspaces/board/[ticketId]/DiffView.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -2287,6 +2324,7 @@
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_functions/controlApi.ts": [
+      "workspaces/_sync/contentControl_server_v1.ts",
       "workspaces/_sync/mrAction_server_v1.ts",
       "workspaces/_sync/projectAdmin_server_v1.ts"
     ],
@@ -2328,6 +2366,7 @@
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
@@ -2440,50 +2479,50 @@
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 37,
+      "dependents": 38,
       "directDependents": 25
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 34,
-      "directDependents": 29
+      "dependents": 35,
+      "directDependents": 30
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 33,
-      "directDependents": 23
+      "dependents": 34,
+      "directDependents": 24
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 31,
+      "dependents": 32,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 30,
+      "dependents": 31,
       "directDependents": 7
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 29,
-      "directDependents": 24
+      "dependents": 30,
+      "directDependents": 25
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 23,
+      "dependents": 24,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 23,
-      "directDependents": 15
+      "dependents": 24,
+      "directDependents": 16
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -3490,6 +3529,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/contentControl_server_v1.ts::<module>",
+      "file": "workspaces/_sync/contentControl_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/contentControl_server_v1.ts::isContentOp",
+      "file": "workspaces/_sync/contentControl_server_v1.ts",
+      "name": "isContentOp",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/contentControl_server_v1.ts::main",
+      "file": "workspaces/_sync/contentControl_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/findingAction_server_v1.ts::<module>",
       "file": "workspaces/_sync/findingAction_server_v1.ts",
       "name": "<module>",
@@ -3942,6 +3999,10 @@
     {
       "from": "workspaces/_data/seed.ts::ticketLinkedMembers",
       "to": "workspaces/_data/seed.ts::ticketCreator"
+    },
+    {
+      "from": "workspaces/_sync/contentControl_server_v1.ts::main",
+      "to": "workspaces/_sync/contentControl_server_v1.ts::isContentOp"
     }
   ],
   "symbolBlastRadius": {
@@ -4034,6 +4095,9 @@
     "workspaces/_data/seed.ts::ticketCreator": [
       "workspaces/_data/seed.ts::ticketAssignee",
       "workspaces/_data/seed.ts::ticketLinkedMembers"
+    ],
+    "workspaces/_sync/contentControl_server_v1.ts::isContentOp": [
+      "workspaces/_sync/contentControl_server_v1.ts::main"
     ]
   }
 }

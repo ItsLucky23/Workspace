@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (83)
+## Decisions (84)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -96,6 +96,7 @@
 | 0082 | Real ffmpeg (Docker) render pipeline + media download route | 🟢 accepted | content, render, ffmpeg, docker, download, depth-program | — | `docs/decisions/0082-real-ffmpeg-render.md` |
 | 0083 | Real YouTube + TikTok publishing (OAuth + upload) behind the B-23 gate | 🟢 accepted | content, publishing, oauth, youtube, tiktok, depth-program | — | `docs/decisions/0083-real-publishing-oauth.md` |
 | 0084 | Content UI — reachable board reading the content snapshot | 🟢 accepted | content, ui, frontend, depth-program | — | `docs/decisions/0084-content-ui-reach.md` |
+| 0085 | Content piece detail + generation controls firing control-ops | 🟢 accepted | content, ui, control-op, depth-program | — | `docs/decisions/0085-content-create-ui.md` |
 
 ## Summaries
 
@@ -764,6 +765,14 @@ New `server/content/publishOAuth.ts`: PURE request builders — `buildAuthUrl` (
 A `content` nav item (Studio group, `wand-magic-sparkles`) + a real `src/workspaces/content/page.tsx` route (the generic `pathForView`/`viewFromPath` already route `content` → `/workspaces/content`; `VIEW_LABELS` gains `content`). `WsView` already accepted `(string & {})`, so no type change. The page renders a **content board**: 6 pipeline columns (idea → script → media → assemble → review → publish, mirroring server `CONTENT_STAGES`) reading `content.pieces` by `stageId`, each piece a card (title, format chip, status dot), plus a media **€-budget** summary bar (spent/cap/alert from `content.mediaBudget`). Clear empty-state for first-time users. All text via `useTranslator` (`workspaces.content.*`, 16 keys × en/nl/de/fr); only theme tokens + semantic status colors.
 
 → `docs/decisions/0084-content-ui-reach.md`
+
+### 0085 — Content piece detail + generation controls firing control-ops
+
+**0085** · accepted · tags: content, ui, control-op, depth-program · 2026-07-06
+
+**One generic sync route** `contentControl_server_v1.ts` dispatches the content-op family (whitelisted: create/advance/archive + every gen op + assemble + request-publish) through the shared `dispatchControlSync` (RBAC + single-writer Conductor, B-23). A type-guard narrows the op to `ControlOp` — no cast. (Content ops previously had backend cases + tests but no client route.) **Client method** `runContentOp(op, contentProjectId, payload)` on the workspaces ctx fires `workspaces/contentControl` and refetches; typed on `WorkspacesCtx`. **`content/[pieceId]/page.tsx`** — a piece detail: header (format/stage/status), a "creative direction" panel (style + free-form instructions + reference URL), and a grid of generation actions (script · voice · images · reference-image · short-form · music · sfx · 3D · assemble). Each action fires its control-op **behind a `menuHandler.confirm`** with a cost warning (budget-aware). All text i18n ×4 (`workspaces.content.*`, 41 keys); theme tokens only.
+
+→ `docs/decisions/0085-content-create-ui.md`
 
 ## Code governed by decisions
 

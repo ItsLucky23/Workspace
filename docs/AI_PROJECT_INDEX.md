@@ -47,7 +47,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (38)
+## Sync routes (39)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -62,6 +62,7 @@
 | `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
 | `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
 | `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
 | `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
 | `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
 | `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
@@ -96,9 +97,10 @@
 
 | Owner | Routes |
 | --- | --- |
+| `ItsLucky23` | 1 |
 | _(unowned)_ | 73 |
 
-**Test coverage**: 3/73 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/74 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -145,16 +147,16 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkSprint/v1`
 - `sync/workspaces/bulkStatus/v1`
 - `sync/workspaces/changeRole/v1`
+- `sync/workspaces/contentControl/v1`
 - `sync/workspaces/findingAction/v1`
 - `sync/workspaces/gitlabSettings/v1`
 - `sync/workspaces/invite/v1`
 - `sync/workspaces/linkRepo/v1`
 - `sync/workspaces/mrAction/v1`
 - `sync/workspaces/presence/v1`
-- `sync/workspaces/projectAdmin/v1`
-- … +20 more
+- … +21 more
 
-## Pages (25)
+## Pages (26)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -172,6 +174,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/backlog` | workspaces | — | `workspaces/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
 | `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
 | `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |
+| `/workspaces/content/[pieceId]` | workspaces | — | `workspaces/content/[pieceId]/page.tsx` | intent: a content piece's detail — its stage/status, the generation controls (write · voice · images · |
 | `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
 | `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
 | `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer/designer roles turn a |

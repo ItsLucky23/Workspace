@@ -224,6 +224,8 @@ export interface WorkspacesCtx {
   toggleTrigger: (id: string, enabled: boolean) => void;
   deleteTrigger: (id: string) => void;
   runTrigger: (id: string) => void;   // run a trigger's action now (on-demand)
+  //? Fire a content-generation control-op (U2) — the Conductor executes it (B-23).
+  runContentOp: (op: string, contentProjectId: string, payload?: Record<string, string>) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES

@@ -974,6 +974,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleTrigger: (id, enabled) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId: id, enabled, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? Fire a content-generation control-op (U2) — Conductor executes (B-23); the snapshot refetch brings the new asset/state back.
+      runContentOp: (op, contentProjectId, payload) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       docs: snap.docs,
       skills: snap.skills,
       invites: snap.invites,

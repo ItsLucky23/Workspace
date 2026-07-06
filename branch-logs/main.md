@@ -2263,3 +2263,16 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** lint + build groen; ai:lint (i18n/doc-coverage) schoon op de page. Visuele check browser-deferred; de render-van-snapshot + i18n×4 is de code-level verify. U2 voegt de piece-detail (card's `content/<id>`-target) toe.
 
 **Files touched:** `src/workspaces/content/page.tsx` (nieuw), `src/workspaces/_shell/Shell.tsx` (nav), `src/workspaces/_shell/WorkspacesProvider.tsx` (VIEW_LABELS), `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0084-content-ui-reach.md`.
+
+## 2026-07-06 — DEPTH PROGRAM U2: content-piece-detail + generatie-controls (control-ops uit de UI)
+
+**User prompt:** `/goal` DEPTH_PROGRAM.md, item U2.
+
+**What I did:**
+- Één generieke sync-route `contentControl_server_v1.ts` dispatcht de content-op-familie (whitelist: create/advance/archive + alle gen-ops + assemble + request-publish) via `dispatchControlSync` (RBAC + single-writer Conductor, B-23). Type-guard narrowt de op naar `ControlOp` — geen cast. (Content-ops hadden backend-cases+tests maar geen client-route.)
+- Client-methode `runContentOp(op, contentProjectId, payload)` op de ctx vuurt `workspaces/contentControl` + refetch; getypeerd op `WorkspacesCtx`.
+- `content/[pieceId]/page.tsx` — piece-detail: header (format/stage/status), "creatieve richting"-paneel (stijl + vrije instructies + referentie-URL) + grid van generatie-acties (script·voice·images·referentie-image·short-form·muziek·sfx·3D·assemble). Elke actie vuurt z'n control-op **achter `menuHandler.confirm`** met kostenwaarschuwing (budget-aware). Alle tekst i18n×4 (`workspaces.content.*`, 41 keys); alleen theme-tokens.
+
+**Verify:** lint + build groen, ai:lint schoon (i18n + doc-coverage + `@docs owner`). generateArtifacts ge-refresht. Asset-viewer = placeholder (per-piece asset-lijst = snapshot-extensie, browser-deferred). Control-op vuurt vanuit de UI achter confirm. Live gen = post-keys e2e.
+
+**Files touched:** `src/workspaces/_sync/contentControl_server_v1.ts` (nieuw), `src/workspaces/content/[pieceId]/page.tsx` (nieuw), `src/workspaces/_shell/WorkspacesProvider.tsx` (runContentOp), `src/workspaces/_shell/WorkspacesContext.tsx` (ctx-type), `src/_locales/{en,nl,de,fr}.json`, `src/_sockets/apiTypes.generated.ts` (regen), `docs/decisions/0085-content-create-ui.md`.
