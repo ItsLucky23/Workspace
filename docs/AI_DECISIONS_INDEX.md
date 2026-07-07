@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (109)
+## Decisions (110)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -122,6 +122,7 @@
 | 0108 | The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up | 🟢 accepted | content, knowledge, rag, freedom-program | — | `docs/decisions/0108-creative-knowledge-grounding.md` |
 | 0109 | A per-workspace output language directive steers every AI generation | 🟢 accepted | ai, i18n, content, freedom-program | — | `docs/decisions/0109-output-language.md` |
 | 0110 | A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam | 🟢 accepted | ai, providers, freedom-program | — | `docs/decisions/0110-text-provider-per-feature.md` |
+| 0111 | Per-workspace Gemini model + temperature tuning (Claude has no such knob — PTY-billed) | 🟢 accepted | ai, providers, gemini, tuning, freedom-program | — | `docs/decisions/0111-gemini-model-temperature.md` |
 
 ## Summaries
 
@@ -998,6 +999,14 @@ A `Workspace.outputLanguage` field (a language name, e.g. `Dutch`; empty = the m
 A per-workspace override is stored as an EnvVar `__ai_provider_<feature>` (mirrors the media `__media_provider_<feature>` store), loaded by `loadWorkspaceAiOverrides` and **merged inside `runAiCompletion`** UNDER any explicit call-site override: `resolveAssignment(feature, { ...wsOverrides, ...overrides })`. This feeds the seam at ONE point — no call-site changes. A `save-ai-provider` control-op + a `_sync` route (returns the full override map → `snap.aiOverrides`), and a per-feature provider Dropdown in the AI settings tab for the curated non-coding features (Default / Claude / Gemini).
 
 → `docs/decisions/0110-text-provider-per-feature.md`
+
+### 0111 — Per-workspace Gemini model + temperature tuning (Claude has no such knob — PTY-billed)
+
+**0111** · accepted · tags: ai, providers, gemini, tuning, freedom-program · 2026-07-07
+
+Per-workspace `Workspace.geminiModel` + `Workspace.geminiTemperature` (strings; empty = env/model default). The `gemini-api` provider resolves them per workspace in one config read (`resolveGeminiConfig`, folded with the Q5 key read) and sends `generationConfig.temperature` (clamped 0–2) + the chosen model. Edited in the AI settings tab (model input + temperature input), persisted through the extended `save-ai-instruction` op (now carries instruction + language + geminiModel + geminiTemperature).
+
+→ `docs/decisions/0111-gemini-model-temperature.md`
 
 ## Code governed by decisions
 

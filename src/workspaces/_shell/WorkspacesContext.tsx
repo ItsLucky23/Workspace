@@ -169,8 +169,8 @@ export interface WorkspacesCtx {
   saveGitConfig: (cfg: GitConfig) => void;
   //? Module gating — persist the workspace's enabled nav-section set (modules.ts).
   saveSections: (enabledSections: string[]) => void;
-  //? Q4 + K4 — the workspace-wide "how the AI should work here" instruction + preferred output language.
-  saveAiInstruction: (aiInstruction: string, outputLanguage: string) => void;
+  //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
+  saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).
   aiOverrides: { feature: string; providerId: string }[];
   saveAiProvider: (feature: string, providerId: string) => void;

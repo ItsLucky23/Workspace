@@ -2621,3 +2621,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (if/else→ternary) · ai:lint · build · aiProviderOverride 6/6 (persist + load + resolveAssignment respecteert + explicit-override-wint + default-clears). i18n ×4.
 
 **Files touched:** `server/ai/workspaceAssignments.ts` (nw), `server/ai/registry.ts`, `server/orchestrator/conductor.ts` (save-ai-provider), `server/control/rbac.ts`, `server/read/{workspaceSnapshot,mappers}.ts` (aiOverrides + aiOverrideDelta), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAiProvider_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (provider-picker), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiProviderOverride.test.mts`, `docs/decisions/0110-text-provider-per-feature.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM P2: per-workspace Gemini-model + temperature-tuning — ADR 0111
+
+**Wat ik deed:** geen param-tuning bestond (Gemini las alleen `GEMINI_MODEL`-env, geen temperature; Claude-CLI heeft geen model-concept — PTY-billed). Nu `Workspace.geminiModel` + `geminiTemperature` (strings, leeg=default); de `gemini-api`-provider resolvet ze per-workspace in één config-read (`resolveGeminiConfig`, gevouwen met de Q5-key-read) + stuurt `generationConfig.temperature` (clamp 0–2) + het model. Bewerkt in de AI-tab (model+temp-velden), via de uitgebreide `save-ai-instruction`-op. Eerlijk Gemini-only (Claude = geen knop).
+
+**Verify:** tsc 0 · lint · ai:lint · build · aiInstruction 7/7 (nu incl. geminiModel + temperature persist). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (geminiModel/geminiTemperature), `server/ai/providers/geminiApi.ts` (resolveGeminiConfig), `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0111-gemini-model-temperature.md`.

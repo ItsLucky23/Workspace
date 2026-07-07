@@ -466,6 +466,8 @@
       "outputLanguage": "Uitvoertaal",
       "aiProviderTitle": "AI-provider per functie",
       "aiProviderDesc": "Kies welke backend elke functie draait (Standaard houdt de ingebouwde keuze). Claude = abonnement; Gemini = API.",
+      "geminiModel": "Gemini-model",
+      "geminiTemperature": "Gemini-temperatuur",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-workflow",

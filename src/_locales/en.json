@@ -466,6 +466,8 @@
       "outputLanguage": "Output language",
       "aiProviderTitle": "AI provider per feature",
       "aiProviderDesc": "Choose which backend runs each feature (Default keeps the built-in choice). Claude is subscription-billed; Gemini is API-billed.",
+      "geminiModel": "Gemini model",
+      "geminiTemperature": "Gemini temperature",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git workflow",

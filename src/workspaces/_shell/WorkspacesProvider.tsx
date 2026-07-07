@@ -356,8 +356,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/saveAiInstruction', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
-      const { aiInstruction, outputLanguage } = serverOutput;
-      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage } : w)) } : s));
+      const { aiInstruction, outputLanguage, geminiModel, geminiTemperature } = serverOutput;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature } : w)) } : s));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1020,12 +1020,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
         void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
       },
-      //? Q4 + K4 — the workspace-wide AI instruction + output language (optimistic flip + persist).
-      saveAiInstruction: (aiInstruction, outputLanguage) => {
+      //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
+      saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
-        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage } : w)) }));
-        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, clientRequestId: nextReqId() }, receiver: room });
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature } : w)) }));
+        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, clientRequestId: nextReqId() }, receiver: room });
       },
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,

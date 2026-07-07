@@ -466,6 +466,8 @@
       "outputLanguage": "Ausgabesprache",
       "aiProviderTitle": "KI-Anbieter pro Funktion",
       "aiProviderDesc": "Wähle, welches Backend jede Funktion ausführt (Standard behält die Vorgabe). Claude = Abo; Gemini = API.",
+      "geminiModel": "Gemini-Modell",
+      "geminiTemperature": "Gemini-Temperatur",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-Workflow",

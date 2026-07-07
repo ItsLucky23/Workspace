@@ -77,6 +77,8 @@ export interface Workspace {
   productContext?: string;        // Q2 — brand/product context folded into every creative generation
   aiInstruction?: string;         // Q4 — workspace-wide "how the AI works here", prepended to every AI completion
   outputLanguage?: string;        // K4 — preferred AI output language (empty = model default)
+  geminiModel?: string;           // P2 — per-workspace Gemini model override (empty = env/default)
+  geminiTemperature?: string;     // P2 — per-workspace Gemini temperature (empty = model default)
 }
 
 export interface Project {

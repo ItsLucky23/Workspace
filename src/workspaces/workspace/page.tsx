@@ -763,6 +763,8 @@ function AiBehaviorTab() {
   const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider } = useWorkspaces();
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
+  const [geminiModel, setGeminiModel] = useState(activeWorkspace.geminiModel ?? '');
+  const [geminiTemp, setGeminiTemp] = useState(activeWorkspace.geminiTemperature ?? '');
   const [saved, setSaved] = useState(false);
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
@@ -784,8 +786,19 @@ function AiBehaviorTab() {
           <Dropdown size="md" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); setSaved(false); }} />
         </div>
       </div>
+      {/* P2 — per-workspace Gemini model + temperature (Gemini-only; Claude is PTY-billed, no model concept). */}
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiModel' })}</span>
+          <input value={geminiModel} onChange={(e) => { setGeminiModel(e.target.value); setSaved(false); }} placeholder="gemini-2.5-flash" className={fieldCls} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}</span>
+          <input value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={fieldCls} />
+        </label>
+      </div>
       <div className="flex items-center gap-3">
-        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
+        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
       </div>
 
