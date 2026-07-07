@@ -73,6 +73,77 @@ export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, l
   return { concatList, args, hasVideo: usable.length > 0 };
 }
 
+//? V2 — a real MULTI-CLIP video scene: a localized video clip (trimmed) OR a still (looped for its duration),
+//? with an incoming transition. This is what turns "a slideshow" into a real stitched video. Pure types.
+export interface RenderScene {
+  videoFile: string | null;   // a localized clip under /media (preferred)
+  imageFile: string | null;   // a still fallback, looped for `durationMs`
+  startTrimMs: number;        // trim in-point within the source clip
+  durationMs: number;         // on-timeline duration of this scene
+  transitionIn: 'cut' | 'fade' | 'xfade';
+}
+
+//? Build the ffmpeg filter_complex plan that STITCHES real scenes: each scene is normalized (trim for a clip,
+//? loop for a still) to the same size/fps, then joined — a plain `concat` when every transition is a hard cut,
+//? or an `xfade` chain when any scene crossfades in. Optional audio is mapped through. Pure + exported for
+//? tests; the actual ffmpeg run reuses the injectable runner. Returns hasVideo:false when nothing is usable.
+export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | null, outName: string, format: RenderFormat): { args: string[]; hasVideo: boolean } {
+  const usable = scenes.filter((s) => (s.videoFile ?? s.imageFile ?? '').length > 0);
+  if (usable.length === 0) return { args: [], hasVideo: false };
+  const { width: w, height: h, fps } = format;
+  const scale = `scale=${String(w)}:${String(h)}:force_original_aspect_ratio=decrease,pad=${String(w)}:${String(h)}:(ow-iw)/2:(oh-ih)/2,setsar=1`;
+  const TRANSITION_S = 0.5; // crossfade length for fade/xfade scenes
+
+  const args: string[] = ['-y'];
+  //? Inputs — a still is looped + time-bounded so it becomes a clip of the right length.
+  for (const s of usable) {
+    const durS = (s.durationMs / 1000).toFixed(2);
+    if ((s.videoFile ?? '').length > 0) args.push('-i', `/media/${String(s.videoFile)}`);
+    else args.push('-loop', '1', '-t', durS, '-i', `/media/${String(s.imageFile)}`);
+  }
+  if (audioFile !== null) args.push('-i', `/media/${audioFile}`);
+
+  //? Normalize each scene to one uniform stream [vN] (trim a clip; scale/fps/format everything).
+  const filters: string[] = [];
+  for (const [i, s] of usable.entries()) {
+    const parts: string[] = [`[${String(i)}:v]`];
+    if ((s.videoFile ?? '').length > 0) {
+      const start = (s.startTrimMs / 1000).toFixed(2);
+      const end = ((s.startTrimMs + s.durationMs) / 1000).toFixed(2);
+      parts.push(`trim=${start}:${end},setpts=PTS-STARTPTS,`);
+    }
+    parts.push(`${scale},fps=${String(fps)},format=yuv420p[v${String(i)}]`);
+    filters.push(parts.join(''));
+  }
+
+  //? Join. All cuts → a single concat (cheapest, exact). Any crossfade → an xfade chain, whose `offset` is the
+  //? running length of the already-composited stream minus this transition (so the fades overlap correctly).
+  const anyCrossfade = usable.slice(1).some((s) => s.transitionIn !== 'cut');
+  if (anyCrossfade) {
+    let prev = '[v0]';
+    let acc = usable[0]?.durationMs ?? 0; // ms length of the composited stream so far
+    for (let i = 1; i < usable.length; i++) {
+      const scene = usable[i];
+      const out = i === usable.length - 1 ? '[outv]' : `[vx${String(i)}]`;
+      const crossfade = scene !== undefined && scene.transitionIn !== 'cut';
+      const trans = scene?.transitionIn === 'xfade' ? 'fade' : (scene?.transitionIn ?? 'fade'); // xfade filter's crossfade look
+      const dur = crossfade ? TRANSITION_S : 0.001; // a hard cut = a negligible xfade so the chain stays uniform
+      const offset = Math.max(0, acc / 1000 - dur);
+      filters.push(`${prev}[v${String(i)}]xfade=transition=${trans}:duration=${dur.toFixed(3)}:offset=${offset.toFixed(3)}${out}`);
+      acc += (usable[i]?.durationMs ?? 0) - dur * 1000;
+      prev = out;
+    }
+  } else {
+    const inputs = usable.map((_, i) => `[v${String(i)}]`).join('');
+    filters.push(`${inputs}concat=n=${String(usable.length)}:v=1:a=0[outv]`);
+  }
+
+  args.push('-filter_complex', filters.join(';'), '-map', '[outv]');
+  if (audioFile !== null) args.push('-map', `${String(usable.length)}:a`, '-c:a', 'aac', '-shortest');
+  args.push('-r', String(fps), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`);
+  return { args, hasVideo: true };
+}
+
 //? E4 — an audio track to mix. `label` is the ffmpeg input specifier (e.g. '0:a'); `volume` is the linear gain
 //? (voice ~1, music ducked ~0.25, sfx ~0.6). `trimMs` optionally clips the input to its first N ms.
 export interface AudioTrack { label: string; volume: number; trimMs?: number }
@@ -178,6 +249,38 @@ export async function renderTimeline(
   if (!plan.hasVideo) return { ok: false, error: 'render.noRenderableAssets' };
 
   writeFileSync(path.join(MEDIA_DIR, listName), plan.concatList);
+  const [err, res] = await tryCatch(() => run(plan.args));
+  if (err || res?.code !== 0) {
+    const reason = err ? err.message : (res ? res.err.slice(0, 150) : 'unknown');
+    return { ok: false, error: `render.ffmpegFailed: ${reason}` };
+  }
+  const outPath = path.join(MEDIA_DIR, outName);
+  if (!existsSync(outPath)) return { ok: false, error: 'render.noOutput' };
+  return { ok: true, url: `/media/${outName}`, storageRef: outPath };
+}
+
+//? V2 — render the multi-clip SCENE timeline into a real mp4 (the real-video path, distinct from the beat
+//? slideshow). Localizes each scene's clip/still + the voiceover, stitches via buildVideoStitchPlan, runs
+//? ffmpeg. Typed degrade (ok:false) when nothing is renderable or ffmpeg/Docker fails, so assembly stubs.
+export async function renderScenes(
+  input: { scenes: { videoUrl: string | null; imageUrl: string | null; startTrimMs: number; durationMs: number; transitionIn: string }[]; voiceUrl: string | null; format?: string },
+  opts: { run?: FfmpegRunner } = {},
+): Promise<RenderResult> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const scenes: RenderScene[] = [];
+  for (const s of input.scenes) {
+    scenes.push({
+      videoFile: await localizeAsset(s.videoUrl),
+      imageFile: await localizeAsset(s.imageUrl),
+      startTrimMs: Math.max(0, s.startTrimMs),
+      durationMs: Math.max(200, s.durationMs),
+      transitionIn: s.transitionIn === 'fade' || s.transitionIn === 'xfade' ? s.transitionIn : 'cut',
+    });
+  }
+  const id = randomUUID();
+  const outName = `${id}.mp4`;
+  const plan = buildVideoStitchPlan(scenes, await localizeAsset(input.voiceUrl), outName, resolveRenderFormat(input.format));
+  if (!plan.hasVideo) return { ok: false, error: 'render.noRenderableAssets' };
   const [err, res] = await tryCatch(() => run(plan.args));
   if (err || res?.code !== 0) {
     const reason = err ? err.message : (res ? res.err.slice(0, 150) : 'unknown');

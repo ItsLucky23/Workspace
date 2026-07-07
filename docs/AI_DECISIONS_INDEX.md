@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (145)
+## Decisions (146)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -158,6 +158,7 @@
 | 0144 | Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof | 🟢 accepted | content, publish, render, trust, testing, freedom-program | — | `docs/decisions/0144-honesty-fixes.md` |
 | 0145 | L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles) | 🟢 accepted | assistant, intake, content, tickets, single-writer, idea-to-outcome | — | `docs/decisions/0145-conversational-intake-copilot.md` |
 | 0146 | V1 — the video-timeline scene model (VideoScene + content-save-scenes) | 🟢 accepted | content, video, timeline, schema, idea-to-outcome | — | `docs/decisions/0146-video-scene-model.md` |
+| 0147 | V2 — real multi-clip video render (buildVideoStitchPlan + renderScenes) | 🟢 accepted | content, video, render, ffmpeg, idea-to-outcome | — | `docs/decisions/0147-multi-clip-video-render.md` |
 
 ## Summaries
 
@@ -1322,6 +1323,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **New `VideoScene` model** (per content piece): `order`, `videoAssetId?` (a real clip) / `imageAssetId?` (a still/ken-burns fallback), `startTrimMs` / `endTrimMs`, `durationMs`, `transitionIn` (cut|fade|xfade), `prompt` (for V3/V4 regen) and `parentId` (I2-lineage — a refined version of a prior scene). **`videoAssetId` / `imageAssetId` are plain `String?`, not `@db.ObjectId`.** A user-editable timeline must never hard-fail a whole save because one ref isn't a valid ObjectId; asset refs are soft. `parentId` stays `@db.ObjectId` (internal lineage, always a real scene id). **One write op, `content-save-scenes`** (a `[control-API]` op via the contentControl route, RBAC `work-tickets`): the timeline editor sends the full ordered list; the Conductor UPSERTS by id (existing scenes keep their id + lineage, new ones are created, dropped ones removed) and re-sequences `order`. One op covers reorder/trim/transition/delete/add — matching how an editor saves. **Surfaced in the read snapshot** (`ContentPieceSummary.scenes`) for the editor + the render.
 
 → `docs/decisions/0146-video-scene-model.md`
+
+### 0147 — V2 — real multi-clip video render (buildVideoStitchPlan + renderScenes)
+
+**0147** · accepted · tags: content, video, render, ffmpeg, idea-to-outcome · 2026-07-08
+
+**`buildVideoStitchPlan(scenes, audioFile, outName, format)`** — a pure, exported ffmpeg-filter_complex plan that stitches real scenes: each scene is normalized to one uniform stream (a clip is `trim`med to its in/out-point; a still is `-loop`ed + time-bounded, then everything is scaled/fps/format-matched). Joining is a single exact `concat` when every transition is a hard cut, or an `xfade` chain when any scene crossfades in (offsets = the running composited length minus the transition, so fades overlap correctly). Optional audio is the last input, mapped + `-shortest`. **`renderScenes(...)`** — the real-video render entry (mirrors `renderTimeline`): localizes each scene's clip/still + the voice, builds the stitch plan, runs the SAME injectable ffmpeg-in-Docker runner, typed degrade on failure. **`assembly.ts` prefers scenes.** When the piece has a `VideoScene` timeline it renders THAT (real stitch); otherwise it falls back to the beat slideshow. The render metadata (`totalMs`, `sceneCount`) reflects whichever path ran.
+
+→ `docs/decisions/0147-multi-clip-video-render.md`
 
 ## Code governed by decisions
 

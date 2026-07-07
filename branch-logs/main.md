@@ -2945,3 +2945,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · ai:lint clean · build groen · `tests/integration/videoScenes.test.mts` 14/14 (save 2 scenes, upsert-by-id houdt id + update duration + drop + add, snapshot-expose). Debug onderweg: `@db.ObjectId`-asset-refs faalden op fake ids → plain String.
 
 **Files:** `prisma/schema.prisma` (VideoScene), `server/orchestrator/conductor.ts` (content-save-scenes), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` (op+clientInput), `server/control/rbac.ts` (RBAC), `src/workspaces/_data/types.ts` (VideoSceneSummary+scenes), `server/read/workspaceSnapshot.ts` (expose), `tests/integration/videoScenes.test.mts` (nw), `docs/decisions/0146-*.md`.
+
+## 2026-07-08 — V2: echte multi-clip render (buildVideoStitchPlan + renderScenes) — ADR 0147
+
+**Fase V stap 2 — geen diavoorstelling meer.**
+- **`buildVideoStitchPlan`** (puur, geëxporteerd): normaliseert elke scene (clip → `trim`; still → `-loop`+`-t`; alles scale/fps/format) → joint met exacte `concat` (alle cuts) óf een `xfade`-chain (crossfades, offsets = lopende lengte − transitie). Audio als laatste input, gemapt + `-shortest`.
+- **`renderScenes`**: real-video-render-entry (spiegelt renderTimeline) via dezelfde injecteerbare ffmpeg-in-Docker-runner.
+- **`assembly.ts` prefereert scenes:** piece met scene-timeline → echte stitch; anders de beat-slideshow (geen regressie). Metadata (totalMs/sceneCount) volgt het gebruikte pad.
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/unit/videoStitch.test.mts` 17/17 (concat-vs-xfade, per-clip trim, still-loop, audio-map, monotone offsets, degrade) · contentAssembly 12/12 (geen regressie) · videoScenes 14/14 · live-render-test uitgebreid met een 2-scene stitch (skipt zonder Docker/keys).
+
+**Files:** `server/content/render.ts` (RenderScene + buildVideoStitchPlan + renderScenes), `server/content/assembly.ts` (scenes-branch + effectiveTotalMs/segmentCount), `tests/unit/videoStitch.test.mts` (nw), `tests/live/renderLive.live.mts` (stitch), `docs/decisions/0147-*.md`.

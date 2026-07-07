@@ -8,7 +8,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
-import { renderTimeline, type FfmpegRunner } from './render';
+import { renderTimeline, renderScenes, type FfmpegRunner } from './render';
 
 export interface AssembleResult {
   ok: boolean;
@@ -40,6 +40,22 @@ export async function assembleContent(
   const urlById = new Map(imageAssets.map((a) => [a.id, a.url ?? null]));
   const renderBeats = beats.map((b) => ({ imageUrl: b.imageAssetId ? (urlById.get(b.imageAssetId) ?? null) : null, durationMs: b.durationMs ?? 3000 }));
 
+  //? V2 — real multi-clip video: when the piece has an edited SCENE timeline, render THAT (stitched real clips
+  //? with trims + transitions) instead of the beat slideshow. Resolve each scene's clip/still asset url.
+  const scenes = await prisma.videoScene.findMany({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId }, orderBy: { order: 'asc' } });
+  const sceneAssetIds = scenes.flatMap((s) => [s.videoAssetId, s.imageAssetId].filter((id): id is string => typeof id === 'string' && id.length > 0));
+  const sceneAssets = sceneAssetIds.length > 0 ? await prisma.contentAsset.findMany({ where: { workspaceId: args.workspaceId, id: { in: sceneAssetIds } } }) : [];
+  const sceneUrlById = new Map(sceneAssets.map((a) => [a.id, a.url ?? null]));
+  const renderScenesInput = scenes.map((s) => ({
+    videoUrl: s.videoAssetId ? (sceneUrlById.get(s.videoAssetId) ?? null) : null,
+    imageUrl: s.imageAssetId ? (sceneUrlById.get(s.imageAssetId) ?? null) : null,
+    startTrimMs: s.startTrimMs, durationMs: s.durationMs, transitionIn: s.transitionIn,
+  }));
+  const useScenes = scenes.length > 0;
+  //? When rendering scenes, the timeline length + segment count come from the scenes, not the beats.
+  const effectiveTotalMs = useScenes ? renderScenesInput.reduce((sum, s) => sum + s.durationMs, 0) : totalMs;
+  const segmentCount = useScenes ? scenes.length : beats.length;
+
   const renderJob = await prisma.renderJob.create({
     data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, composition: 'faceless', input: { timeline, voiceAssetId: voice?.id ?? null, totalMs }, status: 'running', costCents: 0 },
   });
@@ -47,14 +63,16 @@ export async function assembleContent(
   //? live (ffmpeg is local → no provider queue, so no `queued`/`startedAt`; a plain spinner, not a
   //? timer). Finalized to `ready` after the render.
   const asset = await prisma.contentAsset.create({
-    data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'render', url: null, status: 'processing', metadata: jsonInput({ totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages }) },
+    data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'render', url: null, status: 'processing', metadata: jsonInput({ totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, ...(useScenes ? { sceneCount: scenes.length } : {}) }) },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { resultAssetId: asset.id } });
   await broadcastContentAssetDelta(prisma, args.workspaceId, args.contentProjectId, asset.id);
 
   //? Attempt the REAL ffmpeg render; degrade to a valid-shaped stub when assets are still `stub://`
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
-  const render = await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
+  const render = useScenes
+    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null }, opts)
+    : await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
   const stub = !render.ok;
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.
@@ -64,10 +82,10 @@ export async function assembleContent(
       url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: render.ok ? 'ready' : 'error',
-      metadata: jsonInput({ stub, totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });
   await broadcastContentAssetDelta(prisma, args.workspaceId, args.contentProjectId, asset.id);
-  return { ok: true, renderJobId: renderJob.id, assetId: asset.id, stub, beatCount: beats.length, totalMs };
+  return { ok: true, renderJobId: renderJob.id, assetId: asset.id, stub, beatCount: segmentCount, totalMs: effectiveTotalMs };
 }

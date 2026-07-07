@@ -11,7 +11,7 @@ const prisma = await db();
 const live = enableLiveProviders();
 
 const { runMediaGeneration } = await import('../../server/media/registry');
-const { renderTimeline } = await import('../../server/content/render');
+const { renderTimeline, renderScenes } = await import('../../server/content/render');
 const { dockerAvailable } = await import('../../server/container/runtime');
 const { MEDIA_DIR } = await import('../../server/media/store');
 const { existsSync, statSync } = await import('node:fs');
@@ -46,7 +46,20 @@ try {
       assert(existsSync(file), 'the rendered .mp4 exists on disk');
       const bytes = existsSync(file) ? statSync(file).size : 0;
       assert(bytes > 1000, `the rendered .mp4 is a real non-trivial file (${String(bytes)} bytes)`);
-      console.log(`[live-render] ✓ real video: ${url} (${String(bytes)} bytes)`);
+      console.log(`[live-render] ✓ real slideshow video: ${url} (${String(bytes)} bytes)`);
+
+      //? V2 — prove the multi-clip STITCH end-to-end too: the two images as still-scenes with a crossfade
+      //? between them → one stitched mp4 (reuses the images, no extra generation cost).
+      const stitched = await renderScenes({ scenes: [
+        { videoUrl: null, imageUrl: a, startTrimMs: 0, durationMs: 1500, transitionIn: 'cut' },
+        { videoUrl: null, imageUrl: b, startTrimMs: 0, durationMs: 1500, transitionIn: 'xfade' },
+      ], voiceUrl: null });
+      assert(stitched.ok === true, `the multi-clip stitch succeeded (error: ${stitched.ok ? '' : String(stitched.error)})`);
+      const sUrl = stitched.url ?? '';
+      assert(sUrl.startsWith('/media/') && !sUrl.startsWith('stub://'), `the stitch produced a REAL /media url (${sUrl})`);
+      const sFile = nodePath.join(MEDIA_DIR, sUrl.slice('/media/'.length));
+      assert(existsSync(sFile) && statSync(sFile).size > 1000, 'the stitched .mp4 is a real non-trivial file');
+      console.log(`[live-render] ✓ real stitched video: ${sUrl}`);
     }
   }
 } catch (error) {
