@@ -10,6 +10,7 @@ import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 import type { Canvas as FabricCanvas, FabricImage } from 'fabric';
 
 import { uploadMedia } from '../_functions/uploadMedia';
+import { useEscapeKey } from '../_functions/useEscapeKey';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import Icon from './Icon';
 import { WsButton } from './primitives';
@@ -27,6 +28,7 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
   const [saturation, setSaturation] = useState(0);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  useEscapeKey(onClose);
 
   useEffect(() => {
     let disposed = false;

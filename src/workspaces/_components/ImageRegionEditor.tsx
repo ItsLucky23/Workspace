@@ -11,6 +11,7 @@ import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 import type { Canvas as FabricCanvas } from 'fabric';
 
 import { uploadMedia } from '../_functions/uploadMedia';
+import { useEscapeKey } from '../_functions/useEscapeKey';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import Icon from './Icon';
 import { WsButton } from './primitives';
@@ -27,6 +28,7 @@ export default function ImageRegionEditor({ pieceId, asset, onClose }: { pieceId
   const [brush, setBrush] = useState(36);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  useEscapeKey(onClose);
 
   //? Lazy-load fabric + set up the drawing surface with the source image as a display-only background.
   useEffect(() => {

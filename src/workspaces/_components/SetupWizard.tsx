@@ -8,6 +8,7 @@ import { useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import { useEscapeKey } from '../_functions/useEscapeKey';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import Icon from './Icon';
 import { WsButton } from './primitives';
@@ -20,6 +21,7 @@ export default function SetupWizard({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [budgetEuro, setBudgetEuro] = useState('25');
+  useEscapeKey(onClose);
 
   const steps = 3;
   const next = () => {

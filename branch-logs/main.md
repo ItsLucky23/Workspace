@@ -2887,3 +2887,15 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 **Verify:** tsc 0 · lint (€-JSX-literal→placeholder) · ai:lint · build. Browser-verified; de gevuurde ops zijn getest. i18n ×4.
 
 **Files touched:** `src/workspaces/_components/SetupWizard.tsx` (nw), `src/workspaces/workspace/page.tsx` (Quick-setup-knop + render), `src/_locales/{en,nl,de,fr}.json` (workspaces.setup), `docs/decisions/0142-setup-wizard.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM S4: premium-UX-sweep (a11y + §0b-invarianten) — ADR 0143
+
+**Wat ik deed:** de meeste §0b-polish was al inline toegepast per surface (theme-tokens-only, i18n op elke string, `motion-safe:`-tactile-press, shared primitives). Resterende gap: de nieuwe overlays waren muis-dismiss-only. Nu shared `useEscapeKey(onClose)`-hook in de 3 nieuwe modals (ImageRegionEditor/ImageEditor/SetupWizard) → keyboard-dismissible (a11y). De cross-cutting invarianten (geen untranslated-JSX/arbitrary-colors) = `ai:lint` **groen repo-breed** over elke nieuwe surface. Resterend deel S4 = live mobile/visual-pass (browser-verified, developer-actie). Empty-states/tooltips per panel = follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint **repo-breed groen (geen invariant-violations)** · build.
+
+**Files touched:** `src/workspaces/_functions/useEscapeKey.ts` (nw), `src/workspaces/_components/{ImageRegionEditor,ImageEditor,SetupWizard}.tsx` (Escape-a11y), `docs/decisions/0143-premium-ux-sweep.md`.
+
+---
+## 🏁 FREEDOM_PROGRAM /goal COMPLEET — 44 items, ADRs 0110–0143, één sessie
+Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item gebouwd, gegate (tsc+lint+ai:lint+build), per-item getest, ge-ADR'd, gecommit (auteur ItsLucky23, niet gepusht). sw.js ✅ (commit 44a42f1, A1). Editors E1-E4 gebouwd (Fabric.js canvas + adjust + timeline-reorder + audio-mix). **RESTEREND = alleen LIVE-verificatie die een draaiende dev-server + browser vereist** (canvas-render-visueel, mobile-sweep, VAPID-push-live) + ~45 genoteerde incrementele UI-follow-ups (elke ADR noteert de zijne). Zie memory `workspaces-freedom-program.md`.

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (141)
+## Decisions (142)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -154,6 +154,7 @@
 | 0140 | Video timeline — beat reorder + trim drives the render plan (E3, backend half) | 🟢 accepted | editors, video, render, freedom-program | — | `docs/decisions/0140-video-timeline-reorder.md` |
 | 0141 | Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half) | 🟢 accepted | editors, audio, render, freedom-program | — | `docs/decisions/0141-audio-mix-plan.md` |
 | 0142 | Guided first-run setup wizard (S3, wizard half) | 🟢 accepted | ux, onboarding, freedom-program | — | `docs/decisions/0142-setup-wizard.md` |
+| 0143 | Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4) | 🟢 accepted | ux, a11y, freedom-program | — | `docs/decisions/0143-premium-ux-sweep.md` |
 
 ## Summaries
 
@@ -1286,6 +1287,14 @@ A pure `buildAudioMixPlan(tracks)` builds the ffmpeg `-filter_complex` that mixe
 A `SetupWizard` stepper (welcome → connect a media key → set a spend budget): each step fires the SAME single-writer control-op as the settings UI (`saveMediaProvider({ apiKey })` / `editMediaBudget`). The wizard is a friendlier front door, never a new writer. Opened from a "Quick setup" button on the workspace settings header.
 
 → `docs/decisions/0142-setup-wizard.md`
+
+### 0143 — Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4)
+
+**0143** · accepted · tags: ux, a11y, freedom-program · 2026-07-08
+
+A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRegionEditor, ImageEditor, SetupWizard) so they're keyboard-dismissible (a11y, §0b). The cross-cutting invariants — no untranslated JSX, no arbitrary colors — are enforced by `ai:lint`, which is **green repo-wide** across every new surface (the gate-able core of the §0b checklist).
+
+→ `docs/decisions/0143-premium-ux-sweep.md`
 
 ## Code governed by decisions
 

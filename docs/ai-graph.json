@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 202,
-    "edges": 291,
+    "nodes": 203,
+    "edges": 294,
     "symbols": 252,
     "callEdges": 37
   },
@@ -570,6 +570,11 @@
     },
     {
       "id": "workspaces/_functions/uploadMedia.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/useEscapeKey.ts",
       "kind": "other",
       "route": null
     },
@@ -1258,6 +1263,10 @@
     },
     {
       "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_functions/useEscapeKey.ts"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -1271,6 +1280,10 @@
     {
       "from": "workspaces/_components/ImageRegionEditor.tsx",
       "to": "workspaces/_functions/uploadMedia.ts"
+    },
+    {
+      "from": "workspaces/_components/ImageRegionEditor.tsx",
+      "to": "workspaces/_functions/useEscapeKey.ts"
     },
     {
       "from": "workspaces/_components/ImageRegionEditor.tsx",
@@ -1355,6 +1368,10 @@
     {
       "from": "workspaces/_components/SetupWizard.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/SetupWizard.tsx",
+      "to": "workspaces/_functions/useEscapeKey.ts"
     },
     {
       "from": "workspaces/_components/SetupWizard.tsx",
@@ -2712,6 +2729,13 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/content/[pieceId]/page.tsx"
+    ],
+    "workspaces/_functions/useEscapeKey.ts": [
+      "workspaces/_components/ImageEditor.tsx",
+      "workspaces/_components/ImageRegionEditor.tsx",
+      "workspaces/_components/SetupWizard.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/workspace/page.tsx"
     ],
     "workspaces/_shell/MobileChrome.tsx": [
       "_components/templates/TemplateProvider.tsx",
