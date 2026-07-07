@@ -45,7 +45,7 @@ const TEXT_FEATURES: AiFeature[] = [
 
 //? `needsRef` features are reference-conditioned (image-to-image / image-to-3D): the test chains them off
 //? a freshly generated image. `bestEffort` = an environmental dependency outside our code (triposr is a
-//? slow fal queue model; Suno's endpoint host is deployment-specific) — logged, not a hard failure.
+//? slow fal queue model that often exceeds the poll window) — logged, not a hard failure.
 const MEDIA: { feature: MediaFeature; provider: MediaProviderId; prompt: string; needsRef?: boolean; bestEffort?: boolean }[] = [
   { feature: 'image-gen', provider: 'fal', prompt: 'a small red cube on a white table, product photo' },
   { feature: 'reference-image', provider: 'fal', prompt: 'the same cube, cinematic lighting', needsRef: true },
@@ -53,8 +53,8 @@ const MEDIA: { feature: MediaFeature; provider: MediaProviderId; prompt: string;
   { feature: 'avatar', provider: 'fal', prompt: 'a friendly cartoon presenter avatar, head and shoulders' },
   { feature: 'tts', provider: 'elevenlabs', prompt: 'Hello, this is a short test.' },
   { feature: 'sfx', provider: 'elevenlabs', prompt: 'a short whoosh transition' },
+  { feature: 'music', provider: 'suno', prompt: 'a short upbeat synthwave loop' },
   { feature: 'model-3d', provider: 'fal', prompt: 'a red cube', needsRef: true, bestEffort: true },
-  { feature: 'music', provider: 'suno', prompt: 'a short upbeat synthwave loop', bestEffort: true },
 ];
 
 const providerLive: Record<MediaProviderId, boolean> = { fal: live.fal, elevenlabs: live.elevenlabs, suno: live.suno };

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (93)
+## Decisions (94)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -106,6 +106,7 @@
 | 0092 | Publishing is reachable via an OAuth connect flow + an in-app publish trigger | 🟢 accepted | content, publishing, oauth, http, b-23 | — | `docs/decisions/0092-publishing-oauth-connect-flow.md` |
 | 0093 | Live-AI verification + the media-provider fixes it surfaced | 🟢 accepted | ai, media, providers, testing | — | `docs/decisions/0093-live-ai-verification.md` |
 | 0094 | Premium feel comes from a shared motion layer, not per-page ad-hoc animation | 🟢 accepted | ui, motion, design-system, consistency | — | `docs/decisions/0094-premium-motion-layer.md` |
+| 0095 | Music generation uses the api.sunoapi.org contract (resolves the 0093 open question) | 🟢 accepted | media, providers, music, suno | — | `docs/decisions/0095-suno-api-integration.md` |
 
 ## Summaries
 
@@ -854,6 +855,14 @@ Two HTTP routes + two UI affordances close the loop:
 Deliver the premium feel through the SHARED layer, in the fewest, safest places:
 
 → `docs/decisions/0094-premium-motion-layer.md`
+
+### 0095 — Music generation uses the api.sunoapi.org contract (resolves the 0093 open question)
+
+**0095** · accepted · tags: media, providers, music, suno · 2026-07-07
+
+Rewrite `realMusicTransport` to the `api.sunoapi.org/api/v1` contract:
+
+→ `docs/decisions/0095-suno-api-integration.md`
 
 ## Code governed by decisions
 

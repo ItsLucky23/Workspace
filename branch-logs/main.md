@@ -2432,3 +2432,13 @@ Alle motion = theme-tokens + reduced-motion-safe.
 **Verify:** tsc 0 · lint · ai:lint · build groen. Browser-visual-verify = jouw ochtend-stap (durations centraal → één-file-tuning).
 
 **Files touched:** `src/workspaces/_components/motion.tsx`, `src/workspaces/_components/primitives.tsx`, `src/workspaces/_shell/WorkspacesShell.tsx`, `docs/decisions/0094-premium-motion-layer.md`.
+
+## 2026-07-07 — Overnight-goal deel 7: Suno music LIVE werkend (api.sunoapi.org) + poll/model-config
+
+**User prompt:** /goal — de gefaalde e2e-features (suno/model-3d) werkend krijgen; docs voor Suno meegeleverd.
+
+**Wat ik deed (ADR 0095):** de suno-provider herschreven naar het echte `api.sunoapi.org/api/v1`-contract (was `api.suno.ai/v1` → 503). Submit `POST /generate {prompt,customMode,instrumental,model,callBackUrl}` → `data.taskId`; poll `GET /generate/record-info?taskId=` → status PENDING→TEXT_SUCCESS→SUCCESS, track onder **`data.response.sunoData[0]`** (`audioUrl`/`streamAudioUrl` — camelCase, niet `data[0].audio_url`). Default model **V5** (snelst); geeft de stream-url zodra klaar (~20s i.p.v. ~100s). `SUNO_BASE/MODEL/CALLBACK_URL`-env + `.env.local_template`. Debug-probe onthulde de echte veldnamen.
+
+**Verify:** live-probe **`ok=true`, echte mp3-url, 20s**. musicSfx + audioProviders stub-tests groen. tsc 0 · lint · ai:lint · build groen. Live-test promoot `music` van best-effort → harde assert.
+
+**Files touched:** `server/media/providers/suno.ts`, `.env.local_template`, `tests/live/liveAi.live.mts`, `docs/decisions/0095-suno-api-integration.md`.

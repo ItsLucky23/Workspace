@@ -18,30 +18,44 @@ export interface MusicTransport {
   generate: (prompt: string, params: Record<string, unknown>, apiKey: string) => Promise<{ url: string }>;
 }
 
-const SUNO_BASE = (process.env.SUNO_BASE ?? '').trim() || 'https://api.suno.ai/v1';
-const POLL_MAX = Number(process.env.SUNO_POLL_MAX ?? '') || 60;
+//? Suno API (api.sunoapi.org): submit → taskId → poll record-info until SUCCESS + an audio_url. Base +
+//? model + the (required-by-the-API) callback URL are env-overridable. We POLL (record-info), so the
+//? callback is never received — it only satisfies the API; any URL is fine.
+const SUNO_BASE = (process.env.SUNO_BASE ?? '').trim() || 'https://api.sunoapi.org/api/v1';
+const SUNO_MODEL = (process.env.SUNO_MODEL ?? '').trim() || 'V5';                         // V5 = faster generation
+const SUNO_CALLBACK = (process.env.SUNO_CALLBACK_URL ?? '').trim() || 'https://example.com/suno-callback';
+const POLL_MAX = Number(process.env.SUNO_POLL_MAX ?? '') || 80;
 const POLL_MS = Number(process.env.SUNO_POLL_MS ?? '') || 3000;
 
-//? The live Suno transport: submit a generation, poll the clip until it has an audio_url.
+interface SunoGenResp { code?: number; msg?: string; data?: { taskId?: string } }
+//? A generated track. The full downloadable mp3 lands in `audioUrl` at status SUCCESS; `streamAudioUrl`
+//? appears earlier (TEXT_SUCCESS) as a playable stream — the fallback if the final url lags.
+interface SunoTrack { audioUrl?: string; streamAudioUrl?: string }
+interface SunoStatusResp { code?: number; data?: { status?: string; response?: { sunoData?: SunoTrack[] } } }
+
+//? The live Suno transport: POST /generate → taskId, then poll /generate/record-info until an audio_url.
 export const realMusicTransport: MusicTransport = {
   generate: async (prompt, params, apiKey) => {
     const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
-    const submitted = await withRetry(async () => {
+    const taskId = await withRetry(async () => {
       //? External Suno REST API — not a framework `/api/*` route.
       // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-      const r = await fetch(`${SUNO_BASE}/generate`, { method: 'POST', headers, body: JSON.stringify({ prompt, ...params }) });
+      const r = await fetch(`${SUNO_BASE}/generate`, { method: 'POST', headers, body: JSON.stringify({ prompt, customMode: false, instrumental: false, model: SUNO_MODEL, callBackUrl: SUNO_CALLBACK, ...params }) });
       if (!r.ok) throw new Error(`suno submit ${String(r.status)}`);
-      return (await r.json()) as { id?: string };
+      const json = (await r.json()) as SunoGenResp;
+      if (json.code !== 200 || !json.data?.taskId) throw new Error(`suno submit code ${String(json.code ?? 0)}: ${json.msg ?? ''}`);
+      return json.data.taskId;
     }, { attempts: 3, baseMs: 500 });
-    const id = submitted.id;
-    if (id === undefined) throw new Error('suno submit: missing clip id');
     for (let i = 0; i < POLL_MAX; i += 1) {
       // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-      const r = await fetch(`${SUNO_BASE}/clips/${id}`, { headers });
-      if (!r.ok) throw new Error(`suno status ${String(r.status)}`);
-      const clip = (await r.json()) as { status?: string; audio_url?: string };
-      if (typeof clip.audio_url === 'string' && clip.audio_url.length > 0) return { url: clip.audio_url };
-      if (clip.status === 'error' || clip.status === 'failed') throw new Error('suno generation failed');
+      const r = await fetch(`${SUNO_BASE}/generate/record-info?taskId=${encodeURIComponent(taskId)}`, { headers });
+      if (r.ok) {
+        const json = (await r.json()) as SunoStatusResp;
+        const track = json.data?.response?.sunoData?.[0];
+        const url = (track?.audioUrl ?? '').length > 0 ? (track?.audioUrl ?? '') : (track?.streamAudioUrl ?? '');
+        if (url.length > 0) return { url };
+        if (json.data?.status === 'FAILED') throw new Error('suno generation failed');
+      }
       await sleep(POLL_MS);
     }
     throw new Error('suno poll timeout');
