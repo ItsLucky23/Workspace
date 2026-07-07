@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (128)
+## Decisions (129)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -141,6 +141,7 @@
 | 0127 | The user's MCP integration command is mounted into the container .mcp.json (X1) | 🟢 accepted | extensibility, mcp, containers, freedom-program | — | `docs/decisions/0127-mcp-integration-wiring.md` |
 | 0128 | Brand-kit portability — export/import the brand library as portable JSON (R3, brand half) | 🟢 accepted | brand, portability, reuse, freedom-program | — | `docs/decisions/0128-brand-kit-portability.md` |
 | 0129 | Per-request cheap "preview" (dry-run) for media generation (S1) | 🟢 accepted | media, cost, ux, freedom-program | — | `docs/decisions/0129-cheap-preview.md` |
+| 0130 | Undo — content-unarchive (soft-undo) + content-unpublish (retract a post) (S2) | 🟢 accepted | content, publish, undo, safety, freedom-program | — | `docs/decisions/0130-undo-unpublish.md` |
 
 ## Summaries
 
@@ -1169,6 +1170,14 @@ A pure `parseBrandKit(raw)` validates/normalizes a portable JSON blob into the e
 `cheapMode(reqCheap?)` is now on when the operator env is set OR a per-request flag asks for it. A `params.cheap === true` flag (a routing param, stripped from the fal input body like `params.model`) drives `falModelFor` (→ the fast `schnell` image model) + `cheapParams` (low steps / low resolution / single output) for that ONE request. The full-quality run is unaffected when the flag is absent.
 
 → `docs/decisions/0129-cheap-preview.md`
+
+### 0130 — Undo — content-unarchive (soft-undo) + content-unpublish (retract a post) (S2)
+
+**0130** · accepted · tags: content, publish, undo, safety, freedom-program · 2026-07-07
+
+`content-unarchive` sets `archived: false` (a soft-undo — the row was never deleted; archive is a flag). `content-unpublish` flips the matching **done** `PublishJob` (by `assetId` + `platform`) to `unpublished` + broadcasts content-dirty. Both are `workTickets`-capability control-ops on the single-writer chain.
+
+→ `docs/decisions/0130-undo-unpublish.md`
 
 ## Code governed by decisions
 

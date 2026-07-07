@@ -54,7 +54,7 @@ import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
-import { broadcastTicketDelta, broadcastContentAssetDelta } from '../read/broadcast';
+import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, runTriggerAction } from '../automation/executor';
@@ -1180,6 +1180,22 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'content-archive': {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
       if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: true } });
+      return;
+    }
+    case 'content-unarchive': {
+      //? S2 — soft-undo of an archive: restore the piece. Non-destructive (the row was never deleted).
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: false } });
+      return;
+    }
+    case 'content-unpublish': {
+      //? S2 — retract a published post: mark the done PublishJob 'unpublished' (best-effort platform delete is
+      //? a follow-up — no platform delete adapter yet). Spend is monotonic; refunds are out of scope (flagged).
+      const assetId = str(payload, 'assetId');
+      const platform = str(payload, 'platform');
+      if (!assetId || !platform) return;
+      await prisma.publishJob.updateMany({ where: { workspaceId: action.workspaceId, assetId, platform, status: 'done' }, data: { status: 'unpublished' } });
+      broadcastContentDirty(action.workspaceId);
       return;
     }
     //? Content script generation (F1.2, ADR 0049) — write the Script + storyboard Beats for a piece.

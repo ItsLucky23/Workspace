@@ -2777,3 +2777,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · cheapPreview 7/7 (per-request cheap-model+params+strip, env-off; full-quality zonder flag; video→480p) · falProvider 26/26 (geen regressie).
 
 **Files touched:** `server/media/providers/fal.ts` (cheapMode/falModelFor/cheapParams reqCheap + composeFalInput cheap-strip), `tests/unit/cheapPreview.test.mts`, `docs/decisions/0129-cheap-preview.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM S2: undo — content-unarchive + content-unpublish — ADR 0130
+
+**Wat ik deed:** archive + publish waren one-way. Nu `content-unarchive` (archived:false, soft-undo — flag, geen delete) + `content-unpublish` (flip de matchende done-PublishJob [assetId+platform] → 'unpublished' + broadcast-dirty). Beide workTickets-cap control-ops. Echte platform-delete + global undo-toast = follow-ups; spend=monotonic, refunds out-of-scope (geflagd).
+
+**Verify:** tsc 0 · lint · ai:lint · build · contentUndo 3/3 (unarchive-restore + unpublish-retract + ander-platform-onaangeroerd).
+
+**Files touched:** `server/orchestrator/conductor.ts` (content-unarchive + content-unpublish + broadcastContentDirty-import), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `tests/integration/contentUndo.test.mts`, `docs/decisions/0130-undo-unpublish.md`.
