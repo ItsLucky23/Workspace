@@ -1,13 +1,14 @@
 //? Per-beat image generation (F1.4, ADR 0049). For each storyboard Beat, generate a visual (image-gen,
-//? stub when no key) in the chosen style + extra instructions, attach it as a ContentAsset, and link it on
-//? the beat (`imageAssetId`). Metered per image (budget-check → gen → asset → spend). Stops early if the
-//? budget cap is hit (partial result). The Conductor calls this (B-23).
+//? stub when no key) in the chosen style + extra instructions via the shared queue-aware lifecycle
+//? (runQueuedMediaAsset — queued → running → done, broadcasting each step), and link it on the beat
+//? (`imageAssetId`) once ready. Metered per image; stops early if the budget cap is hit (partial result).
+//? The Conductor calls this (B-23).
 
 import type { PrismaClient } from '@prisma/client';
-import { runMediaGeneration, estimateMediaCostCents } from '../media/registry';
-import { checkMediaBudget, recordMediaSpend } from '../media/budget';
+import { estimateMediaCostCents } from '../media/registry';
+import { checkMediaBudget } from '../media/budget';
 import { resolveStyle } from './styles';
-import { jsonInput } from '../util/json';
+import { runQueuedMediaAsset } from './queuedMediaJob';
 import type { MediaStyle } from '../media/types';
 
 export interface BeatImagesResult {
@@ -22,8 +23,9 @@ export async function generateBeatImages(
   prisma: PrismaClient,
   args: { workspaceId: string; contentProjectId: string; scriptId: string; styleKey?: string; extraInstructions?: string },
 ): Promise<BeatImagesResult> {
-  const beats = await prisma.beat.findMany({ where: { workspaceId: args.workspaceId, scriptId: args.scriptId }, orderBy: { order: 'asc' } });
-  const resolved = await resolveStyle(prisma, args.workspaceId, 'image-gen', args.styleKey);
+  const { workspaceId, contentProjectId } = args;
+  const beats = await prisma.beat.findMany({ where: { workspaceId, scriptId: args.scriptId }, orderBy: { order: 'asc' } });
+  const resolved = await resolveStyle(prisma, workspaceId, 'image-gen', args.styleKey);
   const style: MediaStyle | undefined = resolved ? { key: resolved.key, systemPrompt: resolved.systemPrompt } : undefined;
 
   let imageCount = 0;
@@ -33,25 +35,23 @@ export async function generateBeatImages(
 
   for (const beat of beats) {
     //? Budget guard BEFORE each (paid) image.
-    const budget = await checkMediaBudget(prisma, args.workspaceId, estimate);
+    const budget = await checkMediaBudget(prisma, workspaceId, estimate);
     if (!budget.ok) return { ok: imageCount > 0, imageCount, costCents, stub, blocked: true };
 
-    const res = await runMediaGeneration({
-      feature: 'image-gen', prompt: beat.visualPrompt ?? beat.text,
-      ...(style ? { style } : {}),
-      ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}),
-      workspaceId: args.workspaceId, label: `Beat ${String(beat.order)} image`,
+    const prompt = beat.visualPrompt ?? beat.text;
+    const r = await runQueuedMediaAsset(prisma, {
+      workspaceId, contentProjectId, feature: 'image-gen', kind: 'image',
+      ...(resolved ? { styleId: resolved.id } : {}),
+      input: { beatId: beat.id, prompt },
+      initialMetadata: { feature: 'image-gen', beatId: beat.id },
+      request: { prompt, ...(style ? { style } : {}), ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}), workspaceId, label: `Beat ${String(beat.order)} image` },
+      //? Link the produced image on its beat once ready (the montage reads Beat.imageAssetId).
+      onComplete: async (assetId) => { await prisma.beat.update({ where: { id: beat.id }, data: { imageAssetId: assetId } }); },
     });
-    if (!res.ok || !res.asset) continue;
-    stub = stub || res.stub;
-
-    const job = await prisma.mediaJob.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, feature: 'image-gen', providerId: res.providerId, ...(resolved ? { styleId: resolved.id } : {}), status: 'done', input: { beatId: beat.id, prompt: beat.visualPrompt ?? beat.text }, costCents: res.costCents } });
-    const asset = await prisma.contentAsset.create({ data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'image', url: res.asset.url, mediaJobId: job.id, status: 'ready', metadata: jsonInput(res.asset.metadata) } });
-    await prisma.mediaJob.update({ where: { id: job.id }, data: { resultAssetId: asset.id } });
-    await prisma.beat.update({ where: { id: beat.id }, data: { imageAssetId: asset.id } });
-    await recordMediaSpend(prisma, args.workspaceId, { contentProjectId: args.contentProjectId, mediaJobId: job.id, feature: 'image-gen', providerId: res.providerId, costCents: res.costCents });
+    if (!r.ok) continue;
+    stub = stub || r.stub;
     imageCount += 1;
-    costCents += res.costCents;
+    costCents += r.costCents;
   }
   return { ok: imageCount > 0, imageCount, costCents, stub, blocked: false };
 }

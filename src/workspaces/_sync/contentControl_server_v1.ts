@@ -8,6 +8,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
+import { broadcastContentDirty } from '../../../server/read/broadcast';
 import type { ControlOp } from '../_functions/controlApi';
 
 export const validation = 'relaxed' as const;
@@ -45,5 +46,8 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     ...(contentProjectId ? { target: { contentProjectId } } : {}), payload,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
+  //? Nudge the whole room to refetch the content slice (structural changes carry no fine-grained delta;
+  //? the per-asset timer state still flows via broadcastContentAssetDelta). roomCode == workspaceId.
+  broadcastContentDirty(roomCode);
   return { status: 'success' };
 };

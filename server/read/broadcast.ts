@@ -16,6 +16,10 @@ const BULK_MOVE_ROUTE = 'sync/workspaces/bulkMove/v1';
 //? The content-asset delta route the client's `upsertSyncEventCallback('workspaces/contentAssetDelta')`
 //? merges (upsert-by-id into the owning piece). Type carrier: `_sync/contentAssetDelta_server_v1.ts`.
 const CONTENT_ASSET_DELTA_ROUTE = 'sync/workspaces/contentAssetDelta/v1';
+//? The content-dirty nudge route: a coarse "the content slice changed" signal so EVERY client in the
+//? room refetches (debounced) — covers the structural content mutations that carry no fine-grained delta
+//? (piece create/advance/archive, script gen, settings). Type carrier: `_sync/contentDirty_server_v1.ts`.
+const CONTENT_DIRTY_ROUTE = 'sync/workspaces/contentDirty/v1';
 
 //? Broadcast the current DB state of the given ticket keys to the workspace room.
 export async function broadcastTicketDelta(prisma: PrismaClient, workspaceId: string, ticketKeys: string[]): Promise<void> {
@@ -51,6 +55,25 @@ export async function broadcastContentAssetDelta(prisma: PrismaClient, workspace
     serverOutput: { status: 'success', contentProjectId, asset: toContentAssetSummary(asset, job) },
     clientOutput: {},
     message: `${CONTENT_ASSET_DELTA_ROUTE} sync success`,
+    status: 'success',
+  });
+}
+
+//? Broadcast a coarse "content changed" nudge to the whole workspace room. Fired after any content
+//? control/settings op so EVERY member's client refetches (debounced) — this is what keeps structural
+//? content changes (a new piece, a stage advance, an archive, a generated script, a settings edit) in
+//? sync across the whole workspace, not just for the caller. The fine-grained per-asset timer state
+//? still flows through `broadcastContentAssetDelta`; this is the catch-all for everything else.
+export function broadcastContentDirty(workspaceId: string): void {
+  const io = getIoInstance();
+  if (!io) return;
+  const room = formatRoomName(workspaceId, { purpose: 'broadcast', userId: null });
+  io.to(room).emit(socketEventNames.sync, {
+    cb: CONTENT_DIRTY_ROUTE,
+    fullName: CONTENT_DIRTY_ROUTE,
+    serverOutput: { status: 'success' },
+    clientOutput: {},
+    message: `${CONTENT_DIRTY_ROUTE} sync success`,
     status: 'success',
   });
 }

@@ -8,6 +8,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
+import { broadcastContentDirty } from '../../../server/read/broadcast';
 import type { ControlOp } from '../_functions/controlApi';
 
 export const validation = 'relaxed' as const;
@@ -34,5 +35,7 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
   if (!isSettingsOp(op)) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({ op, roomCode, userId: user.id, prisma: functions.db.prisma, clientRequestId, payload });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
+  //? Media budget/provider/brand changes affect the content snapshot → nudge the whole room to refetch.
+  broadcastContentDirty(roomCode);
   return { status: 'success' };
 };

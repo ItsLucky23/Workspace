@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 180,
-    "edges": 270,
-    "symbols": 220,
+    "nodes": 181,
+    "edges": 271,
+    "symbols": 222,
     "callEdges": 37
   },
   "nodes": [
@@ -602,6 +602,11 @@
       "id": "workspaces/_sync/contentControl_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/contentControl/v1"
+    },
+    {
+      "id": "workspaces/_sync/contentDirty_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/contentDirty/v1"
     },
     {
       "id": "workspaces/_sync/contentSettings_server_v1.ts",
@@ -1273,6 +1278,10 @@
     {
       "from": "workspaces/_shell/Shell.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "_providers/socketStatusProvider.tsx"
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
@@ -2706,7 +2715,7 @@
       "id": "_providers/socketStatusProvider.tsx",
       "kind": "other",
       "dependents": 7,
-      "directDependents": 3
+      "directDependents": 4
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -3739,6 +3748,18 @@
     {
       "id": "workspaces/_sync/contentControl_server_v1.ts::main",
       "file": "workspaces/_sync/contentControl_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/contentDirty_server_v1.ts::<module>",
+      "file": "workspaces/_sync/contentDirty_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/contentDirty_server_v1.ts::main",
+      "file": "workspaces/_sync/contentDirty_server_v1.ts",
       "name": "main",
       "kind": "function"
     },

@@ -77,17 +77,28 @@ export function toTicket(t: DbTicket): Ticket {
   };
 }
 
-//? Map a ContentAsset row (+ its MediaJob, for the live queue/timer fields) → the
-//? frontend `ContentAssetSummary`. Shared by `buildSnapshot` (first load) AND the
-//? `broadcastContentAssetDelta` (mid-generation deltas) so the client merges both
-//? identically. `queuePosition`/`startedAt` come from the job's live lifecycle.
-export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null): ContentAssetSummary {
+//? An in-flight asset (queued/processing) whose job hasn't advanced in this long is treated as a
+//? TIMED-OUT/orphaned generation (e.g. the server crashed mid-gen, leaving no error write) and shown
+//? as `error` — so the UI never spins forever. Generous: a legit slow fal job terminates far sooner
+//? via the provider's own poll timeout (ADR 0096). 20 min.
+const INFLIGHT_STALE_MS = 20 * 60 * 1000;
+
+//? Map a ContentAsset row (+ its MediaJob, for the live queue/timer fields) → the frontend
+//? `ContentAssetSummary`. Shared by `buildSnapshot` (first load) AND `broadcastContentAssetDelta`
+//? (mid-generation deltas) so the client merges both identically. `queuePosition`/`startedAt` come from
+//? the job's live lifecycle. `nowMs` is injectable for deterministic tests (defaults to real time).
+export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null, nowMs: number = Date.now()): ContentAssetSummary {
   const m = a.metadata;
   const stub = typeof m === 'object' && m !== null && 'stub' in m && m.stub === true;
+  const inFlight = a.status === 'queued' || a.status === 'processing';
+  //? Freshest heartbeat = the later of the asset's + the job's updatedAt (progress writes touch both).
+  const heartbeat = job && job.updatedAt > a.updatedAt ? job.updatedAt : a.updatedAt;
+  const stale = inFlight && nowMs - heartbeat.getTime() > INFLIGHT_STALE_MS;
+  const status = stale ? 'error' : a.status;
   return {
-    id: a.id, kind: a.kind, url: a.url ?? '', status: a.status, stub,
-    ...(job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
-    ...(job?.startedAt ? { startedAt: job.startedAt.getTime() } : {}),
+    id: a.id, kind: a.kind, url: a.url ?? '', status, stub,
+    ...(stale || job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
+    ...(stale || !job?.startedAt ? {} : { startedAt: job.startedAt.getTime() }),
   };
 }
 

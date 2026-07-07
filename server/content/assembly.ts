@@ -6,6 +6,8 @@
 
 import type { PrismaClient } from '@prisma/client';
 
+import { broadcastContentAssetDelta } from '../read/broadcast';
+import { jsonInput } from '../util/json';
 import { renderTimeline, type FfmpegRunner } from './render';
 
 export interface AssembleResult {
@@ -41,20 +43,29 @@ export async function assembleContent(
   const renderJob = await prisma.renderJob.create({
     data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, composition: 'faceless', input: { timeline, voiceAssetId: voice?.id ?? null, totalMs }, status: 'running', costCents: 0 },
   });
+  //? Create the render asset as PROCESSING up front + broadcast, so the whole room sees "rendering…"
+  //? live (ffmpeg is local → no provider queue, so no `queued`/`startedAt`; a plain spinner, not a
+  //? timer). Finalized to `ready` after the render.
+  const asset = await prisma.contentAsset.create({
+    data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'render', url: null, status: 'processing', metadata: jsonInput({ totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages }) },
+  });
+  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { resultAssetId: asset.id } });
+  await broadcastContentAssetDelta(prisma, args.workspaceId, args.contentProjectId, asset.id);
 
   //? Attempt the REAL ffmpeg render; degrade to a valid-shaped stub when assets are still `stub://`
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
   const render = await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
   const stub = !render.ok;
-  const asset = await prisma.contentAsset.create({
+  await prisma.contentAsset.update({
+    where: { id: asset.id },
     data: {
-      workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'render',
       url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: 'ready',
-      metadata: { stub, totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages, downloadable: true, ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) },
+      metadata: jsonInput({ stub, totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages, downloadable: true, ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
-  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { resultAssetId: asset.id, status: 'done' } });
+  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: 'done' } });
+  await broadcastContentAssetDelta(prisma, args.workspaceId, args.contentProjectId, asset.id);
   return { ok: true, renderJobId: renderJob.id, assetId: asset.id, stub, beatCount: beats.length, totalMs };
 }

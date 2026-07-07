@@ -8,11 +8,12 @@
 //? refetch the snapshot (Fase-0 split; ADR 0005). UI-only state (open tabs, AI panel,
 //? chat, ssh keys) stays client-side.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { apiRequest, tryCatch, useSession, useTheme, useTranslator } from '@luckystack/core/client';
 
+import { useSocketStatus } from 'src/_providers/socketStatusProvider';
 import { joinRoom, leaveRoom } from 'src/_sockets/socketInitializer';
 import { syncRequest, useSyncEvents } from 'src/_sockets/syncRequest';
 
@@ -201,6 +202,23 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     return () => { void leaveRoom(room); };
   }, [snap.activeWorkspaceId]);
 
+  //? Reconnect healing (robustness): a client that briefly drops misses every delta broadcast during the
+  //? gap AND is no longer in the room. When the socket transitions BACK to CONNECTED from a
+  //? disconnected/reconnecting state, re-join the room and refetch the full snapshot so nothing stays
+  //? stale. The initial STARTUP→CONNECTED is skipped (the mount refetch already ran).
+  const { socketStatus } = useSocketStatus();
+  const socketStatusValue = socketStatus.self.status;
+  const prevSocketStatus = useRef(socketStatusValue);
+  useEffect(() => {
+    const prev = prevSocketStatus.current;
+    prevSocketStatus.current = socketStatusValue;
+    if (socketStatusValue === 'CONNECTED' && prev !== 'CONNECTED' && prev !== 'STARTUP') {
+      const room = snap.activeWorkspaceId;
+      if (room) void joinRoom(room);
+      refetch();
+    }
+  }, [socketStatusValue, snap.activeWorkspaceId, refetch]);
+
   //? Shared realtime reducer: UPSERT the broadcast ticket(s) by id (an archive is
   //? just an upsert with `archived:true` — the board/backlog derive visibility from
   //? it). Every ticket-mutation `_sync` event routes its delta through here.
@@ -341,6 +359,21 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       }));
     },
   }), [upsertSyncEventCallback]);
+
+  //? content-dirty nudge → debounced full refetch (coalesces a burst of content ops into one refetch).
+  //? The catch-all that syncs structural content changes (piece create/advance/archive, script gen,
+  //? settings) to EVERY member — the fine-grained per-asset timer state still flows via contentAssetDelta.
+  const dirtyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/contentDirty', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      if (dirtyTimer.current) clearTimeout(dirtyTimer.current);
+      dirtyTimer.current = setTimeout(() => { refetch(); }, 400);
+    },
+  }), [upsertSyncEventCallback, refetch]);
+  //? Clear the debounce timer on unmount.
+  useEffect(() => () => { if (dirtyTimer.current) clearTimeout(dirtyTimer.current); }, []);
 
   //? env-var deltas → upsert / drop by id (settings realtime; no refetch).
   useEffect(() => upsertSyncEventCallback({
