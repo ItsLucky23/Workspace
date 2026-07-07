@@ -172,7 +172,7 @@ export interface WorkspacesCtx {
   //? A4 — the workspace autonomy level ('gate-every' | 'gate-key-stages' | 'full-auto').
   saveAutonomy: (autonomyLevel: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
-  saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string) => void;
+  saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).
   aiOverrides: { feature: string; providerId: string }[];
   saveAiProvider: (feature: string, providerId: string) => void;

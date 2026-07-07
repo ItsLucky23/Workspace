@@ -2745,3 +2745,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · webhookAction 12/12 (envelope-shape + url-routing + noop-bij-bad-url + error-bij-non2xx/throw) · automation 21/21 (geen regressie). i18n ×4.
 
 **Files touched:** `server/automation/executor.ts` (WebhookPoster + __setWebhookPoster + webhook-case), `src/workspaces/_data/types.ts` (TriggerActionKind webhook), `src/workspaces/_components/AutomationPanel.tsx` (webhook-actie + url-veld), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/webhookAction.test.mts`, `docs/decisions/0125-outbound-webhook-action.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM X4 (AI-provider-helft): custom Gemini base-URL — ADR 0126
+
+**Wat ik deed:** Gemini-endpoint was hardcoded (Google). Nu `Workspace.geminiBaseUrl` + `WS_GEMINI_BASE_URL`-env, resolved in `resolveGeminiConfig` (workspace>env>Google-default, 1 query, naast P2 model/temp). Pure `geminiEndpoint(baseUrl, model)` bouwt de generateContent-URL (trailing-slash-trim). AI-tab base-URL-veld via de save-ai-instruction-op. PTY-invariant: coding=claude, dus Gemini-only (API-billed non-coding). Publish-destination-registry (2e X4-helft) = follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint · build · geminiEndpoint 4/4 (default+custom-base+slash-trim) · aiInstruction 8/8 (nu incl. geminiBaseUrl-persist). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (geminiBaseUrl), `server/ai/providers/geminiApi.ts` (ENV_BASE + baseUrl in config + geminiEndpoint), `server/orchestrator/conductor.ts` (save-ai-instruction geminiBaseUrl), `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (base-URL-veld), `src/_locales/{en,nl,de,fr}.json`, `tests/unit/geminiEndpoint.test.mts`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0126-custom-gemini-endpoint.md`.

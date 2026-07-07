@@ -470,6 +470,7 @@
       "autonomyDesc": "Hoe vaak de AI pauzeert voor jouw goedkeuring tussen pipeline-stages. Destructieve acties vragen altijd.",
       "autonomy": { "gate-every": "Vraag bij elke stage", "gate-key-stages": "Vraag bij belangrijke stages (standaard)", "full-auto": "Volledig automatisch — niet vragen" },
       "geminiModel": "Gemini-model",
+      "geminiBaseUrl": "Gemini-basis-URL (custom endpoint)",
       "geminiTemperature": "Gemini-temperatuur",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",

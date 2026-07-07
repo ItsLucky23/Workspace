@@ -366,8 +366,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/saveAiInstruction', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
-      const { aiInstruction, outputLanguage, geminiModel, geminiTemperature } = serverOutput;
-      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature } : w)) } : s));
+      const { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } = serverOutput;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } : w)) } : s));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1038,11 +1038,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room });
       },
       //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
-      saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature) => {
+      saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
-        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature } : w)) }));
-        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, clientRequestId: nextReqId() }, receiver: room });
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } : w)) }));
+        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl, clientRequestId: nextReqId() }, receiver: room });
       },
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (124)
+## Decisions (125)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -137,6 +137,7 @@
 | 0123 | Logo watermark overlay in the render plan (O4); intro/outro concat deferred | 🟢 accepted | content, render, branding, freedom-program | — | `docs/decisions/0123-branding-watermark.md` |
 | 0124 | Per-platform publish variants (caption / hashtags / privacy) in the upload payload | 🟢 accepted | content, publish, freedom-program | — | `docs/decisions/0124-per-platform-publish-variants.md` |
 | 0125 | An outbound webhook automation action (X2, outbound half) | 🟢 accepted | automation, webhooks, extensibility, freedom-program | — | `docs/decisions/0125-outbound-webhook-action.md` |
+| 0126 | Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half | 🟢 accepted | ai, providers, gemini, extensibility, freedom-program | — | `docs/decisions/0126-custom-gemini-endpoint.md` |
 
 ## Summaries
 
@@ -1133,6 +1134,14 @@ A normalized `PublishVariant { caption?, hashtags?, privacy? }` with `privacy: '
 A `webhook` `TriggerActionKind`: `executeTriggerAction` POSTs a compact event envelope (`{ event, ticketKey, payload, workspaceId }`) to a user-configured `params.url`. Requires `http(s)`; a non-2xx or a thrown request is an `error` outcome (best-effort — a bad webhook never wedges the pipeline, consistent with every other action). The poster is module-injectable (`__setWebhookPoster`) so it's tested offline. Surfaced in the AutomationPanel with a URL field.
 
 → `docs/decisions/0125-outbound-webhook-action.md`
+
+### 0126 — Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half
+
+**0126** · accepted · tags: ai, providers, gemini, extensibility, freedom-program · 2026-07-07
+
+A per-workspace `Workspace.geminiBaseUrl` + a `WS_GEMINI_BASE_URL` env, resolved in `resolveGeminiConfig` (workspace override > env > Google default) alongside the P2 model/temperature read (one query). A pure `geminiEndpoint(baseUrl, model)` builds the `…/models/<model>:generateContent` URL, trimming trailing slashes. Edited in the AI-tab (a base-URL field) through the same `save-ai-instruction` op as the other Gemini settings.
+
+→ `docs/decisions/0126-custom-gemini-endpoint.md`
 
 ## Code governed by decisions
 

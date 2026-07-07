@@ -470,6 +470,7 @@
       "autonomyDesc": "How often the AI pauses for your approval between pipeline stages. Destructive actions always ask.",
       "autonomy": { "gate-every": "Ask at every stage", "gate-key-stages": "Ask at key stages (default)", "full-auto": "Full auto — don't ask" },
       "geminiModel": "Gemini model",
+      "geminiBaseUrl": "Gemini base URL (custom endpoint)",
       "geminiTemperature": "Gemini temperature",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",

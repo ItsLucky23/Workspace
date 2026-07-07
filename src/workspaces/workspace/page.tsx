@@ -767,6 +767,7 @@ function AiBehaviorTab() {
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
   const [geminiModel, setGeminiModel] = useState(activeWorkspace.geminiModel ?? '');
   const [geminiTemp, setGeminiTemp] = useState(activeWorkspace.geminiTemperature ?? '');
+  const [geminiBaseUrl, setGeminiBaseUrl] = useState(activeWorkspace.geminiBaseUrl ?? '');
   const [saved, setSaved] = useState(false);
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
@@ -798,9 +799,13 @@ function AiBehaviorTab() {
           <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}</span>
           <input value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={fieldCls} />
         </label>
+        <label className="flex flex-col gap-1 col-span-2">
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiBaseUrl' })}</span>
+          <input value={geminiBaseUrl} onChange={(e) => { setGeminiBaseUrl(e.target.value); setSaved(false); }} placeholder="https://generativelanguage.googleapis.com/v1beta" className={`${fieldCls} font-mono`} />
+        </label>
       </div>
       <div className="flex items-center gap-3">
-        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
+        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim(), geminiBaseUrl.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
       </div>
 

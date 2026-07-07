@@ -79,6 +79,7 @@ export interface Workspace {
   outputLanguage?: string;        // K4 — preferred AI output language (empty = model default)
   geminiModel?: string;           // P2 — per-workspace Gemini model override (empty = env/default)
   geminiTemperature?: string;     // P2 — per-workspace Gemini temperature (empty = model default)
+  geminiBaseUrl?: string;         // X4 — per-workspace custom Gemini base URL (empty = env/default)
   autonomyLevel?: string;         // A4 — 'gate-every' | 'gate-key-stages' | 'full-auto'
 }
 

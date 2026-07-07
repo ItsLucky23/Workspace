@@ -821,8 +821,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const outputLanguage = str(payload, 'outputLanguage') ?? '';
       const geminiModel = str(payload, 'geminiModel') ?? '';
       const geminiTemperature = str(payload, 'geminiTemperature') ?? '';
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature } });
-      return { aiInstruction, outputLanguage, geminiModel, geminiTemperature };
+      const geminiBaseUrl = str(payload, 'geminiBaseUrl') ?? '';
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } });
+      return { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl };
     }
     case 'save-sections': {
       //? Persist the enabled nav-section set (module gating, workspaces/_data/modules.ts).

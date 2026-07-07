@@ -163,6 +163,7 @@ model Workspace {
   autonomyLevel         String   @default("gate-key-stages") // A4 — 'gate-every' | 'gate-key-stages' (default: per-stage gateForApproval) | 'full-auto' (skip non-destructive gates)
   geminiModel           String   @default("")            // P2 — per-workspace Gemini model override (empty = env/default). Claude-CLI has no model concept (PTY-billed)
   geminiTemperature     String   @default("")            // P2 — per-workspace Gemini temperature (empty = model default); string so empty is distinguishable from 0
+  geminiBaseUrl         String   @default("")            // X4 — per-workspace custom Gemini base URL (empty = env/Google default); bring-your-own endpoint
 
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)

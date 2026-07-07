@@ -11,18 +11,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { aiInstruction: string; outputLanguage: string; geminiModel: string; geminiTemperature: string; clientRequestId: string };
+  clientInput: { aiInstruction: string; outputLanguage: string; geminiModel: string; geminiTemperature: string; geminiBaseUrl: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { aiInstruction, outputLanguage, geminiModel, geminiTemperature, clientRequestId } = clientInput;
+  const { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl, clientRequestId } = clientInput;
   const res = await dispatchControlSync({
     op: 'save-ai-instruction', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { aiInstruction, outputLanguage, geminiModel, geminiTemperature }, clientRequestId,
+    payload: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
-  return { status: 'success', aiInstruction, outputLanguage, geminiModel, geminiTemperature };
+  return { status: 'success', aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl };
 };

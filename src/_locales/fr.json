@@ -470,6 +470,7 @@
       "autonomyDesc": "À quelle fréquence l'IA s'arrête pour votre approbation entre les étapes. Les actions destructrices demandent toujours.",
       "autonomy": { "gate-every": "Demander à chaque étape", "gate-key-stages": "Demander aux étapes clés (défaut)", "full-auto": "Entièrement auto — ne pas demander" },
       "geminiModel": "Modèle Gemini",
+      "geminiBaseUrl": "URL de base Gemini (point de terminaison personnalisé)",
       "geminiTemperature": "Température Gemini",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
