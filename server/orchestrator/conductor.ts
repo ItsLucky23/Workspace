@@ -1006,6 +1006,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
       return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
     }
+    case 'delete-style': {
+      //? Q3 — remove a per-workspace style (never a global builtin — the filter is workspace-scoped).
+      const feature = str(payload, 'feature');
+      const key = str(payload, 'key');
+      if (!feature || !key) return;
+      await prisma.stylePreset.deleteMany({ where: { workspaceId: action.workspaceId, feature, key, builtin: false } });
+      return;
+    }
     //? Save per-workspace media settings (U3): an ENCRYPTED provider API key and/or a per-feature
     //? provider override, both in the EnvVar store (secretBox). Keys are namespaced so they never clash
     //? with the user's app env vars. (Per-workspace key CONSUMPTION by the providers is a follow-up; this

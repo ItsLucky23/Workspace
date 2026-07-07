@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
 
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+
 import Icon, { type IconName } from '../../_components/Icon';
 import { EmptyState } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -157,6 +159,12 @@ export default function ContentPiece({ params }: { params: Record<string, string
     );
   }
 
+  //? Q3: the style picker options — "no style" + every known style key (deduped across features).
+  const styleItems: DropdownItem[] = [
+    { id: '', value: '', item: translate({ key: 'workspaces.content.styleNone' }) },
+    ...[...new Map(content.styles.map((s) => [s.key, s.label])).entries()].map(([k, l]) => ({ id: k, value: k, item: l })),
+  ];
+
   //? Q1: the € estimate for an action, from the snapshot's per-feature cost table. 0 (no chip) for
   //? non-metered actions (script/assemble).
   const costOf = (action: GenAction): number => (action.costFeature ? (content.mediaCosts.find((c) => c.feature === action.costFeature)?.cents ?? 0) : 0);
@@ -224,7 +232,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
             </div>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.styleLabel' })}</span>
-              <input value={styleKey} onChange={(e) => { setStyleKey(e.target.value); }} placeholder={translate({ key: 'workspaces.content.stylePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string. */}
+              <Dropdown size="md" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>

@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 181,
-    "edges": 271,
+    "edges": 273,
     "symbols": 222,
     "callEdges": 37
   },
@@ -1493,6 +1493,10 @@
     },
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
       "to": "_functions/menuHandler.ts"
     },
     {
@@ -1542,6 +1546,10 @@
     {
       "from": "workspaces/content/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
     },
     {
       "from": "workspaces/content/settings/page.tsx",
@@ -2067,6 +2075,8 @@
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -2087,6 +2097,8 @@
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -2684,14 +2696,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 18,
+      "dependents": 20,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 16,
-      "directDependents": 12
+      "dependents": 18,
+      "directDependents": 14
     },
     {
       "id": "workspaces/_data/modules.ts",

@@ -6,6 +6,8 @@ import { useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+
 import Icon from '../../_components/Icon';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { backendUrl } from '../../../../config';
@@ -78,6 +80,59 @@ function ProductContextSection() {
   );
 }
 
+//? Q3 — the style manager: list every style (global builtins are read-only, per-workspace ones edit/delete)
+//? and author new named styles. A style is a reusable system-prompt per feature; the piece page picks one by
+//? name instead of guessing a magic string. Saved via the save-style / delete-style control-ops.
+const STYLE_FEATURES = ['script', 'image-gen', 'reference-image', 'video-gen', 'tts'];
+function StyleManagerSection() {
+  const translate = useTranslator();
+  const { content, saveStyle, deleteStyle } = useWorkspaces();
+  const featureItems: DropdownItem[] = STYLE_FEATURES.map((f) => ({ id: f, value: f, item: f }));
+  const [feature, setFeature] = useState<string>(STYLE_FEATURES[0] ?? 'image-gen');
+  const [key, setKey] = useState('');
+  const [label, setLabel] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const canSave = key.trim().length > 0 && prompt.trim().length > 0;
+  const submit = () => {
+    if (!canSave) return;
+    saveStyle(feature, key.trim(), label.trim() || key.trim(), prompt.trim());
+    setKey(''); setLabel(''); setPrompt('');
+  };
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.stylesTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.stylesDesc' })}</div>
+      </div>
+      <div className="flex flex-col gap-1.5 mb-4">
+        {content.styles.length === 0
+          ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.stylesEmpty' })}</div>
+          : content.styles.map((s) => (
+            <div key={`${s.feature}-${s.key}`} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-title truncate">{s.label} <span className="text-xs text-disabled">· {s.feature}</span></div>
+                <div className="text-xs text-muted truncate">{s.systemPrompt}</div>
+              </div>
+              {s.builtin
+                ? <span className="text-[10px] font-semibold text-muted rounded-md bg-container1 px-1.5 py-0.5 shrink-0">{translate({ key: 'workspaces.content.styleBuiltin' })}</span>
+                : <button type="button" onClick={() => { deleteStyle(s.feature, s.key); }} title={translate({ key: 'workspaces.content.styleDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>}
+            </div>
+          ))}
+      </div>
+      <div className="rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2">
+        <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.content.styleNew' })}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Dropdown size="md" value={featureItems.find((i) => i.id === feature)} items={featureItems} onChange={(it) => { setFeature(String(it.id)); }} />
+          <input value={key} onChange={(e) => { setKey(e.target.value); }} placeholder={translate({ key: 'workspaces.content.styleKeyPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        </div>
+        <input value={label} onChange={(e) => { setLabel(e.target.value); }} placeholder={translate({ key: 'workspaces.content.styleLabelPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.stylePromptPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
+        <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.styleSave' })}</button>
+      </div>
+    </section>
+  );
+}
+
 export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
   const translate = useTranslator();
@@ -129,6 +184,9 @@ export default function ContentSettings() {
 
           {/* Brand & product context — folded into every creative generation (Q2). */}
           <ProductContextSection />
+
+          {/* Style manager — reusable named styles (Q3). */}
+          <StyleManagerSection />
 
           {/* Provider API keys — stored ENCRYPTED, never shown back. */}
           <section className="rounded-2xl border border-container1-border bg-container1 p-5">

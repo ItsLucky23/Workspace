@@ -41,6 +41,21 @@ try {
   await enqueueControlAction({ workspaceId: wsId, op: 'edit-media-budget', target: {}, payload: { capCents: 500, alertPct: 75, enabled: true }, userId: owner.id, clientRequestId: `cset-b-${String(stamp)}` });
   const budget = await prisma.mediaBudget.findFirst({ where: { workspaceId: wsId } });
   assert(budget?.enabled === true && budget.capCents === 500 && budget.alertPct === 75, 'the media budget persisted');
+
+  // 5) Q3 — save a per-workspace style, upsert it, then delete it
+  await enqueueControlAction({ workspaceId: wsId, op: 'save-style', target: {}, payload: { feature: 'image-gen', key: 'bold-min', label: 'Bold', systemPrompt: 'bold minimal look' }, userId: owner.id, clientRequestId: `cset-s1-${String(stamp)}` });
+  const style = await prisma.stylePreset.findFirst({ where: { workspaceId: wsId, feature: 'image-gen', key: 'bold-min' } });
+  assert(style?.systemPrompt === 'bold minimal look' && style.builtin === false, 'a per-workspace style is saved (not builtin)');
+  await enqueueControlAction({ workspaceId: wsId, op: 'save-style', target: {}, payload: { feature: 'image-gen', key: 'bold-min', label: 'Bolder', systemPrompt: 'even bolder' }, userId: owner.id, clientRequestId: `cset-s2-${String(stamp)}` });
+  const styleRows = await prisma.stylePreset.findMany({ where: { workspaceId: wsId, feature: 'image-gen', key: 'bold-min' } });
+  eq(styleRows.length, 1, 'save-style upserts (no duplicate)');
+  eq(styleRows[0]?.systemPrompt, 'even bolder', 'the style was updated');
+  await enqueueControlAction({ workspaceId: wsId, op: 'delete-style', target: {}, payload: { feature: 'image-gen', key: 'bold-min' }, userId: owner.id, clientRequestId: `cset-sd-${String(stamp)}` });
+  eq(await prisma.stylePreset.findFirst({ where: { workspaceId: wsId, feature: 'image-gen', key: 'bold-min' } }), null, 'delete-style removes the per-workspace style');
+
+  // 6) Q2 — product context persists on the workspace
+  await enqueueControlAction({ workspaceId: wsId, op: 'content-edit-product', target: {}, payload: { productContext: 'we sell shoes' }, userId: owner.id, clientRequestId: `cset-pc-${String(stamp)}` });
+  eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.productContext, 'we sell shoes', 'product context persists on the workspace');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

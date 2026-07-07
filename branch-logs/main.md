@@ -2545,3 +2545,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · nieuwe `brandContext` 6/6 · contentScript 8/8 · contentImages 7/7 · contentVoice 12/12 · contentModel 18/18 · contentAutomation 7/7. i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (Workspace.productContext), `server/content/brandContext.ts` (nw), `server/content/{queuedMediaJob,script}.ts`, `server/media/{types,prompt}.ts`, `server/orchestrator/conductor.ts` (content-edit-product), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/brandContext.test.mts`, `docs/decisions/0101-brand-product-grounding.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q3: style-manager UI (save-style ontsloten) — ADR 0102
+
+**Wat ik deed:** de `save-style`-op had geen UI. Nu een style-manager in content-settings: lijst van alle stijlen (globale builtins alleen-lezen, per-workspace bewerkbaar/verwijderbaar) + create-form (feature+key+label+systemPrompt). Nieuwe `delete-style`-op (per-workspace, builtin-safe). `ContentStyleSummary` draagt nu `systemPrompt`. Het gok-tekstveld in de piece-pagina vervangen door een framework-`Dropdown` van bekende style-keys (deduped) + "geen stijl".
+
+**Verify:** tsc 0 · lint (0 warnings — native selects → framework Dropdown) · ai:lint · build · contentSettings 13/13 (save/upsert/delete-style + product-context). i18n ×4.
+
+**Files touched:** `server/orchestrator/conductor.ts` (delete-style), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSettings.test.mts`, `docs/decisions/0102-style-manager.md`.

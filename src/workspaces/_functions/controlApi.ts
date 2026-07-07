@@ -58,7 +58,7 @@ export type ControlOp =
   // user-app DB + migrations (ADR 0043)
   | 'db-connect' | 'db-migrate-create' | 'db-migrate-apply' | 'db-introspect'
   // content platform (ADR 0049)
-  | 'edit-media-budget' | 'save-style' | 'save-media-provider' | 'content-edit-brand' | 'content-edit-product'
+  | 'edit-media-budget' | 'save-style' | 'delete-style' | 'save-media-provider' | 'content-edit-brand' | 'content-edit-product'
   | 'content-create' | 'content-advance' | 'content-archive'
   | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images' | 'content-assemble'
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (100)
+## Decisions (101)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -113,6 +113,7 @@
 | 0099 | All media flows share one queue-aware lifecycle helper; content state syncs to the whole workspace with reconnect + staleness safety nets | 🟢 accepted | media, content, realtime, broadcast, race-conditions, robustness | — | `docs/decisions/0099-queue-aware-all-flows-and-workspace-sync.md` |
 | 0100 | Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot | 🟢 accepted | content, media, cost, ux, freedom-program | — | `docs/decisions/0100-media-cost-transparency.md` |
 | 0101 | A persistent brand/product context grounds every creative generation | 🟢 accepted | content, ai, branding, freedom-program | — | `docs/decisions/0101-brand-product-grounding.md` |
+| 0102 | A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings | 🟢 accepted | content, styles, ux, freedom-program | — | `docs/decisions/0102-style-manager.md` |
 
 ## Summaries
 
@@ -917,6 +918,14 @@ The per-feature € estimate table (`STUB_COST_CENTS`, the single source of trut
 A new `Workspace.productContext` field holds the persistent brand/product context, editable in the content settings (a new `content-edit-product` control-op, single-writer). A single helper `buildBrandContext(prisma, workspaceId, contentProjectId?)` composes the workspace product context + the owning channel's `brandVoice` (read directly — deterministic, key-less, always available; not the embedding-dependent RAG path). It is folded into **every creative generation at one choke-point each**: media via the shared `runQueuedMediaAsset` helper (grounds all image/video/3d/voice/music/sfx/reference flows) + `composeMediaPrompt` (prepended first); text via `generateScript`'s system prompt.
 
 → `docs/decisions/0101-brand-product-grounding.md`
+
+### 0102 — A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings
+
+**0102** · accepted · tags: content, styles, ux, freedom-program · 2026-07-07
+
+A **style manager** section in content settings: lists every style (global builtins read-only; per-workspace ones editable/deletable), with a create form (feature + key + label + system prompt). Backed by the existing `save-style` op + a new **`delete-style`** op (removes a per-workspace style; builtins are filtered out). The snapshot's `ContentStyleSummary` now carries `systemPrompt` so the manager can show/edit it. The piece page's free-text style box is replaced by a **Dropdown** of known style keys (deduped across features) + a "No style" option — pick by name, never guess.
+
+→ `docs/decisions/0102-style-manager.md`
 
 ## Code governed by decisions
 
