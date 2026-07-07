@@ -805,6 +805,8 @@
       "aiKeysDesc": "De Gemini-key drijft de script- + referentie-analyse-features aan. Versleuteld opgeslagen, nooit teruggetoond.",
       "uploadReference": "Referentie uploaden",
       "importOwn": "Eigen importeren",
+      "modelsTitle": "Media-modellen (geavanceerd)",
+      "modelsDesc": "Overschrijf het AI-model per functie (bijv. een low-poly 3D-model of een sneller/goedkoper beeld-model). Leeg = de standaard.",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publicatie-verbindingen",

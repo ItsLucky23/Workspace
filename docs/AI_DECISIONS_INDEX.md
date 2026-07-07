@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (110)
+## Decisions (111)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -123,6 +123,7 @@
 | 0109 | A per-workspace output language directive steers every AI generation | 🟢 accepted | ai, i18n, content, freedom-program | — | `docs/decisions/0109-output-language.md` |
 | 0110 | A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam | 🟢 accepted | ai, providers, freedom-program | — | `docs/decisions/0110-text-provider-per-feature.md` |
 | 0111 | Per-workspace Gemini model + temperature tuning (Claude has no such knob — PTY-billed) | 🟢 accepted | ai, providers, gemini, tuning, freedom-program | — | `docs/decisions/0111-gemini-model-temperature.md` |
+| 0112 | Per-request + per-workspace media model choice (low-poly / fast vs quality) | 🟢 accepted | media, fal, models, freedom-program | — | `docs/decisions/0112-media-model-choice.md` |
 
 ## Summaries
 
@@ -1007,6 +1008,14 @@ A per-workspace override is stored as an EnvVar `__ai_provider_<feature>` (mirro
 Per-workspace `Workspace.geminiModel` + `Workspace.geminiTemperature` (strings; empty = env/model default). The `gemini-api` provider resolves them per workspace in one config read (`resolveGeminiConfig`, folded with the Q5 key read) and sends `generationConfig.temperature` (clamped 0–2) + the chosen model. Edited in the AI settings tab (model input + temperature input), persisted through the extended `save-ai-instruction` op (now carries instruction + language + geminiModel + geminiTemperature).
 
 → `docs/decisions/0111-gemini-model-temperature.md`
+
+### 0112 — Per-request + per-workspace media model choice (low-poly / fast vs quality)
+
+**0112** · accepted · tags: media, fal, models, freedom-program · 2026-07-07
+
+`composeFalInput` now consults **`req.params.model`** (a per-request model id) → picks the fal model, and strips `model` from the input body (it's a routing param, not a fal input field). Falls back to the env/default. A **per-workspace** model override is stored as `__media_model_<feature>` (mirrors the provider-override store); `loadWorkspaceMediaConfig` loads it (`cfg.models`), and `runMediaGeneration` injects it into `params.model` (the caller's own `params.model` still wins). Saved via the extended `save-media-provider` op ('default' clears it). The content settings expose an advanced **free-text model id per feature** (empty = the built-in default, shown as the placeholder), surfaced from the snapshot (`content.mediaModels`).
+
+→ `docs/decisions/0112-media-model-choice.md`
 
 ## Code governed by decisions
 

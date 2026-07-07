@@ -86,7 +86,10 @@ export async function runMediaGeneration(req: MediaGenerationRequest, overrides?
   }
   const available = await provider.available(apiKey);
   if (!available) return stubMediaResult(req.feature, providerId, req);
-  return provider.generate({ ...req, ...(apiKey ? { apiKey } : {}) });
+  //? P3 — inject the per-workspace model override into params.model (the caller's own params.model still wins).
+  const wsModel = cfg?.models[req.feature];
+  const params = wsModel && !(req.params && typeof req.params.model === 'string') ? { ...req.params, model: wsModel } : req.params;
+  return provider.generate({ ...req, ...(params ? { params } : {}), ...(apiKey ? { apiKey } : {}) });
 }
 
 //? Which media providers are usable right now (for the settings/health UI).

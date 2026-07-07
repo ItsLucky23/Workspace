@@ -805,6 +805,8 @@
       "aiKeysDesc": "La clé Gemini alimente les fonctions de script et d'analyse de référence. Stockée chiffrée, jamais réaffichée.",
       "uploadReference": "Téléverser une référence",
       "importOwn": "Importer le vôtre",
+      "modelsTitle": "Modèles média (avancé)",
+      "modelsDesc": "Remplacez le modèle IA par fonction (ex. un modèle 3D low-poly, ou un modèle d'image plus rapide/économique). Vide = la valeur par défaut.",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Connexions de publication",

@@ -138,6 +138,41 @@ function StyleManagerSection() {
   );
 }
 
+//? P3 — advanced: override the fal MODEL per feature (e.g. a low-poly 3d model, a fast/cheap image model).
+//? Free-text so any fal model id works; empty = the built-in default (shown as the placeholder).
+const MODEL_FEATURES: { feature: string; def: string }[] = [
+  { feature: 'image-gen', def: 'fal-ai/flux/dev' },
+  { feature: 'reference-image', def: 'fal-ai/flux/dev/image-to-image' },
+  { feature: 'video-gen', def: 'fal-ai/ltx-video' },
+  { feature: 'model-3d', def: 'fal-ai/triposr' },
+  { feature: 'avatar', def: 'fal-ai/ltx-video' },
+];
+function MediaModelRow({ feature, def, current, onSave }: { feature: string; def: string; current: string; onSave: (model: string) => void }) {
+  const [value, setValue] = useState(current);
+  return (
+    <div className="flex items-center gap-2 py-2 border-b border-divider last:border-0">
+      <span className="text-sm text-common w-40 shrink-0">{feature}</span>
+      <input value={value} onChange={(e) => { setValue(e.target.value); }} onBlur={() => { if (value.trim() !== current) onSave(value.trim()); }} placeholder={def} className="flex-1 rounded-lg border border-container2-border bg-container2 px-3 py-1.5 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring font-mono" />
+    </div>
+  );
+}
+function MediaModelsSection() {
+  const translate = useTranslator();
+  const { content, saveMediaProvider } = useWorkspaces();
+  const currentOf = (feature: string): string => content.mediaModels.find((m) => m.feature === feature)?.model ?? '';
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.modelsTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.modelsDesc' })}</div>
+      </div>
+      {MODEL_FEATURES.map((m) => (
+        <MediaModelRow key={m.feature} feature={m.feature} def={m.def} current={currentOf(m.feature)} onSave={(model) => { saveMediaProvider({ feature: m.feature, model: model || 'default' }); }} />
+      ))}
+    </section>
+  );
+}
+
 export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
   const translate = useTranslator();
@@ -192,6 +227,9 @@ export default function ContentSettings() {
 
           {/* Style manager — reusable named styles (Q3). */}
           <StyleManagerSection />
+
+          {/* Media model overrides — advanced (P3). */}
+          <MediaModelsSection />
 
           {/* Media provider API keys — stored ENCRYPTED, never shown back. */}
           <section className="rounded-2xl border border-container1-border bg-container1 p-5">

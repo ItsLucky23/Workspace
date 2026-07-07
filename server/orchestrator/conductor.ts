@@ -1054,6 +1054,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const key = `__media_provider_${feature}`;
         await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: providerId, secret: false }, update: { value: providerId } });
       }
+      //? P3 — a per-feature model override ('default'/empty clears it → the env/default model).
+      const model = str(payload, 'model');
+      if (feature && model !== undefined) {
+        const key = `__media_model_${feature}`;
+        await (!model || model === 'default'
+          ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
+          : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: model, secret: false }, update: { value: model } }));
+      }
       return;
     }
     case 'save-ai-provider': {

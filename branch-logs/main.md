@@ -2629,3 +2629,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · aiInstruction 7/7 (nu incl. geminiModel + temperature persist). i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (geminiModel/geminiTemperature), `server/ai/providers/geminiApi.ts` (resolveGeminiConfig), `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0111-gemini-model-temperature.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM P3: per-request + per-workspace media-modelkeuze — ADR 0112
+
+**Wat ik deed:** fal-model was env-only (`falModelFor` negeerde `req.params` voor modelselectie). Nu: `composeFalInput` consulteert `req.params.model` (per-request model-id) → kiest het fal-model + stript 'model' uit de input-body (routing-param). Per-workspace override als `__media_model_<feature>` (`loadWorkspaceMediaConfig.models`), geïnjecteerd in `runMediaGeneration` (caller's `params.model` wint). Uitgebreide `save-media-provider`-op (`model`-veld, 'default' clears). Content-settings: advanced free-text model-id per feature (leeg=default-placeholder), uit `content.mediaModels`. **Free-text i.p.v. curated dropdown** (alleen image-gen heeft zekere alternates; eerlijk + flexibel). Ontsluit een user-facing escape voor de triposr-queue-pijn (ADR 0096): zet een ander 3D-model.
+
+**Verify:** tsc 0 · lint · ai:lint · build · mediaModelOverride 6/6 (per-request model + strip + per-workspace persist/load + 'default' clears) · falProvider 26/26 (geen regressie). i18n ×4.
+
+**Files touched:** `server/media/providers/fal.ts` (composeFalInput), `server/media/workspaceKeys.ts` (models), `server/media/registry.ts` (injectie), `server/orchestrator/conductor.ts` (save-media-provider model), `server/read/workspaceSnapshot.ts` (mediaModels), `src/workspaces/_data/types.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/content/settings/page.tsx` (MediaModelsSection), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/mediaModelOverride.test.mts`, `docs/decisions/0112-media-model-choice.md`.
+
+**FASE P COMPLEET (P1–P3):** tekst-provider-picker · Gemini-model+temperature · media-modelkeuze. Volgende: Fase I (iteratie: regenerate/varianten).

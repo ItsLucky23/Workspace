@@ -66,15 +66,20 @@ function cheapParams(feature: MediaFeature): Record<string, unknown> {
 //? `image_url` (reference-conditioned gen). Cheap-mode defaults are merged UNDER the caller's params
 //? (so explicit params win) UNDER the prompt (never overridden). Pure + exported for tests.
 export function composeFalInput(req: MediaGenerationRequest): { model: string; input: Record<string, unknown> } {
+  //? P3 — a per-request model override (`req.params.model`, e.g. a low-poly 3d or a fast video model) picks
+  //? the fal model id, falling back to the env/default. It's a routing param, so strip it from the input body.
+  const params: Record<string, unknown> = req.params ?? {};
+  const { model: modelOverride, ...restParams } = params;
+  const model = typeof modelOverride === 'string' && modelOverride.trim().length > 0 ? modelOverride.trim() : falModelFor(req.feature);
   //? model-3d (image-to-3D, e.g. triposr) takes ONLY the source image — a `prompt`/size params are
   //? rejected (400). It needs a reference image (chain: generate an image, then convert it).
   if (req.feature === 'model-3d') {
-    return { model: falModelFor(req.feature), input: { ...(req.referenceUrl ? { image_url: req.referenceUrl } : {}), ...req.params } };
+    return { model, input: { ...(req.referenceUrl ? { image_url: req.referenceUrl } : {}), ...restParams } };
   }
   const prompt = composeMediaPrompt(req);
-  const input: Record<string, unknown> = { ...cheapParams(req.feature), ...req.params, prompt };
+  const input: Record<string, unknown> = { ...cheapParams(req.feature), ...restParams, prompt };
   if (req.feature === 'reference-image' && req.referenceUrl) input.image_url = req.referenceUrl;
-  return { model: falModelFor(req.feature), input };
+  return { model, input };
 }
 
 //? The asset kind fal produces per feature.

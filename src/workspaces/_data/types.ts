@@ -288,6 +288,7 @@ export interface ContentSnapshot {
   channels: ContentChannelSummary[];    // U4: channels + their brand voice
   publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
+  mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
 }
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a

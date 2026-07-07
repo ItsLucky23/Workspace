@@ -21,7 +21,7 @@ export interface SyncParams {
   clientInput: {
     op: string; clientRequestId: string;
     capCents?: number; alertPct?: number; enabled?: boolean;
-    providerId?: string; apiKey?: string; feature?: string;
+    providerId?: string; apiKey?: string; feature?: string; model?: string;
     key?: string; label?: string; systemPrompt?: string;
     channelId?: string; brandVoice?: string; productContext?: string;
   };

@@ -11,10 +11,12 @@ import type { MediaFeature, MediaProviderId } from './types';
 export interface WorkspaceMediaConfig {
   overrides: Partial<Record<MediaFeature, MediaProviderId>>;   //? per-feature provider choice
   keys: Partial<Record<MediaProviderId, string>>;              //? decrypted per-provider api key
+  models: Partial<Record<MediaFeature, string>>;              //? P3 — per-feature model id override (low-poly/fast vs quality)
 }
 
 const OVERRIDE_PREFIX = '__media_provider_';
 const KEY_PREFIX = '__provider_key_';
+const MODEL_PREFIX = '__media_model_';
 const PROVIDER_IDS: MediaProviderId[] = ['fal', 'elevenlabs', 'suno'];
 
 function isProviderId(v: string): v is MediaProviderId {
@@ -25,13 +27,17 @@ function isProviderId(v: string): v is MediaProviderId {
 //? a decrypt failure just omits that key (the registry then stubs or falls back to the env key).
 export async function loadWorkspaceMediaConfig(prisma: PrismaClient, workspaceId: string): Promise<WorkspaceMediaConfig> {
   const rows = await prisma.envVar.findMany({
-    where: { workspaceId, OR: [{ key: { startsWith: OVERRIDE_PREFIX } }, { key: { startsWith: KEY_PREFIX } }] },
+    where: { workspaceId, OR: [{ key: { startsWith: OVERRIDE_PREFIX } }, { key: { startsWith: KEY_PREFIX } }, { key: { startsWith: MODEL_PREFIX } }] },
     select: { key: true, value: true },
   });
   const overrides: Partial<Record<MediaFeature, MediaProviderId>> = {};
   const keys: Partial<Record<MediaProviderId, string>> = {};
+  const models: Partial<Record<MediaFeature, string>> = {};
   for (const row of rows) {
-    if (row.key.startsWith(OVERRIDE_PREFIX)) {
+    if (row.key.startsWith(MODEL_PREFIX)) {
+      const feature = row.key.slice(MODEL_PREFIX.length);
+      if (row.value.trim().length > 0) models[feature as MediaFeature] = row.value.trim();
+    } else if (row.key.startsWith(OVERRIDE_PREFIX)) {
       const feature = row.key.slice(OVERRIDE_PREFIX.length);
       if (isProviderId(row.value)) overrides[feature as MediaFeature] = row.value;
     } else {
@@ -41,5 +47,5 @@ export async function loadWorkspaceMediaConfig(prisma: PrismaClient, workspaceId
       if (plain !== null && plain.trim().length > 0) keys[providerId] = plain.trim();
     }
   }
-  return { overrides, keys };
+  return { overrides, keys, models };
 }
