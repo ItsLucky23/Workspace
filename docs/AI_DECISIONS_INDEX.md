@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (121)
+## Decisions (122)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -134,6 +134,7 @@
 | 0120 | The watchdog re-pings the assignee about a stale open question (A5, first half) | 🟢 accepted | approvals, watchdog, notifications, freedom-program, phone-first | — | `docs/decisions/0120-needs-input-reping.md` |
 | 0121 | Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export | 🟢 accepted | content, render, export, captions, freedom-program | — | `docs/decisions/0121-export-formats-captions.md` |
 | 0122 | Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt | 🟢 accepted | content, publish, scheduling, freedom-program, multi-instance | — | `docs/decisions/0122-post-scheduling.md` |
+| 0123 | Logo watermark overlay in the render plan (O4); intro/outro concat deferred | 🟢 accepted | content, render, branding, freedom-program | — | `docs/decisions/0123-branding-watermark.md` |
 
 ## Summaries
 
@@ -1106,6 +1107,14 @@ The watchdog sweep gains a third responsibility: for every ticket with a REAL `n
 `PublishJob.scheduledAt` + a `scheduled` status. The upload implementation was extracted into a `performUpload` helper (no job write) shared by both paths. `publishAsset` with a future `scheduledAt` parks a `scheduled` job (no post); an immediate publish posts + records a `done` job as before. `runScheduledPublish(prisma, now)` fires every due (`scheduledAt <= now`) scheduled job through `performUpload` + flips it to `done`/`error`. `now` is injected for deterministic tests; a `startScheduledPublisher` interval runs it **leader-gated** (ADR 0015 — exactly one instance fires each due post), mirroring the watchdog loop. Reschedule = updating `PublishJob.scheduledAt` (the loop honours the new time).
 
 → `docs/decisions/0122-post-scheduling.md`
+
+### 0123 — Logo watermark overlay in the render plan (O4); intro/outro concat deferred
+
+**0123** · accepted · tags: content, render, branding, freedom-program · 2026-07-07
+
+`buildFfmpegPlan` takes an optional `Watermark { file, position }`. When present it switches from the simple `-vf` scale path to a `-filter_complex` graph — `[0:v]<scale>[bg];[bg][N:v]overlay=<xy>[outv]` with explicit `-map [outv]` (+ `-map 1:a` when there's audio) — placing the logo in a corner (default bottom-right, 24px margin). `renderTimeline` localizes an optional `watermarkUrl` (a brand-kit logo) and skips it cleanly if it can't be localized. All pure + unit-tested.
+
+→ `docs/decisions/0123-branding-watermark.md`
 
 ## Code governed by decisions
 

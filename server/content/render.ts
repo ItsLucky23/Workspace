@@ -36,7 +36,13 @@ export function resolveRenderFormat(key: string | null | undefined): RenderForma
 //? an optional audio track. `imageFile`/`audioFile`/`listName`/`outName` are BARE file names served from
 //? the container's mounted `/media`. The concat demuxer needs the final image repeated (its quirk) to
 //? honour the last `duration`. Pure + exported for tests.
-export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, listName: string, outName: string, format?: RenderFormat): { concatList: string; args: string[]; hasVideo: boolean } {
+//? O4 — an optional logo watermark overlaid on the render. `file` is a bare name under /media; `position` is
+//? a corner (default bottom-right) with a 24px margin.
+export type WatermarkPosition = 'br' | 'bl' | 'tr' | 'tl';
+export interface Watermark { file: string; position?: WatermarkPosition }
+const OVERLAY_XY: Record<WatermarkPosition, string> = { br: 'W-w-24:H-h-24', bl: '24:H-h-24', tr: 'W-w-24:24', tl: '24:24' };
+
+export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, listName: string, outName: string, format?: RenderFormat, watermark?: Watermark | null): { concatList: string; args: string[]; hasVideo: boolean } {
   const fmt = format ?? FORMAT_PRESETS['16:9'];
   const usable = beats.filter((b): b is { imageFile: string; durationMs: number } => typeof b.imageFile === 'string' && b.imageFile.length > 0);
   const lines: string[] = [];
@@ -48,9 +54,20 @@ export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, l
   const concatList = `${lines.join('\n')}\n`;
 
   const { width: w, height: h, fps } = fmt;
+  const scale = `scale=${String(w)}:${String(h)}:force_original_aspect_ratio=decrease,pad=${String(w)}:${String(h)}:(ow-iw)/2:(oh-ih)/2,setsar=1`;
   const args = ['-y', '-f', 'concat', '-safe', '0', '-i', `/media/${listName}`];
   if (audioFile !== null) args.push('-i', `/media/${audioFile}`);
-  args.push('-vf', `scale=${String(w)}:${String(h)}:force_original_aspect_ratio=decrease,pad=${String(w)}:${String(h)}:(ow-iw)/2:(oh-ih)/2,setsar=1`, '-r', String(fps), '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
+  if (watermark) {
+    //? The watermark is the LAST input; overlay it on the scaled video via filter_complex + explicit maps.
+    args.push('-i', `/media/${watermark.file}`);
+    const wmIndex = audioFile === null ? 1 : 2;
+    const xy = OVERLAY_XY[watermark.position ?? 'br'];
+    args.push('-filter_complex', `[0:v]${scale}[bg];[bg][${String(wmIndex)}:v]overlay=${xy}[outv]`, '-map', '[outv]');
+    if (audioFile !== null) args.push('-map', '1:a');
+  } else {
+    args.push('-vf', scale);
+  }
+  args.push('-r', String(fps), '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
   if (audioFile !== null) args.push('-c:a', 'aac', '-shortest');
   args.push(`/media/${outName}`);
   return { concatList, args, hasVideo: usable.length > 0 };
@@ -119,18 +136,22 @@ export interface RenderResult { ok: boolean; url?: string; storageRef?: string; 
 //? optional voiceover. Localizes assets → writes the concat list → runs ffmpeg → returns the served url.
 //? Typed degrade (`ok:false`) when nothing is renderable or ffmpeg/Docker fails, so assembly stubs.
 export async function renderTimeline(
-  input: { beats: { imageUrl: string | null; durationMs: number }[]; voiceUrl: string | null; format?: string },
+  input: { beats: { imageUrl: string | null; durationMs: number }[]; voiceUrl: string | null; format?: string; watermarkUrl?: string | null; watermarkPosition?: string },
   opts: { run?: FfmpegRunner } = {},
 ): Promise<RenderResult> {
   const run = opts.run ?? dockerFfmpegRunner;
   const beats: RenderBeat[] = [];
   for (const b of input.beats) beats.push({ imageFile: await localizeAsset(b.imageUrl), durationMs: b.durationMs });
   const audioFile = await localizeAsset(input.voiceUrl);
+  //? O4 — a localizable brand logo becomes a watermark; an un-localizable url is simply skipped (no watermark).
+  const wmFile = input.watermarkUrl ? await localizeAsset(input.watermarkUrl) : null;
+  const pos = input.watermarkPosition;
+  const watermark: Watermark | null = wmFile ? { file: wmFile, position: pos === 'bl' || pos === 'tr' || pos === 'tl' ? pos : 'br' } : null;
 
   const id = randomUUID();
   const listName = `${id}.txt`;
   const outName = `${id}.mp4`;
-  const plan = buildFfmpegPlan(beats, audioFile, listName, outName, resolveRenderFormat(input.format));
+  const plan = buildFfmpegPlan(beats, audioFile, listName, outName, resolveRenderFormat(input.format), watermark);
   if (!plan.hasVideo) return { ok: false, error: 'render.noRenderableAssets' };
 
   writeFileSync(path.join(MEDIA_DIR, listName), plan.concatList);

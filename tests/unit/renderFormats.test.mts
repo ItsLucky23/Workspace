@@ -25,6 +25,25 @@ const beats = [{ imageFile: 'a.png', durationMs: 2000 }, { imageFile: 'b.png', d
   assert(vfd.includes('scale=1280:720'), 'default plan stays 1280x720');
 }
 
+// O4 — watermark overlay
+{
+  const wm = buildFfmpegPlan(beats, 'v.mp3', 'list.txt', 'out.mp4', undefined, { file: 'logo.png', position: 'br' });
+  assert(wm.args.includes('-filter_complex'), 'a watermark switches to filter_complex');
+  const fc = wm.args[wm.args.indexOf('-filter_complex') + 1];
+  assert(fc.includes('overlay=W-w-24:H-h-24'), 'br → bottom-right overlay with margin');
+  assert(fc.includes('[2:v]'), 'with audio, the watermark is input index 2');
+  assert(wm.args.includes('[outv]'), 'the overlaid stream is mapped out');
+  assert(!wm.args.includes('-vf'), 'filter_complex replaces the -vf path');
+
+  const wmNoAudio = buildFfmpegPlan(beats, null, 'list.txt', 'out.mp4', undefined, { file: 'logo.png', position: 'tl' });
+  const fc2 = wmNoAudio.args[wmNoAudio.args.indexOf('-filter_complex') + 1];
+  assert(fc2.includes('[1:v]'), 'without audio, the watermark is input index 1');
+  assert(fc2.includes('overlay=24:24'), 'tl → top-left overlay');
+
+  const noWm = buildFfmpegPlan(beats, null, 'list.txt', 'out.mp4');
+  assert(noWm.args.includes('-vf') && !noWm.args.includes('-filter_complex'), 'no watermark → the simple -vf path');
+}
+
 // caption emitters
 {
   const srt = buildSrt(['Hook line', 'Second line', 'Third'], 9000);

@@ -2721,3 +2721,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · scheduledPublish 9/9 (park + niet-due-noop + reschedule-defer + fire-na-tijd + immediate-post) · publish 8/8 · publishReal 12/12 · publishTiktok 5/5 · publishOAuthRoute 8/8 (geen regressie).
 
 **Files touched:** `prisma/schema.prisma` (PublishJob.scheduledAt + status), `server/content/publish.ts` (performUpload + scheduling + runScheduledPublish + startScheduledPublisher), `server/server.ts` (start de loop), `tests/integration/scheduledPublish.test.mts`, `docs/decisions/0122-post-scheduling.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM O4: branding logo-watermark in render — ADR 0123
+
+**Wat ik deed:** render was un-branded. Nu neemt `buildFfmpegPlan` een optionele `Watermark {file, position}`; bij aanwezigheid switch naar `-filter_complex` (`[0:v]<scale>[bg];[bg][N:v]overlay=<xy>[outv]` + `-map [outv]` + `-map 1:a`), logo in een hoek (default br, 24px marge). `renderTimeline` localiseert een optionele `watermarkUrl` (brand-kit-logo), skipt schoon als niet-localiseerbaar. Intro/outro-concat + text/`drawtext`-watermark + brand-asset-UI-wiring = follow-ups.
+
+**Verify:** tsc 0 · lint (ternary-negation→omgedraaid) · ai:lint · build · renderFormats 24/24 (watermark: filter_complex + overlay-hoeken + input-index met/zonder audio + geen-watermark=-vf) · render 18/18 (geen regressie).
+
+**Files touched:** `server/content/render.ts` (Watermark-type + filter_complex-branch + renderTimeline watermarkUrl), `tests/unit/renderFormats.test.mts`, `docs/decisions/0123-branding-watermark.md`.
