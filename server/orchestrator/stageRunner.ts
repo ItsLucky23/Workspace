@@ -156,6 +156,16 @@ function envelopeJson(e: CarryOverEnvelope): Prisma.InputJsonObject {
     : { summary: e.summary, changedFiles: e.changedFiles, openQuestions: e.openQuestions };
 }
 
+//? A4 — the per-workspace autonomy level modulates the per-stage human gate. `gate-every` gates every stage,
+//? `full-auto` skips every (non-destructive) gate, `gate-key-stages` (default) honours the stage's own
+//? `gateForApproval` flag. Destructive/irreversible actions confirm on their own path (B-23) — unaffected.
+//? Pure + exported for tests.
+export function resolveStageGate(stageGate: boolean, level: string | null | undefined): boolean {
+  if (level === 'full-auto') return false;
+  if (level === 'gate-every') return true;
+  return stageGate;
+}
+
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
 //? serial chain. `prisma` is passed in so this stays callable from the Conductor.
@@ -251,8 +261,11 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     await prisma.carryOver.create({ data: { workspaceId, ticketId: ticket.id, fromStageId: stageKey, toStageId: nextStage?.key ?? stageKey, sessionId: session.id, envelope: envelopeJson(result.envelope) } });
     await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { carryOver: result.envelope.summary } });
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
+    //? A4 — the effective gate = the stage's own flag modulated by the workspace autonomy level.
+    const [, wsRow] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { autonomyLevel: true } }));
+    const gated = resolveStageGate(stageRow.gateForApproval, wsRow?.autonomyLevel);
     //? Advance the ticket to the next stage unless this stage is gated for human approval.
-    if (nextStage && !stageRow.gateForApproval) {
+    if (nextStage && !gated) {
       await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { stageId: nextStage.key } });
     }
     //? Realtime (item 5): the engine advance was silent before — broadcast the updated ticket so
@@ -261,7 +274,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     //? Push-on-approval (item 1, Track F): when the work is ready for a human — this stage gates
     //? for approval, or it's the terminal stage — push + open an MR per pushPolicy. Fire-and-
     //? forget so a slow/failed forge never delays or breaks the turn; re-broadcast once an MR lands.
-    if (stageRow.gateForApproval || !nextStage) {
+    if (gated || !nextStage) {
       void tryCatch(() => pushTicketWork(prisma, workspaceId, ticketKey)).then(([e, r]) => {
         if (e) console.error(`[forge] ${ticketKey} failed:`, e.message);
         else if (r && !r.ok) console.warn(`[forge] ${ticketKey}: ${r.error ?? ''}`);

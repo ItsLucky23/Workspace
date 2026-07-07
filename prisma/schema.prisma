@@ -160,6 +160,7 @@ model Workspace {
   productContext        String   @default("")            // Q2 — brand/product context (what we do / audience / always-mention), folded into every creative generation
   aiInstruction         String   @default("")            // Q4 — workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion's system prompt
   outputLanguage        String   @default("")            // K4 — preferred AI OUTPUT language (e.g. 'Dutch'); empty = the model's default. Prepended as a directive to every completion
+  autonomyLevel         String   @default("gate-key-stages") // A4 — 'gate-every' | 'gate-key-stages' (default: per-stage gateForApproval) | 'full-auto' (skip non-destructive gates)
   geminiModel           String   @default("")            // P2 — per-workspace Gemini model override (empty = env/default). Claude-CLI has no model concept (PTY-billed)
   geminiTemperature     String   @default("")            // P2 — per-workspace Gemini temperature (empty = model default); string so empty is distinguishable from 0
 

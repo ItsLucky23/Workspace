@@ -2689,3 +2689,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · pushCategory 9/9 (opt-out-default + expliciet-false-suppress + category-isolatie + null/non-object-safe). i18n ×4.
 
 **Files touched:** `server/hooks/webPush.ts` (PushCategory + pushCategoryAllowed + gate), `server/orchestrator/conductor.ts` + `server/automation/executor.ts` (category-arg op 3 sites), `src/settings/_api/updatePreferences_v1.ts` (allow-list), `src/workspaces/settings/page.tsx` (3 toggles), `src/_locales/{en,nl,de,fr}.json`, `tests/unit/pushCategory.test.mts`, `docs/decisions/0118-push-per-type-preferences.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM A4: autonomie-dials (per-workspace autonomy level) — ADR 0119
+
+**Wat ik deed:** `gateForApproval` was per-stage zonder UI/coarse-control. Nu `Workspace.autonomyLevel` (default `gate-key-stages`, 3 niveaus); pure `resolveStageGate(stageGate, level)` in stageRunner: `full-auto`→nooit gaten, `gate-every`→altijd, `gate-key-stages`→honour stage-flag. Gebruikt op BEIDE gate-beslissingen in de done-branch (advance + push-for-approval). `save-autonomy`-op + `_sync`-route + snapshot-veld + AI-tab-dropdown (mirror save-sections). Destructief blijft altijd confirmen (B-23, aparte pad — de dial raakt alleen de routine-stage-gate).
+
+**Verify:** tsc 0 · lint · ai:lint · build · autonomyLevel 11/11 (pure gate: full-auto/gate-every/key-stages/unknown + op-persist + invalid→default). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (autonomyLevel), `server/orchestrator/stageRunner.ts` (resolveStageGate + 2 gate-sites), `server/orchestrator/conductor.ts` (save-autonomy), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAutonomy_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (autonomy-dropdown), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/autonomyLevel.test.mts`, `docs/decisions/0119-autonomy-dials.md`.

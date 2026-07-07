@@ -49,7 +49,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (46)
+## Sync routes (47)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -86,6 +86,7 @@
 | `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
+| `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | **no** | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
 | `sync/workspaces/saveIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
@@ -107,9 +108,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 81 |
+| _(unowned)_ | 82 |
 
-**Test coverage**: 3/83 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/84 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -163,7 +164,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/contentControl/v1`
 - `sync/workspaces/contentDirty/v1`
 - `sync/workspaces/contentSettings/v1`
-- … +30 more
+- … +31 more
 
 ## Pages (28)
 

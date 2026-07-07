@@ -832,6 +832,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { enabledSections } });
       return { enabledSections };
     }
+    case 'save-autonomy': {
+      //? A4 — the workspace autonomy level modulating the per-stage human gate (stageRunner.resolveStageGate).
+      //? Validated against the three known levels; anything else falls back to the safe default.
+      const raw = str(payload, 'autonomyLevel');
+      const autonomyLevel = raw === 'gate-every' || raw === 'full-auto' || raw === 'gate-key-stages' ? raw : 'gate-key-stages';
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { autonomyLevel } });
+      return { autonomyLevel };
+    }
     // ---- agent controls (C2) ----
     case 'pause': {
       //? Per-ticket pause: skip further autonomous turns for this ticket (provisionContainers

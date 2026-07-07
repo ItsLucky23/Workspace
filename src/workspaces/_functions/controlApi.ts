@@ -35,7 +35,7 @@ export type ControlOp =
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration'
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'forge-connect'
-  | 'save-git-config' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider'
+  | 'save-git-config' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-autonomy'
   | 'link-repo' | 'scan-docs' | 'create-info-source' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'

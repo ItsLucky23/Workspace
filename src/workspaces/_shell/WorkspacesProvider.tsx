@@ -341,6 +341,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? A4 — autonomy-level delta → replace it on the active workspace.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveAutonomy', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const autonomyLevel = serverOutput.autonomyLevel;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, autonomyLevel } : w)) } : s));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? P1 — AI provider-override delta → replace the override map.
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/saveAiProvider', version: 'v1',
@@ -1019,6 +1029,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
         void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? A4 — the workspace autonomy level (optimistic flip + persist).
+      saveAutonomy: (autonomyLevel) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return;
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, autonomyLevel } : w)) }));
+        void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room });
       },
       //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
       saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature) => {

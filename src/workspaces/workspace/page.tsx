@@ -760,7 +760,9 @@ const PROVIDER_FEATURES = ['script', 'docs-generate', 'studio-designer', 'studio
 const PROVIDER_OPTIONS = [{ id: 'default', item: 'Default' }, { id: 'claude-cli', item: 'Claude' }, { id: 'gemini-api', item: 'Gemini' }];
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy } = useWorkspaces();
+  const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
+  const autonomyLevel = activeWorkspace.autonomyLevel ?? 'gate-key-stages';
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
   const [geminiModel, setGeminiModel] = useState(activeWorkspace.geminiModel ?? '');
@@ -800,6 +802,15 @@ function AiBehaviorTab() {
       <div className="flex items-center gap-3">
         <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
+      </div>
+
+      {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}
+      <div className="pt-2 border-t border-divider mt-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}</div>
+        <div className="w-64">
+          <Dropdown size="sm" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />
+        </div>
       </div>
 
       {/* P1 — which AI backend runs each feature (persists on change). */}
