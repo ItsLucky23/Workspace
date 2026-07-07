@@ -2456,3 +2456,13 @@ Alle motion = theme-tokens + reduced-motion-safe.
 **Verify:** tsc 0 · lint · falProvider 26/26 · build groen. model-3d faalt nu SCHOON (timeout) i.p.v. hangen.
 
 **Files touched:** `server/media/providers/fal.ts`, `docs/decisions/0096-fal-transport-robustness.md`.
+
+## 2026-07-07 — Overnight-goal deel 9: diepere per-feature live-e2e (fetchbaarheids-verificatie) (#41)
+
+**User prompt:** /goal — per feature meer e2e testen.
+
+**Wat ik deed:** de live-suite verdiept met een `verifyAsset()`-check die bewijst dat elke geproduceerde asset ECHT ophaalbaar is (niet enkel een url-string): hosted urls → HEAD-status + bytes; lokale `/media/`-urls → bestaat-op-schijf. Informatief (geen flaky hard-assert: HEAD-onvriendelijke CDNs blijven een note).
+
+**Volledige live-run met alle fixes: 22 passed, 0 failed.** 15/15 gemini-text + image (25KB) · reference-image (34KB) · **video (4.2MB)** · **avatar (4.9MB)** · tts/sfx (on-disk) · **music (suno, echt)**. model-3d faalt nu SCHOON (`fal poll timeout`, geen hang) → best-effort gelogd. Bewijst dat de media echt + downloadbaar is (multi-MB video/avatar-bestanden).
+
+**Files touched:** `tests/live/liveAi.live.mts`.

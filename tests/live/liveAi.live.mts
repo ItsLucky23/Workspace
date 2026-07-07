@@ -20,6 +20,32 @@ console.log(`[live] providers → fal:${String(live.fal)} elevenlabs:${String(li
 
 const { runAiCompletion } = await import('../../server/ai/registry');
 const { runMediaGeneration } = await import('../../server/media/registry');
+const { MEDIA_DIR } = await import('../../server/media/store');
+const { existsSync } = await import('node:fs');
+const nodePath = await import('node:path');
+
+//? Prove a produced asset is genuinely RETRIEVABLE (deeper e2e): a hosted url must HEAD-200 with bytes; a
+//? local `/media/<file>` must exist on disk. Returns a human string (never throws) — HEAD-unsupported
+//? hosts stay informational, not a hard failure.
+async function verifyAsset(url: string): Promise<string> {
+  if (url.startsWith('/media/')) {
+    const ok = existsSync(nodePath.join(MEDIA_DIR, url.slice('/media/'.length)));
+    return ok ? 'on-disk ✓' : 'MISSING on disk ✗';
+  }
+  if (url.startsWith('http')) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { ctrl.abort(); }, 20_000);
+    try {
+      const r = await fetch(url, { method: 'HEAD', signal: ctrl.signal });
+      return `HEAD ${String(r.status)} (${r.headers.get('content-length') ?? '?'} bytes)`;
+    } catch (e) {
+      return `HEAD failed: ${e instanceof Error ? e.message : String(e)}`;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return 'unrecognised url';
+}
 
 //? Retry a live call up to `attempts` times (flaky-live policy) — resolves the first success or the last value.
 async function retry<T>(label: string, attempts: number, fn: () => Promise<T>, ok: (v: T) => boolean): Promise<T> {
@@ -88,6 +114,7 @@ try {
       continue;
     }
     assert(real, `media feature ${m.feature} → REAL ${m.provider} asset (not stub)`);
+    console.log(`[live]   ${m.feature} asset → ${await verifyAsset(res.asset?.url ?? '')}`);
     if (m.feature === 'image-gen') refImageUrl = res.asset?.url ?? '';
   }
 } catch (error) {
