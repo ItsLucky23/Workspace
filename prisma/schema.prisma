@@ -1280,6 +1280,7 @@ model ContentProject {
   channelId   String?  @db.ObjectId
   title       String
   brief       String?                               // the human brief / prompt
+  publishVariants Json?                             // O2 — per-platform post overrides: { [platform]: { caption?, hashtags?, privacy? } }
   format      String   @default("faceless")         // 'faceless' | 'short' | 'explainer' | 'ad' | 'avatar' | 'image'
   stageId     String   @default("idea")             // content pipeline column
   status      String   @default("idle")             // idle|busy|needs-input|done|paused|stuck

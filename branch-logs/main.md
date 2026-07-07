@@ -2729,3 +2729,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (ternary-negation→omgedraaid) · ai:lint · build · renderFormats 24/24 (watermark: filter_complex + overlay-hoeken + input-index met/zonder audio + geen-watermark=-vf) · render 18/18 (geen regressie).
 
 **Files touched:** `server/content/render.ts` (Watermark-type + filter_complex-branch + renderTimeline watermarkUrl), `tests/unit/renderFormats.test.mts`, `docs/decisions/0123-branding-watermark.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM O2: per-platform publish-varianten — ADR 0124
+
+**Wat ik deed:** publish poste de piece-TITLE naar elk platform met hardcoded `private`. Nu een genormaliseerde `PublishVariant {caption?, hashtags?, privacy?}`; `buildUploadRequest` neemt een optionele `variant` + mapt naar platform-vocab (YouTube privacyStatus, TikTok privacy_level — geen unlisted→SELF_ONLY). Pure `composeCaption(title, variant)` (override-of-title + #-hashtags). Varianten per-piece op `ContentProject.publishVariants` (JSON-map); pure `extractPublishVariant` valideert; `performUpload` threadt 'm door. Defaults = vorige gedrag. Compose-UI + save-op = follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint · build · publishVariants 14/14 (composeCaption + per-platform-payload-vocab + extractor-validatie) · publish 8/8 · publishReal 12/12 · publishTiktok 5/5 · publishOAuthRoute 8/8 · publishOAuth 17/17 · scheduledPublish 9/9 (geen regressie).
+
+**Files touched:** `prisma/schema.prisma` (ContentProject.publishVariants), `server/content/publishOAuth.ts` (PublishVariant + composeCaption + privacy-mappers + buildUploadRequest variant), `server/content/publish.ts` (extractPublishVariant + performUpload wiring), `tests/integration/publishVariants.test.mts`, `docs/decisions/0124-per-platform-publish-variants.md`.

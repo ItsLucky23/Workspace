@@ -71,28 +71,46 @@ export function parseTokenResponse(json: unknown): StoredTokens | null {
   return { accessToken, ...(refreshToken === undefined ? {} : { refreshToken }), ...(expiresInSec === undefined ? {} : { expiresAt: Date.now() + expiresInSec * 1000 }) };
 }
 
+//? O2 — a normalized per-platform privacy choice + the mappers to each platform's own vocabulary. TikTok has
+//? no "unlisted", so it collapses to SELF_ONLY. Pure + exported.
+export type PublishPrivacy = 'public' | 'unlisted' | 'private';
+export interface PublishVariant { caption?: string; hashtags?: string[]; privacy?: PublishPrivacy }
+const YT_PRIVACY: Record<PublishPrivacy, string> = { public: 'public', unlisted: 'unlisted', private: 'private' };
+const TT_PRIVACY: Record<PublishPrivacy, string> = { public: 'PUBLIC_TO_EVERYONE', unlisted: 'SELF_ONLY', private: 'SELF_ONLY' };
+
+//? Compose the post caption from a base title + an optional override caption + hashtags (each '#'-prefixed).
+export function composeCaption(title: string, variant?: PublishVariant | null): string {
+  const base = (variant?.caption ?? '').trim() || title;
+  const tags = (variant?.hashtags ?? []).map((t) => t.trim()).filter((t) => t.length > 0).map((t) => (t.startsWith('#') ? t : `#${t}`));
+  return tags.length > 0 ? `${base}\n\n${tags.join(' ')}` : base;
+}
+
 //? Build the video upload request (auth-bearer + the platform's init/upload endpoint). Pure + exported.
 //? (YouTube resumable + TikTok init are multi-step; this is the initiating request whose shape we assert.)
-export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string }): HttpRequest {
+//? O2 — an optional per-platform `variant` drives the caption/description + privacy; defaults preserve the
+//? prior behaviour (title-only, private).
+export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }): HttpRequest {
   const cfg = CFG[platform];
+  const caption = composeCaption(input.title, input.variant);
+  const privacy = input.variant?.privacy ?? 'private';
   if (platform === 'youtube') {
     return {
       url: cfg.uploadUrl, method: 'POST',
       headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json', 'X-Upload-Content-Type': 'video/*' },
-      body: JSON.stringify({ snippet: { title: input.title, description: input.title }, status: { privacyStatus: 'private' } }),
+      body: JSON.stringify({ snippet: { title: input.title, description: caption }, status: { privacyStatus: YT_PRIVACY[privacy] } }),
     };
   }
   return {
     url: cfg.uploadUrl, method: 'POST',
     headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ post_info: { title: input.title, privacy_level: 'SELF_ONLY' }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
+    body: JSON.stringify({ post_info: { title: caption, privacy_level: TT_PRIVACY[privacy] }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
   };
 }
 
 // --- transports (injectable) ---------------------------------------------------
 
 export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }) => Promise<StoredTokens | null> }
-export interface PublishUploadTransport { upload: (platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string }) => Promise<{ externalUrl: string } | null> }
+export interface PublishUploadTransport { upload: (platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }) => Promise<{ externalUrl: string } | null> }
 
 //? Run a pure-built HttpRequest and return the parsed JSON.
 async function runJson(reqShape: HttpRequest): Promise<unknown> {

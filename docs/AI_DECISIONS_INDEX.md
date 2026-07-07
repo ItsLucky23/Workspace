@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (122)
+## Decisions (123)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -135,6 +135,7 @@
 | 0121 | Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export | 🟢 accepted | content, render, export, captions, freedom-program | — | `docs/decisions/0121-export-formats-captions.md` |
 | 0122 | Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt | 🟢 accepted | content, publish, scheduling, freedom-program, multi-instance | — | `docs/decisions/0122-post-scheduling.md` |
 | 0123 | Logo watermark overlay in the render plan (O4); intro/outro concat deferred | 🟢 accepted | content, render, branding, freedom-program | — | `docs/decisions/0123-branding-watermark.md` |
+| 0124 | Per-platform publish variants (caption / hashtags / privacy) in the upload payload | 🟢 accepted | content, publish, freedom-program | — | `docs/decisions/0124-per-platform-publish-variants.md` |
 
 ## Summaries
 
@@ -1115,6 +1116,14 @@ The watchdog sweep gains a third responsibility: for every ticket with a REAL `n
 `buildFfmpegPlan` takes an optional `Watermark { file, position }`. When present it switches from the simple `-vf` scale path to a `-filter_complex` graph — `[0:v]<scale>[bg];[bg][N:v]overlay=<xy>[outv]` with explicit `-map [outv]` (+ `-map 1:a` when there's audio) — placing the logo in a corner (default bottom-right, 24px margin). `renderTimeline` localizes an optional `watermarkUrl` (a brand-kit logo) and skips it cleanly if it can't be localized. All pure + unit-tested.
 
 → `docs/decisions/0123-branding-watermark.md`
+
+### 0124 — Per-platform publish variants (caption / hashtags / privacy) in the upload payload
+
+**0124** · accepted · tags: content, publish, freedom-program · 2026-07-07
+
+A normalized `PublishVariant { caption?, hashtags?, privacy? }` with `privacy: 'public'|'unlisted'|'private'`. `buildUploadRequest` takes an optional `variant` and maps it to each platform's own vocabulary — YouTube `privacyStatus` (public/unlisted/private), TikTok `privacy_level` (PUBLIC_TO_EVERYONE / SELF_ONLY; no "unlisted" → SELF_ONLY). A pure `composeCaption(title, variant)` builds the caption (override or title) + `#`-prefixed hashtags. Variants are stored per-piece on `ContentProject.publishVariants` (a `{ [platform]: variant }` JSON). A pure `extractPublishVariant(json, platform)` validates + pulls the entry; `performUpload` threads it into the upload. Defaults preserve the prior behaviour (title-only, private).
+
+→ `docs/decisions/0124-per-platform-publish-variants.md`
 
 ## Code governed by decisions
 

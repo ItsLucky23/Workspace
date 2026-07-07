@@ -8,7 +8,21 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { isLeader } from '../orchestrator/cluster';
-import { getConnection, type OAuthPlatform, type PublishUploadTransport, realUploadTransport } from './publishOAuth';
+import { getConnection, type OAuthPlatform, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
+
+//? O2 — pull a validated per-platform variant out of a piece's `publishVariants` JSON. Unknown/garbage → null
+//? (the upload falls back to title-only, its prior behaviour). Pure + exported for tests.
+export function extractPublishVariant(raw: unknown, platform: string): PublishVariant | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const entry = (raw as Record<string, unknown>)[platform];
+  if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return null;
+  const e = entry as Record<string, unknown>;
+  const out: PublishVariant = {};
+  if (typeof e.caption === 'string') out.caption = e.caption;
+  if (Array.isArray(e.hashtags)) out.hashtags = e.hashtags.filter((t): t is string => typeof t === 'string');
+  if (e.privacy === 'public' || e.privacy === 'unlisted' || e.privacy === 'private') out.privacy = e.privacy;
+  return out;
+}
 
 //? O3 — how often the leader checks for due scheduled posts.
 const PUBLISH_INTERVAL_MS = Number(process.env.WS_PUBLISH_SCHEDULER_INTERVAL_MIN ?? '1') * 60_000;
@@ -45,10 +59,12 @@ async function performUpload(
   const oauthPlatform = args.platform as OAuthPlatform; // built platforms are youtube|tiktok
   const connection = await getConnection(prisma, workspaceId, oauthPlatform);
   const asset = await prisma.contentAsset.findFirst({ where: { workspaceId, id: args.assetId }, select: { url: true } });
-  const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true } });
+  const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true, publishVariants: true } });
+  //? O2 — the per-platform post override (caption/hashtags/privacy), if the piece defines one.
+  const variant = extractPublishVariant(project?.publishVariants, args.platform);
   if (connection) {
     const transport = opts.uploadTransport ?? realUploadTransport;
-    const uploaded = await transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled' }).catch(() => null);
+    const uploaded = await transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }).catch(() => null);
     if (uploaded) return { externalUrl: uploaded.externalUrl, stub: false };
   }
   //? Not connected (or upload failed) → a dummy post (valid-shaped external url).
