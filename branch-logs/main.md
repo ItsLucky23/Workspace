@@ -2761,3 +2761,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (replaceAll + merged prisma-import) · ai:lint · build · stageEngine 27/27 (integratie→gesanitizede mcp-key + command-parse + args + env-injectie + skills-coëxistentie + parseMcpCommand-edge-cases).
 
 **Files touched:** `server/orchestrator/renderStage.ts` (McpIntegration + parseMcpCommand + mcpKey + integratie-emit), `server/orchestrator/stageRunner.ts` (loadMcpIntegrations + ctx-wiring + imports), `tests/integration/stageEngine.test.mts`, `docs/decisions/0127-mcp-integration-wiring.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM R3 (brand-helft): brand-kit-portability — ADR 0128
+
+**Wat ik deed (Fase R start):** brand-library was workspaceId-locked. Nu pure `parseBrandKit(raw)` (valideert/normaliseert portable JSON → `BrandLibraryInput`, herbruikt de str/strArr/palette-validators), `exportBrandKit(ws)` (library→portable kit, geen ids/timestamps), `importBrandKit(ws, raw)` (upsert via `saveBrandLibrary`). 2 membership-gated `_api`-routes (`brandExport`/`brandImport`, JSON-string). Personal-defaults-helft (UserPreferences default style/brand/language) + download/upload-UI = follow-ups.
+
+**Verify:** tsc 0 · lint (require-await→sync tryCatch) · ai:lint · build · brandKitPortability 14/14 (parse-validatie + lossless A→B round-trip + garbage-reject) · brandContext 6/6 · studio 33/33 (geen regressie).
+
+**Files touched:** `server/studio/brand.ts` (parseBrandKit + exportBrandKit + importBrandKit), `src/workspaces/_api/brandExport_v1.ts` + `brandImport_v1.ts` (nw), `tests/integration/brandKitPortability.test.mts`, `docs/decisions/0128-brand-kit-portability.md`.

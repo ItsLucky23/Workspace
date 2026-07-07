@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (126)
+## Decisions (127)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -139,6 +139,7 @@
 | 0125 | An outbound webhook automation action (X2, outbound half) | 🟢 accepted | automation, webhooks, extensibility, freedom-program | — | `docs/decisions/0125-outbound-webhook-action.md` |
 | 0126 | Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half | 🟢 accepted | ai, providers, gemini, extensibility, freedom-program | — | `docs/decisions/0126-custom-gemini-endpoint.md` |
 | 0127 | The user's MCP integration command is mounted into the container .mcp.json (X1) | 🟢 accepted | extensibility, mcp, containers, freedom-program | — | `docs/decisions/0127-mcp-integration-wiring.md` |
+| 0128 | Brand-kit portability — export/import the brand library as portable JSON (R3, brand half) | 🟢 accepted | brand, portability, reuse, freedom-program | — | `docs/decisions/0128-brand-kit-portability.md` |
 
 ## Summaries
 
@@ -1151,6 +1152,14 @@ A per-workspace `Workspace.geminiBaseUrl` + a `WS_GEMINI_BASE_URL` env, resolved
 `renderStage` now also emits one stdio MCP server per **enabled** integration tool: a pure `parseMcpCommand(cmd)` splits the command string into `{ command, args }`, `mcpKey(name)` sanitizes the server key, and the tool's credentials are injected as `env`. `stageRunner.loadMcpIntegrations` resolves each `IntegrationField.envVarId` to its EnvVar (decrypted) and passes the tools into the (still-pure) renderer. Skills + integrations coexist in one `.mcp.json`.
 
 → `docs/decisions/0127-mcp-integration-wiring.md`
+
+### 0128 — Brand-kit portability — export/import the brand library as portable JSON (R3, brand half)
+
+**0128** · accepted · tags: brand, portability, reuse, freedom-program · 2026-07-07
+
+A pure `parseBrandKit(raw)` validates/normalizes a portable JSON blob into the existing `BrandLibraryInput` (reusing the same `str`/`strArr`/palette validators as the artifact-promote path). `exportBrandKit(ws)` reads the library → a portable kit (no ids/timestamps/workspaceId); `importBrandKit(ws, raw)` upserts it via the existing `saveBrandLibrary`. Two membership-gated `_api` routes (`brandExport`/`brandImport`) carry the JSON string.
+
+→ `docs/decisions/0128-brand-kit-portability.md`
 
 ## Code governed by decisions
 

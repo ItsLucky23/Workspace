@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (37)
+## API routes (39)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,8 @@
 | `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
 | `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
 | `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/brandExport/v1` | POST | login | 30 | — | **no** | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
+| `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
 | `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
 | `api/workspaces/closePreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
 | `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | **no** | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
@@ -108,9 +110,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 82 |
+| _(unowned)_ | 84 |
 
-**Test coverage**: 3/84 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/86 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -127,6 +129,8 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/settings/updateUser/v1`
 - `api/workspaces/acceptInvite/v1`
 - `api/workspaces/aiChat/v1`
+- `api/workspaces/brandExport/v1`
+- `api/workspaces/brandImport/v1`
 - `api/workspaces/buildProjectImage/v1`
 - `api/workspaces/closePreview/v1`
 - `api/workspaces/containerTerminals/v1`
@@ -162,9 +166,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/changeRole/v1`
 - `sync/workspaces/contentAssetDelta/v1`
 - `sync/workspaces/contentControl/v1`
-- `sync/workspaces/contentDirty/v1`
-- `sync/workspaces/contentSettings/v1`
-- … +31 more
+- … +33 more
 
 ## Pages (28)
 
