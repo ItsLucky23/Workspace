@@ -2503,3 +2503,27 @@ Alle motion = theme-tokens + reduced-motion-safe.
 **Verify:** tsc 0 · lint · ai:lint · build groen · content-integratietests (contentImages/Voice/Model/Snapshot/Assembly/Pipeline/Automation/Script) alle 0 failed · unit `contentAssetSummary` 14/14 (incl. staleness).
 
 **Files touched:** `server/content/queuedMediaJob.ts` (nw), `server/content/{mediaAsset,images,voice,shortForm,referenceImage,assembly}.ts`, `server/read/{broadcast,mappers}.ts`, `src/workspaces/_sync/{contentDirty_server_v1(nw),contentControl_server_v1,contentSettings_server_v1}.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `tests/unit/contentAssetSummary.test.mts`, `docs/decisions/0099-*.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM: gefaseerd /goal-bouwplan voor alle customization/vrijheid-gaps + editors
+
+**User prompt:** "kijk hoe je alle gaps kan oplossen, ik wil een premium product met goede UX, alles moet mogelijk zijn incl. de editors; plan alles uit zodat we het straks met een goal-commando kunnen runnen."
+
+**Wat ik deed:** na twee read-only gap-analyse-golven (10 audits: AI-sturing, provider/model, pipeline/custom-tasks, iteratie/upload, context/kennis, output/export/publish, approval/notificatie, templates/hergebruik, integraties/API, preview/kosten/lokalisatie) + de media-editor-assessment, een compleet `/goal`-program-doc geschreven: `src/workspaces/_docs/FREEDOM_PROGRAM.md`.
+
+**Structuur (matcht DEPTH_PROGRAM-format):** status/precedence · §0 core-intent (rode draad: de meeste naden zijn al gemodelleerd maar niet ontsloten → veel "naad aan premium-UI hangen", niet greenfield) · §0a per-item-waterfall + gates + commit-regels + invarianten + Dutch · §0b **premium-UX definition-of-done** (7 punten, geldt voor élk UI-item) · §1 execution-order + harde dependencies (K1 upload deblokkeert de editors) · §2 de items in 10 fasen:
+- **Q** quick wins (kosten-estimate tonen, brand/product-context wiren, custom-style-manager, `handoffInstruction` reviven, media-provider-per-feature + Gemini-dead-key, stage-persona in UI)
+- **K** bring-your-own (file-upload/dropzone, doc-upload→InfoSource, creatieve RAG-grounding + source-attach, output-taalkeuze)
+- **P** provider/model-vrijheid (tekst-provider-picker, model/param-tuning, per-request media-modelkeuze low-poly/snel)
+- **I** iteratie (regenerate/varianten, versiehistorie, content-bewuste Assistant, studio-tweak-regen)
+- **A** approval/notificatie CORE (push+PWA e2e, needs-input→bel/push, notificatie-voorkeuren, autonomie-dials, structured approvals + routing)
+- **O** output/export (formaten 9:16/srt/gif, per-platform publish-varianten, post-scheduling, branding/watermark, output-templates)
+- **R** hergebruik (save-as-template + apply, clone-workspace/cross-copy, persoonlijke defaults + brand-portabiliteit)
+- **X** extensibiliteit (MCP-veld écht wiren, webhooks in/uit, publieke API + PAT, custom providers/endpoints)
+- **E** editors + custom AI-taken (image-inpaint-canvas "omcirkel→verander kleur", image-essentials crop/resize, video-timeline met tracks/trim/transitions/mix, audio-editor waveform/mix, user-defined `custom-generate`-taken binnen de invarianten)
+- **S** safety + premium-UX-polish (dry-run/goedkope preview, undo/unpublish, guided/NL-setup, premium-UX-sweep)
+
+Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Verify:**-regel. §3 zes OPEN VRAGEN met sensible defaults (canvas-lib, inpaint-model, video-per-beat-clips fasering, API-vorm, VAPID-infra, live-e2e user-triggered). §4 grounding naar bestaande specs.
+
+**Files touched:** `src/workspaces/_docs/FREEDOM_PROGRAM.md` (nw). Doc-only (geen code) → geen tsc/lint/build-gate; pre-commit hook regenereert de AI-docs.
+
+**Volgende stap (user):** dit met `/goal` draaien (Fase Q→S, item-voor-item, waterfall + commit-per-item). OPEN VRAGEN in §3 kunnen vooraf beantwoord of tijdens de run als default gelogd.
