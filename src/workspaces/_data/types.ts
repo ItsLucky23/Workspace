@@ -621,12 +621,27 @@ export interface WorkspaceRole {
 //? A control-op the Workspace-AI proposes for the user to CONFIRM (the AI never writes;
 //? an accepted proposal dispatches the matching control-op under the normal RBAC).
 export interface ChatProposal {
-  op: 'bulk-move' | 'assign' | 'add-comment';
+  //? O-B (IDEA_TO_OUTCOME): the Assistant can now propose CREATE ops too — not just reshuffle the board.
+  //? Each still maps to an EXISTING control verb (no new verbs): create-ticket → quick-add,
+  //? create-content → content-from-brief. The AI only proposes; accept dispatches (single-writer intact).
+  op: 'bulk-move' | 'assign' | 'add-comment' | 'create-ticket' | 'create-content';
   summary: string;          // human-readable ("Move DEV-3 → Review")
   ticketKeys?: string[];
   stageId?: string;
   assigneeId?: string;
   body?: string;
+  title?: string;           // create-ticket / create-content
+  description?: string;     // create-ticket (optional richer body)
+  brief?: string;           // create-content (what the piece is about)
+  format?: string;          // create-content ('faceless' | 'talking-head' | …)
+}
+
+//? O-A (IDEA_TO_OUTCOME) — the IntakeCopilot: a natural-language idea ("build a todo app", "make a launch
+//? video") decomposes into an ordered, single-approval PLAN of steps. Each step is a ChatProposal that maps to
+//? an existing verb (no new verbs); approving the plan dispatches the steps in order (single-writer intact).
+export interface ChatPlan {
+  summary: string;          // "Plan: build a todo app (3 tickets)"
+  steps: ChatProposal[];    // ordered; each dispatched via the same accept path as a single proposal
 }
 
 export interface ChatMessage {
@@ -635,8 +650,9 @@ export interface ChatMessage {
   text: string;
   questionSetId?: string; // renders a QuestionSet card inline in the Assistant chat (ERRATA E4)
   proposal?: ChatProposal; // an AI action proposal rendered with an Accept button
+  plan?: ChatPlan;         // O-A — a multi-step intake plan rendered with an Approve-plan button
   pending?: boolean;       // the AI turn is in flight (renders a thinking indicator)
-  accepted?: boolean;      // the proposal has been dispatched (Accept consumed)
+  accepted?: boolean;      // the proposal/plan has been dispatched (Accept consumed)
 }
 
 //? ---------------------------------------------------------------- carry-forward + questions

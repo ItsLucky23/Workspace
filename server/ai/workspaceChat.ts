@@ -10,15 +10,16 @@ import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
 //? The proposal shape is shared with the client (it crosses the aiChat API boundary).
-import type { ChatProposal } from '../../src/workspaces/_data/types';
+import type { ChatProposal, ChatPlan } from '../../src/workspaces/_data/types';
 
 export interface ChatResult {
   reply: string;
   proposal: ChatProposal | null;
+  plan?: ChatPlan | null;
   error?: string;
 }
 
-interface Ctx {
+export interface Ctx {
   tickets: { key: string; title: string; stageId: string }[];
   stages: { id: string; name: string }[];
   members: { id: string; name: string }[];
@@ -41,13 +42,16 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
 
 function systemPrompt(ctx: Ctx, codeContext: string): string {
   return [
-    'You are the Workspace-AI for a Kanban dev-orchestration board. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below) OR propose EXACTLY ONE board action for the user to confirm. You never execute anything yourself.',
+    'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
-    '{"reply": string, "action": null | {"op": "bulk-move"|"assign"|"add-comment", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string}}',
+    '{"reply": string, "action": null | <action>, "plan"?: {"summary": string, "steps": <action>[]}}  where <action> = {"op": "bulk-move"|"assign"|"add-comment"|"create-ticket"|"create-content", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string, "title"?: string, "description"?: string, "brief"?: string, "format"?: string}',
     '- bulk-move: move ticketKeys to stageId (a stage id from the list). Use for pulling a high-priority/bugfix ticket forward.',
     '- assign: set assigneeId (a member id) on the single ticketKeys[0].',
     '- add-comment: post body on ticketKeys[0].',
-    'Only reference tickets/stages/members that exist below. For a code/architecture question, answer in `reply` and set action=null. If ambiguous or not doable, set action=null and explain.',
+    '- create-ticket: create a NEW dev ticket from a natural-language ask (e.g. "add a login page"). Set a concise `title` (required) and an optional `description`. Use when the user wants to BUILD/FIX software.',
+    '- create-content: create a NEW content piece (video/post) from an idea (e.g. "make a 60s video about our launch"). Set `title` (required), a `brief` (what it is about, required) and an optional `format` ("faceless"|"talking-head"). Use when the user wants to MAKE media/content.',
+    'For a BIG idea that needs MULTIPLE steps (e.g. "build a todo app with login and a dashboard"), instead of `action` return a `plan`: {"summary": string, "steps": [ <action>, <action>, … ]} — an ordered list of create-ticket/create-content actions the user approves at once. Break a software idea into a few focused create-ticket steps; a content idea usually stays a single create-content. Use `plan` (not `action`) whenever ≥2 steps make sense.',
+    'Prefer a create action or plan when the user expresses a new goal ("I want …", "make …", "build …"). Only reference tickets/stages/members that exist below. For a code/architecture question, answer in `reply` and set action=null. If ambiguous or not doable, set action=null and explain.',
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
@@ -71,7 +75,8 @@ function extractJsonSlice(text: string): string | null {
 
 //? Validate the model's action against the REAL workspace state — a proposal may only
 //? name tickets/stages/members that exist, or it is dropped to a reply-only result.
-function validate(raw: unknown, ctx: Ctx): ChatProposal | null {
+//? Exported for direct unit-testing (pure guard; the create ops (O-B) are the key surface to lock down).
+export function validateChatAction(raw: unknown, ctx: Ctx): ChatProposal | null {
   if (raw === null || typeof raw !== 'object') return null;
   const a = raw as Record<string, unknown>;
   const op = a.op;
@@ -96,10 +101,39 @@ function validate(raw: unknown, ctx: Ctx): ChatProposal | null {
     if (firstKey === undefined || body.length === 0) return null;
     return { op, ticketKeys: [firstKey], body, summary: `Comment on ${firstKey}` };
   }
+  //? O-B create ops — free-form (they invent NEW state), so they validate on their own fields, not against
+  //? existing tickets/stages. They still only PROPOSE; accept routes them to the existing quick-add /
+  //? content-from-brief verbs (single-writer + frozen-verb surface intact).
+  if (op === 'create-ticket') {
+    const title = typeof a.title === 'string' ? a.title.trim() : '';
+    if (title.length === 0) return null;
+    const description = typeof a.description === 'string' ? a.description.trim() : undefined;
+    return { op, title, ...(description ? { description } : {}), summary: `Create ticket: ${title}` };
+  }
+  if (op === 'create-content') {
+    const title = typeof a.title === 'string' ? a.title.trim() : '';
+    const brief = typeof a.brief === 'string' ? a.brief.trim() : '';
+    if (title.length === 0 || brief.length === 0) return null;
+    const format = typeof a.format === 'string' && a.format.trim().length > 0 ? a.format.trim() : undefined;
+    return { op, title, brief, ...(format ? { format } : {}), summary: `Create content: ${title}` };
+  }
   return null;
 }
 
-//? Interpret one chat message → a reply + an optional (validated) proposal.
+//? O-A — validate a multi-step intake plan: each step must independently validate (same guard as a single
+//? proposal), invalid steps are dropped, and a plan needs ≥2 surviving steps to be a real plan (a 1-step
+//? "plan" is just a proposal and is handled by the `action` path). Returns null otherwise.
+export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
+  if (raw === null || typeof raw !== 'object') return null;
+  const p = raw as Record<string, unknown>;
+  const rawSteps = Array.isArray(p.steps) ? p.steps : [];
+  const steps = rawSteps.map((s) => validateChatAction(s, ctx)).filter((s): s is ChatProposal => s !== null);
+  if (steps.length < 2) return null;
+  const summary = typeof p.summary === 'string' && p.summary.trim().length > 0 ? p.summary.trim() : `Plan: ${String(steps.length)} steps`;
+  return { summary, steps };
+}
+
+//? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
 export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string): Promise<ChatResult> {
   const ctx = await loadCtx(prisma, workspaceId);
   //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
@@ -113,5 +147,7 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];
   const obj = (parsed !== null && typeof parsed === 'object') ? parsed as Record<string, unknown> : null;
   const replyRaw = (obj !== null && typeof obj.reply === 'string') ? obj.reply : res.text.trim();
-  return { reply: replyRaw, proposal: validate(obj?.action ?? null, ctx) };
+  //? Prefer a multi-step plan when the model returned one; else a single proposal. (Never both — a plan wins.)
+  const plan = validatePlan(obj?.plan ?? null, ctx);
+  return { reply: replyRaw, proposal: plan ? null : validateChatAction(obj?.action ?? null, ctx), plan };
 }

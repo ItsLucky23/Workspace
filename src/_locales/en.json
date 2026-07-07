@@ -753,6 +753,7 @@
       "askAiPlaceholder": "Ask the AI to do something…",
       "aiError": "The AI is unavailable right now. Please try again.",
       "aiAccept": "Accept",
+      "aiApprovePlan": "Approve plan",
       "aiAccepted": "Done",
       "send": "Send",
       "allCaughtUp": "All caught up ✨",

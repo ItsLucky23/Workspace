@@ -753,6 +753,7 @@
       "askAiPlaceholder": "Bitte die AI, etwas zu tun…",
       "aiError": "Die KI ist gerade nicht verfügbar. Bitte erneut versuchen.",
       "aiAccept": "Übernehmen",
+      "aiApprovePlan": "Plan genehmigen",
       "aiAccepted": "Erledigt",
       "send": "Senden",
       "allCaughtUp": "Alles erledigt ✨",

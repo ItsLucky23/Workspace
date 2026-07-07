@@ -21,7 +21,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
@@ -829,8 +829,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (error || res?.status !== 'success' || res.result.error) {
           return { ...m, pending: false, text: translate({ key: 'workspaces.shell.aiError' }) };
         }
-        const { reply, proposal } = res.result;
-        return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}) };
+        const { reply, proposal, plan } = res.result;
+        return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}), ...(plan ? { plan } : {}) };
       }));
     })();
   }, [snap.activeWorkspaceId, translate]);
@@ -838,15 +838,30 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? Accept an AI proposal → dispatch the matching control-op via the same `_sync` routes
   //? the manual UI uses (so execution stays under the Conductor + OP_CAPABILITY RBAC) and
   //? mark the bubble consumed so its Accept button can't re-fire.
+  //? Dispatch a SINGLE proposal to the existing `_sync` verb (never a new verb; Conductor stays the writer).
+  //? Shared by acceptChatProposal (one op) and acceptChatPlan (O-A, each step in order).
+  const dispatchProposal = useCallback((p: ChatProposal, room: string) => {
+    if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, clientRequestId: nextReqId() }, receiver: room });
+    else if (p.op === 'assign' && p.ticketKeys && p.assigneeId) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
+    else if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
+    //? O-B — create ops route to the EXISTING verbs (quick-add / content-from-brief), not a new one.
+    else if (p.op === 'create-ticket' && p.title) void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+    else if (p.op === 'create-content' && p.title && p.brief) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+  }, [refetch]);
+
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
     const room = snap.activeWorkspaceId;
-    if (room) {
-      if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, clientRequestId: nextReqId() }, receiver: room });
-      else if (p.op === 'assign' && p.ticketKeys && p.assigneeId) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
-      else if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
-    }
+    if (room) dispatchProposal(p, room);
     setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
-  }, [snap.activeWorkspaceId]);
+  }, [snap.activeWorkspaceId, dispatchProposal]);
+
+  //? O-A — approve a whole intake plan: dispatch each step in order (single-writer intact; each step is an
+  //? existing verb). One approval → the Conductor materializes every ticket/piece the plan proposed.
+  const acceptChatPlan = useCallback((messageId: string, plan: ChatPlan) => {
+    const room = snap.activeWorkspaceId;
+    if (room) for (const step of plan.steps) dispatchProposal(step, room);
+    setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
+  }, [snap.activeWorkspaceId, dispatchProposal]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 
@@ -914,6 +929,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       chat,
       sendChat,
       acceptChatProposal,
+      acceptChatPlan,
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setWantProjectId(undefined); setLoading(true); },
@@ -1141,7 +1157,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

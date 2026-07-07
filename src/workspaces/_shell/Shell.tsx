@@ -17,7 +17,7 @@ import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
-import type { AiRun, AiSuggestion, ChatMessage, ChatProposal, NotificationItem } from '../_data/types';
+import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, NotificationItem } from '../_data/types';
 
 //? The CSS color token for a ticket's live status dot.
 function statusColor(status: string | undefined): string {
@@ -473,13 +473,14 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
   return { shown, typing: shown.length < text.length };
 }
 
-function ChatBubble({ m, onAccept }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void }) {
+function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void }) {
   const translate = useTranslator();
   const mine = m.role === 'user';
   const animate = !mine && !typedMessages.has(m.id) && !m.pending;
   const { shown, typing } = useTypewriter(m.text, animate);
   useEffect(() => { if (!typing) typedMessages.add(m.id); }, [typing, m.id]);
   const p = m.proposal;
+  const plan = m.plan;
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING_SOFT} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
       <div className={`flex w-full ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -500,6 +501,25 @@ function ChatBubble({ m, onAccept }: { m: ChatMessage; onAccept: (id: string, p:
             : <button type="button" onClick={() => { onAccept(m.id, p); }} className="shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiAccept' })}</button>}
         </div>
       )}
+      {plan && (
+        <div className="mt-1.5 ml-8 max-w-[80%] rounded-xl border border-primary-border bg-primary/8 p-2.5 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Icon name="wand-magic-sparkles" className="text-primary shrink-0" />
+            <span className="text-xs font-medium text-title flex-1 min-w-0">{plan.summary}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            {plan.steps.map((s, i) => (
+              <div key={`${s.op}:${s.summary}`} className="flex items-center gap-2 text-xs text-common">
+                <span className="w-4 h-4 shrink-0 rounded bg-primary/15 text-primary text-[10px] flex items-center justify-center">{i + 1}</span>
+                <span className="min-w-0 truncate">{s.summary}</span>
+              </div>
+            ))}
+          </div>
+          {m.accepted
+            ? <span className="text-xs text-correct inline-flex items-center gap-1 self-end"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
+            : <button type="button" onClick={() => { onAcceptPlan(m.id, plan); }} className="self-end text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiApprovePlan' })}</button>}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -509,7 +529,7 @@ function ChatBubble({ m, onAccept }: { m: ChatMessage; onAccept: (id: string, p:
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, aiRuns } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, aiRuns } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
@@ -568,7 +588,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         {tab === 'chat' ? (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} />)}
+              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} />)}
             </div>
             <div className="border-t border-divider p-3 flex items-center gap-2">
               <input

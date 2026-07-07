@@ -7,7 +7,7 @@
 import { createContext, use } from 'react';
 
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
@@ -61,6 +61,7 @@ export interface WorkspacesCtx {
   chat: ChatMessage[];
   sendChat: (text: string) => void;
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
+  acceptChatPlan: (messageId: string, plan: ChatPlan) => void;
   //? Workspaces: switch the active one or create a new workspace.
   workspaces: Workspace[];
   activeWorkspace: Workspace;

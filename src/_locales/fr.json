@@ -753,6 +753,7 @@
       "askAiPlaceholder": "Demandez à l’IA de faire quelque chose…",
       "aiError": "L’IA est indisponible pour le moment. Réessayez.",
       "aiAccept": "Accepter",
+      "aiApprovePlan": "Approuver le plan",
       "aiAccepted": "Terminé",
       "send": "Envoyer",
       "allCaughtUp": "Tout est à jour ✨",

@@ -2923,3 +2923,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 ## 2026-07-08 — IDEA_TO_OUTCOME_PROGRAM.md geschreven (het volgende grote /goal-bouwplan)
 
 **Wat:** `src/workspaces/_docs/IDEA_TO_OUTCOME_PROGRAM.md` — gefaseerd runnable plan (Fase V echte-video+timeline+range-edit+long-video-decompositie · B rijke-image-editor · L2 O-A/B/C/D conversatie+orchestratie · L3 mobiel+structured-approvals+stub-zichtbaarheid · D publish-byte-upload+demo-host+prod-export · G greenfield). Gebaseerd op de 5-agent-audit + user-visie (60s-video=4×15s-scenes-die-inspelen, range-edit 13-18s→refine, simpele knip/transitions, demo-host main-op-DNS-X, prod=CI/CD-naar-externe-server). Volgorde-advies: L2-voordeur → V-video → D-publish/host → L3 → B/G. Te draaien met `/goal` ná compacten.
+
+## 2026-07-08 — L2 O-A/O-B: conversationele voordeur (assistent CREËERT + decomponeert) — ADR 0145
+
+**IDEA_TO_OUTCOME Fase L2, eerst (deblokkeert het "gewoon chatten"-gevoel).**
+- **O-B:** `ChatProposal.op` + `create-ticket`/`create-content`. Accept routeert naar BESTAANDE verbs (`quickAdd` / `contentControl:content-from-brief`) — geen nieuwe verbs, geen nieuwe writers. AI stelt alleen voor; user accepteert; Conductor schrijft (B-23 + frozen-verbs intact).
+- **O-A (IntakeCopilot):** een groot idee ("bouw todo-app met login") decomponeert in een geordend `ChatPlan` van stappen, als één goed te keuren kaart; approve dispatcht elke stap in volgorde. `validatePlan` (≥2 geldige stappen) + `validateChatAction` (geëxporteerd) als harde guard.
+- **UI:** Assistant-chat rendert nu een proposal-kaart (create) + een plan-kaart (genummerde stappen + "Plan goedkeuren"). i18n×4 (`aiApprovePlan`).
+
+**Verify:** tsc 0 (na `generateArtifacts` — nieuwe ChatResult-shape) · lint 0/0 · ai:lint clean · build groen · `tests/unit/chatCreateOps.test.mts` 19/19 (create-ticket/content accept+reject, plan multi-step + drop-invalid + <2-reject, board-ops intact, unknown-op reject). Browser-verify van de kaart-UI gebatcht met de andere UI-fasen.
+
+**Files:** `src/workspaces/_data/types.ts` (ChatProposal+ChatPlan), `server/ai/workspaceChat.ts` (create-ops + validatePlan + export), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx` (dispatchProposal/acceptChatPlan + plan-kaart), `src/_locales/*.json` (×4), `tests/unit/chatCreateOps.test.mts` (nw), gegenereerde apiTypes, `docs/decisions/0145-*.md`.

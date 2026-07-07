@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (143)
+## Decisions (144)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -156,6 +156,7 @@
 | 0142 | Guided first-run setup wizard (S3, wizard half) | 🟢 accepted | ux, onboarding, freedom-program | — | `docs/decisions/0142-setup-wizard.md` |
 | 0143 | Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4) | 🟢 accepted | ux, a11y, freedom-program | — | `docs/decisions/0143-premium-ux-sweep.md` |
 | 0144 | Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof | 🟢 accepted | content, publish, render, trust, testing, freedom-program | — | `docs/decisions/0144-honesty-fixes.md` |
+| 0145 | L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles) | 🟢 accepted | assistant, intake, content, tickets, single-writer, idea-to-outcome | — | `docs/decisions/0145-conversational-intake-copilot.md` |
 
 ## Summaries
 
@@ -1304,6 +1305,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Publish honesty:** `performUpload` returns a discriminated `real | stub | error`. A not-connected publish → `PublishJob.status:'stub'` (a dummy, `ok:false`); a connected-but-**failed** upload → `status:'error'` (previously swallowed into a fake `done`). Only a real post → `done`. **Render honesty:** a stub render → `ContentAsset.status:'error'`, `downloadable:false`, and `RenderJob.status: 'error'` — it no longer masquerades as a `ready`, `downloadable` video. **claude-CLI honesty:** `available()` now actually resolves the binary — `existsSync` for a path, a real `--version` probe (PATH-resolved, cached) for a bare name — so a not-installed CLI reports unavailable. **A real proof:** `tests/live/renderLive.live.mts` (opt-in) generates real fal images + runs the real ffmpeg-in-Docker render and asserts a non-`stub://`, on-disk, non-trivial `.mp4`. It SKIPs cleanly without FAL_KEY/Docker (so it's safe to run anywhere) and only ASSERTS when it can genuinely prove a real video.
 
 → `docs/decisions/0144-honesty-fixes.md`
+
+### 0145 — L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles)
+
+**0145** · accepted · tags: assistant, intake, content, tickets, single-writer, idea-to-outcome · 2026-07-08
+
+**O-B — the Assistant can now propose CREATE ops.** `ChatProposal.op` gains `create-ticket` and `create-content`. On accept they route to the EXISTING verbs — `create-ticket → workspaces/quickAdd`, `create-content → workspaces/contentControl` (`content-from-brief`). NO new verbs, NO new writers: the AI still only proposes; the user accepts; the Conductor writes (B-23 single-writer + the frozen structured-channel surface both intact). **O-A — the IntakeCopilot: multi-step PLANS.** A big idea ("build a todo app with login") decomposes into an ordered `ChatPlan` of steps (each a `ChatProposal`), rendered as ONE approvable card; approving dispatches every step in order through the same single-step dispatch path. This is the distinct value over O-B's single op. **Validation stays a hard guard.** `validateChatAction` / `validatePlan` (exported, unit-tested) drop any step that doesn't independently validate; a plan needs ≥2 surviving steps (a 1-step "plan" is just a proposal).
+
+→ `docs/decisions/0145-conversational-intake-copilot.md`
 
 ## Code governed by decisions
 
