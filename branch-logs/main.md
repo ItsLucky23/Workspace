@@ -2737,3 +2737,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · publishVariants 14/14 (composeCaption + per-platform-payload-vocab + extractor-validatie) · publish 8/8 · publishReal 12/12 · publishTiktok 5/5 · publishOAuthRoute 8/8 · publishOAuth 17/17 · scheduledPublish 9/9 (geen regressie).
 
 **Files touched:** `prisma/schema.prisma` (ContentProject.publishVariants), `server/content/publishOAuth.ts` (PublishVariant + composeCaption + privacy-mappers + buildUploadRequest variant), `server/content/publish.ts` (extractPublishVariant + performUpload wiring), `tests/integration/publishVariants.test.mts`, `docs/decisions/0124-per-platform-publish-variants.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM X2 (outbound-helft): webhook-automation-actie — ADR 0125
+
+**Wat ik deed (Fase X start):** de ActionExecutor kon alleen intern (notify/emit-signal/start-stage/invoke-agent-role). Nu een `webhook`-`TriggerActionKind`: `executeTriggerAction` POST een compacte envelope (`{event, ticketKey, payload, workspaceId}`) naar een user-`params.url` (vereist http(s); non-2xx/throw → error-outcome, best-effort — wedged nooit de pipeline). Poster module-injectable (`__setWebhookPoster`) → offline getest. In de AutomationPanel met een URL-veld. Inbound-webhook + HMAC-signing + SSRF-hardening = follow-ups.
+
+**Verify:** tsc 0 · lint · ai:lint · build · webhookAction 12/12 (envelope-shape + url-routing + noop-bij-bad-url + error-bij-non2xx/throw) · automation 21/21 (geen regressie). i18n ×4.
+
+**Files touched:** `server/automation/executor.ts` (WebhookPoster + __setWebhookPoster + webhook-case), `src/workspaces/_data/types.ts` (TriggerActionKind webhook), `src/workspaces/_components/AutomationPanel.tsx` (webhook-actie + url-veld), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/webhookAction.test.mts`, `docs/decisions/0125-outbound-webhook-action.md`.

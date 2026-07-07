@@ -1435,6 +1435,8 @@
       "acNotify": "Melden",
       "acEmitSignal": "Signaal uitzenden",
       "acStartStage": "Naar stage verplaatsen",
+      "acWebhook": "Roep een webhook aan",
+      "webhookUrl": "Webhook-URL",
       "acInvokeAi": "Workspace-AI vragen",
       "acInvokeRole": "Agent-rol draaien",
       "acRunCommand": "Commando draaien"

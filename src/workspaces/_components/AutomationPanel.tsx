@@ -16,7 +16,7 @@ import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
 const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'ticket.merged', 'suggestion.accepted', 'cron'];
-const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage'];
+const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage', 'webhook'];
 //? Flat i18n keys (the event kinds contain dots, which would break the translator's dot-nesting).
 const EVENT_KEY: Record<string, string> = {
   'ticket.created': 'workspaces.automation.evTicketCreated', 'ticket.merged': 'workspaces.automation.evTicketMerged',
@@ -25,7 +25,7 @@ const EVENT_KEY: Record<string, string> = {
   'suggestion.accepted': 'workspaces.automation.evSuggestionAccepted', cron: 'workspaces.automation.evCron',
 };
 const ACTION_KEY: Record<string, string> = {
-  notify: 'workspaces.automation.acNotify', 'emit-signal': 'workspaces.automation.acEmitSignal', 'start-stage': 'workspaces.automation.acStartStage',
+  notify: 'workspaces.automation.acNotify', 'emit-signal': 'workspaces.automation.acEmitSignal', 'start-stage': 'workspaces.automation.acStartStage', webhook: 'workspaces.automation.acWebhook',
   'invoke-workspace-ai': 'workspaces.automation.acInvokeAi', 'invoke-agent-role': 'workspaces.automation.acInvokeRole', 'run-command': 'workspaces.automation.acRunCommand',
 };
 const evKey = (e: string): string => EVENT_KEY[e] ?? 'workspaces.automation.evTicketCreated';
@@ -43,18 +43,20 @@ export default function AutomationPanel() {
   const [body, setBody] = useState('');
   const [targetStage, setTargetStage] = useState('');
   const [cron, setCron] = useState('0 9 * * *');
+  const [webhookUrl, setWebhookUrl] = useState('');
 
   const eventItems: DropdownItem[] = EVENTS.map((e) => ({ id: e, value: e, item: translate({ key: evKey(e) }) }));
   const actionItems: DropdownItem[] = ACTIONS.map((a) => ({ id: a, value: a, item: translate({ key: acKey(a) }) }));
   const stageItems: DropdownItem[] = stages.map((st) => ({ id: st.id, value: st.id, item: st.name }));
 
-  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setTargetStage(''); setRequiresApproval(false); };
+  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setTargetStage(''); setWebhookUrl(''); setRequiresApproval(false); };
   const create = () => {
     if (!name.trim()) return;
     const params: Record<string, unknown> = {};
     if (action === 'notify') { params.title = title || name; params.body = body; }
     if (action === 'emit-signal') { params.kind = title || 'custom'; }
     if (action === 'start-stage') { params.targetStageId = targetStage; }
+    if (action === 'webhook') { params.url = webhookUrl.trim(); }
     saveTrigger({ name: name.trim(), on, action, requiresApproval, params, ...(on === 'cron' ? { cron } : {}) });
     reset();
   };
@@ -129,6 +131,12 @@ export default function AutomationPanel() {
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.targetStage' })}</span>
               <Dropdown size="sm" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />
+            </div>
+          )}
+          {action === 'webhook' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.webhookUrl' })}</span>
+              <input value={webhookUrl} onChange={(e) => { setWebhookUrl(e.target.value); }} placeholder="https://example.com/hook" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary font-mono" />
             </div>
           )}
           <label className="flex items-center gap-2 text-sm text-common cursor-pointer">

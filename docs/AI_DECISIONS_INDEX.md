@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (123)
+## Decisions (124)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -136,6 +136,7 @@
 | 0122 | Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt | 🟢 accepted | content, publish, scheduling, freedom-program, multi-instance | — | `docs/decisions/0122-post-scheduling.md` |
 | 0123 | Logo watermark overlay in the render plan (O4); intro/outro concat deferred | 🟢 accepted | content, render, branding, freedom-program | — | `docs/decisions/0123-branding-watermark.md` |
 | 0124 | Per-platform publish variants (caption / hashtags / privacy) in the upload payload | 🟢 accepted | content, publish, freedom-program | — | `docs/decisions/0124-per-platform-publish-variants.md` |
+| 0125 | An outbound webhook automation action (X2, outbound half) | 🟢 accepted | automation, webhooks, extensibility, freedom-program | — | `docs/decisions/0125-outbound-webhook-action.md` |
 
 ## Summaries
 
@@ -1124,6 +1125,14 @@ The watchdog sweep gains a third responsibility: for every ticket with a REAL `n
 A normalized `PublishVariant { caption?, hashtags?, privacy? }` with `privacy: 'public'|'unlisted'|'private'`. `buildUploadRequest` takes an optional `variant` and maps it to each platform's own vocabulary — YouTube `privacyStatus` (public/unlisted/private), TikTok `privacy_level` (PUBLIC_TO_EVERYONE / SELF_ONLY; no "unlisted" → SELF_ONLY). A pure `composeCaption(title, variant)` builds the caption (override or title) + `#`-prefixed hashtags. Variants are stored per-piece on `ContentProject.publishVariants` (a `{ [platform]: variant }` JSON). A pure `extractPublishVariant(json, platform)` validates + pulls the entry; `performUpload` threads it into the upload. Defaults preserve the prior behaviour (title-only, private).
 
 → `docs/decisions/0124-per-platform-publish-variants.md`
+
+### 0125 — An outbound webhook automation action (X2, outbound half)
+
+**0125** · accepted · tags: automation, webhooks, extensibility, freedom-program · 2026-07-07
+
+A `webhook` `TriggerActionKind`: `executeTriggerAction` POSTs a compact event envelope (`{ event, ticketKey, payload, workspaceId }`) to a user-configured `params.url`. Requires `http(s)`; a non-2xx or a thrown request is an `error` outcome (best-effort — a bad webhook never wedges the pipeline, consistent with every other action). The poster is module-injectable (`__setWebhookPoster`) so it's tested offline. Surfaced in the AutomationPanel with a URL field.
+
+→ `docs/decisions/0125-outbound-webhook-action.md`
 
 ## Code governed by decisions
 

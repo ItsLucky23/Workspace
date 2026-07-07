@@ -8,11 +8,23 @@
 //? the #1 watchdog reprovisions it) · invoke-agent-role (dispatch a registered non-coding role →
 //? artifact). Self-contained (no Conductor import → no cycle; the Conductor calls fireEvent).
 
+import { tryCatch } from '@luckystack/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
 import { sendWebPushMany } from '../hooks/webPush';
 import { getAgentRole } from './agentRoles';
+
+//? X2 — outbound webhook poster. Injectable so tests capture the POST without a network. Default = a real
+//? fetch (best-effort; the caller treats a non-2xx / throw as an error outcome, never a pipeline wedge).
+export type WebhookPoster = (url: string, body: string) => Promise<{ ok: boolean; status: number }>;
+let webhookPoster: WebhookPoster = async (url, body) => {
+  //? External user-configured URL — not a framework `/api/*` route.
+  // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  return { ok: r.ok, status: r.status };
+};
+export function __setWebhookPoster(p: WebhookPoster): void { webhookPoster = p; }
 
 //? Bridge a genuinely-JSON value (read off a Json column, or built from params) to Prisma's Json
 //? WRITE type. Prisma splits read (JsonValue) from write (InputJsonValue); this is the standard
@@ -48,6 +60,17 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       //? A2 — also push it to every member's devices (best-effort; no-op without VAPID/subscriptions).
       await sendWebPushMany(prisma, members.map((m) => m.userId), { title, body, url: '/', ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'automation');
       return { status: 'executed', detail: `notified ${String(members.length)}` };
+    }
+    case 'webhook': {
+      //? X2 — POST a compact event envelope to a user-configured URL. Requires http(s); a non-2xx/throw is an
+      //? error outcome (best-effort, never throws). SSRF hardening (blocking internal targets) is a follow-up —
+      //? the URL is the workspace-owner's own configured endpoint.
+      const url = str(a.params, 'url');
+      if (!url || !/^https?:\/\//i.test(url)) return { status: 'noop', detail: 'no-url' };
+      const payload = { event: a.triggerName ?? 'trigger', ticketKey: a.ticketKey ?? null, payload: a.params.payload ?? null, workspaceId };
+      const [err, res] = await tryCatch(() => webhookPoster(url, JSON.stringify(payload)));
+      if (err || !res?.ok) return { status: 'error', detail: 'webhook-failed' };
+      return { status: 'executed', detail: `posted ${String(res.status)}` };
     }
     case 'emit-signal': {
       //? Append a WorkspaceSignal (monotonic seq) — the serial signal feed other triggers watch.

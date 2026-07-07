@@ -812,6 +812,7 @@ export type TriggerActionKind =
   | 'invoke-agent-role'
   | 'run-command'
   | 'emit-signal'
+  | 'webhook'
   | 'notify';
 
 //? Automation (04 §2, 03 §1). Materialized by the Conductor on accept (never the LLM).
