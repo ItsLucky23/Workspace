@@ -23,6 +23,7 @@ import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
+import { decomposeIntoScenes } from '../content/sceneDecompose';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
@@ -1133,6 +1134,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         if (order === undefined && durationMs === undefined) continue;
         await prisma.beat.updateMany({ where: { workspaceId: action.workspaceId, id: beatId, contentProjectId }, data: { ...(order === undefined ? {} : { order }), ...(durationMs === undefined ? {} : { durationMs }) } });
       }
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'content-decompose-video': {
+      //? V3 — long-video decomposition: split the piece's script beats into generated, continuity-linked video
+      //? scenes (the multi-clip render (V2) stitches them). Needs a script; re-decomposing replaces the scenes.
+      const contentProjectId = str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
+      if (!script) return;
+      const sceneDurationMs = typeof payload.sceneDurationMs === 'number' ? payload.sceneDurationMs : undefined;
+      await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;
     }

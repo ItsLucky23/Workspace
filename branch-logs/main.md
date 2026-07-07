@@ -2956,3 +2956,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/unit/videoStitch.test.mts` 17/17 (concat-vs-xfade, per-clip trim, still-loop, audio-map, monotone offsets, degrade) · contentAssembly 12/12 (geen regressie) · videoScenes 14/14 · live-render-test uitgebreid met een 2-scene stitch (skipt zonder Docker/keys).
 
 **Files:** `server/content/render.ts` (RenderScene + buildVideoStitchPlan + renderScenes), `server/content/assembly.ts` (scenes-branch + effectiveTotalMs/segmentCount), `tests/unit/videoStitch.test.mts` (nw), `tests/live/renderLive.live.mts` (stitch), `docs/decisions/0147-*.md`.
+
+## 2026-07-08 — V3: long-video-decompositie (content-decompose-video) — ADR 0148
+
+**Fase V stap 3 — "maak 60s over X" → N scenes die inspelen.**
+- **`buildContinuityPrompts`** (puur, getest): één prompt per beat; elke scene na de eerste krijgt "Continues seamlessly from the previous scene: <prev>". Beat zonder visualPrompt → text-fallback.
+- **`decomposeIntoScenes`**: genereert per beat een clip via `runQueuedMediaAsset` (video-gen; stub zonder key) + maakt een VideoScene (scene 0 = cut, rest = xfade → vloeien in elkaar). Budget-guarded; re-decompose VERVANGT.
+- **`content-decompose-video`** op: vindt de laatste script van de piece + decomposeert; optionele `sceneDurationMs`.
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/unit/sceneDecompose.test.mts` 9/9 (continuity, first-no-hint, text-fallback, empty) · `tests/integration/decomposeVideo.test.mts` 9/9 (scene-per-beat, transitions cut/xfade, duration, video-asset-link, continuity-prompt, replace-on-redecompose).
+
+**Files:** `server/content/sceneDecompose.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op), `tests/unit/sceneDecompose.test.mts` + `tests/integration/decomposeVideo.test.mts` (nw), `docs/decisions/0148-*.md`.

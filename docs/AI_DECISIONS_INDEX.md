@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (146)
+## Decisions (147)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -159,6 +159,7 @@
 | 0145 | L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles) | 🟢 accepted | assistant, intake, content, tickets, single-writer, idea-to-outcome | — | `docs/decisions/0145-conversational-intake-copilot.md` |
 | 0146 | V1 — the video-timeline scene model (VideoScene + content-save-scenes) | 🟢 accepted | content, video, timeline, schema, idea-to-outcome | — | `docs/decisions/0146-video-scene-model.md` |
 | 0147 | V2 — real multi-clip video render (buildVideoStitchPlan + renderScenes) | 🟢 accepted | content, video, render, ffmpeg, idea-to-outcome | — | `docs/decisions/0147-multi-clip-video-render.md` |
+| 0148 | V3 — long-video decomposition (content-decompose-video) | 🟢 accepted | content, video, decomposition, idea-to-outcome | — | `docs/decisions/0148-long-video-decomposition.md` |
 
 ## Summaries
 
@@ -1331,6 +1332,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`buildVideoStitchPlan(scenes, audioFile, outName, format)`** — a pure, exported ffmpeg-filter_complex plan that stitches real scenes: each scene is normalized to one uniform stream (a clip is `trim`med to its in/out-point; a still is `-loop`ed + time-bounded, then everything is scaled/fps/format-matched). Joining is a single exact `concat` when every transition is a hard cut, or an `xfade` chain when any scene crossfades in (offsets = the running composited length minus the transition, so fades overlap correctly). Optional audio is the last input, mapped + `-shortest`. **`renderScenes(...)`** — the real-video render entry (mirrors `renderTimeline`): localizes each scene's clip/still + the voice, builds the stitch plan, runs the SAME injectable ffmpeg-in-Docker runner, typed degrade on failure. **`assembly.ts` prefers scenes.** When the piece has a `VideoScene` timeline it renders THAT (real stitch); otherwise it falls back to the beat slideshow. The render metadata (`totalMs`, `sceneCount`) reflects whichever path ran.
 
 → `docs/decisions/0147-multi-clip-video-render.md`
+
+### 0148 — V3 — long-video decomposition (content-decompose-video)
+
+**0148** · accepted · tags: content, video, decomposition, idea-to-outcome · 2026-07-08
+
+**`buildContinuityPrompts(beats)`** (pure, tested): one prompt per beat, where every scene after the first is told to "continue seamlessly from the previous scene: <prev visual>", so consecutive clips are visually coherent. The first scene has no continuity hint; a beat with no `visualPrompt` falls back to its text. **`decomposeIntoScenes(...)`** generates a clip per beat via the shared queue-aware media lifecycle (`runQueuedMediaAsset`, feature `video-gen` — a stub clip without a key), and creates a `VideoScene` linking it. Scenes after the first crossfade in (`transitionIn: 'xfade'`) so they flow together. Budget-guarded (partial on cap) and re-decomposing REPLACES the scene list. **`content-decompose-video`** control-op (contentControl route, RBAC work-tickets): finds the piece's latest script and decomposes it; an optional `sceneDurationMs` sets the per-scene length.
+
+→ `docs/decisions/0148-long-video-decomposition.md`
 
 ## Code governed by decisions
 
