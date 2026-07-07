@@ -82,6 +82,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | --- | --- | --- | --- |
 | `workspaces/acceptSuggestion/v1` | — | — | — |
 | `workspaces/addComment/v1` | — | — | — |
+| `workspaces/addInfoDoc/v1` | — | — | — |
 | `workspaces/agentControl/v1` | — | — | — |
 | `workspaces/answerInput/v1` | — | — | — |
 | `workspaces/archive/v1` | — | — | — |

@@ -903,6 +903,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Return the workspace's full context-doc set as the delta (client replaces list).
       return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
     }
+    case 'create-info-source': {
+      //? K2 — a USER-UPLOADED context doc (md/txt) → a first-class context-doc InfoSource the AI can use
+      //? (creative RAG grounding lands in K3). Upsert by name; enabled OFF by default (the user toggles it on).
+      const name = str(payload, 'name');
+      const content = str(payload, 'content') ?? '';
+      if (!name || content.trim().length === 0) return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
+      const summary = content.split('\n').map((l) => l.trim()).find((l) => l.length > 0)?.slice(0, 140) ?? '';
+      const existing = await prisma.infoSource.findFirst({ where: { workspaceId: action.workspaceId, mode: 'context-doc', name } });
+      await (existing
+        ? prisma.infoSource.update({ where: { id: existing.id }, data: { content, summary, source: 'uploaded', note: 'uploaded' } })
+        : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'uploaded', name, content, summary, note: 'uploaded', enabled: false, usedByStages: [] } }));
+      return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
+    }
     case 'scan-index': {
       //? RAG index (07 §D): read the linked repo's code, chunk + embed it, upsert the RagEntry
       //? store. Returns the index result (files/chunks/commit/embedder) as the delta.

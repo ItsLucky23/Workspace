@@ -539,6 +539,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? K2 — uploaded-doc delta → replace the context-doc list (same shape as scan-docs).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/addInfoDoc', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const docs = serverOutput.docs;
+      setSnap((s) => ({ ...s, docs }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? scan-index delta → store the latest RAG code-index status (07 §D). Broadcast to the
   //? whole room so every client shows the fresh files/chunks/commit/embedder.
   useEffect(() => upsertSyncEventCallback({
@@ -924,6 +934,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       scanDocs: () => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/scanDocs', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? K2 — register an uploaded doc (md/txt) as a context-doc InfoSource the AI can use.
+      addInfoDoc: (name, content) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: nextReqId() }, receiver: room });
       },
       scanIndex: scanIndexApi,
       ragIndex,

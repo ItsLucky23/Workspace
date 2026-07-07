@@ -99,6 +99,8 @@ export interface WorkspacesCtx {
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
+  //? K2 — register an uploaded doc (md/txt) as a context-doc InfoSource.
+  addInfoDoc: (name: string, content: string) => void;
   //? RAG code index (07 §D) — trigger a reindex + the latest index status (null until scanned).
   scanIndex: () => void;
   ragIndex: RagIndexStatus | null;

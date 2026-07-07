@@ -4,7 +4,7 @@
 //? lots of content); Details opens a small CENTERED overlay via menuHandler
 //? (little data — no big sidebar). Dummy data; desktop-first.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -142,10 +142,18 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo } = useWorkspaces();
+  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
   const [reindexing, setReindexing] = useState(false);
+  //? K2 — upload a doc (md/txt) → read its text client-side → register it as a context-doc InfoSource.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onUploadDoc = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    void file.text().then((text) => { if (text.trim().length > 0) addInfoDoc(file.name, text); });
+  };
   //? Clear the pending state once the reindex delta lands (the RAG status updates).
   useEffect(() => { setReindexing(false); }, [ragIndex]);
 
@@ -177,7 +185,8 @@ export default function Sources() {
           <div className="flex items-center gap-2 shrink-0">
             {repo.linked && <WsButton variant="secondary" icon="magnifying-glass" onClick={() => { scanDocs(); }}>{translate({ key: 'workspaces.sources.scanRepo' })}</WsButton>}
             {repo.linked && <WsButton variant="secondary" icon="database" disabled={reindexing} onClick={() => { setReindexing(true); scanIndex(); }}>{translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' })}</WsButton>}
-            <WsButton variant="secondary" icon="plus" onClick={noop}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
+            <input ref={fileRef} type="file" accept=".md,.txt,.markdown,text/plain,text/markdown" onChange={onUploadDoc} className="hidden" />
+            <WsButton variant="secondary" icon="plus" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
           </div>
         )}
       </div>

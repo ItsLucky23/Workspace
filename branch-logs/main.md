@@ -2587,3 +2587,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (fixte tryCatch-narrowing + optional-chain) · ai:lint · build · importAsset 7/7 (persistMediaBytes + import-op ready-asset + non-/media-url rejected). i18n ×4. HTTP-route zelf = manueel/live (draaiende server).
 
 **Files touched:** `server/media/uploadRoute.ts` (nw), `server/server.ts`, `server/orchestrator/conductor.ts` (content-import-asset), `server/control/rbac.ts`, `src/workspaces/_functions/{controlApi.ts,uploadMedia.ts(nw)}`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_components/MediaUploadButton.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/importAsset.test.mts`, `docs/decisions/0106-media-upload-import.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM K2: doc-upload → context-doc InfoSource (dode noop gekilld) — ADR 0107
+
+**Wat ik deed:** de Sources-"Upload spec"-knop was een `noop`. Nu: nieuwe `create-info-source`-op registreert een geüploade doc als `source:'uploaded'` context-doc InfoSource (upsert-by-name, `enabled:false` default), retourneert de volle doc-lijst (zelfde shape + callback als scan-docs) via nieuwe `addInfoDoc` `_sync`-route + provider-methode. Client leest de bestandstekst (`File.text()`) → geen binaire upload nodig voor md/txt. Sources-knop wired naar file-picker.
+
+**Verify:** tsc 0 · lint · ai:lint · build · infoSourceUpload 6/6 (uploaded-source + off-by-default + summary + upsert). md/txt (pdf = latere dep). K3 wired straks de creatieve features om erop te retrieven.
+
+**Files touched:** `server/orchestrator/conductor.ts` (create-info-source), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/addInfoDoc_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/sources/page.tsx`, `tests/integration/infoSourceUpload.test.mts`, `docs/decisions/0107-doc-upload-infosource.md`.

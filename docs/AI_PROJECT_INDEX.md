@@ -47,12 +47,13 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (44)
+## Sync routes (45)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `sync/workspaces/acceptSuggestion/v1` | yes | — | login | — | **no** | — | Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI |
 | `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
+| `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | **no** | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
 | `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
 | `sync/workspaces/answerInput/v1` | yes | — | login | — | **no** | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
 | `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
@@ -103,9 +104,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 77 |
+| _(unowned)_ | 78 |
 
-**Test coverage**: 3/79 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/80 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -143,6 +144,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioSaveBrief/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
+- `sync/workspaces/addInfoDoc/v1`
 - `sync/workspaces/agentControl/v1`
 - `sync/workspaces/answerInput/v1`
 - `sync/workspaces/archive/v1`
@@ -158,8 +160,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/contentSettings/v1`
 - `sync/workspaces/findingAction/v1`
 - `sync/workspaces/gitlabSettings/v1`
-- `sync/workspaces/invite/v1`
-- … +26 more
+- … +27 more
 
 ## Pages (28)
 

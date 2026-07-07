@@ -79,6 +79,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'forge-connect': CAP.workspaceSettings,
   'link-repo': CAP.workspaceSettings,
   'scan-docs': CAP.editPipeline,
+  'create-info-source': CAP.editPipeline,
   'scan-index': CAP.editPipeline,
   'mr-create': CAP.workTickets,
   'mr-comment': CAP.workTickets,

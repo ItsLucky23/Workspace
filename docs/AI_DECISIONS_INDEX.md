@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (105)
+## Decisions (106)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -118,6 +118,7 @@
 | 0104 | The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly | 🟢 accepted | ai, providers, gemini, keys, freedom-program | — | `docs/decisions/0104-gemini-workspace-key.md` |
 | 0105 | The stage persona (system prompt) + definition-of-done are editable in the pipeline UI | 🟢 accepted | pipeline, stages, ui, freedom-program | — | `docs/decisions/0105-stage-persona-in-ui.md` |
 | 0106 | Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset | 🟢 accepted | media, upload, content, http, freedom-program | — | `docs/decisions/0106-media-upload-import.md` |
+| 0107 | Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real | 🟢 accepted | sources, infosource, knowledge, freedom-program | — | `docs/decisions/0107-doc-upload-infosource.md` |
 
 ## Summaries
 
@@ -962,6 +963,14 @@ Add two fields to the pipeline stage editor's General tab: **AI persona (system 
 A new authenticated HTTP route `POST /media/upload?ws=<id>&ext=<ext>` (`server/media/uploadRoute.ts`, registered in `server.ts` next to the download route). It reads the file as the **raw request body** (no multipart dep needed) into a bounded Buffer (64 MB cap), validates the extension against an image/video allowlist, and `persistMediaBytes(...)` → returns `{ url: '/media/<uuid>.<ext>', kind }`. Authed via the session token + membership-gated (`workTickets`) + tenant-scoped by the `ws` param. A reusable `MediaUploadButton` + `uploadMedia()` client helper. The piece page uses it to (a) upload a reference for reference-conditioned gen (replacing URL-only), and (b) **import your own** image/video via a new `content-import-asset` control-op that creates a `ready` ContentAsset (no MediaJob) on the single-writer chain (B-23) and broadcasts the live delta.
 
 → `docs/decisions/0106-media-upload-import.md`
+
+### 0107 — Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real
+
+**0107** · accepted · tags: sources, infosource, knowledge, freedom-program · 2026-07-07
+
+A new `create-info-source` control-op registers an uploaded doc as a `source: 'uploaded'` context-doc InfoSource (upsert by name, `enabled: false` by default — the user toggles it on). It returns the full context-doc list as the delta (same shape + client callback as `scan-docs`), via a new `addInfoDoc` `_sync` route + provider method. The client reads the file's text (`File.text()`) and sends it — **no binary upload needed for text docs** (md/txt); the K1 `/media/upload` route is for binary media, this is plain text over the control channel.
+
+→ `docs/decisions/0107-doc-upload-infosource.md`
 
 ## Code governed by decisions
 
