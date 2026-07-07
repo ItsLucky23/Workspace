@@ -2705,3 +2705,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · needsInputRemind 12/12 (pure gate + baseline + re-ping-na-window + geen-double-ping + answered-stopt) · watchdog 22/22 (geen regressie).
 
 **Files touched:** `prisma/schema.prisma` (Ticket.remindedAt), `server/orchestrator/watchdog.ts` (shouldRemind + re-ping-blok + REMIND_MS + imports), `server/orchestrator/conductor.ts` (clear remindedAt op answer), `tests/integration/needsInputRemind.test.mts`, `docs/decisions/0120-needs-input-reping.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM O1: export-formaten (9:16/1:1/16:9) + .srt/.vtt-captions — ADR 0121
+
+**Wat ik deed (Fase O start):** render was vast 1280×720/30fps landscape, captions-metadata werd nooit als ondertitels geëxporteerd. Nu: `buildFfmpegPlan` neemt een optionele `RenderFormat`; `resolveRenderFormat(key)` → `16:9`(default)/`9:16`(720×1280 vertical)/`1:1`(1080×1080), scale/pad+fps uit de preset. `renderTimeline` accepteert een `format`-string. Pure `buildSrt/buildVtt(captions, totalMs)` verdelen de (untimed) caption-regels gelijk over de duur. Format-picker-UI + .srt-file-emissie in de media-store = dunne follow-up (engine+emitters getest/klaar).
+
+**Verify:** tsc 0 · lint (pad→module-scope + narrowing i.p.v. cast) · ai:lint · build · renderFormats 16/16 (9:16-scale + srt/vtt-cues + safe-fallback) · render 18/18 (geen regressie — optionele param).
+
+**Files touched:** `server/content/render.ts` (RenderFormat-presets + parametrized plan + buildSrt/buildVtt + renderTimeline format-param), `tests/unit/renderFormats.test.mts`, `docs/decisions/0121-export-formats-captions.md`.

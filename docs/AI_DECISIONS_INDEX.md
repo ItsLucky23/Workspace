@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (119)
+## Decisions (120)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -132,6 +132,7 @@
 | 0118 | Per-type web-push opt-out (assignment / automation / AI-suggestion), default on | 🟢 accepted | push, notifications, preferences, freedom-program | — | `docs/decisions/0118-push-per-type-preferences.md` |
 | 0119 | Per-workspace autonomy level modulates the per-stage approval gate ("ask me less") | 🟢 accepted | autonomy, approvals, engine, freedom-program, phone-first | — | `docs/decisions/0119-autonomy-dials.md` |
 | 0120 | The watchdog re-pings the assignee about a stale open question (A5, first half) | 🟢 accepted | approvals, watchdog, notifications, freedom-program, phone-first | — | `docs/decisions/0120-needs-input-reping.md` |
+| 0121 | Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export | 🟢 accepted | content, render, export, captions, freedom-program | — | `docs/decisions/0121-export-formats-captions.md` |
 
 ## Summaries
 
@@ -1088,6 +1089,14 @@ Three `User.preferences` booleans — `pushOnAssignment`, `pushOnAutomation`, `p
 The watchdog sweep gains a third responsibility: for every ticket with a REAL `needsInput` banner, it baselines `Ticket.remindedAt` on first sight (no immediate ping), then **re-pings the assignee** (routing — `assigneeId`, falling back to `creatorId`) at most once per `WS_NEEDS_INPUT_REMIND_MIN` (default 120 min) via a `reminder` notification + a web-push. `remindedAt` is cleared on the answer path, so a fresh question starts a fresh clock. A pure `shouldRemind(remindedAt, now, intervalMs)` drives the timing (unit-tested; `now` injected).
 
 → `docs/decisions/0120-needs-input-reping.md`
+
+### 0121 — Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export
+
+**0121** · accepted · tags: content, render, export, captions, freedom-program · 2026-07-07
+
+`buildFfmpegPlan` takes an optional `RenderFormat`; `resolveRenderFormat(key)` maps `16:9` (1280×720, the default), `9:16` (720×1280 vertical), `1:1` (1080×1080) — the scale/pad target + fps come from the preset. `renderTimeline` accepts a `format` string and passes it through. Unknown/absent → the 16:9 default. Pure `buildSrt(captions, totalMs)` + `buildVtt(captions, totalMs)` emit well-formed subtitle files by distributing the (untimed) caption LINES evenly across the duration.
+
+→ `docs/decisions/0121-export-formats-captions.md`
 
 ## Code governed by decisions
 
