@@ -97,7 +97,7 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
 //? an open/download link when reachable, and — for a finished render — a publish button per connected
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
-function AssetCard({ asset, connectedPlatforms, onPublish, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
   const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
@@ -134,6 +134,13 @@ function AssetCard({ asset, connectedPlatforms, onPublish, translate }: { asset:
               <Icon name="paper-plane" /> {platform}
             </button>
           ))}
+        </div>
+      )}
+      {/* I1 — regenerate + variations for a ready AI-generated asset (uses the current direction as a tweak). */}
+      {asset.regenerable && (
+        <div className="flex items-center gap-1 px-2 pb-2">
+          <button type="button" onClick={() => { onRegenerate(asset.id, 1); }} title={translate({ key: 'workspaces.content.regenerate' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="wave-square" /> {translate({ key: 'workspaces.content.regenerate' })}</button>
+          <button type="button" onClick={() => { onRegenerate(asset.id, 3); }} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer motion-safe:active:scale-95">{translate({ key: 'workspaces.content.variations' })}</button>
         </div>
       )}
     </div>
@@ -198,6 +205,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
       const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishConfirmTitle' }), content: translate({ key: 'workspaces.content.publishConfirmBody' }) });
       if (!ok) return;
       runContentOp('content-request-publish', piece.id, { assetId, platform });
+    })();
+  };
+
+  //? I1 — regenerate an asset (N variations), using the current free-form direction as the tweak. Costs money.
+  const regenerate = (assetId: string, count: number) => {
+    void (async () => {
+      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: translate({ key: 'workspaces.content.costWarning' }) });
+      if (!ok) return;
+      runContentOp('content-regenerate', piece.id, { assetId, count: String(count), ...(extra.trim() ? { tweak: extra.trim() } : {}) });
     })();
   };
 
@@ -282,7 +298,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} translate={translate} />)}
                 </div>
               )}
             </div>

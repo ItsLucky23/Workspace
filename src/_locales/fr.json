@@ -807,6 +807,8 @@
       "importOwn": "Importer le vôtre",
       "modelsTitle": "Modèles média (avancé)",
       "modelsDesc": "Remplacez le modèle IA par fonction (ex. un modèle 3D low-poly, ou un modèle d'image plus rapide/économique). Vide = la valeur par défaut.",
+      "regenerate": "Régénérer",
+      "variations": "3 variantes",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Connexions de publication",

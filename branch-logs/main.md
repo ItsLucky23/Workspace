@@ -2639,3 +2639,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Files touched:** `server/media/providers/fal.ts` (composeFalInput), `server/media/workspaceKeys.ts` (models), `server/media/registry.ts` (injectie), `server/orchestrator/conductor.ts` (save-media-provider model), `server/read/workspaceSnapshot.ts` (mediaModels), `src/workspaces/_data/types.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/content/settings/page.tsx` (MediaModelsSection), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/mediaModelOverride.test.mts`, `docs/decisions/0112-media-model-choice.md`.
 
 **FASE P COMPLEET (P1–P3):** tekst-provider-picker · Gemini-model+temperature · media-modelkeuze. Volgende: Fase I (iteratie: regenerate/varianten).
+
+## 2026-07-07 — FREEDOM_PROGRAM I1: regenerate + varianten op content-assets — ADR 0113
+
+**Wat ik deed (Fase I start):** content-assets waren one-shot. Nu een `content-regenerate`-op: leest de MediaJob van een asset (feature/prompt/referenceUrl/style) + re-runt `generateMediaAsset` N× (count 1–4) met een optionele `tweak` in de instructies — elke variant via de queue-aware lifecycle (queued→processing→ready + delta). Asset-card toont **Regenerate** + varianten-knop voor een `regenerable` asset (nieuwe summary-vlag: ready + AI-gegenereerd + niet-geïmporteerd), met de huidige direction-box als tweak, achter de kosten-confirm.
+
+**Verify:** tsc 0 · lint (JSX-literal ×3 → vertaalde tekst) · ai:lint · build · contentRegenerate 4/4 (seed + 2 varianten + imported-noop). i18n ×4.
+
+**Files touched:** `server/orchestrator/conductor.ts` (content-regenerate), `server/control/rbac.ts`, `server/read/mappers.ts` (regenerable-vlag), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx` (regenerate/varianten-knoppen), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentRegenerate.test.mts`, `docs/decisions/0113-content-regenerate-variations.md`.

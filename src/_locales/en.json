@@ -807,6 +807,8 @@
       "importOwn": "Import your own",
       "modelsTitle": "Media models (advanced)",
       "modelsDesc": "Override the AI model per feature (e.g. a low-poly 3D model, or a faster/cheaper image model). Empty = the built-in default.",
+      "regenerate": "Regenerate",
+      "variations": "3 variations",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publishing connections",

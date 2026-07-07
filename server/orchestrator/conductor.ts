@@ -1103,6 +1103,34 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
     }
+    case 'content-regenerate': {
+      //? I1 — re-run a produced asset's generation (same feature/prompt/reference/style from its MediaJob) as
+      //? N NEW variations, with an optional "make it more X" tweak. Each goes through the queue-aware lifecycle
+      //? (generateMediaAsset). Only the generic single-asset features (not per-beat images/voice) are re-runnable.
+      const assetId = str(payload, 'assetId');
+      if (!assetId) return;
+      const asset = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: assetId } });
+      if (!asset?.mediaJobId) return;
+      const job = await prisma.mediaJob.findUnique({ where: { id: asset.mediaJobId } });
+      if (!job) return;
+      const isMediaFeature = (v: string): v is MediaFeature => (['image-gen', 'reference-image', 'video-gen', 'tts', 'music', 'sfx', 'avatar', 'model-3d'] as string[]).includes(v);
+      if (!isMediaFeature(job.feature)) return;
+      const input = job.input;
+      const rec = input !== null && typeof input === 'object' && !Array.isArray(input) ? input : {};
+      const prompt = typeof rec.prompt === 'string' ? rec.prompt : undefined;
+      const referenceUrl = typeof rec.referenceUrl === 'string' ? rec.referenceUrl : undefined;
+      const style = job.styleId ? await prisma.stylePreset.findUnique({ where: { id: job.styleId }, select: { key: true } }) : null;
+      const tweak = str(payload, 'tweak');
+      const count = Math.min(4, Math.max(1, Number(str(payload, 'count') ?? '1') || 1));
+      for (let i = 0; i < count; i += 1) {
+        await generateMediaAsset(prisma, {
+          workspaceId: action.workspaceId, contentProjectId: asset.contentProjectId, feature: job.feature,
+          ...(prompt ? { prompt } : {}), ...(referenceUrl ? { referenceUrl } : {}),
+          ...(style ? { styleKey: style.key } : {}), ...(tweak ? { extraInstructions: tweak } : {}), label: 'Regenerate',
+        });
+      }
+      return;
+    }
     //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content
     //? stages / archive it. The Conductor is the only writer of ContentProject.stageId/status (B-23).
     case 'content-create': {

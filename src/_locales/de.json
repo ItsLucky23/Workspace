@@ -807,6 +807,8 @@
       "importOwn": "Eigenes importieren",
       "modelsTitle": "Medienmodelle (erweitert)",
       "modelsDesc": "Überschreibe das KI-Modell pro Funktion (z. B. ein Low-Poly-3D-Modell oder ein schnelleres/günstigeres Bildmodell). Leer = die Vorgabe.",
+      "regenerate": "Neu generieren",
+      "variations": "3 Varianten",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Veröffentlichungs-Verbindungen",

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (111)
+## Decisions (112)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -124,6 +124,7 @@
 | 0110 | A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam | 🟢 accepted | ai, providers, freedom-program | — | `docs/decisions/0110-text-provider-per-feature.md` |
 | 0111 | Per-workspace Gemini model + temperature tuning (Claude has no such knob — PTY-billed) | 🟢 accepted | ai, providers, gemini, tuning, freedom-program | — | `docs/decisions/0111-gemini-model-temperature.md` |
 | 0112 | Per-request + per-workspace media model choice (low-poly / fast vs quality) | 🟢 accepted | media, fal, models, freedom-program | — | `docs/decisions/0112-media-model-choice.md` |
+| 0113 | Regenerate + variations on a produced content asset (with a tweak), via the queue-aware lifecycle | 🟢 accepted | content, media, iteration, freedom-program | — | `docs/decisions/0113-content-regenerate-variations.md` |
 
 ## Summaries
 
@@ -1016,6 +1017,14 @@ Per-workspace `Workspace.geminiModel` + `Workspace.geminiTemperature` (strings; 
 `composeFalInput` now consults **`req.params.model`** (a per-request model id) → picks the fal model, and strips `model` from the input body (it's a routing param, not a fal input field). Falls back to the env/default. A **per-workspace** model override is stored as `__media_model_<feature>` (mirrors the provider-override store); `loadWorkspaceMediaConfig` loads it (`cfg.models`), and `runMediaGeneration` injects it into `params.model` (the caller's own `params.model` still wins). Saved via the extended `save-media-provider` op ('default' clears it). The content settings expose an advanced **free-text model id per feature** (empty = the built-in default, shown as the placeholder), surfaced from the snapshot (`content.mediaModels`).
 
 → `docs/decisions/0112-media-model-choice.md`
+
+### 0113 — Regenerate + variations on a produced content asset (with a tweak), via the queue-aware lifecycle
+
+**0113** · accepted · tags: content, media, iteration, freedom-program · 2026-07-07
+
+A `content-regenerate` control-op: given an asset id, it loads the asset's `MediaJob` (feature + prompt + referenceUrl + style), and re-runs `generateMediaAsset` **N times** (`count`, 1–4) with an optional `tweak` appended to the instructions — each variation goes through the queue-aware lifecycle (queued → processing → ready + live delta), so the timer/queue UX is identical to a fresh gen. The asset card shows **Regenerate** + a variations (×3) button for a **`regenerable`** asset (a ready, AI-generated, non-imported asset — a new summary flag from `toContentAssetSummary`), using the piece's current free-form direction as the tweak. Behind the cost confirm (B-23; it spends).
+
+→ `docs/decisions/0113-content-regenerate-variations.md`
 
 ## Code governed by decisions
 
