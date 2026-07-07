@@ -9,10 +9,12 @@ import { copyFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import * as pty from 'node-pty';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
-import { renderStage, type StageArtifacts } from './renderStage';
+
+import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
+import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
@@ -166,6 +168,28 @@ export function resolveStageGate(stageGate: boolean, level: string | null | unde
   return stageGate;
 }
 
+//? X1 — the workspace's enabled MCP integration tools → { name, command, env } for renderStage. Each field's
+//? referenced EnvVar (decrypted) becomes an env var (keyed by the EnvVar key). Best-effort — any failure ⇒ [].
+async function loadMcpIntegrations(prisma: PrismaClient, workspaceId: string): Promise<McpIntegration[]> {
+  const [, toolRowsRaw] = await tryCatch(() => prisma.integrationTool.findMany({ where: { workspaceId } }));
+  //? The composite (mcp/fields) payload type erases through tryCatch; narrow to just the fields we read.
+  const toolRows = (toolRowsRaw ?? []) as { name: string; mcp: { enabled: boolean; command: string }; fields: { envVarId: string | null }[] }[];
+  const enabled = toolRows.filter((t) => t.mcp.enabled && t.mcp.command.trim().length > 0);
+  if (enabled.length === 0) return [];
+  const envIds = enabled.flatMap((t) => t.fields.map((f) => f.envVarId).filter((id): id is string => typeof id === 'string' && id.length > 0));
+  const [, envRows] = await tryCatch(() => prisma.envVar.findMany({ where: { id: { in: envIds } } }));
+  const byId = new Map<string, { key: string; value: string; secret: boolean }>();
+  for (const e of envRows ?? []) byId.set(e.id, { key: e.key, value: e.value, secret: e.secret });
+  return enabled.map((t) => {
+    const env: Record<string, string> = {};
+    for (const f of t.fields) {
+      const ev = f.envVarId ? byId.get(f.envVarId) : undefined;
+      if (ev) env[ev.key] = ev.secret ? (decryptSecret(ev.value) ?? ev.value) : ev.value;
+    }
+    return { name: t.name, command: t.mcp.command, ...(Object.keys(env).length > 0 ? { env } : {}) };
+  });
+}
+
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
 //? serial chain. `prisma` is passed in so this stays callable from the Conductor.
@@ -215,7 +239,11 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     : await tryCatch(() => latestHandoff(prisma, workspaceId, sessionKey));
   const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
 
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}) });
+  //? X1 — mount the workspace's ENABLED MCP integration tools: their command + the credentials (each field's
+  //? referenced EnvVar, decrypted) injected as env. Best-effort — a read failure just omits integrations.
+  const integrations = await loadMcpIntegrations(prisma, workspaceId);
+
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}) });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
 
   //? The ONE runtime row for this worker session (04b §7) — created here (nothing else

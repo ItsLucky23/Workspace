@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (125)
+## Decisions (126)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -138,6 +138,7 @@
 | 0124 | Per-platform publish variants (caption / hashtags / privacy) in the upload payload | 🟢 accepted | content, publish, freedom-program | — | `docs/decisions/0124-per-platform-publish-variants.md` |
 | 0125 | An outbound webhook automation action (X2, outbound half) | 🟢 accepted | automation, webhooks, extensibility, freedom-program | — | `docs/decisions/0125-outbound-webhook-action.md` |
 | 0126 | Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half | 🟢 accepted | ai, providers, gemini, extensibility, freedom-program | — | `docs/decisions/0126-custom-gemini-endpoint.md` |
+| 0127 | The user's MCP integration command is mounted into the container .mcp.json (X1) | 🟢 accepted | extensibility, mcp, containers, freedom-program | — | `docs/decisions/0127-mcp-integration-wiring.md` |
 
 ## Summaries
 
@@ -1142,6 +1143,14 @@ A `webhook` `TriggerActionKind`: `executeTriggerAction` POSTs a compact event en
 A per-workspace `Workspace.geminiBaseUrl` + a `WS_GEMINI_BASE_URL` env, resolved in `resolveGeminiConfig` (workspace override > env > Google default) alongside the P2 model/temperature read (one query). A pure `geminiEndpoint(baseUrl, model)` builds the `…/models/<model>:generateContent` URL, trimming trailing slashes. Edited in the AI-tab (a base-URL field) through the same `save-ai-instruction` op as the other Gemini settings.
 
 → `docs/decisions/0126-custom-gemini-endpoint.md`
+
+### 0127 — The user's MCP integration command is mounted into the container .mcp.json (X1)
+
+**0127** · accepted · tags: extensibility, mcp, containers, freedom-program · 2026-07-07
+
+`renderStage` now also emits one stdio MCP server per **enabled** integration tool: a pure `parseMcpCommand(cmd)` splits the command string into `{ command, args }`, `mcpKey(name)` sanitizes the server key, and the tool's credentials are injected as `env`. `stageRunner.loadMcpIntegrations` resolves each `IntegrationField.envVarId` to its EnvVar (decrypted) and passes the tools into the (still-pure) renderer. Skills + integrations coexist in one `.mcp.json`.
+
+→ `docs/decisions/0127-mcp-integration-wiring.md`
 
 ## Code governed by decisions
 

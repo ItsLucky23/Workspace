@@ -4,7 +4,7 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 import { parseTurnResult, renderPromptTemplate } from '../../server/orchestrator/turnResult';
-import { renderStage } from '../../server/orchestrator/renderStage';
+import { renderStage, parseMcpCommand } from '../../server/orchestrator/renderStage';
 import type { PipelineStageCfg } from '../../src/workspaces/_data/types';
 
 //? A minimal-but-complete stage cfg (renderStage only reads name/instructions/commands/skills).
@@ -59,6 +59,20 @@ async function run(): Promise<void> {
 
   const mcp = JSON.parse(art.mcpJson) as { mcpServers: Record<string, unknown> };
   assert('rag' in mcp.mcpServers, 'skillKeys → mcp server entry');
+
+  //? X1 — an enabled MCP integration tool is mounted with its command parsed + credentials injected as env.
+  const artInt = renderStage(stageCfg({}), { ticketId: 'DEV-3', carryOver: null, integrations: [{ name: 'My Slack Tool', command: 'npx -y slack-mcp --team acme', env: { SLACK_TOKEN: 'xoxb-1' } }] });
+  const mcpInt = JSON.parse(artInt.mcpJson) as { mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> };
+  const entry = mcpInt.mcpServers['my-slack-tool'];
+  assert(entry != null, 'the integration name → a sanitized mcp server key');
+  eq(entry.command, 'npx', 'the command is parsed (first token)');
+  assert(entry.args.includes('slack-mcp') && entry.args.includes('--team'), 'the args are parsed from the command string');
+  eq(entry.env?.SLACK_TOKEN, 'xoxb-1', 'the credentials are injected as env');
+  assert('rag' in mcpInt.mcpServers, 'skills + integrations coexist in .mcp.json');
+
+  eq(parseMcpCommand('npx -y pkg').command, 'npx', 'parseMcpCommand: first token is the binary');
+  eq(parseMcpCommand('  solo  ').args.length, 0, 'parseMcpCommand: no args when only a binary');
+  eq(parseMcpCommand('').command, '', 'parseMcpCommand: empty → empty command');
 }
 
 await run();

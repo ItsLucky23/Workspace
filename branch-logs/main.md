@@ -2753,3 +2753,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · geminiEndpoint 4/4 (default+custom-base+slash-trim) · aiInstruction 8/8 (nu incl. geminiBaseUrl-persist). i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (geminiBaseUrl), `server/ai/providers/geminiApi.ts` (ENV_BASE + baseUrl in config + geminiEndpoint), `server/orchestrator/conductor.ts` (save-ai-instruction geminiBaseUrl), `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (base-URL-veld), `src/_locales/{en,nl,de,fr}.json`, `tests/unit/geminiEndpoint.test.mts`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0126-custom-gemini-endpoint.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM X1: user-MCP-command in de container-.mcp.json — ADR 0127
+
+**Wat ik deed:** `renderStage` bouwde `.mcp.json` ALLEEN uit skill-keys → user-`IntegrationTool.mcp.command` was inert. Nu emit `renderStage` ook 1 stdio-MCP-server per ENABLED integratie: pure `parseMcpCommand` splitst command→{command,args}, `mcpKey(name)` sanitized de key, credentials geïnjecteerd als `env`. `stageRunner.loadMcpIntegrations` resolvt elke `IntegrationField.envVarId`→EnvVar (decrypted) + geeft door aan de pure renderer. Skills+integraties coëxisteren. ro/rw-tier (McpCfg heeft geen tier-field) + free-text-type-UI = gedocumenteerde follow-ups.
+
+**Verify:** tsc 0 · lint (replaceAll + merged prisma-import) · ai:lint · build · stageEngine 27/27 (integratie→gesanitizede mcp-key + command-parse + args + env-injectie + skills-coëxistentie + parseMcpCommand-edge-cases).
+
+**Files touched:** `server/orchestrator/renderStage.ts` (McpIntegration + parseMcpCommand + mcpKey + integratie-emit), `server/orchestrator/stageRunner.ts` (loadMcpIntegrations + ctx-wiring + imports), `tests/integration/stageEngine.test.mts`, `docs/decisions/0127-mcp-integration-wiring.md`.

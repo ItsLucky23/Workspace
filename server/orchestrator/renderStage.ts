@@ -23,6 +23,24 @@ export interface StageRenderCtx {
   //? #4 self-handoff RELOAD: when the session was reset for budget, the AI's own handoff summary,
   //? injected as the opening context so a fresh session continues seamlessly.
   handoffReload?: string;
+  //? X1 — the workspace's ENABLED MCP integration tools (loaded by stageRunner; renderStage stays pure). Each
+  //? becomes an stdio MCP server in .mcp.json with its credentials injected as env. `command` is a full shell
+  //? string (e.g. "npx -y some-mcp --flag"); it is split into command + args.
+  integrations?: McpIntegration[];
+}
+
+export interface McpIntegration { name: string; command: string; env?: Record<string, string> }
+
+//? Split an MCP command string into { command, args } (whitespace-tokenized; the first token is the binary).
+//? Pure + exported for tests.
+export function parseMcpCommand(cmd: string): { command: string; args: string[] } {
+  const parts = cmd.trim().split(/\s+/).filter((p) => p.length > 0);
+  return { command: parts[0] ?? '', args: parts.slice(1) };
+}
+
+//? Sanitize an integration name into a safe .mcp.json server key (no whitespace/quotes).
+function mcpKey(name: string): string {
+  return name.trim().replaceAll(/[^\w.-]+/g, '-').replaceAll(/^-+|-+$/g, '').toLowerCase() || 'integration';
 }
 
 export interface StageArtifacts {
@@ -103,10 +121,16 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     },
   }, null, 2);
 
-  //? .mcp.json — one stdio server per enabled skill. The skill→command catalog is deferred;
-  //? for now emit the declared skill keys as placeholders (strict-mcp-config scopes the stage).
-  const mcpServers: Record<string, { type: string; command: string; args: string[] }> = {};
+  //? .mcp.json — one stdio server per enabled skill (skill→command catalog deferred → placeholder), PLUS
+  //? (X1) one per enabled MCP integration tool: its command is parsed + its credentials injected as env, so
+  //? the user's own MCP server is actually mounted (was inert — only skill keys were emitted).
+  const mcpServers: Record<string, { type: string; command: string; args: string[]; env?: Record<string, string> }> = {};
   for (const key of cfg.skillKeys) mcpServers[key] = { type: 'stdio', command: 'ws-skill', args: [key] };
+  for (const tool of ctx.integrations ?? []) {
+    const parsed = parseMcpCommand(tool.command);
+    if (parsed.command.length === 0) continue;
+    mcpServers[mcpKey(tool.name)] = { type: 'stdio', command: parsed.command, args: parsed.args, ...(tool.env && Object.keys(tool.env).length > 0 ? { env: tool.env } : {}) };
+  }
   const mcpJson = JSON.stringify({ mcpServers }, null, 2);
 
   return { claudeMd, stageInstructions, settingsJson, mcpJson };
