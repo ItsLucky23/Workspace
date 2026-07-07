@@ -318,6 +318,7 @@
     "socketStatus": "Socket status:"
   },
   "workspaces": {
+    "editor": {"title": "Region edit", "hint": "Paint over the area you want to change, then describe the edit.", "brush": "Brush", "clear": "Clear", "promptPlaceholder": "e.g. make this red / remove this / make it bigger", "apply": "Apply edit", "applying": "Applying...", "loading": "Loading editor...", "edit": "Edit region", "needPrompt": "Describe the edit first.", "needRegion": "Paint a region first.", "maskFailed": "Could not prepare the mask.", "applied": "Region edit queued."},
     "onboarding": {
       "welcome": "Welcome to Workspaces",
       "subtitle": "Create a workspace to get started, or accept an invitation below.",

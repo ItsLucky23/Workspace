@@ -2847,3 +2847,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 ---
 ## 🏁 /goal FREEDOM_PROGRAM — bounded/testbare breedte COMPLEET (38 items, ADRs 0110–0137)
 Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: gebouwd, gegate (tsc+lint+ai:lint+build), per-item getest, ge-ADR'd, gecommit (auteur ItsLucky23, niet gepusht). **RESTEREND = alleen canvas/UI-editors (E1-canvas Fabric.js, E2 image-editor, E3 video-timeline, E4 audio-waveform) + S3-wizard + S4-premium-UX-sweep — vergen browser+fresh-context, niet betrouwbaar blind te bouwen/verifiëren.** ~40 UI-follow-ups genoteerd per ADR. Zie memory `workspaces-freedom-program.md` voor de precieze reststand + aanpak.
+
+## 2026-07-08 — FREEDOM_PROGRAM E1-canvas: image-region-editor (Fabric.js) — ADR 0138
+
+**Wat ik deed:** de headline-editor UI-helft. `npm i fabric` (7.4.0, OV-1). `ImageRegionEditor`-component: source-asset als display-background, witte free-draw-brush verft de edit-regio; op apply → mask geëxporteerd als **wit-op-zwart** uit een verse `StaticCanvas` die alleen de gekloonde stroke-paths bevat (source-image raakt die canvas nooit → export nooit tainted). Mask-PNG geüpload via de K1-`/media/upload`-route → `maskUrl` → `content-inpaint`-op (ADR 0137) → nieuwe asset (I2-lineage). Fabric **lazy-import** (eigen chunk, nooit in non-editor-bundle). "Edit region"-knop op ready image-assets. i18n ×4.
+
+**Verify:** tsc 0 · lint (fabric-types, taint-vrije export, closure-guard-suppress) · ai:lint · build (fabric code-split in aparte chunk) · contentInpaint 4/4 · inpaint 6/6. **Canvas-rendering zelf = browser-verificatie in dev-sessie (server moet draaien — developer-actie); de op-path + provider-shape zijn unit-getest.**
+
+**Files touched:** `package.json`(+fabric), `src/workspaces/_components/ImageRegionEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (Edit-region-knop + editor-render), `src/_locales/{en,nl,de,fr}.json` (workspaces.editor), `docs/decisions/0138-image-region-editor.md`.

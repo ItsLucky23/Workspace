@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (136)
+## Decisions (137)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -149,6 +149,7 @@
 | 0135 | Cross-workspace copy — copy styles + brand between workspaces (R2) | 🟢 accepted | reuse, workspaces, templates, freedom-program | — | `docs/decisions/0135-cross-workspace-copy.md` |
 | 0136 | Public API via scoped Personal Access Tokens over the control-API (X3) | 🟢 accepted | api, auth, extensibility, security, freedom-program | — | `docs/decisions/0136-public-api-pats.md` |
 | 0137 | content-inpaint op — thread a mask through the content flow to the inpaint feature (E1, wiring half) | 🟢 accepted | content, inpaint, editors, freedom-program | — | `docs/decisions/0137-content-inpaint-op.md` |
+| 0138 | The image region editor — Fabric.js mask-draw → inpaint (E1, canvas half) | 🟢 accepted | editors, image, inpaint, fabric, freedom-program | — | `docs/decisions/0138-image-region-editor.md` |
 
 ## Summaries
 
@@ -1241,6 +1242,14 @@ A `PersonalAccessToken` model storing only the **SHA-256 hash** (raw shown once 
 `generateMediaAsset` threads a `maskUrl` into the media request. A `content-inpaint` control-op (`{ contentProjectId, referenceUrl, maskUrl, prompt, parentAssetId? }`) runs the inpaint feature → a NEW asset, chained to the source via `parentId` (I2 lineage). No-ops without a mask/prompt. workTickets capability, single-writer.
 
 → `docs/decisions/0137-content-inpaint-op.md`
+
+### 0138 — The image region editor — Fabric.js mask-draw → inpaint (E1, canvas half)
+
+**0138** · accepted · tags: editors, image, inpaint, fabric, freedom-program · 2026-07-08
+
+An `ImageRegionEditor` React component (OV-1 = Fabric.js): the source asset is the display background; a white free-draw brush paints the edit region. On apply, the strokes are exported as a **white-on-black mask** from a fresh `StaticCanvas` that only ever holds the cloned stroke paths — the source image never touches that canvas, so the export is never tainted (no CORS export failure). The mask PNG is uploaded via the K1 `/media/upload` route → a `maskUrl`, then `content-inpaint` (ADR 0137) region-edits into a new asset (I2 lineage). Fabric is **lazily imported** (`await import('fabric')`) so it lands in its own chunk, never in a non-editor route bundle (OV-1). Surfaced as an "Edit region" button on ready image assets in the piece page.
+
+→ `docs/decisions/0138-image-region-editor.md`
 
 ## Code governed by decisions
 

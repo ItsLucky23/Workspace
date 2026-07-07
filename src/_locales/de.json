@@ -318,6 +318,7 @@
     "socketStatus": "Socket-Status:"
   },
   "workspaces": {
+    "editor": {"title": "Region bearbeiten", "hint": "Male ueber den Bereich, den du aendern willst, und beschreibe die Bearbeitung.", "brush": "Pinsel", "clear": "Loeschen", "promptPlaceholder": "z. B. mach das rot / entferne das / groesser", "apply": "Bearbeitung anwenden", "applying": "Wird angewendet...", "loading": "Editor wird geladen...", "edit": "Region bearbeiten", "needPrompt": "Beschreibe zuerst die Bearbeitung.", "needRegion": "Male zuerst einen Bereich.", "maskFailed": "Maske konnte nicht erstellt werden.", "applied": "Regionsbearbeitung eingereiht."},
     "onboarding": {
       "welcome": "Willkommen bei Workspaces",
       "subtitle": "Erstelle einen Workspace, um zu starten, oder nimm unten eine Einladung an.",

@@ -318,6 +318,7 @@
     "socketStatus": "État du Socket :"
   },
   "workspaces": {
+    "editor": {"title": "Modifier une zone", "hint": "Peignez la zone a modifier, puis decrivez la modification.", "brush": "Pinceau", "clear": "Effacer", "promptPlaceholder": "ex. mets ceci en rouge / enleve ceci / agrandis", "apply": "Appliquer", "applying": "Application...", "loading": "Chargement de l'editeur...", "edit": "Modifier la zone", "needPrompt": "Decrivez d'abord la modification.", "needRegion": "Peignez d'abord une zone.", "maskFailed": "Impossible de preparer le masque.", "applied": "Modification de zone en file."},
     "onboarding": {
       "welcome": "Bienvenue sur Workspaces",
       "subtitle": "Créez un espace de travail pour commencer, ou acceptez une invitation ci-dessous.",

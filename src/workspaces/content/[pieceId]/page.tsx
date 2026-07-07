@@ -13,6 +13,7 @@ import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { EmptyState } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import type { ContentAssetSummary } from '../../_data/types';
 import { backendUrl } from '../../../../config';
 
@@ -97,7 +98,7 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
 //? an open/download link when reachable, and — for a finished render — a publish button per connected
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
-function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
   const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
@@ -141,6 +142,12 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, transla
           ))}
         </div>
       )}
+      {/* E1 — region-edit an image asset (draw a mask → inpaint). */}
+      {asset.kind === 'image' && asset.status === 'ready' && asset.url.length > 0 && (
+        <div className="flex items-center gap-1 px-2 pb-2">
+          <button type="button" onClick={() => { onEditRegion(asset); }} title={translate({ key: 'workspaces.editor.edit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.editor.edit' })}</button>
+        </div>
+      )}
       {/* I1 — regenerate + variations for a ready AI-generated asset (uses the current direction as a tweak). */}
       {asset.regenerable && (
         <div className="flex items-center gap-1 px-2 pb-2">
@@ -159,6 +166,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [styleKey, setStyleKey] = useState('');
   const [extra, setExtra] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
+  //? E1 — the asset currently open in the region editor (null = closed).
+  const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
 
   const piece = useMemo(() => content.pieces.find((p) => p.id === id), [content.pieces, id]);
 
@@ -303,13 +312,14 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} translate={translate} />)}
                 </div>
               )}
             </div>
           </section>
         </div>
       </div>
+      {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}
     </div>
   );
 }
