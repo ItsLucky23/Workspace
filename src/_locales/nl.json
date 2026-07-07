@@ -798,6 +798,8 @@
       "styleNone": "Geen stijl",
       "aiKeysTitle": "AI-tekstprovider",
       "aiKeysDesc": "De Gemini-key drijft de script- + referentie-analyse-features aan. Versleuteld opgeslagen, nooit teruggetoond.",
+      "uploadReference": "Referentie uploaden",
+      "importOwn": "Eigen importeren",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publicatie-verbindingen",

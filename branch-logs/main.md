@@ -2579,3 +2579,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Files touched:** `server/orchestrator/conductor.ts` (definitionOfDone in save-stage-config), `src/workspaces/pipeline/page.tsx` (GeneralTab velden), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/stagePersona.test.mts`, `docs/decisions/0105-stage-persona-in-ui.md`.
 
 **FASE Q COMPLEET (Q1–Q6):** kosten-transparantie · brand/product-grounding · style-manager · workspace-AI-instructie · Gemini-dead-key · stage-persona. Volgende: Fase K (file-upload → editors deblokkeren).
+
+## 2026-07-07 — FREEDOM_PROGRAM K1: file-upload (bring-your-own image/video) + import-asset — ADR 0106
+
+**Wat ik deed (Fase K start — de enabler voor de editors):** een echte auth-endpoint `POST /media/upload?ws=&ext=` (`server/media/uploadRoute.ts`, gewired in `server.ts`): raw-body → bounded Buffer (64MB) → ext-allowlist (image/video) → `persistMediaBytes` → `{url:/media/<uuid>.<ext>, kind}`. Auth via session-token + membership (`workTickets`) + tenant via `ws`-param. Client: `uploadMedia()` + herbruikbare `MediaUploadButton`. Piece-pagina: (a) referentie uploaden i.p.v. URL-only, (b) "eigen importeren" → nieuwe `content-import-asset`-op maakt een `ready` ContentAsset (geen MediaJob) op de single-writer-chain + broadcast.
+
+**Verify:** tsc 0 · lint (fixte tryCatch-narrowing + optional-chain) · ai:lint · build · importAsset 7/7 (persistMediaBytes + import-op ready-asset + non-/media-url rejected). i18n ×4. HTTP-route zelf = manueel/live (draaiende server).
+
+**Files touched:** `server/media/uploadRoute.ts` (nw), `server/server.ts`, `server/orchestrator/conductor.ts` (content-import-asset), `server/control/rbac.ts`, `src/workspaces/_functions/{controlApi.ts,uploadMedia.ts(nw)}`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_components/MediaUploadButton.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/importAsset.test.mts`, `docs/decisions/0106-media-upload-import.md`.

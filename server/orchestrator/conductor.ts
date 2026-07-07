@@ -54,7 +54,7 @@ import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
-import { broadcastTicketDelta } from '../read/broadcast';
+import { broadcastTicketDelta, broadcastContentAssetDelta } from '../read/broadcast';
 import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -1051,6 +1051,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'content-edit-product': {
       //? Q2 — the per-workspace product/brand context folded into every creative generation.
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { productContext: str(payload, 'productContext') ?? '' } });
+      return;
+    }
+    case 'content-import-asset': {
+      //? K1 — import a user-UPLOADED file (already persisted to /media by the upload route) as a first-class
+      //? ContentAsset, on the single-writer chain (no MediaJob — it wasn't generated). Broadcasts the delta.
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const url = str(payload, 'url');
+      if (!contentProjectId || !url?.startsWith('/media/')) return;
+      const kind = str(payload, 'kind') === 'video' ? 'video' : 'image';
+      const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind, url, status: 'ready', metadata: jsonInput({ imported: true, uploadedBy: userId }) } });
+      await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
     }
     //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content

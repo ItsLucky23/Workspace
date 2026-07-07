@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (104)
+## Decisions (105)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -117,6 +117,7 @@
 | 0103 | A workspace-wide AI instruction is prepended to every AI completion, at one choke-point | 🟢 accepted | ai, workspace, steering, freedom-program | — | `docs/decisions/0103-workspace-ai-instruction.md` |
 | 0104 | The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly | 🟢 accepted | ai, providers, gemini, keys, freedom-program | — | `docs/decisions/0104-gemini-workspace-key.md` |
 | 0105 | The stage persona (system prompt) + definition-of-done are editable in the pipeline UI | 🟢 accepted | pipeline, stages, ui, freedom-program | — | `docs/decisions/0105-stage-persona-in-ui.md` |
+| 0106 | Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset | 🟢 accepted | media, upload, content, http, freedom-program | — | `docs/decisions/0106-media-upload-import.md` |
 
 ## Summaries
 
@@ -953,6 +954,14 @@ The `gemini-api` provider now **resolves its key per workspace**: `__provider_ke
 Add two fields to the pipeline stage editor's General tab: **AI persona (system prompt)** and **Definition of done**, editing `s.systemPrompt` / `s.definitionOfDone` (the `_sync` route already sends the whole cfg). Fix the `save-stage-config` op to also persist `definitionOfDone` (it handled `systemPrompt` already).
 
 → `docs/decisions/0105-stage-persona-in-ui.md`
+
+### 0106 — Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset
+
+**0106** · accepted · tags: media, upload, content, http, freedom-program · 2026-07-07
+
+A new authenticated HTTP route `POST /media/upload?ws=<id>&ext=<ext>` (`server/media/uploadRoute.ts`, registered in `server.ts` next to the download route). It reads the file as the **raw request body** (no multipart dep needed) into a bounded Buffer (64 MB cap), validates the extension against an image/video allowlist, and `persistMediaBytes(...)` → returns `{ url: '/media/<uuid>.<ext>', kind }`. Authed via the session token + membership-gated (`workTickets`) + tenant-scoped by the `ws` param. A reusable `MediaUploadButton` + `uploadMedia()` client helper. The piece page uses it to (a) upload a reference for reference-conditioned gen (replacing URL-only), and (b) **import your own** image/video via a new `content-import-asset` control-op that creates a `ready` ContentAsset (no MediaJob) on the single-writer chain (B-23) and broadcasts the live delta.
+
+→ `docs/decisions/0106-media-upload-import.md`
 
 ## Code governed by decisions
 

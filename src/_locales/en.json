@@ -798,6 +798,8 @@
       "styleNone": "No style",
       "aiKeysTitle": "AI text provider",
       "aiKeysDesc": "The Gemini key powers the script + reference-analysis features. Stored encrypted, never shown back.",
+      "uploadReference": "Upload a reference",
+      "importOwn": "Import your own",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publishing connections",

@@ -10,6 +10,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
+import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { EmptyState } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ContentAssetSummary } from '../../_data/types';
@@ -141,7 +142,7 @@ function AssetCard({ asset, connectedPlatforms, onPublish, translate }: { asset:
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
-  const { content, runContentOp, navigate } = useWorkspaces();
+  const { content, runContentOp, navigate, activeWorkspace } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [extra, setExtra] = useState('');
@@ -242,6 +243,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.referenceLabel' })}</span>
               <input value={referenceUrl} onChange={(e) => { setReferenceUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.referencePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              {/* K1: upload your own reference instead of pasting a URL. */}
+              <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.content.uploadReference" icon="up-right-from-square" onUploaded={(url) => { setReferenceUrl(url); }} />
             </label>
             <div className="flex items-start gap-2 text-xs text-muted mt-1">
               <Icon name="triangle-exclamation" className="text-warning mt-0.5" /> {translate({ key: 'workspaces.content.costWarning' })}
@@ -268,7 +271,11 @@ export default function ContentPiece({ params }: { params: Record<string, string
             </div>
 
             <div className="mt-5">
-              <div className="text-sm font-medium text-muted mb-2">{translate({ key: 'workspaces.content.assetsTitle' })}</div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="text-sm font-medium text-muted">{translate({ key: 'workspaces.content.assetsTitle' })}</div>
+                {/* K1: bring your own image/video into the piece as a first-class asset. */}
+                <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,video/*" labelKey="workspaces.content.importOwn" onUploaded={(url, kind) => { runContentOp('content-import-asset', piece.id, { url, kind }); }} />
+              </div>
               {piece.assets.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-divider py-8 text-center text-sm text-disabled">
                   {translate({ key: 'workspaces.content.assetsEmpty' })}

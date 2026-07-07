@@ -798,6 +798,8 @@
       "styleNone": "Kein Stil",
       "aiKeysTitle": "KI-Textanbieter",
       "aiKeysDesc": "Der Gemini-Schlüssel treibt die Skript- + Referenzanalyse-Features an. Verschlüsselt gespeichert, nie zurückgezeigt.",
+      "uploadReference": "Referenz hochladen",
+      "importOwn": "Eigenes importieren",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Veröffentlichungs-Verbindungen",

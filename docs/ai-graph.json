@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 182,
-    "edges": 273,
+    "nodes": 184,
+    "edges": 276,
     "symbols": 224,
     "callEdges": 37
   },
@@ -449,6 +449,11 @@
       "route": null
     },
     {
+      "id": "workspaces/_components/MediaUploadButton.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_components/ModulePicker.tsx",
       "kind": "other",
       "route": null
@@ -500,6 +505,11 @@
     },
     {
       "id": "workspaces/_functions/priority.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/uploadMedia.ts",
       "kind": "other",
       "route": null
     },
@@ -1145,6 +1155,14 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/_components/MediaUploadButton.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/MediaUploadButton.tsx",
+      "to": "workspaces/_functions/uploadMedia.ts"
+    },
+    {
       "from": "workspaces/_components/ModulePicker.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -1507,6 +1525,10 @@
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/_components/MediaUploadButton.tsx"
     },
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
@@ -2305,6 +2327,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/_components/ModulePicker.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2340,6 +2363,9 @@
       "workspaces/terminals/page.tsx",
       "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_components/MediaUploadButton.tsx": [
+      "workspaces/content/[pieceId]/page.tsx"
     ],
     "workspaces/_components/ModulePicker.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -2504,6 +2530,10 @@
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/page.tsx"
     ],
+    "workspaces/_functions/uploadMedia.ts": [
+      "workspaces/_components/MediaUploadButton.tsx",
+      "workspaces/content/[pieceId]/page.tsx"
+    ],
     "workspaces/_shell/MobileChrome.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
@@ -2659,8 +2689,8 @@
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 38,
-      "directDependents": 33
+      "dependents": 39,
+      "directDependents": 34
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",

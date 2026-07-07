@@ -20,7 +20,7 @@ const CONTENT_OPS = new Set<string>([
   'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
   'content-gen-reference-image', 'content-gen-shortform', 'content-analyze-reference-video',
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
-  'content-request-publish', 'content-from-brief',
+  'content-request-publish', 'content-from-brief', 'content-import-asset',
 ]);
 //? Type-guard: a whitelisted content op IS a ControlOp (no cast needed downstream).
 const isContentOp = (op: string): op is ControlOp => CONTENT_OPS.has(op);
@@ -32,6 +32,7 @@ export interface SyncParams {
     styleKey?: string; extraInstructions?: string; prompt?: string;
     referenceUrl?: string; referenceVideoUrl?: string; newStory?: string;
     title?: string; brief?: string; format?: string; platform?: string; assetId?: string;
+    url?: string; kind?: string;
   };
   user: SessionLayout;
   functions: Functions;

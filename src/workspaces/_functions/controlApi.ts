@@ -63,7 +63,7 @@ export type ControlOp =
   | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images' | 'content-assemble'
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
-  | 'content-request-publish' | 'content-from-brief' | 'copilot-propose'
+  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'copilot-propose'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)
