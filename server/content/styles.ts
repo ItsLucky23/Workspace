@@ -13,6 +13,44 @@ export interface ResolvedStyle {
   systemPrompt: string;
 }
 
+//? R1 — a portable style-set entry (the user-authored, non-builtin styles a workspace has). Pure + exported.
+export interface StyleSetEntry { feature: string; key: string; label: string; systemPrompt: string }
+
+//? Parse/validate a portable style-set JSON (an array of entries). Drops malformed entries. Pure.
+export function parseStyleSet(raw: unknown): StyleSetEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: StyleSetEntry[] = [];
+  for (const r of raw) {
+    if (r === null || typeof r !== 'object') continue;
+    const e = r as Record<string, unknown>;
+    if (typeof e.feature === 'string' && typeof e.key === 'string' && typeof e.systemPrompt === 'string' && e.feature.length > 0 && e.key.length > 0) {
+      out.push({ feature: e.feature, key: e.key, label: typeof e.label === 'string' && e.label.length > 0 ? e.label : e.key, systemPrompt: e.systemPrompt });
+    }
+  }
+  return out;
+}
+
+//? Export a workspace's user-authored (non-builtin) styles as a portable set (no ids/timestamps/workspaceId).
+export async function exportStyleSet(prisma: PrismaClient, workspaceId: string): Promise<StyleSetEntry[]> {
+  const rows = await prisma.stylePreset.findMany({ where: { workspaceId, builtin: false }, orderBy: { createdAt: 'asc' } });
+  return rows.map((s) => ({ feature: s.feature, key: s.key, label: s.label, systemPrompt: s.systemPrompt }));
+}
+
+//? Import a portable style-set into a workspace (upsert by feature+key; never touches builtin globals).
+//? Returns the number of styles written. Best-effort per entry.
+export async function importStyleSet(prisma: PrismaClient, workspaceId: string, raw: unknown): Promise<number> {
+  const entries = parseStyleSet(raw);
+  let written = 0;
+  for (const e of entries) {
+    const existing = await prisma.stylePreset.findFirst({ where: { workspaceId, feature: e.feature, key: e.key }, select: { id: true } });
+    await (existing
+      ? prisma.stylePreset.update({ where: { id: existing.id }, data: { label: e.label, systemPrompt: e.systemPrompt } })
+      : prisma.stylePreset.create({ data: { workspaceId, feature: e.feature, key: e.key, label: e.label, systemPrompt: e.systemPrompt, builtin: false } }));
+    written += 1;
+  }
+  return written;
+}
+
 //? The seeded global default styles (workspaceId=null, builtin). Keyed by `feature` string (matches an
 //? AiFeature/MediaFeature). Users add per-workspace styles on top (save-style op).
 const DEFAULT_STYLES: { feature: string; key: string; label: string; systemPrompt: string }[] = [

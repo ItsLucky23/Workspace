@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (39)
+## API routes (41)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -50,6 +50,8 @@
 | `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
+| `api/workspaces/styleExport/v1` | POST | login | 30 | — | **no** | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
+| `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 
 ## Sync routes (49)
 
@@ -112,9 +114,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 86 |
+| _(unowned)_ | 88 |
 
-**Test coverage**: 3/88 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/90 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -154,6 +156,8 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioDelete/v1`
 - `api/workspaces/studioGenerate/v1`
 - `api/workspaces/studioSaveBrief/v1`
+- `api/workspaces/styleExport/v1`
+- `api/workspaces/styleImport/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/addInfoDoc/v1`
@@ -166,9 +170,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkSprint/v1`
 - `sync/workspaces/bulkStatus/v1`
 - `sync/workspaces/changeRole/v1`
-- `sync/workspaces/contentAssetDelta/v1`
-- `sync/workspaces/contentControl/v1`
-- … +35 more
+- … +37 more
 
 ## Pages (28)
 

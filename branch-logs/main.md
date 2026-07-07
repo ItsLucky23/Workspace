@@ -2811,3 +2811,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Files touched:** `prisma/schema.prisma` (OutputTemplate), `server/orchestrator/conductor.ts` (save/delete-ops), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/outputTemplate_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts` (outputTemplates), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `tests/integration/outputTemplate.test.mts`, `docs/decisions/0133-output-templates.md`.
 
 **FASE O COMPLEET (O1-O5).**
+
+## 2026-07-08 — FREEDOM_PROGRAM R1 (style-slice): style-set-portability — ADR 0134
+
+**Wat ik deed:** user-styles waren workspaceId-locked (brand-helft was R3). Nu pure `parseStyleSet` + `exportStyleSet` (non-builtin styles, geen ids) + `importStyleSet` (upsert op feature+key, raakt builtins NOOIT) + `styleExport`/`styleImport`-routes. Pipeline/automation-set-capture + apply-UI = follow-ups richting volledige save-as-template.
+
+**Verify:** tsc 0 · lint · ai:lint · build · styleSetPortability 8/8 (parse-validatie + builtin-excluded-export + lossless A→B round-trip + idempotent re-import).
+
+**Files touched:** `server/content/styles.ts` (StyleSetEntry + parseStyleSet + exportStyleSet + importStyleSet), `src/workspaces/_api/styleExport_v1.ts` + `styleImport_v1.ts` (nw), `tests/integration/styleSetPortability.test.mts`, `docs/decisions/0134-style-set-portability.md`.

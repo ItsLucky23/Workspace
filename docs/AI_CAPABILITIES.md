@@ -77,6 +77,8 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/studioDelete/v1` | POST | 30 | — | — |
 | `workspaces/studioGenerate/v1` | POST | 10 | — | — |
 | `workspaces/studioSaveBrief/v1` | POST | 30 | — | — |
+| `workspaces/styleExport/v1` | POST | 30 | — | — |
+| `workspaces/styleImport/v1` | POST | 20 | — | — |
 
 ### Sync routes (`_sync/`)
 
