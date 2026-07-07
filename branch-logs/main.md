@@ -3021,3 +3021,11 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0/0 · ai:lint clean · build groen. **Live browser-verify (drag-polish, visuele QA, mobiel) = resterende stap, wacht op dev-server.**
 
 **Files:** `src/workspaces/_components/VideoTimelineEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (import+knop+modal), `src/workspaces/_shell/WorkspacesContext.tsx` (runContentOp payload), `src/_locales/*.json` (×4), `docs/decisions/0153-*.md`.
+
+## 2026-07-08 — O-D: "start met AI" auto-activatie — ADR 0154. **FASE L2 COMPLEET.**
+- **`quick-add` + `startWithAi`-flag:** ticket ENTERT nog steeds op `unrefined` (invariant intact), daarna schuift de Conductor 'm door naar de eerste `aiEnabled`-stage + `status-change`-event + `activateWorktreesForStage` (no-op zonder repo/Docker). Geeft de doorgeschoven rij terug voor de delta.
+- Wired e2e: `quickAdd`-route + client-helper + checkbox in New-ticket-form (i18n×4 `workspaces.board.startWithAi`).
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/integration/autoActivate.test.mts` 5/5 (plain→unrefined, startWithAi→eerste-AI-stage, event). L2 = O-A/O-B(intake)+O-C(content-pipeline)+O-D(dev-auto-start) af.
+
+**Files:** `src/workspaces/_sync/quickAdd_server_v1.ts`, `server/orchestrator/conductor.ts` (quick-add), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/page.tsx` (toggle), `src/_locales/*.json` (×4), `tests/integration/autoActivate.test.mts` (nw), `docs/decisions/0154-*.md`.

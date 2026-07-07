@@ -628,7 +628,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
-  const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority }) => {
+  const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority; startWithAi?: boolean }) => {
     const room = snap.activeWorkspaceId;
     if (!room) return;
     void syncRequest({
@@ -642,6 +642,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         ...(input.labels && input.labels.length > 0 ? { labels: input.labels } : {}),
         ...(input.assigneeId ? { assigneeId: input.assigneeId } : {}),
         ...(input.priority && input.priority !== 'normal' ? { priority: input.priority } : {}),
+        ...(input.startWithAi === true ? { startWithAi: true } : {}),
         clientRequestId: nextReqId(),
       },
       receiver: room,

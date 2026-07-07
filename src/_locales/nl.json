@@ -1482,6 +1482,7 @@
       "emptyStagesTitle": "Je board wordt opgezet…",
       "emptyStagesSub": "Je pipeline-stages worden geladen.",
       "newTicketTitle": "Nieuw ticket",
+      "startWithAi": "Meteen met AI starten",
       "newTicketTitlePlaceholder": "Ticket titel…",
       "newTicketStage": "Stage",
       "allSprints": "Alle sprints",

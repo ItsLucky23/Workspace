@@ -579,6 +579,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (newAssignee && newAssignee !== userId) await notifyAssignment(action.workspaceId, newAssignee, created.id, created.key);
       //? Automation (#2): a new ticket may fire `ticket.created` triggers (best-effort, off-chain).
       void fireEvent(prisma, action.workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId });
+      //? O-D — "start with AI": the ticket still ENTERS at `unrefined` (invariant intact), then the Conductor
+      //? advances it to the FIRST aiEnabled stage + activates it — so the user doesn't have to drag it. The
+      //? Conductor remains the only writer; activation no-ops without a linked repo/Docker (as usual).
+      if (payload.startWithAi === true) {
+        const firstAi = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, aiEnabled: true }, orderBy: { order: 'asc' }, select: { key: true } });
+        if (firstAi) {
+          await prisma.ticket.update({ where: { id: created.id }, data: { stageId: firstAi.key } });
+          await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, `auto-started AI at ${firstAi.key}`);
+          await activateWorktreesForStage(action.workspaceId, [created.key], firstAi.key);
+          //? Return the ADVANCED row so the realtime delta shows the new stage.
+          return (await prisma.ticket.findUnique({ where: { id: created.id } })) ?? created;
+        }
+      }
       //? Return the created row so realtime `_sync` write routes can broadcast the delta.
       return created;
     }

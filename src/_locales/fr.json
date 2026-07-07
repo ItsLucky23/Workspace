@@ -1454,6 +1454,7 @@
       "acRunCommand": "Exécuter une commande"
     },
     "board": {
+      "startWithAi": "Démarrer avec l'IA tout de suite",
       "openTicket": "Ouvrir le ticket",
       "openTerminal": "Ouvrir le terminal",
       "addReference": "Ajouter une référence…",

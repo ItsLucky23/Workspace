@@ -28,7 +28,8 @@
 | O-C content-run-pipeline | ✅ | 0152 | 6/6 |
 | V5 timeline-editor-UI | ✅ | 0153 | tsc/lint/build; browser-verify pending |
 | V6 knip/transition (via V5) | ✅ | 0153 | idem |
-| B rijke-image-editor · L3 mobiel · D3/D4 host/prod · G greenfield · O-D auto-activatie | ⬜ | | |
+| O-D auto-activatie | ✅ | 0154 | 5/5 |
+| B rijke-image-editor · L3 mobiel · D3/D4 host/prod · G greenfield | ⬜ | | |
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 

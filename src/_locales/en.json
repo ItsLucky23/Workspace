@@ -1482,6 +1482,7 @@
       "emptyStagesTitle": "Setting up your board…",
       "emptyStagesSub": "Loading your pipeline stages.",
       "newTicketTitle": "New ticket",
+      "startWithAi": "Start with AI right away",
       "newTicketTitlePlaceholder": "Ticket title…",
       "newTicketStage": "Stage",
       "allSprints": "All sprints",

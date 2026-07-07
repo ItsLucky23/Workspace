@@ -203,17 +203,18 @@ function UnrefinedAddCard() {
 //? create callback as props instead of reading them from context.
 //? Creation takes only a title — every new ticket enters at `unrefined` (the
 //? Conductor enforces this). The title input auto-focuses on open.
-function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priority?: TicketPriority }) => void }) {
+function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priority?: TicketPriority; startWithAi?: boolean }) => void }) {
   const translate = useTranslator();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('normal');
+  const [startWithAi, setStartWithAi] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const priorityItems: DropdownItem[] = PRIORITY_ORDER.map((p) => ({ id: p, value: p, item: translate({ key: PRIORITY_LABEL_KEY[p] }) }));
   const submit = () => {
     const t = title.trim();
     if (!t) return;
-    onCreate({ title: t, priority });
+    onCreate({ title: t, priority, ...(startWithAi ? { startWithAi: true } : {}) });
     void menuHandler.close();
   };
   return (
@@ -232,6 +233,11 @@ function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priori
           onChange={(it) => { setPriority(PRIORITY_ORDER.find((p) => p === it.id) ?? 'normal'); }}
         />
       </div>
+      {/* O-D — start the AI pipeline immediately (advance to the first AI stage) instead of manual triage. */}
+      <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
+        <input type="checkbox" checked={startWithAi} onChange={(e) => { setStartWithAi(e.target.checked); }} className="accent-primary" />
+        {translate({ key: 'workspaces.board.startWithAi' })}
+      </label>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

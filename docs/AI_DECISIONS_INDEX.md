@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (152)
+## Decisions (153)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -165,6 +165,7 @@
 | 0151 | D2 — TikTok async publish (status polling) | 🟢 accepted | publish, tiktok, honesty, idea-to-outcome | — | `docs/decisions/0151-tiktok-status-polling.md` |
 | 0152 | O-C — content pipeline orchestration (content-run-pipeline) | 🟢 accepted | content, orchestration, video, idea-to-outcome | — | `docs/decisions/0152-content-pipeline-orchestration.md` |
 | 0153 | V5/V6 — the video timeline editor UI | 🟢 accepted | content, video, editor, ui, idea-to-outcome | — | `docs/decisions/0153-video-timeline-editor.md` |
+| 0154 | O-D — "start with AI" auto-activation | 🟢 accepted | tickets, orchestration, activation, idea-to-outcome | — | `docs/decisions/0154-auto-activation.md` |
 
 ## Summaries
 
@@ -1385,6 +1386,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`VideoTimelineEditor`** (modal from the content piece page): renders the piece's `VideoScene`s as proportional blocks and drives the existing ops — edit a scene's **duration (trim)** + **transition** (Dropdown), **split** (halve a scene → a new second half), **delete**, **reorder** (left/right) → all saved as the full ordered list via `content-save-scenes` (upsert by id, so ids/lineage survive). A **range selector** (start/end seconds + instruction) fires `content-refine-range`; a **"Generate scenes"** button fires `content-decompose-video`. Every write goes through `runContentOp` → the Conductor (B-23). **`runContentOp` payload widened to `Record<string, unknown>`** so the editor can pass the scene array + numeric start/end (not just strings); the route validates each op's real shape server-side. **Reorder/split/trim are buttons + inputs, not raw drag.** They are reliable, keyboard-accessible, and produce exactly the same scene-list save; drag is a logged follow-up (it needs live browser tuning).
 
 → `docs/decisions/0153-video-timeline-editor.md`
+
+### 0154 — O-D — "start with AI" auto-activation
+
+**0154** · accepted · tags: tickets, orchestration, activation, idea-to-outcome · 2026-07-08
+
+**`quick-add` gains an optional `startWithAi` flag.** The ticket still ENTERS at `unrefined` (the invariant "a user-created ticket always enters at unrefined; no client can place it mid-pipeline" is preserved — the Conductor is the writer). Then, when `startWithAi` is set, the Conductor advances it to the FIRST `aiEnabled` stage, records a `status-change` event ("auto-started AI at <stage>"), and runs `activateWorktreesForStage` (a no-op without a linked repo/Docker, as usual). It returns the ADVANCED row so the realtime delta shows the new stage. **Wired end to end:** the `workspaces/quickAdd` route threads `startWithAi`; the client `quickAdd` helper + the New-ticket form expose a checkbox ("Start with AI right away", i18n ×4).
+
+→ `docs/decisions/0154-auto-activation.md`
 
 ## Code governed by decisions
 

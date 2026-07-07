@@ -1454,6 +1454,7 @@
       "acRunCommand": "Befehl ausführen"
     },
     "board": {
+      "startWithAi": "Sofort mit KI starten",
       "openTicket": "Ticket öffnen",
       "openTerminal": "Terminal öffnen",
       "addReference": "Referenz hinzufügen…",
