@@ -1219,6 +1219,26 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       broadcastContentDirty(action.workspaceId);
       return;
     }
+    case 'save-output-template': {
+      //? O5 — create/update a reusable output spec (name + format + optional watermark position).
+      const templateId = str(payload, 'templateId');
+      const name = (str(payload, 'name') ?? '').trim() || 'Format';
+      const fmt = str(payload, 'format');
+      const format = fmt === '9:16' || fmt === '1:1' || fmt === '16:9' ? fmt : '16:9';
+      const wp = str(payload, 'watermarkPosition');
+      const watermarkPosition = wp === 'br' || wp === 'bl' || wp === 'tr' || wp === 'tl' ? wp : '';
+      await (templateId
+        ? prisma.outputTemplate.updateMany({ where: { workspaceId: action.workspaceId, id: templateId }, data: { name, format, watermarkPosition } })
+        : prisma.outputTemplate.create({ data: { workspaceId: action.workspaceId, name, format, watermarkPosition } }));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'delete-output-template': {
+      const templateId = str(payload, 'templateId');
+      if (templateId) await prisma.outputTemplate.deleteMany({ where: { workspaceId: action.workspaceId, id: templateId } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     case 'content-unpublish': {
       //? S2 — retract a published post: mark the done PublishJob 'unpublished' (best-effort platform delete is
       //? a follow-up — no platform delete adapter yet). Spend is monotonic; refunds are out of scope (flagged).

@@ -903,6 +903,20 @@ model StudioBrandLibrary {
   createdAt   DateTime @default(now())
 }
 
+//? O5 — a reusable OUTPUT SPEC: a named render format (aspect + optional watermark position) a user defines
+//? once and applies across pieces, so a repeatable video format doesn't have to be re-picked each time.
+model OutputTemplate {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId       String   @db.ObjectId
+  name              String
+  format            String   @default("16:9")           // '16:9' | '9:16' | '1:1' (render.ts RenderFormat)
+  watermarkPosition String   @default("")               // '' | 'br' | 'bl' | 'tr' | 'tl'
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
 //? E5 — a user-defined, re-runnable AI task: a named prompt-template (with {{variables}}) that runs through
 //? the provider abstraction (feature 'custom-generate') and stays propose/generate — it NEVER writes
 //? authoritative state, only produces `lastOutput` the user reads. Schedulable via the trigger engine.

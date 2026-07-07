@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (131)
+## Decisions (132)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -144,6 +144,7 @@
 | 0130 | Undo — content-unarchive (soft-undo) + content-unpublish (retract a post) (S2) | 🟢 accepted | content, publish, undo, safety, freedom-program | — | `docs/decisions/0130-undo-unpublish.md` |
 | 0131 | User-defined custom AI tasks — break the "can't invent a task" ceiling within the invariants (E5) | 🟢 accepted | ai, extensibility, custom-tasks, freedom-program | — | `docs/decisions/0131-custom-ai-tasks.md` |
 | 0132 | The inpaint MediaFeature — region-edit backend (E1, server half) | 🟢 accepted | media, inpaint, editors, freedom-program | — | `docs/decisions/0132-inpaint-feature.md` |
+| 0133 | Reusable output templates (named format specs) — O5 | 🟢 accepted | content, render, templates, freedom-program | — | `docs/decisions/0133-output-templates.md` |
 
 ## Summaries
 
@@ -1196,6 +1197,14 @@ A `CustomAiTask` model (name + `promptTemplate` with `{{variables}}` + a read-on
 A new `inpaint` `MediaFeature` + a `maskUrl` on `MediaGenerationRequest`. `composeFalInput` builds the fal flux-inpaint input shape: `image_url` (the source, from `referenceUrl`) + `mask_url` (the mask, white = edit region) + the instruction as the `prompt`, routed to an **env-overridable** model (`FAL_MODEL_INPAINT`, default `fal-ai/flux-general/inpainting`). All the `Record<MediaFeature, …>` maps (kind / provider / cost / support) gained an `inpaint` entry (image kind, fal provider, ~5¢).
 
 → `docs/decisions/0132-inpaint-feature.md`
+
+### 0133 — Reusable output templates (named format specs) — O5
+
+**0133** · accepted · tags: content, render, templates, freedom-program · 2026-07-07
+
+An `OutputTemplate` model (name + `format` [16:9/9:16/1:1] + `watermarkPosition`). `save-output-template` / `delete-output-template` control-ops (workTickets) validate the format/position + persist; the templates are exposed on `snapshot.outputTemplates` with client save/delete methods. A saved spec's `format` feeds the O1 `resolveRenderFormat` → `buildFfmpegPlan` render plan directly.
+
+→ `docs/decisions/0133-output-templates.md`
 
 ## Code governed by decisions
 

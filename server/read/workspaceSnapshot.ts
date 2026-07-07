@@ -159,6 +159,8 @@ export interface WorkspaceSnapshot {
   aiOverrides: { feature: string; providerId: string }[];
   //? E5 — user-defined custom AI tasks (name + template + last output).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
+  //? O5 — reusable output specs (name + render format + watermark position).
+  outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
@@ -211,7 +213,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], sprints: [], suggestions: [], budget: null,
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -301,6 +303,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
     //? E5 — the workspace's user-defined AI tasks (name + template + last output).
     const customTaskRows = await tenantDb.customAiTask.findMany({ orderBy: { createdAt: 'desc' } });
+    //? O5 — the workspace's reusable output specs.
+    const outputTemplateRows = await tenantDb.outputTemplate.findMany({ orderBy: { createdAt: 'desc' } });
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
@@ -415,6 +419,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       aiOverrides: envRows.filter((e) => e.key.startsWith('__ai_provider_')).map((e) => ({ feature: e.key.slice('__ai_provider_'.length), providerId: e.value })),
       //? E5 — user-defined custom AI tasks.
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
+      //? O5 — reusable output specs.
+      outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
       tickets: ticketRows.map((t) => {
         const mapped = toTicket(t);
         //? Real per-ticket cost chip (#16): "<tokens> tok" when the ticket has run turns, else no chip.

@@ -2801,3 +2801,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 (TS-guided ripple: 7 maps) · lint · ai:lint · build · inpaint 6/6 (image_url+mask_url+prompt bereiken provider + inpaint-model-routing + P3-override-wint + model-strip) · falProvider 26/26 (geen regressie).
 
 **Files touched:** `server/media/types.ts` (inpaint + maskUrl), `server/media/providers/fal.ts` (SUPPORTED+models+kind+cost+composeFalInput-inpaint-branch), `server/media/assignments.ts`, `server/media/registry.ts` (kind+stub-cost), `server/content/mediaAsset.ts` (kind), `tests/unit/inpaint.test.mts`, `docs/decisions/0132-inpaint-feature.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM O5: herbruikbare output-templates (format-specs) — ADR 0133
+
+**Wat ik deed:** render-format moest per-generatie gekozen (O1/O4). Nu een `OutputTemplate`-model (naam+`format`+`watermarkPosition`) + `save/delete-output-template`-ops (workTickets, valideert format/pos) + `snapshot.outputTemplates` + client save/delete-methodes. Een saved spec z'n `format` voedt de O1-`resolveRenderFormat`→`buildFfmpegPlan`-plan direct. Template-manager-UI + "apply-op-render"-wiring = follow-ups. Feeds R1.
+
+**Verify:** tsc 0 · lint · ai:lint · build · outputTemplate 9/9 (persist + format-validatie[garbage→16:9] + saved-spec-drijft-render-plan[720×1280] + update-geen-dup + delete).
+
+**Files touched:** `prisma/schema.prisma` (OutputTemplate), `server/orchestrator/conductor.ts` (save/delete-ops), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/outputTemplate_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts` (outputTemplates), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `tests/integration/outputTemplate.test.mts`, `docs/decisions/0133-output-templates.md`.
+
+**FASE O COMPLEET (O1-O5).**

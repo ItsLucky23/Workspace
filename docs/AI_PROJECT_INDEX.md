@@ -51,7 +51,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (48)
+## Sync routes (49)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -77,6 +77,7 @@
 | `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
 | `sync/workspaces/linkRepo/v1` | yes | — | login | — | **no** | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
+| `sync/workspaces/outputTemplate/v1` | yes | — | login | — | **no** | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
 | `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
 | `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). Three control-ops |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
@@ -111,9 +112,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 85 |
+| _(unowned)_ | 86 |
 
-**Test coverage**: 3/87 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/88 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -167,7 +168,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/changeRole/v1`
 - `sync/workspaces/contentAssetDelta/v1`
 - `sync/workspaces/contentControl/v1`
-- … +34 more
+- … +35 more
 
 ## Pages (28)
 

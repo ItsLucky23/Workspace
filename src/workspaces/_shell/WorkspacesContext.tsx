@@ -176,6 +176,10 @@ export interface WorkspacesCtx {
   saveCustomTask: (input: { taskId?: string; name: string; promptTemplate: string }) => void;
   deleteCustomTask: (taskId: string) => void;
   runCustomTask: (taskId: string, vars?: Record<string, string>) => void;
+  //? O5 — reusable output specs (a named render format + watermark), applied across pieces.
+  outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
+  saveOutputTemplate: (input: { templateId?: string; name: string; format: string; watermarkPosition?: string }) => void;
+  deleteOutputTemplate: (templateId: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).

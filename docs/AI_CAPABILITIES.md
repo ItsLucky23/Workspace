@@ -106,6 +106,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/invite/v1` | — | — | — |
 | `workspaces/linkRepo/v1` | — | — | — |
 | `workspaces/mrAction/v1` | — | — | — |
+| `workspaces/outputTemplate/v1` | — | — | — |
 | `workspaces/presence/v1` | — | — | — |
 | `workspaces/projectAdmin/v1` | — | — | — |
 | `workspaces/quickAdd/v1` | — | — | — |
