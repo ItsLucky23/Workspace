@@ -1430,7 +1430,8 @@ model PublishJob {
   contentProjectId String   @db.ObjectId
   assetId          String   @db.ObjectId
   platform         String                            // 'youtube' | 'tiktok' | 'instagram' | 'linkedin'
-  status           String   @default("queued")       // 'queued' | 'done' | 'error'
+  status           String   @default("queued")       // 'queued' | 'scheduled' | 'done' | 'error'
+  scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now)
   externalUrl      String?
   error            String?
   createdAt        DateTime @default(now())

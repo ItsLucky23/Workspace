@@ -2713,3 +2713,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (pad→module-scope + narrowing i.p.v. cast) · ai:lint · build · renderFormats 16/16 (9:16-scale + srt/vtt-cues + safe-fallback) · render 18/18 (geen regressie — optionele param).
 
 **Files touched:** `server/content/render.ts` (RenderFormat-presets + parametrized plan + buildSrt/buildVtt + renderTimeline format-param), `tests/unit/renderFormats.test.mts`, `docs/decisions/0121-export-formats-captions.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM O3: post-scheduling (leader-loop) — ADR 0122
+
+**Wat ik deed:** publishen was immediate-only. Nu `PublishJob.scheduledAt` + `scheduled`-status; upload extracted naar `performUpload` (geen job-write, gedeeld). `publishAsset` met future `scheduledAt` → parkeert een scheduled-job (geen post); immediate post zoals voorheen. `runScheduledPublish(prisma, now)` vuurt due jobs (`scheduledAt<=now`) via performUpload → done/error; `now` geïnjecteerd; `startScheduledPublisher`-interval leader-gated (ADR 0015), gestart in server.ts. Reschedule = `scheduledAt` updaten. Calendar-UI + scheduledAt-threading door de publish-suggestion-accept = follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint · build · scheduledPublish 9/9 (park + niet-due-noop + reschedule-defer + fire-na-tijd + immediate-post) · publish 8/8 · publishReal 12/12 · publishTiktok 5/5 · publishOAuthRoute 8/8 (geen regressie).
+
+**Files touched:** `prisma/schema.prisma` (PublishJob.scheduledAt + status), `server/content/publish.ts` (performUpload + scheduling + runScheduledPublish + startScheduledPublisher), `server/server.ts` (start de loop), `tests/integration/scheduledPublish.test.mts`, `docs/decisions/0122-post-scheduling.md`.

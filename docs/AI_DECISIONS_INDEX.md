@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (120)
+## Decisions (121)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -133,6 +133,7 @@
 | 0119 | Per-workspace autonomy level modulates the per-stage approval gate ("ask me less") | 🟢 accepted | autonomy, approvals, engine, freedom-program, phone-first | — | `docs/decisions/0119-autonomy-dials.md` |
 | 0120 | The watchdog re-pings the assignee about a stale open question (A5, first half) | 🟢 accepted | approvals, watchdog, notifications, freedom-program, phone-first | — | `docs/decisions/0120-needs-input-reping.md` |
 | 0121 | Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export | 🟢 accepted | content, render, export, captions, freedom-program | — | `docs/decisions/0121-export-formats-captions.md` |
+| 0122 | Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt | 🟢 accepted | content, publish, scheduling, freedom-program, multi-instance | — | `docs/decisions/0122-post-scheduling.md` |
 
 ## Summaries
 
@@ -1097,6 +1098,14 @@ The watchdog sweep gains a third responsibility: for every ticket with a REAL `n
 `buildFfmpegPlan` takes an optional `RenderFormat`; `resolveRenderFormat(key)` maps `16:9` (1280×720, the default), `9:16` (720×1280 vertical), `1:1` (1080×1080) — the scale/pad target + fps come from the preset. `renderTimeline` accepts a `format` string and passes it through. Unknown/absent → the 16:9 default. Pure `buildSrt(captions, totalMs)` + `buildVtt(captions, totalMs)` emit well-formed subtitle files by distributing the (untimed) caption LINES evenly across the duration.
 
 → `docs/decisions/0121-export-formats-captions.md`
+
+### 0122 — Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt
+
+**0122** · accepted · tags: content, publish, scheduling, freedom-program, multi-instance · 2026-07-07
+
+`PublishJob.scheduledAt` + a `scheduled` status. The upload implementation was extracted into a `performUpload` helper (no job write) shared by both paths. `publishAsset` with a future `scheduledAt` parks a `scheduled` job (no post); an immediate publish posts + records a `done` job as before. `runScheduledPublish(prisma, now)` fires every due (`scheduledAt <= now`) scheduled job through `performUpload` + flips it to `done`/`error`. `now` is injected for deterministic tests; a `startScheduledPublisher` interval runs it **leader-gated** (ADR 0015 — exactly one instance fires each due post), mirroring the watchdog loop. Reschedule = updating `PublishJob.scheduledAt` (the loop honours the new time).
+
+→ `docs/decisions/0122-post-scheduling.md`
 
 ## Code governed by decisions
 

@@ -187,6 +187,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? the default client is built with the unresolved DATABASE_URL pointer).
   const { startTicketWatchdog } = await import('./orchestrator/watchdog');
   startTicketWatchdog();
+  //? O3: the leader-gated scheduled-post loop fires due PublishJobs at their scheduledAt.
+  const { startScheduledPublisher } = await import('./content/publish');
+  startScheduledPublisher();
   //? Automation (#2): the leased per-minute cron scheduler fires `on:'cron'` WorkspaceTriggers.
   //? Dynamic import (keeps the automation graph out of the pre-secret-resolution static graph).
   const { startCronScheduler } = await import('./automation/cron');
