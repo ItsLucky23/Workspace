@@ -8,13 +8,14 @@ import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 
-import { AIPanel, MobileBottomBar, NavRail, TabBar, TopBar } from './Shell';
+import { AIPanel, MobileBottomBar, NavRail, NAV_ITEMS, TabBar, TopBar } from './Shell';
 import { MobileHeader } from './MobileChrome';
 import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
 import { PageTransition } from '../_components/motion';
 import Icon from '../_components/Icon';
+import { GATEABLE_SECTIONS, isSectionEnabled } from '../_data/modules';
 import { useTranslator } from '@luckystack/core/client';
 
 //? Intentional no-op for handlers whose feature lands in Fase 2 (the mobile FAB
@@ -35,6 +36,18 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
     globalThis.addEventListener('keydown', onKey);
     return () => { globalThis.removeEventListener('keydown', onKey); };
   }, []);
+
+  //? Module gating (modules.ts): if the active view is a section this workspace has
+  //? turned OFF (e.g. a content-only workspace defaulting to the hidden 'board'),
+  //? redirect to the first still-visible nav section so the user never lands on a
+  //? section their modules don't include. Ticket views + non-gateable views pass through.
+  const { loading, workspaces, activeWorkspace, view, navigate } = ctx;
+  useEffect(() => {
+    if (loading || workspaces.length === 0) return;
+    if (!GATEABLE_SECTIONS.includes(view) || isSectionEnabled(activeWorkspace.enabledSections, view)) return;
+    const firstEnabled = NAV_ITEMS.find((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id));
+    if (firstEnabled) navigate(firstEnabled.id);
+  }, [loading, workspaces.length, activeWorkspace, view, navigate]);
 
   const openSearch = () => { setSearchOpen(true); };
 

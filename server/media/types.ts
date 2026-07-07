@@ -29,6 +29,17 @@ export interface MediaStyle {
   params?: Record<string, unknown>;
 }
 
+//? Live progress of a queued generation. A provider that runs an external QUEUE (fal) reports
+//? `queued` (optionally with the queue position) while the job waits, then `running` ONCE it
+//? actually starts processing. The caller uses this to persist the MediaJob lifecycle
+//? (queued → running@startedAt → done) and to broadcast a content delta so the UI shows an
+//? "in queue" state and only starts its elapsed timer when the job leaves the queue.
+export interface MediaProgress {
+  state: 'queued' | 'running';
+  queuePosition?: number;         //? provider queue position while state === 'queued' (undefined once running)
+}
+export type MediaProgressCallback = (p: MediaProgress) => void;
+
 export interface MediaGenerationRequest {
   feature: MediaFeature;
   prompt?: string;
@@ -39,6 +50,7 @@ export interface MediaGenerationRequest {
   workspaceId?: string;           //? display/activity tag (no tenancy enforced here)
   label?: string;
   apiKey?: string;                //? per-workspace key (decrypted from the EnvVar store) — overrides the env key
+  onProgress?: MediaProgressCallback; //? live queue→running transitions (fal queue); omitted ⇒ no progress reporting
 }
 
 //? A produced asset. In stub mode `url` is a valid-shaped fake (`stub://…`).

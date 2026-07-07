@@ -65,7 +65,7 @@ export interface WorkspacesCtx {
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
-  createWorkspace: (name: string) => void;
+  createWorkspace: (name: string, enabledSections?: string[]) => void;
   //? Multi-project / multi-service (ADR 0035): a workspace holds N projects, each
   //? optionally N services. The board/pipeline/sources render the ACTIVE project.
   projects: ProjectSummary[];
@@ -165,6 +165,8 @@ export interface WorkspacesCtx {
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;
+  //? Module gating — persist the workspace's enabled nav-section set (modules.ts).
+  saveSections: (enabledSections: string[]) => void;
   //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.
   pauseTicket: (ticketKey: string) => void;
   resumeTicket: (ticketKey: string) => void;

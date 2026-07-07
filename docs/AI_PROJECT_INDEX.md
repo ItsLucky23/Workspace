@@ -47,7 +47,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (40)
+## Sync routes (42)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -62,6 +62,7 @@
 | `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
 | `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
 | `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/contentAssetDelta/v1` | yes | — | login | — | **no** | — | Workspaces — [content-asset-delta] BROADCAST-ONLY realtime carrier. Mid-generation media jobs |
 | `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
 | `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
@@ -82,6 +83,7 @@
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
 | `sync/workspaces/saveIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
+| `sync/workspaces/saveSections/v1` | yes | — | login | — | **no** | — | Workspaces — [save-sections] REALTIME write via `_sync`. Persists the workspace's enabled |
 | `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
 | `sync/workspaces/scanDocs/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
 | `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
@@ -99,9 +101,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 73 |
+| _(unowned)_ | 75 |
 
-**Test coverage**: 3/75 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/77 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -148,14 +150,14 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkSprint/v1`
 - `sync/workspaces/bulkStatus/v1`
 - `sync/workspaces/changeRole/v1`
+- `sync/workspaces/contentAssetDelta/v1`
 - `sync/workspaces/contentControl/v1`
 - `sync/workspaces/contentSettings/v1`
 - `sync/workspaces/findingAction/v1`
 - `sync/workspaces/gitlabSettings/v1`
 - `sync/workspaces/invite/v1`
 - `sync/workspaces/linkRepo/v1`
-- `sync/workspaces/mrAction/v1`
-- … +22 more
+- … +24 more
 
 ## Pages (28)
 

@@ -12,8 +12,10 @@ import { apiRequest, useTranslator, useUpdateLanguage, getActiveLanguage } from 
 import { motion } from 'motion/react';
 
 import Icon, { type IconName } from '../_components/Icon';
+import { ModulePicker } from '../_components/ModulePicker';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
+import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
 import type { AiRun, AiSuggestion, ChatMessage, ChatProposal, NotificationItem } from '../_data/types';
 
@@ -78,7 +80,7 @@ const roleChip = (role: string) => (
 
 /* ----------------------------------------------------------------- nav rail */
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
-  const { view, navigate, suggestions, currentUser, aiOpen, toggleAi, theme, setTheme, signOut } = useWorkspaces();
+  const { view, navigate, suggestions, currentUser, activeWorkspace, aiOpen, toggleAi, theme, setTheme, signOut } = useWorkspaces();
   const translate = useTranslator();
   const updateLanguage = useUpdateLanguage();
   const activeLang = getActiveLanguage();
@@ -124,7 +126,9 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
       </button>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2 overflow-y-auto">
         {GROUP_ORDER.map((g, gi) => {
-          const items = NAV_ITEMS.filter((it) => it.group === g);
+          //? Module gating (modules.ts): hide the nav items whose section is off for this
+          //? workspace. Non-gateable items (usage) + legacy workspaces (empty set) stay on.
+          const items = NAV_ITEMS.filter((it) => it.group === g && isSectionEnabled(activeWorkspace.enabledSections, it.id));
           if (items.length === 0) return null;
           return (
             <div key={g} className="flex flex-col gap-1">
@@ -313,10 +317,13 @@ export function TabBar() {
 //? Opened via menuHandler (outside the WorkspacesProvider tree), so it can't use
 //? the context — it receives the create callback as a prop. Kept intentionally
 //? simple: one project = one workspace, add the team afterwards.
-function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void }) {
+function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[]) => void }) {
   const translate = useTranslator();
   const [name, setName] = useState('');
-  const submit = () => { const n = name.trim(); if (!n) return; onCreate(n); void menuHandler.close(); };
+  //? Default all modules on (full experience); deselect the lanes you don't want.
+  const [modules, setModules] = useState<WorkspaceModuleId[]>(WORKSPACE_MODULES.map((m) => m.id));
+  const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
+  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; onCreate(n, sectionsForModules(modules)); void menuHandler.close(); };
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createWorkspace' })}</div>
@@ -326,9 +333,11 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string) => void })
         placeholder={translate({ key: 'workspaces.shell.workspaceNamePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
+      <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+      <ModulePicker selected={modules} onToggle={toggleModule} />
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+        <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
       </div>
     </div>
   );
@@ -653,16 +662,18 @@ function SuggestionCard({ s, onOpenTicket, onAccept, onDismiss }: { s: AiSuggest
 
 /* ----------------------------------------------------------------- mobile bottom bar */
 export function MobileBottomBar({ onFab }: { onFab: () => void }) {
-  const { view, navigate, aiOpen, toggleAi } = useWorkspaces();
+  const { view, navigate, activeWorkspace, aiOpen, toggleAi } = useWorkspaces();
   let active = view;
   if (aiOpen) active = 'ai';
   else if (isTicketView(view)) active = 'board';
+  //? Module gating: drop the dev-only sections a content/design workspace turned off;
+  //? 'ai' is non-gateable and always kept.
   const items: NavDef[] = [
     { id: 'board', icon: 'table-columns', label: 'Board' },
     { id: 'terminals', icon: 'terminal', label: 'Terminals' },
     { id: 'activity', icon: 'wave-square', label: 'Activity' },
     { id: 'ai', icon: 'robot', label: 'AI' },
-  ];
+  ].filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id));
   return (
     <nav className="md:hidden flex items-center justify-around h-16 border-t border-divider bg-container1 relative shrink-0">
       {items.map((it, i) => (

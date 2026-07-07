@@ -2466,3 +2466,24 @@ Alle motion = theme-tokens + reduced-motion-safe.
 **Volledige live-run met alle fixes: 22 passed, 0 failed.** 15/15 gemini-text + image (25KB) · reference-image (34KB) · **video (4.2MB)** · **avatar (4.9MB)** · tts/sfx (on-disk) · **music (suno, echt)**. model-3d faalt nu SCHOON (`fal poll timeout`, geen hang) → best-effort gelogd. Bewijst dat de media echt + downloadbaar is (multi-MB video/avatar-bestanden).
 
 **Files touched:** `tests/live/liveAi.live.mts`.
+
+## 2026-07-07 — Modules bij workspace-aanmaak + queue-aware media (in-wachtrij + timer)
+
+**User prompt:** "bouw in queue support in de UI en ook in de timer logic zodat we wachten op de queue en niet dan al de timer starten dat werkt niet goed. ook wil ik dat je gaat kijken bij het opzetten van een workspace of je dan kan kiezen tussen welke modules je wilt … niet dat je meteen gevraagd word om een docker file te maken en een codebase te linken als je hem alleen als marketing/ai generation tool … of misschien alleen om wat UIs te designen."
+
+**Feature A — module-keuze bij workspace-aanmaak (ADR 0097).**
+- Nieuw `Workspace.enabledSections String[]` (leeg = legacy/alles-aan). Bron-van-waarheid `src/workspaces/_data/modules.ts`: 3 modules (Development / Content & Marketing / Design) als presets die naar sectie-ids resolven; per-sectie opgeslagen zodat losse secties ná aanmaak toggelbaar zijn (Dev-workspace kan enkel de Interviewer erbij — user-wens).
+- Aanmaak: `ModulePicker` in Onboarding + CreateWorkspaceForm (default alles-aan, ≥1 verplicht) → sectie-ids → `createWorkspace`/`createWorkspace_v1`/`create-workspace` conductor-case → `createBlankWorkspace`. De "Connect your GitLab project" starter-ticket + sprint worden alleen geseed bij Development aan.
+- Gating: NavRail + MobileBottomBar filteren `NAV_ITEMS` op `isSectionEnabled`; shell-guard redirect een verborgen actieve view naar de eerste zichtbare; settings Repository/GitLab/Workflow-tabs + de nieuwe "Modules"-tab (per-sectie toggles) gegate op `isModuleEnabled('development')`.
+- Nieuwe `[save-sections]` control-op (kopie van save-git-config, RBAC workspaceSettings) + `workspaces/saveSections` `_sync`-route + optimistische client-flip + delta-callback. i18n ×4 (modules/sections + tabModules).
+
+**Feature B — queue-aware media generatie (ADR 0098).**
+- `MediaGenerationRequest.onProgress?` + `MediaProgress {state:'queued'|'running', queuePosition?}`. `fal.ts` leest `queue_position` + `IN_QUEUE`→`IN_PROGRESS` in de poll-loop en emit queued (positie) → running (éénmalig).
+- Schema: `MediaJob.queuePosition Int?` + `startedAt DateTime?`. `mediaAsset.ts` maakt asset+job **als `queued`** aan, transitie `queued → running(@startedAt) → done` (progress-writes geserialiseerd op een chain, geawait vóór de final write zodat ze niet racen), `error` schoon bij falen.
+- Nieuwe `broadcastContentAssetDelta` (model: broadcastTicketDelta) + broadcast-only type-carrier `_sync`-route `contentAssetDelta` + client merge-by-id in de piece. Snapshot + `toContentAssetSummary` (gedeelde mapper) joinen de MediaJob voor queuePosition/startedAt.
+- UI: content asset-card toont **"In wachtrij · positie N" (geen timer)** bij queued en een **elapsed-timer vanaf startedAt** bij processing. i18n ×4 (queued/queuePos/generating).
+- **Scope-flag (Rule 3b / Report-Without-Fixing):** toegepast op de generieke `generateMediaAsset` (avatar/music/sfx/model-3d — incl. de triposr-queue-case). De gespecialiseerde flows (per-beat images, voice, short-form, reference-image) gebruiken nog de synchrone create-as-done; kunnen dezelfde helper later overnemen. Pre-existing wart (write-lease vast tijdens lange queue) bewust buiten scope gelaten, niet verergerd.
+
+**Verify:** tsc 0 · lint · ai:lint · build groen · ws-suite exit 0 (alle content/createWorkspace-integratietests 0 failed) · nieuwe unit-tests `workspaceModules` 16/16 + `contentAssetSummary` 11/11 · falProvider 26/26.
+
+**Files touched:** `prisma/schema.prisma`, `src/workspaces/_data/modules.ts` (nw), `src/workspaces/_components/ModulePicker.tsx` (nw), `server/bootstrap/seedWorkspace.ts`, `src/workspaces/_api/createWorkspace_v1.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveSections_server_v1.ts` (nw), `src/workspaces/_sync/contentAssetDelta_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts`, `server/read/mappers.ts`, `server/read/broadcast.ts`, `server/media/types.ts`, `server/media/providers/fal.ts`, `server/content/mediaAsset.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider,Shell,WorkspacesShell,Onboarding}.tsx`, `src/workspaces/workspace/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0097-*.md`, `docs/decisions/0098-*.md`, `tests/unit/{workspaceModules,contentAssetSummary}.test.mts`.

@@ -21,6 +21,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
+import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, Member, PushPolicy } from '../_data/types';
 
@@ -703,6 +704,46 @@ function DangerTab() {
   );
 }
 
+//? Module-gating settings: per-section toggles grouped by module (Development / Content /
+//? Design). Individual sections toggle independently — a Development workspace can add
+//? just the Interviewer without the rest of Design. Persists via the [save-sections]
+//? control-op; an EMPTY resolved set is disallowed (a workspace must keep ≥1 section).
+function SectionsTab() {
+  const translate = useTranslator();
+  const { activeWorkspace, saveSections } = useWorkspaces();
+  const stored = activeWorkspace.enabledSections;
+  const [enabled, setEnabled] = useState<Set<string>>(() => new Set(!stored || stored.length === 0 ? GATEABLE_SECTIONS : stored));
+  const toggle = (id: string) => {
+    setEnabled((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+  const save = () => { if (enabled.size > 0) saveSections(GATEABLE_SECTIONS.filter((s) => enabled.has(s))); };
+  return (
+    <div className="flex flex-col gap-5 max-w-2xl">
+      <div className="text-sm text-muted">{translate({ key: 'workspaces.sections.intro' })}</div>
+      {WORKSPACE_MODULES.map((m) => (
+        <div key={m.id} className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-container2 text-muted flex items-center justify-center"><Icon name={m.icon} /></span>
+            <div className="text-sm font-semibold text-title">{translate({ key: m.labelKey })}</div>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {WORKSPACE_SECTIONS.filter((s) => s.moduleId === m.id).map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-common">{translate({ key: s.labelKey })}</span>
+                <Toggle on={enabled.has(s.id)} onChange={() => { toggle(s.id); }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div className="flex items-center gap-3">
+        <WsButton icon="check" onClick={save} disabled={enabled.size === 0}>{translate({ key: 'workspaces.sections.save' })}</WsButton>
+        {enabled.size === 0 && <span className="text-xs text-wrong">{translate({ key: 'workspaces.sections.needOne' })}</span>}
+      </div>
+    </div>
+  );
+}
+
 export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
@@ -711,17 +752,27 @@ export default function WorkspaceSettings() {
   const [tab, setTab] = useState('members');
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
+  //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
+  //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
+  const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
   const tabs: TabDef[] = [
     { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
     { id: 'permissions', label: translate({ key: 'workspaces.workspaceSettings.tabPermissions' }), icon: 'circle-check' },
+    { id: 'modules', label: translate({ key: 'workspaces.workspaceSettings.tabModules' }), icon: 'table-cells-large' },
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
     { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
-    { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' },
-    { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' },
-    { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' },
+    ...(devEnabled ? [
+      { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' as const },
+      { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' as const },
+      { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' as const },
+    ] : []),
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
   ];
+
+  //? If the selected tab was gated away (dev tabs hidden after disabling the module),
+  //? fall back to Members so the panel never renders blank.
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : 'members';
 
   const startRename = () => { setNameInput(activeWorkspace.name); setRenaming(true); };
   const commitRename = () => {
@@ -750,18 +801,19 @@ export default function WorkspaceSettings() {
         <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workspaceSettings' })}</span>
       </div>
       <div className="px-4 md:px-6">
-        <Tabs tabs={tabs} active={tab} onChange={setTab} />
+        <Tabs tabs={tabs} active={activeTab} onChange={setTab} />
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
-        {tab === 'members' && <MembersTab />}
-        {tab === 'permissions' && <PermissionsTab />}
-        {tab === 'env' && <EnvTab />}
-        {tab === 'integrations' && <IntegrationsTab />}
-        {tab === 'invites' && <InvitesTab />}
-        {tab === 'repository' && <RepositoryTab />}
-        {tab === 'gitlab' && <GitLabTab key={activeWorkspace.id} />}
-        {tab === 'workflow' && <WorkflowTab key={activeWorkspace.id} />}
-        {tab === 'danger' && <DangerTab />}
+        {activeTab === 'members' && <MembersTab />}
+        {activeTab === 'permissions' && <PermissionsTab />}
+        {activeTab === 'modules' && <SectionsTab />}
+        {activeTab === 'env' && <EnvTab />}
+        {activeTab === 'integrations' && <IntegrationsTab />}
+        {activeTab === 'invites' && <InvitesTab />}
+        {activeTab === 'repository' && <RepositoryTab />}
+        {activeTab === 'gitlab' && <GitLabTab key={activeWorkspace.id} />}
+        {activeTab === 'workflow' && <WorkflowTab key={activeWorkspace.id} />}
+        {activeTab === 'danger' && <DangerTab />}
       </div>
     </div>
   );

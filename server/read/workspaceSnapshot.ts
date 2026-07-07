@@ -17,7 +17,7 @@ import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
-import { formatTime, toInfoDoc, toTicket } from './mappers';
+import { formatTime, toContentAssetSummary, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
@@ -229,7 +229,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const wsIds = memberships.map((m) => m.workspaceId);
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType }));
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, enabledSections: w.enabledSections }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
@@ -327,14 +327,17 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
     //? U4 folds: content-analytics (over pieces + media spend + publish jobs), the style library (this
     //? workspace's + the global defaults), and channels + their brand voice.
-    const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows, publishConnRows] = await Promise.all([
+    const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows, publishConnRows, mediaJobRows] = await Promise.all([
       prisma.mediaSpend.findMany({ where: { workspaceId: contentWsId } }),
       prisma.publishJob.findMany({ where: { workspaceId: contentWsId } }),
       prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
       prisma.channel.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.contentAsset.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.envVar.findMany({ where: { workspaceId: contentWsId, key: { startsWith: '__publish_' } }, select: { key: true } }),
+      prisma.mediaJob.findMany({ where: { workspaceId: contentWsId } }),
     ]);
+    //? Join each asset to its MediaJob for the live queue/timer fields (queuePosition, startedAt).
+    const jobById = new Map(mediaJobRows.map((j) => [j.id, j]));
     //? FIX-C: which publish platforms have a stored OAuth connection (EnvVar `__publish_<platform>`), so the
     //? settings UI shows connect/connected + the piece-detail only offers publish to a connected target.
     const connectedPlatforms = new Set(publishConnRows.map((r) => r.key.slice('__publish_'.length)));
@@ -343,10 +346,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? `stub` = the asset was produced in dummy mode (no key) — the registry marks it in `metadata.stub`.
     const assetsByPiece = new Map<string, ContentAssetSummary[]>();
     for (const a of contentAssetRows) {
-      const m = a.metadata;
-      const stub = typeof m === 'object' && m !== null && 'stub' in m && m.stub === true;
       const list = assetsByPiece.get(a.contentProjectId) ?? [];
-      list.push({ id: a.id, kind: a.kind, url: a.url ?? '', status: a.status, stub });
+      list.push(toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null));
       assetsByPiece.set(a.contentProjectId, list);
     }
     const contentSnapshot: ContentSnapshot = {

@@ -2,7 +2,7 @@
 //? video · music · 3D · assemble) with a style + free-form direction, and an asset area — the place a
 //? non-technical user turns a brief into finished media, each generation confirmed (it may cost money).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
@@ -46,6 +46,46 @@ const ACTIONS: GenAction[] = [
 //? A publishable asset is a finished, reachable video/render (the thing you post to a platform).
 const isPublishable = (asset: ContentAssetSummary): boolean => (asset.kind === 'render' || asset.kind === 'video') && asset.status === 'ready';
 
+//? mm:ss elapsed since the job LEFT the queue (startedAt), for the live generation timer.
+function elapsedLabel(startedAt: number, now: number): string {
+  const s = Math.max(0, Math.floor((now - startedAt) / 1000));
+  return `${String(Math.floor(s / 60))}:${String(s % 60).padStart(2, '0')}`;
+}
+
+//? Live generation state for an in-flight asset. QUEUED → a pulsing "in queue · position N" (NO
+//? timer — the job hasn't started). PROCESSING → an elapsed timer that ticks from `startedAt` (the
+//? moment the job left the provider queue). This is the whole point: the timer never starts while
+//? the job is only queued.
+function GenProgress({ asset, translate }: { asset: ContentAssetSummary; translate: ReturnType<typeof useTranslator> }) {
+  const processing = asset.status === 'processing';
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!processing) return;
+    const t = setInterval(() => { setNow(Date.now()); }, 1000);
+    return () => { clearInterval(t); };
+  }, [processing]);
+  if (asset.status === 'queued') {
+    return (
+      <div className="flex flex-col items-center gap-1.5 text-muted">
+        <Icon name="clock" className="text-xl animate-pulse" />
+        <span className="text-[11px] font-medium text-center px-1">
+          {asset.queuePosition == null
+            ? translate({ key: 'workspaces.content.queued' })
+            : translate({ key: 'workspaces.content.queuePos', params: [{ key: 'n', value: asset.queuePosition }] })}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-1.5 text-primary">
+      <span className="w-5 h-5 rounded-full border-2 border-container2-border border-t-primary animate-spin" />
+      <span className="text-[11px] font-medium tabular-nums">
+        {asset.startedAt ? elapsedLabel(asset.startedAt, now) : translate({ key: 'workspaces.content.generating' })}
+      </span>
+    </div>
+  );
+}
+
 //? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
 //? an open/download link when reachable, and — for a finished render — a publish button per connected
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
@@ -56,11 +96,13 @@ function AssetCard({ asset, connectedPlatforms, onPublish, translate }: { asset:
   return (
     <div className="rounded-xl border border-container2-border bg-container2 overflow-hidden flex flex-col">
       <div className="aspect-square bg-container1 flex items-center justify-center relative">
-        {isImage && href ? (
+        {asset.status === 'queued' || asset.status === 'processing' ? (
+          <GenProgress asset={asset} translate={translate} />
+        ) : (isImage && href ? (
           <img src={href} alt={asset.kind} className="w-full h-full object-cover" />
         ) : (
           <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className="text-2xl text-muted" />
-        )}
+        ))}
         {asset.stub && (
           <span className="absolute top-1.5 left-1.5 rounded-md bg-warning/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary">
             {translate({ key: 'workspaces.content.assetStub' })}

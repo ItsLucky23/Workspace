@@ -18,6 +18,7 @@ import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
+import { sanitizeSections } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
@@ -707,7 +708,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? workspace owned by the caller — the onboarding "create a workspace" path.
       //? Uses the plain client (not tenant-scoped): there is no tenant yet.
       const name = str(payload, 'name');
-      if (name) await createBlankWorkspace(prisma, userId, name.trim());
+      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections));
       return;
     }
     case 'invite': {
@@ -809,6 +810,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         protectedBranches: cfg.protectedBranches, commitSigning: cfg.commitSigning,
       } } });
       return cfg;
+    }
+    case 'save-sections': {
+      //? Persist the enabled nav-section set (module gating, workspaces/_data/modules.ts).
+      //? Sanitized to known gateable ids; [] ⇒ legacy all-on. Returns the stored list so
+      //? the realtime `_sync` route broadcasts the delta back to the caller's shell.
+      const enabledSections = sanitizeSections(payload.enabledSections);
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { enabledSections } });
+      return { enabledSections };
     }
     // ---- agent controls (C2) ----
     case 'pause': {

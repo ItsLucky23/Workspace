@@ -163,6 +163,12 @@ model Workspace {
   paused                Boolean  @default(false)          // pause-all: when true the engine provisions NO new autonomous turns (C2)
   allowMergeOnRedCI     Boolean  @default(false)          // ADR 0039 — Admin override: allow merge/promote while a required CI run is red (unwedges a broken runner)
 
+  // --- module / nav-section gating (workspace scope). Resolved section-id list chosen
+  //     at creation (from the Dev/Content/Design module presets) + toggled after.
+  //     EMPTY = legacy / all-on (pre-module workspaces keep every section). See
+  //     src/workspaces/_data/modules.ts for the module→section map. ---
+  enabledSections       String[]                          // gateable nav-section ids that are ON; [] ⇒ all sections shown
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -1344,6 +1350,8 @@ model MediaJob {
   input            Json                              // { prompt?, referenceUrl?, extraInstructions?, … }
   params           Json?
   status           String   @default("queued")       // 'queued' | 'running' | 'done' | 'error'
+  queuePosition    Int?                              // provider queue position while status='queued' (fal) — drives the "in queue · position N" UI
+  startedAt        DateTime?                         // when the job LEFT the queue and began processing — the UI's elapsed timer anchors here
   resultAssetId    String?  @db.ObjectId
   costCents        Int      @default(0)              // metered € cost, in cents
   error            String?

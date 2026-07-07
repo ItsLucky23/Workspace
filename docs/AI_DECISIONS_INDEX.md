@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (95)
+## Decisions (97)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -108,6 +108,8 @@
 | 0094 | Premium feel comes from a shared motion layer, not per-page ad-hoc animation | 🟢 accepted | ui, motion, design-system, consistency | — | `docs/decisions/0094-premium-motion-layer.md` |
 | 0095 | Music generation uses the api.sunoapi.org contract (resolves the 0093 open question) | 🟢 accepted | media, providers, music, suno | — | `docs/decisions/0095-suno-api-integration.md` |
 | 0096 | The fal transport gets a per-fetch timeout + a clean poll-timeout; triposr's blocker is fal queue congestion | 🟢 accepted | media, providers, fal, robustness | — | `docs/decisions/0096-fal-transport-robustness.md` |
+| 0097 | Workspaces pick MODULES at creation (Dev / Content / Design) — nav gates on a per-section set, not a repo/Dockerfile-first setup | 🟢 accepted | workspaces, onboarding, modules, nav, content, rbac | — | `docs/decisions/0097-workspace-modules.md` |
+| 0098 | Media generation is queue-aware — the UI shows "in queue · position N" and only starts its elapsed timer when the job leaves the provider queue | 🟢 accepted | media, content, fal, realtime, broadcast, ux | — | `docs/decisions/0098-queue-aware-media-generation.md` |
 
 ## Summaries
 
@@ -872,6 +874,22 @@ Rewrite `realMusicTransport` to the `api.sunoapi.org/api/v1` contract:
 **`falFetch`** wraps every fal fetch (submit + status poll + result) in an `AbortController` with a hard `FAL_FETCH_TIMEOUT_MS` (default 30s) — a hung connection now aborts instead of blocking indefinitely. **Clean poll-timeout:** the poll loop tracks completion and throws `fal poll timeout` when the budget is exhausted, instead of fetching an incomplete result (the misleading 400). **`FAL_POLL_MAX` default raised 60 → 120** (× 2s = 4 min) so a slow-but-*moving* queue still completes; `FAL_MODEL_3D` remains an env override for a faster/less-congested 3D model.
 
 → `docs/decisions/0096-fal-transport-robustness.md`
+
+### 0097 — Workspaces pick MODULES at creation (Dev / Content / Design) — nav gates on a per-section set, not a repo/Dockerfile-first setup
+
+**0097** · accepted · tags: workspaces, onboarding, modules, nav, content, rbac · 2026-07-07
+
+A workspace stores `enabledSections: String[]` (`Workspace` model) — the resolved set of gateable nav-section ids. **Empty ⇒ legacy / all-on** (every pre-module workspace keeps every section). Three shippable **modules** are pure presets (`src/workspaces/_data/modules.ts`): **Development** (board/backlog/terminals/activity/sources/pipeline/scheduled — the only lane needing a repo + Dockerfile), **Content & Marketing** (content/marketing), **Design** (designer/interviewer). At creation the user picks modules; the client resolves them to section ids and sends those. Storage is **per-section**, not per-module, so individual sections toggle independently after creation (a Dev workspace can add the lone Interviewer). The settings "Modules" tab is a per-section toggle grid grouped by module. **Gating is enforced at the seams, not by a central switch** (routing is file-based, no router): the nav rail + mobile bar filter `NAV_ITEMS` by `isSectionEnabled`; a shell guard redirects a hidden active view to the first enabled one; and the Repository/GitLab/Workflow settings tabs + the "Connect your GitLab project" starter ticket are gated on `isModuleEnabled('development')`. The post-creation edit is a new `[save-sections]` control-op (single-writer, modeled on `save-git-config`) — RBAC `workspaceSettings`, broadcast back as a realtime delta.
+
+→ `docs/decisions/0097-workspace-modules.md`
+
+### 0098 — Media generation is queue-aware — the UI shows "in queue · position N" and only starts its elapsed timer when the job leaves the provider queue
+
+**0098** · accepted · tags: media, content, fal, realtime, broadcast, ux · 2026-07-07
+
+End-to-end queue awareness, respecting B-23 (the Conductor stays the single writer — media gen runs inline on its chain; we only add intermediate writes + socket emits within the same op):
+
+→ `docs/decisions/0098-queue-aware-media-generation.md`
 
 ## Code governed by decisions
 

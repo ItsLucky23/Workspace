@@ -91,6 +91,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/bulkSprint/v1` | — | — | — |
 | `workspaces/bulkStatus/v1` | — | — | — |
 | `workspaces/changeRole/v1` | — | — | — |
+| `workspaces/contentAssetDelta/v1` | — | — | — |
 | `workspaces/contentControl/v1` | — | — | — |
 | `workspaces/contentSettings/v1` | — | — | — |
 | `workspaces/findingAction/v1` | — | — | — |
@@ -111,6 +112,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/saveEnv/v1` | — | — | — |
 | `workspaces/saveGitConfig/v1` | — | — | — |
 | `workspaces/saveIntegration/v1` | — | — | — |
+| `workspaces/saveSections/v1` | — | — | — |
 | `workspaces/saveStageConfig/v1` | — | — | — |
 | `workspaces/scanDocs/v1` | — | — | — |
 | `workspaces/scanIndex/v1` | — | — | — |

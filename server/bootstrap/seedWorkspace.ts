@@ -14,6 +14,7 @@ import {
   MEMBERS, NOTIFICATIONS, PROJECTS, SKILLS, SPRINTS, STAGE_CONFIGS, TICKETS,
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
+import { isModuleEnabled } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from './defaultPipeline';
 import { createStarterLibrary } from './starterLibrary';
 import { encryptSecret } from '../crypto/secretBox';
@@ -38,10 +39,14 @@ function slugify(name: string): string {
 //? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
 //? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
 //? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
-export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string): Promise<{ workspaceId: string }> {
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[]): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
+  //? Module gating (workspaces/_data/modules.ts): the caller passes the RESOLVED
+  //? section-id list from the chosen module presets. Absent/empty ⇒ legacy all-on.
+  const sections = enabledSections ?? [];
+  const devEnabled = isModuleEnabled(sections.length > 0 ? sections : undefined, 'development');
   const ws = await prisma.workspace.create({
-    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey: 'professional' },
+    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey: 'professional', enabledSections: sections },
   });
   const workspaceId = ws.id;
 
@@ -70,22 +75,26 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? Light starter seed (item 11): ONE active sprint + TWO example tickets owned by
   //? the creator, so a brand-new board + pipeline + backlog aren't empty on first
   //? open. This deliberately replaces the old heavy demo (20 tickets / 6 fake
-  //? members) — that lives in `seedDemoWorkspace` and is dev/test-only.
-  const sprint = await prisma.sprint.create({ data: { workspaceId, projectId: project.id, name: 'Sprint 1', active: true } });
-  const starterTickets = [
-    { title: 'Welcome to your workspace 👋', description: 'This is an example ticket. Drag it across the pipeline, assign it, or archive it — your call.' },
-    { title: 'Connect your GitLab project', description: 'Add your repository under Settings → GitLab so the pipeline can work on real issues and merge requests.' },
-  ];
-  let number = 1;
-  for (const t of starterTickets) {
-    await prisma.ticket.create({
-      data: {
-        workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
-        title: t.title, description: t.description, stageId: 'unrefined', status: 'idle',
-        labels: [], creatorId: ownerId, sprintId: sprint.id,
-      },
-    });
-    number += 1;
+  //? members) — that lives in `seedDemoWorkspace` and is dev/test-only. Only seeded
+  //? when the Development module is on: a content/design-only workspace has no board,
+  //? so it must NOT be greeted with a "Connect your GitLab project" ticket.
+  if (devEnabled) {
+    const sprint = await prisma.sprint.create({ data: { workspaceId, projectId: project.id, name: 'Sprint 1', active: true } });
+    const starterTickets = [
+      { title: 'Welcome to your workspace 👋', description: 'This is an example ticket. Drag it across the pipeline, assign it, or archive it — your call.' },
+      { title: 'Connect your GitLab project', description: 'Add your repository under Settings → GitLab so the pipeline can work on real issues and merge requests.' },
+    ];
+    let number = 1;
+    for (const t of starterTickets) {
+      await prisma.ticket.create({
+        data: {
+          workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
+          title: t.title, description: t.description, stageId: 'unrefined', status: 'idle',
+          labels: [], creatorId: ownerId, sprintId: sprint.id,
+        },
+      });
+      number += 1;
+    }
   }
 
   return { workspaceId };

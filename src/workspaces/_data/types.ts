@@ -73,6 +73,7 @@ export interface Workspace {
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
+  enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
 }
 
 export interface Project {
@@ -239,8 +240,10 @@ export interface ContentAssetSummary {
   id: string;
   kind: string;          // 'image'|'video'|'voice'|'music'|'sfx'|'render'|'model-3d'|…
   url: string;           // '/media/<file>' (served by the backend) or a hosted provider url
-  status: string;        // 'pending'|'ready'|'error'
+  status: string;        // 'queued'|'processing'|'pending'|'ready'|'error' (queued/processing = live gen)
   stub: boolean;         // produced in dummy mode (no key) — a placeholder, not real media
+  queuePosition?: number; // provider queue position while status='queued' (drives "in queue · position N")
+  startedAt?: number;    // epoch ms the job left the queue + began — the UI elapsed-timer anchor (status='processing')
 }
 
 export interface ContentPieceSummary {

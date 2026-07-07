@@ -311,6 +311,37 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? module-gating delta → replace the active workspace's enabledSections (nav re-renders).
+  //? Room-scoped broadcast, so it applies to the active workspace.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveSections', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const enabledSections = serverOutput.enabledSections;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, enabledSections } : w)) } : s));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? content-asset delta → upsert the asset by id into its piece (live media queue/timer state:
+  //? queued → processing → ready). Room-scoped; merges into the matching content piece.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/contentAssetDelta', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.asset) return;
+      const asset = serverOutput.asset;
+      const pieceId = serverOutput.contentProjectId;
+      setSnap((s) => ({
+        ...s,
+        content: {
+          ...s.content,
+          pieces: s.content.pieces.map((p) => (p.id === pieceId
+            ? { ...p, assets: p.assets.some((a) => a.id === asset.id) ? p.assets.map((a) => (a.id === asset.id ? asset : a)) : [...p.assets, asset] }
+            : p)),
+        },
+      }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? env-var deltas → upsert / drop by id (settings realtime; no refetch).
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/saveEnv', version: 'v1',
@@ -810,7 +841,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setWantProjectId(undefined); setLoading(true); },
-      createWorkspace: (name) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() } })); },
+      createWorkspace: (name, enabledSections) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), clientRequestId: nextReqId() } })); },
       //? Multi-project / multi-service (ADR 0035).
       projects: snap.projects,
       activeProject: snap.projects.find((p) => p.id === snap.activeProjectId) ?? snap.projects.at(0) ?? null,
@@ -911,6 +942,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      //? Module gating: optimistically flip the active workspace's enabledSections (instant
+      //? nav re-render) then persist via the [save-sections] control-op; the broadcast
+      //? reconciles idempotently.
+      saveSections: (enabledSections) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return;
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
+        void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
+      },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
       resumeTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'resume', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },

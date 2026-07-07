@@ -4,9 +4,9 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob } from '@prisma/client';
 
-import type { EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
+import type { ContentAssetSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
 import { decryptSecret } from '../crypto/secretBox';
 
@@ -74,6 +74,20 @@ export function toTicket(t: DbTicket): Ticket {
     //? Real recency for the backlog/board time column (was a hardcoded mock array).
     //? `lastActivityAt` is denormalized from the latest TicketEvent; fall back to createdAt.
     lastActivityAt: (t.lastActivityAt ?? t.createdAt).toISOString(),
+  };
+}
+
+//? Map a ContentAsset row (+ its MediaJob, for the live queue/timer fields) → the
+//? frontend `ContentAssetSummary`. Shared by `buildSnapshot` (first load) AND the
+//? `broadcastContentAssetDelta` (mid-generation deltas) so the client merges both
+//? identically. `queuePosition`/`startedAt` come from the job's live lifecycle.
+export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null): ContentAssetSummary {
+  const m = a.metadata;
+  const stub = typeof m === 'object' && m !== null && 'stub' in m && m.stub === true;
+  return {
+    id: a.id, kind: a.kind, url: a.url ?? '', status: a.status, stub,
+    ...(job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
+    ...(job?.startedAt ? { startedAt: job.startedAt.getTime() } : {}),
   };
 }
 

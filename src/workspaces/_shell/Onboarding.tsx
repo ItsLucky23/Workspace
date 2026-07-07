@@ -8,16 +8,22 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
+import { ModulePicker } from '../_components/ModulePicker';
 import { WsButton } from '../_components/primitives';
+import { WORKSPACE_MODULES, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { useWorkspaces } from './WorkspacesContext';
 
 export function Onboarding() {
   const translate = useTranslator();
   const { createWorkspace, myInvites, acceptInvite } = useWorkspaces();
   const [name, setName] = useState('');
+  //? Default to all modules on (= the full experience, backward-compatible); the user
+  //? deselects the lanes they don't want. At least one module is required.
+  const [modules, setModules] = useState<WorkspaceModuleId[]>(WORKSPACE_MODULES.map((m) => m.id));
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
-  const submit = () => { const n = name.trim(); if (!n) return; createWorkspace(n); };
+  const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
+  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; createWorkspace(n, sectionsForModules(modules)); };
 
   return (
     <div className="h-full w-full overflow-y-auto bg-background text-title flex items-start md:items-center justify-center p-4">
@@ -36,7 +42,9 @@ export function Onboarding() {
             placeholder={translate({ key: 'workspaces.shell.workspaceNamePlaceholder' })}
             className="h-10 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
-          <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+          <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+          <ModulePicker selected={modules} onToggle={toggleModule} />
+          <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
         </div>
 
         {myInvites.length > 0 && (

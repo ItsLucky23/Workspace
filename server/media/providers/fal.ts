@@ -9,7 +9,7 @@ import { sleep, tryCatch } from '@luckystack/core';
 
 import { withRetry } from '../../util/retry';
 import { composeMediaPrompt } from '../prompt';
-import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProvider, MediaAsset } from '../types';
+import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProvider, MediaAsset, MediaProgressCallback } from '../types';
 
 //? Re-exported so the fal test + callers can import the shared prompt composer from here.
 export { composeMediaPrompt } from '../prompt';
@@ -113,7 +113,7 @@ export function extractFalAsset(feature: MediaFeature, result: Record<string, un
 //? The HTTP transport — submit a fal queue request and return the final result JSON. Injectable so
 //? `generate` is testable with a fixture (no network). The real one does submit → poll → fetch.
 export interface FalTransport {
-  submit: (model: string, input: Record<string, unknown>, apiKey: string) => Promise<Record<string, unknown>>;
+  submit: (model: string, input: Record<string, unknown>, apiKey: string, onProgress?: MediaProgressCallback) => Promise<Record<string, unknown>>;
 }
 
 const FAL_QUEUE_BASE = (process.env.FAL_QUEUE_BASE ?? '').trim() || 'https://queue.fal.run';
@@ -139,7 +139,7 @@ async function falFetch(url: string, init: RequestInit): Promise<Response> {
 
 //? The live fal.ai queue transport: POST the job, poll status until COMPLETED, GET the result.
 export const realFalTransport: FalTransport = {
-  submit: async (model, input, apiKey) => {
+  submit: async (model, input, apiKey, onProgress) => {
     const headers = { Authorization: `Key ${apiKey}`, 'Content-Type': 'application/json' };
     const submitted = await withRetry(async () => {
       const r = await falFetch(`${FAL_QUEUE_BASE}/${model}`, { method: 'POST', headers, body: JSON.stringify(input) });
@@ -150,14 +150,32 @@ export const realFalTransport: FalTransport = {
     const responseUrl = submitted.response_url;
     if (statusUrl === undefined || responseUrl === undefined) throw new Error('fal submit: missing status/response url');
     //? Poll until COMPLETED; a timeout throws a CLEAR error (don't fall through to fetch an incomplete
-    //? result, which returns the confusing "still in progress" 400).
+    //? result, which returns the confusing "still in progress" 400). While polling, report queue vs
+    //? running transitions to `onProgress` — fal's status is IN_QUEUE (with a `queue_position`) until
+    //? the job is picked up, then IN_PROGRESS. The UI's elapsed timer starts on the first `running`.
     let completed = false;
+    let reportedRunning = false;
+    let lastQueuePos: number | undefined;
     for (let i = 0; i < POLL_MAX; i += 1) {
       const sr = await falFetch(statusUrl, { headers });
       if (!sr.ok) throw new Error(`fal status ${String(sr.status)}`);
-      const status = ((await sr.json()) as { status?: string }).status;
+      const body = (await sr.json()) as { status?: string; queue_position?: number };
+      const status = body.status;
       if (status === 'COMPLETED') { completed = true; break; }
       if (status === 'FAILED' || status === 'ERROR') throw new Error('fal job failed');
+      if (onProgress) {
+        if (status === 'IN_QUEUE') {
+          //? Report on entry + whenever the position moves (so the UI can show "position N").
+          if (!reportedRunning && body.queue_position !== lastQueuePos) {
+            lastQueuePos = body.queue_position;
+            onProgress(body.queue_position === undefined ? { state: 'queued' } : { state: 'queued', queuePosition: body.queue_position });
+          }
+        } else if (!reportedRunning) {
+          //? Anything past the queue (IN_PROGRESS) → the job has started; fire `running` ONCE.
+          reportedRunning = true;
+          onProgress({ state: 'running' });
+        }
+      }
       await sleep(POLL_MS);
     }
     if (!completed) throw new Error('fal poll timeout');
@@ -179,7 +197,7 @@ export function createFalProvider(transport: FalTransport = realFalTransport): M
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const { model, input } = composeFalInput(req);
       const key = (req.apiKey ?? process.env.FAL_KEY ?? '').trim();
-      const [err, result] = await tryCatch(() => transport.submit(model, input, key));
+      const [err, result] = await tryCatch(() => transport.submit(model, input, key, req.onProgress));
       if (err || !result) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: `media.falFailed: ${err?.message ?? 'unknown'}` };
       const asset = extractFalAsset(req.feature, result);
       if (!asset) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.falNoAsset' };
