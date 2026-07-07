@@ -2681,3 +2681,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · automation 21/21 (de notify→notification-flow draait nu incl. de push-fan-out, geen regressie; push no-op zonder subs).
 
 **Files touched:** `server/hooks/webPush.ts` (sendWebPushMany), `server/automation/executor.ts` (2 sites + import), `docs/decisions/0117-push-fanout-notifications.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM A3: per-type push opt-out — ADR 0118
+
+**Wat ik deed:** push was all-or-nothing. Nu 3 `User.preferences`-booleans (`pushOnAssignment/pushOnAutomation/pushOnAiSuggestion`, opt-out/default-on) in de updatePreferences-allow-list. `sendWebPush`/`sendWebPushMany` nemen een optionele `PushCategory`; pure `pushCategoryAllowed(prefs, category)` suppress alleen bij expliciet `false`. De 3 call-sites geven hun category door (assignment/automation/aiSuggestion). Settings-notificatie-card toont de 3 per-type toggles (zichtbaar zodra push aan).
+
+**Verify:** tsc 0 · lint · ai:lint · build · pushCategory 9/9 (opt-out-default + expliciet-false-suppress + category-isolatie + null/non-object-safe). i18n ×4.
+
+**Files touched:** `server/hooks/webPush.ts` (PushCategory + pushCategoryAllowed + gate), `server/orchestrator/conductor.ts` + `server/automation/executor.ts` (category-arg op 3 sites), `src/settings/_api/updatePreferences_v1.ts` (allow-list), `src/workspaces/settings/page.tsx` (3 toggles), `src/_locales/{en,nl,de,fr}.json`, `tests/unit/pushCategory.test.mts`, `docs/decisions/0118-push-per-type-preferences.md`.

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (116)
+## Decisions (117)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -129,6 +129,7 @@
 | 0115 | Studio artifact regenerate takes a free-text refine instruction (not a blind re-roll) | 🟢 accepted | studio, iteration, freedom-program | — | `docs/decisions/0115-studio-refine.md` |
 | 0116 | Web push + PWA — env-VAPID, a service worker, and push piggybacked on notifications | 🟢 accepted | push, pwa, notifications, freedom-program, phone-first | — | `docs/decisions/0116-web-push-pwa.md` |
 | 0117 | Push fans out on the automation + AI-suggestion notification sites (A1 fast-follow) | 🟢 accepted | push, notifications, automation, freedom-program | — | `docs/decisions/0117-push-fanout-notifications.md` |
+| 0118 | Per-type web-push opt-out (assignment / automation / AI-suggestion), default on | 🟢 accepted | push, notifications, preferences, freedom-program | — | `docs/decisions/0118-push-per-type-preferences.md` |
 
 ## Summaries
 
@@ -1061,6 +1062,14 @@ A `content-regenerate` control-op: given an asset id, it loads the asset's `Medi
 A `sendWebPushMany(prisma, userIds, payload)` helper (best-effort per user, never throws) added to `webPush.ts`. Wired in right after both `notification.createMany` sites in `executor.ts` so every in-app notification is mirrored to the members' devices. Same tag scheme (`ticket-<key>`) as A1 for coalescing.
 
 → `docs/decisions/0117-push-fanout-notifications.md`
+
+### 0118 — Per-type web-push opt-out (assignment / automation / AI-suggestion), default on
+
+**0118** · accepted · tags: push, notifications, preferences, freedom-program · 2026-07-07
+
+Three `User.preferences` booleans — `pushOnAssignment`, `pushOnAutomation`, `pushOnAiSuggestion` — all *opt-out** (default ON, matching the existing `notifyOnAssignment` bell convention). Added to the `updatePreferences` allow-list. `sendWebPush` / `sendWebPushMany` take an optional `PushCategory`; a pure `pushCategoryAllowed(prefs, category)` gate suppresses a push only when that category is explicitly `false`. The three call sites pass their category (`assignment` / `automation` / `aiSuggestion`). The settings notifications card shows the three per-type toggles, revealed once push is enabled.
+
+→ `docs/decisions/0118-push-per-type-preferences.md`
 
 ## Code governed by decisions
 

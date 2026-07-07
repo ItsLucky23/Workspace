@@ -328,7 +328,7 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
       },
     });
     //? A1 — also push it to the user's devices (best-effort; no-op without VAPID/subscriptions).
-    await sendWebPush(prisma, recipientUserId, { title: 'Assigned to a ticket', body: `You were assigned ${ticketKey}.`, url: '/', tag: `ticket-${ticketKey}` });
+    await sendWebPush(prisma, recipientUserId, { title: 'Assigned to a ticket', body: `You were assigned ${ticketKey}.`, url: '/', tag: `ticket-${ticketKey}` }, 'assignment');
   });
   if (error) console.error('[conductor] notifyAssignment failed:', error);
 }

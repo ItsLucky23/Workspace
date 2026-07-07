@@ -167,6 +167,18 @@ export default function AccountSettings() {
       setPushBusy(false);
     })();
   };
+  //? A3 — per-type push opt-out (default on). Persisted to User.preferences.
+  const rawPrefs = session?.preferences;
+  const prefRec: Record<string, unknown> = rawPrefs !== null && typeof rawPrefs === 'object' && !Array.isArray(rawPrefs) ? rawPrefs : {};
+  const [pushCats, setPushCats] = useState({
+    assignment: prefRec.pushOnAssignment !== false,
+    automation: prefRec.pushOnAutomation !== false,
+    aiSuggestion: prefRec.pushOnAiSuggestion !== false,
+  });
+  const savePushCat = (key: 'assignment' | 'automation' | 'aiSuggestion', prefKey: string, next: boolean) => {
+    setPushCats((c) => ({ ...c, [key]: next }));
+    void apiRequest({ name: 'settings/updatePreferences', version: 'v1', data: { preferences: { [prefKey]: next } } });
+  };
   const [language, setSelectedLanguage] = useState<Language>(session?.language ?? 'en');
   const sshUser = sshUserId ? membersById[sshUserId] : null;
 
@@ -358,6 +370,23 @@ export default function AccountSettings() {
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
               <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
             </Row>
+            {/* A3 — per-type push opt-out (only meaningful once push is enabled). */}
+            {push && (
+              <div className="flex flex-col gap-1 pl-3 border-l border-divider mt-1">
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAssignment' })}</span>
+                  <Toggle on={pushCats.assignment} onChange={(v) => { savePushCat('assignment', 'pushOnAssignment', v); }} label="" />
+                </Row>
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAutomation' })}</span>
+                  <Toggle on={pushCats.automation} onChange={(v) => { savePushCat('automation', 'pushOnAutomation', v); }} label="" />
+                </Row>
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAiSuggestion' })}</span>
+                  <Toggle on={pushCats.aiSuggestion} onChange={(v) => { savePushCat('aiSuggestion', 'pushOnAiSuggestion', v); }} label="" />
+                </Row>
+              </div>
+            )}
           </Card>
 
           <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>

@@ -9,6 +9,25 @@ import type { PrismaClient } from '@prisma/client';
 
 export interface PushPayload { title: string; body: string; url?: string; tag?: string }
 
+//? A3 — per-type push opt-out. Each category maps to a User.preferences boolean (default ON = opt-out); a push
+//? is suppressed only when the user explicitly set it to false.
+export type PushCategory = 'assignment' | 'automation' | 'aiSuggestion';
+const PREF_KEY: Record<PushCategory, string> = { assignment: 'pushOnAssignment', automation: 'pushOnAutomation', aiSuggestion: 'pushOnAiSuggestion' };
+
+//? Pure gate (default ON = opt-out): a push is allowed unless the user's preferences set this category false.
+//? Exported for tests.
+export function pushCategoryAllowed(prefs: unknown, category?: PushCategory): boolean {
+  if (!category) return true;
+  if (prefs === null || typeof prefs !== 'object' || Array.isArray(prefs)) return true;
+  return (prefs as Record<string, unknown>)[PREF_KEY[category]] !== false;
+}
+
+async function categoryAllowed(prisma: PrismaClient, userId: string, category?: PushCategory): Promise<boolean> {
+  if (!category) return true;
+  const [, user] = await tryCatch(() => prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }));
+  return pushCategoryAllowed(user?.preferences, category);
+}
+
 //? web-push is CJS — under the ESM/tsx loader its API lands on `.default`, so type the dynamic import to it
 //? (same shape as the lazyEmail optional-peer pattern in notifications.ts).
 interface WebPushApi {
@@ -33,14 +52,16 @@ async function loadWebPush(): Promise<WebPushApi | null> {
 }
 
 //? A2 — push the same payload to a set of users (a notification fan-out). Best-effort per user; never throws.
-export async function sendWebPushMany(prisma: PrismaClient, userIds: string[], payload: PushPayload): Promise<void> {
-  for (const userId of userIds) await sendWebPush(prisma, userId, payload);
+export async function sendWebPushMany(prisma: PrismaClient, userIds: string[], payload: PushPayload, category?: PushCategory): Promise<void> {
+  for (const userId of userIds) await sendWebPush(prisma, userId, payload, category);
 }
 
-//? Send a push to every device of `userId`. Prunes dead subscriptions. Never throws.
-export async function sendWebPush(prisma: PrismaClient, userId: string, payload: PushPayload): Promise<void> {
+//? Send a push to every device of `userId` (A3: unless the user opted out of this category). Prunes dead
+//? subscriptions. Never throws.
+export async function sendWebPush(prisma: PrismaClient, userId: string, payload: PushPayload, category?: PushCategory): Promise<void> {
   const lib = await loadWebPush();
   if (!lib) return;
+  if (!(await categoryAllowed(prisma, userId, category))) return;
   const [, subs] = await tryCatch(() => prisma.pushSubscription.findMany({ where: { userId } }));
   if (!subs || subs.length === 0) return;
   const body = JSON.stringify({ title: payload.title, body: payload.body, ...(payload.url ? { url: payload.url } : {}), ...(payload.tag ? { tag: payload.tag } : {}) });
