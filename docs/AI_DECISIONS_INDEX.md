@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (138)
+## Decisions (139)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -151,6 +151,7 @@
 | 0137 | content-inpaint op — thread a mask through the content flow to the inpaint feature (E1, wiring half) | 🟢 accepted | content, inpaint, editors, freedom-program | — | `docs/decisions/0137-content-inpaint-op.md` |
 | 0138 | The image region editor — Fabric.js mask-draw → inpaint (E1, canvas half) | 🟢 accepted | editors, image, inpaint, fabric, freedom-program | — | `docs/decisions/0138-image-region-editor.md` |
 | 0139 | Image editor essentials — brightness/contrast/saturation → a new asset (E2) | 🟢 accepted | editors, image, fabric, freedom-program | — | `docs/decisions/0139-image-editor-essentials.md` |
+| 0140 | Video timeline — beat reorder + trim drives the render plan (E3, backend half) | 🟢 accepted | editors, video, render, freedom-program | — | `docs/decisions/0140-video-timeline-reorder.md` |
 
 ## Summaries
 
@@ -1259,6 +1260,14 @@ An `ImageRegionEditor` React component (OV-1 = Fabric.js): the source asset is t
 An `ImageEditor` component on the same Fabric.js canvas: brightness / contrast / saturation sliders applied as fabric image filters, exported as a NEW image asset (non-destructive — the original is untouched; the edit is imported via the tested `content-import-asset` op, appearing as a normal asset). It's a client-side transform (no provider, no spend). Fabric + its filters are lazily imported. An "Adjust" button on ready image assets, alongside E1's "Edit region".
 
 → `docs/decisions/0139-image-editor-essentials.md`
+
+### 0140 — Video timeline — beat reorder + trim drives the render plan (E3, backend half)
+
+**0140** · accepted · tags: editors, video, render, freedom-program · 2026-07-08
+
+A `content-reorder-beats` control-op: given `[{ beatId, order?, durationMs? }]` it updates each beat's `order` (resequence) + `durationMs` (trim, clamped 0.5–30s). Because the assembly renders beats in `order` with each beat shown for its `durationMs`, this directly drives the ffmpeg plan (sequence + clip times) — verified by reordering + trimming and asserting the resulting `buildFfmpegPlan` concat list.
+
+→ `docs/decisions/0140-video-timeline-reorder.md`
 
 ## Code governed by decisions
 

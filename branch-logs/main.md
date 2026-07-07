@@ -2863,3 +2863,11 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 **Verify:** tsc 0 · lint · ai:lint · build. Canvas-render+filter-preview = browser-verify (dev-server); export→import hergebruikt geteste K1-upload + content-import-asset. i18n ×4.
 
 **Files touched:** `src/workspaces/_components/ImageEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (Adjust-knop + editor-render), `src/_locales/{en,nl,de,fr}.json` (workspaces.imageEditor), `docs/decisions/0139-image-editor-essentials.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E3-backend: video-timeline beat-reorder/trim — ADR 0140
+
+**Wat ik deed:** `content-reorder-beats`-op: `[{beatId, order?, durationMs?}]` → update elke beat's `order` (resequence) + `durationMs` (trim, clamp 0.5–30s). Assembly rendert beats orderBy order met per-beat-duur → dit drijft de ffmpeg-plan (sequence+cliptijden). Drag-timeline-UI + beats-in-snapshot = browser-verified follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint · build · reorderBeats 6/6 (reorder-persist + trim + render-plan-reflecteert-B-voor-A + duration-honoured + clamp-floor).
+
+**Files touched:** `server/orchestrator/conductor.ts` (content-reorder-beats), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts` (whitelist+beats-input), `tests/integration/reorderBeats.test.mts`, `docs/decisions/0140-video-timeline-reorder.md`.

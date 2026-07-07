@@ -1118,6 +1118,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
     }
+    case 'content-reorder-beats': {
+      //? E3 — the video timeline: persist a new beat order + per-beat duration (trim). The render reads beats
+      //? `orderBy: order`, so this drives the ffmpeg plan (sequence + each clip's on-screen time).
+      const contentProjectId = str(payload, 'contentProjectId');
+      const beats = Array.isArray(payload.beats) ? payload.beats : [];
+      if (!contentProjectId || beats.length === 0) return;
+      for (const raw of beats) {
+        const b = asRec(raw);
+        const beatId = str(b, 'beatId');
+        if (!beatId) continue;
+        const order = typeof b.order === 'number' ? b.order : undefined;
+        const durationMs = typeof b.durationMs === 'number' ? Math.max(500, Math.min(30_000, Math.round(b.durationMs))) : undefined;
+        if (order === undefined && durationMs === undefined) continue;
+        await prisma.beat.updateMany({ where: { workspaceId: action.workspaceId, id: beatId, contentProjectId }, data: { ...(order === undefined ? {} : { order }), ...(durationMs === undefined ? {} : { durationMs }) } });
+      }
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     case 'content-inpaint': {
       //? E1 — region-edit: run the inpaint feature (source image + mask + instruction → a NEW region-edited
       //? asset). The mask is produced by the canvas editor (a maskUrl); this op threads it to the provider. If a
