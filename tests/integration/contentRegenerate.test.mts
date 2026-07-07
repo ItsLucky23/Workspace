@@ -31,6 +31,8 @@ try {
   // the op awaits the gens inline; give the write a beat
   await wait(400);
   eq(await prisma.contentAsset.count({ where: { workspaceId: wsId, contentProjectId: piece.id } }), 3, 'two variations added (1 + 2)');
+  //? I2 — the variations point at the source asset (version lineage).
+  eq(await prisma.contentAsset.count({ where: { workspaceId: wsId, parentId: seed.assetId ?? '' } }), 2, 'the two variations link to the source asset as parent');
 
   // an imported asset (no MediaJob) is NOT regenerable → the op no-ops
   const imported = await prisma.contentAsset.create({ data: { workspaceId: wsId, contentProjectId: piece.id, kind: 'image', url: '/media/x.png', status: 'ready', metadata: { imported: true } } });

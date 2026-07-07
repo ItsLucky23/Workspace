@@ -250,6 +250,7 @@ export interface ContentAssetSummary {
   queuePosition?: number; // provider queue position while status='queued' (drives "in queue · position N")
   startedAt?: number;    // epoch ms the job left the queue + began — the UI elapsed-timer anchor (status='processing')
   regenerable?: boolean; // I1: a ready, AI-generated (not imported) asset can be regenerated / varied
+  variant?: boolean;     // I2: this asset was regenerated/varied from another (has a parent in the version lineage)
 }
 
 export interface ContentPieceSummary {

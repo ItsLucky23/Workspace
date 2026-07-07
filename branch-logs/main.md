@@ -2647,3 +2647,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (JSX-literal ×3 → vertaalde tekst) · ai:lint · build · contentRegenerate 4/4 (seed + 2 varianten + imported-noop). i18n ×4.
 
 **Files touched:** `server/orchestrator/conductor.ts` (content-regenerate), `server/control/rbac.ts`, `server/read/mappers.ts` (regenerable-vlag), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx` (regenerate/varianten-knoppen), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentRegenerate.test.mts`, `docs/decisions/0113-content-regenerate-variations.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM I2: content-asset versie-lineage (parentId) — ADR 0114
+
+**Wat ik deed:** I1-varianten waren ongelinkt. Nu `ContentAsset.parentId` = de asset waarvan geregenereerd is; `content-regenerate` zet 'm op elke nieuwe asset naar de ROOT van de lineage (source zelf een variant → chain naar z'n parent, zodat alle varianten één root delen — plat, niet diep). Summary-vlag `variant` (heeft parent) → **Variant**-badge op de card. Compare/revert = gedocumenteerde fast-follow (revert vergt een 'primary'-concept dat er nog niet is).
+
+**Verify:** tsc 0 · lint · ai:lint · build · contentRegenerate 5/5 (nu incl. parentId-lineage-assertie). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (ContentAsset.parentId), `server/orchestrator/conductor.ts` (parentId op regenerate), `server/read/mappers.ts` (variant-vlag), `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx` (variant-badge), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentRegenerate.test.mts`, `docs/decisions/0114-content-version-lineage.md`.

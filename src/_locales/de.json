@@ -809,6 +809,8 @@
       "modelsDesc": "Überschreibe das KI-Modell pro Funktion (z. B. ein Low-Poly-3D-Modell oder ein schnelleres/günstigeres Bildmodell). Leer = die Vorgabe.",
       "regenerate": "Neu generieren",
       "variations": "3 Varianten",
+      "variant": "Variante",
+      "variantTip": "Eine neu generierte Variante",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Veröffentlichungs-Verbindungen",

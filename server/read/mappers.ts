@@ -103,6 +103,7 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
     ...(stale || job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
     ...(stale || !job?.startedAt ? {} : { startedAt: job.startedAt.getTime() }),
     ...(regenerable ? { regenerable: true } : {}),
+    ...(a.parentId ? { variant: true } : {}),
   };
 }
 

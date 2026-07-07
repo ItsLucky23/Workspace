@@ -809,6 +809,8 @@
       "modelsDesc": "Override the AI model per feature (e.g. a low-poly 3D model, or a faster/cheaper image model). Empty = the built-in default.",
       "regenerate": "Regenerate",
       "variations": "3 variations",
+      "variant": "Variant",
+      "variantTip": "A regenerated variation",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publishing connections",

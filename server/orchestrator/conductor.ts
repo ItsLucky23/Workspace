@@ -1122,12 +1122,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const style = job.styleId ? await prisma.stylePreset.findUnique({ where: { id: job.styleId }, select: { key: true } }) : null;
       const tweak = str(payload, 'tweak');
       const count = Math.min(4, Math.max(1, Number(str(payload, 'count') ?? '1') || 1));
+      //? I2 — lineage: a variation points at the asset it was regenerated FROM (its parent). If the source is
+      //? itself a variation, chain to the ORIGINAL so all variations share one root.
+      const rootId = asset.parentId ?? asset.id;
       for (let i = 0; i < count; i += 1) {
-        await generateMediaAsset(prisma, {
+        const r = await generateMediaAsset(prisma, {
           workspaceId: action.workspaceId, contentProjectId: asset.contentProjectId, feature: job.feature,
           ...(prompt ? { prompt } : {}), ...(referenceUrl ? { referenceUrl } : {}),
           ...(style ? { styleKey: style.key } : {}), ...(tweak ? { extraInstructions: tweak } : {}), label: 'Regenerate',
         });
+        if (r.assetId) {
+          await prisma.contentAsset.update({ where: { id: r.assetId }, data: { parentId: rootId } });
+          await broadcastContentAssetDelta(prisma, action.workspaceId, asset.contentProjectId, r.assetId);
+        }
       }
       return;
     }

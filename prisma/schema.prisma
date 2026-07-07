@@ -1303,6 +1303,7 @@ model ContentAsset {
   storageRef       String?
   metadata         Json?
   mediaJobId       String?  @db.ObjectId
+  parentId         String?  @db.ObjectId             // I2 — the asset this was regenerated/varied FROM (version lineage)
   status           String   @default("ready")        // 'pending' | 'ready' | 'error'
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

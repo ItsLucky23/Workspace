@@ -809,6 +809,8 @@
       "modelsDesc": "Overschrijf het AI-model per functie (bijv. een low-poly 3D-model of een sneller/goedkoper beeld-model). Leeg = de standaard.",
       "regenerate": "Opnieuw",
       "variations": "3 varianten",
+      "variant": "Variant",
+      "variantTip": "Een opnieuw gegenereerde variant",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publicatie-verbindingen",

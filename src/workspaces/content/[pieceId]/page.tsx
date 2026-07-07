@@ -116,6 +116,11 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, transla
             {translate({ key: 'workspaces.content.assetStub' })}
           </span>
         )}
+        {asset.variant && (
+          <span className="absolute top-1.5 right-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary" title={translate({ key: 'workspaces.content.variantTip' })}>
+            {translate({ key: 'workspaces.content.variant' })}
+          </span>
+        )}
       </div>
       <div className="flex items-center justify-between gap-2 px-2 py-1.5">
         <span className="text-[11px] font-medium text-common capitalize truncate">{asset.kind}</span>
