@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (107)
+## Decisions (108)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -120,6 +120,7 @@
 | 0106 | Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset | 🟢 accepted | media, upload, content, http, freedom-program | — | `docs/decisions/0106-media-upload-import.md` |
 | 0107 | Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real | 🟢 accepted | sources, infosource, knowledge, freedom-program | — | `docs/decisions/0107-doc-upload-infosource.md` |
 | 0108 | The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up | 🟢 accepted | content, knowledge, rag, freedom-program | — | `docs/decisions/0108-creative-knowledge-grounding.md` |
+| 0109 | A per-workspace output language directive steers every AI generation | 🟢 accepted | ai, i18n, content, freedom-program | — | `docs/decisions/0109-output-language.md` |
 
 ## Summaries
 
@@ -980,6 +981,14 @@ A new `create-info-source` control-op registers an uploaded doc as a `source: 'u
 A `buildKnowledgeContext(prisma, workspaceId)` helper folds the workspace's **enabled** context-doc InfoSources (bounded: 2000 chars/doc, 6000 total) into a labelled grounding block, and `generateScript` prepends it (alongside the Q2 brand context). Deterministic + **key-less** — no embeddings needed; the user's enabled docs steer the script.
 
 → `docs/decisions/0108-creative-knowledge-grounding.md`
+
+### 0109 — A per-workspace output language directive steers every AI generation
+
+**0109** · accepted · tags: ai, i18n, content, freedom-program · 2026-07-07
+
+A `Workspace.outputLanguage` field (a language name, e.g. `Dutch`; empty = the model's default). It is prepended as a strong directive ("Write all output in Dutch.") to **every** AI completion's system prompt at the same single choke-point as the Q4 instruction (`workspaceAiPrefix` in `server/ai/registry.ts`). Edited via a language Dropdown in the AI settings tab, persisted through the extended `save-ai-instruction` op (which now carries `aiInstruction` + `outputLanguage`). Voice/TTS follows because it reads the (now target-language) script.
+
+→ `docs/decisions/0109-output-language.md`
 
 ## Code governed by decisions
 

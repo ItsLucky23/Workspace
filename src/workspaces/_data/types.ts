@@ -76,6 +76,7 @@ export interface Workspace {
   enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
   productContext?: string;        // Q2 — brand/product context folded into every creative generation
   aiInstruction?: string;         // Q4 — workspace-wide "how the AI works here", prepended to every AI completion
+  outputLanguage?: string;        // K4 — preferred AI output language (empty = model default)
 }
 
 export interface Project {

@@ -12,13 +12,19 @@ import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
 
-//? Q4 — the workspace-wide "how the AI should work here" instruction (Workspace.aiInstruction), prepended
-//? to EVERY feature's system prompt at this single choke-point. Best-effort: any read failure ⇒ no prefix.
-async function workspaceAiInstruction(workspaceId?: string): Promise<string> {
+//? Q4 + K4 — the workspace-wide AI steering prepended to EVERY feature's system prompt at this single
+//? choke-point: the "how the AI should work here" instruction (Workspace.aiInstruction) + a strong output-
+//? LANGUAGE directive (Workspace.outputLanguage). Best-effort: any read failure ⇒ no prefix.
+async function workspaceAiPrefix(workspaceId?: string): Promise<string> {
   if (!workspaceId) return '';
-  const [err, ws] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { aiInstruction: true } }));
+  const [err, ws] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { aiInstruction: true, outputLanguage: true } }));
   if (err || !ws) return '';
-  return ws.aiInstruction.trim();
+  const parts: string[] = [];
+  const lang = ws.outputLanguage.trim();
+  if (lang.length > 0) parts.push(`Write all output in ${lang}.`);
+  const instruction = ws.aiInstruction.trim();
+  if (instruction.length > 0) parts.push(instruction);
+  return parts.join('\n\n');
 }
 
 const PROVIDERS: Record<AiProviderId, AiProvider> = {
@@ -42,9 +48,10 @@ export async function runAiCompletion(
     recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: '', providerId, status: 'error', error: 'ai.providerUnavailable', startedAt });
     return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
   }
-  //? Q4 — prepend the workspace AI instruction to the system prompt (one point → every feature is steered).
-  const instruction = await workspaceAiInstruction(req.workspaceId);
-  const groundedReq = instruction ? { ...req, system: [instruction, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n') } : req;
+  //? Q4 + K4 — prepend the workspace AI steer (instruction + output language) to the system prompt (one
+  //? point → every feature is steered).
+  const prefix = await workspaceAiPrefix(req.workspaceId);
+  const groundedReq = prefix ? { ...req, system: [prefix, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n') } : req;
   const result = await provider.complete(groundedReq);
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
   recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });

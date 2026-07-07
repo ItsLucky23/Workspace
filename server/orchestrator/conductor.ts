@@ -812,9 +812,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return cfg;
     }
     case 'save-ai-instruction': {
-      //? Q4 — the workspace-wide "how the AI should work here" instruction, prepended to every AI completion.
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction: str(payload, 'aiInstruction') ?? '' } });
-      return { aiInstruction: str(payload, 'aiInstruction') ?? '' };
+      //? Q4 + K4 — the workspace-wide AI instruction + preferred output language, prepended to every AI completion.
+      const aiInstruction = str(payload, 'aiInstruction') ?? '';
+      const outputLanguage = str(payload, 'outputLanguage') ?? '';
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage } });
+      return { aiInstruction, outputLanguage };
     }
     case 'save-sections': {
       //? Persist the enabled nav-section set (module gating, workspaces/_data/modules.ts).

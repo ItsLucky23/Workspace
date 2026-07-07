@@ -747,11 +747,20 @@ function SectionsTab() {
 //? Q4 — the workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion
 //? (all features, dev + content). Distinct from per-stage prompts (specific tasks) and the content brand
 //? context (creative facts) — this is the always-on behavioural steer. Persisted via save-ai-instruction.
+//? K4 — the preferred AI OUTPUT language options (the value is the language name used in the directive;
+//? empty = the model's default / auto).
+const OUTPUT_LANGUAGES: { id: string; label: string }[] = [
+  { id: '', label: 'Auto' }, { id: 'English', label: 'English' }, { id: 'Dutch', label: 'Nederlands' },
+  { id: 'German', label: 'Deutsch' }, { id: 'French', label: 'Français' }, { id: 'Spanish', label: 'Español' },
+  { id: 'Italian', label: 'Italiano' }, { id: 'Portuguese', label: 'Português' },
+];
 function AiBehaviorTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveAiInstruction } = useWorkspaces();
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
+  const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
   const [saved, setSaved] = useState(false);
+  const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   return (
     <div className="flex flex-col gap-3 max-w-2xl">
       <div>
@@ -763,8 +772,14 @@ function AiBehaviorTab() {
         placeholder={translate({ key: 'workspaces.workspaceSettings.aiInstructionPlaceholder' })}
         className={fieldCls.replace('h-9', 'min-h-32') + ' py-2 resize-none'}
       />
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.outputLanguage' })}</span>
+        <div className="max-w-xs">
+          <Dropdown size="md" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); setSaved(false); }} />
+        </div>
+      </div>
       <div className="flex items-center gap-3">
-        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
+        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
       </div>
     </div>

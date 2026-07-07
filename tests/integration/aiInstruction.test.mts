@@ -19,11 +19,15 @@ try {
 
   eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.aiInstruction, '', 'aiInstruction starts empty');
 
-  await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-instruction', target: {}, payload: { aiInstruction: 'Always be concise. Never invent statistics.' }, userId: owner.id, clientRequestId: `aii-1-${String(stamp)}` });
-  eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.aiInstruction, 'Always be concise. Never invent statistics.', 'the AI instruction persisted');
+  await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-instruction', target: {}, payload: { aiInstruction: 'Always be concise. Never invent statistics.', outputLanguage: 'Dutch' }, userId: owner.id, clientRequestId: `aii-1-${String(stamp)}` });
+  const w1 = await prisma.workspace.findUnique({ where: { id: wsId } });
+  eq(w1?.aiInstruction, 'Always be concise. Never invent statistics.', 'the AI instruction persisted');
+  eq(w1?.outputLanguage, 'Dutch', 'K4 — the output language persisted');
 
-  await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-instruction', target: {}, payload: { aiInstruction: '' }, userId: owner.id, clientRequestId: `aii-2-${String(stamp)}` });
-  eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.aiInstruction, '', 'clearing the instruction persists empty');
+  await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-instruction', target: {}, payload: { aiInstruction: '', outputLanguage: '' }, userId: owner.id, clientRequestId: `aii-2-${String(stamp)}` });
+  const w2 = await prisma.workspace.findUnique({ where: { id: wsId } });
+  eq(w2?.aiInstruction, '', 'clearing the instruction persists empty');
+  eq(w2?.outputLanguage, '', 'clearing the language persists empty (auto)');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

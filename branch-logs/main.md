@@ -2603,3 +2603,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · knowledgeContext 5/5 (enabled included, disabled excluded, gelabeld, cap) · contentScript 8/8 · brandContext 6/6.
 
 **Files touched:** `server/content/knowledgeContext.ts` (nw), `server/content/script.ts`, `tests/integration/knowledgeContext.test.mts`, `docs/decisions/0108-creative-knowledge-grounding.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM K4: output-taalkeuze op elke AI-generatie — ADR 0109
+
+**Wat ik deed:** gegenereerde content was English-by-default. Nu `Workspace.outputLanguage` (taalnaam; leeg=model-default), geprepend als sterke directive ("Write all output in Dutch.") aan élke completion op hetzelfde choke-point als de Q4-instructie (`workspaceAiPrefix` in `registry.ts`). Taal-`Dropdown` in de AI-settings-tab, opgeslagen via de uitgebreide `save-ai-instruction`-op (draagt nu aiInstruction + outputLanguage). Voice/TTS volgt (leest de script-tekst in de doeltaal). Fast-follows: per-generatie override + expliciete TTS-voice-locale.
+
+**Verify:** tsc 0 · lint · ai:lint · build · aiInstruction 5/5 (nu incl. outputLanguage persist + clear). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (Workspace.outputLanguage), `server/ai/registry.ts` (workspaceAiPrefix), `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx` (taal-dropdown), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0109-output-language.md`.
+
+**FASE K COMPLEET (K1–K4):** file-upload/import · doc-upload→InfoSource · creatieve grounding · output-taalkeuze. Volgende: Fase P (provider/model-vrijheid).

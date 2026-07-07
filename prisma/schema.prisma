@@ -159,6 +159,7 @@ model Workspace {
   handoffInstruction    String   @default("")            // the editable self-handoff instruction template
   productContext        String   @default("")            // Q2 — brand/product context (what we do / audience / always-mention), folded into every creative generation
   aiInstruction         String   @default("")            // Q4 — workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion's system prompt
+  outputLanguage        String   @default("")            // K4 — preferred AI OUTPUT language (e.g. 'Dutch'); empty = the model's default. Prepended as a directive to every completion
 
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)

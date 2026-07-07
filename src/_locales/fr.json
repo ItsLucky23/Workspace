@@ -463,6 +463,7 @@
       "aiInstructionPlaceholder": "ex. Toujours écrire en français. Sois concis. N'invente jamais de statistiques. Préfère la voix active.",
       "aiInstructionSave": "Enregistrer l'instruction",
       "aiInstructionSaved": "Enregistré",
+      "outputLanguage": "Langue de sortie",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Workflow Git",

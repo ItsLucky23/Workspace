@@ -463,6 +463,7 @@
       "aiInstructionPlaceholder": "e.g. Always write in British English. Be concise. Never invent statistics. Prefer the active voice.",
       "aiInstructionSave": "Save instruction",
       "aiInstructionSaved": "Saved",
+      "outputLanguage": "Output language",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git workflow",

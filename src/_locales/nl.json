@@ -463,6 +463,7 @@
       "aiInstructionPlaceholder": "bijv. Schrijf altijd in het Nederlands. Wees bondig. Verzin nooit statistieken. Gebruik actieve zinnen.",
       "aiInstructionSave": "Instructie opslaan",
       "aiInstructionSaved": "Opgeslagen",
+      "outputLanguage": "Uitvoertaal",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-workflow",

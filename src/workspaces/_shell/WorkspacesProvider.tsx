@@ -345,8 +345,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/saveAiInstruction', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
-      const aiInstruction = serverOutput.aiInstruction;
-      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction } : w)) } : s));
+      const { aiInstruction, outputLanguage } = serverOutput;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage } : w)) } : s));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1009,12 +1009,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
         void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
       },
-      //? Q4 — the workspace-wide AI instruction (optimistic flip + persist).
-      saveAiInstruction: (aiInstruction) => {
+      //? Q4 + K4 — the workspace-wide AI instruction + output language (optimistic flip + persist).
+      saveAiInstruction: (aiInstruction, outputLanguage) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
-        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction } : w)) }));
-        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, clientRequestId: nextReqId() }, receiver: room });
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage } : w)) }));
+        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, clientRequestId: nextReqId() }, receiver: room });
       },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
