@@ -102,6 +102,20 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
   };
 }
 
+//? P1 — the save-ai-provider op returns the full per-feature provider override map; narrow the (unknown)
+//? control-op result to the typed array the `_sync` route broadcasts (client replaces `snap.aiOverrides`).
+export function aiOverrideDelta(result: unknown): { feature: string; providerId: string }[] {
+  if (!Array.isArray(result)) return [];
+  const out: { feature: string; providerId: string }[] = [];
+  for (const r of result) {
+    if (r !== null && typeof r === 'object' && 'feature' in r && 'providerId' in r) {
+      const rec = r as Record<'feature' | 'providerId', unknown>;
+      if (typeof rec.feature === 'string' && typeof rec.providerId === 'string') out.push({ feature: rec.feature, providerId: rec.providerId });
+    }
+  }
+  return out;
+}
+
 //? A ticket-MUTATION op (archive/ticket-edit/bulk-*) returns the affected rows from
 //? the Conductor; narrow that (deliberately `unknown`) result to a `Ticket[]` delta
 //? the `_sync` route broadcasts. The client UPSERTS these by id (the board/backlog

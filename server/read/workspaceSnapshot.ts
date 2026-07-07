@@ -155,6 +155,8 @@ export interface WorkspaceSnapshot {
   tickets: Ticket[];
   stages: PipelineStage[];
   stageConfigs: PipelineStageCfg[];
+  //? P1 — per-workspace AI provider overrides per feature (empty = the global defaults).
+  aiOverrides: { feature: string; providerId: string }[];
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
@@ -207,7 +209,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], sprints: [], suggestions: [], budget: null,
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -403,6 +405,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
+      //? P1 — per-workspace AI provider overrides (from the __ai_provider_<feature> EnvVars).
+      aiOverrides: envRows.filter((e) => e.key.startsWith('__ai_provider_')).map((e) => ({ feature: e.key.slice('__ai_provider_'.length), providerId: e.value })),
       tickets: ticketRows.map((t) => {
         const mapped = toTicket(t);
         //? Real per-ticket cost chip (#16): "<tokens> tok" when the ticket has run turns, else no chip.

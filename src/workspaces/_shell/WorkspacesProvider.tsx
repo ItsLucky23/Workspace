@@ -60,6 +60,7 @@ interface Snap {
   events: ActivityEvent[];
   notifications: NotificationItem[];
   stageConfigs: PipelineStageCfg[];
+  aiOverrides: { feature: string; providerId: string }[];
   myInvites: MyInvite[];
   notes: TicketNote[];
   repo: RepoInfo;
@@ -87,7 +88,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -337,6 +338,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (serverOutput.status !== 'success') return;
       const enabledSections = serverOutput.enabledSections;
       setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, enabledSections } : w)) } : s));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? P1 — AI provider-override delta → replace the override map.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveAiProvider', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const aiOverrides = serverOutput.aiOverrides;
+      setSnap((s) => ({ ...s, aiOverrides }));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1015,6 +1026,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage } : w)) }));
         void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? P1 — set which provider runs a feature ('default' clears the override).
+      aiOverrides: snap.aiOverrides,
+      saveAiProvider: (feature, providerId) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room });
       },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },

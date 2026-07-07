@@ -171,6 +171,9 @@ export interface WorkspacesCtx {
   saveSections: (enabledSections: string[]) => void;
   //? Q4 + K4 — the workspace-wide "how the AI should work here" instruction + preferred output language.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string) => void;
+  //? P1 — per-feature AI provider overrides + a setter ('default' clears).
+  aiOverrides: { feature: string; providerId: string }[];
+  saveAiProvider: (feature: string, providerId: string) => void;
   //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.
   pauseTicket: (ticketKey: string) => void;
   resumeTicket: (ticketKey: string) => void;

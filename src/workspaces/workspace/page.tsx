@@ -754,13 +754,19 @@ const OUTPUT_LANGUAGES: { id: string; label: string }[] = [
   { id: 'German', label: 'Deutsch' }, { id: 'French', label: 'Français' }, { id: 'Spanish', label: 'Español' },
   { id: 'Italian', label: 'Italiano' }, { id: 'Portuguese', label: 'Português' },
 ];
+//? P1 — the AI features where switching provider (Claude ↔ Gemini) is meaningful (non-coding reasoning/
+//? creative; the coding + chat features stay on the subscription-billed Claude PTY by design).
+const PROVIDER_FEATURES = ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'];
+const PROVIDER_OPTIONS = [{ id: 'default', item: 'Default' }, { id: 'claude-cli', item: 'Claude' }, { id: 'gemini-api', item: 'Gemini' }];
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider } = useWorkspaces();
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
   const [saved, setSaved] = useState(false);
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
+  const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
+  const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
   return (
     <div className="flex flex-col gap-3 max-w-2xl">
       <div>
@@ -781,6 +787,22 @@ function AiBehaviorTab() {
       <div className="flex items-center gap-3">
         <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
+      </div>
+
+      {/* P1 — which AI backend runs each feature (persists on change). */}
+      <div className="pt-2 border-t border-divider mt-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5 mb-3">{translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}</div>
+        <div className="flex flex-col gap-2">
+          {PROVIDER_FEATURES.map((f) => (
+            <div key={f} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-common">{f}</span>
+              <div className="w-40">
+                <Dropdown size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

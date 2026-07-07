@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (108)
+## Decisions (109)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -121,6 +121,7 @@
 | 0107 | Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real | 🟢 accepted | sources, infosource, knowledge, freedom-program | — | `docs/decisions/0107-doc-upload-infosource.md` |
 | 0108 | The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up | 🟢 accepted | content, knowledge, rag, freedom-program | — | `docs/decisions/0108-creative-knowledge-grounding.md` |
 | 0109 | A per-workspace output language directive steers every AI generation | 🟢 accepted | ai, i18n, content, freedom-program | — | `docs/decisions/0109-output-language.md` |
+| 0110 | A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam | 🟢 accepted | ai, providers, freedom-program | — | `docs/decisions/0110-text-provider-per-feature.md` |
 
 ## Summaries
 
@@ -989,6 +990,14 @@ A `buildKnowledgeContext(prisma, workspaceId)` helper folds the workspace's **en
 A `Workspace.outputLanguage` field (a language name, e.g. `Dutch`; empty = the model's default). It is prepended as a strong directive ("Write all output in Dutch.") to **every** AI completion's system prompt at the same single choke-point as the Q4 instruction (`workspaceAiPrefix` in `server/ai/registry.ts`). Edited via a language Dropdown in the AI settings tab, persisted through the extended `save-ai-instruction` op (which now carries `aiInstruction` + `outputLanguage`). Voice/TTS follows because it reads the (now target-language) script.
 
 → `docs/decisions/0109-output-language.md`
+
+### 0110 — A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam
+
+**0110** · accepted · tags: ai, providers, freedom-program · 2026-07-07
+
+A per-workspace override is stored as an EnvVar `__ai_provider_<feature>` (mirrors the media `__media_provider_<feature>` store), loaded by `loadWorkspaceAiOverrides` and **merged inside `runAiCompletion`** UNDER any explicit call-site override: `resolveAssignment(feature, { ...wsOverrides, ...overrides })`. This feeds the seam at ONE point — no call-site changes. A `save-ai-provider` control-op + a `_sync` route (returns the full override map → `snap.aiOverrides`), and a per-feature provider Dropdown in the AI settings tab for the curated non-coding features (Default / Claude / Gemini).
+
+→ `docs/decisions/0110-text-provider-per-feature.md`
 
 ## Code governed by decisions
 

@@ -112,6 +112,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/roleCreate/v1` | — | — | — |
 | `workspaces/roleUpdate/v1` | — | — | — |
 | `workspaces/saveAiInstruction/v1` | — | — | — |
+| `workspaces/saveAiProvider/v1` | — | — | — |
 | `workspaces/saveEnv/v1` | — | — | — |
 | `workspaces/saveGitConfig/v1` | — | — | — |
 | `workspaces/saveIntegration/v1` | — | — | — |

@@ -1053,6 +1053,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       }
       return;
     }
+    case 'save-ai-provider': {
+      //? P1 — a per-workspace AI provider override per feature (EnvVar `__ai_provider_<feature>`). 'default'
+      //? (or empty) clears it → the global default. Returns the full override map for the settings UI.
+      const feature = str(payload, 'feature');
+      const providerId = str(payload, 'providerId');
+      if (!feature) return [];
+      const key = `__ai_provider_${feature}`;
+      await (!providerId || providerId === 'default'
+        ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
+        : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: providerId, secret: false }, update: { value: providerId } }));
+      const rows = await prisma.envVar.findMany({ where: { workspaceId: action.workspaceId, key: { startsWith: '__ai_provider_' } }, select: { key: true, value: true } });
+      return rows.map((r) => ({ feature: r.key.slice('__ai_provider_'.length), providerId: r.value }));
+    }
     //? Edit a channel's brand voice (U4) — update the field + re-index the brand snippet into brand-RAG
     //? (F5.1) so every generation for the channel can ground on it. The Conductor is the only writer (B-23).
     case 'content-edit-brand': {

@@ -7,6 +7,7 @@
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
 import { resolveAssignment, defaultAssignments } from './assignments';
+import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
 import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
@@ -40,7 +41,9 @@ export async function runAiCompletion(
   req: AiCompletionRequest,
   overrides?: Partial<Record<AiFeature, AiProviderId>>,
 ): Promise<AiCompletionResult> {
-  const providerId = resolveAssignment(feature, overrides);
+  //? P1 — the per-workspace provider override FEEDS the seam; an explicit call-site override still wins.
+  const wsOverrides = await loadWorkspaceAiOverrides(req.workspaceId);
+  const providerId = resolveAssignment(feature, { ...wsOverrides, ...overrides });
   const provider = PROVIDERS[providerId];
   const startedAt = Date.now();
   const available = await provider.available(req.workspaceId);

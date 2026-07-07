@@ -1,0 +1,26 @@
+//? Per-workspace AI provider overrides (FREEDOM_PROGRAM P1). The in-app settings picker stores a per-feature
+//? provider choice as an EnvVar `__ai_provider_<feature>` (mirrors the media `__media_provider_<feature>`
+//? store). `runAiCompletion` loads these and merges them UNDER any explicit call-site override, so a workspace
+//? can steer which backend runs which AI feature (e.g. Gemini for scripts, Claude for reasoning) — this is what
+//? finally FEEDS the `resolveAssignment` override seam that was inert. Best-effort: any read failure ⇒ no
+//? overrides (falls back to the global defaults). Tenant-scoped by explicit `workspaceId` filtering.
+
+import { getPrismaClient, tryCatch } from '@luckystack/core';
+
+import type { AiFeature, AiProviderId } from './types';
+
+export const AI_OVERRIDE_PREFIX = '__ai_provider_';
+const PROVIDER_IDS: AiProviderId[] = ['claude-cli', 'gemini-api'];
+export const isAiProviderId = (v: string): v is AiProviderId => (PROVIDER_IDS as string[]).includes(v);
+
+export async function loadWorkspaceAiOverrides(workspaceId?: string): Promise<Partial<Record<AiFeature, AiProviderId>>> {
+  if (!workspaceId) return {};
+  const [err, rows] = await tryCatch(() => getPrismaClient().envVar.findMany({ where: { workspaceId, key: { startsWith: AI_OVERRIDE_PREFIX } }, select: { key: true, value: true } }));
+  if (err || !rows) return {};
+  const out: Partial<Record<AiFeature, AiProviderId>> = {};
+  for (const row of rows) {
+    const feature = row.key.slice(AI_OVERRIDE_PREFIX.length);
+    if (isAiProviderId(row.value)) out[feature as AiFeature] = row.value;
+  }
+  return out;
+}

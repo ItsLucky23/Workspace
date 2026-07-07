@@ -464,6 +464,8 @@
       "aiInstructionSave": "Anweisung speichern",
       "aiInstructionSaved": "Gespeichert",
       "outputLanguage": "Ausgabesprache",
+      "aiProviderTitle": "KI-Anbieter pro Funktion",
+      "aiProviderDesc": "Wähle, welches Backend jede Funktion ausführt (Standard behält die Vorgabe). Claude = Abo; Gemini = API.",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-Workflow",

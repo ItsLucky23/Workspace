@@ -2613,3 +2613,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Files touched:** `prisma/schema.prisma` (Workspace.outputLanguage), `server/ai/registry.ts` (workspaceAiPrefix), `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx` (taal-dropdown), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0109-output-language.md`.
 
 **FASE K COMPLEET (K1–K4):** file-upload/import · doc-upload→InfoSource · creatieve grounding · output-taalkeuze. Volgende: Fase P (provider/model-vrijheid).
+
+## 2026-07-07 — FREEDOM_PROGRAM P1: tekst-provider-per-feature-picker (override-naad gevoed) — ADR 0110
+
+**Wat ik deed (Fase P start):** `resolveAssignment`'s `overrides`-param werd nooit gevoed (13 call-sites) → seam inert. Nu: per-workspace override als EnvVar `__ai_provider_<feature>` (mirror media-store), geladen door `loadWorkspaceAiOverrides` + gemerged IN `runAiCompletion` ONDER een expliciete call-site-override → één punt, geen call-site-changes. `save-ai-provider`-op + `_sync`-route (returnt de override-map → `snap.aiOverrides`) + per-feature provider-`Dropdown` in de AI-tab (curated non-coding features: Default/Claude/Gemini). Coding+chat blijven Claude-PTY (PTY-billing-invariant).
+
+**Verify:** tsc 0 · lint (if/else→ternary) · ai:lint · build · aiProviderOverride 6/6 (persist + load + resolveAssignment respecteert + explicit-override-wint + default-clears). i18n ×4.
+
+**Files touched:** `server/ai/workspaceAssignments.ts` (nw), `server/ai/registry.ts`, `server/orchestrator/conductor.ts` (save-ai-provider), `server/control/rbac.ts`, `server/read/{workspaceSnapshot,mappers}.ts` (aiOverrides + aiOverrideDelta), `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAiProvider_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (provider-picker), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiProviderOverride.test.mts`, `docs/decisions/0110-text-provider-per-feature.md`.

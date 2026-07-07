@@ -464,6 +464,8 @@
       "aiInstructionSave": "Save instruction",
       "aiInstructionSaved": "Saved",
       "outputLanguage": "Output language",
+      "aiProviderTitle": "AI provider per feature",
+      "aiProviderDesc": "Choose which backend runs each feature (Default keeps the built-in choice). Claude is subscription-billed; Gemini is API-billed.",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git workflow",

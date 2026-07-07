@@ -464,6 +464,8 @@
       "aiInstructionSave": "Enregistrer l'instruction",
       "aiInstructionSaved": "Enregistré",
       "outputLanguage": "Langue de sortie",
+      "aiProviderTitle": "Fournisseur IA par fonction",
+      "aiProviderDesc": "Choisissez quel backend exécute chaque fonction (Défaut garde le choix intégré). Claude = abonnement ; Gemini = API.",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Workflow Git",

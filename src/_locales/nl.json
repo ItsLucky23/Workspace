@@ -464,6 +464,8 @@
       "aiInstructionSave": "Instructie opslaan",
       "aiInstructionSaved": "Opgeslagen",
       "outputLanguage": "Uitvoertaal",
+      "aiProviderTitle": "AI-provider per functie",
+      "aiProviderDesc": "Kies welke backend elke functie draait (Standaard houdt de ingebouwde keuze). Claude = abonnement; Gemini = API.",
       "tabGitlab": "GitLab",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-workflow",
