@@ -2527,3 +2527,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Files touched:** `src/workspaces/_docs/FREEDOM_PROGRAM.md` (nw). Doc-only (geen code) → geen tsc/lint/build-gate; pre-commit hook regenereert de AI-docs.
 
 **Volgende stap (user):** dit met `/goal` draaien (Fase Q→S, item-voor-item, waterfall + commit-per-item). OPEN VRAGEN in §3 kunnen vooraf beantwoord of tijdens de run als default gelogd.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q1: media-kosten vóór het uitgeven (per-actie € + per-piece spend) — ADR 0100
+
+**User prompt:** /goal FREEDOM_PROGRAM (Fase Q, item Q1).
+
+**Wat ik deed:** `estimateMediaCostCents` was server-only (alleen budget-guards). Nu geëxposeerd via nieuwe `mediaCostTable()` in de content-snapshot (`ContentSnapshot.mediaCosts`); de piece-UI toont een "≈ €X"-chip per gemeterde generatie-actie + vouwt de schatting in de confirm (per-item acties zoals per-beat images → "≈ €X / stuk"). Per-piece spend (`ContentPieceSummary.spentCents`, gegroepeerd uit de `MediaSpend`-rijen) in de header. Niet-gemeterde acties (script/assemble) → geen chip.
+
+**Verify:** tsc 0 · lint · ai:lint · build · contentSnapshot 9/9 (nieuwe asserties: mediaCosts-tabel + per-piece spentCents) · contentModel 18/18. i18n ×4 (costPerItem/spentLabel/spentTooltip).
+
+**Files touched:** `server/media/registry.ts` (mediaCostTable), `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSnapshot.test.mts`, `docs/decisions/0100-media-cost-transparency.md`.

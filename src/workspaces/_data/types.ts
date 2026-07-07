@@ -254,6 +254,7 @@ export interface ContentPieceSummary {
   status: string;
   channelId: string | null;
   assets: ContentAssetSummary[];   // U-fix B: the piece's produced assets (surfaced so the UI can show/download them)
+  spentCents: number;              // Q1: this piece's own media spend (from MediaSpend rows), for per-piece cost transparency
 }
 //? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).
 export interface ContentAnalyticsView {
@@ -280,6 +281,7 @@ export interface ContentSnapshot {
   styles: ContentStyleSummary[];        // U4: the style library
   channels: ContentChannelSummary[];    // U4: channels + their brand voice
   publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
+  mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
 }
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a

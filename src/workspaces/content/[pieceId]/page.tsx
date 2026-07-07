@@ -30,18 +30,23 @@ function assetHref(url: string): string | null {
 }
 
 //? A generation action: its content-op + label + icon + whether it needs the reference url / a prompt.
-interface GenAction { op: string; labelKey: string; icon: IconName; needsRef?: boolean; needsPrompt?: boolean }
+//? `costFeature` maps the action to the media feature whose € estimate we show BEFORE the user spends (Q1);
+//? `perItem` = the cost is per produced unit (per-beat images), shown as "≈ €X / item".
+interface GenAction { op: string; labelKey: string; icon: IconName; needsRef?: boolean; needsPrompt?: boolean; costFeature?: string; perItem?: boolean }
 const ACTIONS: GenAction[] = [
   { op: 'content-gen-script', labelKey: 'workspaces.content.actScript', icon: 'file-lines' },
-  { op: 'content-gen-voice', labelKey: 'workspaces.content.actVoice', icon: 'wave-square' },
-  { op: 'content-gen-images', labelKey: 'workspaces.content.actImages', icon: 'table-cells-large' },
-  { op: 'content-gen-reference-image', labelKey: 'workspaces.content.actReferenceImage', icon: 'wand-magic-sparkles', needsRef: true },
-  { op: 'content-gen-shortform', labelKey: 'workspaces.content.actShortform', icon: 'wand-magic-sparkles', needsPrompt: true },
-  { op: 'content-gen-music', labelKey: 'workspaces.content.actMusic', icon: 'wave-square' },
-  { op: 'content-gen-sfx', labelKey: 'workspaces.content.actSfx', icon: 'wave-square' },
-  { op: 'content-gen-3d', labelKey: 'workspaces.content.act3d', icon: 'box-archive' },
+  { op: 'content-gen-voice', labelKey: 'workspaces.content.actVoice', icon: 'wave-square', costFeature: 'tts' },
+  { op: 'content-gen-images', labelKey: 'workspaces.content.actImages', icon: 'table-cells-large', costFeature: 'image-gen', perItem: true },
+  { op: 'content-gen-reference-image', labelKey: 'workspaces.content.actReferenceImage', icon: 'wand-magic-sparkles', needsRef: true, costFeature: 'reference-image' },
+  { op: 'content-gen-shortform', labelKey: 'workspaces.content.actShortform', icon: 'wand-magic-sparkles', needsPrompt: true, costFeature: 'video-gen' },
+  { op: 'content-gen-music', labelKey: 'workspaces.content.actMusic', icon: 'wave-square', costFeature: 'music' },
+  { op: 'content-gen-sfx', labelKey: 'workspaces.content.actSfx', icon: 'wave-square', costFeature: 'sfx' },
+  { op: 'content-gen-3d', labelKey: 'workspaces.content.act3d', icon: 'box-archive', costFeature: 'model-3d' },
   { op: 'content-assemble', labelKey: 'workspaces.content.actAssemble', icon: 'diagram-project' },
 ];
+
+//? Cents → a short € label (e.g. 40 → "€0.40"). Shared by the action chips + the confirm.
+const euro = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
 
 //? A publishable asset is a finished, reachable video/render (the thing you post to a platform).
 const isPublishable = (asset: ContentAssetSummary): boolean => (asset.kind === 'render' || asset.kind === 'video') && asset.status === 'ready';
@@ -152,9 +157,20 @@ export default function ContentPiece({ params }: { params: Record<string, string
     );
   }
 
+  //? Q1: the € estimate for an action, from the snapshot's per-feature cost table. 0 (no chip) for
+  //? non-metered actions (script/assemble).
+  const costOf = (action: GenAction): number => (action.costFeature ? (content.mediaCosts.find((c) => c.feature === action.costFeature)?.cents ?? 0) : 0);
+  const costLabel = (action: GenAction): string | null => {
+    const cents = costOf(action);
+    if (cents <= 0) return null;
+    return action.perItem ? translate({ key: 'workspaces.content.costPerItem', params: [{ key: 'amount', value: euro(cents) }] }) : `≈ ${euro(cents)}`;
+  };
+
   const fire = (action: GenAction) => {
     void (async () => {
-      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: translate({ key: 'workspaces.content.costWarning' }) });
+      const label = costLabel(action);
+      const warning = translate({ key: 'workspaces.content.costWarning' });
+      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: label ? `${warning} (${label})` : warning });
       if (!ok) return;
       const payload: Record<string, string> = {};
       if (styleKey.trim()) payload.styleKey = styleKey.trim();
@@ -190,6 +206,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
             <span className="capitalize">{piece.stageId}</span>
             <span className="text-disabled">·</span>
             <span className="capitalize">{piece.status}</span>
+            {piece.spentCents > 0 && <>
+              <span className="text-disabled">·</span>
+              <span className="tabular-nums" title={translate({ key: 'workspaces.content.spentTooltip' })}>{translate({ key: 'workspaces.content.spentLabel', params: [{ key: 'amount', value: euro(piece.spentCents) }] })}</span>
+            </>}
           </div>
         </div>
       </div>
@@ -226,13 +246,16 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.generateDesc' })}</div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ACTIONS.map((a) => (
-                <button key={a.op} type="button" onClick={() => { fire(a); }} className="flex items-center gap-3 rounded-xl border border-container2-border bg-container2 hover:bg-container2-hover px-3 py-2.5 text-left cursor-pointer transition-colors">
-                  <span className="w-8 h-8 rounded-lg bg-container1 text-primary flex items-center justify-center shrink-0"><Icon name={a.icon} /></span>
-                  <span className="text-sm font-medium text-title">{translate({ key: a.labelKey })}</span>
-                  <Icon name="wand-magic-sparkles" className="ml-auto text-muted" />
-                </button>
-              ))}
+              {ACTIONS.map((a) => {
+                const label = costLabel(a);
+                return (
+                  <button key={a.op} type="button" onClick={() => { fire(a); }} className="flex items-center gap-3 rounded-xl border border-container2-border bg-container2 hover:bg-container2-hover px-3 py-2.5 text-left cursor-pointer transition-colors motion-safe:active:scale-[0.98]">
+                    <span className="w-8 h-8 rounded-lg bg-container1 text-primary flex items-center justify-center shrink-0"><Icon name={a.icon} /></span>
+                    <span className="text-sm font-medium text-title">{translate({ key: a.labelKey })}</span>
+                    {label ? <span className="ml-auto text-[11px] font-medium text-muted tabular-nums">{label}</span> : <Icon name="wand-magic-sparkles" className="ml-auto text-muted" />}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-5">

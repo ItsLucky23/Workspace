@@ -65,6 +65,12 @@ export function estimateMediaCostCents(feature: MediaFeature): number {
   return STUB_COST_CENTS[feature];
 }
 
+//? The per-feature € estimate table (cents), surfaced in the snapshot so the UI can show "≈ €X" on the
+//? generation confirm BEFORE the user spends (Q1 — cost transparency). One source of truth = STUB_COST_CENTS.
+export function mediaCostTable(): { feature: MediaFeature; cents: number }[] {
+  return (Object.keys(STUB_COST_CENTS) as MediaFeature[]).map((feature) => ({ feature, cents: STUB_COST_CENTS[feature] }));
+}
+
 //? Run one media generation for a feature. Never throws; returns a typed result. No key → a valid-shaped
 //? STUB (so the pipeline runs on dummy data). When `req.workspaceId` is set, the per-workspace Settings
 //? config (ADR 0086) is consumed (FIX-A): its `__media_provider_<feature>` override picks the provider and

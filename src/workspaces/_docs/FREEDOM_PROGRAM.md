@@ -311,21 +311,24 @@ Fase E (editors + custom AI tasks)  →  Fase S (safety + premium-UX polish, cro
 
 ---
 
-## 3. Open questions (decide before / during the run — sensible defaults noted)
-- **OV-1 (canvas lib):** Konva vs plain `<canvas>` for E1/E2. *Default:* start with a plain `<canvas>` mask
-  layer (no new heavy dep, matches the "framework-native component" half of the editor pattern); adopt Konva
-  only if layer/transform needs demand it. Flag before adding a dependency.
-- **OV-2 (inpaint model):** which fal inpaint endpoint for E1. *Default:* the current flux family's inpaint
-  variant via an env-overridable `FAL_MODEL_INPAINT`; confirm the exact id when wiring (needs the fal docs page).
-- **OV-3 (video-per-beat clips, E3):** turning beats from stills into real sub-clips is a large lift. *Default:*
-  phase E3 as (a) reorder/trim/transition/mix on the existing stills-slideshow first, then (b) per-beat video
-  clips as a follow-up item — keep each shippable.
-- **OV-4 (public API surface, X3):** REST vs a thin RPC over the existing socket control-plane. *Default:* a
-  minimal token-gated REST adapter that reuses the control-API ops + RBAC (no new write path); scope tight.
-- **OV-5 (push infra, A1):** self-hosted VAPID keys via env (`WS_VAPID_*`). *Default:* env-provisioned VAPID
-  keypair; the installer/setup guide documents generating them. A RED here escalates to the user.
-- **OV-6 (live e2e):** as prior rounds — full live media/push/publish e2e stays **user-triggered** with keys;
-  this run proves each item with fixtures + stub-green.
+## 3. Open questions — RESOLVED (user-decided 2026-07-07; the goal run honours these)
+- **OV-1 (canvas lib) → DECIDED: Fabric.js.** E1/E2 build the image editor on **Fabric.js** (richest object
+  model + transform/handles). Adds the `fabric` dependency (install authorized by the choice); lazy-load it so
+  it never lands in a non-editor route chunk.
+- **OV-2 (inpaint model) → DECIDED: env-overridable flux-inpaint default, id verified during the run.** E1 sets
+  `FAL_MODEL_INPAINT` to a fal flux-inpaint endpoint and **verifies the exact model id against the live fal docs
+  (WebFetch) while wiring**; user can override per env.
+- **OV-3 (video-per-beat clips, E3) → DECIDED: phased.** (a) reorder/trim/transition/mix on the stills-slideshow
+  first (shippable), then (b) per-beat real video clips as a follow-up item.
+- **OV-4 (public API surface, X3) → DECIDED: thin REST over the control-API.** A minimal token-gated REST
+  adapter reusing the control-API ops + RBAC (no new write path), per-workspace scoped PATs, revocable.
+- **OV-5 (push infra, A1) → DECIDED: self-hosted env-VAPID, keys generated in-run.** Install `web-push`; generate
+  a VAPID keypair; store as `WS_VAPID_PUBLIC`/`WS_VAPID_PRIVATE`/`WS_VAPID_SUBJECT` in `.env.local` + document in
+  `.env.local_template`. Ship `public/sw.js` + `public/manifest.webmanifest` + a subscribe flow; the server VAPID
+  send finally reads `PushSubscription`. A RED escalates to the user.
+- **OV-6 (live e2e) → DECIDED: user-triggered.** Full live media/publish e2e stays user-triggered with keys;
+  each item is proven with fixtures + stub-green. Push is partially headless-verifiable (SW register + send
+  payload shape).
 
 ## 4. Grounding
 The two 2026-07-07 gap-analysis waves (10 audits) + the media-editor assessment. Related in-repo specs to honour

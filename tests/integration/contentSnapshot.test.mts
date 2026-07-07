@@ -36,6 +36,9 @@ try {
   const piece = snap.content.pieces.find((p) => p.title === 'Dino explainer');
   eq(piece?.stageId, 'idea', 'the piece carries its stage');
   eq(piece?.format, 'faceless', 'the piece carries its format');
+  //? Q1: cost transparency — the per-feature € estimate table + the per-piece spend are in the snapshot.
+  eq(piece?.spentCents, 0, 'the piece carries its own media spend (0 before any gen)');
+  assert(snap.content.mediaCosts.some((c) => c.feature === 'image-gen' && c.cents > 0), 'the per-feature cost estimate table is exposed');
   assert(snap.content.mediaBudget.enabled, 'the media budget status is exposed + enabled');
   eq(snap.content.mediaBudget.capCents, 500, 'the media budget cap is exposed');
   eq(snap.content.mediaBudget.spentCents, 0, 'spend starts at 0');

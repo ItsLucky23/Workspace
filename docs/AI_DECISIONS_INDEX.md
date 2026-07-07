@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (98)
+## Decisions (99)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -111,6 +111,7 @@
 | 0097 | Workspaces pick MODULES at creation (Dev / Content / Design) — nav gates on a per-section set, not a repo/Dockerfile-first setup | 🟢 accepted | workspaces, onboarding, modules, nav, content, rbac | — | `docs/decisions/0097-workspace-modules.md` |
 | 0098 | Media generation is queue-aware — the UI shows "in queue · position N" and only starts its elapsed timer when the job leaves the provider queue | 🟢 accepted | media, content, fal, realtime, broadcast, ux | — | `docs/decisions/0098-queue-aware-media-generation.md` |
 | 0099 | All media flows share one queue-aware lifecycle helper; content state syncs to the whole workspace with reconnect + staleness safety nets | 🟢 accepted | media, content, realtime, broadcast, race-conditions, robustness | — | `docs/decisions/0099-queue-aware-all-flows-and-workspace-sync.md` |
+| 0100 | Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot | 🟢 accepted | content, media, cost, ux, freedom-program | — | `docs/decisions/0100-media-cost-transparency.md` |
 
 ## Summaries
 
@@ -899,6 +900,14 @@ End-to-end queue awareness, respecting B-23 (the Conductor stays the single writ
 **One shared lifecycle helper** — `server/content/queuedMediaJob.ts:runQueuedMediaAsset`. It creates the `MediaJob` + `ContentAsset` as `queued` up front, threads a serialized queue→running `onProgress`, finalizes to `ready`/`error`, and broadcasts a content-asset delta at every transition. All five media flows (`mediaAsset`, `images` [per-beat loop], `voice`, `shortForm`, `referenceImage`) delegate to it, each supplying only its specifics via hooks (`onComplete` → `Beat.imageAssetId`; `finalizeMetadata` → voice timing map / short-form hook+captions). `assembly` (ffmpeg render, no provider queue) gets a `processing`→`ready` asset + broadcast manually (a plain spinner, no elapsed timer). **Whole-workspace sync = fine-grained deltas + a coarse nudge + reconnect healing:** Per-asset timer state → `broadcastContentAssetDelta` (upsert-by-id into the piece). Structural changes → a new `broadcastContentDirty(workspaceId)` fired after every `contentControl` and `contentSettings` op; the client refetches **debounced (400ms)**, coalescing bursts. Reconnect → the provider subscribes to `useSocketStatus`; on a transition back to `CONNECTED` from a dropped/reconnecting state it **re-joins the room and refetches**, healing any missed deltas. **Race + edge-case coverage:** Progress writes are serialized on a promise chain awaited before the final write (can't race completion). Deltas are ordered (TCP + serialized emits). Client merges are idempotent upserts by id. Orphaned in-flight jobs (server crash mid-gen → asset stuck `queued`/`processing`) are surfaced as `error` by a **read-side staleness guard** in `toContentAssetSummary` (no heartbeat for >20 min → the UI never spins forever). `nowMs` is injectable for deterministic tests. Stub/instant gen → `queued`→`ready` (brief flash, harmless). fal timeout → clean `error` (ADR 0096). Concurrent same-piece gen → serialized by the single-writer Conductor; distinct asset ids.
 
 → `docs/decisions/0099-queue-aware-all-flows-and-workspace-sync.md`
+
+### 0100 — Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot
+
+**0100** · accepted · tags: content, media, cost, ux, freedom-program · 2026-07-07
+
+The per-feature € estimate table (`STUB_COST_CENTS`, the single source of truth) is exposed via a new `mediaCostTable()` and carried in the content snapshot (`ContentSnapshot.mediaCosts`). The piece UI shows a "≈ €X" chip on each metered generation action and folds the estimate into the confirm body (per-item actions like per-beat images show "≈ €X / item"). Non-metered actions (script/assemble) show no chip. Per-piece spend is surfaced (`ContentPieceSummary.spentCents`, grouped from the `MediaSpend` rows the system already records per `contentProjectId`) and shown on the piece header.
+
+→ `docs/decisions/0100-media-cost-transparency.md`
 
 ## Code governed by decisions
 

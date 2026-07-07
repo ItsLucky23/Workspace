@@ -37,6 +37,7 @@ import type {
   ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
+import { mediaCostTable } from '../media/registry';
 
 //? Priority rank for the answer-queue ordering (ADR 0048 — urgent first).
 const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1, low: 0 };
@@ -212,7 +213,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [], publishTargets: [] },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [], publishTargets: [], mediaCosts: [] },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -350,8 +351,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       list.push(toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null));
       assetsByPiece.set(a.contentProjectId, list);
     }
+    //? Q1: per-piece media spend (from MediaSpend rows) so the detail page shows what THIS piece has cost.
+    const spentByPiece = new Map<string, number>();
+    for (const s of mediaSpendRows) { if (s.contentProjectId) spentByPiece.set(s.contentProjectId, (spentByPiece.get(s.contentProjectId) ?? 0) + s.costCents); }
     const contentSnapshot: ContentSnapshot = {
-      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [] })),
+      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [], spentCents: spentByPiece.get(c.id) ?? 0 })),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(
         contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),
@@ -361,6 +365,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin })),
       channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice ?? '' })),
       publishTargets,
+      mediaCosts: mediaCostTable(),
     };
 
     const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));
