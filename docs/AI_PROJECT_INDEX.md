@@ -47,7 +47,7 @@
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 
-## Sync routes (43)
+## Sync routes (44)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -81,6 +81,7 @@
 | `sync/workspaces/revokeInvite/v1` | yes | — | login | — | **no** | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
 | `sync/workspaces/roleCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
 | `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
+| `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
 | `sync/workspaces/saveIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
@@ -102,9 +103,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 76 |
+| _(unowned)_ | 77 |
 
-**Test coverage**: 3/78 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/79 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -158,7 +159,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/findingAction/v1`
 - `sync/workspaces/gitlabSettings/v1`
 - `sync/workspaces/invite/v1`
-- … +25 more
+- … +26 more
 
 ## Pages (28)
 

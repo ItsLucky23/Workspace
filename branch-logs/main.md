@@ -2553,3 +2553,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (0 warnings — native selects → framework Dropdown) · ai:lint · build · contentSettings 13/13 (save/upsert/delete-style + product-context). i18n ×4.
 
 **Files touched:** `server/orchestrator/conductor.ts` (delete-style), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSettings.test.mts`, `docs/decisions/0102-style-manager.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q4: workspace-brede AI-instructie op elke completion — ADR 0103
+
+**Wat ik deed:** nieuw `Workspace.aiInstruction`-veld (helder, i.p.v. het mis-genaamde dode `handoffInstruction` — bewuste afwijking van de letterlijke program-tekst, Rule 3b). Geprepend aan élke AI-completion op ÉÉN choke-point: in `runAiCompletion` (`getPrismaClient()`, best-effort via tryCatch), zodat alle 15 tekst-features gestuurd worden zonder 13 call-sites te raken. Nieuwe "AI"-tab in workspace-settings + `save-ai-instruction`-op (`_sync`-route + delta-callback + optimistische flip).
+
+**Verify:** tsc 0 · lint (fixte raw try/catch → tryCatch + onnodige `??`) · ai:lint · build · aiInstruction 3/3. i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (Workspace.aiInstruction), `server/ai/registry.ts` (injectie), `server/orchestrator/conductor.ts` (save-ai-instruction), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx` (AI-tab), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0103-workspace-ai-instruction.md`.

@@ -167,6 +167,8 @@ export interface WorkspacesCtx {
   saveGitConfig: (cfg: GitConfig) => void;
   //? Module gating — persist the workspace's enabled nav-section set (modules.ts).
   saveSections: (enabledSections: string[]) => void;
+  //? Q4 — the workspace-wide "how the AI should work here" instruction.
+  saveAiInstruction: (aiInstruction: string) => void;
   //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.
   pauseTicket: (ticketKey: string) => void;
   resumeTicket: (ticketKey: string) => void;

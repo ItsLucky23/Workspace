@@ -811,6 +811,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       } } });
       return cfg;
     }
+    case 'save-ai-instruction': {
+      //? Q4 — the workspace-wide "how the AI should work here" instruction, prepended to every AI completion.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction: str(payload, 'aiInstruction') ?? '' } });
+      return { aiInstruction: str(payload, 'aiInstruction') ?? '' };
+    }
     case 'save-sections': {
       //? Persist the enabled nav-section set (module gating, workspaces/_data/modules.ts).
       //? Sanitized to known gateable ids; [] ⇒ legacy all-on. Returns the stored list so

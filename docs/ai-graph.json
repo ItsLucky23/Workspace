@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 181,
+    "nodes": 182,
     "edges": 273,
-    "symbols": 222,
+    "symbols": 224,
     "callEdges": 37
   },
   "nodes": [
@@ -687,6 +687,11 @@
       "id": "workspaces/_sync/roleUpdate_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/roleUpdate/v1"
+    },
+    {
+      "id": "workspaces/_sync/saveAiInstruction_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/saveAiInstruction/v1"
     },
     {
       "id": "workspaces/_sync/saveEnv_server_v1.ts",
@@ -3970,6 +3975,18 @@
     {
       "id": "workspaces/_sync/roleUpdate_server_v1.ts::main",
       "file": "workspaces/_sync/roleUpdate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveAiInstruction_server_v1.ts::<module>",
+      "file": "workspaces/_sync/saveAiInstruction_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/saveAiInstruction_server_v1.ts::main",
+      "file": "workspaces/_sync/saveAiInstruction_server_v1.ts",
       "name": "main",
       "kind": "function"
     },

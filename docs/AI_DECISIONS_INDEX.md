@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (101)
+## Decisions (102)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -114,6 +114,7 @@
 | 0100 | Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot | 🟢 accepted | content, media, cost, ux, freedom-program | — | `docs/decisions/0100-media-cost-transparency.md` |
 | 0101 | A persistent brand/product context grounds every creative generation | 🟢 accepted | content, ai, branding, freedom-program | — | `docs/decisions/0101-brand-product-grounding.md` |
 | 0102 | A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings | 🟢 accepted | content, styles, ux, freedom-program | — | `docs/decisions/0102-style-manager.md` |
+| 0103 | A workspace-wide AI instruction is prepended to every AI completion, at one choke-point | 🟢 accepted | ai, workspace, steering, freedom-program | — | `docs/decisions/0103-workspace-ai-instruction.md` |
 
 ## Summaries
 
@@ -926,6 +927,14 @@ A new `Workspace.productContext` field holds the persistent brand/product contex
 A **style manager** section in content settings: lists every style (global builtins read-only; per-workspace ones editable/deletable), with a create form (feature + key + label + system prompt). Backed by the existing `save-style` op + a new **`delete-style`** op (removes a per-workspace style; builtins are filtered out). The snapshot's `ContentStyleSummary` now carries `systemPrompt` so the manager can show/edit it. The piece page's free-text style box is replaced by a **Dropdown** of known style keys (deduped across features) + a "No style" option — pick by name, never guess.
 
 → `docs/decisions/0102-style-manager.md`
+
+### 0103 — A workspace-wide AI instruction is prepended to every AI completion, at one choke-point
+
+**0103** · accepted · tags: ai, workspace, steering, freedom-program · 2026-07-07
+
+A dedicated `Workspace.aiInstruction` field (not the mis-named `handoffInstruction` — a clean field avoids overloading a differently-purposed one; a conscious deviation from the program's literal "revive handoffInstruction" wording, Rule 3b). It is prepended to **every** AI completion's system prompt at ONE choke-point — inside `runAiCompletion` (`server/ai/registry.ts`), which every feature already routes through — fetched best-effort via `getPrismaClient()` (the same singleton the media registry uses), so all 15 text features are steered without touching 13 call sites. Editable in a new "AI" tab in workspace settings; persisted via a `save-ai-instruction` control-op (single-writer) broadcast back to the room.
+
+→ `docs/decisions/0103-workspace-ai-instruction.md`
 
 ## Code governed by decisions
 

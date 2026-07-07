@@ -158,6 +158,7 @@ model Workspace {
   reasonerTokenBudget   Int?                             // optional future one-shot reasoner budget
   handoffInstruction    String   @default("")            // the editable self-handoff instruction template
   productContext        String   @default("")            // Q2 — brand/product context (what we do / audience / always-mention), folded into every creative generation
+  aiInstruction         String   @default("")            // Q4 — workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion's system prompt
 
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)

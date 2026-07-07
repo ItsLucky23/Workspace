@@ -744,6 +744,33 @@ function SectionsTab() {
   );
 }
 
+//? Q4 — the workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion
+//? (all features, dev + content). Distinct from per-stage prompts (specific tasks) and the content brand
+//? context (creative facts) — this is the always-on behavioural steer. Persisted via save-ai-instruction.
+function AiBehaviorTab() {
+  const translate = useTranslator();
+  const { activeWorkspace, saveAiInstruction } = useWorkspaces();
+  const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
+  const [saved, setSaved] = useState(false);
+  return (
+    <div className="flex flex-col gap-3 max-w-2xl">
+      <div>
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.aiInstructionTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.workspaceSettings.aiInstructionDesc' })}</div>
+      </div>
+      <textarea
+        value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }} rows={6}
+        placeholder={translate({ key: 'workspaces.workspaceSettings.aiInstructionPlaceholder' })}
+        className={fieldCls.replace('h-9', 'min-h-32') + ' py-2 resize-none'}
+      />
+      <div className="flex items-center gap-3">
+        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
+        {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
+      </div>
+    </div>
+  );
+}
+
 export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
@@ -759,6 +786,7 @@ export default function WorkspaceSettings() {
     { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
     { id: 'permissions', label: translate({ key: 'workspaces.workspaceSettings.tabPermissions' }), icon: 'circle-check' },
     { id: 'modules', label: translate({ key: 'workspaces.workspaceSettings.tabModules' }), icon: 'table-cells-large' },
+    { id: 'aibehavior', label: translate({ key: 'workspaces.workspaceSettings.tabAi' }), icon: 'robot' },
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
     { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
@@ -807,6 +835,7 @@ export default function WorkspaceSettings() {
         {activeTab === 'members' && <MembersTab />}
         {activeTab === 'permissions' && <PermissionsTab />}
         {activeTab === 'modules' && <SectionsTab />}
+        {activeTab === 'aibehavior' && <AiBehaviorTab />}
         {activeTab === 'env' && <EnvTab />}
         {activeTab === 'integrations' && <IntegrationsTab />}
         {activeTab === 'invites' && <InvitesTab />}

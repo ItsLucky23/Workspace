@@ -75,6 +75,7 @@ export interface Workspace {
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
   enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
   productContext?: string;        // Q2 — brand/product context folded into every creative generation
+  aiInstruction?: string;         // Q4 — workspace-wide "how the AI works here", prepended to every AI completion
 }
 
 export interface Project {

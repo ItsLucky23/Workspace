@@ -340,6 +340,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? Q4 — workspace AI-instruction delta → replace it on the active workspace.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveAiInstruction', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const aiInstruction = serverOutput.aiInstruction;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction } : w)) } : s));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? content-asset delta → upsert the asset by id into its piece (live media queue/timer state:
   //? queued → processing → ready). Room-scoped; merges into the matching content piece.
   useEffect(() => upsertSyncEventCallback({
@@ -983,6 +993,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
         void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? Q4 — the workspace-wide AI instruction (optimistic flip + persist).
+      saveAiInstruction: (aiInstruction) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return;
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction } : w)) }));
+        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, clientRequestId: nextReqId() }, receiver: room });
       },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
