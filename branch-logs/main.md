@@ -2978,3 +2978,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/unit/sceneRange.test.mts` 10/10 (straddle, inside, tail, past-end, unordered) · `tests/integration/refineRange.test.mts` 7/7 (straddle-2-scenes, parentId-lineage, prompt-fold, out-of-range-untouched, no-op).
 
 **Files:** `server/content/sceneRefine.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op+clientInput), `tests/unit/sceneRange.test.mts` + `tests/integration/refineRange.test.mts` (nw), `docs/decisions/0149-*.md`.
+
+## 2026-07-08 — D1: echte YouTube byte-upload (resumable, 3 legs) — ADR 0150
+
+**Fase D stap 1 — de audit-bug "upload doet alleen stap-1" gedicht.**
+- **`youtubeResumableUpload`** (alle 3 legs): (1) POST metadata → lees session-URI uit `Location`-header; (2) lees videobytes; (3) PUT bytes naar session-URI → lees video-`id`. Elke leg faalt → null → eerlijke error (ADR 0144), nooit nep-succes.
+- **`buildResumablePut`** (puur, geëxporteerd, getest) = leg 3. **`readAssetBytes`**: lokale `/media/<file>` of http; `stub://` → null. Echte gerenderde mp4 uploadt direct, geen publieke URL nodig.
+- TikTok blijft single-init (status-polling = D2).
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/unit/youtubeUpload.test.mts` 12/12 (init resumable-shape + X-Upload-Content-Type + metadata + privacy-variant; PUT naar session-URI + bearer + video/* + lege body). Publish-suite geen regressie (publish 8, publishReal 13, publishTiktok 5, scheduledPublish 9). Live 3-leg round-trip = user met echte OAuth-app.
+
+**Files:** `server/content/publishOAuth.ts` (youtubeResumableUpload + buildResumablePut + readAssetBytes + imports), `tests/unit/youtubeUpload.test.mts` (nw), `docs/decisions/0150-*.md`.

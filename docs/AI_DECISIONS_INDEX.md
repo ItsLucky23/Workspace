@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (148)
+## Decisions (149)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -161,6 +161,7 @@
 | 0147 | V2 — real multi-clip video render (buildVideoStitchPlan + renderScenes) | 🟢 accepted | content, video, render, ffmpeg, idea-to-outcome | — | `docs/decisions/0147-multi-clip-video-render.md` |
 | 0148 | V3 — long-video decomposition (content-decompose-video) | 🟢 accepted | content, video, decomposition, idea-to-outcome | — | `docs/decisions/0148-long-video-decomposition.md` |
 | 0149 | V4 — range-refine (content-refine-range) | 🟢 accepted | content, video, editing, lineage, idea-to-outcome | — | `docs/decisions/0149-range-refine.md` |
+| 0150 | D1 — the real YouTube byte-upload (resumable, all three legs) | 🟢 accepted | publish, youtube, upload, honesty, idea-to-outcome | — | `docs/decisions/0150-youtube-byte-upload.md` |
 
 ## Summaries
 
@@ -1349,6 +1350,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`scenesInRange(scenes, startMs, endMs)`** (pure, tested): maps the ordered scenes onto a cumulative timeline and returns those whose interval overlaps the selected range (half-open `[start,end)`), each with its computed `startMs`/`endMs`. **`refineSceneRange(...)`** regenerates every covered scene as a NEW version: a fresh `video-gen` clip with the instruction folded into the scene's prompt (`<prompt>. Refinement: <instruction>`), a new `VideoScene` with `parentId` = the old scene (I2 lineage) keeping the same order/duration/transition, then the old scene is removed — so the timeline keeps its shape and the edit is traceable. **`content-refine-range`** control-op (contentControl route, RBAC work-tickets): `{ startMs, endMs, instruction }`; a range that hits no scene is a no-op.
 
 → `docs/decisions/0149-range-refine.md`
+
+### 0150 — D1 — the real YouTube byte-upload (resumable, all three legs)
+
+**0150** · accepted · tags: publish, youtube, upload, honesty, idea-to-outcome · 2026-07-08
+
+**All three legs of the resumable upload.** `youtubeResumableUpload`: (1) POST the metadata (the existing `buildUploadRequest` init, which carries `X-Upload-Content-Type` so YouTube returns a session URI) and read the `Location` header; (2) read the video bytes; (3) PUT the bytes to the session URI and read the video `id` from the response. Any leg failing → null → the publish is an honest error (never a fake success). **`buildResumablePut(sessionUri, accessToken)`** — a pure, exported builder for leg 3 (the transport attaches the byte body), unit-tested alongside the init builder. **`readAssetBytes(assetUrl)`** — reads a local `/media/<file>` from the media store or fetches an http(s) URL; a `stub://`/unknown url yields null (not uploadable). So a real rendered mp4 in the media store uploads directly, without needing a public URL. **TikTok stays a single init** (PULL_FROM_URL); its status-polling + confirmed url is D2.
+
+→ `docs/decisions/0150-youtube-byte-upload.md`
 
 ## Code governed by decisions
 

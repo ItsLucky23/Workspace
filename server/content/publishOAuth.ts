@@ -4,10 +4,14 @@
 //? + exported (unit-tested for the correct endpoints/headers/shape); the transports wrap them with fetch
 //? (the live round-trip is the deferred post-keys e2e). Instagram/LinkedIn stay future-ready (no builder).
 
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import type { PrismaClient } from '@prisma/client';
 import { tryCatch } from '@luckystack/core';
 
 import { encryptSecret, decryptSecret } from '../crypto/secretBox';
+import { MEDIA_DIR } from '../media/store';
 import { withRetry } from '../util/retry';
 
 export type OAuthPlatform = 'youtube' | 'tiktok';
@@ -107,6 +111,34 @@ export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken
   };
 }
 
+//? D1 — the SECOND leg of YouTube's resumable upload: PUT the actual video bytes to the session URI the init
+//? request returned in its `Location` header. Pure builder (the transport attaches the byte body). The audit
+//? found the upload only ever did the init leg (reading a non-existent `id` from an empty body) → this closes
+//? the gap. Exported for tests.
+export function buildResumablePut(sessionUri: string, accessToken: string, contentType = 'video/*'): HttpRequest {
+  return { url: sessionUri, method: 'PUT', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': contentType } };
+}
+
+//? Read a publishable asset's bytes: a local `/media/<file>` from the media store, or an http(s) URL. A
+//? `stub://`/unknown url yields null (not uploadable). Used by the real YouTube byte-upload.
+async function readAssetBytes(assetUrl: string): Promise<Buffer | null> {
+  if (assetUrl.startsWith('/media/')) {
+    const p = path.join(MEDIA_DIR, assetUrl.slice('/media/'.length));
+    return existsSync(p) ? readFileSync(p) : null;
+  }
+  if (assetUrl.startsWith('http://') || assetUrl.startsWith('https://')) {
+    const [err, buf] = await tryCatch(() => withRetry(async () => {
+      //? External asset host — not a framework `/api/*` route.
+      // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+      const r = await fetch(assetUrl);
+      if (!r.ok) throw new Error(`asset ${String(r.status)}`);
+      return Buffer.from(await r.arrayBuffer());
+    }, { attempts: 3, baseMs: 400 }));
+    return err ? null : (buf ?? null);
+  }
+  return null;
+}
+
 // --- transports (injectable) ---------------------------------------------------
 
 export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }) => Promise<StoredTokens | null> }
@@ -128,14 +160,46 @@ export const realOAuthTransport: OAuthTransport = {
   exchange: async (platform, input) => parseTokenResponse(await runJson(buildExchangeRequest(platform, input))),
 };
 
+//? D1 — the REAL YouTube resumable upload, all three legs: (1) POST the metadata → read the session URI from
+//? the `Location` header; (2) read the video bytes; (3) PUT the bytes to the session URI → read the video id.
+//? Previously only leg 1 ran, so a real upload always failed. Returns null on any leg failing (→ honest error).
+async function youtubeResumableUpload(input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }): Promise<{ externalUrl: string } | null> {
+  const initReq = buildUploadRequest('youtube', input);
+  const [initErr, sessionUri] = await tryCatch(() => withRetry(async () => {
+    //? External platform API — not a framework `/api/*` route.
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const r = await fetch(initReq.url, { method: initReq.method, headers: initReq.headers, ...(initReq.body === undefined ? {} : { body: initReq.body }) });
+    if (!r.ok) throw new Error(`youtube init ${String(r.status)}`);
+    const loc = r.headers.get('location');
+    if (loc === null || loc.length === 0) throw new Error('youtube init: no session uri');
+    return loc;
+  }, { attempts: 3, baseMs: 400 }));
+  if (initErr || !sessionUri) return null;
+  const bytes = await readAssetBytes(input.assetUrl);
+  if (bytes === null) return null;
+  const putReq = buildResumablePut(sessionUri, input.accessToken);
+  const [putErr, id] = await tryCatch(() => withRetry(async () => {
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const r = await fetch(putReq.url, { method: putReq.method, headers: putReq.headers, body: bytes });
+    if (!r.ok) throw new Error(`youtube put ${String(r.status)}`);
+    const json = (await r.json()) as { id?: unknown };
+    return typeof json.id === 'string' ? json.id : '';
+  }, { attempts: 3, baseMs: 400 }));
+  if (putErr || !id) return null;
+  return { externalUrl: `https://youtube.com/watch?v=${id}` };
+}
+
 export const realUploadTransport: PublishUploadTransport = {
   upload: async (platform, input) => {
+    //? YouTube: the full 3-leg resumable upload (real bytes). TikTok: the single PULL_FROM_URL init (status
+    //? polling + the confirmed url is D2). Instagram/LinkedIn have no builder (future-ready).
+    if (platform === 'youtube') return youtubeResumableUpload(input);
     const res = await runJson(buildUploadRequest(platform, input));
     const o = (res !== null && typeof res === 'object' ? res : {}) as Record<string, unknown>;
-    //? YouTube returns the video id; TikTok returns a publish id under data. Build a canonical url.
-    const id = typeof o.id === 'string' ? o.id : (typeof (o.data as { publish_id?: unknown } | undefined)?.publish_id === 'string' ? (o.data as { publish_id: string }).publish_id : '');
+    const publishId = (o.data as { publish_id?: unknown } | undefined)?.publish_id;
+    const id = typeof publishId === 'string' ? publishId : '';
     if (id.length === 0) return null;
-    return { externalUrl: platform === 'youtube' ? `https://youtube.com/watch?v=${id}` : `https://tiktok.com/@me/video/${id}` };
+    return { externalUrl: `https://tiktok.com/@me/video/${id}` };
   },
 };
 
