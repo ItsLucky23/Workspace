@@ -1118,6 +1118,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
     }
+    case 'content-inpaint': {
+      //? E1 — region-edit: run the inpaint feature (source image + mask + instruction → a NEW region-edited
+      //? asset). The mask is produced by the canvas editor (a maskUrl); this op threads it to the provider. If a
+      //? source asset id is given, the new asset chains to it (I2 lineage).
+      const contentProjectId = str(payload, 'contentProjectId');
+      const referenceUrl = str(payload, 'referenceUrl');
+      const maskUrl = str(payload, 'maskUrl');
+      const prompt = str(payload, 'prompt');
+      if (!contentProjectId || !referenceUrl || !maskUrl || !prompt) return;
+      const r = await generateMediaAsset(prisma, { workspaceId: action.workspaceId, contentProjectId, feature: 'inpaint', prompt, referenceUrl, maskUrl, label: 'Region edit' });
+      const parentAssetId = str(payload, 'parentAssetId');
+      if (r.assetId && parentAssetId) {
+        const parent = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: parentAssetId }, select: { id: true, parentId: true } });
+        if (parent) await prisma.contentAsset.update({ where: { id: r.assetId }, data: { parentId: parent.parentId ?? parent.id } });
+      }
+      if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
+      return;
+    }
     case 'content-regenerate': {
       //? I1 — re-run a produced asset's generation (same feature/prompt/reference/style from its MediaJob) as
       //? N NEW variations, with an optional "make it more X" tweak. Each goes through the queue-aware lifecycle

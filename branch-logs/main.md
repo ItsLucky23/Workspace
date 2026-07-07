@@ -2835,3 +2835,15 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (raw try/catch→tryCatchSync) · ai:lint · build · personalAccessToken 13/13 (hash-determinisme + resolve valid/revoked/unknown + driveViaPat: scoped-PAT-maakt-ticket-e2e[200] + insufficient-scope[403] + non-public-op[400] + revoked[401]).
 
 **Files touched:** `prisma/schema.prisma` (PersonalAccessToken), `server/auth/pat.ts` (nw: hash/generate/resolve/driveViaPat/isPublicOp), `server/auth/publicApiRoute.ts` (nw: POST /api/public/v1/op), `server/server.ts` (registreer), `src/workspaces/_api/issuePat_v1.ts` + `revokePat_v1.ts` (nw), `tests/integration/personalAccessToken.test.mts`, `docs/decisions/0136-public-api-pats.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E1-wiring: content-inpaint-op (mask door de content-flow) — ADR 0137
+
+**Wat ik deed:** ADR 0132 gaf de inpaint-feature+composeFalInput; nu de content-flow-write-path. `generateMediaAsset` threadt `maskUrl` in de media-request. `content-inpaint`-op (`{contentProjectId, referenceUrl, maskUrl, prompt, parentAssetId?}`) runt inpaint → NIEUWE asset, gechaind aan de source via parentId (I2-lineage), no-op zonder mask/prompt. Volledige region-edit-BACKEND nu compleet+getest e2e. Enige rest van E1 = **Fabric.js-canvas** (mask-productie + roept deze op) = browser-afhankelijke UI-follow-up.
+
+**Verify:** tsc 0 · lint · ai:lint · build · contentInpaint 4/4 (nieuwe region-edited asset + I2-lineage-chain + no-op-zonder-mask/prompt) · inpaint 6/6.
+
+**Files touched:** `server/content/mediaAsset.ts` (maskUrl-threading), `server/orchestrator/conductor.ts` (content-inpaint-op), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `tests/integration/contentInpaint.test.mts`, `docs/decisions/0137-content-inpaint-op.md`.
+
+---
+## 🏁 /goal FREEDOM_PROGRAM — bounded/testbare breedte COMPLEET (38 items, ADRs 0110–0137)
+Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: gebouwd, gegate (tsc+lint+ai:lint+build), per-item getest, ge-ADR'd, gecommit (auteur ItsLucky23, niet gepusht). **RESTEREND = alleen canvas/UI-editors (E1-canvas Fabric.js, E2 image-editor, E3 video-timeline, E4 audio-waveform) + S3-wizard + S4-premium-UX-sweep — vergen browser+fresh-context, niet betrouwbaar blind te bouwen/verifiëren.** ~40 UI-follow-ups genoteerd per ADR. Zie memory `workspaces-freedom-program.md` voor de precieze reststand + aanpak.

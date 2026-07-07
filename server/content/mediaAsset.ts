@@ -28,7 +28,7 @@ const FEATURE_KIND: Record<MediaFeature, string> = {
 
 export async function generateMediaAsset(
   prisma: PrismaClient,
-  args: { workspaceId: string; contentProjectId: string; feature: MediaFeature; prompt?: string; referenceUrl?: string; styleKey?: string; extraInstructions?: string; label?: string },
+  args: { workspaceId: string; contentProjectId: string; feature: MediaFeature; prompt?: string; referenceUrl?: string; maskUrl?: string; styleKey?: string; extraInstructions?: string; label?: string },
 ): Promise<MediaAssetResult> {
   const { workspaceId, contentProjectId, feature } = args;
   const budget = await checkMediaBudget(prisma, workspaceId, estimateMediaCostCents(feature));
@@ -43,6 +43,7 @@ export async function generateMediaAsset(
     request: {
       ...(args.prompt ? { prompt: args.prompt } : {}),
       ...(args.referenceUrl ? { referenceUrl: args.referenceUrl } : {}),
+      ...(args.maskUrl ? { maskUrl: args.maskUrl } : {}),
       ...(resolved ? { style: { key: resolved.key, systemPrompt: resolved.systemPrompt } } : {}),
       ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}),
       workspaceId, ...(args.label ? { label: args.label } : {}),

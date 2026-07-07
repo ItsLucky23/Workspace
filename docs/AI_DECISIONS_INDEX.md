@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (135)
+## Decisions (136)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -148,6 +148,7 @@
 | 0134 | Style-set portability — export/import a workspace's user styles as JSON (R1, style slice) | 🟢 accepted | styles, templates, reuse, portability, freedom-program | — | `docs/decisions/0134-style-set-portability.md` |
 | 0135 | Cross-workspace copy — copy styles + brand between workspaces (R2) | 🟢 accepted | reuse, workspaces, templates, freedom-program | — | `docs/decisions/0135-cross-workspace-copy.md` |
 | 0136 | Public API via scoped Personal Access Tokens over the control-API (X3) | 🟢 accepted | api, auth, extensibility, security, freedom-program | — | `docs/decisions/0136-public-api-pats.md` |
+| 0137 | content-inpaint op — thread a mask through the content flow to the inpaint feature (E1, wiring half) | 🟢 accepted | content, inpaint, editors, freedom-program | — | `docs/decisions/0137-content-inpaint-op.md` |
 
 ## Summaries
 
@@ -1232,6 +1233,14 @@ A `copy-workspace-assets` control-op (workspaceSettings) that copies the user-au
 A `PersonalAccessToken` model storing only the **SHA-256 hash** (raw shown once at issue) + a display prefix + `scopes` + a `revoked` flag. `generateToken`/`hashToken`/`resolvePat` are the token layer; `driveViaPat(token, op, payload)` authenticates → checks the op's required scope → enqueues on the *single-writer Conductor** (same RBAC as the app — the PAT only authenticates + scopes, never writes directly). Only an allow-listed set of ops is exposed (`quick-add` = tickets:write, `content-create` = content:write). Transport: a `POST /api/public/v1/op` custom route (origin-exempt, `Authorization: Bearer wsk_…` + a JSON `{ op, payload }`), + `issuePat`/`revokePat` membership-gated `_api` routes.
 
 → `docs/decisions/0136-public-api-pats.md`
+
+### 0137 — content-inpaint op — thread a mask through the content flow to the inpaint feature (E1, wiring half)
+
+**0137** · accepted · tags: content, inpaint, editors, freedom-program · 2026-07-07
+
+`generateMediaAsset` threads a `maskUrl` into the media request. A `content-inpaint` control-op (`{ contentProjectId, referenceUrl, maskUrl, prompt, parentAssetId? }`) runs the inpaint feature → a NEW asset, chained to the source via `parentId` (I2 lineage). No-ops without a mask/prompt. workTickets capability, single-writer.
+
+→ `docs/decisions/0137-content-inpaint-op.md`
 
 ## Code governed by decisions
 
