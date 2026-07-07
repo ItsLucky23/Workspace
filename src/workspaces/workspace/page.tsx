@@ -19,6 +19,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
+import SetupWizard from '../_components/SetupWizard';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
@@ -874,6 +875,7 @@ export default function WorkspaceSettings() {
   const [tab, setTab] = useState('members');
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
+  const [showWizard, setShowWizard] = useState(false);
   //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
   //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
@@ -921,8 +923,12 @@ export default function WorkspaceSettings() {
             <button type="button" onClick={startRename} title={translate({ key: 'workspaces.workspaceSettings.renameWorkspaceTooltip' })} className="text-xs text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
           </div>
         )}
-        <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workspaceSettings' })}</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workspaceSettings' })}</span>
+          <button type="button" onClick={() => { setShowWizard(true); }} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.setup.title' })}</button>
+        </div>
       </div>
+      {showWizard && <SetupWizard onClose={() => { setShowWizard(false); }} />}
       <div className="px-4 md:px-6">
         <Tabs tabs={tabs} active={activeTab} onChange={setTab} />
       </div>

@@ -2879,3 +2879,11 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 **Verify:** tsc 0 · lint (forEach→for-of) · ai:lint · build · renderFormats 31/31 (amix-3-tracks + music-duck-0.25 + sfx-trim-2s + aout-map + solo-track).
 
 **Files touched:** `server/content/render.ts` (AudioTrack + buildAudioMixPlan), `tests/unit/renderFormats.test.mts`, `docs/decisions/0141-audio-mix-plan.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM S3: guided setup-wizard — ADR 0142
+
+**Wat ik deed:** config was forms-only. Nu een `SetupWizard`-stepper (welkom→media-key→budget); elke stap vuurt dezelfde single-writer-op als de settings-UI (`saveMediaProvider({apiKey})`/`editMediaBudget`). "Quick setup"-knop op de workspace-settings-header. NL-Assistant-configureert-settings-pad + auto-first-run = follow-ups.
+
+**Verify:** tsc 0 · lint (€-JSX-literal→placeholder) · ai:lint · build. Browser-verified; de gevuurde ops zijn getest. i18n ×4.
+
+**Files touched:** `src/workspaces/_components/SetupWizard.tsx` (nw), `src/workspaces/workspace/page.tsx` (Quick-setup-knop + render), `src/_locales/{en,nl,de,fr}.json` (workspaces.setup), `docs/decisions/0142-setup-wizard.md`.

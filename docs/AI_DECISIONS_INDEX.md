@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (140)
+## Decisions (141)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -153,6 +153,7 @@
 | 0139 | Image editor essentials — brightness/contrast/saturation → a new asset (E2) | 🟢 accepted | editors, image, fabric, freedom-program | — | `docs/decisions/0139-image-editor-essentials.md` |
 | 0140 | Video timeline — beat reorder + trim drives the render plan (E3, backend half) | 🟢 accepted | editors, video, render, freedom-program | — | `docs/decisions/0140-video-timeline-reorder.md` |
 | 0141 | Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half) | 🟢 accepted | editors, audio, render, freedom-program | — | `docs/decisions/0141-audio-mix-plan.md` |
+| 0142 | Guided first-run setup wizard (S3, wizard half) | 🟢 accepted | ux, onboarding, freedom-program | — | `docs/decisions/0142-setup-wizard.md` |
 
 ## Summaries
 
@@ -1277,6 +1278,14 @@ A `content-reorder-beats` control-op: given `[{ beatId, order?, durationMs? }]` 
 A pure `buildAudioMixPlan(tracks)` builds the ffmpeg `-filter_complex` that mixes N tracks — each with a per-track linear volume (voice ~1, music ducked ~0.25, sfx ~0.6) + an optional `atrim` — into one `[aout]` stream via `amix=inputs=N:duration=longest`. Returns the filter + the output map for the render to wire in.
 
 → `docs/decisions/0141-audio-mix-plan.md`
+
+### 0142 — Guided first-run setup wizard (S3, wizard half)
+
+**0142** · accepted · tags: ux, onboarding, freedom-program · 2026-07-08
+
+A `SetupWizard` stepper (welcome → connect a media key → set a spend budget): each step fires the SAME single-writer control-op as the settings UI (`saveMediaProvider({ apiKey })` / `editMediaBudget`). The wizard is a friendlier front door, never a new writer. Opened from a "Quick setup" button on the workspace settings header.
+
+→ `docs/decisions/0142-setup-wizard.md`
 
 ## Code governed by decisions
 
