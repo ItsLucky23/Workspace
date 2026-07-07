@@ -285,7 +285,7 @@ Opt-in egress control (`WS_EGRESS=1`, default OFF ⇒ current behaviour unchange
 
 **Pluggable embeddings** (`server/rag/embed.ts`, mirroring the AI-provider abstraction, ADR 0007): Gemini's embeddings API when `GEMINI_API_KEY` is set, else a deterministic LOCAL embedder (hashed token + char-trigram bag, L2-normalised) so retrieval works fully offline and in tests. A lexical- semantic proxy that is genuinely useful for code (identifier/symbol overlap). The active embedder is fixed per deployment, so index-time and query-time vectors are always produced the same way; it is stamped via `embedTag()` so a later switch is detectable. **Indexer + retrieval** (`server/rag/index.ts`): `indexWorkspace` reads the linked repo's code at a commit (`repoStore.listRepoFiles`, from the bare clone, no checkout), chunks it line-aligned, embeds each chunk, and upserts `RagEntry` frozen-per-commit (re-index replaces that commit's rows). `retrieve` embeds a query and returns the top-K by an app-side cosine scan over the stored vectors. **Injection**: `stageRunner` retrieves the code most relevant to the ticket (title+description, scoped to the ticket's frozen `commitHash`) and feeds it to a new `renderStage` "Relevant code from the repository" section in `CLAUDE.md` — so the agent starts with the right files in view. **Trigger**: a `scan-index` control-op (mirrors `scan-docs`) + `_sync` route + `editPipeline` cap, so a user reindexes from the Sources page; the engine also retrieves automatically per turn.
 
-**Governs** (`//? @adr 0017`): `scripts/prismaWithSecrets.ts`
+**Governs** (`//? @adr 0017`): `scripts/prismaWithSecrets.ts`, `scripts/testWithSecrets.ts`
 
 → `docs/decisions/0017-rag-codebase-intelligence.md`
 
@@ -1313,3 +1313,4 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 | File | ADR | Decision |
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
+| `scripts/testWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |

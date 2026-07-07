@@ -2911,3 +2911,11 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint · ai:lint · build · publish 8/8 · publishReal 13/13 (nu: verbonden-mislukt=error) · scheduledPublish 9/9 · publishTiktok 5/5 · publishVariants 14/14 · contentAssembly 12/12 (stub=error+niet-downloadbaar) · contentAutomation 7/7 · automation 21/21. (Tests geüpdatet naar de EERLIJKE verwachting; ze codificeerden eerst de bug.) `npm test`-batch faalt op een los Redis-WRONGPASS-env-issue, niet deze changes — losse runs groen.
 
 **Files touched:** `server/content/publish.ts` (UploadOutcome real/stub/error), `server/content/assembly.ts` (stub→error+niet-downloadbaar), `server/ai/providers/claudeCli.ts` (echte available-check), `tests/live/renderLive.live.mts` (nw), + 5 tests geüpdatet, `docs/decisions/0144-honesty-fixes.md`.
+
+## 2026-07-08 — Fix: `npm test` batch Redis WRONGPASS (secret-manager-pointer-resolutie)
+
+**Root cause:** `.env.local` gebruikt secret-manager-POINTERS (`REDIS_PASSWORD=REDIS_PASSWORD_V1`). `prismaWithSecrets.ts` resolvet die vóór het draaien, maar het `test`-script (`scripts/testAll.ts`, single-process API-sweep) niet → de test-runner opent een Redis-connectie met de letterlijke pointer vóór de async secret-manager-resolutie klaar is → `WRONGPASS`. (`test:ws`/losse `npx tsx <file>` werkten wél want elk bestand = apart proces dat de race wint.)
+
+**Fix:** `scripts/testWithSecrets.ts` (spiegelt `prismaWithSecrets`): `loadEnvFiles()` → `initSecretManager()` (resolvet ná core's dotenvx-override, in-process, blijft dus staan) → dán dynamisch `import('./testAll.ts')`. `package.json` `test` wijst nu hiernaar. **Geverifieerd: "Connected to Redis", geen WRONGPASS meer.** De resterende API-sweep-failures (contract/auth/fuzz) vereisen een DRAAIENDE server op localhost:80 (operationeel, by-design — start `npm run server`).
+
+**Files touched:** `scripts/testWithSecrets.ts` (nw), `package.json` (test-script). NIET: prismaWithSecrets/.env/.env.local.

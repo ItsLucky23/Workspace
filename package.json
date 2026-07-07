@@ -27,7 +27,7 @@
     "ai:doc-staleness": "node scripts/checkDocStaleness.mjs",
     "ai:eval": "node eval/scoreEval.mjs",
     "generateArtifacts": "tsx --tsconfig tsconfig.server.json scripts/generateTypeMaps.ts && tsx --tsconfig tsconfig.server.json scripts/generateServerRequests.ts",
-    "test": "npm run generateArtifacts && tsx --tsconfig tsconfig.server.json scripts/testAll.ts",
+    "test": "npm run generateArtifacts && tsx --tsconfig tsconfig.server.json scripts/testWithSecrets.ts",
     "scaffold:test": "node scripts/scaffoldRouteTest.mjs",
     "scaffold:page": "node scripts/scaffoldPage.mjs",
     "editor:launch": "tsx --tsconfig tsconfig.server.json scripts/dev/launchEditor.mts",
