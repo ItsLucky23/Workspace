@@ -3029,3 +3029,7 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/integration/autoActivate.test.mts` 5/5 (plain→unrefined, startWithAi→eerste-AI-stage, event). L2 = O-A/O-B(intake)+O-C(content-pipeline)+O-D(dev-auto-start) af.
 
 **Files:** `src/workspaces/_sync/quickAdd_server_v1.ts`, `server/orchestrator/conductor.ts` (quick-add), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/page.tsx` (toggle), `src/_locales/*.json` (×4), `tests/integration/autoActivate.test.mts` (nw), `docs/decisions/0154-*.md`.
+
+## 2026-07-08 — P-C: stub/fout-badges op de AssetCard (eerlijkheid zichtbaar)
+De ADR-0144-states nu zichtbaar in de UI: een error-render (geen keys/Docker) toont een `wrong`-badge ("Mislukt", tip: "geen echt bestand — vereist keys+Docker"); een stub een `warning`-badge ("Voorbeeld", tip: "zonder key — geen echte media"). Error heeft voorrang (een stub-render is ook een error). i18n×4 (`assetError`/`assetErrorTip`/`assetStubTip`). Geen ADR (UI-polish, geen architectuur-beslissing). tsc0·lint0·ai:lint clean·build groen.
+**Files:** `src/workspaces/content/[pieceId]/page.tsx` (AssetCard-badges), `src/_locales/*.json` (×4).

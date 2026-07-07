@@ -114,11 +114,17 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditR
         ) : (
           <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className="text-2xl text-muted" />
         ))}
-        {asset.stub && (
-          <span className="absolute top-1.5 left-1.5 rounded-md bg-warning/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary">
+        {/* P-C — surface the honest states (ADR 0144): an error render (no keys/Docker) shows a failure badge;
+            a not-real stub shows the preview badge. Error takes precedence (a stub render is also an error). */}
+        {asset.status === 'error' ? (
+          <span className="absolute top-1.5 left-1.5 rounded-md bg-wrong/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary" title={translate({ key: 'workspaces.content.assetErrorTip' })}>
+            {translate({ key: 'workspaces.content.assetError' })}
+          </span>
+        ) : (asset.stub && (
+          <span className="absolute top-1.5 left-1.5 rounded-md bg-warning/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary" title={translate({ key: 'workspaces.content.assetStubTip' })}>
             {translate({ key: 'workspaces.content.assetStub' })}
           </span>
-        )}
+        ))}
         {asset.variant && (
           <span className="absolute top-1.5 right-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-title-primary" title={translate({ key: 'workspaces.content.variantTip' })}>
             {translate({ key: 'workspaces.content.variant' })}

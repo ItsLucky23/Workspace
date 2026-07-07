@@ -795,7 +795,7 @@
       "generateDesc": "Turn this piece into finished media, step by step.",
       "assetsTitle": "Assets",
       "assetsEmpty": "Generated media appears here once ready.",
-      "assetStub": "Placeholder",
+      "assetStub": "Placeholder", "assetStubTip": "Made without a provider key — a placeholder, not real media.", "assetError": "Failed", "assetErrorTip": "This render did not produce a real file — needs provider keys + Docker/ffmpeg.",
       "assetOpen": "Open",
       "queued": "In queue",
       "queuePos": "In queue · position {{n}}",

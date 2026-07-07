@@ -795,7 +795,7 @@
       "generateDesc": "Transformez cette pièce en média fini, étape par étape.",
       "assetsTitle": "Ressources",
       "assetsEmpty": "Les médias générés apparaissent ici une fois prêts.",
-      "assetStub": "Aperçu",
+      "assetStub": "Aperçu", "assetStubTip": "Créé sans clé de fournisseur — un aperçu, pas un vrai média.", "assetError": "Échec", "assetErrorTip": "Ce rendu n'a pas produit de vrai fichier — nécessite des clés + Docker/ffmpeg.",
       "assetOpen": "Ouvrir",
       "queued": "En file d'attente",
       "queuePos": "En file d'attente · position {{n}}",
