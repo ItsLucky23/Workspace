@@ -15,10 +15,11 @@
 //? uses) — the watchdog is part of the ENGINE (not a user), so it triggers turns directly; the
 //? authoritative session/ticket writes are still made by `runStage`, exactly as in normal operation.
 
-import { getPrismaClient } from '@luckystack/core';
+import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { docker, dockerAvailable } from '../container/runtime';
+import { sendWebPush } from '../hooks/webPush';
 import { isLeader } from './cluster';
 import { killTicketAgent } from './agentControl';
 import { reprovisionTicket, EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG } from './conductor';
@@ -26,6 +27,8 @@ import { reprovisionTicket, EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG } from './condu
 //? A `busy` turn older than this is treated as hung (matches the CapacityManager slot TTL).
 const STUCK_MS = Number(process.env.WS_TURN_MAX_MS ?? String(30 * 60 * 1000));
 const INTERVAL_MS = Number(process.env.WS_WATCHDOG_INTERVAL_MIN ?? '3') * 60_000;
+//? A5 — re-ping the assignee about a still-open question at most once per this window.
+const REMIND_MS = Number(process.env.WS_NEEDS_INPUT_REMIND_MIN ?? '120') * 60_000;
 
 //? Lists the ticket keys that currently have a live container. Injectable so tests can simulate
 //? crashed / surviving containers without Docker.
@@ -98,12 +101,20 @@ export async function resumeEngineOnBoot(opts: { listContainers?: ContainerListe
   return counts;
 }
 
-export interface SweepCounts { stuck: number; idle: number }
+export interface SweepCounts { stuck: number; idle: number; reminded: number }
+
+//? A5 — a question is due for a re-ping if we've already tracked it (baseline set) AND the interval elapsed
+//? since the last ping/baseline. `null` remindedAt = first sight → the caller sets a baseline, no ping yet.
+//? Pure + exported for tests.
+export function shouldRemind(remindedAt: Date | null, now: number, intervalMs: number): boolean {
+  if (!remindedAt) return false;
+  return now - remindedAt.getTime() >= intervalMs;
+}
 
 //? One watchdog sweep — see the file header. `now` is injected so staleness is deterministic in tests.
 export async function runWatchdogSweep(now: number): Promise<SweepCounts> {
   const prisma = getPrismaClient();
-  const counts: SweepCounts = { stuck: 0, idle: 0 };
+  const counts: SweepCounts = { stuck: 0, idle: 0, reminded: 0 };
 
   //? STUCK: a busy worker turn older than the turn-max that isn't legitimately parked → kill + re-run.
   const busy = await prisma.agentSession.findMany({ where: { kind: 'worker', status: 'busy' } });
@@ -137,7 +148,26 @@ export async function runWatchdogSweep(now: number): Promise<SweepCounts> {
     counts.idle += 1;
   }
 
-  if (counts.stuck > 0 || counts.idle > 0) console.log(`[watchdog] sweep intervened: ${JSON.stringify(counts)}`);
+  //? A5 — REMINDERS: a REAL open question parks forever today (first opener answers). Re-ping the assignee
+  //? (routing) once per REMIND_MS so a stale question doesn't rot. Baseline on first sight (no immediate ping);
+  //? the answer path clears `remindedAt`. Best-effort per ticket — a failed ping never breaks the sweep.
+  const parked = await prisma.ticket.findMany({ where: { needsInput: { not: null }, archived: false }, select: { id: true, key: true, workspaceId: true, needsInput: true, remindedAt: true, assigneeId: true, creatorId: true } });
+  for (const t of parked) {
+    if (!isRealNeedsInput(t.needsInput)) continue;
+    if (!t.remindedAt) { await prisma.ticket.update({ where: { id: t.id }, data: { remindedAt: new Date(now) } }).catch(() => null); continue; }
+    if (!shouldRemind(t.remindedAt, now, REMIND_MS)) continue;
+    const recipient = t.assigneeId ?? t.creatorId;
+    if (recipient) {
+      await tryCatch(async () => {
+        await prisma.notification.create({ data: { workspaceId: t.workspaceId, userId: recipient, type: 'reminder', title: 'A question is waiting', body: `${t.key} is still waiting for your answer.`, ticketId: t.id, deepLink: { view: 'board', ticketId: t.key }, read: false } });
+        await sendWebPush(prisma, recipient, { title: 'A question is waiting', body: `${t.key} is still waiting for your answer.`, url: '/', tag: `ticket-${t.key}` }, 'assignment');
+      });
+    }
+    await prisma.ticket.update({ where: { id: t.id }, data: { remindedAt: new Date(now) } }).catch(() => null);
+    counts.reminded += 1;
+  }
+
+  if (counts.stuck > 0 || counts.idle > 0 || counts.reminded > 0) console.log(`[watchdog] sweep intervened: ${JSON.stringify(counts)}`);
   return counts;
 }
 

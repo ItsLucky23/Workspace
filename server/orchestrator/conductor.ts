@@ -867,7 +867,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!key || !answer || answer.trim().length === 0) return;
       const [t] = await ticketIdsForKeys(action.workspaceId, [key]);
       if (t) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${answer}` } });
-      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, status: 'idle' } });
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, status: 'idle', remindedAt: null } });
       if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question');
       await broadcastTicketDelta(prisma, action.workspaceId, [key]);
       await reprovisionTicket(action.workspaceId, key, true, answer);

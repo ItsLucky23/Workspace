@@ -626,6 +626,7 @@ model Ticket {
   sprintId       String?  @db.ObjectId
   carryOver      String?                         // the HUMAN one-liner (derived from the latest CarryOver envelope summary, 04b §14)
   needsInput     String?                         // denormalized banner = first open question (04 §2)
+  remindedAt     DateTime?                        // A5 — last time the watchdog re-pinged the assignee about this open question (null = never / cleared on answer)
   priority       String   @default("normal")     // low|normal|high|urgent — `urgent` = hotfix/security tier that force-passes the capacity cap (#12)
   archived       Boolean  @default(false)        // doc 13 bulk Archive — soft, never deletes
   lastActivityAt DateTime?                        // denormalized from the latest TicketEvent — default backlog sort key

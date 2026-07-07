@@ -2697,3 +2697,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · autonomyLevel 11/11 (pure gate: full-auto/gate-every/key-stages/unknown + op-persist + invalid→default). i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (autonomyLevel), `server/orchestrator/stageRunner.ts` (resolveStageGate + 2 gate-sites), `server/orchestrator/conductor.ts` (save-autonomy), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAutonomy_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (autonomy-dropdown), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/autonomyLevel.test.mts`, `docs/decisions/0119-autonomy-dials.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM A5 (helft): watchdog re-ping voor stale needs-input — ADR 0120
+
+**Wat ik deed:** een echte open vraag (`Ticket.needsInput`) parkte forever. Nu krijgt de watchdog-sweep een 3e taak: per ticket met een echte needsInput-banner baseline `Ticket.remindedAt` op first-sight (geen directe ping), dan **re-ping de assignee** (routing: `assigneeId`→`creatorId`) max 1×/`WS_NEEDS_INPUT_REMIND_MIN` (default 120min) via een `reminder`-notificatie + web-push. `remindedAt` gecleared op de answer-path. Pure `shouldRemind(remindedAt, now, intervalMs)` (unit-getest, now geïnjecteerd). Structured approve/reject/choice-affordances (andere helft A5) = follow-up (vergt answer-flow-UI + request-input/answer-input-op).
+
+**Verify:** tsc 0 · lint · ai:lint · build · needsInputRemind 12/12 (pure gate + baseline + re-ping-na-window + geen-double-ping + answered-stopt) · watchdog 22/22 (geen regressie).
+
+**Files touched:** `prisma/schema.prisma` (Ticket.remindedAt), `server/orchestrator/watchdog.ts` (shouldRemind + re-ping-blok + REMIND_MS + imports), `server/orchestrator/conductor.ts` (clear remindedAt op answer), `tests/integration/needsInputRemind.test.mts`, `docs/decisions/0120-needs-input-reping.md`.

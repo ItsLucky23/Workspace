@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (118)
+## Decisions (119)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -131,6 +131,7 @@
 | 0117 | Push fans out on the automation + AI-suggestion notification sites (A1 fast-follow) | 🟢 accepted | push, notifications, automation, freedom-program | — | `docs/decisions/0117-push-fanout-notifications.md` |
 | 0118 | Per-type web-push opt-out (assignment / automation / AI-suggestion), default on | 🟢 accepted | push, notifications, preferences, freedom-program | — | `docs/decisions/0118-push-per-type-preferences.md` |
 | 0119 | Per-workspace autonomy level modulates the per-stage approval gate ("ask me less") | 🟢 accepted | autonomy, approvals, engine, freedom-program, phone-first | — | `docs/decisions/0119-autonomy-dials.md` |
+| 0120 | The watchdog re-pings the assignee about a stale open question (A5, first half) | 🟢 accepted | approvals, watchdog, notifications, freedom-program, phone-first | — | `docs/decisions/0120-needs-input-reping.md` |
 
 ## Summaries
 
@@ -1079,6 +1080,14 @@ Three `User.preferences` booleans — `pushOnAssignment`, `pushOnAutomation`, `p
 `Workspace.autonomyLevel` (default `gate-key-stages`) with three levels. A pure `resolveStageGate(stageGate, level)` in `stageRunner` computes the effective gate: `full-auto` → never gate (skip non-destructive approvals), `gate-every` → gate every stage, `gate-key-stages` → honour the stage's own `gateForApproval` (the prior behaviour). Used at BOTH gate decisions in the done-branch (advance + push-for-approval), so full-auto advances AND doesn't open an approval MR. A `save-autonomy` control-op + `_sync` route + snapshot field + an AI-tab dropdown, mirroring the `save-sections` module-gating pattern.
 
 → `docs/decisions/0119-autonomy-dials.md`
+
+### 0120 — The watchdog re-pings the assignee about a stale open question (A5, first half)
+
+**0120** · accepted · tags: approvals, watchdog, notifications, freedom-program, phone-first · 2026-07-07
+
+The watchdog sweep gains a third responsibility: for every ticket with a REAL `needsInput` banner, it baselines `Ticket.remindedAt` on first sight (no immediate ping), then **re-pings the assignee** (routing — `assigneeId`, falling back to `creatorId`) at most once per `WS_NEEDS_INPUT_REMIND_MIN` (default 120 min) via a `reminder` notification + a web-push. `remindedAt` is cleared on the answer path, so a fresh question starts a fresh clock. A pure `shouldRemind(remindedAt, now, intervalMs)` drives the timing (unit-tested; `now` injected).
+
+→ `docs/decisions/0120-needs-input-reping.md`
 
 ## Code governed by decisions
 
