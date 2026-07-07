@@ -2934,3 +2934,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 (na `generateArtifacts` — nieuwe ChatResult-shape) · lint 0/0 · ai:lint clean · build groen · `tests/unit/chatCreateOps.test.mts` 19/19 (create-ticket/content accept+reject, plan multi-step + drop-invalid + <2-reject, board-ops intact, unknown-op reject). Browser-verify van de kaart-UI gebatcht met de andere UI-fasen.
 
 **Files:** `src/workspaces/_data/types.ts` (ChatProposal+ChatPlan), `server/ai/workspaceChat.ts` (create-ops + validatePlan + export), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx` (dispatchProposal/acceptChatPlan + plan-kaart), `src/_locales/*.json` (×4), `tests/unit/chatCreateOps.test.mts` (nw), gegenereerde apiTypes, `docs/decisions/0145-*.md`.
+
+## 2026-07-08 — V1: video-timeline scene-model (VideoScene + content-save-scenes) — ADR 0146
+
+**IDEA_TO_OUTCOME Fase V (echte video), stap 1 — de data-fundering.**
+- **Prisma `VideoScene`** (per piece): order, videoAssetId?/imageAssetId?, start/endTrimMs, durationMs, transitionIn (cut|fade|xfade), prompt (V3/V4-regen), parentId (I2-lineage). Asset-refs = plain String (user-bewerkbare timeline faalt niet op een niet-ObjectId); parentId blijft @db.ObjectId.
+- **`content-save-scenes`** control-op (contentControl-route, RBAC work-tickets): de editor stuurt de volledige geordende lijst; Conductor UPSERT by id (bestaande scenes houden id+lineage, nieuwe erbij, verwijderde weg) + hersequencet order. Eén op dekt reorder/trim/transition/delete/add.
+- **Snapshot:** `ContentPieceSummary.scenes` (voor de editor + de render).
+
+**Verify:** tsc 0 · lint 0 · ai:lint clean · build groen · `tests/integration/videoScenes.test.mts` 14/14 (save 2 scenes, upsert-by-id houdt id + update duration + drop + add, snapshot-expose). Debug onderweg: `@db.ObjectId`-asset-refs faalden op fake ids → plain String.
+
+**Files:** `prisma/schema.prisma` (VideoScene), `server/orchestrator/conductor.ts` (content-save-scenes), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` (op+clientInput), `server/control/rbac.ts` (RBAC), `src/workspaces/_data/types.ts` (VideoSceneSummary+scenes), `server/read/workspaceSnapshot.ts` (expose), `tests/integration/videoScenes.test.mts` (nw), `docs/decisions/0146-*.md`.

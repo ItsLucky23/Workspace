@@ -1136,6 +1136,37 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       broadcastContentDirty(action.workspaceId);
       return;
     }
+    case 'content-save-scenes': {
+      //? V1 — persist the full ordered VIDEO SCENE list from the timeline editor. Upsert by id (existing
+      //? scenes keep their id + lineage), create new ones, and remove any scene no longer present. The
+      //? multi-clip render (V2) reads these `orderBy: order` to stitch the real video.
+      const contentProjectId = str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const scenes = Array.isArray(payload.scenes) ? payload.scenes.map((r) => asRec(r)) : [];
+      const validTransition = (t: string | undefined): string => (t === 'fade' || t === 'xfade' ? t : 'cut');
+      const keepIds: string[] = [];
+      for (const s of scenes) { const id = str(s, 'id'); if (id) keepIds.push(id); }
+      //? Remove scenes dropped by the editor (empty keepIds → clears the timeline).
+      await prisma.videoScene.deleteMany({ where: { workspaceId: action.workspaceId, contentProjectId, ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}) } });
+      let order = 0;
+      for (const s of scenes) {
+        const durationMs = typeof s.durationMs === 'number' ? Math.max(200, Math.min(60_000, Math.round(s.durationMs))) : 5000;
+        const startTrimMs = typeof s.startTrimMs === 'number' ? Math.max(0, Math.round(s.startTrimMs)) : 0;
+        const endTrimMs = typeof s.endTrimMs === 'number' ? Math.max(0, Math.round(s.endTrimMs)) : null;
+        const data = {
+          order, durationMs, startTrimMs, endTrimMs,
+          videoAssetId: str(s, 'videoAssetId') ?? null, imageAssetId: str(s, 'imageAssetId') ?? null,
+          transitionIn: validTransition(str(s, 'transitionIn')), prompt: str(s, 'prompt') ?? null,
+        };
+        const id = str(s, 'id');
+        await (id
+          ? prisma.videoScene.updateMany({ where: { workspaceId: action.workspaceId, contentProjectId, id }, data })
+          : prisma.videoScene.create({ data: { workspaceId: action.workspaceId, contentProjectId, ...data } }));
+        order += 1;
+      }
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     case 'content-inpaint': {
       //? E1 — region-edit: run the inpaint feature (source image + mask + instruction → a NEW region-edited
       //? asset). The mask is produced by the canvas editor (a maskUrl); this op threads it to the provider. If a

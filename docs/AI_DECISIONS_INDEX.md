@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (144)
+## Decisions (145)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -157,6 +157,7 @@
 | 0143 | Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4) | 🟢 accepted | ux, a11y, freedom-program | — | `docs/decisions/0143-premium-ux-sweep.md` |
 | 0144 | Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof | 🟢 accepted | content, publish, render, trust, testing, freedom-program | — | `docs/decisions/0144-honesty-fixes.md` |
 | 0145 | L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles) | 🟢 accepted | assistant, intake, content, tickets, single-writer, idea-to-outcome | — | `docs/decisions/0145-conversational-intake-copilot.md` |
+| 0146 | V1 — the video-timeline scene model (VideoScene + content-save-scenes) | 🟢 accepted | content, video, timeline, schema, idea-to-outcome | — | `docs/decisions/0146-video-scene-model.md` |
 
 ## Summaries
 
@@ -1313,6 +1314,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **O-B — the Assistant can now propose CREATE ops.** `ChatProposal.op` gains `create-ticket` and `create-content`. On accept they route to the EXISTING verbs — `create-ticket → workspaces/quickAdd`, `create-content → workspaces/contentControl` (`content-from-brief`). NO new verbs, NO new writers: the AI still only proposes; the user accepts; the Conductor writes (B-23 single-writer + the frozen structured-channel surface both intact). **O-A — the IntakeCopilot: multi-step PLANS.** A big idea ("build a todo app with login") decomposes into an ordered `ChatPlan` of steps (each a `ChatProposal`), rendered as ONE approvable card; approving dispatches every step in order through the same single-step dispatch path. This is the distinct value over O-B's single op. **Validation stays a hard guard.** `validateChatAction` / `validatePlan` (exported, unit-tested) drop any step that doesn't independently validate; a plan needs ≥2 surviving steps (a 1-step "plan" is just a proposal).
 
 → `docs/decisions/0145-conversational-intake-copilot.md`
+
+### 0146 — V1 — the video-timeline scene model (VideoScene + content-save-scenes)
+
+**0146** · accepted · tags: content, video, timeline, schema, idea-to-outcome · 2026-07-08
+
+**New `VideoScene` model** (per content piece): `order`, `videoAssetId?` (a real clip) / `imageAssetId?` (a still/ken-burns fallback), `startTrimMs` / `endTrimMs`, `durationMs`, `transitionIn` (cut|fade|xfade), `prompt` (for V3/V4 regen) and `parentId` (I2-lineage — a refined version of a prior scene). **`videoAssetId` / `imageAssetId` are plain `String?`, not `@db.ObjectId`.** A user-editable timeline must never hard-fail a whole save because one ref isn't a valid ObjectId; asset refs are soft. `parentId` stays `@db.ObjectId` (internal lineage, always a real scene id). **One write op, `content-save-scenes`** (a `[control-API]` op via the contentControl route, RBAC `work-tickets`): the timeline editor sends the full ordered list; the Conductor UPSERTS by id (existing scenes keep their id + lineage, new ones are created, dropped ones removed) and re-sequences `order`. One op covers reorder/trim/transition/delete/add — matching how an editor saves. **Surfaced in the read snapshot** (`ContentPieceSummary.scenes`) for the editor + the render.
+
+→ `docs/decisions/0146-video-scene-model.md`
 
 ## Code governed by decisions
 

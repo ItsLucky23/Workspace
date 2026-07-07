@@ -34,7 +34,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary,
+  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
@@ -364,8 +364,16 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? Q1: per-piece media spend (from MediaSpend rows) so the detail page shows what THIS piece has cost.
     const spentByPiece = new Map<string, number>();
     for (const s of mediaSpendRows) { if (s.contentProjectId) spentByPiece.set(s.contentProjectId, (spentByPiece.get(s.contentProjectId) ?? 0) + s.costCents); }
+    //? V1: the ordered video-timeline scenes per piece (for the timeline editor + the multi-clip render).
+    const videoSceneRows = await prisma.videoScene.findMany({ where: { workspaceId: contentWsId, contentProjectId: { in: contentPieceRows.map((c) => c.id) } }, orderBy: { order: 'asc' } });
+    const scenesByPiece = new Map<string, VideoSceneSummary[]>();
+    for (const s of videoSceneRows) {
+      const list = scenesByPiece.get(s.contentProjectId) ?? [];
+      list.push({ id: s.id, order: s.order, videoAssetId: s.videoAssetId, imageAssetId: s.imageAssetId, startTrimMs: s.startTrimMs, endTrimMs: s.endTrimMs, durationMs: s.durationMs, transitionIn: s.transitionIn, prompt: s.prompt });
+      scenesByPiece.set(s.contentProjectId, list);
+    }
     const contentSnapshot: ContentSnapshot = {
-      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [], spentCents: spentByPiece.get(c.id) ?? 0 })),
+      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [], scenes: scenesByPiece.get(c.id) ?? [], spentCents: spentByPiece.get(c.id) ?? 0 })),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(
         contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),

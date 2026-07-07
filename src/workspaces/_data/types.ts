@@ -255,6 +255,19 @@ export interface ContentAssetSummary {
   variant?: boolean;     // I2: this asset was regenerated/varied from another (has a parent in the version lineage)
 }
 
+//? V1 — a timeline VIDEO SCENE surfaced to the editor: a real clip (or a still) with trim + a transition.
+export interface VideoSceneSummary {
+  id: string;
+  order: number;
+  videoAssetId: string | null;
+  imageAssetId: string | null;
+  startTrimMs: number;
+  endTrimMs: number | null;
+  durationMs: number;
+  transitionIn: string;   // 'cut' | 'fade' | 'xfade'
+  prompt: string | null;
+}
+
 export interface ContentPieceSummary {
   id: string;
   title: string;
@@ -263,6 +276,7 @@ export interface ContentPieceSummary {
   status: string;
   channelId: string | null;
   assets: ContentAssetSummary[];   // U-fix B: the piece's produced assets (surfaced so the UI can show/download them)
+  scenes: VideoSceneSummary[];     // V1: the piece's ordered video-timeline scenes (empty until built)
   spentCents: number;              // Q1: this piece's own media spend (from MediaSpend rows), for per-piece cost transparency
 }
 //? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).

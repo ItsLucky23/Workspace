@@ -1396,6 +1396,28 @@ model Beat {
   @@index([workspaceId, scriptId, order])
 }
 
+//? V1 (IDEA_TO_OUTCOME) — an ordered VIDEO SCENE: a real clip (or a still shown ken-burns) that the multi-clip
+//? render (V2) stitches, and the timeline editor (V5) manipulates. A long video = several scenes that flow into
+//? each other (V3 decompose); a range-refine (V4) regenerates one scene as a new version (parentId lineage).
+//? Distinct from Beat (a slideshow still bound to a script) — a Scene is a timeline segment for real video.
+model VideoScene {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String   @db.ObjectId
+  order            Int
+  videoAssetId     String?                 // a real video clip ref (asset id), when present — plain string so a
+  imageAssetId     String?                 // user-editable timeline never hard-fails on a non-ObjectId ref
+  startTrimMs      Int      @default(0)    // trim in-point within the source clip
+  endTrimMs        Int?                    // trim out-point (null = to the clip end)
+  durationMs       Int      @default(5000) // effective on-timeline duration
+  transitionIn     String   @default("cut") // 'cut' | 'fade' | 'xfade'
+  prompt           String?                 // the scene's generation prompt (V3 decompose / V4 refine)
+  parentId         String?  @db.ObjectId   // I2-lineage — a refined version of a prior scene
+  createdAt        DateTime @default(now())
+
+  @@index([workspaceId, contentProjectId, order])
+}
+
 //? A queued/async generation job to a media provider (F0.3). In stub/dummy mode it resolves
 //? to a valid-shaped fake asset + a declared `costCents` (so the €-budget guard is testable).
 model MediaJob {
