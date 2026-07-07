@@ -20,7 +20,11 @@ loadEnv({ path: '.env.local' });
 //? unset AFTER, guaranteeing the stub-forcing sticks for every later server import in the test.
 const PROVIDER_KEYS = ['FAL_KEY', 'ELEVENLABS_KEY', 'SUNO_KEY', 'GEMINI_API_KEY', 'WS_MEDIA_CHEAP'] as const;
 await import('@luckystack/core');
-for (const k of PROVIDER_KEYS) delete process.env[k];
+//? The RAW `.env.local` values dotenvx injected — the provider keys are secret-manager POINTERS
+//? (e.g. FAL_KEY=`FAL_KEY_V1`). We stash them, then unset for the default stub world. `db()` restores the
+//? pointers so the secret-manager can RESOLVE them (it reads the pointer from process.env, not the file).
+const rawPointers: Record<string, string> = {};
+for (const k of PROVIDER_KEYS) { const v = process.env[k]; if (v !== undefined) rawPointers[k] = v; delete process.env[k]; }
 
 //? The REAL provider keys resolved by the secret-manager during `db()`, stashed so a LIVE test can
 //? restore them (`enableLiveProviders()`) after the default stub-unset.
@@ -31,16 +35,18 @@ let cached: PrismaClient | null = null;
 //? Resolve secrets + return the real Prisma client (cached per process).
 export async function db(): Promise<PrismaClient> {
   if (cached) return cached;
+  //? Restore the raw pointers so the secret-manager can resolve them (it resolves pointers PRESENT in
+  //? process.env). Without this the resolution is a no-op and the real keys never materialise.
+  for (const [k, v] of Object.entries(rawPointers)) process.env[k] = v;
   const { initSecretManager } = await import('@luckystack/secret-manager');
   await initSecretManager({ url: process.env.LUCKYSTACK_SECRET_MANAGER_URL ?? '', token: { fromFile: '.secret-manager-token' }, envNames: () => true, source: 'remote' } as never);
-  //? initSecretManager re-injects the resolved provider keys into process.env (overriding the top-level
-  //? unset). Stash them for `enableLiveProviders()`, then unset again so the default suite runs the
-  //? deterministic STUB path. Tests that inject their own transport (falProvider/audioProviders) are
-  //? unaffected; the live-AI suite calls `enableLiveProviders()` to restore the real keys.
+  //? initSecretManager has now resolved the pointers → REAL keys in process.env. Stash them for
+  //? `enableLiveProviders()`, then unset so the default suite runs the deterministic STUB path. Tests that
+  //? inject their own transport (falProvider/audioProviders) are unaffected; the live-AI suite restores.
   for (const k of PROVIDER_KEYS) {
     const v = process.env[k];
     if (v !== undefined && v !== '') stashedProviderKeys[k] = v;
-    process.env[k] = '';
+    delete process.env[k];
   }
   //? H2 fail-closed: at-rest encryption is mandatory, so `encryptSecret` now THROWS without a key.
   //? Guarantee a deterministic test key when the secret-manager didn't supply one (tests create

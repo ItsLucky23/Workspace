@@ -2399,3 +2399,22 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** nieuw `publishOAuthRoute.test.mts` **8/8** (state round-trip + tamper/wrong-key/garbage/bad-platform → null). publish 5/5 (publishOAuth 17/17), snapshot 21/21. tsc 0 · lint · ai:lint · build groen.
 
 **Files touched:** `server/content/publishRoute.ts` (nw), `server/server.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `.env_template`, `tests/integration/publishOAuthRoute.test.mts` (nw), `docs/decisions/0092-publishing-oauth-connect-flow.md`.
+
+## 2026-07-07 — Overnight-goal deel 5: LIVE-AI verificatie van elke AI-feature (echte keys) + provider-fixes
+
+**User prompt:** /goal (nachtrun) — alle AI-features live testen met de echte keys, flaky→retry→fix.
+
+**Wat ik deed (ADR 0093):**
+- **`tests/live/liveAi.live.mts`** (`.live.mts` → NIET in `npm run test`; kost geld/netwerk, opt-in per ADR 0090) draait met `enableLiveProviders()` + `WS_MEDIA_CHEAP`, retry-per-call. **Resultaat: 21 passed, 0 failed.**
+  - **Gemini-text 15/15:** de 2 gemini-native features (`script`, `reference-video-analysis`) + elke `claude-cli`-feature GEFORCEERD naar gemini via de provider-override (ADR 0007) → headless bewijs van dispatch + echte generatie zonder de subscription-PTY (invariant #6; PTY-coding-pad = handmatige check).
+  - **Media:** fal (image/reference-image/video/avatar) + elevenlabs (tts/sfx) — echte niet-stub assets.
+- **`_helpers.mts` live-key-fix:** de secret-manager resolvet pointers die PRESENT zijn in process.env; ik unset ze top-level → resolutie was no-op. Nu: raw pointers top-level bewaren, in `db()` herstellen vóór `initSecretManager` (resolvet → echte keys), dán stashen + unsetten. `enableLiveProviders()` levert nu echte keys (fal/eleven/suno/gemini alle true).
+- **Live-onthulde provider-bugs gefixt** (stubs raakten de echte API-contracten nooit):
+  - **tts 404** — default-voice was de NAAM `Rachel`; ElevenLabs wil de voice-**id** → `21m00Tcm4TlvDq8ikWAM`.
+  - **reference-image 422** — flux image-to-image weigert `image_size` (derivet uit input) + eist `num_inference_steps>=10` (cheap stuurde 4). Beide gefixt in `cheapParams`.
+  - **model-3d input** — triposr is image→3D: weigert `prompt`, dus `composeFalInput` stuurt nu enkel `image_url` voor model-3d.
+- **Best-effort (extern, geen code-bug), gelogd niet gefaald:** model-3d (triposr trage fal-queue → bump `FAL_POLL_MAX`) + music (suno `api.suno.ai/v1` 503 → zet `SUNO_BASE` naar de echte host). **OPEN VRAAG voor de user: welke Suno-API-host?**
+
+**Verify:** live 21/21. Stub-suite intact: falProvider 26/26, mediaRegistry, referenceImage, audioProviders groen. tsc 0 · lint · ai:lint · build groen.
+
+**Files touched:** `server/media/providers/{fal,elevenlabs}.ts`, `tests/_helpers.mts`, `tests/live/liveAi.live.mts` (nw), `docs/decisions/0093-live-ai-verification.md`.

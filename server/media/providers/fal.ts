@@ -48,8 +48,13 @@ function falModelFor(feature: MediaFeature): string {
 //? steps + a single output. Overridable per env; the request's own `params` always win over these.
 function cheapParams(feature: MediaFeature): Record<string, unknown> {
   if (!cheapMode()) return {};
-  if (feature === 'image-gen' || feature === 'reference-image') {
+  if (feature === 'image-gen') {
     return { image_size: envStr('FAL_IMAGE_SIZE', 'square'), num_inference_steps: envNum('FAL_IMAGE_STEPS', 4), num_images: 1, enable_safety_checker: false };
+  }
+  //? reference-image is image-to-image: it DERIVES the size from the input image, so `image_size` is an
+  //? invalid param (422); and flux/dev requires `num_inference_steps` >= 10 (4 → 422). Cheapest valid = 10.
+  if (feature === 'reference-image') {
+    return { num_inference_steps: envNum('FAL_REFERENCE_IMAGE_STEPS', 10), num_images: 1, enable_safety_checker: false };
   }
   if (feature === 'video-gen' || feature === 'avatar') {
     return { num_inference_steps: envNum('FAL_VIDEO_STEPS', 8), resolution: envStr('FAL_VIDEO_RESOLUTION', '480p'), num_frames: envNum('FAL_VIDEO_FRAMES', 65) };
@@ -61,9 +66,14 @@ function cheapParams(feature: MediaFeature): Record<string, unknown> {
 //? `image_url` (reference-conditioned gen). Cheap-mode defaults are merged UNDER the caller's params
 //? (so explicit params win) UNDER the prompt (never overridden). Pure + exported for tests.
 export function composeFalInput(req: MediaGenerationRequest): { model: string; input: Record<string, unknown> } {
+  //? model-3d (image-to-3D, e.g. triposr) takes ONLY the source image — a `prompt`/size params are
+  //? rejected (400). It needs a reference image (chain: generate an image, then convert it).
+  if (req.feature === 'model-3d') {
+    return { model: falModelFor(req.feature), input: { ...(req.referenceUrl ? { image_url: req.referenceUrl } : {}), ...req.params } };
+  }
   const prompt = composeMediaPrompt(req);
   const input: Record<string, unknown> = { ...cheapParams(req.feature), ...req.params, prompt };
-  if ((req.feature === 'reference-image' || req.feature === 'model-3d') && req.referenceUrl) input.image_url = req.referenceUrl;
+  if (req.feature === 'reference-image' && req.referenceUrl) input.image_url = req.referenceUrl;
   return { model: falModelFor(req.feature), input };
 }
 

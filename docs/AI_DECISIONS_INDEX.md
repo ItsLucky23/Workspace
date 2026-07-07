@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (91)
+## Decisions (92)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -104,6 +104,7 @@
 | 0090 | Tests run a stub provider world by default; live-AI is opt-in via enableLiveProviders() | 🟢 accepted | testing, ai, media, providers | — | `docs/decisions/0090-deterministic-test-provider-world.md` |
 | 0091 | The media registry consumes per-workspace keys + overrides, threaded through the provider | 🟢 accepted | media, providers, secrets, multi-tenancy | — | `docs/decisions/0091-per-workspace-media-keys.md` |
 | 0092 | Publishing is reachable via an OAuth connect flow + an in-app publish trigger | 🟢 accepted | content, publishing, oauth, http, b-23 | — | `docs/decisions/0092-publishing-oauth-connect-flow.md` |
+| 0093 | Live-AI verification + the media-provider fixes it surfaced | 🟢 accepted | ai, media, providers, testing | — | `docs/decisions/0093-live-ai-verification.md` |
 
 ## Summaries
 
@@ -836,6 +837,14 @@ Keys are **threaded through the request**, not read from a global:
 Two HTTP routes + two UI affordances close the loop:
 
 → `docs/decisions/0092-publishing-oauth-connect-flow.md`
+
+### 0093 — Live-AI verification + the media-provider fixes it surfaced
+
+**0093** · accepted · tags: ai, media, providers, testing · 2026-07-07
+
+**`tests/live/liveAi.live.mts`** (named `.live.mts`, NOT `.test.mts`, so `npm run test` never runs it) exercises every backend with `enableLiveProviders()` + `WS_MEDIA_CHEAP`, retrying each call (flaky-live policy) before it counts as a failure. Coverage: **Gemini text (15/15 features):** the two gemini-native features (`script`, `reference-video-analysis`) plus every `claude-cli` feature FORCED to gemini via the provider override (ADR 0007) — a headless way to prove each feature's dispatch + real generation without the subscription-billing PTY (invariant #6; the PTY coding path is verified manually). **Media:** fal (image / reference-image / video / avatar), elevenlabs (tts / sfx), suno (music). **Live-surfaced provider bugs fixed** (the stub tests never hit the real API contracts): **tts 404** — the default voice was the *name* `Rachel`; ElevenLabs needs the voice **id**. Default is now the real Rachel id (`21m00Tcm4TlvDq8ikWAM`). **reference-image 422** — flux `image-to-image` rejects `image_size` (it derives size from the input) and requires `num_inference_steps >= 10` (cheap mode sent 4). Fixed both in `cheapParams`. **model-3d input** — triposr is image→3D: it rejects a `prompt`, so `composeFalInput` now sends only the source `image_url` for `model-3d`. **Two features are BEST-EFFORT (environmental, not code defects), logged not asserted:** **model-3d** — triposr submits fine but is a slow fal queue model that often exceeds the poll window; bump `FAL_POLL_MAX` or pin a faster 3D model. **music (suno)** — the default `https://api.suno.ai/v1` host 503s; Suno's real API host is deployment-specific. Set `SUNO_BASE` to the user's actual endpoint. **OPEN QUESTION for the user.**
+
+→ `docs/decisions/0093-live-ai-verification.md`
 
 ## Code governed by decisions
 

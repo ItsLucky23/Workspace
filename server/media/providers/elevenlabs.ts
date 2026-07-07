@@ -23,7 +23,8 @@ export interface ElevenInput { text: string; voiceId: string; durationSeconds?: 
 
 export function composeElevenInput(req: MediaGenerationRequest): ElevenInput {
   const text = composeMediaPrompt(req) || (req.prompt ?? '');
-  const voiceId = (typeof req.params?.voiceId === 'string' ? req.params.voiceId : '') || (process.env.ELEVENLABS_VOICE_ID ?? '').trim() || 'Rachel';
+  //? Default to the real ElevenLabs "Rachel" VOICE ID (a name like 'Rachel' 404s — the API wants the id).
+  const voiceId = (typeof req.params?.voiceId === 'string' ? req.params.voiceId : '') || (process.env.ELEVENLABS_VOICE_ID ?? '').trim() || '21m00Tcm4TlvDq8ikWAM';
   const durationSeconds = typeof req.params?.durationSeconds === 'number' ? req.params.durationSeconds : undefined;
   return { text, voiceId, ...(durationSeconds === undefined ? {} : { durationSeconds }) };
 }
