@@ -2871,3 +2871,11 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 **Verify:** tsc 0 · lint · ai:lint · build · reorderBeats 6/6 (reorder-persist + trim + render-plan-reflecteert-B-voor-A + duration-honoured + clamp-floor).
 
 **Files touched:** `server/orchestrator/conductor.ts` (content-reorder-beats), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts` (whitelist+beats-input), `tests/integration/reorderBeats.test.mts`, `docs/decisions/0140-video-timeline-reorder.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E4-backend: audio-mix-plan — ADR 0141
+
+**Wat ik deed:** pure `buildAudioMixPlan(tracks)` bouwt de ffmpeg-`filter_complex` die N tracks mixt — per-track volume (voice~1, music-ducked~0.25, sfx~0.6) + optionele `atrim` — naar één `[aout]`-stream via `amix=inputs=N:duration=longest`. Waveform-UI (Web Audio + trim-handles die deze params emitten) + wiring in renderTimeline-audio = follow-ups.
+
+**Verify:** tsc 0 · lint (forEach→for-of) · ai:lint · build · renderFormats 31/31 (amix-3-tracks + music-duck-0.25 + sfx-trim-2s + aout-map + solo-track).
+
+**Files touched:** `server/content/render.ts` (AudioTrack + buildAudioMixPlan), `tests/unit/renderFormats.test.mts`, `docs/decisions/0141-audio-mix-plan.md`.

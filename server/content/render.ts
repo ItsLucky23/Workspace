@@ -73,6 +73,29 @@ export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, l
   return { concatList, args, hasVideo: usable.length > 0 };
 }
 
+//? E4 — an audio track to mix. `label` is the ffmpeg input specifier (e.g. '0:a'); `volume` is the linear gain
+//? (voice ~1, music ducked ~0.25, sfx ~0.6). `trimMs` optionally clips the input to its first N ms.
+export interface AudioTrack { label: string; volume: number; trimMs?: number }
+
+//? Build the ffmpeg `-filter_complex` that mixes N tracks (per-track volume + optional trim) into one output
+//? stream `[aout]` via `amix` (duration=longest). This is how voice + music (ducked) + sfx become one mixed
+//? track the render consumes. Pure + exported for tests. Returns null for an empty track list.
+export function buildAudioMixPlan(tracks: AudioTrack[]): { filter: string; map: string } | null {
+  if (tracks.length === 0) return null;
+  const stages: string[] = [];
+  const mixInputs: string[] = [];
+  for (const [i, t] of tracks.entries()) {
+    const out = `a${String(i)}`;
+    const parts = [`[${t.label}]`];
+    if (typeof t.trimMs === 'number' && t.trimMs > 0) parts.push(`atrim=0:${(t.trimMs / 1000).toFixed(2)},asetpts=PTS-STARTPTS`);
+    parts.push(`volume=${Math.max(0, t.volume).toFixed(2)}`);
+    stages.push(`${parts.join('')}[${out}]`);
+    mixInputs.push(`[${out}]`);
+  }
+  stages.push(`${mixInputs.join('')}amix=inputs=${String(tracks.length)}:duration=longest:dropout_transition=0[aout]`);
+  return { filter: stages.join(';'), map: '[aout]' };
+}
+
 //? O1 — emit .srt / .vtt captions from the piece's caption LINES (which carry no per-line timing) by
 //? distributing them evenly across the total duration. Pure + exported for tests.
 const pad2 = (n: number, w = 2): string => String(n).padStart(w, '0');

@@ -61,4 +61,18 @@ const beats = [{ imageFile: 'a.png', durationMs: 2000 }, { imageFile: 'b.png', d
   eq(buildSrt(['  ', ''], 5000), '', 'blank caption lines are dropped');
 }
 
+// E4 — audio mix plan
+{
+  const { buildAudioMixPlan } = await import('../../server/content/render.ts');
+  assert(buildAudioMixPlan([]) === null, 'no tracks → null');
+  const mix = buildAudioMixPlan([{ label: '0:a', volume: 1 }, { label: '1:a', volume: 0.25 }, { label: '2:a', volume: 0.6, trimMs: 2000 }]);
+  assert(mix !== null, 'a mix plan is produced');
+  assert(mix?.filter.includes('amix=inputs=3'), 'amix mixes all three tracks');
+  assert(mix?.filter.includes('volume=0.25'), 'music is ducked (0.25)');
+  assert(mix?.filter.includes('atrim=0:2.00'), 'the sfx track is trimmed to 2s');
+  assert(mix?.filter.includes('[aout]') && mix.map === '[aout]', 'the mixed stream is mapped out');
+  const solo = buildAudioMixPlan([{ label: '0:a', volume: 1 }]);
+  assert(solo?.filter.includes('amix=inputs=1'), 'a single track still routes through amix → one output');
+}
+
 report('tests/unit/renderFormats.test.mts');

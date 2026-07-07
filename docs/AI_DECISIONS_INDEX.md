@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (139)
+## Decisions (140)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -152,6 +152,7 @@
 | 0138 | The image region editor — Fabric.js mask-draw → inpaint (E1, canvas half) | 🟢 accepted | editors, image, inpaint, fabric, freedom-program | — | `docs/decisions/0138-image-region-editor.md` |
 | 0139 | Image editor essentials — brightness/contrast/saturation → a new asset (E2) | 🟢 accepted | editors, image, fabric, freedom-program | — | `docs/decisions/0139-image-editor-essentials.md` |
 | 0140 | Video timeline — beat reorder + trim drives the render plan (E3, backend half) | 🟢 accepted | editors, video, render, freedom-program | — | `docs/decisions/0140-video-timeline-reorder.md` |
+| 0141 | Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half) | 🟢 accepted | editors, audio, render, freedom-program | — | `docs/decisions/0141-audio-mix-plan.md` |
 
 ## Summaries
 
@@ -1268,6 +1269,14 @@ An `ImageEditor` component on the same Fabric.js canvas: brightness / contrast /
 A `content-reorder-beats` control-op: given `[{ beatId, order?, durationMs? }]` it updates each beat's `order` (resequence) + `durationMs` (trim, clamped 0.5–30s). Because the assembly renders beats in `order` with each beat shown for its `durationMs`, this directly drives the ffmpeg plan (sequence + clip times) — verified by reordering + trimming and asserting the resulting `buildFfmpegPlan` concat list.
 
 → `docs/decisions/0140-video-timeline-reorder.md`
+
+### 0141 — Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half)
+
+**0141** · accepted · tags: editors, audio, render, freedom-program · 2026-07-08
+
+A pure `buildAudioMixPlan(tracks)` builds the ffmpeg `-filter_complex` that mixes N tracks — each with a per-track linear volume (voice ~1, music ducked ~0.25, sfx ~0.6) + an optional `atrim` — into one `[aout]` stream via `amix=inputs=N:duration=longest`. Returns the filter + the output map for the render to wire in.
+
+→ `docs/decisions/0141-audio-mix-plan.md`
 
 ## Code governed by decisions
 
