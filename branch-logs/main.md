@@ -2569,3 +2569,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (fixte await-member + underscore-param) · ai:lint · build · geminiWorkspaceKey 5/5. i18n ×4.
 
 **Files touched:** `server/ai/types.ts` (available(workspaceId)), `server/ai/registry.ts`, `server/ai/providers/{geminiApi,claudeCli}.ts`, `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/geminiWorkspaceKey.test.mts`, `docs/decisions/0104-gemini-workspace-key.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q6: stage-persona + definition-of-done bewerkbaar in de pipeline-UI — ADR 0105
+
+**Wat ik deed:** `systemPrompt` (de agent-persona → `--append-system-prompt`) + `definitionOfDone` bestonden in model+snapshot maar de pipeline-editor toonde alleen customInstructions+promptTemplate. Twee velden toegevoegd aan de General-tab ("AI-persona (system-prompt)" + "Definitie van klaar"). De `save-stage-config`-op negeerde `definitionOfDone` stil → nu gepersisteerd. De `_sync`-route stuurt de hele cfg door, dus end-to-end werkend. Laatste item van Fase Q.
+
+**Verify:** tsc 0 · lint · ai:lint · build · stagePersona 3/3. i18n ×4. (Laag geleerd: save-stage-config where-key = stage `key` (business-id), niet de ObjectId.)
+
+**Files touched:** `server/orchestrator/conductor.ts` (definitionOfDone in save-stage-config), `src/workspaces/pipeline/page.tsx` (GeneralTab velden), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/stagePersona.test.mts`, `docs/decisions/0105-stage-persona-in-ui.md`.
+
+**FASE Q COMPLEET (Q1–Q6):** kosten-transparantie · brand/product-grounding · style-manager · workspace-AI-instructie · Gemini-dead-key · stage-persona. Volgende: Fase K (file-upload → editors deblokkeren).

@@ -325,6 +325,12 @@
       "invitesHeading": "Vos invitations"
     },
     "pipeline": {
+      "systemPrompt": "Persona IA (system prompt)",
+      "systemPromptHint": "L'identité de base + le style de raisonnement de l'agent de cette étape — superposé à vos instructions.",
+      "systemPromptPlaceholder": "ex. Vous êtes un staff engineer produisant un plan d'implémentation rigoureux.",
+      "definitionOfDone": "Définition de terminé",
+      "definitionOfDoneHint": "Quand cette étape est-elle terminée ? Vide = l'IA juge l'achèvement elle-même.",
+      "definitionOfDonePlaceholder": "ex. Chaque critère d'acceptation a un test qui passe.",
       "customInstructions": "Instructions personnalisées",
       "customInstructionsHint": "Chargées dans le CLAUDE.md de l’étape — règles métier + objectifs par étape.",
       "customInstructionsPlaceholder": "ex. Suivez le plan à la lettre. Gardez des changements chirurgicaux.",

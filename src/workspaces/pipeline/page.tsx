@@ -71,8 +71,16 @@ function GeneralTab({ s, update }: TabProps) {
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
       <div>
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.systemPrompt' })} hint={translate({ key: 'workspaces.pipeline.systemPromptHint' })} />
+        <textarea rows={3} value={s.systemPrompt ?? ''} onChange={(e) => { update({ systemPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.systemPromptPlaceholder' })} />
+      </div>
+      <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.customInstructions' })} hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })} />
         <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
+      </div>
+      <div>
+        <FieldLabel title={translate({ key: 'workspaces.pipeline.definitionOfDone' })} hint={translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })} />
+        <textarea rows={2} value={s.definitionOfDone ?? ''} onChange={(e) => { update({ definitionOfDone: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.definitionOfDonePlaceholder' })} />
       </div>
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.statuses' })} hint={translate({ key: 'workspaces.pipeline.statusesHint' })} />

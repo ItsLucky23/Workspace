@@ -325,6 +325,12 @@
       "invitesHeading": "Your invitations"
     },
     "pipeline": {
+      "systemPrompt": "AI persona (system prompt)",
+      "systemPromptHint": "The base identity + reasoning style for this stage's agent — layered above your instructions.",
+      "systemPromptPlaceholder": "e.g. You are a staff engineer producing a rigorous implementation plan.",
+      "definitionOfDone": "Definition of done",
+      "definitionOfDoneHint": "When is this stage complete? Empty = the AI judges completion itself.",
+      "definitionOfDonePlaceholder": "e.g. Every acceptance criterion has a passing test.",
       "customInstructions": "Custom instructions",
       "customInstructionsHint": "Loaded into the stage's CLAUDE.md — domain rules + per-stage goals.",
       "customInstructionsPlaceholder": "e.g. Follow the plan exactly. Keep changes surgical.",

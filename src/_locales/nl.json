@@ -325,6 +325,12 @@
       "invitesHeading": "Je uitnodigingen"
     },
     "pipeline": {
+      "systemPrompt": "AI-persona (system-prompt)",
+      "systemPromptHint": "De basis-identiteit + redeneerstijl van de agent van deze fase — gelaagd boven je instructies.",
+      "systemPromptPlaceholder": "bijv. Je bent een staff engineer die een rigoureus implementatieplan maakt.",
+      "definitionOfDone": "Definitie van klaar",
+      "definitionOfDoneHint": "Wanneer is deze fase af? Leeg = de AI beoordeelt de voltooiing zelf.",
+      "definitionOfDonePlaceholder": "bijv. Elk acceptatiecriterium heeft een slagende test.",
       "customInstructions": "Aangepaste instructies",
       "customInstructionsHint": "Wordt in de CLAUDE.md van de stage geladen — domeinregels + doelen per stage.",
       "customInstructionsPlaceholder": "bijv. Volg het plan exact. Houd wijzigingen chirurgisch.",

@@ -1232,6 +1232,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const ci = str(payload, 'customInstructions'); if (ci !== undefined) data.customInstructions = ci;
       const promptTemplate = str(payload, 'promptTemplate'); if (promptTemplate !== undefined) data.promptTemplate = promptTemplate;
       const systemPrompt = str(payload, 'systemPrompt'); if (systemPrompt !== undefined) data.systemPrompt = systemPrompt;
+      const definitionOfDone = str(payload, 'definitionOfDone'); if (definitionOfDone !== undefined) data.definitionOfDone = definitionOfDone;
       const roleKey = str(payload, 'roleKey'); if (roleKey !== undefined) data.roleKey = roleKey;
       if ('userEditable' in payload) data.userEditable = bool(payload, 'userEditable');
       if ('gateForApproval' in payload) data.gateForApproval = bool(payload, 'gateForApproval');

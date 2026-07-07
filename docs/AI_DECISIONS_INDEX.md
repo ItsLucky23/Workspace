@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (103)
+## Decisions (104)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -116,6 +116,7 @@
 | 0102 | A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings | 🟢 accepted | content, styles, ux, freedom-program | — | `docs/decisions/0102-style-manager.md` |
 | 0103 | A workspace-wide AI instruction is prepended to every AI completion, at one choke-point | 🟢 accepted | ai, workspace, steering, freedom-program | — | `docs/decisions/0103-workspace-ai-instruction.md` |
 | 0104 | The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly | 🟢 accepted | ai, providers, gemini, keys, freedom-program | — | `docs/decisions/0104-gemini-workspace-key.md` |
+| 0105 | The stage persona (system prompt) + definition-of-done are editable in the pipeline UI | 🟢 accepted | pipeline, stages, ui, freedom-program | — | `docs/decisions/0105-stage-persona-in-ui.md` |
 
 ## Summaries
 
@@ -944,6 +945,14 @@ A dedicated `Workspace.aiInstruction` field (not the mis-named `handoffInstructi
 The `gemini-api` provider now **resolves its key per workspace**: `__provider_key_gemini` (decrypted) WINS over the env key, via `getPrismaClient()`. `AiProvider.available` gains an optional `workspaceId` (mirroring media's `available(apiKey?)`); `runAiCompletion` passes `req.workspaceId`. So a workspace key entered in the UI makes Gemini available + is used. The settings keys are split into **Media providers** (fal/elevenlabs/suno) and an **AI text provider** (Gemini) so the user understands what each key drives. The **per-feature media-provider picker is deferred** (logged): with one provider per feature it has nothing to choose. The `__media_provider_<feature>` override branch stays reachable for when alternate providers land.
 
 → `docs/decisions/0104-gemini-workspace-key.md`
+
+### 0105 — The stage persona (system prompt) + definition-of-done are editable in the pipeline UI
+
+**0105** · accepted · tags: pipeline, stages, ui, freedom-program · 2026-07-07
+
+Add two fields to the pipeline stage editor's General tab: **AI persona (system prompt)** and **Definition of done**, editing `s.systemPrompt` / `s.definitionOfDone` (the `_sync` route already sends the whole cfg). Fix the `save-stage-config` op to also persist `definitionOfDone` (it handled `systemPrompt` already).
+
+→ `docs/decisions/0105-stage-persona-in-ui.md`
 
 ## Code governed by decisions
 

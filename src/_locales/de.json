@@ -325,6 +325,12 @@
       "invitesHeading": "Deine Einladungen"
     },
     "pipeline": {
+      "systemPrompt": "KI-Persona (System-Prompt)",
+      "systemPromptHint": "Die Basis-Identität + der Denkstil des Agenten dieser Phase — über deinen Anweisungen geschichtet.",
+      "systemPromptPlaceholder": "z. B. Du bist ein Staff Engineer, der einen rigorosen Implementierungsplan erstellt.",
+      "definitionOfDone": "Definition von fertig",
+      "definitionOfDoneHint": "Wann ist diese Phase abgeschlossen? Leer = die KI beurteilt den Abschluss selbst.",
+      "definitionOfDonePlaceholder": "z. B. Jedes Akzeptanzkriterium hat einen bestandenen Test.",
       "customInstructions": "Eigene Anweisungen",
       "customInstructionsHint": "Wird in die CLAUDE.md der Stage geladen — Domänenregeln + Ziele pro Stage.",
       "customInstructionsPlaceholder": "z. B. Halte dich exakt an den Plan. Halte Änderungen chirurgisch.",
