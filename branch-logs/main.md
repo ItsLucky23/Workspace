@@ -2785,3 +2785,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · contentUndo 3/3 (unarchive-restore + unpublish-retract + ander-platform-onaangeroerd).
 
 **Files touched:** `server/orchestrator/conductor.ts` (content-unarchive + content-unpublish + broadcastContentDirty-import), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `tests/integration/contentUndo.test.mts`, `docs/decisions/0130-undo-unpublish.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E5: user-defined custom AI-taken — ADR 0131
+
+**Wat ik deed:** AI-features waren een gesloten set. Nu een `CustomAiTask`-model (naam + `promptTemplate` met {{variabelen}} + read-only `lastOutput`) + generic `custom-generate`-`AiFeature` (Claude-default, P1-overridable). Pure `renderTaskPrompt(template, vars)` + `runCustomTask` (rendert→`runAiCompletion`→slaat alleen lastOutput op). 3 control-ops (save/delete/run-custom-task, workTickets). Run = **propose/generate** — produceert output, schrijft NOOIT authoritative state (geverifieerd: run maakt geen tickets/assets). "My AI tasks"-panel in AI-tab (create/run/delete/output) uit nieuwe `snapshot.customTasks`. Scheduling via trigger-action + variable-input-UI = follow-ups.
+
+**Verify:** tsc 0 · lint (if/else→ternary) · ai:lint · build · customAiTask 12/12 (renderTaskPrompt-substitutie + save-create/update-geen-dup + run-throwt-niet + run-maakt-GEEN-authoritative-state + delete). i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (CustomAiTask), `server/ai/types.ts` + `assignments.ts` (custom-generate feature), `server/ai/customTask.ts` (nw: renderTaskPrompt + runCustomTask), `server/orchestrator/conductor.ts` (save/delete/run-ops), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/customTask_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts` (customTasks), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (My-AI-tasks-panel), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/customAiTask.test.mts`, `docs/decisions/0131-custom-ai-tasks.md`.

@@ -171,6 +171,11 @@ export interface WorkspacesCtx {
   saveSections: (enabledSections: string[]) => void;
   //? A4 — the workspace autonomy level ('gate-every' | 'gate-key-stages' | 'full-auto').
   saveAutonomy: (autonomyLevel: string) => void;
+  //? E5 — user-defined AI tasks: the list lives on the snapshot; these mutate/run it (run = generate output only).
+  customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
+  saveCustomTask: (input: { taskId?: string; name: string; promptTemplate: string }) => void;
+  deleteCustomTask: (taskId: string) => void;
+  runCustomTask: (taskId: string, vars?: Record<string, string>) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).

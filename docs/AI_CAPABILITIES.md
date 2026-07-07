@@ -100,6 +100,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/contentControl/v1` | — | — | — |
 | `workspaces/contentDirty/v1` | — | — | — |
 | `workspaces/contentSettings/v1` | — | — | — |
+| `workspaces/customTask/v1` | — | — | — |
 | `workspaces/findingAction/v1` | — | — | — |
 | `workspaces/gitlabSettings/v1` | — | — | — |
 | `workspaces/invite/v1` | — | — | — |

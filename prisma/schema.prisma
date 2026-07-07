@@ -903,6 +903,22 @@ model StudioBrandLibrary {
   createdAt   DateTime @default(now())
 }
 
+//? E5 — a user-defined, re-runnable AI task: a named prompt-template (with {{variables}}) that runs through
+//? the provider abstraction (feature 'custom-generate') and stays propose/generate — it NEVER writes
+//? authoritative state, only produces `lastOutput` the user reads. Schedulable via the trigger engine.
+model CustomAiTask {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @db.ObjectId
+  name           String
+  promptTemplate String                                 // may contain {{variable}} placeholders
+  lastOutput     String?                                // the most recent run's output (read-only display)
+  lastRunAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
 //? Studio module — a generated ARTIFACT (a landing page, copy set, brand kit, or strategy)
 //? produced by an AI role from a brief. `content` is the structured, kind-specific payload the
 //? Studio UI renders + live-previews.

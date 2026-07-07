@@ -760,7 +760,9 @@ const PROVIDER_FEATURES = ['script', 'docs-generate', 'studio-designer', 'studio
 const PROVIDER_OPTIONS = [{ id: 'default', item: 'Default' }, { id: 'claude-cli', item: 'Claude' }, { id: 'gemini-api', item: 'Gemini' }];
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask } = useWorkspaces();
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
   const autonomyLevel = activeWorkspace.autonomyLevel ?? 'gate-key-stages';
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
@@ -815,6 +817,33 @@ function AiBehaviorTab() {
         <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}</div>
         <div className="w-64">
           <Dropdown size="sm" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />
+        </div>
+      </div>
+
+      {/* E5 — user-defined custom AI tasks: a named prompt-template, run on demand (output only). */}
+      <div className="pt-2 border-t border-divider mt-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.customTasksTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.customTasksDesc' })}</div>
+        <div className="flex flex-col gap-2">
+          {customTasks.map((t) => (
+            <div key={t.id} className="rounded-lg border border-container1-border bg-container1 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-title truncate">{t.name}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <WsButton icon="play" onClick={() => { runCustomTask(t.id); }}>{translate({ key: 'workspaces.workspaceSettings.customTaskRun' })}</WsButton>
+                  <button type="button" onClick={() => { deleteCustomTask(t.id); }} className="text-xs text-muted hover:text-wrong px-1.5 py-1 cursor-pointer"><Icon name="trash" /></button>
+                </div>
+              </div>
+              {t.lastOutput != null && t.lastOutput.length > 0 && <div className="text-xs text-common mt-1.5 whitespace-pre-wrap max-h-40 overflow-auto rounded bg-container2 p-2">{t.lastOutput}</div>}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-2 mt-2">
+          <input value={newTaskName} onChange={(e) => { setNewTaskName(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.customTaskNamePlaceholder' })} className={fieldCls} />
+          <textarea value={newTaskTemplate} onChange={(e) => { setNewTaskTemplate(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.customTaskTemplatePlaceholder' })} rows={2} className={`${fieldCls} resize-y`} />
+          <div>
+            <WsButton icon="plus" onClick={() => { if (newTaskName.trim() && newTaskTemplate.trim()) { saveCustomTask({ name: newTaskName.trim(), promptTemplate: newTaskTemplate.trim() }); setNewTaskName(''); setNewTaskTemplate(''); } }}>{translate({ key: 'workspaces.workspaceSettings.customTaskAdd' })}</WsButton>
+          </div>
         </div>
       </div>
 

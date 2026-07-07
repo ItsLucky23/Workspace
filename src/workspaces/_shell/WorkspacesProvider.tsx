@@ -61,6 +61,7 @@ interface Snap {
   notifications: NotificationItem[];
   stageConfigs: PipelineStageCfg[];
   aiOverrides: { feature: string; providerId: string }[];
+  customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   myInvites: MyInvite[];
   notes: TicketNote[];
   repo: RepoInfo;
@@ -88,7 +89,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], aiOverrides: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -1030,6 +1031,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
         void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
       },
+      //? E5 — user-defined AI tasks (create/update, delete, run). Run stays propose/generate (output only).
+      saveCustomTask: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'save-custom-task', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteCustomTask: (taskId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'delete-custom-task', taskId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runCustomTask: (taskId, vars) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, vars, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? A4 — the workspace autonomy level (optimistic flip + persist).
       saveAutonomy: (autonomyLevel) => {
         const room = snap.activeWorkspaceId;
@@ -1046,6 +1051,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,
+      customTasks: snap.customTasks,
       saveAiProvider: (feature, providerId) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room });

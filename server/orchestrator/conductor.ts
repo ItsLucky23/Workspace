@@ -56,6 +56,7 @@ import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './ca
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
+import { runCustomTask } from '../ai/customTask';
 import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -1186,6 +1187,36 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? S2 — soft-undo of an archive: restore the piece. Non-destructive (the row was never deleted).
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
       if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: false } });
+      return;
+    }
+    case 'save-custom-task': {
+      //? E5 — create/update a user-defined AI task (name + prompt-template). Propose/generate only; running is
+      //? a separate op. Never writes authoritative state beyond the task definition itself.
+      const taskId = str(payload, 'taskId');
+      const name = (str(payload, 'name') ?? '').trim() || 'Task';
+      const promptTemplate = str(payload, 'promptTemplate') ?? '';
+      await (taskId
+        ? prisma.customAiTask.updateMany({ where: { workspaceId: action.workspaceId, id: taskId }, data: { name, promptTemplate } })
+        : prisma.customAiTask.create({ data: { workspaceId: action.workspaceId, name, promptTemplate } }));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'delete-custom-task': {
+      const taskId = str(payload, 'taskId');
+      if (taskId) await prisma.customAiTask.deleteMany({ where: { workspaceId: action.workspaceId, id: taskId } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'run-custom-task': {
+      //? E5 — render + generate through the provider abstraction; stores lastOutput only (never authoritative
+      //? state). The variables are a { key: string } map from the payload.
+      const taskId = str(payload, 'taskId');
+      if (!taskId) return;
+      const rawVars = asRec(payload.vars);
+      const vars: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rawVars)) if (typeof v === 'string') vars[k] = v;
+      await runCustomTask(prisma, action.workspaceId, taskId, vars);
+      broadcastContentDirty(action.workspaceId);
       return;
     }
     case 'content-unpublish': {

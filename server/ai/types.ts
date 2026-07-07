@@ -47,7 +47,10 @@ export type AiFeature =
   | 'reference-video-analysis'
   //? Content script generation (ADR 0049, F1.2) — a non-coding text feature that writes a narration script
   //? (+ storyboard beats) from a brief. Defaults to Gemini; the content-script service stubs when no key.
-  | 'script';
+  | 'script'
+  //? E5 — user-defined custom AI tasks: a generic, re-runnable prompt-template the user authors + runs through
+  //? the provider abstraction. Stays propose/generate (never a write verb). Defaults to Claude.
+  | 'custom-generate';
 
 export interface AiCompletionRequest {
   prompt: string;

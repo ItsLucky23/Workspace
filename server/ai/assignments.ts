@@ -36,6 +36,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'reference-video-analysis': 'gemini-api',
   //? Content script generation — non-coding bulk text → defaults to Gemini (fast/cheap), overridable.
   'script': 'gemini-api',
+  //? E5 — user-defined custom AI tasks → always-available Claude CLI default, overridable per workspace (P1).
+  'custom-generate': 'claude-cli',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a
