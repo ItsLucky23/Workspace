@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 196,
+    "nodes": 197,
     "edges": 277,
-    "symbols": 246,
+    "symbols": 248,
     "callEdges": 37
   },
   "nodes": [
@@ -662,6 +662,11 @@
       "id": "workspaces/_sync/contentSettings_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/contentSettings/v1"
+    },
+    {
+      "id": "workspaces/_sync/copyWorkspaceAssets_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/copyWorkspaceAssets/v1"
     },
     {
       "id": "workspaces/_sync/customTask_server_v1.ts",
@@ -3976,6 +3981,18 @@
     {
       "id": "workspaces/_sync/contentSettings_server_v1.ts::main",
       "file": "workspaces/_sync/contentSettings_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/copyWorkspaceAssets_server_v1.ts::<module>",
+      "file": "workspaces/_sync/copyWorkspaceAssets_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/copyWorkspaceAssets_server_v1.ts::main",
+      "file": "workspaces/_sync/copyWorkspaceAssets_server_v1.ts",
       "name": "main",
       "kind": "function"
     },

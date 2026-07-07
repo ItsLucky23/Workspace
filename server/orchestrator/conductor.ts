@@ -57,6 +57,8 @@ import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
+import { exportStyleSet, importStyleSet } from '../content/styles';
+import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -1230,6 +1232,19 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await (templateId
         ? prisma.outputTemplate.updateMany({ where: { workspaceId: action.workspaceId, id: templateId }, data: { name, format, watermarkPosition } })
         : prisma.outputTemplate.create({ data: { workspaceId: action.workspaceId, name, format, watermarkPosition } }));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'copy-workspace-assets': {
+      //? R2 — copy the user-authored styles + the brand kit FROM a source workspace INTO this one (reuses the
+      //? R1/R3 export+import). The user must be a member of the SOURCE too (authorize the copy-from side).
+      const sourceWorkspaceId = str(payload, 'sourceWorkspaceId');
+      if (!sourceWorkspaceId || sourceWorkspaceId === action.workspaceId) return;
+      const member = await prisma.workspaceMember.findFirst({ where: { workspaceId: sourceWorkspaceId, userId }, select: { id: true } });
+      if (!member) return;
+      await importStyleSet(prisma, action.workspaceId, await exportStyleSet(prisma, sourceWorkspaceId));
+      const brand = await exportBrandKit(prisma, sourceWorkspaceId);
+      if (brand) await importBrandKit(prisma, action.workspaceId, brand);
       broadcastContentDirty(action.workspaceId);
       return;
     }

@@ -2819,3 +2819,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · styleSetPortability 8/8 (parse-validatie + builtin-excluded-export + lossless A→B round-trip + idempotent re-import).
 
 **Files touched:** `server/content/styles.ts` (StyleSetEntry + parseStyleSet + exportStyleSet + importStyleSet), `src/workspaces/_api/styleExport_v1.ts` + `styleImport_v1.ts` (nw), `tests/integration/styleSetPortability.test.mts`, `docs/decisions/0134-style-set-portability.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM R2: cross-workspace copy (styles+brand) — ADR 0135
+
+**Wat ik deed:** customization was workspaceId-locked (zelfs met R1/R3-export/import = handmatige round-trip). Nu een `copy-workspace-assets`-op (workspaceSettings) die user-styles + brand-kit van source→active kopieert, hergebruikt `exportStyleSet`/`importStyleSet`(R1)+`exportBrandKit`/`importBrandKit`(R3). Conductor autoriseert OOK de source-kant (user moet member van copy-from-workspace zijn). Volledige clone (pipeline+automations+members) + apply-UI = follow-ups.
+
+**Verify:** tsc 0 · lint · ai:lint · build · copyWorkspaceAssets 3/3 (style-copy + brand-copy + non-member-source-geweigerd).
+
+**Files touched:** `server/orchestrator/conductor.ts` (copy-workspace-assets-op + imports), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/copyWorkspaceAssets_server_v1.ts` (nw), `tests/integration/copyWorkspaceAssets.test.mts`, `docs/decisions/0135-cross-workspace-copy.md`.

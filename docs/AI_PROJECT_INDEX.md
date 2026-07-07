@@ -53,7 +53,7 @@
 | `api/workspaces/styleExport/v1` | POST | login | 30 | — | **no** | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 
-## Sync routes (49)
+## Sync routes (50)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -73,6 +73,7 @@
 | `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
 | `sync/workspaces/contentDirty/v1` | yes | — | login | — | **no** | — | Workspaces — [content-dirty] BROADCAST-ONLY realtime carrier. A coarse "the content slice changed" |
 | `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
+| `sync/workspaces/copyWorkspaceAssets/v1` | yes | — | login | — | **no** | — | Workspaces — [copy-workspace-assets] via `_sync` (FREEDOM_PROGRAM R2). Copy the user-authored styles + the |
 | `sync/workspaces/customTask/v1` | yes | — | login | — | **no** | — | Workspaces — [custom-task] ops via `_sync` (FREEDOM_PROGRAM E5). Create/update/delete a user-defined AI |
 | `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
 | `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
@@ -114,9 +115,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 88 |
+| _(unowned)_ | 89 |
 
-**Test coverage**: 3/90 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/91 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -170,7 +171,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkSprint/v1`
 - `sync/workspaces/bulkStatus/v1`
 - `sync/workspaces/changeRole/v1`
-- … +37 more
+- … +38 more
 
 ## Pages (28)
 

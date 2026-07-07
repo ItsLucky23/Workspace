@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (133)
+## Decisions (134)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -146,6 +146,7 @@
 | 0132 | The inpaint MediaFeature — region-edit backend (E1, server half) | 🟢 accepted | media, inpaint, editors, freedom-program | — | `docs/decisions/0132-inpaint-feature.md` |
 | 0133 | Reusable output templates (named format specs) — O5 | 🟢 accepted | content, render, templates, freedom-program | — | `docs/decisions/0133-output-templates.md` |
 | 0134 | Style-set portability — export/import a workspace's user styles as JSON (R1, style slice) | 🟢 accepted | styles, templates, reuse, portability, freedom-program | — | `docs/decisions/0134-style-set-portability.md` |
+| 0135 | Cross-workspace copy — copy styles + brand between workspaces (R2) | 🟢 accepted | reuse, workspaces, templates, freedom-program | — | `docs/decisions/0135-cross-workspace-copy.md` |
 
 ## Summaries
 
@@ -1214,6 +1215,14 @@ An `OutputTemplate` model (name + `format` [16:9/9:16/1:1] + `watermarkPosition`
 A pure `parseStyleSet(raw)` validates a portable style JSON array (drops malformed entries; a missing label defaults to the key). `exportStyleSet(ws)` returns the workspace's **non-builtin** styles (no ids/timestamps/workspaceId); `importStyleSet(ws, raw)` upserts them by `feature`+`key` — never touching the builtin global defaults. Two membership-gated `_api` routes (`styleExport`/`styleImport`) carry the JSON.
 
 → `docs/decisions/0134-style-set-portability.md`
+
+### 0135 — Cross-workspace copy — copy styles + brand between workspaces (R2)
+
+**0135** · accepted · tags: reuse, workspaces, templates, freedom-program · 2026-07-07
+
+A `copy-workspace-assets` control-op (workspaceSettings) that copies the user-authored styles + the brand kit FROM a source workspace INTO the active one, **reusing** `exportStyleSet`/`importStyleSet` (R1) + `exportBrandKit`/`importBrandKit` (R3). The Conductor authorizes the **source** side too — the acting user must be a member of the workspace they copy FROM (not just the target the RBAC already gates).
+
+→ `docs/decisions/0135-cross-workspace-copy.md`
 
 ## Code governed by decisions
 

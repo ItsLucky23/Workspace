@@ -123,6 +123,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'run-custom-task': CAP.workTickets,
   'save-output-template': CAP.workTickets,
   'delete-output-template': CAP.workTickets,
+  'copy-workspace-assets': CAP.workspaceSettings,
   'copilot-propose': CAP.workTickets,
   'resume-spend': CAP.workspaceSettings,
   'skill-toggle': CAP.editPipeline,
