@@ -24,6 +24,7 @@ import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
 import { decomposeIntoScenes } from '../content/sceneDecompose';
+import { refineSceneRange } from '../content/sceneRefine';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
@@ -1146,6 +1147,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!script) return;
       const sceneDurationMs = typeof payload.sceneDurationMs === 'number' ? payload.sceneDurationMs : undefined;
       await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'content-refine-range': {
+      //? V4 — refine a selected time range: regenerate the covered scene(s) as new versions (parentId lineage)
+      //? with the instruction folded into the prompt. Maps [startMs,endMs) onto the scene timeline.
+      const contentProjectId = str(payload, 'contentProjectId');
+      const instruction = str(payload, 'instruction');
+      const startMs = typeof payload.startMs === 'number' ? payload.startMs : undefined;
+      const endMs = typeof payload.endMs === 'number' ? payload.endMs : undefined;
+      if (!contentProjectId || !instruction || startMs === undefined || endMs === undefined) return;
+      await refineSceneRange(prisma, { workspaceId: action.workspaceId, contentProjectId, startMs, endMs, instruction });
       broadcastContentDirty(action.workspaceId);
       return;
     }

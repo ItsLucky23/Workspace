@@ -2967,3 +2967,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/unit/sceneDecompose.test.mts` 9/9 (continuity, first-no-hint, text-fallback, empty) · `tests/integration/decomposeVideo.test.mts` 9/9 (scene-per-beat, transitions cut/xfade, duration, video-asset-link, continuity-prompt, replace-on-redecompose).
 
 **Files:** `server/content/sceneDecompose.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op), `tests/unit/sceneDecompose.test.mts` + `tests/integration/decomposeVideo.test.mts` (nw), `docs/decisions/0148-*.md`.
+
+## 2026-07-08 — V4: range-refine (content-refine-range) — ADR 0149
+
+**Fase V stap 4 — "selecteer 13-18s → refine". Backend-video-pijplijn V1-V4 nu compleet.**
+- **`scenesInRange`** (puur, getest): mapt scenes op een cumulatieve tijdlijn → de scenes die [startMs,endMs) overlappen (half-open).
+- **`refineSceneRange`**: regenereert elke gedekte scene als NIEUWE versie (verse video-gen-clip, instructie in de prompt gevouwen, nieuwe VideoScene met parentId=oude, zelfde order/duur/transition; oude verwijderd) → tijdlijn behoudt vorm + edit is traceerbaar.
+- **`content-refine-range`** op: {startMs, endMs, instruction}; range zonder scene = no-op.
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/unit/sceneRange.test.mts` 10/10 (straddle, inside, tail, past-end, unordered) · `tests/integration/refineRange.test.mts` 7/7 (straddle-2-scenes, parentId-lineage, prompt-fold, out-of-range-untouched, no-op).
+
+**Files:** `server/content/sceneRefine.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op+clientInput), `tests/unit/sceneRange.test.mts` + `tests/integration/refineRange.test.mts` (nw), `docs/decisions/0149-*.md`.
