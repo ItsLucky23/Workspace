@@ -2899,3 +2899,15 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 ---
 ## 🏁 FREEDOM_PROGRAM /goal COMPLEET — 44 items, ADRs 0110–0143, één sessie
 Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item gebouwd, gegate (tsc+lint+ai:lint+build), per-item getest, ge-ADR'd, gecommit (auteur ItsLucky23, niet gepusht). sw.js ✅ (commit 44a42f1, A1). Editors E1-E4 gebouwd (Fabric.js canvas + adjust + timeline-reorder + audio-mix). **RESTEREND = alleen LIVE-verificatie die een draaiende dev-server + browser vereist** (canvas-render-visueel, mobile-sweep, VAPID-push-live) + ~45 genoteerde incrementele UI-follow-ups (elke ADR noteert de zijne). Zie memory `workspaces-freedom-program.md`.
+
+## 2026-07-08 — Eerlijkheids-fixes (na 5-agent-audit) — ADR 0144
+
+**Wat ik deed (user koos optie 4):** de audit vond dat meerdere paden een NEP-succes teruggaven. Gefixt:
+- **Publish:** `performUpload` → gediscrimineerd `real|stub|error`. Niet-verbonden → `PublishJob.status:'stub'` (`ok:false`); verbonden-maar-MISLUKTE upload → `status:'error'` (was stiekem `done`). Alleen echte post → `done`.
+- **Render:** stub-render → `ContentAsset.status:'error'`, `downloadable:false`, `RenderJob:'error'` — niet meer een nep-`ready`/downloadbare "video".
+- **claude-CLI:** `available()` doet nu een echte `existsSync`(pad) / `--version`-probe(bare-name, gecached) — een niet-geïnstalleerde CLI meldt zich onbeschikbaar (was `true` puur omdat pad=='claude').
+- **Echt bewijs:** `tests/live/renderLive.live.mts` (opt-in) genereert echte fal-images + draait de echte ffmpeg-in-Docker-render + assert een niet-`stub://`, on-disk, non-triviaal `.mp4`. Skipt netjes zonder FAL_KEY/Docker.
+
+**Verify:** tsc 0 · lint · ai:lint · build · publish 8/8 · publishReal 13/13 (nu: verbonden-mislukt=error) · scheduledPublish 9/9 · publishTiktok 5/5 · publishVariants 14/14 · contentAssembly 12/12 (stub=error+niet-downloadbaar) · contentAutomation 7/7 · automation 21/21. (Tests geüpdatet naar de EERLIJKE verwachting; ze codificeerden eerst de bug.) `npm test`-batch faalt op een los Redis-WRONGPASS-env-issue, niet deze changes — losse runs groen.
+
+**Files touched:** `server/content/publish.ts` (UploadOutcome real/stub/error), `server/content/assembly.ts` (stub→error+niet-downloadbaar), `server/ai/providers/claudeCli.ts` (echte available-check), `tests/live/renderLive.live.mts` (nw), + 5 tests geüpdatet, `docs/decisions/0144-honesty-fixes.md`.

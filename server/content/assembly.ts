@@ -56,16 +56,18 @@ export async function assembleContent(
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
   const render = await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
   const stub = !render.ok;
+  //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
+  //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.
   await prisma.contentAsset.update({
     where: { id: asset.id },
     data: {
       url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
-      status: 'ready',
-      metadata: jsonInput({ stub, totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages, downloadable: true, ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      status: render.ok ? 'ready' : 'error',
+      metadata: jsonInput({ stub, totalMs, beatCount: beats.length, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
-  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: 'done' } });
+  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });
   await broadcastContentAssetDelta(prisma, args.workspaceId, args.contentProjectId, asset.id);
   return { ok: true, renderJobId: renderJob.id, assetId: asset.id, stub, beatCount: beats.length, totalMs };
 }

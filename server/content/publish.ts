@@ -49,26 +49,30 @@ export interface PublishResult {
 //? Post an asset to a platform (called by the Conductor AFTER a publish suggestion is accepted — B-23).
 //? `opts.uploadTransport` is injectable for tests. When the workspace has a stored OAuth connection for
 //? the platform, this runs a REAL upload with the decrypted token; otherwise it degrades to a dummy post.
-//? Do the actual upload (no job write) — real post when connected, else a valid-shaped dummy. Extracted so
+//? The honest result of an upload attempt: a REAL post, a STUB (not connected — a dummy), or an ERROR (an
+//? attempted upload that failed). The audit found the old code collapsed stub+error into a fake 'done'.
+type UploadOutcome = { kind: 'real'; externalUrl: string } | { kind: 'stub' } | { kind: 'error' };
+
+//? Do the actual upload (no job write) — real post when connected, else a stub/error outcome. Extracted so
 //? both the immediate path and the scheduled-fire path (O3) share one posting implementation.
 async function performUpload(
   prisma: PrismaClient, workspaceId: string,
   args: { contentProjectId: string; assetId: string; platform: PublishPlatform },
   opts: { uploadTransport?: PublishUploadTransport },
-): Promise<{ externalUrl: string; stub: boolean }> {
+): Promise<UploadOutcome> {
   const oauthPlatform = args.platform as OAuthPlatform; // built platforms are youtube|tiktok
   const connection = await getConnection(prisma, workspaceId, oauthPlatform);
   const asset = await prisma.contentAsset.findFirst({ where: { workspaceId, id: args.assetId }, select: { url: true } });
   const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true, publishVariants: true } });
   //? O2 — the per-platform post override (caption/hashtags/privacy), if the piece defines one.
   const variant = extractPublishVariant(project?.publishVariants, args.platform);
-  if (connection) {
-    const transport = opts.uploadTransport ?? realUploadTransport;
-    const uploaded = await transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }).catch(() => null);
-    if (uploaded) return { externalUrl: uploaded.externalUrl, stub: false };
-  }
-  //? Not connected (or upload failed) → a dummy post (valid-shaped external url).
-  return { externalUrl: `stub://${args.platform}/${args.assetId}`, stub: true };
+  //? Honesty (audit fix): NOT connected → an explicit 'stub' (a dummy, not a live post). Connected but the
+  //? upload fails → an explicit 'error' — a real failure that was previously SWALLOWED into a fake success.
+  if (!connection) return { kind: 'stub' };
+  const transport = opts.uploadTransport ?? realUploadTransport;
+  const [err, uploaded] = await tryCatch(() => transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }));
+  if (err || !uploaded) return { kind: 'error' };
+  return { kind: 'real', externalUrl: uploaded.externalUrl };
 }
 
 export async function publishAsset(
@@ -90,10 +94,17 @@ export async function publishAsset(
     return { ok: true, publishJobId: job.id, stub: false, scheduled: true };
   }
 
-  //? Immediate: post now + record a done job.
-  const { externalUrl, stub } = await performUpload(prisma, workspaceId, args, opts);
-  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: 'done', externalUrl } });
-  return { ok: true, publishJobId: job.id, externalUrl, stub };
+  //? Immediate: post now. The job STATUS now tells the truth — 'done' only for a real post, 'stub' for a
+  //? not-connected dummy, 'error' for an attempted-but-failed upload (was silently 'done' before).
+  const outcome = await performUpload(prisma, workspaceId, args, opts);
+  if (outcome.kind === 'error') {
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: 'error', error: 'publish.uploadFailed' } });
+    return { ok: false, publishJobId: job.id, stub: false, error: 'publish.uploadFailed' };
+  }
+  const isReal = outcome.kind === 'real';
+  const externalUrl = isReal ? outcome.externalUrl : `stub://${args.platform}/${args.assetId}`;
+  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: isReal ? 'done' : 'stub', externalUrl } });
+  return { ok: isReal, publishJobId: job.id, externalUrl, stub: !isReal };
 }
 
 //? O3 — fire every scheduled post that is now due (leader-gated by the caller). Best-effort per job; a failed
@@ -105,8 +116,11 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
     const platform = job.platform;
     if (!BUILT_PLATFORMS.includes(platform as PublishPlatform)) { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } }).catch(() => null); continue; }
     const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform: platform as PublishPlatform }, opts));
-    if (err || !res) { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'publish.uploadFailed' } }).catch(() => null); continue; }
-    await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'done', externalUrl: res.externalUrl } }).catch(() => null);
+    if (err || !res || res.kind === 'error') { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'publish.uploadFailed' } }).catch(() => null); continue; }
+    //? A scheduled post with no connection is 'stub' (honest), a real one is 'done'.
+    const externalUrl = res.kind === 'real' ? res.externalUrl : `stub://${platform}/${job.assetId}`;
+    await prisma.publishJob.update({ where: { id: job.id }, data: { status: res.kind === 'real' ? 'done' : 'stub', externalUrl } }).catch(() => null);
+    //? `fired` = due jobs the scheduler PROCESSED (real or stub); the job status tells the real-vs-stub truth.
     fired += 1;
   }
   return { fired };

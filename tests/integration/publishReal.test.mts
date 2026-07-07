@@ -54,10 +54,14 @@ try {
   const stub = await publishAsset(prisma, wsId, { contentProjectId: project.id, assetId: asset.id, platform: 'instagram' });
   assert(!stub.ok && stub.error === 'platform.notBuilt', 'a future-ready platform is not built');
   // linkedin: also not built; tiktok connected earlier → would be real. Use a fresh WS-less check via instagram already covered.
-  const noConn = await publishAsset(prisma, wsId, { contentProjectId: project.id, assetId: asset.id, platform: 'tiktok' }, {
-    uploadTransport: { upload: async () => null }, // simulate an upload failure → degrade to stub
+  //? Honesty fix (audit): TikTok is CONNECTED (step 2) but the upload FAILS → this is now an explicit ERROR,
+  //? not a silently-swallowed fake 'done'/stub. This is the core of the honesty fix.
+  const failed = await publishAsset(prisma, wsId, { contentProjectId: project.id, assetId: asset.id, platform: 'tiktok' }, {
+    uploadTransport: { upload: async () => null }, // the real upload fails
   });
-  assert(noConn.ok && noConn.stub === true && (noConn.externalUrl ?? '').startsWith('stub://'), 'an upload failure degrades to a stub post (never loses the intent)');
+  assert(!failed.ok && failed.error === 'publish.uploadFailed', 'a connected-but-failed upload is an honest error (not a fake success)');
+  const failedJob = await prisma.publishJob.findFirst({ where: { workspaceId: wsId, id: failed.publishJobId ?? '' } });
+  eq(failedJob?.status, 'error', 'the failed upload is recorded as an error job, not done');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

@@ -38,8 +38,9 @@ try {
   eq(await prisma.publishJob.count({ where: { workspaceId: wsId } }), 0, 'nothing posted before accept');
   await enqueueControlAction({ workspaceId: wsId, op: 'accept-suggestion', target: { suggestionId: suggestion?.id }, payload: {}, userId: owner.id, clientRequestId: `f32-ac-${String(stamp)}` });
   const job = await poll(() => prisma.publishJob.findFirst({ where: { workspaceId: wsId, platform: 'tiktok' } }));
-  assert(job !== null && job.status === 'done', 'accepting posts to TikTok (dummy)');
-  assert((job?.externalUrl ?? '').startsWith('stub://tiktok/'), 'the TikTok dummy post returns a valid-shaped url');
+  //? Honesty fix: no connection → status 'stub' (a dummy), not a fake 'done'.
+  assert(job !== null && job.status === 'stub', 'accepting a not-connected TikTok post is honestly marked stub');
+  assert((job?.externalUrl ?? '').startsWith('stub://tiktok/'), 'the TikTok dummy post returns a stub:// url');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

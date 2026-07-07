@@ -7,6 +7,7 @@
 //? (~10-40s); this shape suits one-shot features (chat/docs-gen/dockerfile-gen). The
 //? long-running in-container pipeline agent is a separate session shape, layered later.
 
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -19,6 +20,18 @@ const CAPTURE_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '
 //? conpty on Windows cannot resolve a bare `claude`; use the known install path there.
 //? In the Linux base image the CLI is on PATH → `claude`. Override with WS_CLAUDE_BIN.
 const CLAUDE_BIN = process.env.WS_CLAUDE_BIN ?? (process.platform === 'win32' ? 'C:/Users/mathi/.local/bin/claude.exe' : 'claude');
+
+//? Honesty (audit fix): really verify the CLI is present + runnable. The old check returned `true` whenever the
+//? bin was the bare name 'claude' — so a host without the CLI installed reported "available" and then failed at
+//? turn time. A path → existsSync; a bare name → an actual `--version` probe (PATH-resolved). Cached per process.
+let claudeAvail: boolean | null = null;
+function claudeCliAvailable(): boolean {
+  if (claudeAvail !== null) return claudeAvail;
+  if (/[\\/]/.test(CLAUDE_BIN)) { claudeAvail = existsSync(CLAUDE_BIN); return claudeAvail; }
+  const res = spawnSync(CLAUDE_BIN, ['--version'], { timeout: 5000, stdio: 'ignore' });
+  claudeAvail = res.error == null && res.status === 0;
+  return claudeAvail;
+}
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -85,10 +98,10 @@ async function driveTurn(req: AiCompletionRequest): Promise<AiCompletionResult> 
 export const claudeCliProvider: AiProvider = {
   id: 'claude-cli',
   label: 'Claude Code (CLI)',
-  //? Available iff the CLI binary resolves. (Login state is a runtime concern the turn
-  //? surfaces; a bare presence check keeps `available` cheap + non-interactive.)
+  //? Available iff the CLI binary actually resolves + runs (`--version`). Login state is still a runtime concern
+  //? the turn surfaces, but a not-installed CLI is now reported as unavailable (not falsely available).
   //? The coding agent is subscription-billed (PTY) — no per-workspace key concept (the workspaceId arg the
   //? provider contract now passes is simply not consumed here).
-  available: () => Promise.resolve(existsSync(CLAUDE_BIN) || CLAUDE_BIN === 'claude'),
+  available: () => Promise.resolve(claudeCliAvailable()),
   complete: (req: AiCompletionRequest) => driveTurn(req),
 };

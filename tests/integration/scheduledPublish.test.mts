@@ -42,12 +42,12 @@ try {
 
   // now past the rescheduled time → fires
   eq((await runScheduledPublish(prisma, T0 + 4 * 60 * 60 * 1000, { uploadTransport: stubTransport })).fired, 1, 'past the rescheduled time → fires');
-  eq((await prisma.publishJob.findUnique({ where: { id: job?.id ?? '' } }))?.status, 'done', 'the fired job is done');
+  eq((await prisma.publishJob.findUnique({ where: { id: job?.id ?? '' } }))?.status, 'stub', 'the fired job resolved (stub without a connection)');
 
   // an immediate publish (no scheduledAt) still posts now
   const imm = await publishAsset(prisma, wsId, { contentProjectId: piece.id, assetId: asset.id, platform: 'tiktok' }, { now: T0, uploadTransport: stubTransport });
-  assert(imm.ok && imm.scheduled !== true, 'an unscheduled publish posts immediately');
-  eq((await prisma.publishJob.findUnique({ where: { id: imm.publishJobId ?? '' } }))?.status, 'done', 'the immediate job is done');
+  assert(!imm.ok && imm.stub === true && imm.scheduled !== true, 'an unscheduled publish resolves immediately (stub without a connection)');
+  eq((await prisma.publishJob.findUnique({ where: { id: imm.publishJobId ?? '' } }))?.status, 'stub', 'the immediate job resolved (stub without a connection)');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

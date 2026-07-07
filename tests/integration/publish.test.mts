@@ -38,8 +38,9 @@ try {
   await enqueueControlAction({ workspaceId: wsId, op: 'accept-suggestion', target: { suggestionId: suggestion?.id }, payload: {}, userId: owner.id, clientRequestId: `f31-ac-${String(stamp)}` });
   const job = await poll(() => prisma.publishJob.findFirst({ where: { workspaceId: wsId, platform: 'youtube' } }));
   assert(job !== null, 'accepting the suggestion posts to YouTube (Conductor is the writer)');
-  eq(job?.status, 'done', 'the publish job is done');
-  assert((job?.externalUrl ?? '').startsWith('stub://youtube/'), 'the dummy post returns a valid-shaped external url');
+  //? Honesty fix: with no OAuth connection this is NOT a real post → status 'stub' (not a fake 'done').
+  eq(job?.status, 'stub', 'a not-connected publish is honestly marked stub (not done)');
+  assert((job?.externalUrl ?? '').startsWith('stub://youtube/'), 'the dummy post returns a stub:// url');
   eq((await prisma.workspaceSuggestion.findUnique({ where: { id: suggestion?.id ?? '' } }))?.status, 'accepted', 'the suggestion is marked accepted');
 
   //? A future-ready platform (linkedin) is NOT built → recorded as an error, not posted.

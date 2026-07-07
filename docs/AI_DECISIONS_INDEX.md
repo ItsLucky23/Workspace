@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (142)
+## Decisions (143)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -155,6 +155,7 @@
 | 0141 | Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half) | 🟢 accepted | editors, audio, render, freedom-program | — | `docs/decisions/0141-audio-mix-plan.md` |
 | 0142 | Guided first-run setup wizard (S3, wizard half) | 🟢 accepted | ux, onboarding, freedom-program | — | `docs/decisions/0142-setup-wizard.md` |
 | 0143 | Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4) | 🟢 accepted | ux, a11y, freedom-program | — | `docs/decisions/0143-premium-ux-sweep.md` |
+| 0144 | Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof | 🟢 accepted | content, publish, render, trust, testing, freedom-program | — | `docs/decisions/0144-honesty-fixes.md` |
 
 ## Summaries
 
@@ -1295,6 +1296,14 @@ A `SetupWizard` stepper (welcome → connect a media key → set a spend budget)
 A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRegionEditor, ImageEditor, SetupWizard) so they're keyboard-dismissible (a11y, §0b). The cross-cutting invariants — no untranslated JSX, no arbitrary colors — are enforced by `ai:lint`, which is **green repo-wide** across every new surface (the gate-able core of the §0b checklist).
 
 → `docs/decisions/0143-premium-ux-sweep.md`
+
+### 0144 — Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof
+
+**0144** · accepted · tags: content, publish, render, trust, testing, freedom-program · 2026-07-08
+
+**Publish honesty:** `performUpload` returns a discriminated `real | stub | error`. A not-connected publish → `PublishJob.status:'stub'` (a dummy, `ok:false`); a connected-but-**failed** upload → `status:'error'` (previously swallowed into a fake `done`). Only a real post → `done`. **Render honesty:** a stub render → `ContentAsset.status:'error'`, `downloadable:false`, and `RenderJob.status: 'error'` — it no longer masquerades as a `ready`, `downloadable` video. **claude-CLI honesty:** `available()` now actually resolves the binary — `existsSync` for a path, a real `--version` probe (PATH-resolved, cached) for a bare name — so a not-installed CLI reports unavailable. **A real proof:** `tests/live/renderLive.live.mts` (opt-in) generates real fal images + runs the real ffmpeg-in-Docker render and asserts a non-`stub://`, on-disk, non-trivial `.mp4`. It SKIPs cleanly without FAL_KEY/Docker (so it's safe to run anywhere) and only ASSERTS when it can genuinely prove a real video.
+
+→ `docs/decisions/0144-honesty-fixes.md`
 
 ## Code governed by decisions
 

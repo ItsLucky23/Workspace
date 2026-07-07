@@ -43,16 +43,18 @@ try {
   await enqueueControlAction({ workspaceId: wsId, op: 'content-assemble', target: {}, payload: { contentProjectId: pieceId }, userId: owner.id, clientRequestId: `f15-as-${String(stamp)}` });
   const render = await poll(() => prisma.contentAsset.findFirst({ where: { workspaceId: wsId, contentProjectId: pieceId, kind: 'render' } }));
   assert(render !== null, 'content-assemble produced a final render asset');
-  assert((render?.url ?? '').startsWith('stub://render/'), 'the render is a valid-shaped complete output');
+  assert((render?.url ?? '').startsWith('stub://render/'), 'the render is a stub:// placeholder (no keys/Docker in tests)');
+  //? Honesty fix (audit): a stub render did NOT produce a real mp4 → status 'error', NOT downloadable.
+  eq(render?.status, 'error', 'a stub render is honestly marked error, not a fake ready');
   const meta = (render?.metadata ?? {}) as { downloadable?: boolean; hasVoice?: boolean; hasAllImages?: boolean; beatCount?: number; totalMs?: number };
-  assert(meta.downloadable === true, 'the final asset is marked downloadable');
+  assert(meta.downloadable === false, 'a stub render is NOT downloadable (was a fake "downloadable" video before)');
   assert(meta.hasVoice === true, 'the render includes the voiceover');
   assert(meta.hasAllImages === true, 'the render includes an image for every beat');
   eq(meta.beatCount, 4, 'the render covers all 4 beats');
   assert((meta.totalMs ?? 0) > 0, 'the render has a total duration');
 
   const job = await prisma.renderJob.findFirst({ where: { workspaceId: wsId, contentProjectId: pieceId } });
-  assert(job !== null && job.status === 'done', 'a RenderJob was recorded as done');
+  assert(job !== null && job.status === 'error', 'a stub RenderJob is honestly error (not a fake done)');
   eq(job?.resultAssetId, render?.id, 'the RenderJob links its result asset');
   eq(job?.costCents, 0, 'local Remotion render is not a metered cost');
 
