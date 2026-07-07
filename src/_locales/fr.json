@@ -1114,6 +1114,7 @@
       "generate": "Générer",
       "generating": "Génération — cela peut prendre jusqu'à une minute…",
       "noArtifacts": "Aucun artefact. Générez-en un ci-dessus.",
+      "refinePlaceholder": "Affiner (facultatif) : ex. plus audacieux, plus court, plus ludique…",
       "noAudience": "aucun public défini",
       "kind": {
         "landing": "Landing page",

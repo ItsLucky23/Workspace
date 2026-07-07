@@ -2655,3 +2655,13 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · contentRegenerate 5/5 (nu incl. parentId-lineage-assertie). i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (ContentAsset.parentId), `server/orchestrator/conductor.ts` (parentId op regenerate), `server/read/mappers.ts` (variant-vlag), `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx` (variant-badge), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentRegenerate.test.mts`, `docs/decisions/0114-content-version-lineage.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM I4: studio refine/tweak op (re)generatie — ADR 0115
+
+**Wat ik deed:** studio-regenerate was een blinde re-roll vanaf de brief. Nu neemt `generateArtifact` een optionele `tweak`; pure `applyRefine(prompt, tweak)` appendt 'm ("Refine with this specific direction: …") ná de brand-seeded brief. Gethread door `workspaces/studioGenerate`-API + client `generateArtifact(briefId, kind, tweak?)`. Studio-page: één **Refine**-input toegepast op elke (re)generatie.
+
+**Verify:** tsc 0 · lint · ai:lint · build · studioRefine 5/5 (pure helper: append + labelled + leeg=onveranderd) · designerAsset 7/7 · studio 33/33 (geen regressie). i18n ×4.
+
+**Files touched:** `server/studio/generate.ts` (applyRefine + tweak), `src/workspaces/_api/studioGenerate_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/studio/page.tsx` (refine-input), `src/_locales/{en,nl,de,fr}.json`, `tests/unit/studioRefine.test.mts`, `docs/decisions/0115-studio-refine.md`.
+
+**FASE I bijna klaar:** I1 (regenerate/varianten) · I2 (versie-lineage) · I4 (studio-refine) klaar. I3 (content-bewuste Assistant) = groter, apart. Volgende: I3 of Fase A (push/PWA).

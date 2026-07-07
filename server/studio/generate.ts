@@ -170,13 +170,23 @@ export interface GenerateResult { ok: boolean; artifactId?: string; error?: stri
 
 //? Generate an artifact for a brief: build the prompt, run the assigned provider, parse, and STORE a
 //? StudioArtifact (status ready|error). Membership/RBAC is enforced at the route; this is the engine.
-export async function generateArtifact(prisma: PrismaClient, input: { workspaceId: string; briefId: string; kind: ArtifactKind }): Promise<GenerateResult> {
+//? I4 — append a free-text refine instruction to a built prompt (empty tweak → the prompt unchanged). Pure +
+//? exported for tests.
+export function applyRefine(prompt: string, tweak?: string): string {
+  const t = (tweak ?? '').trim();
+  return t.length > 0 ? `${prompt}\n\nRefine with this specific direction: ${t}` : prompt;
+}
+
+export async function generateArtifact(prisma: PrismaClient, input: { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }): Promise<GenerateResult> {
   const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
   if (!brief) return { ok: false, error: 'studio.briefNotFound' };
   const meta = KIND_META[input.kind];
   //? Seed the prompt with the workspace's central brand library so the artifact stays on-brand (G-MKT-2).
   const brand = await readBrandContext(prisma, input.workspaceId);
-  const { system, prompt } = buildPrompt(input.kind, brief, brand);
+  const built = buildPrompt(input.kind, brief, brand);
+  const system = built.system;
+  //? I4 — a free-text refine instruction appended to the prompt (was a blind re-roll from the unchanged brief).
+  const prompt = applyRefine(built.prompt, input.tweak);
 
   //? Generous timeout — the interactive claude-cli PTY can be slow on longer (brand-seeded) prompts.
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.

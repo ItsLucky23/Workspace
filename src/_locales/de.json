@@ -1114,6 +1114,7 @@
       "generate": "Generieren",
       "generating": "Wird generiert — das kann bis zu einer Minute dauern…",
       "noArtifacts": "Noch keine Artefakte. Generiere oben eines.",
+      "refinePlaceholder": "Verfeinern (optional): z. B. mutiger, kürzer, verspielter…",
       "noAudience": "keine Zielgruppe gesetzt",
       "kind": {
         "landing": "Landingpage",

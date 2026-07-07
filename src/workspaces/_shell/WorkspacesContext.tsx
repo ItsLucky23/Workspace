@@ -223,7 +223,7 @@ export interface WorkspacesCtx {
   linkArtifact: (ticketKey: string, artifactId: string, artifactKind: string, label?: string) => void;
   unlinkArtifact: (linkId: string) => void;
   saveBrief: (b: { id?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes?: string }) => Promise<void>;
-  generateArtifact: (briefId: string, kind: StudioArtifactKind) => Promise<{ ok: boolean; artifactId?: string; error?: string }>;
+  generateArtifact: (briefId: string, kind: StudioArtifactKind, tweak?: string) => Promise<{ ok: boolean; artifactId?: string; error?: string }>;
   deleteBrief: (briefId: string) => void;
   deleteArtifact: (artifactId: string) => void;
   saveBrand: (b: Partial<Omit<StudioBrandLibrary, 'workspaceId'>>) => Promise<void>;

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (113)
+## Decisions (114)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -126,6 +126,7 @@
 | 0112 | Per-request + per-workspace media model choice (low-poly / fast vs quality) | 🟢 accepted | media, fal, models, freedom-program | — | `docs/decisions/0112-media-model-choice.md` |
 | 0113 | Regenerate + variations on a produced content asset (with a tweak), via the queue-aware lifecycle | 🟢 accepted | content, media, iteration, freedom-program | — | `docs/decisions/0113-content-regenerate-variations.md` |
 | 0114 | Content asset version lineage — a variation points at its source (parentId); compare/revert is a follow-up | 🟢 accepted | content, versioning, freedom-program | — | `docs/decisions/0114-content-version-lineage.md` |
+| 0115 | Studio artifact regenerate takes a free-text refine instruction (not a blind re-roll) | 🟢 accepted | studio, iteration, freedom-program | — | `docs/decisions/0115-studio-refine.md` |
 
 ## Summaries
 
@@ -1034,6 +1035,14 @@ A `content-regenerate` control-op: given an asset id, it loads the asset's `Medi
 `ContentAsset.parentId` records the asset a variation was regenerated FROM. `content-regenerate` sets it on each new asset to the **root** of the lineage (if the source is itself a variation, chain to its parent so all variations share one root — a flat, not deep, tree). The asset summary carries a `variant` flag (has a parent) → the card shows a small **Variant** badge, so the user sees originals vs regenerations at a glance.
 
 → `docs/decisions/0114-content-version-lineage.md`
+
+### 0115 — Studio artifact regenerate takes a free-text refine instruction (not a blind re-roll)
+
+**0115** · accepted · tags: studio, iteration, freedom-program · 2026-07-07
+
+`generateArtifact` takes an optional `tweak`; a pure `applyRefine(prompt, tweak)` appends it to the built prompt ("Refine with this specific direction: …") after the brand-seeded brief. Threaded through the `workspaces/studioGenerate` API + the client `generateArtifact(briefId, kind, tweak?)`. The studio page has a single **Refine** input applied to every (re)generation — type "make it more playful", hit a generate/regenerate, and the direction is honoured.
+
+→ `docs/decisions/0115-studio-refine.md`
 
 ## Code governed by decisions
 

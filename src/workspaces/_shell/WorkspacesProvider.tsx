@@ -1084,9 +1084,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         await apiRequest({ name: 'workspaces/studioSaveBrief', version: 'v1', data: { workspaceId: ws, ...b } });
         refetch();
       },
-      generateArtifact: async (briefId, kind) => {
+      generateArtifact: async (briefId, kind, tweak) => {
         const ws = snap.activeWorkspaceId; if (!ws) return { ok: false };
-        const res = await apiRequest({ name: 'workspaces/studioGenerate', version: 'v1', data: { workspaceId: ws, briefId, kind } });
+        const res = await apiRequest({ name: 'workspaces/studioGenerate', version: 'v1', data: { workspaceId: ws, briefId, kind, ...(tweak ? { tweak } : {}) } });
         refetch();
         return { ok: res.status === 'success', ...(res.status === 'success' ? { artifactId: res.result.artifactId } : { error: res.errorCode }) };
       },

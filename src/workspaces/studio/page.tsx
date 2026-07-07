@@ -42,6 +42,7 @@ export default function Studio() {
   const [editing, setEditing] = useState<boolean>(studioBriefs.length === 0);
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
   const [showBrand, setShowBrand] = useState(false);
+  const [refine, setRefine] = useState('');   //? I4 — an optional refine instruction applied to (re)generation.
 
   useEffect(() => {
     if (selectedId && !studioBriefs.some((b) => b.id === selectedId)) setSelectedId(studioBriefs[0]?.id ?? null);
@@ -54,7 +55,7 @@ export default function Studio() {
   const runGenerate = async (kind: StudioArtifactKind) => {
     if (!selected) return;
     setBusyKind(kind);
-    await generateArtifact(selected.id, kind);
+    await generateArtifact(selected.id, kind, refine.trim() || undefined);
     setBusyKind(null);
   };
 
@@ -126,6 +127,8 @@ export default function Studio() {
                     </div>
                   </div>
                 ))}
+                {/* I4 — an optional refine instruction applied to (re)generation. */}
+                <input value={refine} onChange={(e) => { setRefine(e.target.value); }} placeholder={translate({ key: 'workspaces.studio.refinePlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
                 {busyKind && <div className="text-xs text-muted flex items-center gap-1.5"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</div>}
               </div>
 

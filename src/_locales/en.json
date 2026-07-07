@@ -1114,6 +1114,7 @@
       "generate": "Generate",
       "generating": "Generating — this can take up to a minute…",
       "noArtifacts": "No artifacts yet. Generate one above.",
+      "refinePlaceholder": "Refine (optional): e.g. make it bolder, shorter, more playful…",
       "noAudience": "no audience set",
       "kind": {
         "landing": "Landing page",

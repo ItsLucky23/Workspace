@@ -1114,6 +1114,7 @@
       "generate": "Genereren",
       "generating": "Bezig met genereren — dit kan tot een minuut duren…",
       "noArtifacts": "Nog geen artefacten. Genereer er hierboven een.",
+      "refinePlaceholder": "Verfijnen (optioneel): bijv. gedurfder, korter, speelser…",
       "noAudience": "geen doelgroep ingesteld",
       "kind": {
         "landing": "Landingspagina",

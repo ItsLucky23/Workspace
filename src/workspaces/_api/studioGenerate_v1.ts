@@ -15,18 +15,18 @@ export const auth: AuthProps = { login: true, additional: [] };
 const KINDS = new Set<string>(ARTIFACT_KINDS);
 
 export interface ApiParams {
-  data: { workspaceId: string; briefId: string; kind: string };
+  data: { workspaceId: string; briefId: string; kind: string; tweak?: string };
   user: SessionLayout;
   functions: Functions;
 }
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  const { workspaceId, briefId, kind } = data;
+  const { workspaceId, briefId, kind, tweak } = data;
   if (!workspaceId || !briefId || !KINDS.has(kind)) return { status: 'error', errorCode: 'api.invalidRequest' };
   const member = await functions.db.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
   if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
 
-  const res = await generateArtifact(functions.db.prisma, { workspaceId, briefId, kind: kind as ArtifactKind });
+  const res = await generateArtifact(functions.db.prisma, { workspaceId, briefId, kind: kind as ArtifactKind, ...(tweak ? { tweak } : {}) });
   if (!res.ok) return { status: 'error', errorCode: res.error ?? 'studio.generateFailed' };
   return { status: 'success', result: { artifactId: res.artifactId ?? '' } };
 };
