@@ -2442,3 +2442,17 @@ Alle motion = theme-tokens + reduced-motion-safe.
 **Verify:** live-probe **`ok=true`, echte mp3-url, 20s**. musicSfx + audioProviders stub-tests groen. tsc 0 · lint · ai:lint · build groen. Live-test promoot `music` van best-effort → harde assert.
 
 **Files touched:** `server/media/providers/suno.ts`, `.env.local_template`, `tests/live/liveAi.live.mts`, `docs/decisions/0095-suno-api-integration.md`.
+
+## 2026-07-07 — Overnight-goal deel 8: fal-transport robuustheid + triposr-queue-bevinding (#40)
+
+**User prompt:** /goal — triposr werkend krijgen via FAL_POLL_MAX.
+
+**Wat ik deed (ADR 0096):** het triposr-onderzoek onthulde 2 echte bugs + 1 omgevings-waarheid:
+- **Geen fetch-timeout** in de fal-transport → een hangende connectie blokkeerde een generatie EEUWIG (een live model-3d-probe draaide >15min zonder voortgang → moest gekilld). Fix: `falFetch` wrapt elke fal-fetch (submit+status+result) in een `AbortController` met `FAL_FETCH_TIMEOUT_MS` (default 30s).
+- **Poll-timeout viel door** naar de result-fetch → verwarrende "still in progress" 400. Fix: loop trackt completion + gooit een duidelijke `fal poll timeout`.
+- **`FAL_POLL_MAX` default 60→120** (×2s = 4min).
+- **BEVINDING (Rule 3b — flag naar user):** triposr's echte blocker is fal's **queue-congestie**, NIET het poll-budget. Een gecontroleerde diagnose toonde de job vast op `queue_position: 8`, niet bewegend over een minuut. FAL_POLL_MAX ophogen helpt niet zolang de queue niet leegloopt. → probeer opnieuw als de queue rustiger is, of zet `FAL_MODEL_3D` naar een sneller/minder-druk 3D-model. model-3d blijft best-effort in de live-suite.
+
+**Verify:** tsc 0 · lint · falProvider 26/26 · build groen. model-3d faalt nu SCHOON (timeout) i.p.v. hangen.
+
+**Files touched:** `server/media/providers/fal.ts`, `docs/decisions/0096-fal-transport-robustness.md`.

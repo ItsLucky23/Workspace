@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (94)
+## Decisions (95)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -107,6 +107,7 @@
 | 0093 | Live-AI verification + the media-provider fixes it surfaced | 🟢 accepted | ai, media, providers, testing | — | `docs/decisions/0093-live-ai-verification.md` |
 | 0094 | Premium feel comes from a shared motion layer, not per-page ad-hoc animation | 🟢 accepted | ui, motion, design-system, consistency | — | `docs/decisions/0094-premium-motion-layer.md` |
 | 0095 | Music generation uses the api.sunoapi.org contract (resolves the 0093 open question) | 🟢 accepted | media, providers, music, suno | — | `docs/decisions/0095-suno-api-integration.md` |
+| 0096 | The fal transport gets a per-fetch timeout + a clean poll-timeout; triposr's blocker is fal queue congestion | 🟢 accepted | media, providers, fal, robustness | — | `docs/decisions/0096-fal-transport-robustness.md` |
 
 ## Summaries
 
@@ -863,6 +864,14 @@ Deliver the premium feel through the SHARED layer, in the fewest, safest places:
 Rewrite `realMusicTransport` to the `api.sunoapi.org/api/v1` contract:
 
 → `docs/decisions/0095-suno-api-integration.md`
+
+### 0096 — The fal transport gets a per-fetch timeout + a clean poll-timeout; triposr's blocker is fal queue congestion
+
+**0096** · accepted · tags: media, providers, fal, robustness · 2026-07-07
+
+**`falFetch`** wraps every fal fetch (submit + status poll + result) in an `AbortController` with a hard `FAL_FETCH_TIMEOUT_MS` (default 30s) — a hung connection now aborts instead of blocking indefinitely. **Clean poll-timeout:** the poll loop tracks completion and throws `fal poll timeout` when the budget is exhausted, instead of fetching an incomplete result (the misleading 400). **`FAL_POLL_MAX` default raised 60 → 120** (× 2s = 4 min) so a slow-but-*moving* queue still completes; `FAL_MODEL_3D` remains an env override for a faster/less-congested 3D model.
+
+→ `docs/decisions/0096-fal-transport-robustness.md`
 
 ## Code governed by decisions
 

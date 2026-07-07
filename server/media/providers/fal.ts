@@ -117,34 +117,51 @@ export interface FalTransport {
 }
 
 const FAL_QUEUE_BASE = (process.env.FAL_QUEUE_BASE ?? '').trim() || 'https://queue.fal.run';
-const POLL_MAX = Number(process.env.FAL_POLL_MAX ?? '') || 60;
+//? Poll budget: slow fal queue models (e.g. triposr 3D, when the queue is backed up) need a higher
+//? ceiling. Default 120 × 2s = 4 min; bump FAL_POLL_MAX for a congested model.
+const POLL_MAX = Number(process.env.FAL_POLL_MAX ?? '') || 120;
 const POLL_MS = Number(process.env.FAL_POLL_MS ?? '') || 2000;
+//? Hard per-request timeout — a hung fal fetch would otherwise block a whole generation forever.
+const FETCH_TIMEOUT_MS = Number(process.env.FAL_FETCH_TIMEOUT_MS ?? '') || 30_000;
+
+//? fetch with a hard abort timeout so a stalled connection can't hang the poll loop indefinitely.
+async function falFetch(url: string, init: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => { ctrl.abort(); }, FETCH_TIMEOUT_MS);
+  try {
+    //? External fal.ai REST API — not a framework `/api/*` route.
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 //? The live fal.ai queue transport: POST the job, poll status until COMPLETED, GET the result.
 export const realFalTransport: FalTransport = {
   submit: async (model, input, apiKey) => {
     const headers = { Authorization: `Key ${apiKey}`, 'Content-Type': 'application/json' };
     const submitted = await withRetry(async () => {
-      //? External fal.ai REST API — not a framework `/api/*` route.
-      // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-      const r = await fetch(`${FAL_QUEUE_BASE}/${model}`, { method: 'POST', headers, body: JSON.stringify(input) });
+      const r = await falFetch(`${FAL_QUEUE_BASE}/${model}`, { method: 'POST', headers, body: JSON.stringify(input) });
       if (!r.ok) throw new Error(`fal submit ${String(r.status)}`);
       return (await r.json()) as { status_url?: string; response_url?: string };
     }, { attempts: 3, baseMs: 500 });
     const statusUrl = submitted.status_url;
     const responseUrl = submitted.response_url;
     if (statusUrl === undefined || responseUrl === undefined) throw new Error('fal submit: missing status/response url');
+    //? Poll until COMPLETED; a timeout throws a CLEAR error (don't fall through to fetch an incomplete
+    //? result, which returns the confusing "still in progress" 400).
+    let completed = false;
     for (let i = 0; i < POLL_MAX; i += 1) {
-      // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-      const sr = await fetch(statusUrl, { headers });
+      const sr = await falFetch(statusUrl, { headers });
       if (!sr.ok) throw new Error(`fal status ${String(sr.status)}`);
       const status = ((await sr.json()) as { status?: string }).status;
-      if (status === 'COMPLETED') break;
+      if (status === 'COMPLETED') { completed = true; break; }
       if (status === 'FAILED' || status === 'ERROR') throw new Error('fal job failed');
       await sleep(POLL_MS);
     }
-    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-    const rr = await fetch(responseUrl, { headers });
+    if (!completed) throw new Error('fal poll timeout');
+    const rr = await falFetch(responseUrl, { headers });
     if (!rr.ok) throw new Error(`fal result ${String(rr.status)}`);
     return (await rr.json()) as Record<string, unknown>;
   },
