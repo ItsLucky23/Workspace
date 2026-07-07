@@ -32,6 +32,11 @@ async function loadWebPush(): Promise<WebPushApi | null> {
   return lib;
 }
 
+//? A2 — push the same payload to a set of users (a notification fan-out). Best-effort per user; never throws.
+export async function sendWebPushMany(prisma: PrismaClient, userIds: string[], payload: PushPayload): Promise<void> {
+  for (const userId of userIds) await sendWebPush(prisma, userId, payload);
+}
+
 //? Send a push to every device of `userId`. Prunes dead subscriptions. Never throws.
 export async function sendWebPush(prisma: PrismaClient, userId: string, payload: PushPayload): Promise<void> {
   const lib = await loadWebPush();

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (115)
+## Decisions (116)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -128,6 +128,7 @@
 | 0114 | Content asset version lineage — a variation points at its source (parentId); compare/revert is a follow-up | 🟢 accepted | content, versioning, freedom-program | — | `docs/decisions/0114-content-version-lineage.md` |
 | 0115 | Studio artifact regenerate takes a free-text refine instruction (not a blind re-roll) | 🟢 accepted | studio, iteration, freedom-program | — | `docs/decisions/0115-studio-refine.md` |
 | 0116 | Web push + PWA — env-VAPID, a service worker, and push piggybacked on notifications | 🟢 accepted | push, pwa, notifications, freedom-program, phone-first | — | `docs/decisions/0116-web-push-pwa.md` |
+| 0117 | Push fans out on the automation + AI-suggestion notification sites (A1 fast-follow) | 🟢 accepted | push, notifications, automation, freedom-program | — | `docs/decisions/0117-push-fanout-notifications.md` |
 
 ## Summaries
 
@@ -1052,6 +1053,14 @@ A `content-regenerate` control-op: given an asset id, it loads the asset's `Medi
 **Self-hosted env-VAPID** (decided OV-5). Keys live in `.env.local` (`WS_VAPID_PUBLIC/PRIVATE/SUBJECT`), documented in `.env.local_template`. `web-push` installed; imported **lazily** in `server/hooks/webPush.ts` (its API lands on `.default` under the ESM loader) so the server boots without it and a send failure never breaks the notification write it rides on. **A dependency-free `public/sw.js`** (push → `showNotification`; `notificationclick` → focus/open) + `public/manifest.webmanifest`, both served at root by Vite's default `publicDir`. Registered from `main.tsx` on load; manifest linked from `index.html`. **Two `_api` routes**: `pushConfig` delivers the PUBLIC VAPID key to the browser (the key can't reach the client via `config.ts` — its env reader is browser-safe-`undefined`, and no `VITE_` bridge is wired); `savePushSubscription` upserts the browser subscription keyed on the **authenticated** user + the (now `@unique`) endpoint. The settings toggle drives a real subscribe/unsubscribe (`pushSubscribe.ts`). **Push piggybacks on notifications**: `sendWebPush(prisma, userId, payload)` fans out to all the user's devices + prunes 404/410-dead subscriptions. Wired into the assignment-notify choke-point (`conductor.notifyAssignment`) first.
 
 → `docs/decisions/0116-web-push-pwa.md`
+
+### 0117 — Push fans out on the automation + AI-suggestion notification sites (A1 fast-follow)
+
+**0117** · accepted · tags: push, notifications, automation, freedom-program · 2026-07-07
+
+A `sendWebPushMany(prisma, userIds, payload)` helper (best-effort per user, never throws) added to `webPush.ts`. Wired in right after both `notification.createMany` sites in `executor.ts` so every in-app notification is mirrored to the members' devices. Same tag scheme (`ticket-<key>`) as A1 for coalescing.
+
+→ `docs/decisions/0117-push-fanout-notifications.md`
 
 ## Code governed by decisions
 

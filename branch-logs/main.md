@@ -2673,3 +2673,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (7 push-lint-fixes) · ai:lint · build (sw.js+manifest gekopieerd) · pushSubscription 7/7 (upsert idempotent + reject-zonder-keys + sendWebPush no-op + remove) · conductor 19/19 + notificationProducer 4/4 (geen regressie). Live e2e (echt device + permission) = user-triggered.
 
 **Files touched:** `package.json` (web-push+@types), `.env.local`(+VAPID, niet gestaged) `.env.local_template`, `prisma/schema.prisma` (endpoint @unique), `public/sw.js`+`public/manifest.webmanifest` (nw), `index.html`, `src/main.tsx`, `server/hooks/webPush.ts` (nw), `server/orchestrator/conductor.ts`, `src/workspaces/_api/{pushConfig,savePushSubscription}_v1.ts` (nw), `src/workspaces/_functions/pushSubscribe.ts` (nw), `src/workspaces/settings/page.tsx`, `tests/integration/pushSubscription.test.mts`, `docs/decisions/0116-web-push-pwa.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM A2: push fan-out op automation + AI-suggestion notificaties — ADR 0117
+
+**Wat ik deed:** A1 wirede push alleen op de assignment-notify. Nu een `sendWebPushMany(prisma, userIds, payload)`-helper (best-effort per user, throwt nooit) in `webPush.ts`, gewired direct ná beide `notification.createMany`-sites in `executor.ts` (`notify`-action + `invoke-agent-role`). Zelfde tag-schema (`ticket-<key>`) als A1. Needs-input-banner-push = follow-up (banner wordt via de structured Stop-hook-channel gezet, geen schone `notification.create`-seam — niet gokken).
+
+**Verify:** tsc 0 · lint · ai:lint · build · automation 21/21 (de notify→notification-flow draait nu incl. de push-fan-out, geen regressie; push no-op zonder subs).
+
+**Files touched:** `server/hooks/webPush.ts` (sendWebPushMany), `server/automation/executor.ts` (2 sites + import), `docs/decisions/0117-push-fanout-notifications.md`.
