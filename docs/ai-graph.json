@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 200,
-    "edges": 282,
+    "nodes": 201,
+    "edges": 287,
     "symbols": 252,
     "callEdges": 37
   },
@@ -485,6 +485,11 @@
     },
     {
       "id": "workspaces/_components/Icon.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/ImageEditor.tsx",
       "kind": "other",
       "route": null
     },
@@ -1235,6 +1240,22 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_functions/uploadMedia.ts"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/_components/ImageRegionEditor.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -1621,6 +1642,10 @@
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/_components/ImageEditor.tsx"
     },
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
@@ -2145,6 +2170,7 @@
       "main.tsx",
       "settings/page.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2432,6 +2458,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/_components/ModulePicker.tsx",
@@ -2470,6 +2497,9 @@
       "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
+    "workspaces/_components/ImageEditor.tsx": [
+      "workspaces/content/[pieceId]/page.tsx"
+    ],
     "workspaces/_components/ImageRegionEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"
     ],
@@ -2489,6 +2519,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2527,6 +2558,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2593,6 +2625,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2646,6 +2679,7 @@
       "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/content/[pieceId]/page.tsx"
@@ -2673,6 +2707,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
@@ -2800,38 +2835,38 @@
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 41,
+      "dependents": 42,
       "directDependents": 28
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 40,
-      "directDependents": 35
+      "dependents": 41,
+      "directDependents": 36
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 37,
-      "directDependents": 27
+      "dependents": 38,
+      "directDependents": 28
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 34,
+      "dependents": 35,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 33,
+      "dependents": 34,
       "directDependents": 8
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 32,
-      "directDependents": 27
+      "dependents": 33,
+      "directDependents": 28
     },
     {
       "id": "_components/ConfirmMenu.tsx",

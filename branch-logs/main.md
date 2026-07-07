@@ -2855,3 +2855,11 @@ Alle backend/logica-items van Fase Q/K/P/I/A/O/R/X/S + E5 + E1-backend/wiring: g
 **Verify:** tsc 0 · lint (fabric-types, taint-vrije export, closure-guard-suppress) · ai:lint · build (fabric code-split in aparte chunk) · contentInpaint 4/4 · inpaint 6/6. **Canvas-rendering zelf = browser-verificatie in dev-sessie (server moet draaien — developer-actie); de op-path + provider-shape zijn unit-getest.**
 
 **Files touched:** `package.json`(+fabric), `src/workspaces/_components/ImageRegionEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (Edit-region-knop + editor-render), `src/_locales/{en,nl,de,fr}.json` (workspaces.editor), `docs/decisions/0138-image-region-editor.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E2: image-editor-essentials (adjust) — ADR 0139
+
+**Wat ik deed:** `ImageEditor`-component op dezelfde Fabric-canvas: brightness/contrast/saturation-sliders als fabric-image-filters, geëxporteerd als NIEUWE image-asset (non-destructief — origineel blijft; edit via de geteste `content-import-asset`-op). Client-side transform (geen provider/spend). Fabric+filters lazy. "Adjust"-knop naast E1's "Edit region". Crop + in-canvas-compare = follow-ups.
+
+**Verify:** tsc 0 · lint · ai:lint · build. Canvas-render+filter-preview = browser-verify (dev-server); export→import hergebruikt geteste K1-upload + content-import-asset. i18n ×4.
+
+**Files touched:** `src/workspaces/_components/ImageEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (Adjust-knop + editor-render), `src/_locales/{en,nl,de,fr}.json` (workspaces.imageEditor), `docs/decisions/0139-image-editor-essentials.md`.

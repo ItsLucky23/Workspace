@@ -318,7 +318,8 @@
     "socketStatus": "État du Socket :"
   },
   "workspaces": {
-    "editor": {"title": "Modifier une zone", "hint": "Peignez la zone a modifier, puis decrivez la modification.", "brush": "Pinceau", "clear": "Effacer", "promptPlaceholder": "ex. mets ceci en rouge / enleve ceci / agrandis", "apply": "Appliquer", "applying": "Application...", "loading": "Chargement de l'editeur...", "edit": "Modifier la zone", "needPrompt": "Decrivez d'abord la modification.", "needRegion": "Peignez d'abord une zone.", "maskFailed": "Impossible de preparer le masque.", "applied": "Modification de zone en file."},
+    "editor": {"title": "Modifier une zone", "hint": "Peignez la zone à modifier, puis décrivez la modification.", "brush": "Pinceau", "clear": "Effacer", "promptPlaceholder": "ex. mets ceci en rouge / enlève ceci / agrandis", "apply": "Appliquer", "applying": "Application...", "loading": "Chargement de l'éditeur...", "edit": "Modifier la zone", "needPrompt": "Décrivez d'abord la modification.", "needRegion": "Peignez d'abord une zone.", "maskFailed": "Impossible de preparer le masque.", "applied": "Modification de zone en file."},
+    "imageEditor": {"title": "Éditeur d'image", "edit": "Ajuster", "brightness": "Luminosité", "contrast": "Contraste", "saturation": "Saturation", "reset": "Réinitialiser", "save": "Enregistrer comme nouveau", "saving": "Enregistrement...", "exportFailed": "Impossible d'exporter l'image.", "saved": "Image modifiée enregistree."},
     "onboarding": {
       "welcome": "Bienvenue sur Workspaces",
       "subtitle": "Créez un espace de travail pour commencer, ou acceptez une invitation ci-dessous.",

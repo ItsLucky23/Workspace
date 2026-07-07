@@ -319,6 +319,7 @@
   },
   "workspaces": {
     "editor": {"title": "Regio bewerken", "hint": "Verf over het gebied dat je wilt veranderen en beschrijf de bewerking.", "brush": "Kwast", "clear": "Wissen", "promptPlaceholder": "bijv. maak dit rood / verwijder dit / maak groter", "apply": "Bewerking toepassen", "applying": "Toepassen...", "loading": "Editor laden...", "edit": "Regio bewerken", "needPrompt": "Beschrijf eerst de bewerking.", "needRegion": "Verf eerst een gebied.", "maskFailed": "Kon het masker niet voorbereiden.", "applied": "Regio-bewerking in wachtrij."},
+    "imageEditor": {"title": "Beeld-editor", "edit": "Bijstellen", "brightness": "Helderheid", "contrast": "Contrast", "saturation": "Verzadiging", "reset": "Reset", "save": "Opslaan als nieuw", "saving": "Opslaan...", "exportFailed": "Kon het beeld niet exporteren.", "saved": "Bewerkt beeld opgeslagen."},
     "onboarding": {
       "welcome": "Welkom bij Workspaces",
       "subtitle": "Maak een workspace aan om te beginnen, of accepteer hieronder een uitnodiging.",
