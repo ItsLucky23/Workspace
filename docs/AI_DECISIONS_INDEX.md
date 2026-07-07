@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (106)
+## Decisions (107)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -119,6 +119,7 @@
 | 0105 | The stage persona (system prompt) + definition-of-done are editable in the pipeline UI | 🟢 accepted | pipeline, stages, ui, freedom-program | — | `docs/decisions/0105-stage-persona-in-ui.md` |
 | 0106 | Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset | 🟢 accepted | media, upload, content, http, freedom-program | — | `docs/decisions/0106-media-upload-import.md` |
 | 0107 | Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real | 🟢 accepted | sources, infosource, knowledge, freedom-program | — | `docs/decisions/0107-doc-upload-infosource.md` |
+| 0108 | The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up | 🟢 accepted | content, knowledge, rag, freedom-program | — | `docs/decisions/0108-creative-knowledge-grounding.md` |
 
 ## Summaries
 
@@ -971,6 +972,14 @@ A new authenticated HTTP route `POST /media/upload?ws=<id>&ext=<ext>` (`server/m
 A new `create-info-source` control-op registers an uploaded doc as a `source: 'uploaded'` context-doc InfoSource (upsert by name, `enabled: false` by default — the user toggles it on). It returns the full context-doc list as the delta (same shape + client callback as `scan-docs`), via a new `addInfoDoc` `_sync` route + provider method. The client reads the file's text (`File.text()`) and sends it — **no binary upload needed for text docs** (md/txt); the K1 `/media/upload` route is for binary media, this is plain text over the control channel.
 
 → `docs/decisions/0107-doc-upload-infosource.md`
+
+### 0108 — The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up
+
+**0108** · accepted · tags: content, knowledge, rag, freedom-program · 2026-07-07
+
+A `buildKnowledgeContext(prisma, workspaceId)` helper folds the workspace's **enabled** context-doc InfoSources (bounded: 2000 chars/doc, 6000 total) into a labelled grounding block, and `generateScript` prepends it (alongside the Q2 brand context). Deterministic + **key-less** — no embeddings needed; the user's enabled docs steer the script.
+
+→ `docs/decisions/0108-creative-knowledge-grounding.md`
 
 ## Code governed by decisions
 

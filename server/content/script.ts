@@ -7,6 +7,7 @@ import type { PrismaClient } from '@prisma/client';
 import { runAiCompletion } from '../ai/registry';
 import { resolveStyle, composeStylePrompt } from './styles';
 import { buildBrandContext } from './brandContext';
+import { buildKnowledgeContext } from './knowledgeContext';
 import { extractJson, coerceBeats } from './jsonParse';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
@@ -52,9 +53,11 @@ export async function generateScript(
   args: { workspaceId: string; contentProjectId: string; brief: string; styleKey?: string; extraInstructions?: string },
 ): Promise<{ scriptId: string; beatCount: number; stub: boolean; providerId: string }> {
   const style = await resolveStyle(prisma, args.workspaceId, 'script', args.styleKey);
-  //? Q2 — prepend the persistent brand/product grounding so the script is on-brand.
+  //? Q2 brand/product grounding + K3 knowledge grounding (the user's enabled context-docs) prepended so the
+  //? script is on-brand + uses their material.
   const brandContext = await buildBrandContext(prisma, args.workspaceId, args.contentProjectId);
-  const system = [brandContext, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
+  const knowledge = await buildKnowledgeContext(prisma, args.workspaceId);
+  const system = [brandContext, knowledge, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
   const res = await runAiCompletion('script', {
     prompt: `${args.brief}\n\n${SCRIPT_FORMAT}`,
     ...(system ? { system } : {}),

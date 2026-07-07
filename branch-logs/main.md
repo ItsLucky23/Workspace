@@ -2595,3 +2595,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · infoSourceUpload 6/6 (uploaded-source + off-by-default + summary + upsert). md/txt (pdf = latere dep). K3 wired straks de creatieve features om erop te retrieven.
 
 **Files touched:** `server/orchestrator/conductor.ts` (create-info-source), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/addInfoDoc_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/sources/page.tsx`, `tests/integration/infoSourceUpload.test.mts`, `docs/decisions/0107-doc-upload-infosource.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM K3: creatieve grounding op enabled context-docs — ADR 0108
+
+**Wat ik deed:** RAG was afgeschermd van de creatieve features. Nu een `buildKnowledgeContext(prisma, workspaceId)`-helper die de ENABLED context-doc InfoSources (K2-uploads + repo-scans) bundelt (bounded: 2000/doc, 6000 totaal) en `generateScript` prepend't 'm (naast Q2-brandContext). Deterministisch + key-loos (geen embeddings) → de docs van de user sturen nu écht de script-generatie. **Fast-follows (gedocumenteerd in ADR):** helper uitbreiden naar Studio marketing/design-tekst + semantische RAG-retrieval + per-generatie source-attach-picker. Media (image/video) blijft op Q2-brandContext (lange docs = ruis in beeld-prompts).
+
+**Verify:** tsc 0 · lint · ai:lint · build · knowledgeContext 5/5 (enabled included, disabled excluded, gelabeld, cap) · contentScript 8/8 · brandContext 6/6.
+
+**Files touched:** `server/content/knowledgeContext.ts` (nw), `server/content/script.ts`, `tests/integration/knowledgeContext.test.mts`, `docs/decisions/0108-creative-knowledge-grounding.md`.
