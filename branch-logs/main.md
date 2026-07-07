@@ -2919,3 +2919,7 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Fix:** `scripts/testWithSecrets.ts` (spiegelt `prismaWithSecrets`): `loadEnvFiles()` → `initSecretManager()` (resolvet ná core's dotenvx-override, in-process, blijft dus staan) → dán dynamisch `import('./testAll.ts')`. `package.json` `test` wijst nu hiernaar. **Geverifieerd: "Connected to Redis", geen WRONGPASS meer.** De resterende API-sweep-failures (contract/auth/fuzz) vereisen een DRAAIENDE server op localhost:80 (operationeel, by-design — start `npm run server`).
 
 **Files touched:** `scripts/testWithSecrets.ts` (nw), `package.json` (test-script). NIET: prismaWithSecrets/.env/.env.local.
+
+## 2026-07-08 — IDEA_TO_OUTCOME_PROGRAM.md geschreven (het volgende grote /goal-bouwplan)
+
+**Wat:** `src/workspaces/_docs/IDEA_TO_OUTCOME_PROGRAM.md` — gefaseerd runnable plan (Fase V echte-video+timeline+range-edit+long-video-decompositie · B rijke-image-editor · L2 O-A/B/C/D conversatie+orchestratie · L3 mobiel+structured-approvals+stub-zichtbaarheid · D publish-byte-upload+demo-host+prod-export · G greenfield). Gebaseerd op de 5-agent-audit + user-visie (60s-video=4×15s-scenes-die-inspelen, range-edit 13-18s→refine, simpele knip/transitions, demo-host main-op-DNS-X, prod=CI/CD-naar-externe-server). Volgorde-advies: L2-voordeur → V-video → D-publish/host → L3 → B/G. Te draaien met `/goal` ná compacten.
