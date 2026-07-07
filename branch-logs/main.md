@@ -2769,3 +2769,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (require-await→sync tryCatch) · ai:lint · build · brandKitPortability 14/14 (parse-validatie + lossless A→B round-trip + garbage-reject) · brandContext 6/6 · studio 33/33 (geen regressie).
 
 **Files touched:** `server/studio/brand.ts` (parseBrandKit + exportBrandKit + importBrandKit), `src/workspaces/_api/brandExport_v1.ts` + `brandImport_v1.ts` (nw), `tests/integration/brandKitPortability.test.mts`, `docs/decisions/0128-brand-kit-portability.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM S1: per-request cheap "preview" (dry-run) — ADR 0129
+
+**Wat ik deed (Fase S start):** `WS_MEDIA_CHEAP` was operator-env-only (all-or-nothing). Nu `cheapMode(reqCheap?)` = env OF een per-request-flag. `params.cheap===true` (routing-param, gestript uit fal-input net als `params.model`) drijft `falModelFor`→schnell + `cheapParams`→low-steps/res/single voor DIE ene request. Full-run onaangetast zonder de flag. Cost-estimate-discount (echte provider-cost is al lager) + UI-preview-toggle = follow-ups.
+
+**Verify:** tsc 0 · lint · ai:lint · build · cheapPreview 7/7 (per-request cheap-model+params+strip, env-off; full-quality zonder flag; video→480p) · falProvider 26/26 (geen regressie).
+
+**Files touched:** `server/media/providers/fal.ts` (cheapMode/falModelFor/cheapParams reqCheap + composeFalInput cheap-strip), `tests/unit/cheapPreview.test.mts`, `docs/decisions/0129-cheap-preview.md`.

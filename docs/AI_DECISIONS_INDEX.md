@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (127)
+## Decisions (128)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -140,6 +140,7 @@
 | 0126 | Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half | 🟢 accepted | ai, providers, gemini, extensibility, freedom-program | — | `docs/decisions/0126-custom-gemini-endpoint.md` |
 | 0127 | The user's MCP integration command is mounted into the container .mcp.json (X1) | 🟢 accepted | extensibility, mcp, containers, freedom-program | — | `docs/decisions/0127-mcp-integration-wiring.md` |
 | 0128 | Brand-kit portability — export/import the brand library as portable JSON (R3, brand half) | 🟢 accepted | brand, portability, reuse, freedom-program | — | `docs/decisions/0128-brand-kit-portability.md` |
+| 0129 | Per-request cheap "preview" (dry-run) for media generation (S1) | 🟢 accepted | media, cost, ux, freedom-program | — | `docs/decisions/0129-cheap-preview.md` |
 
 ## Summaries
 
@@ -1160,6 +1161,14 @@ A per-workspace `Workspace.geminiBaseUrl` + a `WS_GEMINI_BASE_URL` env, resolved
 A pure `parseBrandKit(raw)` validates/normalizes a portable JSON blob into the existing `BrandLibraryInput` (reusing the same `str`/`strArr`/palette validators as the artifact-promote path). `exportBrandKit(ws)` reads the library → a portable kit (no ids/timestamps/workspaceId); `importBrandKit(ws, raw)` upserts it via the existing `saveBrandLibrary`. Two membership-gated `_api` routes (`brandExport`/`brandImport`) carry the JSON string.
 
 → `docs/decisions/0128-brand-kit-portability.md`
+
+### 0129 — Per-request cheap "preview" (dry-run) for media generation (S1)
+
+**0129** · accepted · tags: media, cost, ux, freedom-program · 2026-07-07
+
+`cheapMode(reqCheap?)` is now on when the operator env is set OR a per-request flag asks for it. A `params.cheap === true` flag (a routing param, stripped from the fal input body like `params.model`) drives `falModelFor` (→ the fast `schnell` image model) + `cheapParams` (low steps / low resolution / single output) for that ONE request. The full-quality run is unaffected when the flag is absent.
+
+→ `docs/decisions/0129-cheap-preview.md`
 
 ## Code governed by decisions
 

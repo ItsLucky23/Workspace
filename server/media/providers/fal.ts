@@ -20,7 +20,9 @@ const envStr = (name: string, fallback: string): string => (process.env[name] ??
 const envNum = (name: string, fallback: number): number => Number(process.env[name] ?? '') || fallback;
 //? Cheap-test mode (`WS_MEDIA_CHEAP=1`) — the CHEAPEST real generation so a live test costs almost
 //? nothing: the fast/low-step model + the lowest resolution + a single output. Full quality is the default.
-const cheapMode = (): boolean => (process.env.WS_MEDIA_CHEAP ?? '').trim() !== '';
+//? S1 — cheap mode is on when the operator env is set OR the request asked for a cheap "preview" (per-request
+//? dry-run), so a user can rehearse a generation cheaply before the full-quality run.
+const cheapMode = (reqCheap?: boolean): boolean => reqCheap === true || (process.env.WS_MEDIA_CHEAP ?? '').trim() !== '';
 const firstOf = (v: unknown): unknown => (Array.isArray(v) ? v[0] : v);
 const asUrl = (v: unknown): string | null => {
   if (v !== null && typeof v === 'object' && typeof (v as { url?: unknown }).url === 'string') return (v as { url: string }).url;
@@ -29,10 +31,10 @@ const asUrl = (v: unknown): string | null => {
 
 //? The fal.ai model id per feature. Overridable per env so a workspace can pin a newer/cheaper model
 //? without a code change; the defaults are current, widely-available fal endpoints.
-function falModelFor(feature: MediaFeature): string {
+function falModelFor(feature: MediaFeature, reqCheap?: boolean): string {
   const env = envStr;
   //? Cheap mode defaults to the fast/low-cost `schnell` image model (unless FAL_MODEL_IMAGE is pinned).
-  const cheapImage = cheapMode() ? 'fal-ai/flux/schnell' : 'fal-ai/flux/dev';
+  const cheapImage = cheapMode(reqCheap) ? 'fal-ai/flux/schnell' : 'fal-ai/flux/dev';
   const models: Record<MediaFeature, string> = {
     'image-gen': env('FAL_MODEL_IMAGE', cheapImage),
     'reference-image': env('FAL_MODEL_REFERENCE_IMAGE', 'fal-ai/flux/dev/image-to-image'),
@@ -46,8 +48,8 @@ function falModelFor(feature: MediaFeature): string {
 
 //? The cheapest fal input params per feature when `WS_MEDIA_CHEAP` is on — lowest resolution + fewest
 //? steps + a single output. Overridable per env; the request's own `params` always win over these.
-function cheapParams(feature: MediaFeature): Record<string, unknown> {
-  if (!cheapMode()) return {};
+function cheapParams(feature: MediaFeature, reqCheap?: boolean): Record<string, unknown> {
+  if (!cheapMode(reqCheap)) return {};
   if (feature === 'image-gen') {
     return { image_size: envStr('FAL_IMAGE_SIZE', 'square'), num_inference_steps: envNum('FAL_IMAGE_STEPS', 4), num_images: 1, enable_safety_checker: false };
   }
@@ -69,15 +71,17 @@ export function composeFalInput(req: MediaGenerationRequest): { model: string; i
   //? P3 — a per-request model override (`req.params.model`, e.g. a low-poly 3d or a fast video model) picks
   //? the fal model id, falling back to the env/default. It's a routing param, so strip it from the input body.
   const params: Record<string, unknown> = req.params ?? {};
-  const { model: modelOverride, ...restParams } = params;
-  const model = typeof modelOverride === 'string' && modelOverride.trim().length > 0 ? modelOverride.trim() : falModelFor(req.feature);
+  //? S1 — a per-request cheap "preview" flag (routing param, stripped from the input body).
+  const { model: modelOverride, cheap: cheapFlag, ...restParams } = params;
+  const reqCheap = cheapFlag === true;
+  const model = typeof modelOverride === 'string' && modelOverride.trim().length > 0 ? modelOverride.trim() : falModelFor(req.feature, reqCheap);
   //? model-3d (image-to-3D, e.g. triposr) takes ONLY the source image — a `prompt`/size params are
   //? rejected (400). It needs a reference image (chain: generate an image, then convert it).
   if (req.feature === 'model-3d') {
     return { model, input: { ...(req.referenceUrl ? { image_url: req.referenceUrl } : {}), ...restParams } };
   }
   const prompt = composeMediaPrompt(req);
-  const input: Record<string, unknown> = { ...cheapParams(req.feature), ...restParams, prompt };
+  const input: Record<string, unknown> = { ...cheapParams(req.feature, reqCheap), ...restParams, prompt };
   if (req.feature === 'reference-image' && req.referenceUrl) input.image_url = req.referenceUrl;
   return { model, input };
 }
