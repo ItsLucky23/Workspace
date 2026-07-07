@@ -15,7 +15,8 @@ export type MediaFeature =
   | 'music'
   | 'sfx'
   | 'avatar'
-  | 'model-3d';
+  | 'model-3d'
+  | 'inpaint';         //? E1 — region-edit: an image + a mask + an instruction → a new region-edited image (fal flux-inpaint)
 
 //? A concrete media backend. `fal` = the image/video/3d gateway; `elevenlabs` = voice/sfx; `suno` =
 //? music (M2). (Assembly/render is ffmpeg — a distinct path in M4, not a gen provider. Avatar gets a
@@ -43,7 +44,8 @@ export type MediaProgressCallback = (p: MediaProgress) => void;
 export interface MediaGenerationRequest {
   feature: MediaFeature;
   prompt?: string;
-  referenceUrl?: string;          //? for reference-image (+ future reference-conditioned features)
+  referenceUrl?: string;          //? for reference-image (+ future reference-conditioned features); the SOURCE image for inpaint
+  maskUrl?: string;               //? E1 — the mask (white = edit region) for inpaint
   style?: MediaStyle;             //? the resolved StylePreset
   extraInstructions?: string;     //? the user's free-form per-generation instruction
   params?: Record<string, unknown>;

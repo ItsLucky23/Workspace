@@ -2793,3 +2793,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (if/else→ternary) · ai:lint · build · customAiTask 12/12 (renderTaskPrompt-substitutie + save-create/update-geen-dup + run-throwt-niet + run-maakt-GEEN-authoritative-state + delete). i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (CustomAiTask), `server/ai/types.ts` + `assignments.ts` (custom-generate feature), `server/ai/customTask.ts` (nw: renderTaskPrompt + runCustomTask), `server/orchestrator/conductor.ts` (save/delete/run-ops), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/customTask_server_v1.ts` (nw), `server/read/workspaceSnapshot.ts` (customTasks), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/workspace/page.tsx` (My-AI-tasks-panel), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/customAiTask.test.mts`, `docs/decisions/0131-custom-ai-tasks.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM E1-backend: inpaint MediaFeature (region-edit) — ADR 0132
+
+**Wat ik deed:** de headline-region-editor's backend. Nieuwe `inpaint`-`MediaFeature` + `maskUrl` op `MediaGenerationRequest`. `composeFalInput` bouwt de fal-flux-inpaint-input-shape: `image_url`(source uit referenceUrl)+`mask_url`(wit=edit)+instructie-als-`prompt`, env-overridable model (`FAL_MODEL_INPAINT`, default `fal-ai/flux-general/inpainting`). Alle `Record<MediaFeature,…>`-maps (kind/provider/cost/support) kregen een `inpaint`-entry (image, fal, ~5¢). Fabric.js-canvas (mask-productie) + `content-inpaint`-op = aparte UI-helft (E1-canvas, eigen context).
+
+**Verify:** tsc 0 (TS-guided ripple: 7 maps) · lint · ai:lint · build · inpaint 6/6 (image_url+mask_url+prompt bereiken provider + inpaint-model-routing + P3-override-wint + model-strip) · falProvider 26/26 (geen regressie).
+
+**Files touched:** `server/media/types.ts` (inpaint + maskUrl), `server/media/providers/fal.ts` (SUPPORTED+models+kind+cost+composeFalInput-inpaint-branch), `server/media/assignments.ts`, `server/media/registry.ts` (kind+stub-cost), `server/content/mediaAsset.ts` (kind), `tests/unit/inpaint.test.mts`, `docs/decisions/0132-inpaint-feature.md`.

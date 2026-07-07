@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (130)
+## Decisions (131)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -143,6 +143,7 @@
 | 0129 | Per-request cheap "preview" (dry-run) for media generation (S1) | 🟢 accepted | media, cost, ux, freedom-program | — | `docs/decisions/0129-cheap-preview.md` |
 | 0130 | Undo — content-unarchive (soft-undo) + content-unpublish (retract a post) (S2) | 🟢 accepted | content, publish, undo, safety, freedom-program | — | `docs/decisions/0130-undo-unpublish.md` |
 | 0131 | User-defined custom AI tasks — break the "can't invent a task" ceiling within the invariants (E5) | 🟢 accepted | ai, extensibility, custom-tasks, freedom-program | — | `docs/decisions/0131-custom-ai-tasks.md` |
+| 0132 | The inpaint MediaFeature — region-edit backend (E1, server half) | 🟢 accepted | media, inpaint, editors, freedom-program | — | `docs/decisions/0132-inpaint-feature.md` |
 
 ## Summaries
 
@@ -1187,6 +1188,14 @@ A pure `parseBrandKit(raw)` validates/normalizes a portable JSON blob into the e
 A `CustomAiTask` model (name + `promptTemplate` with `{{variables}}` + a read-only `lastOutput`). A new generic `custom-generate` `AiFeature` (Claude default, provider-per-feature-overridable via P1). A pure `renderTaskPrompt(template, vars)` substitutes the variables; `runCustomTask` renders + runs it through `runAiCompletion` and stores `lastOutput` ONLY. Three control-ops on the single-writer chain: `save-custom-task` / `delete-custom-task` / `run-custom-task` (workTickets capability). Running is **propose/generate** — it produces output the user reads; it never writes authoritative state (verified: a run creates no tickets/assets). Surfaced as a "My AI tasks" panel (create / run / delete + output) fed from a new `snapshot.customTasks` field.
 
 → `docs/decisions/0131-custom-ai-tasks.md`
+
+### 0132 — The inpaint MediaFeature — region-edit backend (E1, server half)
+
+**0132** · accepted · tags: media, inpaint, editors, freedom-program · 2026-07-07
+
+A new `inpaint` `MediaFeature` + a `maskUrl` on `MediaGenerationRequest`. `composeFalInput` builds the fal flux-inpaint input shape: `image_url` (the source, from `referenceUrl`) + `mask_url` (the mask, white = edit region) + the instruction as the `prompt`, routed to an **env-overridable** model (`FAL_MODEL_INPAINT`, default `fal-ai/flux-general/inpainting`). All the `Record<MediaFeature, …>` maps (kind / provider / cost / support) gained an `inpaint` entry (image kind, fal provider, ~5¢).
+
+→ `docs/decisions/0132-inpaint-feature.md`
 
 ## Code governed by decisions
 
