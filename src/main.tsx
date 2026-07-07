@@ -198,6 +198,11 @@ const router = createBrowserRouter([{
   children: routes,
 }]);
 
+//? A1 — register the service worker (push + PWA installability). Best-effort; unsupported browsers no-op.
+if ('serviceWorker' in navigator) {
+  globalThis.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js').catch(() => null); });
+}
+
 const root = document.querySelector('#root');
 if (root) {
   createRoot(root).render(

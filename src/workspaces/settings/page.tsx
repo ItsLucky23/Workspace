@@ -16,6 +16,7 @@ import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
 import { SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+import { enablePush, disablePush } from '../_functions/pushSubscribe';
 import type { SshKeyEntry } from '../_data/types';
 import type { SessionLayout } from '../../../config';
 
@@ -154,8 +155,18 @@ export default function AccountSettings() {
   const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild } = useWorkspaces();
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
-  //? Fase 2: no backend persistence for web-push subscription yet — client-only toggle.
+  //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
   const [push, setPush] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const togglePush = (next: boolean) => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    void (async () => {
+      if (next) { const r = await enablePush(); setPush(r === 'ok'); }
+      else { await disablePush(); setPush(false); }
+      setPushBusy(false);
+    })();
+  };
   const [language, setSelectedLanguage] = useState<Language>(session?.language ?? 'en');
   const sshUser = sshUserId ? membersById[sshUserId] : null;
 
@@ -342,10 +353,10 @@ export default function AccountSettings() {
           </Card>
 
           <Card title={translate({ key: 'workspaces.account.notificationsTitle' })} desc={translate({ key: 'workspaces.account.notificationsDesc' })}>
-            {/* Fase 2: web-push subscription is client-only — no push-subscription route wired yet */}
+            {/* A1: real web-push — the toggle subscribes the browser + stores it server-side. */}
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
-              <Toggle on={push} onChange={setPush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
+              <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
             </Row>
           </Card>
 

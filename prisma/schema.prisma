@@ -118,7 +118,7 @@ model SshKey {
 model PushSubscription {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @db.ObjectId          // FRAMEWORK-GLOBAL (not tenant-scoped)
-  endpoint      String                           // the Web Push endpoint URL
+  endpoint      String    @unique                // the Web Push endpoint URL (unique per device → upsert-able)
   keys          Json                             // { p256dh, auth } — Web Push encryption keys (server-only secret)
   fullBodyOptIn Boolean   @default(false)         // D80 REVERSED: push is REDACTED by default; full body opt-in per device
   createdAt     DateTime  @default(now())

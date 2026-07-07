@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (35)
+## API routes (37)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -39,8 +39,10 @@
 | `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
+| `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
+| `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 | `api/workspaces/studioBrand/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — the central brand library (ADR 0013 G-MKT-2). `op:'save'` upserts the |
 | `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
@@ -105,9 +107,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 79 |
+| _(unowned)_ | 81 |
 
-**Test coverage**: 3/81 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/83 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -138,7 +140,9 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/markRead/v1`
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
+- `api/workspaces/pushConfig/v1`
 - `api/workspaces/saveDevCommand/v1`
+- `api/workspaces/savePushSubscription/v1`
 - `api/workspaces/studioBrand/v1`
 - `api/workspaces/studioDelete/v1`
 - `api/workspaces/studioGenerate/v1`
@@ -159,9 +163,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/contentControl/v1`
 - `sync/workspaces/contentDirty/v1`
 - `sync/workspaces/contentSettings/v1`
-- `sync/workspaces/findingAction/v1`
-- `sync/workspaces/gitlabSettings/v1`
-- … +28 more
+- … +30 more
 
 ## Pages (28)
 

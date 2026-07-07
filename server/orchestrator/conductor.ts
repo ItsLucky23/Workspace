@@ -55,6 +55,7 @@ import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta } from '../read/broadcast';
+import { sendWebPush } from '../hooks/webPush';
 import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
@@ -326,6 +327,8 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
         ticketId, deepLink: { view: 'board', ticketId: ticketKey }, read: false,
       },
     });
+    //? A1 — also push it to the user's devices (best-effort; no-op without VAPID/subscriptions).
+    await sendWebPush(prisma, recipientUserId, { title: 'Assigned to a ticket', body: `You were assigned ${ticketKey}.`, url: '/', tag: `ticket-${ticketKey}` });
   });
   if (error) console.error('[conductor] notifyAssignment failed:', error);
 }

@@ -66,8 +66,10 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/markRead/v1` | POST | 30 | — | — |
 | `workspaces/openEditor/v1` | POST | 12 | — | — |
 | `workspaces/openPreview/v1` | POST | 12 | — | — |
+| `workspaces/pushConfig/v1` | POST | 60 | — | — |
 | `workspaces/saveDevCommand/v1` | POST | 30 | — | — |
 | `workspaces/saveDockerfile/v1` | POST | 30 | — | ✓ |
+| `workspaces/savePushSubscription/v1` | POST | 30 | — | — |
 | `workspaces/snapshot/v1` | POST | 60 | — | ✓ |
 | `workspaces/studioBrand/v1` | POST | 30 | — | — |
 | `workspaces/studioDelete/v1` | POST | 30 | — | — |

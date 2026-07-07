@@ -1,0 +1,13 @@
+{
+  "name": "Workspaces",
+  "short_name": "Workspaces",
+  "description": "AI-driven content + dev orchestration — approve and answer from anywhere.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0b0f",
+  "theme_color": "#0b0b0f",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "48x48 any", "type": "image/x-icon" }
+  ]
+}

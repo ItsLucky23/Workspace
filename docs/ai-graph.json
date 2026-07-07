@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 186,
-    "edges": 276,
-    "symbols": 228,
+    "nodes": 189,
+    "edges": 277,
+    "symbols": 232,
     "callEdges": 37
   },
   "nodes": [
@@ -394,6 +394,11 @@
       "route": "api/workspaces/openPreview/v1"
     },
     {
+      "id": "workspaces/_api/pushConfig_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/pushConfig/v1"
+    },
+    {
       "id": "workspaces/_api/saveDevCommand_v1.ts",
       "kind": "api",
       "route": "api/workspaces/saveDevCommand/v1"
@@ -407,6 +412,11 @@
       "id": "workspaces/_api/saveDockerfile_v1.ts",
       "kind": "api",
       "route": "api/workspaces/saveDockerfile/v1"
+    },
+    {
+      "id": "workspaces/_api/savePushSubscription_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/savePushSubscription/v1"
     },
     {
       "id": "workspaces/_api/snapshot_v1.tests.ts",
@@ -505,6 +515,11 @@
     },
     {
       "id": "workspaces/_functions/priority.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/pushSubscribe.ts",
       "kind": "other",
       "route": null
     },
@@ -1918,6 +1933,10 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_functions/pushSubscribe.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2539,6 +2558,9 @@
     "workspaces/_functions/priority.ts": [
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/page.tsx"
+    ],
+    "workspaces/_functions/pushSubscribe.ts": [
+      "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
       "workspaces/_components/MediaUploadButton.tsx",
@@ -3407,6 +3429,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/pushConfig_v1.ts::<module>",
+      "file": "workspaces/_api/pushConfig_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/pushConfig_v1.ts::main",
+      "file": "workspaces/_api/pushConfig_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/saveDevCommand_v1.ts::<module>",
       "file": "workspaces/_api/saveDevCommand_v1.ts",
       "name": "<module>",
@@ -3457,6 +3491,18 @@
     {
       "id": "workspaces/_api/saveDockerfile_v1.ts::main",
       "file": "workspaces/_api/saveDockerfile_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/savePushSubscription_v1.ts::<module>",
+      "file": "workspaces/_api/savePushSubscription_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/savePushSubscription_v1.ts::main",
+      "file": "workspaces/_api/savePushSubscription_v1.ts",
       "name": "main",
       "kind": "function"
     },
