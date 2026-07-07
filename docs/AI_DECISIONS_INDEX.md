@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (150)
+## Decisions (151)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -163,6 +163,7 @@
 | 0149 | V4 — range-refine (content-refine-range) | 🟢 accepted | content, video, editing, lineage, idea-to-outcome | — | `docs/decisions/0149-range-refine.md` |
 | 0150 | D1 — the real YouTube byte-upload (resumable, all three legs) | 🟢 accepted | publish, youtube, upload, honesty, idea-to-outcome | — | `docs/decisions/0150-youtube-byte-upload.md` |
 | 0151 | D2 — TikTok async publish (status polling) | 🟢 accepted | publish, tiktok, honesty, idea-to-outcome | — | `docs/decisions/0151-tiktok-status-polling.md` |
+| 0152 | O-C — content pipeline orchestration (content-run-pipeline) | 🟢 accepted | content, orchestration, video, idea-to-outcome | — | `docs/decisions/0152-content-pipeline-orchestration.md` |
 
 ## Summaries
 
@@ -1367,6 +1368,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Poll the status endpoint until confirmed.** `tiktokUpload`: init → `publish_id` → poll `/post/publish/status/fetch/` (bounded, `TIKTOK_POLL_ATTEMPTS`) until `PUBLISH_COMPLETE`, then build the url from the CONFIRMED public post id. `FAILED` or not-confirmed-within-the-window → null (an honest error, per ADR 0144) — never a fabricated url. **Pure builders/parser:** `buildTiktokStatusRequest(publishId, accessToken)` and `parseTiktokStatus(json)` (status enum + the public post id), unit-tested. The `sleep` between polls is injected so the live poll waits without affecting tests (which inject the whole transport).
 
 → `docs/decisions/0151-tiktok-status-polling.md`
+
+### 0152 — O-C — content pipeline orchestration (content-run-pipeline)
+
+**0152** · accepted · tags: content, orchestration, video, idea-to-outcome · 2026-07-08
+
+**`runContentPipeline(...)`** chains the existing step functions — `generateScript` → `generateVoiceover` → (`decomposeIntoScenes` for `mode:'video'` | `generateBeatImages` for `mode:'slideshow'`) → `assembleContent` — into one run. It reuses an existing script rather than regenerating (idempotent-ish), threads the real `scriptId`, and returns which steps ran + whether any output stubbed. NO new generation logic — it composes the reviewed step functions. **`content-run-pipeline`** control-op (contentControl route, RBAC work-tickets): `{ contentProjectId, mode? }`; `video` is the default (the marquee stitched-scene path). The run itself is the user's consent (B-23); per-step autonomy-gating (pause for approval between stages, reusing the autonomy dial) is a logged follow-up.
+
+→ `docs/decisions/0152-content-pipeline-orchestration.md`
 
 ## Code governed by decisions
 

@@ -25,6 +25,7 @@ import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
 import { decomposeIntoScenes } from '../content/sceneDecompose';
 import { refineSceneRange } from '../content/sceneRefine';
+import { runContentPipeline } from '../content/runPipeline';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
@@ -1159,6 +1160,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const endMs = typeof payload.endMs === 'number' ? payload.endMs : undefined;
       if (!contentProjectId || !instruction || startMs === undefined || endMs === undefined) return;
       await refineSceneRange(prisma, { workspaceId: action.workspaceId, contentProjectId, startMs, endMs, instruction });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'content-run-pipeline': {
+      //? O-C — run the whole content pipeline (script → voice → scenes/images → assemble) in one op, so a
+      //? user (or the Assistant) turns an idea into a complete piece without clicking each step.
+      const contentProjectId = str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const mode = str(payload, 'mode') === 'slideshow' ? 'slideshow' : 'video';
+      await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode });
       broadcastContentDirty(action.workspaceId);
       return;
     }

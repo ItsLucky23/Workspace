@@ -3000,3 +3000,13 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/unit/tiktokPublish.test.mts` 11/11 (status-req shape + publish_id, PUBLISH_COMPLETE→postId, PROCESSING→leeg, FAILED, null/empty). publishTiktok 5/5 (geen regressie). Publish-leg nu echt voor beide platforms (D1+D2).
 
 **Files:** `server/content/publishOAuth.ts` (tiktokUpload + status-builder + parser), `tests/unit/tiktokPublish.test.mts` (nw), `docs/decisions/0151-*.md`.
+
+## 2026-07-08 — O-C: content-pipeline-orchestratie (content-run-pipeline) — ADR 0152
+
+**Content "idee → uitkomst" backend nu compleet: O-A/O-B (intake) → O-C (produce) → D1/D2 (publish).**
+- **`runContentPipeline`**: chaint de bestaande stap-functies script→voice→(decompose|images)→assemble in één run. Hergebruikt bestaande script (idempotent-ish), threadt scriptId, geen nieuwe gen-logica. mode 'video' (default, gestitchte scenes) / 'slideshow'.
+- **`content-run-pipeline`** op: {contentProjectId, mode?}. Run = de consent (B-23); per-stap autonomie-gating = follow-up. Auto-publish bewust NIET (blijft eigen gated op).
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/integration/runPipeline.test.mts` 6/6 (script+beats, voice-asset, scene-per-beat=4, render-asset, script-hergebruik op re-run).
+
+**Files:** `server/content/runPipeline.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op+mode), `tests/integration/runPipeline.test.mts` (nw), `docs/decisions/0152-*.md`.
