@@ -790,6 +790,8 @@
       "stylePromptPlaceholder": "De system-prompt die deze stijl bepaalt…",
       "styleSave": "Stijl opslaan",
       "styleNone": "Geen stijl",
+      "aiKeysTitle": "AI-tekstprovider",
+      "aiKeysDesc": "De Gemini-key drijft de script- + referentie-analyse-features aan. Versleuteld opgeslagen, nooit teruggetoond.",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Publicatie-verbindingen",

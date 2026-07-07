@@ -790,6 +790,8 @@
       "stylePromptPlaceholder": "Le system prompt qui définit ce style…",
       "styleSave": "Enregistrer le style",
       "styleNone": "Aucun style",
+      "aiKeysTitle": "Fournisseur de texte IA",
+      "aiKeysDesc": "La clé Gemini alimente les fonctions de script et d'analyse de référence. Stockée chiffrée, jamais réaffichée.",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Connexions de publication",

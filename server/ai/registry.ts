@@ -37,7 +37,7 @@ export async function runAiCompletion(
   const providerId = resolveAssignment(feature, overrides);
   const provider = PROVIDERS[providerId];
   const startedAt = Date.now();
-  const available = await provider.available();
+  const available = await provider.available(req.workspaceId);
   if (!available) {
     recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: '', providerId, status: 'error', error: 'ai.providerUnavailable', startedAt });
     return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };

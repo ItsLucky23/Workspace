@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (102)
+## Decisions (103)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -115,6 +115,7 @@
 | 0101 | A persistent brand/product context grounds every creative generation | 🟢 accepted | content, ai, branding, freedom-program | — | `docs/decisions/0101-brand-product-grounding.md` |
 | 0102 | A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings | 🟢 accepted | content, styles, ux, freedom-program | — | `docs/decisions/0102-style-manager.md` |
 | 0103 | A workspace-wide AI instruction is prepended to every AI completion, at one choke-point | 🟢 accepted | ai, workspace, steering, freedom-program | — | `docs/decisions/0103-workspace-ai-instruction.md` |
+| 0104 | The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly | 🟢 accepted | ai, providers, gemini, keys, freedom-program | — | `docs/decisions/0104-gemini-workspace-key.md` |
 
 ## Summaries
 
@@ -935,6 +936,14 @@ A **style manager** section in content settings: lists every style (global built
 A dedicated `Workspace.aiInstruction` field (not the mis-named `handoffInstruction` — a clean field avoids overloading a differently-purposed one; a conscious deviation from the program's literal "revive handoffInstruction" wording, Rule 3b). It is prepended to **every** AI completion's system prompt at ONE choke-point — inside `runAiCompletion` (`server/ai/registry.ts`), which every feature already routes through — fetched best-effort via `getPrismaClient()` (the same singleton the media registry uses), so all 15 text features are steered without touching 13 call sites. Editable in a new "AI" tab in workspace settings; persisted via a `save-ai-instruction` control-op (single-writer) broadcast back to the room.
 
 → `docs/decisions/0103-workspace-ai-instruction.md`
+
+### 0104 — The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly
+
+**0104** · accepted · tags: ai, providers, gemini, keys, freedom-program · 2026-07-07
+
+The `gemini-api` provider now **resolves its key per workspace**: `__provider_key_gemini` (decrypted) WINS over the env key, via `getPrismaClient()`. `AiProvider.available` gains an optional `workspaceId` (mirroring media's `available(apiKey?)`); `runAiCompletion` passes `req.workspaceId`. So a workspace key entered in the UI makes Gemini available + is used. The settings keys are split into **Media providers** (fal/elevenlabs/suno) and an **AI text provider** (Gemini) so the user understands what each key drives. The **per-feature media-provider picker is deferred** (logged): with one provider per feature it has nothing to choose. The `__media_provider_<feature>` override branch stays reachable for when alternate providers land.
+
+→ `docs/decisions/0104-gemini-workspace-key.md`
 
 ## Code governed by decisions
 

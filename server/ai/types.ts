@@ -74,6 +74,6 @@ export interface AiCompletionResult {
 export interface AiProvider {
   id: AiProviderId;
   label: string;
-  available: () => Promise<boolean>;
+  available: (workspaceId?: string) => Promise<boolean>;   //? Q5 — a per-workspace key (EnvVar store) can make a provider available even without an env key
   complete: (req: AiCompletionRequest) => Promise<AiCompletionResult>;
 }

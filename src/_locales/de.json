@@ -790,6 +790,8 @@
       "stylePromptPlaceholder": "Der System-Prompt, der diesen Stil definiert…",
       "styleSave": "Stil speichern",
       "styleNone": "Kein Stil",
+      "aiKeysTitle": "KI-Textanbieter",
+      "aiKeysDesc": "Der Gemini-Schlüssel treibt die Skript- + Referenzanalyse-Features an. Verschlüsselt gespeichert, nie zurückgezeigt.",
       "platformYoutube": "YouTube",
       "platformTiktok": "TikTok",
       "publishTitle": "Veröffentlichungs-Verbindungen",

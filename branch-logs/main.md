@@ -2561,3 +2561,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint (fixte raw try/catch → tryCatch + onnodige `??`) · ai:lint · build · aiInstruction 3/3. i18n ×4.
 
 **Files touched:** `prisma/schema.prisma` (Workspace.aiInstruction), `server/ai/registry.ts` (injectie), `server/orchestrator/conductor.ts` (save-ai-instruction), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/saveAiInstruction_server_v1.ts` (nw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_data/types.ts`, `src/workspaces/workspace/page.tsx` (AI-tab), `src/_locales/{en,nl,de,fr}.json`, `tests/integration/aiInstruction.test.mts`, `docs/decisions/0103-workspace-ai-instruction.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q5: Gemini-dead-key gefixt + media/AI-keys eerlijk gesplitst — ADR 0104
+
+**Wat ik deed:** de Gemini-key werd opgeslagen maar door NIETS gebruikt (media dropt 'm, text-gemini las alleen env). Nu: `gemini-api` provider resolvet de key per workspace (`__provider_key_gemini` decrypted > env, via `getPrismaClient()`); `AiProvider.available` krijgt optioneel `workspaceId` (net als media's `available(apiKey?)`), `runAiCompletion` geeft `req.workspaceId` door. Settings-keys gesplitst in "Media providers" (fal/elevenlabs/suno) + "AI-tekstprovider" (Gemini). **Per-feature provider-picker uitgesteld/gelogd** — er is nu één provider per media-feature, dus een picker zou een zinloze single-option-dropdown zijn (premium-UX = geen loze controls); de `__media_provider_<feature>`-override-branch blijft bereikbaar voor toekomstige alternatieve providers.
+
+**Verify:** tsc 0 · lint (fixte await-member + underscore-param) · ai:lint · build · geminiWorkspaceKey 5/5. i18n ×4.
+
+**Files touched:** `server/ai/types.ts` (available(workspaceId)), `server/ai/registry.ts`, `server/ai/providers/{geminiApi,claudeCli}.ts`, `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/geminiWorkspaceKey.test.mts`, `docs/decisions/0104-gemini-workspace-key.md`.

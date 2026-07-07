@@ -20,10 +20,15 @@ const PUBLISH_PLATFORMS: { id: string; nameKey: string }[] = [
   { id: 'tiktok', nameKey: 'workspaces.content.platformTiktok' },
 ];
 
-const PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
+//? Q5 — media providers (image/video/3d + voice/sfx + music) vs the AI TEXT provider (Gemini, used by the
+//? script/analysis features). Split honestly so the user knows what each key drives — the Gemini key was
+//? previously stored but consumed by nothing; it now feeds the text features (server/ai/providers/geminiApi).
+const MEDIA_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'fal', nameKey: 'workspaces.content.providerFal', descKey: 'workspaces.content.providerFalDesc' },
   { id: 'elevenlabs', nameKey: 'workspaces.content.providerEleven', descKey: 'workspaces.content.providerElevenDesc' },
   { id: 'suno', nameKey: 'workspaces.content.providerSuno', descKey: 'workspaces.content.providerSunoDesc' },
+];
+const AI_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'gemini', nameKey: 'workspaces.content.providerGemini', descKey: 'workspaces.content.providerGeminiDesc' },
 ];
 
@@ -188,13 +193,24 @@ export default function ContentSettings() {
           {/* Style manager — reusable named styles (Q3). */}
           <StyleManagerSection />
 
-          {/* Provider API keys — stored ENCRYPTED, never shown back. */}
+          {/* Media provider API keys — stored ENCRYPTED, never shown back. */}
           <section className="rounded-2xl border border-container1-border bg-container1 p-5">
             <div className="mb-1">
               <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.keysTitle' })}</div>
               <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.keysDesc' })}</div>
             </div>
-            {PROVIDERS.map((p) => (
+            {MEDIA_PROVIDERS.map((p) => (
+              <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
+            ))}
+          </section>
+
+          {/* AI text provider key (Gemini) — drives the script/analysis features (Q5). */}
+          <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+            <div className="mb-1">
+              <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.aiKeysTitle' })}</div>
+              <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.aiKeysDesc' })}</div>
+            </div>
+            {AI_PROVIDERS.map((p) => (
               <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
             ))}
           </section>

@@ -87,6 +87,8 @@ export const claudeCliProvider: AiProvider = {
   label: 'Claude Code (CLI)',
   //? Available iff the CLI binary resolves. (Login state is a runtime concern the turn
   //? surfaces; a bare presence check keeps `available` cheap + non-interactive.)
+  //? The coding agent is subscription-billed (PTY) — no per-workspace key concept (the workspaceId arg the
+  //? provider contract now passes is simply not consumed here).
   available: () => Promise.resolve(existsSync(CLAUDE_BIN) || CLAUDE_BIN === 'claude'),
   complete: (req: AiCompletionRequest) => driveTurn(req),
 };
