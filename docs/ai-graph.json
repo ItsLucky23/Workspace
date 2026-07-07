@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 197,
+    "nodes": 199,
     "edges": 277,
-    "symbols": 248,
+    "symbols": 252,
     "callEdges": 37
   },
   "nodes": [
@@ -389,6 +389,11 @@
       "route": "api/workspaces/getDockerfile/v1"
     },
     {
+      "id": "workspaces/_api/issuePat_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/issuePat/v1"
+    },
+    {
       "id": "workspaces/_api/markRead_v1.ts",
       "kind": "api",
       "route": "api/workspaces/markRead/v1"
@@ -407,6 +412,11 @@
       "id": "workspaces/_api/pushConfig_v1.ts",
       "kind": "api",
       "route": "api/workspaces/pushConfig/v1"
+    },
+    {
+      "id": "workspaces/_api/revokePat_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/revokePat/v1"
     },
     {
       "id": "workspaces/_api/saveDevCommand_v1.ts",
@@ -3457,6 +3467,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/issuePat_v1.ts::<module>",
+      "file": "workspaces/_api/issuePat_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/issuePat_v1.ts::main",
+      "file": "workspaces/_api/issuePat_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/markRead_v1.ts::<module>",
       "file": "workspaces/_api/markRead_v1.ts",
       "name": "<module>",
@@ -3501,6 +3523,18 @@
     {
       "id": "workspaces/_api/pushConfig_v1.ts::main",
       "file": "workspaces/_api/pushConfig_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/revokePat_v1.ts::<module>",
+      "file": "workspaces/_api/revokePat_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/revokePat_v1.ts::main",
+      "file": "workspaces/_api/revokePat_v1.ts",
       "name": "main",
       "kind": "function"
     },

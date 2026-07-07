@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (41)
+## API routes (43)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -38,10 +38,12 @@
 | `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
 | `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
+| `api/workspaces/issuePat/v1` | POST | login | 10 | — | **no** | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
 | `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
+| `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
@@ -115,9 +117,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 89 |
+| _(unowned)_ | 91 |
 
-**Test coverage**: 3/91 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/93 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -147,10 +149,12 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/devLaunchEditor/v1`
 - `api/workspaces/generateDockerfile/v1`
 - `api/workspaces/generateDocs/v1`
+- `api/workspaces/issuePat/v1`
 - `api/workspaces/markRead/v1`
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
 - `api/workspaces/pushConfig/v1`
+- `api/workspaces/revokePat/v1`
 - `api/workspaces/saveDevCommand/v1`
 - `api/workspaces/savePushSubscription/v1`
 - `api/workspaces/studioBrand/v1`
@@ -169,9 +173,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/bulkAssign/v1`
 - `sync/workspaces/bulkMove/v1`
 - `sync/workspaces/bulkSprint/v1`
-- `sync/workspaces/bulkStatus/v1`
-- `sync/workspaces/changeRole/v1`
-- … +38 more
+- … +40 more
 
 ## Pages (28)
 

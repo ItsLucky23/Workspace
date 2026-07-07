@@ -903,6 +903,24 @@ model StudioBrandLibrary {
   createdAt   DateTime @default(now())
 }
 
+//? X3 — a scoped, revocable Personal Access Token for the public API. Only the SHA-256 hash is stored (the raw
+//? token is shown once at issue). Scoped per workspace + per capability; RBAC + single-writer still apply when
+//? a PAT drives a control-op.
+model PersonalAccessToken {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  workspaceId String    @db.ObjectId
+  name        String
+  tokenHash   String    @unique                     // sha256(raw) hex — the raw is never stored
+  tokenPrefix String                                 // first chars of the raw, for display (e.g. 'wsk_ab12')
+  scopes      String[]                               // e.g. ['tickets:write', 'content:read']
+  revoked     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  @@index([userId])
+  @@index([workspaceId])
+}
+
 //? O5 — a reusable OUTPUT SPEC: a named render format (aspect + optional watermark position) a user defines
 //? once and applies across pieces, so a repeatable video format doesn't have to be re-picked each time.
 model OutputTemplate {

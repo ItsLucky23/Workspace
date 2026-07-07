@@ -2827,3 +2827,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · copyWorkspaceAssets 3/3 (style-copy + brand-copy + non-member-source-geweigerd).
 
 **Files touched:** `server/orchestrator/conductor.ts` (copy-workspace-assets-op + imports), `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/copyWorkspaceAssets_server_v1.ts` (nw), `tests/integration/copyWorkspaceAssets.test.mts`, `docs/decisions/0135-cross-workspace-copy.md`.
+
+## 2026-07-08 — FREEDOM_PROGRAM X3: public API + scoped PATs — ADR 0136
+
+**Wat ik deed:** geen externe API. Nu `PersonalAccessToken`-model (alleen sha256-HASH opgeslagen, raw 1× getoond, prefix+scopes+revoked). Token-laag `generateToken`/`hashToken`/`resolvePat`; `driveViaPat(token, op, payload)` = authenticate→scope-check→enqueue op de single-writer-Conductor (PAT authenticeert+scopet alleen, NOOIT directe writer; zelfde RBAC als app). Allow-list: `quick-add`=tickets:write, `content-create`=content:write. Transport `POST /api/public/v1/op` (origin-exempt, Bearer wsk_ + JSON {op,payload}) + `issuePat`/`revokePat`-routes. Scope-catalog + token-UI = follow-ups.
+
+**Verify:** tsc 0 · lint (raw try/catch→tryCatchSync) · ai:lint · build · personalAccessToken 13/13 (hash-determinisme + resolve valid/revoked/unknown + driveViaPat: scoped-PAT-maakt-ticket-e2e[200] + insufficient-scope[403] + non-public-op[400] + revoked[401]).
+
+**Files touched:** `prisma/schema.prisma` (PersonalAccessToken), `server/auth/pat.ts` (nw: hash/generate/resolve/driveViaPat/isPublicOp), `server/auth/publicApiRoute.ts` (nw: POST /api/public/v1/op), `server/server.ts` (registreer), `src/workspaces/_api/issuePat_v1.ts` + `revokePat_v1.ts` (nw), `tests/integration/personalAccessToken.test.mts`, `docs/decisions/0136-public-api-pats.md`.

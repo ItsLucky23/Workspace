@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (134)
+## Decisions (135)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -147,6 +147,7 @@
 | 0133 | Reusable output templates (named format specs) — O5 | 🟢 accepted | content, render, templates, freedom-program | — | `docs/decisions/0133-output-templates.md` |
 | 0134 | Style-set portability — export/import a workspace's user styles as JSON (R1, style slice) | 🟢 accepted | styles, templates, reuse, portability, freedom-program | — | `docs/decisions/0134-style-set-portability.md` |
 | 0135 | Cross-workspace copy — copy styles + brand between workspaces (R2) | 🟢 accepted | reuse, workspaces, templates, freedom-program | — | `docs/decisions/0135-cross-workspace-copy.md` |
+| 0136 | Public API via scoped Personal Access Tokens over the control-API (X3) | 🟢 accepted | api, auth, extensibility, security, freedom-program | — | `docs/decisions/0136-public-api-pats.md` |
 
 ## Summaries
 
@@ -1223,6 +1224,14 @@ A pure `parseStyleSet(raw)` validates a portable style JSON array (drops malform
 A `copy-workspace-assets` control-op (workspaceSettings) that copies the user-authored styles + the brand kit FROM a source workspace INTO the active one, **reusing** `exportStyleSet`/`importStyleSet` (R1) + `exportBrandKit`/`importBrandKit` (R3). The Conductor authorizes the **source** side too — the acting user must be a member of the workspace they copy FROM (not just the target the RBAC already gates).
 
 → `docs/decisions/0135-cross-workspace-copy.md`
+
+### 0136 — Public API via scoped Personal Access Tokens over the control-API (X3)
+
+**0136** · accepted · tags: api, auth, extensibility, security, freedom-program · 2026-07-07
+
+A `PersonalAccessToken` model storing only the **SHA-256 hash** (raw shown once at issue) + a display prefix + `scopes` + a `revoked` flag. `generateToken`/`hashToken`/`resolvePat` are the token layer; `driveViaPat(token, op, payload)` authenticates → checks the op's required scope → enqueues on the *single-writer Conductor** (same RBAC as the app — the PAT only authenticates + scopes, never writes directly). Only an allow-listed set of ops is exposed (`quick-add` = tickets:write, `content-create` = content:write). Transport: a `POST /api/public/v1/op` custom route (origin-exempt, `Authorization: Bearer wsk_…` + a JSON `{ op, payload }`), + `issuePat`/`revokePat` membership-gated `_api` routes.
+
+→ `docs/decisions/0136-public-api-pats.md`
 
 ## Code governed by decisions
 

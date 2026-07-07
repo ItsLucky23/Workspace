@@ -138,6 +138,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   registerMediaDownload();
   //? Media upload (K1): POST /media/upload — authed + member-gated bring-your-own image/video → /media url.
   registerMediaUpload();
+  //? X3: the public API transport (PAT-authed control-op drive).
+  const { registerPublicApi } = await import('./auth/publicApiRoute');
+  registerPublicApi();
   //? Publishing OAuth (FIX-C): GET /content/oauth/<platform>/{start,callback} — the connect flow that
   //? makes the server-complete YouTube/TikTok publishing reachable (session-authed start; external callback).
   registerPublishOAuthRoutes();
