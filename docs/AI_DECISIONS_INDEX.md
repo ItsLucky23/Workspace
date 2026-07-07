@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (151)
+## Decisions (152)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -164,6 +164,7 @@
 | 0150 | D1 — the real YouTube byte-upload (resumable, all three legs) | 🟢 accepted | publish, youtube, upload, honesty, idea-to-outcome | — | `docs/decisions/0150-youtube-byte-upload.md` |
 | 0151 | D2 — TikTok async publish (status polling) | 🟢 accepted | publish, tiktok, honesty, idea-to-outcome | — | `docs/decisions/0151-tiktok-status-polling.md` |
 | 0152 | O-C — content pipeline orchestration (content-run-pipeline) | 🟢 accepted | content, orchestration, video, idea-to-outcome | — | `docs/decisions/0152-content-pipeline-orchestration.md` |
+| 0153 | V5/V6 — the video timeline editor UI | 🟢 accepted | content, video, editor, ui, idea-to-outcome | — | `docs/decisions/0153-video-timeline-editor.md` |
 
 ## Summaries
 
@@ -1376,6 +1377,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`runContentPipeline(...)`** chains the existing step functions — `generateScript` → `generateVoiceover` → (`decomposeIntoScenes` for `mode:'video'` | `generateBeatImages` for `mode:'slideshow'`) → `assembleContent` — into one run. It reuses an existing script rather than regenerating (idempotent-ish), threads the real `scriptId`, and returns which steps ran + whether any output stubbed. NO new generation logic — it composes the reviewed step functions. **`content-run-pipeline`** control-op (contentControl route, RBAC work-tickets): `{ contentProjectId, mode? }`; `video` is the default (the marquee stitched-scene path). The run itself is the user's consent (B-23); per-step autonomy-gating (pause for approval between stages, reusing the autonomy dial) is a logged follow-up.
 
 → `docs/decisions/0152-content-pipeline-orchestration.md`
+
+### 0153 — V5/V6 — the video timeline editor UI
+
+**0153** · accepted · tags: content, video, editor, ui, idea-to-outcome · 2026-07-08
+
+**`VideoTimelineEditor`** (modal from the content piece page): renders the piece's `VideoScene`s as proportional blocks and drives the existing ops — edit a scene's **duration (trim)** + **transition** (Dropdown), **split** (halve a scene → a new second half), **delete**, **reorder** (left/right) → all saved as the full ordered list via `content-save-scenes` (upsert by id, so ids/lineage survive). A **range selector** (start/end seconds + instruction) fires `content-refine-range`; a **"Generate scenes"** button fires `content-decompose-video`. Every write goes through `runContentOp` → the Conductor (B-23). **`runContentOp` payload widened to `Record<string, unknown>`** so the editor can pass the scene array + numeric start/end (not just strings); the route validates each op's real shape server-side. **Reorder/split/trim are buttons + inputs, not raw drag.** They are reliable, keyboard-accessible, and produce exactly the same scene-list save; drag is a logged follow-up (it needs live browser tuning).
+
+→ `docs/decisions/0153-video-timeline-editor.md`
 
 ## Code governed by decisions
 

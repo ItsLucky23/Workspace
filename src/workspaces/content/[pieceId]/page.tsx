@@ -15,6 +15,7 @@ import { EmptyState } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
+import VideoTimelineEditor from '../../_components/VideoTimelineEditor';
 import type { ContentAssetSummary } from '../../_data/types';
 import { backendUrl } from '../../../../config';
 
@@ -171,6 +172,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
   const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
   const [editImageAsset, setEditImageAsset] = useState<ContentAssetSummary | null>(null);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const piece = useMemo(() => content.pieces.find((p) => p.id === id), [content.pieces, id]);
 
@@ -303,6 +305,13 @@ export default function ContentPiece({ params }: { params: Record<string, string
               })}
             </div>
 
+            {/* V5 — open the video timeline editor (scenes + trim/transition/split + range-refine + decompose). */}
+            <button type="button" onClick={() => { setShowTimeline(true); }} className="mt-3 w-full flex items-center gap-3 rounded-xl border border-primary-border bg-primary/8 hover:bg-primary/12 px-3 py-2.5 text-left cursor-pointer transition-colors motion-safe:active:scale-[0.98]">
+              <span className="w-8 h-8 rounded-lg bg-container1 text-primary flex items-center justify-center shrink-0"><Icon name="table-columns" /></span>
+              <span className="text-sm font-medium text-title">{translate({ key: 'workspaces.timeline.open' })}</span>
+              <span className="ml-auto text-[11px] font-medium text-muted tabular-nums">{piece.scenes.length} {translate({ key: 'workspaces.timeline.scenes' })}</span>
+            </button>
+
             <div className="mt-5">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="text-sm font-medium text-muted">{translate({ key: 'workspaces.content.assetsTitle' })}</div>
@@ -324,6 +333,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
       </div>
       {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}
       {editImageAsset && <ImageEditor pieceId={piece.id} asset={{ id: editImageAsset.id, url: editImageAsset.url }} onClose={() => { setEditImageAsset(null); }} />}
+      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} onClose={() => { setShowTimeline(false); }} />}
     </div>
   );
 }

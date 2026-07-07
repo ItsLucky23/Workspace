@@ -3010,3 +3010,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/integration/runPipeline.test.mts` 6/6 (script+beats, voice-asset, scene-per-beat=4, render-asset, script-hergebruik op re-run).
 
 **Files:** `server/content/runPipeline.ts` (nw), `server/orchestrator/conductor.ts` (op+import), `src/workspaces/_functions/controlApi.ts` + `_sync/contentControl_server_v1.ts` + `server/control/rbac.ts` (op+mode), `tests/integration/runPipeline.test.mts` (nw), `docs/decisions/0152-*.md`.
+
+## 2026-07-08 — V5/V6: video-timeline-editor-UI — ADR 0153
+
+**Fase V stap 5/6 — de editor die de V1-V4-backend aanstuurt (V6 valt hierin).**
+- **`VideoTimelineEditor`** (modal vanaf de content-piece-pagina): scenes als proportionele blokken; per-scene duur(trim)/transition(Dropdown)/split/delete/reorder → volledige lijst via `content-save-scenes` (upsert). Range-selector(start/end+instructie) → `content-refine-range`. "Scenes genereren" → `content-decompose-video`. Alles via `runContentOp`→Conductor (B-23).
+- **`runContentOp` payload verbreed** naar `Record<string, unknown>` (scene-array + numerieke start/end).
+- Reorder/split/trim = knoppen+inputs (betrouwbaar, keyboard-toegankelijk), zelfde save; drag = follow-up. i18n×4 (`workspaces.timeline.*`, 24 keys).
+
+**Verify:** tsc 0 · lint 0/0 · ai:lint clean · build groen. **Live browser-verify (drag-polish, visuele QA, mobiel) = resterende stap, wacht op dev-server.**
+
+**Files:** `src/workspaces/_components/VideoTimelineEditor.tsx` (nw), `src/workspaces/content/[pieceId]/page.tsx` (import+knop+modal), `src/workspaces/_shell/WorkspacesContext.tsx` (runContentOp payload), `src/_locales/*.json` (×4), `docs/decisions/0153-*.md`.

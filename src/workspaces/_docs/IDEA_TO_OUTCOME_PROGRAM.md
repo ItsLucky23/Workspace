@@ -13,6 +13,27 @@
 
 ---
 
+## VOORTGANG (levend — bijgewerkt per gecommit increment)
+
+| Item | Status | ADR | Test |
+|---|---|---|---|
+| Bug: `npm test` Redis WRONGPASS | ✅ | — | testWithSecrets |
+| L2 O-A/O-B (intake copilot + assistent creëert) | ✅ | 0145 | 19/19 |
+| V1 VideoScene-model + save-scenes | ✅ | 0146 | 14/14 |
+| V2 echte multi-clip render | ✅ | 0147 | 17/17 |
+| V3 long-video-decompositie | ✅ | 0148 | 9+9 |
+| V4 range-refine | ✅ | 0149 | 10+7 |
+| D1 YouTube byte-upload | ✅ | 0150 | 12/12 |
+| D2 TikTok status-polling | ✅ | 0151 | 11/11 |
+| O-C content-run-pipeline | ✅ | 0152 | 6/6 |
+| V5 timeline-editor-UI | ✅ | 0153 | tsc/lint/build; browser-verify pending |
+| V6 knip/transition (via V5) | ✅ | 0153 | idem |
+| B rijke-image-editor · L3 mobiel · D3/D4 host/prod · G greenfield · O-D auto-activatie | ⬜ | | |
+
+> **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
+
+---
+
 ## FASE V — Echte video (de marquee) — "van idee → 60s multi-scene video"
 
 - **V1 — Video-segment-model (de basis).** Een piece krijgt een geordende lijst **Scenes/Segments**: `{order, videoAssetId?, imageAssetId?, startTrimMs, endTrimMs, transitionIn: 'cut'|'fade'|'xfade', durationMs}`. Prisma-model `VideoScene` (per-piece). **Seam:** nieuw model + snapshot-expose (piece.scenes). **Verify:** scenes CRUD-op + in snapshot; getest.
