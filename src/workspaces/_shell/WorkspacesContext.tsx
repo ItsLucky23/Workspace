@@ -232,6 +232,8 @@ export interface WorkspacesCtx {
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId: string; apiKey?: string; feature?: string }) => void;
   editChannelBrand: (channelId: string, brandVoice: string) => void;
+  //? Q2 — the per-workspace product/brand context folded into every creative generation.
+  saveProductContext: (productContext: string) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES

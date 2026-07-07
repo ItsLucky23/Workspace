@@ -16,6 +16,7 @@ import { runMediaGeneration } from '../media/registry';
 import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProgress } from '../media/types';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
+import { buildBrandContext } from './brandContext';
 
 export interface QueuedMediaJobArgs {
   workspaceId: string;
@@ -66,7 +67,10 @@ export async function runQueuedMediaAsset(prisma: PrismaClient, args: QueuedMedi
     }).catch(() => { /* a progress-write failure must never break the generation */ });
   };
 
-  const res = await runMediaGeneration({ feature, ...args.request, onProgress });
+  //? Q2 — persistent brand/product grounding for every media flow (one choke-point). The caller's own
+  //? request wins if it already set brandContext.
+  const brandContext = args.request.brandContext ?? await buildBrandContext(prisma, workspaceId, contentProjectId);
+  const res = await runMediaGeneration({ feature, ...args.request, ...(brandContext ? { brandContext } : {}), onProgress });
   await progressChain;
 
   if (!res.ok || !res.asset) {

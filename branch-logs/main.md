@@ -2537,3 +2537,11 @@ Elk item: verifieerbaar doel + de concrete **naad/tool** (met file-hints) + **Ve
 **Verify:** tsc 0 · lint · ai:lint · build · contentSnapshot 9/9 (nieuwe asserties: mediaCosts-tabel + per-piece spentCents) · contentModel 18/18. i18n ×4 (costPerItem/spentLabel/spentTooltip).
 
 **Files touched:** `server/media/registry.ts` (mediaCostTable), `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/contentSnapshot.test.mts`, `docs/decisions/0100-media-cost-transparency.md`.
+
+## 2026-07-07 — FREEDOM_PROGRAM Q2: persistent brand/product-grounding op elke creatieve generatie — ADR 0101
+
+**Wat ik deed:** de channel-brandVoice werd geïndexeerd maar door niets gebruikt, en er was geen plek voor persistente "wat we doen / doelgroep / altijd vermelden". Nu: nieuw `Workspace.productContext`-veld + een `content-edit-product` control-op + een settings-veld. Één helper `buildBrandContext(prisma, workspaceId, contentProjectId?)` voegt product-context + de channel-brandVoice samen (directe read — deterministisch, key-loos), gewired op ÉÉN choke-point per pad: media via de gedeelde `runQueuedMediaAsset` + `composeMediaPrompt` (vooraan geprepend); tekst via `generateScript`. Caller kan per request overriden.
+
+**Verify:** tsc 0 · lint · ai:lint · build · nieuwe `brandContext` 6/6 · contentScript 8/8 · contentImages 7/7 · contentVoice 12/12 · contentModel 18/18 · contentAutomation 7/7. i18n ×4.
+
+**Files touched:** `prisma/schema.prisma` (Workspace.productContext), `server/content/brandContext.ts` (nw), `server/content/{queuedMediaJob,script}.ts`, `server/media/{types,prompt}.ts`, `server/orchestrator/conductor.ts` (content-edit-product), `server/control/rbac.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`, `tests/integration/brandContext.test.mts`, `docs/decisions/0101-brand-product-grounding.md`.

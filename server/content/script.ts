@@ -6,6 +6,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { runAiCompletion } from '../ai/registry';
 import { resolveStyle, composeStylePrompt } from './styles';
+import { buildBrandContext } from './brandContext';
 import { extractJson, coerceBeats } from './jsonParse';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
@@ -51,7 +52,9 @@ export async function generateScript(
   args: { workspaceId: string; contentProjectId: string; brief: string; styleKey?: string; extraInstructions?: string },
 ): Promise<{ scriptId: string; beatCount: number; stub: boolean; providerId: string }> {
   const style = await resolveStyle(prisma, args.workspaceId, 'script', args.styleKey);
-  const system = composeStylePrompt(style, args.extraInstructions);
+  //? Q2 — prepend the persistent brand/product grounding so the script is on-brand.
+  const brandContext = await buildBrandContext(prisma, args.workspaceId, args.contentProjectId);
+  const system = [brandContext, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
   const res = await runAiCompletion('script', {
     prompt: `${args.brief}\n\n${SCRIPT_FORMAT}`,
     ...(system ? { system } : {}),

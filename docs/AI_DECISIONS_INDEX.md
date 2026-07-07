@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (99)
+## Decisions (100)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -112,6 +112,7 @@
 | 0098 | Media generation is queue-aware — the UI shows "in queue · position N" and only starts its elapsed timer when the job leaves the provider queue | 🟢 accepted | media, content, fal, realtime, broadcast, ux | — | `docs/decisions/0098-queue-aware-media-generation.md` |
 | 0099 | All media flows share one queue-aware lifecycle helper; content state syncs to the whole workspace with reconnect + staleness safety nets | 🟢 accepted | media, content, realtime, broadcast, race-conditions, robustness | — | `docs/decisions/0099-queue-aware-all-flows-and-workspace-sync.md` |
 | 0100 | Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot | 🟢 accepted | content, media, cost, ux, freedom-program | — | `docs/decisions/0100-media-cost-transparency.md` |
+| 0101 | A persistent brand/product context grounds every creative generation | 🟢 accepted | content, ai, branding, freedom-program | — | `docs/decisions/0101-brand-product-grounding.md` |
 
 ## Summaries
 
@@ -908,6 +909,14 @@ End-to-end queue awareness, respecting B-23 (the Conductor stays the single writ
 The per-feature € estimate table (`STUB_COST_CENTS`, the single source of truth) is exposed via a new `mediaCostTable()` and carried in the content snapshot (`ContentSnapshot.mediaCosts`). The piece UI shows a "≈ €X" chip on each metered generation action and folds the estimate into the confirm body (per-item actions like per-beat images show "≈ €X / item"). Non-metered actions (script/assemble) show no chip. Per-piece spend is surfaced (`ContentPieceSummary.spentCents`, grouped from the `MediaSpend` rows the system already records per `contentProjectId`) and shown on the piece header.
 
 → `docs/decisions/0100-media-cost-transparency.md`
+
+### 0101 — A persistent brand/product context grounds every creative generation
+
+**0101** · accepted · tags: content, ai, branding, freedom-program · 2026-07-07
+
+A new `Workspace.productContext` field holds the persistent brand/product context, editable in the content settings (a new `content-edit-product` control-op, single-writer). A single helper `buildBrandContext(prisma, workspaceId, contentProjectId?)` composes the workspace product context + the owning channel's `brandVoice` (read directly — deterministic, key-less, always available; not the embedding-dependent RAG path). It is folded into **every creative generation at one choke-point each**: media via the shared `runQueuedMediaAsset` helper (grounds all image/video/3d/voice/music/sfx/reference flows) + `composeMediaPrompt` (prepended first); text via `generateScript`'s system prompt.
+
+→ `docs/decisions/0101-brand-product-grounding.md`
 
 ## Code governed by decisions
 

@@ -50,6 +50,7 @@ export interface MediaGenerationRequest {
   workspaceId?: string;           //? display/activity tag (no tenancy enforced here)
   label?: string;
   apiKey?: string;                //? per-workspace key (decrypted from the EnvVar store) — overrides the env key
+  brandContext?: string;          //? Q2 — persistent brand/product grounding, prepended to the composed prompt
   onProgress?: MediaProgressCallback; //? live queue→running transitions (fal queue); omitted ⇒ no progress reporting
 }
 

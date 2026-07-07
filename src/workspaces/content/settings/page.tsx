@@ -52,6 +52,32 @@ function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (k
   );
 }
 
+//? Q2 — the persistent brand/product context folded into EVERY creative generation, so the AI stays
+//? on-brand without the user re-typing it. Saved via the content-edit-product control-op.
+function ProductContextSection() {
+  const translate = useTranslator();
+  const { activeWorkspace, saveProductContext } = useWorkspaces();
+  const [value, setValue] = useState(activeWorkspace.productContext ?? '');
+  const [saved, setSaved] = useState(false);
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.brandContextTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.brandContextDesc' })}</div>
+      </div>
+      <textarea
+        value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }} rows={4}
+        placeholder={translate({ key: 'workspaces.content.brandContextPlaceholder' })}
+        className="w-full rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none"
+      />
+      <div className="mt-2 flex items-center gap-3">
+        <button type="button" onClick={() => { saveProductContext(value.trim()); setSaved(true); }} className="rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.brandContextSave' })}</button>
+        {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.brandContextSaved' })}</span>}
+      </div>
+    </section>
+  );
+}
+
 export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
   const translate = useTranslator();
@@ -100,6 +126,9 @@ export default function ContentSettings() {
               </div>
             </div>
           </section>
+
+          {/* Brand & product context — folded into every creative generation (Q2). */}
+          <ProductContextSection />
 
           {/* Provider API keys — stored ENCRYPTED, never shown back. */}
           <section className="rounded-2xl border border-container1-border bg-container1 p-5">

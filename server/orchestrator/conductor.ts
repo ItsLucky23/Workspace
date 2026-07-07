@@ -1035,6 +1035,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await indexChannelBrand(prisma, action.workspaceId, channelId, brandVoice.trim() ? [brandVoice.trim()] : []);
       return;
     }
+    case 'content-edit-product': {
+      //? Q2 — the per-workspace product/brand context folded into every creative generation.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { productContext: str(payload, 'productContext') ?? '' } });
+      return;
+    }
     //? Content pipeline (F1.1, ADR 0049) — create a content piece / advance it through the fixed content
     //? stages / archive it. The Conductor is the only writer of ContentProject.stageId/status (B-23).
     case 'content-create': {

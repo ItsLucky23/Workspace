@@ -230,7 +230,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const wsIds = memberships.map((m) => m.workspaceId);
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, enabledSections: w.enabledSections }));
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, enabledSections: w.enabledSections, productContext: w.productContext }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace

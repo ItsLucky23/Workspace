@@ -1055,6 +1055,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Edit a channel's brand voice (U4) → updates the channel + re-indexes brand-RAG (B-23).
       editChannelBrand: (channelId, brandVoice) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-brand', channelId, brandVoice, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      saveProductContext: (productContext) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-product', productContext, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       docs: snap.docs,
       skills: snap.skills,
       invites: snap.invites,

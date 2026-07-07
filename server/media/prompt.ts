@@ -5,7 +5,8 @@
 import type { MediaGenerationRequest } from './types';
 
 export function composeMediaPrompt(req: MediaGenerationRequest): string {
-  return [req.style?.systemPrompt, req.prompt, req.extraInstructions]
+  //? Brand/product context (Q2) grounds the generation FIRST, then style + prompt + extra instructions.
+  return [req.brandContext, req.style?.systemPrompt, req.prompt, req.extraInstructions]
     .map((s) => (s ?? '').trim())
     .filter((s) => s.length > 0)
     .join('. ');
