@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 176,
-    "edges": 258,
+    "edges": 259,
     "symbols": 210,
     "callEdges": 34
   },
@@ -1245,6 +1245,10 @@
     {
       "from": "workspaces/_shell/WorkspacesShell.tsx",
       "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_components/motion.tsx"
     },
     {
       "from": "workspaces/_shell/WorkspacesShell.tsx",
@@ -2560,7 +2564,7 @@
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
       "dependents": 32,
-      "directDependents": 7
+      "directDependents": 8
     },
     {
       "id": "workspaces/_components/primitives.tsx",

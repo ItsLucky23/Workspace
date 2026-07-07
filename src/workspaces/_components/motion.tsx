@@ -19,6 +19,44 @@ export const SPRING_SHEET: Transition = { type: 'spring', duration: 0.42, bounce
 /** Soft spring for layout/hover micro-interactions. */
 export const SPRING_SOFT: Transition = { type: 'spring', stiffness: 420, damping: 32, mass: 0.7 };
 
+/** Soft easing curve for page/content entrances (a gentle ease-out-quint). */
+const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+/** A consistent, snappy page-enter transition keyed on the route. Wrapping the shell's routed content
+ *  in this gives every page the same premium fade+lift on navigation, in ONE place. `mode="wait"` so the
+ *  outgoing page never overlaps the incoming one (no layout flash); reduced-motion is honoured globally. */
+export function PageTransition({ routeKey, children }: { routeKey: string; children: ReactNode }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={routeKey}
+        className="h-full min-h-0"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.17, ease: EASE_OUT }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/** A staggered reveal for a list/grid of cards — children fade+lift in sequence on mount. Wrap a mapped
+ *  list's items in <Reveal index={i}> for a premium "content settles in" feel. Cheap; reduced-motion-safe. */
+export function Reveal({ index = 0, className, children }: { index?: number; className?: string; children: ReactNode }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: EASE_OUT, delay: Math.min(index * 0.04, 0.24) }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /** A menu/popover surface that fades + scales in from its top edge. The caller
  *  supplies positioning via `className` (e.g. `absolute right-0`). */
 export function Popover({ open, className, style, children }: { open: boolean; className?: string; style?: CSSProperties; children: ReactNode }) {

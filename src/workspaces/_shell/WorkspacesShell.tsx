@@ -13,6 +13,7 @@ import { MobileHeader } from './MobileChrome';
 import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
+import { PageTransition } from '../_components/motion';
 import Icon from '../_components/Icon';
 import { useTranslator } from '@luckystack/core/client';
 
@@ -75,7 +76,10 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
                 )}
               </AnimatePresence>
               <div className="flex-1 min-h-0">
-                {children}
+                {/* Consistent premium page-enter animation for every routed page (one place). */}
+                <PageTransition routeKey={ctx.view}>
+                  {children}
+                </PageTransition>
               </div>
             </div>
             <AnimatePresence initial={false}>

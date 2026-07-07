@@ -2418,3 +2418,17 @@ Beide artefact-families (HTML-iframe + JSON-preview) renderen correct met echte 
 **Verify:** live 21/21. Stub-suite intact: falProvider 26/26, mediaRegistry, referenceImage, audioProviders groen. tsc 0 · lint · ai:lint · build groen.
 
 **Files touched:** `server/media/providers/{fal,elevenlabs}.ts`, `tests/_helpers.mts`, `tests/live/liveAi.live.mts` (nw), `docs/decisions/0093-live-ai-verification.md`.
+
+## 2026-07-07 — Overnight-goal deel 6: premium motion-layer (page-transitions + tactiele primitives)
+
+**User prompt:** /goal (nachtrun) — premium feel: overal clean animations, duidelijkheid + consistentie.
+
+**Wat ik deed (ADR 0094):** de UI had al een volwassen gedeelde primitives-kit + motion-module (springs, Popover/Sheet, global reduced-motion). Premium-feel geleverd via de GEDEELDE laag (weinig, veilige plekken — geen blinde per-page churn):
+- **`PageTransition`** (motion.tsx) rond de routed content in `WorkspacesShell`, gekeyed op de route → alle ~19 pages krijgen dezelfde snappy fade+lift bij navigatie vanuit ÉÉN call-site (`mode="wait"`, 0.17s, geen overlap).
+- **Tactiele primitives:** `WsButton`/`IconButton` krijgen een `motion-safe:active:scale`-press → universele micro-interactie via de gedeelde componenten.
+- **`Reveal`-stagger-primitive toegevoegd maar NIET geforceerd** (zou dubbel-animeren bovenop PageTransition → druk). Beschikbaar voor bewuste, browser-geverifieerde opt-in later.
+Alle motion = theme-tokens + reduced-motion-safe.
+
+**Verify:** tsc 0 · lint · ai:lint · build groen. Browser-visual-verify = jouw ochtend-stap (durations centraal → één-file-tuning).
+
+**Files touched:** `src/workspaces/_components/motion.tsx`, `src/workspaces/_components/primitives.tsx`, `src/workspaces/_shell/WorkspacesShell.tsx`, `docs/decisions/0094-premium-motion-layer.md`.

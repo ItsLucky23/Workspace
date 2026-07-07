@@ -121,7 +121,7 @@ export function WsButton({ variant = 'primary', icon, children, onClick, title, 
   return (
     <button
       type={type} onClick={onClick} title={title} disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${BTN_VARIANT[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition-[color,background-color,transform] duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
     >
       {icon && <Icon name={icon} />}
       {children}
@@ -133,7 +133,7 @@ export function IconButton({ icon, onClick, title, active, className = '' }: { i
   return (
     <button
       type="button" onClick={onClick} title={title}
-      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-common transition-colors cursor-pointer hover:bg-container2 ${active ? 'bg-container2 text-title' : ''} ${className}`}
+      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-common transition-[color,background-color,transform] duration-150 cursor-pointer hover:bg-container2 motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
     >
       <Icon name={icon} />
     </button>
