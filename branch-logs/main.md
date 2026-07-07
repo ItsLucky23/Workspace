@@ -2989,3 +2989,14 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 **Verify:** tsc 0 · lint 0 · build groen · `tests/unit/youtubeUpload.test.mts` 12/12 (init resumable-shape + X-Upload-Content-Type + metadata + privacy-variant; PUT naar session-URI + bearer + video/* + lege body). Publish-suite geen regressie (publish 8, publishReal 13, publishTiktok 5, scheduledPublish 9). Live 3-leg round-trip = user met echte OAuth-app.
 
 **Files:** `server/content/publishOAuth.ts` (youtubeResumableUpload + buildResumablePut + readAssetBytes + imports), `tests/unit/youtubeUpload.test.mts` (nw), `docs/decisions/0150-*.md`.
+
+## 2026-07-08 — D2: TikTok async publish (status-polling) — ADR 0151
+
+**Fase D stap 2 — audit-bug "TikTok fabriceert een URL zonder bevestiging" gedicht.**
+- **`tiktokUpload`**: init → publish_id → POLL `/post/publish/status/fetch/` (bounded) tot `PUBLISH_COMPLETE` → URL uit de bevestigde public post-id. `FAILED`/niet-bevestigd → null (eerlijke error, ADR 0144), nooit gefabriceerde URL.
+- **`buildTiktokStatusRequest` + `parseTiktokStatus`** (puur, getest). Sleep tussen polls geïnjecteerd.
+- Bekende limiet gelogd: heel trage publish > poll-window → onbevestigd.
+
+**Verify:** tsc 0 · lint 0 · build groen · `tests/unit/tiktokPublish.test.mts` 11/11 (status-req shape + publish_id, PUBLISH_COMPLETE→postId, PROCESSING→leeg, FAILED, null/empty). publishTiktok 5/5 (geen regressie). Publish-leg nu echt voor beide platforms (D1+D2).
+
+**Files:** `server/content/publishOAuth.ts` (tiktokUpload + status-builder + parser), `tests/unit/tiktokPublish.test.mts` (nw), `docs/decisions/0151-*.md`.

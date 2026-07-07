@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (149)
+## Decisions (150)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -162,6 +162,7 @@
 | 0148 | V3 — long-video decomposition (content-decompose-video) | 🟢 accepted | content, video, decomposition, idea-to-outcome | — | `docs/decisions/0148-long-video-decomposition.md` |
 | 0149 | V4 — range-refine (content-refine-range) | 🟢 accepted | content, video, editing, lineage, idea-to-outcome | — | `docs/decisions/0149-range-refine.md` |
 | 0150 | D1 — the real YouTube byte-upload (resumable, all three legs) | 🟢 accepted | publish, youtube, upload, honesty, idea-to-outcome | — | `docs/decisions/0150-youtube-byte-upload.md` |
+| 0151 | D2 — TikTok async publish (status polling) | 🟢 accepted | publish, tiktok, honesty, idea-to-outcome | — | `docs/decisions/0151-tiktok-status-polling.md` |
 
 ## Summaries
 
@@ -1358,6 +1359,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **All three legs of the resumable upload.** `youtubeResumableUpload`: (1) POST the metadata (the existing `buildUploadRequest` init, which carries `X-Upload-Content-Type` so YouTube returns a session URI) and read the `Location` header; (2) read the video bytes; (3) PUT the bytes to the session URI and read the video `id` from the response. Any leg failing → null → the publish is an honest error (never a fake success). **`buildResumablePut(sessionUri, accessToken)`** — a pure, exported builder for leg 3 (the transport attaches the byte body), unit-tested alongside the init builder. **`readAssetBytes(assetUrl)`** — reads a local `/media/<file>` from the media store or fetches an http(s) URL; a `stub://`/unknown url yields null (not uploadable). So a real rendered mp4 in the media store uploads directly, without needing a public URL. **TikTok stays a single init** (PULL_FROM_URL); its status-polling + confirmed url is D2.
 
 → `docs/decisions/0150-youtube-byte-upload.md`
+
+### 0151 — D2 — TikTok async publish (status polling)
+
+**0151** · accepted · tags: publish, tiktok, honesty, idea-to-outcome · 2026-07-08
+
+**Poll the status endpoint until confirmed.** `tiktokUpload`: init → `publish_id` → poll `/post/publish/status/fetch/` (bounded, `TIKTOK_POLL_ATTEMPTS`) until `PUBLISH_COMPLETE`, then build the url from the CONFIRMED public post id. `FAILED` or not-confirmed-within-the-window → null (an honest error, per ADR 0144) — never a fabricated url. **Pure builders/parser:** `buildTiktokStatusRequest(publishId, accessToken)` and `parseTiktokStatus(json)` (status enum + the public post id), unit-tested. The `sleep` between polls is injected so the live poll waits without affecting tests (which inject the whole transport).
+
+→ `docs/decisions/0151-tiktok-status-polling.md`
 
 ## Code governed by decisions
 

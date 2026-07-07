@@ -119,6 +119,25 @@ export function buildResumablePut(sessionUri: string, accessToken: string, conte
   return { url: sessionUri, method: 'PUT', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': contentType } };
 }
 
+//? D2 — TikTok publishes asynchronously: the init returns a `publish_id`, and the post only exists once the
+//? status endpoint reports PUBLISH_COMPLETE. Pure builder for that status poll. Exported for tests.
+const TIKTOK_STATUS_URL = 'https://open.tiktokapis.com/v2/post/publish/status/fetch/';
+export function buildTiktokStatusRequest(publishId: string, accessToken: string): HttpRequest {
+  return { url: TIKTOK_STATUS_URL, method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ publish_id: publishId }) };
+}
+
+//? D2 — parse a TikTok status response → the processing status + (once available) the public post id. Pure +
+//? exported. `status` is TikTok's enum (PROCESSING_UPLOAD | PUBLISH_COMPLETE | FAILED | …).
+export function parseTiktokStatus(json: unknown): { status: string; postId: string } {
+  const top = (json !== null && typeof json === 'object' ? json : {}) as Record<string, unknown>;
+  const data = (top.data !== null && typeof top.data === 'object' ? top.data : {}) as Record<string, unknown>;
+  const status = typeof data.status === 'string' ? data.status : '';
+  const ids: unknown[] = Array.isArray(data.publicaly_available_post_id) ? data.publicaly_available_post_id : [];
+  const first: unknown = ids[0];
+  const postId = typeof first === 'string' || typeof first === 'number' ? String(first) : '';
+  return { status, postId };
+}
+
 //? Read a publishable asset's bytes: a local `/media/<file>` from the media store, or an http(s) URL. A
 //? `stub://`/unknown url yields null (not uploadable). Used by the real YouTube byte-upload.
 async function readAssetBytes(assetUrl: string): Promise<Buffer | null> {
@@ -189,17 +208,33 @@ async function youtubeResumableUpload(input: { accessToken: string; assetUrl: st
   return { externalUrl: `https://youtube.com/watch?v=${id}` };
 }
 
+//? D2 — the real TikTok publish: init (PULL_FROM_URL) → `publish_id`, then POLL the status endpoint until it is
+//? PUBLISH_COMPLETE and build the url from the confirmed post id. Returns null if it FAILs or is not confirmed
+//? within the poll window (→ honest error, never a fabricated url like the pre-D2 code returned). `sleep` is
+//? injectable so a live poll waits between attempts without blocking tests (which inject the whole transport).
+const TIKTOK_POLL_ATTEMPTS = 6;
+async function tiktokUpload(input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }, sleepMs: (ms: number) => Promise<void>): Promise<{ externalUrl: string } | null> {
+  const initRes = await runJson(buildUploadRequest('tiktok', input));
+  const o = (initRes !== null && typeof initRes === 'object' ? initRes : {}) as Record<string, unknown>;
+  const publishIdRaw = (o.data as { publish_id?: unknown } | undefined)?.publish_id;
+  const publishId = typeof publishIdRaw === 'string' ? publishIdRaw : '';
+  if (publishId.length === 0) return null;
+  for (let attempt = 0; attempt < TIKTOK_POLL_ATTEMPTS; attempt++) {
+    const [, statusRes] = await tryCatch(() => runJson(buildTiktokStatusRequest(publishId, input.accessToken)));
+    const { status, postId } = parseTiktokStatus(statusRes ?? null);
+    if (status === 'PUBLISH_COMPLETE') return { externalUrl: `https://tiktok.com/@me/video/${postId.length > 0 ? postId : publishId}` };
+    if (status === 'FAILED') return null;
+    await sleepMs(3000);
+  }
+  return null; // not confirmed within the window — do not fabricate a url
+}
+
 export const realUploadTransport: PublishUploadTransport = {
   upload: async (platform, input) => {
-    //? YouTube: the full 3-leg resumable upload (real bytes). TikTok: the single PULL_FROM_URL init (status
-    //? polling + the confirmed url is D2). Instagram/LinkedIn have no builder (future-ready).
+    //? YouTube: the full 3-leg resumable upload (real bytes). TikTok: init + status-poll until confirmed.
+    //? Instagram/LinkedIn have no builder (future-ready).
     if (platform === 'youtube') return youtubeResumableUpload(input);
-    const res = await runJson(buildUploadRequest(platform, input));
-    const o = (res !== null && typeof res === 'object' ? res : {}) as Record<string, unknown>;
-    const publishId = (o.data as { publish_id?: unknown } | undefined)?.publish_id;
-    const id = typeof publishId === 'string' ? publishId : '';
-    if (id.length === 0) return null;
-    return { externalUrl: `https://tiktok.com/@me/video/${id}` };
+    return tiktokUpload(input, (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }));
   },
 };
 
