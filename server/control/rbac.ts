@@ -70,6 +70,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'remove-env': CAP.workspaceSettings,
   'service-provision': CAP.workspaceSettings,
   'service-teardown': CAP.workspaceSettings,
+  'ui-review-create': CAP.workTickets,
   'save-integration': CAP.workspaceSettings,
   'remove-integration': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,

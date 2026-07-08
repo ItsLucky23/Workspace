@@ -145,6 +145,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/ticketEdit/v1` | — | — | — |
 | `workspaces/transferOwnership/v1` | — | — | — |
 | `workspaces/triggerAction/v1` | — | — | — |
+| `workspaces/uiReviewCreate/v1` | — | — | — |
 
 ### Server-injected `functions.*` map
 

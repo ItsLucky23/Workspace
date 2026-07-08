@@ -305,6 +305,23 @@ model ServiceStack {
   @@index([workspaceId])
 }
 
+//? U1 — a "unfuck the UI" review request: uploaded screenshots + ticked problems (the UI_PROBLEMS taxonomy) +
+//? free-text notes. U2 turns an accepted one into N redesign variants → a ticket with the chosen design + the
+//? ticked problems as stage instructions. Conductor-only writer (B-23).
+model UiReviewRequest {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  page        String?                             // which page/flow (free label)
+  screenshots String[]                            // /media/… urls (K1 upload)
+  problems    String[]                            // taxonomy keys (server/ui/uiReview UI_PROBLEMS)
+  notes       String?                             // free-text ("anything off-list")
+  status      String   @default("open")           // 'open' | 'redesigned' | 'closed'
+  createdById String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, status])
+}
+
 //? Per-project forge connection (ADR 0036, item A2 — GitHubForge). Generalizes the
 //? workspace GitLab fields (`Workspace.forgeType`/`gitlabUrl`/`gitlabTokenEnc`) to a
 //? PER-PROJECT row so a workspace can mix GitLab + GitHub projects (multi-project, ADR

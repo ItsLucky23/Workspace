@@ -55,6 +55,7 @@ import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
 import { presetCompose } from '../container/servicePresets';
+import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
@@ -1823,6 +1824,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const name = str(payload, 'name') ?? str(target, 'name');
       if (!name) return { ok: false };
       return teardownServiceStack(prisma, action.workspaceId, name);
+    }
+    //? U1 — persist a "unfuck the UI" review request (screenshots + ticked problems + notes). Off-taxonomy
+    //? problems + non-/media screenshots are dropped (sanitized). B-23: the Conductor is the only writer.
+    case 'ui-review-create': {
+      const screenshots = sanitizeScreenshots(payload.screenshots);
+      const problems = sanitizeProblems(payload.problems);
+      if (screenshots.length === 0 && problems.length === 0) return { ok: false, error: 'uiReview.empty' };
+      const page = str(payload, 'page'); const notes = str(payload, 'notes');
+      return prisma.uiReviewRequest.create({ data: { workspaceId: action.workspaceId, screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}), createdById: userId, status: 'open' } });
     }
     //? Promote up the dev→staging→prod ladder (ADR 0038) — deploys the SOURCE env's tested image to the
     //? next stage; prod is gated on an explicit approval + a live source (B-23).

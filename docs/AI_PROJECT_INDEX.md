@@ -57,7 +57,7 @@
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 
-## Sync routes (55)
+## Sync routes (56)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -116,6 +116,7 @@
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
+| `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
 
 ## Ownership & coverage
 
@@ -124,9 +125,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 98 |
+| _(unowned)_ | 99 |
 
-**Test coverage**: 3/100 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/101 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -180,7 +181,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
 - `sync/workspaces/bulkAssign/v1`
-- … +47 more
+- … +48 more
 
 ## Pages (28)
 
