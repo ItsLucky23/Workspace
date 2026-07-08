@@ -4,7 +4,7 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 
-const { buildAuthUrl, buildExchangeRequest, parseTokenResponse, buildUploadRequest } =
+const { buildAuthUrl, buildExchangeRequest, parseTokenResponse, buildUploadRequest, buildRefreshRequest, isTokenExpired } =
   await import('../../server/content/publishOAuth.ts');
 
 // 1) authorize URL
@@ -50,6 +50,27 @@ const { buildAuthUrl, buildExchangeRequest, parseTokenResponse, buildUploadReque
   const tt = buildUploadRequest('tiktok', { accessToken: 'AT', assetUrl: 'https://cdn/v.mp4', title: 'Clip' });
   assert(tt.url.includes('open.tiktokapis.com/v2/post/publish/video/init'), 'tiktok init endpoint');
   assert((tt.body ?? '').includes('PULL_FROM_URL') && (tt.body ?? '').includes('https://cdn/v.mp4'), 'tiktok pulls the video from the asset url');
+}
+
+// 5) F1 — refresh-token grant request shape + expiry check
+{
+  process.env.YOUTUBE_CLIENT_ID = 'yt'; process.env.YOUTUBE_CLIENT_SECRET = 'sec';
+  const yt = buildRefreshRequest('youtube', 'RT-123');
+  eq(yt.method, 'POST', 'refresh is POST');
+  eq(yt.url, 'https://oauth2.googleapis.com/token', 'youtube token endpoint reused for refresh');
+  assert((yt.body ?? '').includes('grant_type=refresh_token') && (yt.body ?? '').includes('refresh_token=RT-123'), 'youtube refresh grant + token');
+  assert((yt.body ?? '').includes('client_id=yt'), 'youtube keys on client_id');
+
+  process.env.TIKTOK_CLIENT_KEY = 'tt-key'; process.env.TIKTOK_CLIENT_SECRET = 'tt-sec';
+  const tt = buildRefreshRequest('tiktok', 'RT-tt');
+  eq(tt.url, 'https://open.tiktokapis.com/v2/oauth/token/', 'tiktok token endpoint reused for refresh');
+  assert((tt.body ?? '').includes('client_key=tt-key') && (tt.body ?? '').includes('grant_type=refresh_token'), 'tiktok keys on client_key + refresh grant');
+
+  const now = 1_000_000_000_000;
+  assert(isTokenExpired({ accessToken: 'AT', expiresAt: now - 1 }, now), 'a lapsed token is expired');
+  assert(isTokenExpired({ accessToken: 'AT', expiresAt: now + 30_000 }, now), 'within the 60s skew → treated as expired');
+  assert(!isTokenExpired({ accessToken: 'AT', expiresAt: now + 3600_000 }, now), 'a fresh token is not expired');
+  assert(!isTokenExpired({ accessToken: 'AT' }, now), 'a token with no expiresAt is treated as non-expiring');
 }
 
 report('tests/unit/publishOAuth.test.mts');

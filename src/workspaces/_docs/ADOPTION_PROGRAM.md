@@ -29,7 +29,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 
 | Item | Status | ADR | Test |
 |---|---|---|---|
-| — | ⬜ | | |
+| F1 OAuth token-refresh (publish) | ✅ | — (hardening) | publishOAuth-unit 27/27 · publishReal-integratie (+refresh) |
 
 ---
 
