@@ -14,6 +14,8 @@ import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
 import { resolveProjectBaseImage } from '../container/baseImages';
 import { workspaceContainerContext } from '../container/composeEngine';
+import { runPipeline } from '../ci/runner';
+import { isTestStage, testStageCiVerdict } from '../ci/gate';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
 import { decryptSecret } from '../crypto/secretBox';
@@ -309,8 +311,18 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     //? A4 — the effective gate = the stage's own flag modulated by the workspace autonomy level.
     const [, wsRow] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { autonomyLevel: true } }));
     const gated = resolveStageGate(stageRow.gateForApproval, wsRow?.autonomyLevel);
-    //? Advance the ticket to the next stage unless this stage is gated for human approval.
-    if (nextStage && !gated) {
+    //? R2 — a TEST stage auto-fires the deterministic CI gate: a RED run BLOCKS advancement + parks the ticket
+    //? (was free-text only). `runPipeline` self-handles no-ci.yml ('none') / no-docker ('canceled') → nogate.
+    let ciBlocked = false;
+    if (isTestStage(stageRow.kind)) {
+      const [, ci] = await tryCatch(() => runPipeline(prisma, workspaceId, ticket.projectId, { branch: ticket.branch ?? ticketKey, commitHash: ticket.commitHash ?? '', ticketId: ticket.id, trigger: 'test-stage' }));
+      if (ci && testStageCiVerdict(ci.status) === 'fail') {
+        ciBlocked = true;
+        await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: 'CI failed — fix the failing tests before this ticket advances.', status: 'needs-input', remindedAt: null } });
+      }
+    }
+    //? Advance the ticket to the next stage unless this stage is gated for human approval OR the CI gate is red.
+    if (nextStage && !gated && !ciBlocked) {
       await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { stageId: nextStage.key } });
     }
     //? Realtime (item 5): the engine advance was silent before — broadcast the updated ticket so

@@ -45,3 +45,15 @@ export async function securityBlocksProdPromote(prisma: PrismaClient, workspaceI
   const sev = run?.maxSeverity ?? 'none';
   return (SEVERITY_RANK[sev] ?? 0) >= (SEVERITY_RANK.high ?? 3);
 }
+
+//? R2 — the deterministic TEST-stage gate. A `test`-kind stage AUTO-fires the built-in CI on completion; a RED
+//? run BLOCKS the ticket from advancing (was free-text only). A missing ci.yml (`none`) or an un-runnable one
+//? (`canceled`, no docker) does NOT block — the gate only bites when the CI can actually judge. Pure.
+export function isTestStage(kind: string): boolean { return kind === 'test'; }
+
+export type TestGateVerdict = 'pass' | 'fail' | 'nogate';
+export function testStageCiVerdict(status: string): TestGateVerdict {
+  if (status === 'passed' || status === 'success') return 'pass';
+  if (status === 'failed') return 'fail';
+  return 'nogate';
+}
