@@ -28,6 +28,9 @@ export async function assembleContent(
   if (!script) return { ok: false, stub: false, beatCount: 0, totalMs: 0 };
   const beats = await prisma.beat.findMany({ where: { workspaceId: args.workspaceId, scriptId: script.id }, orderBy: { order: 'asc' } });
   const voice = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'voice' }, orderBy: { createdAt: 'desc' } });
+  //? V5 audio-track — the piece's background music + its per-track gains (voice / ducked music) for the mix.
+  const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true } });
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
   const timeline = beats.map((b) => ({ order: b.order, text: b.text, imageAssetId: b.imageAssetId ?? null, durationMs: b.durationMs ?? 3000 }));
@@ -71,7 +74,7 @@ export async function assembleContent(
   //? Attempt the REAL ffmpeg render; degrade to a valid-shaped stub when assets are still `stub://`
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
   const render = useScenes
-    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null }, opts)
+    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
     : await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
   const stub = !render.ok;
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.

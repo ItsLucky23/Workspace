@@ -1338,6 +1338,8 @@ model ContentProject {
   status      String   @default("idle")             // idle|busy|needs-input|done|paused|stuck
   styleId     String?  @db.ObjectId                 // → StylePreset.id (default style for this piece)
   needsInput  String?                               // denormalized open question (answer-queue)
+  voiceVolume Float    @default(1)                   // V5 audio-track — linear gain for the voiceover in the mix
+  musicVolume Float    @default(0.25)                // V5 audio-track — ducked linear gain for the background music
   archived    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

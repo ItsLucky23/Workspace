@@ -20,7 +20,7 @@ const CONTENT_OPS = new Set<string>([
   'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
   'content-gen-reference-image', 'content-gen-shortform', 'content-analyze-reference-video',
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
-  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-unarchive', 'content-unpublish',
+  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-save-audio-mix', 'content-unarchive', 'content-unpublish',
 ]);
 //? Type-guard: a whitelisted content op IS a ControlOp (no cast needed downstream).
 const isContentOp = (op: string): op is ControlOp => CONTENT_OPS.has(op);
@@ -40,6 +40,8 @@ export interface SyncParams {
     scenes?: { id?: string; videoAssetId?: string; imageAssetId?: string; startTrimMs?: number; endTrimMs?: number; durationMs?: number; transitionIn?: string; prompt?: string }[];
     //? V3/V4 — decompose per-scene duration; range-refine selection + instruction. O-C — pipeline mode.
     sceneDurationMs?: number; startMs?: number; endMs?: number; instruction?: string; mode?: string;
+    //? V5 audio-track — per-piece voice gain + ducked music gain (content-save-audio-mix).
+    voiceVolume?: number; musicVolume?: number;
   };
   user: SessionLayout;
   functions: Functions;

@@ -5,9 +5,9 @@
 //? Conductor (B-23). Reorder/split/trim are buttons + inputs (reliable) rather than raw drag; drag is a
 //? follow-up. Rendered as a modal from the content piece page. Browser-verify pending the dev server.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
+import { useTranslator, i18nNotify as notify, tryCatch } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
@@ -21,8 +21,58 @@ type EditScene = VideoSceneSummary;
 type Transition = 'cut' | 'fade' | 'xfade';
 const TRANSITIONS: Transition[] = ['cut', 'fade', 'xfade'];
 const clampDur = (ms: number): number => Math.max(500, Math.min(60_000, Math.round(ms)));
+const WAVE_BARS = 60;
 
-export default function VideoTimelineEditor({ pieceId, scenes, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; onClose: () => void }) {
+//? V5 — decode an audio asset into WAVE_BARS per-block peak amplitudes (0..1) via the Web Audio API. Throws
+//? on no AudioContext / fetch / decode failure; the caller wraps it in tryCatch and falls back to a baseline.
+async function decodePeaks(url: string): Promise<number[]> {
+  const buf = await fetch(url).then((r) => r.arrayBuffer());
+  const ac = new globalThis.AudioContext();
+  const decoded = await ac.decodeAudioData(buf);
+  void ac.close();
+  const data = decoded.getChannelData(0);
+  const block = Math.max(1, Math.floor(data.length / WAVE_BARS));
+  const peaks: number[] = [];
+  for (let i = 0; i < WAVE_BARS; i++) {
+    let max = 0;
+    for (let j = 0; j < block; j++) { const v = Math.abs(data[i * block + j] ?? 0); if (v > max) max = v; }
+    peaks.push(max);
+  }
+  return peaks;
+}
+
+//? V5 audio-track — a real waveform for an audio asset (peak bars). Theme-driven (fillStyle reads the
+//? canvas's resolved `text-primary` colour, no hardcoded hex). Degrades to a flat baseline when the asset
+//? can't be fetched/decoded (stub url, no network, no AudioContext).
+function Waveform({ url }: { url: string }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d') ?? null;
+    if (!canvas || !ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    const color = getComputedStyle(canvas).color || 'gray';
+    const draw = (peaks: number[]): void => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = color;
+      const bw = w / peaks.length;
+      for (const [i, p] of peaks.entries()) { const bh = Math.max(1, p * h); ctx.fillRect(i * bw, (h - bh) / 2, Math.max(1, bw - 1), bh); }
+    };
+    void (async () => {
+      const [, peaks] = await tryCatch(() => decodePeaks(url));
+      //? peaks is null when the decode failed (tryCatch's error path) → fall back to a flat baseline. The
+      //? type-lint views tryCatch's result as non-null, but at runtime it genuinely can be null here.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime-null on decode failure feeds the baseline
+      if (!cancelled) draw(peaks && peaks.length > 0 ? peaks : Array.from({ length: WAVE_BARS }, () => 0.12));
+    })();
+    return () => { cancelled = true; };
+  }, [url]);
+  return <canvas ref={ref} width={480} height={36} className="w-full h-9 rounded bg-container2 text-primary" />;
+}
+
+export default function VideoTimelineEditor({ pieceId, scenes, voiceUrl, musicUrl, voiceVolume, musicVolume, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; voiceUrl: string | null; musicUrl: string | null; voiceVolume: number; musicVolume: number; onClose: () => void }) {
   const translate = useTranslator();
   const { runContentOp } = useWorkspaces();
   useEscapeKey(onClose);
@@ -32,6 +82,8 @@ export default function VideoTimelineEditor({ pieceId, scenes, onClose }: { piec
   const [refineStart, setRefineStart] = useState(0);
   const [refineEnd, setRefineEnd] = useState(5);
   const [instruction, setInstruction] = useState('');
+  const [voiceVol, setVoiceVol] = useState(voiceVolume);
+  const [musicVol, setMusicVol] = useState(musicVolume);
 
   const totalMs = useMemo(() => local.reduce((sum, s) => sum + s.durationMs, 0), [local]);
   const transitionItems = TRANSITIONS.map((t) => ({ id: t, value: t, item: translate({ key: `workspaces.timeline.t_${t}` }) }));
@@ -74,6 +126,12 @@ export default function VideoTimelineEditor({ pieceId, scenes, onClose }: { piec
     runContentOp('content-refine-range', pieceId, { startMs: Math.round(refineStart * 1000), endMs: Math.round(refineEnd * 1000), instruction: instruction.trim() });
     notify.success({ key: 'workspaces.timeline.refineQueued' });
     setInstruction('');
+  };
+
+  //? V5 — persist the audio mix (voice gain + ducked music gain) for the next render.
+  const saveAudioMix = (): void => {
+    runContentOp('content-save-audio-mix', pieceId, { voiceVolume: voiceVol, musicVolume: musicVol });
+    notify.success({ key: 'workspaces.timeline.audioSaved' });
   };
 
   const sel = local[selected];
@@ -135,6 +193,29 @@ export default function VideoTimelineEditor({ pieceId, scenes, onClose }: { piec
           </div>
           <input type="text" value={instruction} onChange={(e) => { setInstruction(e.target.value); }} placeholder={translate({ key: 'workspaces.timeline.instructionPlaceholder' })} className="rounded-lg border border-container1-border bg-background px-2 py-1 text-sm text-common" />
           <WsButton variant="secondary" onClick={refine} disabled={instruction.trim().length === 0}><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.timeline.refine' })}</WsButton>
+        </div>
+
+        {/* V5 — the audio track: waveform per audio asset + voice/duck sliders that feed the render mix. */}
+        <div className="rounded-xl border border-container1-border bg-container1 p-3 flex flex-col gap-3">
+          <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.timeline.audioTitle' })}</div>
+          {voiceUrl === null && musicUrl === null && <div className="text-xs text-muted">{translate({ key: 'workspaces.timeline.audioEmpty' })}</div>}
+          {voiceUrl !== null && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.timeline.voice' })}</span>
+              <Waveform url={voiceUrl} />
+              <input type="range" min={0} max={2} step={0.05} value={voiceVol} onChange={(e) => { setVoiceVol(Number(e.target.value)); }} className="accent-primary" />
+            </div>
+          )}
+          {musicUrl !== null && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.timeline.music' })}</span>
+              <Waveform url={musicUrl} />
+              <input type="range" min={0} max={1} step={0.05} value={musicVol} onChange={(e) => { setMusicVol(Number(e.target.value)); }} className="accent-primary" />
+            </div>
+          )}
+          {(voiceUrl !== null || musicUrl !== null) && (
+            <WsButton variant="secondary" onClick={saveAudioMix}><Icon name="wave-square" /> {translate({ key: 'workspaces.timeline.audioSave' })}</WsButton>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-1">

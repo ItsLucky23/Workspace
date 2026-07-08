@@ -122,6 +122,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-decompose-video': CAP.workTickets,
   'content-refine-range': CAP.workTickets,
   'content-run-pipeline': CAP.workTickets,
+  'content-save-audio-mix': CAP.workTickets,
   'content-unarchive': CAP.workTickets,
   'content-unpublish': CAP.workTickets,
   'save-custom-task': CAP.workTickets,

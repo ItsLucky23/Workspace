@@ -83,6 +83,11 @@ function str(o: Record<string, unknown>, k: string): string | undefined {
 function bool(o: Record<string, unknown>, k: string): boolean {
   return o[k] === true;
 }
+//? V5 — clamp a linear audio gain to [0, max]; a missing/invalid value falls back to `dflt`.
+function clampVolume(v: number | undefined, dflt: number, max: number): number {
+  if (typeof v !== 'number' || Number.isNaN(v)) return dflt;
+  return Math.max(0, Math.min(max, v));
+}
 function num(o: Record<string, unknown>, k: string): number | undefined {
   const v = o[k];
   return typeof v === 'number' ? v : undefined;
@@ -1214,6 +1219,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           : prisma.videoScene.create({ data: { workspaceId: action.workspaceId, contentProjectId, ...data } }));
         order += 1;
       }
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'content-save-audio-mix': {
+      //? V5 audio-track — persist the piece's voice gain + ducked music gain from the timeline editor's audio
+      //? sliders. Clamped to sane ranges; the next render (assembly) mixes voice + music at these gains.
+      const contentProjectId = str(payload, 'contentProjectId');
+      if (!contentProjectId) return;
+      const voiceVolume = clampVolume(num(payload, 'voiceVolume'), 1, 2);
+      const musicVolume = clampVolume(num(payload, 'musicVolume'), 0.25, 1);
+      await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { voiceVolume, musicVolume } });
       broadcastContentDirty(action.workspaceId);
       return;
     }

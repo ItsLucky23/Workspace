@@ -374,7 +374,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       scenesByPiece.set(s.contentProjectId, list);
     }
     const contentSnapshot: ContentSnapshot = {
-      pieces: contentPieceRows.map((c) => ({ id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: assetsByPiece.get(c.id) ?? [], scenes: scenesByPiece.get(c.id) ?? [], spentCents: spentByPiece.get(c.id) ?? 0 })),
+      pieces: contentPieceRows.map((c) => {
+        //? V5 — the piece's newest voice/music asset url for the audio-track waveform.
+        const pieceAssets = assetsByPiece.get(c.id) ?? [];
+        const urlOfKind = (k: string): string | null => { for (let i = pieceAssets.length - 1; i >= 0; i--) { const a = pieceAssets[i]; if (a?.kind === k && a.url.length > 0) return a.url; } return null; };
+        return { id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: pieceAssets, scenes: scenesByPiece.get(c.id) ?? [], voiceVolume: c.voiceVolume, musicVolume: c.musicVolume, voiceUrl: urlOfKind('voice'), musicUrl: urlOfKind('music'), spentCents: spentByPiece.get(c.id) ?? 0 };
+      }),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(
         contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),

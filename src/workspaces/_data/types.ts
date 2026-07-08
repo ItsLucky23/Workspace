@@ -277,6 +277,10 @@ export interface ContentPieceSummary {
   channelId: string | null;
   assets: ContentAssetSummary[];   // U-fix B: the piece's produced assets (surfaced so the UI can show/download them)
   scenes: VideoSceneSummary[];     // V1: the piece's ordered video-timeline scenes (empty until built)
+  voiceVolume: number;             // V5 audio-track: linear voice gain in the mix
+  musicVolume: number;             // V5 audio-track: ducked music gain in the mix
+  voiceUrl: string | null;         // V5: the piece's voiceover asset url (for the audio-track waveform)
+  musicUrl: string | null;         // V5: the piece's background-music asset url (for the audio-track waveform)
   spentCents: number;              // Q1: this piece's own media spend (from MediaSpend rows), for per-piece cost transparency
 }
 //? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).

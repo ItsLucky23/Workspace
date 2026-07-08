@@ -39,8 +39,10 @@
 | G1 greenfield echt repo + seed-file-tree | ✅ | 0159 | 7/7 (echte git: repo + main-commit + seed-tree, isLinked true) |
 | G2 greenfield template-wizard (UI) | ✅ | 0160 | tsc/lint/ai:lint/build + LIVE browser-E2E (repo+seed-tree via UI) |
 | **Browser-verify-pass** | ✅ | lesson 0011 | LIVE: app+auth+socket, P-A mobiel-sheet, G2-wizard+G1-E2E; regressie gevangen+gefixt; V5/B/P-B inline (geen provider-risico), test-proven |
+| B3-restant: in-canvas variation-compare (side-by-side) | ✅ | — | tsc/lint/build |
+| V5-restant: audio-spoor (waveform + voice/duck-sliders, in de render-mix) | ✅ | 0161 | audioMix 15/15 · audioMixOp 9/9 · live-render 7/7 (geen regressie) |
 
-> **PROGRAMMA COMPLEET.** Alle fasen (V·B·L2·L3·D·G) + de browser-verify afgerond. Content idee→uitkomst backend+publish, de marquee multi-scene-video (V), de rijke image-editor (B), de conversatie-voordeur+orchestratie (L2), telefoon-first approvals (L3), publish+demo-host+prod-export (D) en greenfield idee→draaibare-software (G) — allemaal gebouwd, E2E-getest en gecommit. Live media-render + alle providers E2E bewezen met echte keys/Docker. Eén live-gevangen regressie (G2 provider-context) gefixt + als lesson 0011 vastgelegd.
+> **PROGRAMMA COMPLEET** (incl. de twee eerder gemiste sub-features B3-compare + V5-audio). Alle fasen (V·B·L2·L3·D·G) + de browser-verify afgerond. Content idee→uitkomst backend+publish, de marquee multi-scene-video (V), de rijke image-editor (B), de conversatie-voordeur+orchestratie (L2), telefoon-first approvals (L3), publish+demo-host+prod-export (D) en greenfield idee→draaibare-software (G) — allemaal gebouwd, E2E-getest en gecommit. Live media-render + alle providers E2E bewezen met echte keys/Docker. Eén live-gevangen regressie (G2 provider-context) gefixt + als lesson 0011 vastgelegd.
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 

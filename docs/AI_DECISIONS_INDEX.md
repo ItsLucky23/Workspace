@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (159)
+## Decisions (160)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -172,6 +172,7 @@
 | 0158 | D3 — demo-host (main on a DNS) + auto-redeploy watcher | 🟢 accepted | deploy, demo, environments, watcher, idea-to-outcome | — | `docs/decisions/0158-demo-host-auto-redeploy.md` |
 | 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
+| 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
 
 ## Summaries
 
@@ -1448,6 +1449,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Extend the existing `CreateProjectForm`** (the "New project" menu off the project switcher) with a two-mode toggle: **From a template** (greenfield — a stack-template picker → `createFromTemplate`, which runs G1's real-repo init) and **Link a repo** (the pre-existing name + git-URL → `createProject`). Template mode is the default (greenfield-first). **The picker is driven by the snapshot `templates`** (label + description cards, single-select). Submit branches on mode; the create button disables until a name (and, in template mode, a template) is chosen. **No new op, no new screen file.** The wizard is the create-project menu the switcher already opens, so it works for the first project and every later one.
 
 → `docs/decisions/0160-greenfield-wizard-ui.md`
+
+### 0161 — V5 completion — the timeline audio track (waveform + voice/duck sliders)
+
+**0161** · accepted · tags: content, video, audio, editor, render, idea-to-outcome · 2026-07-08
+
+**Per-piece mix on `ContentProject`** (MongoDB, no migration): `voiceVolume` (default 1) + `musicVolume` (default 0.25, ducked). Persisted by a new **`content-save-audio-mix`** control-op (content-* write family; no new frozen verb) — RBAC `workTickets`, clamped (voice ≤ 2, music ≤ 1) by the Conductor (B-23). **The render honours the gains.** `buildVideoStitchPlan` gained an optional `mix` ({musicFile, voiceVolume, musicVolume}); when there's music OR a non-default voice gain it routes voice (+ ducked music) through the existing `buildAudioMixPlan` (E4) → `[aout]`. **Guarded** so the plain single-voice path is byte-identical — the live render test is unchanged (re-run 7/7). `renderScenes` + `assembly` thread the piece's music asset + gains in. **The snapshot surfaces** `voiceVolume`/`musicVolume` + the newest voice/music asset urls on `ContentPieceSummary`, so the editor can draw the track without another fetch. **A real waveform** in `VideoTimelineEditor`: `decodePeaks` fetches + `decodeAudioData` → per-block peak bars on a canvas, theme-driven (fillStyle reads the canvas's resolved `text-primary`, no hardcoded hex), degrading to a flat baseline on any fetch/decode failure (stub url, no `AudioContext`). Voice + duck sliders save via `content-save-audio-mix`.
+
+→ `docs/decisions/0161-timeline-audio-track.md`
 
 ## Code governed by decisions
 

@@ -339,7 +339,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
       </div>
       {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}
       {editImageAsset && <ImageEditor pieceId={piece.id} asset={{ id: editImageAsset.id, url: editImageAsset.url }} onClose={() => { setEditImageAsset(null); }} />}
-      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} onClose={() => { setShowTimeline(false); }} />}
+      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} voiceUrl={piece.voiceUrl} musicUrl={piece.musicUrl} voiceVolume={piece.voiceVolume} musicVolume={piece.musicVolume} onClose={() => { setShowTimeline(false); }} />}
     </div>
   );
 }
