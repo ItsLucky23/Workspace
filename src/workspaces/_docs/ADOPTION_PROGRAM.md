@@ -39,6 +39,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | W3 idle-worker-container-reaper (stop, resume-safe) | ✅ | — (reaper) | workerReaper-unit 10/10 |
 | **FASE W COMPLEET** | ✅ | | W1–W3 gecommit |
 | T1 preview op willekeurige git-ref (ephemere ref-container) | ✅ | 0164 | refPreview-unit 15/15 |
+| T2 synthetic revert-ref ("main zonder X") + commit-as-of | ✅ | (0164) | timeTravel-integratie 9/9 (echte git) |
 
 ---
 
