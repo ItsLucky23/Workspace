@@ -1617,6 +1617,40 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Return the updated stage so the realtime `_sync` route broadcasts the delta.
       return prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key: stageId } });
     }
+    //? R1 — durably ADD a pipeline stage (the editor previously mutated React state only → a refresh discarded it).
+    //? Appended at the end; the client supplies a unique `key` + `name` (+ optional `kind`).
+    case 'stage-create': {
+      const key = str(payload, 'key'); const name = str(payload, 'name');
+      if (!key || !name) return { ok: false, error: 'stage.invalidRequest' };
+      const kind = str(payload, 'kind') ?? 'code';
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      const dupe = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
+      if (dupe) return { ok: false, error: 'stage.keyExists' };
+      const last = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, ...(projectId ? { projectId } : {}) }, orderBy: { order: 'desc' }, select: { order: true } });
+      const order = (last?.order ?? -1) + 1;
+      return prisma.pipelineStage.create({ data: {
+        workspaceId: action.workspaceId, projectId: projectId ?? '', key, kind, name, order, aiEnabled: true, wipLimit: null,
+        roleKey: kind === 'code' ? 'code' : kind, systemPrompt: '', customInstructions: '', promptTemplate: '{{summary}}', definitionOfDone: '',
+        skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
+        modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+        network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
+        hooks: {},
+      } });
+    }
+    //? R1 — durably REMOVE a pipeline stage.
+    case 'stage-delete': {
+      const stageId = str(target, 'stageId') ?? str(payload, 'stageId') ?? str(payload, 'key');
+      if (!stageId) return { ok: false };
+      await prisma.pipelineStage.deleteMany({ where: { workspaceId: action.workspaceId, key: stageId } });
+      return { ok: true, deleted: stageId };
+    }
+    //? R1 — persist a new stage ORDER: `order` lists the stage keys in their new sequence → each stage's `order`
+    //? is set to its index (so a drag-reorder survives a refresh).
+    case 'stage-reorder': {
+      const order = strArr(payload, 'order');
+      for (let i = 0; i < order.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: order[i] }, data: { order: i } });
+      return { ok: true, count: order.length };
+    }
     // ---- suggestions ----
     case 'accept-suggestion': {
       const suggestionId = str(target, 'suggestionId');

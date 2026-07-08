@@ -52,6 +52,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | K3 env-injectie in agent/preview-containers + service-netwerk | ✅ | (0166) | serviceEnv-unit 8/8 · serviceEnvResolve-integratie |
 | K4 integratie-MCP-scripts echt (cli-proxy.mjs + catalog-reroute) | ✅ | (0166) | mcpProxy-integratie 20/20 (echte MCP-server) |
 | **FASE K COMPLEET** | ✅ | | K1–K4 gecommit |
+| R1 pipeline stage add/remove/reorder persistent | ✅ | — | pipelineStages-integratie 7/7 (client-knop-wiring = browser-follow-up) |
 
 ---
 

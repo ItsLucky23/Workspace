@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 210,
+    "nodes": 213,
     "edges": 304,
-    "symbols": 267,
+    "symbols": 273,
     "callEdges": 42
   },
   "nodes": [
@@ -877,6 +877,21 @@
       "id": "workspaces/_sync/sprintCreate_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/sprintCreate/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageCreate/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageDelete/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageReorder/v1"
     },
     {
       "id": "workspaces/_sync/ticketArtifact_server_v1.ts",
@@ -4685,6 +4700,42 @@
     {
       "id": "workspaces/_sync/sprintCreate_server_v1.ts::main",
       "file": "workspaces/_sync/sprintCreate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageCreate_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts::main",
+      "file": "workspaces/_sync/stageCreate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageDelete_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts::main",
+      "file": "workspaces/_sync/stageDelete_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageReorder_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts::main",
+      "file": "workspaces/_sync/stageReorder_server_v1.ts",
       "name": "main",
       "kind": "function"
     },

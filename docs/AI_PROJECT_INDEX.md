@@ -57,7 +57,7 @@
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 
-## Sync routes (52)
+## Sync routes (55)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -109,6 +109,9 @@
 | `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | **no** | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/stageCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
+| `sync/workspaces/stageDelete/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-delete] (R1) durably REMOVE a pipeline stage. The client refetches the pipeline after. |
+| `sync/workspaces/stageReorder/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-reorder] (R1) persist a new pipeline stage ORDER (drag-reorder survives a refresh). |
 | `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | **no** | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
@@ -121,9 +124,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 95 |
+| _(unowned)_ | 98 |
 
-**Test coverage**: 3/97 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/100 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -177,7 +180,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
 - `sync/workspaces/bulkAssign/v1`
-- … +44 more
+- … +47 more
 
 ## Pages (28)
 

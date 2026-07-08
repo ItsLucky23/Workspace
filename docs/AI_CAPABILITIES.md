@@ -138,6 +138,9 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/serviceTeardown/v1` | — | — | — |
 | `workspaces/skillToggle/v1` | — | — | — |
 | `workspaces/sprintCreate/v1` | — | — | — |
+| `workspaces/stageCreate/v1` | — | — | — |
+| `workspaces/stageDelete/v1` | — | — | — |
+| `workspaces/stageReorder/v1` | — | — | — |
 | `workspaces/ticketArtifact/v1` | — | — | — |
 | `workspaces/ticketEdit/v1` | — | — | — |
 | `workspaces/transferOwnership/v1` | — | — | — |
