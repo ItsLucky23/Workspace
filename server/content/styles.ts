@@ -16,7 +16,7 @@ export interface ResolvedStyle {
 }
 
 //? R1 — a portable style-set entry (the user-authored, non-builtin styles a workspace has). Pure + exported.
-export interface StyleSetEntry { feature: string; key: string; label: string; systemPrompt: string }
+export interface StyleSetEntry { feature: string; key: string; label: string; systemPrompt: string; previewAssetUrl?: string | null; previewKind?: string | null }
 
 //? Parse/validate a portable style-set JSON (an array of entries). Drops malformed entries. Pure.
 export function parseStyleSet(raw: unknown): StyleSetEntry[] {
@@ -26,7 +26,7 @@ export function parseStyleSet(raw: unknown): StyleSetEntry[] {
     if (r === null || typeof r !== 'object') continue;
     const e = r as Record<string, unknown>;
     if (typeof e.feature === 'string' && typeof e.key === 'string' && typeof e.systemPrompt === 'string' && e.feature.length > 0 && e.key.length > 0) {
-      out.push({ feature: e.feature, key: e.key, label: typeof e.label === 'string' && e.label.length > 0 ? e.label : e.key, systemPrompt: e.systemPrompt });
+      out.push({ feature: e.feature, key: e.key, label: typeof e.label === 'string' && e.label.length > 0 ? e.label : e.key, systemPrompt: e.systemPrompt, ...(typeof e.previewAssetUrl === 'string' ? { previewAssetUrl: e.previewAssetUrl } : {}), ...(typeof e.previewKind === 'string' ? { previewKind: e.previewKind } : {}) });
     }
   }
   return out;
@@ -35,7 +35,7 @@ export function parseStyleSet(raw: unknown): StyleSetEntry[] {
 //? Export a workspace's user-authored (non-builtin) styles as a portable set (no ids/timestamps/workspaceId).
 export async function exportStyleSet(prisma: PrismaClient, workspaceId: string): Promise<StyleSetEntry[]> {
   const rows = await prisma.stylePreset.findMany({ where: { workspaceId, builtin: false }, orderBy: { createdAt: 'asc' } });
-  return rows.map((s) => ({ feature: s.feature, key: s.key, label: s.label, systemPrompt: s.systemPrompt }));
+  return rows.map((s) => ({ feature: s.feature, key: s.key, label: s.label, systemPrompt: s.systemPrompt, ...(s.previewAssetUrl ? { previewAssetUrl: s.previewAssetUrl } : {}), ...(s.previewKind ? { previewKind: s.previewKind } : {}) }));
 }
 
 //? Import a portable style-set into a workspace (upsert by feature+key; never touches builtin globals).
@@ -45,9 +45,10 @@ export async function importStyleSet(prisma: PrismaClient, workspaceId: string, 
   let written = 0;
   for (const e of entries) {
     const existing = await prisma.stylePreset.findFirst({ where: { workspaceId, feature: e.feature, key: e.key }, select: { id: true } });
+    const preview = { ...(e.previewAssetUrl ? { previewAssetUrl: e.previewAssetUrl } : {}), ...(e.previewKind ? { previewKind: e.previewKind } : {}) };
     await (existing
-      ? prisma.stylePreset.update({ where: { id: existing.id }, data: { label: e.label, systemPrompt: e.systemPrompt } })
-      : prisma.stylePreset.create({ data: { workspaceId, feature: e.feature, key: e.key, label: e.label, systemPrompt: e.systemPrompt, builtin: false } }));
+      ? prisma.stylePreset.update({ where: { id: existing.id }, data: { label: e.label, systemPrompt: e.systemPrompt, ...preview } })
+      : prisma.stylePreset.create({ data: { workspaceId, feature: e.feature, key: e.key, label: e.label, systemPrompt: e.systemPrompt, builtin: false, ...preview } }));
     written += 1;
   }
   return written;

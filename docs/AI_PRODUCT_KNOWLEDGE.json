@@ -1,6 +1,6 @@
 {
-  "hash": "774ff309a500321c",
-  "chunkCount": 186,
+  "hash": "df02f2a82916cf8b",
+  "chunkCount": 187,
   "chunks": [
     {
       "id": "cap-001",
@@ -1117,6 +1117,12 @@
       "kind": "decision",
       "title": "M3 — pick-a-look + long-form video duration planner",
       "text": "ADR 0258: M3 — pick-a-look + long-form video duration planner. The pipeline emitted a fixed 4–8 beats → ~20–40s videos; there was no way to ask for a longer video, and \"pick a look + topic → make a video\" needed the style to reach the video path (M2, done). M3 adds the duration planner so \"a 10-minute video about the moon landing in stick-man figures\" is expressible. Decision: - **A pure `planBeatCount(targetDurationMs, sceneDurationMs)`** maps a target duration to ~N beats/scenes (each ≈ sceneDuration), bounded to [2, `MAX_BEATS` = 40]. The media budget stays the true hard cap; 40 is the planner ceiling so a runaway target can't fan out to hundreds of paid clips. - **`generateScript` gained `targetBeats`** → `scriptFormat(targetBeats)` asks the model for ~N beats, and the stub script yields exactly N (deterministic in the stub world). `runContentPipeline` gained `durationMs` + `sceneDurationMs`, plans the beat count, threads it to the script + the per-scene length to decompose. The `content-run-pipeline` op forwards both. - **A Length picker** (Auto / Short / Normal / Long) on the piece page sets `durationMs`; combined with the M1 style picker, that IS \"pick a look + a length → make a video\". 0 = auto (the default arc)."
+    },
+    {
+      "id": "adr-0259",
+      "kind": "decision",
+      "title": "M4 — media-style upload / copy / customize / delete (preview-aware)",
+      "text": "ADR 0259: M4 — media-style upload / copy / customize / delete (preview-aware). M1 gave styles a preview asset + params. The style CRUD (save-style/delete-style) and the portable style-set export/import already existed, but were TEXT-ONLY — a copied/shared style lost its preview. M4 makes the whole CRUD + portability preview-aware. Decision: - **`save-style` + `delete-style` already do create/customize/delete** per-workspace (builtins stay read-only); M1 made `save-style` accept `previewAssetUrl`/`previewKind`. - **The portable style-set carries the preview.** `StyleSetEntry` + `parseStyleSet` + `exportStyleSet` + `importStyleSet` gained `previewAssetUrl`/`previewKind`, so export → parse → import preserves the look. This is the \"copy/share a style and keep its look\" path. - **Copy a builtin into the workspace = a `save-style` pre-filled** from the gallery/builtin entry (a new key, editable) — reusing the existing op, no new surface."
     }
   ]
 }

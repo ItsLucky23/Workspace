@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (169)
+## Decisions (170)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -182,6 +182,7 @@
 | 0256 | M2 — thread the style through the video path (decompose) | 🟢 accepted | content, video, style, media, ai-libraries-accounts | — | `docs/decisions/0256-style-through-video-path.md` |
 | 0257 | M1 — style preview asset + thumbnail affordance | 🟢 accepted | content, media, style, gallery, ai-libraries-accounts | — | `docs/decisions/0257-style-preview-asset.md` |
 | 0258 | M3 — pick-a-look + long-form video duration planner | 🟢 accepted | content, video, planner, style, ai-libraries-accounts | — | `docs/decisions/0258-longform-video-planner.md` |
+| 0259 | M4 — media-style upload / copy / customize / delete (preview-aware) | 🟢 accepted | content, media, style, import-export, ai-libraries-accounts | — | `docs/decisions/0259-media-style-crud-roundtrip.md` |
 
 ## Summaries
 
@@ -1538,6 +1539,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A pure `planBeatCount(targetDurationMs, sceneDurationMs)`** maps a target duration to ~N beats/scenes (each ≈ sceneDuration), bounded to [2, `MAX_BEATS` = 40]. The media budget stays the true hard cap; 40 is the planner ceiling so a runaway target can't fan out to hundreds of paid clips. **`generateScript` gained `targetBeats`** → `scriptFormat(targetBeats)` asks the model for ~N beats, and the stub script yields exactly N (deterministic in the stub world). `runContentPipeline` gained `durationMs` + `sceneDurationMs`, plans the beat count, threads it to the script + the per-scene length to decompose. The `content-run-pipeline` op forwards both. **A Length picker** (Auto / Short / Normal / Long) on the piece page sets `durationMs`; combined with the M1 style picker, that IS "pick a look + a length → make a video". 0 = auto (the default arc).
 
 → `docs/decisions/0258-longform-video-planner.md`
+
+### 0259 — M4 — media-style upload / copy / customize / delete (preview-aware)
+
+**0259** · accepted · tags: content, media, style, import-export, ai-libraries-accounts · 2026-07-08
+
+**`save-style` + `delete-style` already do create/customize/delete** per-workspace (builtins stay read-only); M1 made `save-style` accept `previewAssetUrl`/`previewKind`. **The portable style-set carries the preview.** `StyleSetEntry` + `parseStyleSet` + `exportStyleSet` + `importStyleSet` gained `previewAssetUrl`/`previewKind`, so export → parse → import preserves the look. This is the "copy/share a style and keep its look" path. **Copy a builtin into the workspace = a `save-style` pre-filled** from the gallery/builtin entry (a new key, editable) — reusing the existing op, no new surface.
+
+→ `docs/decisions/0259-media-style-crud-roundtrip.md`
 
 ## Code governed by decisions
 
