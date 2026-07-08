@@ -28,7 +28,7 @@ try {
     //? 1) generate two REAL images (cheap mode, set by enableLiveProviders)
     const gen = async (prompt: string): Promise<string | null> => {
       const r = await runMediaGeneration({ feature: 'image-gen' as MediaFeature, prompt, workspaceId: owner.id });
-      return r.ok && !r.stub && typeof r.url === 'string' ? r.url : null;
+      return r.ok && !r.stub && typeof r.asset?.url === 'string' ? r.asset.url : null;
     };
     const a = await gen('a red cube on a white background, product shot');
     const b = await gen('a blue sphere on a white background, product shot');
