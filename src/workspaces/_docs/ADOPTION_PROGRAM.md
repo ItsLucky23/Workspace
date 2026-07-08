@@ -59,6 +59,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | **FASE R (R1/R2/R3-webhook) COMPLEET** | ✅ | | R3-b (bare-re-key) = scoped follow-up |
 | U1 UI-review-intake (taxonomie + `ui-review-create`-op) | ✅ | — | uiReview-unit 8/8 · uiReview-integratie (screenshot-UI = browser-follow-up) |
 | N1 knowledge-graph-data-op (nodes + similarity-edges) | ✅ | — | knowledgeGraph-unit 9/9 · knowledgeGraph-integratie (N2-graph-UI = browser-follow-up) |
+| Y1 activity-presence-core (status-drempels + aggregatie) | ✅ | — | presence-unit 11/11 (DOM-streaming-engine/overlay-UI/ultrasync.watch-RBAC/screen-share = browser-ronde) |
 
 ---
 
