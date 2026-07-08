@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { assert, eq, report } from '../_helpers.mts';
-import { commitAsOf, prepareRevertRef } from '../../server/git/timeTravel.ts';
+import { commitAsOf, prepareRevertRef, resolveRefSpec } from '../../server/git/timeTravel.ts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'tt-'));
 const work = path.join(root, 'work');
@@ -60,6 +60,18 @@ try {
   const conflict = await prepareRevertRef(bare, 'main', c2, 'conf');
   assert(!conflict.ok && conflict.conflict === true, 'reverting a later-modified commit is a typed conflict');
   eq(conflict.error, 'revert.conflict', 'the conflict is surfaced as a typed error');
+
+  // T3 — resolveRefSpec: the three time-travel spec kinds (what the Assistant proposes → the preview op resolves).
+  const specCommit = await resolveRefSpec(bare, 'main', { kind: 'commit', value: c3 });
+  eq(specCommit.ref, c3, 'a commit spec resolves to that SHA');
+  const specUnsafe = await resolveRefSpec(bare, 'main', { kind: 'commit', value: 'x; rm -rf /' });
+  assert(!specUnsafe.ok && specUnsafe.error === 'ref.unsafe', 'an unsafe commit value is rejected');
+  const specAsof = await resolveRefSpec(bare, 'main', { kind: 'asof', whenMs: Date.parse('2026-01-03T12:00:30Z') });
+  eq(specAsof.ref, c3, 'an asof spec resolves to the commit at/before T (c3)');
+  const specRevertClean = await resolveRefSpec(bare, 'main', { kind: 'revert', value: c4 });
+  assert(specRevertClean.ok && Boolean(specRevertClean.ref) && specRevertClean.ref !== c4, 'a clean revert spec resolves to a NEW synthetic ref');
+  const specRevertConflict = await resolveRefSpec(bare, 'main', { kind: 'revert', value: c2 });
+  assert(!specRevertConflict.ok && specRevertConflict.conflict === true, 'a conflicting revert spec surfaces the conflict');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

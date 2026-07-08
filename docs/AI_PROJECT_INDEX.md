@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (44)
+## API routes (45)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -55,6 +55,7 @@
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 | `api/workspaces/styleExport/v1` | POST | login | 30 | — | **no** | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
+| `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 
 ## Sync routes (50)
 
@@ -118,9 +119,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 92 |
+| _(unowned)_ | 93 |
 
-**Test coverage**: 3/94 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/95 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -165,6 +166,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioSaveBrief/v1`
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
+- `api/workspaces/timeTravelPreview/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/addInfoDoc/v1`
@@ -173,8 +175,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
 - `sync/workspaces/bulkAssign/v1`
-- `sync/workspaces/bulkMove/v1`
-- … +41 more
+- … +42 more
 
 ## Pages (28)
 

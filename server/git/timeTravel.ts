@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 
 import { workspaceDataDir } from './repoStore';
+import { isSafeRef } from '../container/runtime';
 
 //? Run git, capturing exit code + stdout/stderr (never throws — the caller branches on `code`, e.g. a revert
 //? conflict). `--git-dir <bare>` targets the bare mirror; `cwd` runs inside a worktree.
@@ -62,6 +63,33 @@ export async function prepareRevertRef(bareDir: string, branch: string, sha: str
   } finally {
     await git(['--git-dir', bareDir, 'worktree', 'remove', '--force', wt]);
   }
+}
+
+//? T3 — a structured time-travel request (what the Assistant proposes for the user to accept): a raw `commit`
+//? SHA, a `revert` of commit X ("main minus X"), or `asof` a timestamp ("yesterday's version"). Resolved here to
+//? a concrete ref the T1 ref-preview can run — WITHOUT any authoritative write (single-writer intact: this only
+//? reads git / creates a throwaway synthetic ref).
+export type RefSpec =
+  | { kind: 'commit'; value: string }
+  | { kind: 'revert'; value: string }
+  | { kind: 'asof'; whenMs: number };
+
+export interface ResolvedRef { ok: boolean; ref?: string; conflict?: boolean; error?: string }
+
+//? Resolve a RefSpec against the bare mirror → the ref to preview. `commit` returns the SHA (safety-checked);
+//? `revert` produces the synthetic "branch minus X" ref (or a typed conflict); `asof` returns the commit at/
+//? before the timestamp. `isSafeRef` guards the raw values before any shell use downstream.
+export async function resolveRefSpec(bareDir: string, branch: string, spec: RefSpec): Promise<ResolvedRef> {
+  if (spec.kind === 'commit') {
+    return isSafeRef(spec.value) ? { ok: true, ref: spec.value } : { ok: false, error: 'ref.unsafe' };
+  }
+  if (spec.kind === 'revert') {
+    if (!isSafeRef(spec.value)) return { ok: false, error: 'ref.unsafe' };
+    const r = await prepareRevertRef(bareDir, branch, spec.value);
+    return r.ok ? { ok: true, ...(r.sha ? { ref: r.sha } : {}) } : { ok: false, ...(r.conflict ? { conflict: true } : {}), ...(r.error ? { error: r.error } : {}) };
+  }
+  const sha = await commitAsOf(bareDir, branch, spec.whenMs);
+  return sha.length > 0 ? { ok: true, ref: sha } : { ok: false, error: 'ref.noCommitBefore' };
 }
 
 //? Workspace wrappers (resolve the bare mirror path from the workspace id).
