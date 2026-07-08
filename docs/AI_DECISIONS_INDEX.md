@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (160)
+## Decisions (161)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -173,6 +173,7 @@
 | 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
+| 0162 | W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models) | 🟢 accepted | orchestrator, questions, needs-input, phone-first, adoption, schema | — | `docs/decisions/0162-multi-question-denormalized-json.md` |
 
 ## Summaries
 
@@ -1457,6 +1458,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Per-piece mix on `ContentProject`** (MongoDB, no migration): `voiceVolume` (default 1) + `musicVolume` (default 0.25, ducked). Persisted by a new **`content-save-audio-mix`** control-op (content-* write family; no new frozen verb) — RBAC `workTickets`, clamped (voice ≤ 2, music ≤ 1) by the Conductor (B-23). **The render honours the gains.** `buildVideoStitchPlan` gained an optional `mix` ({musicFile, voiceVolume, musicVolume}); when there's music OR a non-default voice gain it routes voice (+ ducked music) through the existing `buildAudioMixPlan` (E4) → `[aout]`. **Guarded** so the plain single-voice path is byte-identical — the live render test is unchanged (re-run 7/7). `renderScenes` + `assembly` thread the piece's music asset + gains in. **The snapshot surfaces** `voiceVolume`/`musicVolume` + the newest voice/music asset urls on `ContentPieceSummary`, so the editor can draw the track without another fetch. **A real waveform** in `VideoTimelineEditor`: `decodePeaks` fetches + `decodeAudioData` → per-block peak bars on a canvas, theme-driven (fillStyle reads the canvas's resolved `text-primary`, no hardcoded hex), degrading to a flat baseline on any fetch/decode failure (stub url, no `AudioContext`). Voice + duck sliders save via `content-save-audio-mix`.
 
 → `docs/decisions/0161-timeline-audio-track.md`
+
+### 0162 — W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models)
+
+**0162** · accepted · tags: orchestrator, questions, needs-input, phone-first, adoption, schema · 2026-07-08
+
+**Store the full set denormalized on the ticket**, not in the relational models: add `Ticket.needsInputQuestions Json?` = `[{ q, a }]` (q = the stored needsInput wire form — plain for free, `@@wsq:` for approve/choice; a = the answer or null). `Ticket.needsInput` stays the banner = the first UNANSWERED question (back-compat with every existing reader: the banner, the answer-queue, `isRealNeedsInput`, the P-B card). **A pure core module** `server/orchestrator/questionSet.ts` (`parseNeedsInputQuestions` with a legacy single-banner fallback, `applyAnswers`, `firstUnanswered`, `buildCombinedAnswerPrompt`) — no DB, unit-tested. **No new structured-channel verb** (frozen 7+6 intact): the existing `answer-input` control-op carries either a single `answer` (fills the first open question → the phone-first STEPPER advances the banner) or an `answers[]` batch (fills the open questions in order). The parked `claude` turn is resumed **only once every question is answered** — a single question resumes with the bare answer (byte-identical to the pre-W1 flow), many resume with a numbered, envelope-decoded `Q→A` prompt. Single-writer/B-23 unchanged (Conductor is the only writer).
+
+→ `docs/decisions/0162-multi-question-denormalized-json.md`
 
 ## Code governed by decisions
 

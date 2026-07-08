@@ -34,6 +34,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | F3 invite-token hardening (random+expiry+email-bind) | ✅ | — (hardening) | inviteToken-integratie 11/11 |
 | F4 PWA-manifest-icons (192/512/maskable/apple) | ✅ | — (asset/config) | pwaManifest-headless 19/19 |
 | **FASE F COMPLEET** | ✅ | | F1–F4 gecommit |
+| W1 multi-question sets (dood schema → denormalized JSON) | ✅ | 0162 | questionSet-unit 23/23 · multiQuestion-integratie 11/11 |
 
 ---
 

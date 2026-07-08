@@ -18,6 +18,7 @@ import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
+import { jsonInput } from '../util/json';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
@@ -322,9 +323,15 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? onto the ticket + flip it to needs-input, then broadcast so the board/phone renders the P-B card.
   //? `answer-input` clears it and resumes the parked session.
   if (result.kind === 'needs-input') {
-    const question = result.questions[0] ?? '';
-    if (question.trim().length > 0) {
-      await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: question, status: 'needs-input', remindedAt: null } });
+    //? W1 — persist the FULL question set (was: only questions[0], the rest silently dropped). The banner
+    //? stays the first question (back-compat with every existing reader); `needsInputQuestions` carries the
+    //? whole [{q,a}] list so answer-input can step through them + resume once with all answers.
+    const qs = result.questions.map((q) => q.trim()).filter((q) => q.length > 0);
+    if (qs.length > 0) {
+      await prisma.ticket.updateMany({
+        where: { workspaceId, key: ticketKey },
+        data: { needsInput: qs[0], needsInputQuestions: jsonInput(qs.map((q) => ({ q, a: null }))), status: 'needs-input', remindedAt: null },
+      });
       await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
     }
   }

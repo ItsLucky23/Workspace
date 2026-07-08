@@ -43,6 +43,8 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfi
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
+import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt } from './questionSet';
+import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { applyMigration, introspectDb } from '../db/migrate';
 import { indexWorkspace } from '../rag';
 import { indexInstitutionalMemory } from '../rag/memory';
@@ -904,18 +906,34 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return;
     }
     case 'answer-input': {
-      //? #17: a human answers the ticket's open question. Record it as a comment (audit trail),
-      //? clear the needs-input banner, and RE-FIRE the parked turn with `--resume` + the answer as
-      //? the prompt (builds on #1's resume path). Only meaningful while the ticket is at needs-input.
+      //? #17 / W1: a human answers the ticket's open question(s). MULTI-QUESTION: a `answers` array batch-fills
+      //? the open questions in order; a single `answer` fills the first unanswered one (the phone-first stepper).
+      //? Each answer is recorded as a comment (audit trail). The parked turn is RE-FIRED with `--resume` ONLY
+      //? once EVERY question is answered — until then the banner just advances to the next question (no resume).
       const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
-      const answer = str(payload, 'answer');
-      if (!key || !answer || answer.trim().length === 0) return;
+      if (!key) return;
+      const single = str(payload, 'answer');
+      const batch = Array.isArray(payload.answers) ? payload.answers.filter((x): x is string => typeof x === 'string') : null;
+      const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key } });
+      if (!ticket) return;
+      const openSet = parseNeedsInputQuestions(ticket.needsInputQuestions, ticket.needsInput);
+      if (openSet.length === 0) return;
+      const { set, newlyAnswered, appliedCount } = applyAnswers(openSet, { single, batch });
+      if (appliedCount === 0) return; // nothing answerable → no-op
       const [t] = await ticketIdsForKeys(action.workspaceId, [key]);
-      if (t) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${answer}` } });
-      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, status: 'idle', remindedAt: null } });
-      if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question');
+      if (t) for (const { q, a } of newlyAnswered) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${questionPrompt(q)} → ${a ?? ''}` } });
+      const nextBanner = firstUnanswered(set);
+      if (nextBanner !== null) {
+        //? Still open questions → advance the banner + keep parked (do NOT resume yet).
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: nextBanner, needsInputQuestions: jsonInput(set), remindedAt: null } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        return ticketRowsForKeys(action.workspaceId, [key]);
+      }
+      //? All answered → clear + resume the parked turn once with the combined answers.
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, needsInputQuestions: null, status: 'idle', remindedAt: null } });
+      if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question(s)');
       await broadcastTicketDelta(prisma, action.workspaceId, [key]);
-      await reprovisionTicket(action.workspaceId, key, true, answer);
+      await reprovisionTicket(action.workspaceId, key, true, buildCombinedAnswerPrompt(set));
       return ticketRowsForKeys(action.workspaceId, [key]);
     }
     case 'kill': {
