@@ -58,6 +58,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | R3-b repoStore per-project bare re-key (readers/writers) | ⬜ | | groot cross-cutting → aparte veilige ronde (fresh context + Docker) |
 | **FASE R (R1/R2/R3-webhook) COMPLEET** | ✅ | | R3-b (bare-re-key) = scoped follow-up |
 | U1 UI-review-intake (taxonomie + `ui-review-create`-op) | ✅ | — | uiReview-unit 8/8 · uiReview-integratie (screenshot-UI = browser-follow-up) |
+| N1 knowledge-graph-data-op (nodes + similarity-edges) | ✅ | — | knowledgeGraph-unit 9/9 · knowledgeGraph-integratie (N2-graph-UI = browser-follow-up) |
 
 ---
 

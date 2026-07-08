@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (45)
+## API routes (46)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -39,6 +39,7 @@
 | `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
 | `api/workspaces/issuePat/v1` | POST | login | 10 | — | **no** | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
+| `api/workspaces/knowledgeGraph/v1` | POST | login | 12 | — | **no** | — | Workspaces — [knowledge-graph] (N1) the Obsidian-view data: the workspace knowledge as nodes (sources / |
 | `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
@@ -125,9 +126,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 99 |
+| _(unowned)_ | 100 |
 
-**Test coverage**: 3/101 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/102 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -158,6 +159,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/generateDockerfile/v1`
 - `api/workspaces/generateDocs/v1`
 - `api/workspaces/issuePat/v1`
+- `api/workspaces/knowledgeGraph/v1`
 - `api/workspaces/markRead/v1`
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
@@ -180,8 +182,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/answerInput/v1`
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
-- `sync/workspaces/bulkAssign/v1`
-- … +48 more
+- … +49 more
 
 ## Pages (28)
 

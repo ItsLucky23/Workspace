@@ -66,6 +66,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/generateDocs/v1` | POST | 6 | — | — |
 | `workspaces/getDockerfile/v1` | POST | 30 | — | ✓ |
 | `workspaces/issuePat/v1` | POST | 10 | — | — |
+| `workspaces/knowledgeGraph/v1` | POST | 12 | — | — |
 | `workspaces/markRead/v1` | POST | 30 | — | — |
 | `workspaces/openEditor/v1` | POST | 12 | — | — |
 | `workspaces/openPreview/v1` | POST | 12 | — | — |
