@@ -386,7 +386,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         mediaSpendRows.map((s) => ({ feature: s.feature, costCents: s.costCents })),
         publishJobRows.map((j) => ({ status: j.status })),
       ),
-      styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin, systemPrompt: s.systemPrompt })),
+      styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin, systemPrompt: s.systemPrompt, previewAssetUrl: s.previewAssetUrl, previewKind: s.previewKind })),
       channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice ?? '' })),
       publishTargets,
       mediaCosts: mediaCostTable(),

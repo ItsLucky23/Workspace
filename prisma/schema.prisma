@@ -1476,6 +1476,8 @@ model StylePreset {
   label        String
   systemPrompt String
   params       Json?                                 // optional provider/model params
+  previewAssetUrl String?                            // M1 — a sample image/video showing this style's look (thumbnail gallery)
+  previewKind  String?                               // M1 — 'image' | 'video' (how to render the preview)
   builtin      Boolean  @default(false)              // seeded default (not user-deletable)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -1,6 +1,6 @@
 {
-  "hash": "8ff03d5f8dabbc01",
-  "chunkCount": 184,
+  "hash": "c77d8a78b55dc0f2",
+  "chunkCount": 185,
   "chunks": [
     {
       "id": "cap-001",
@@ -1105,6 +1105,12 @@
       "kind": "decision",
       "title": "M2 — thread the style through the video path (decompose)",
       "text": "ADR 0256: M2 — thread the style through the video path (decompose). Picking a style (\"stick-man figures\") only affected the SLIDESHOW path (per-beat images all styled). The real-video path was ungenerated-style: `runContentPipeline` did not pass its `opts` to `decomposeIntoScenes`, and `decomposeIntoScenes` had no `styleKey` param — it sent each scene's beat prompt with NO `style`. So a styled video request produced unstyled clips. This is the single highest-value content fix in the program. Decision: - **`decomposeIntoScenes` resolves the piece's `video-gen` style and rides it on every scene request.** It gained `styleKey`/`extraInstructions` params, calls `resolveStyle(ws, 'video-gen', styleKey)`, and passes `request.style` + `styleId` — the exact pattern `images.ts` already uses for the slideshow path. - **`buildSceneRequest` is extracted (pure + exported)** so a unit test asserts the style rides every scene- gen request, deterministically. - **The wiring is completed end-to-end:** `runContentPipeline` now forwards `...opts` to `decomposeIntoScenes`, and the two conductor ops (`content-run-pipeline`, `content-decompose-video`) forward `styleKey` + `extraInstructions` from the payload."
+    },
+    {
+      "id": "adr-0257",
+      "kind": "decision",
+      "title": "M1 — style preview asset + thumbnail affordance",
+      "text": "ADR 0257: M1 — style preview asset + thumbnail affordance. Media styles were a text-only list (label + systemPrompt) picked from a name dropdown — nothing showed a sample of the LOOK, so a user couldn't say \"I like THIS look\". `StylePreset.params` already existed; only a preview reference was missing. Decision: - **Two nullable columns on `StylePreset`**: `previewAssetUrl` (a sample image/video of the style) + `previewKind` ('image'|'video') — MongoDB, no migration. Threaded through `listStyles` (ResolvedStyle), the `save-style` op, and the snapshot's `content.styles`, so a style carries its preview end to end. - **The picker shows the chosen style's preview** (a looping muted `<video>` or an `<img>` thumbnail) when the style has one — turning the name dropdown into a look-first choice without replacing it."
     }
   ]
 }

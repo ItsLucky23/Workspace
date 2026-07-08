@@ -11,6 +11,8 @@ export interface ResolvedStyle {
   key: string;
   label: string;
   systemPrompt: string;
+  previewAssetUrl?: string | null; // M1 — a sample asset showing the style's look (thumbnail gallery)
+  previewKind?: string | null;     // M1 — 'image' | 'video'
 }
 
 //? R1 — a portable style-set entry (the user-authored, non-builtin styles a workspace has). Pure + exported.
@@ -101,7 +103,7 @@ export async function listStyles(prisma: PrismaClient, workspaceId: string, feat
   for (const r of rows) {
     const cur = byKey.get(r.key);
     //? a per-workspace row (workspaceId set) shadows a global (null) one.
-    if (!cur || r.workspaceId) byKey.set(r.key, { id: r.id, key: r.key, label: r.label, systemPrompt: r.systemPrompt });
+    if (!cur || r.workspaceId) byKey.set(r.key, { id: r.id, key: r.key, label: r.label, systemPrompt: r.systemPrompt, previewAssetUrl: r.previewAssetUrl, previewKind: r.previewKind });
   }
   return [...byKey.values()];
 }

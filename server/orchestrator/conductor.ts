@@ -1061,9 +1061,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const systemPrompt = str(payload, 'systemPrompt');
       if (!feature || !key || !systemPrompt) return;
       const label = str(payload, 'label') ?? key;
+      //? M1 — an optional preview asset (a sample image/video of the look) for the thumbnail gallery.
+      const previewAssetUrl = str(payload, 'previewAssetUrl');
+      const previewKind = str(payload, 'previewKind');
+      const preview = { ...(previewAssetUrl ? { previewAssetUrl } : {}), ...(previewKind ? { previewKind } : {}) };
       const existing = await prisma.stylePreset.findFirst({ where: { workspaceId: action.workspaceId, feature, key } });
-      if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt } });
-      return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false } });
+      if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt, ...preview } });
+      return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false, ...preview } });
     }
     case 'delete-style': {
       //? Q3 — remove a per-workspace style (never a global builtin — the filter is workspace-scoped).

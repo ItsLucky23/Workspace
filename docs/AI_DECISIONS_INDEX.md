@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (167)
+## Decisions (168)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -180,6 +180,7 @@
 | 0254 | L2 — designer persistence round-trip (consume the snapshot's designArtifacts) | 🟢 accepted | design, persistence, library, ai-libraries-accounts | — | `docs/decisions/0254-designer-persistence-roundtrip.md` |
 | 0255 | L3 — designer import / copy / customize / delete | 🟢 accepted | design, gallery, import, crud, ai-libraries-accounts | — | `docs/decisions/0255-designer-import-copy-crud.md` |
 | 0256 | M2 — thread the style through the video path (decompose) | 🟢 accepted | content, video, style, media, ai-libraries-accounts | — | `docs/decisions/0256-style-through-video-path.md` |
+| 0257 | M1 — style preview asset + thumbnail affordance | 🟢 accepted | content, media, style, gallery, ai-libraries-accounts | — | `docs/decisions/0257-style-preview-asset.md` |
 
 ## Summaries
 
@@ -1520,6 +1521,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`decomposeIntoScenes` resolves the piece's `video-gen` style and rides it on every scene request.** It gained `styleKey`/`extraInstructions` params, calls `resolveStyle(ws, 'video-gen', styleKey)`, and passes `request.style` + `styleId` — the exact pattern `images.ts` already uses for the slideshow path. **`buildSceneRequest` is extracted (pure + exported)** so a unit test asserts the style rides every scene- gen request, deterministically. **The wiring is completed end-to-end:** `runContentPipeline` now forwards `...opts` to `decomposeIntoScenes`, and the two conductor ops (`content-run-pipeline`, `content-decompose-video`) forward `styleKey` + `extraInstructions` from the payload.
 
 → `docs/decisions/0256-style-through-video-path.md`
+
+### 0257 — M1 — style preview asset + thumbnail affordance
+
+**0257** · accepted · tags: content, media, style, gallery, ai-libraries-accounts · 2026-07-08
+
+**Two nullable columns on `StylePreset`**: `previewAssetUrl` (a sample image/video of the style) + `previewKind` ('image'|'video') — MongoDB, no migration. Threaded through `listStyles` (ResolvedStyle), the `save-style` op, and the snapshot's `content.styles`, so a style carries its preview end to end. **The picker shows the chosen style's preview** (a looping muted `<video>` or an `<img>` thumbnail) when the style has one — turning the name dropdown into a look-first choice without replacing it.
+
+→ `docs/decisions/0257-style-preview-asset.md`
 
 ## Code governed by decisions
 

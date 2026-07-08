@@ -295,7 +295,7 @@ export interface ContentAnalyticsView {
 }
 //? A style-library entry (U4) — a named style preset (global or per-workspace/brand). `systemPrompt` +
 //? `builtin` let the Q3 style-manager edit per-workspace styles (builtins are read-only).
-export interface ContentStyleSummary { key: string; label: string; feature: string; builtin: boolean; systemPrompt: string }
+export interface ContentStyleSummary { key: string; label: string; feature: string; builtin: boolean; systemPrompt: string; previewAssetUrl?: string | null; previewKind?: string | null }
 //? A channel + its brand voice (U4) — the per-channel brand snippet that feeds brand-RAG.
 export interface ContentChannelSummary { id: string; name: string; platform: string; brandVoice: string }
 //? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,

@@ -276,6 +276,14 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <span className="text-muted">{translate({ key: 'workspaces.content.styleLabel' })}</span>
               {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string. */}
               <Dropdown size="md" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
+              {/* M1 — a thumbnail preview of the chosen style's look, when the style carries a preview asset. */}
+              {(() => {
+                const sp = content.styles.find((s) => s.key === styleKey && (s.previewAssetUrl ?? '').length > 0);
+                if (!sp?.previewAssetUrl) return null;
+                return sp.previewKind === 'video'
+                  ? <video src={sp.previewAssetUrl} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
+                  : <img src={sp.previewAssetUrl} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
+              })()}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>
