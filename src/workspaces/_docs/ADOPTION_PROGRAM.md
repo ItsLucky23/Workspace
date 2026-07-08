@@ -50,6 +50,8 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | K1-b compose-provisioner + ServiceStack + control-ops | ✅ | 0166 | composeEngine-unit 9/9 · serviceStack-integratie 12/12 |
 | K2 service-presets (curated compose-snippets, 7 services) | ✅ | (0166) | servicePresets-unit 39/39 |
 | K3 env-injectie in agent/preview-containers + service-netwerk | ✅ | (0166) | serviceEnv-unit 8/8 · serviceEnvResolve-integratie |
+| K4 integratie-MCP-scripts echt (cli-proxy.mjs + catalog-reroute) | ✅ | (0166) | mcpProxy-integratie 20/20 (echte MCP-server) |
+| **FASE K COMPLEET** | ✅ | | K1–K4 gecommit |
 
 ---
 

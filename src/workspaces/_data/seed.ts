@@ -511,16 +511,21 @@ export const COMMAND_CATALOG: { category: string; commands: { pattern: string; l
 //? Integration TYPES (templates) — picked when setting up a workspace tool. Each
 //? carries default config fields + a default MCP command. Stack-agnostic; custom
 //? allowed too.
+//? K4 — the DB integrations' `mcp` points at the REAL baked `cli-proxy.mjs` MCP server (queries via the baked
+//? psql/mysql/redis-cli/mongosh + the K3-injected connection env). The old `/pty-agent/mcp/<svc>.js` paths never
+//? existed (wrong dir + missing file), so enabling an integration exec'd a missing file. Services without a baked
+//? CLI (kafka/rabbitmq/s3/elasticsearch/http) carry NO mcp for now (no broken exec; the agent uses the injected
+//? env + curl/tools) — a dedicated MCP server per those is a follow-up.
 export const INTEGRATION_TYPES: { key: string; label: string; fields: { label: string; placeholder?: string }[]; mcp: string }[] = [
-  { key: 'mongodb', label: 'MongoDB', fields: [{ label: 'Connection string', placeholder: 'mongodb://…' }], mcp: 'node /pty-agent/mcp/mongo.js' },
-  { key: 'postgres', label: 'PostgreSQL', fields: [{ label: 'Connection string', placeholder: 'postgres://…' }], mcp: 'node /pty-agent/mcp/postgres.js' },
-  { key: 'mysql', label: 'MySQL', fields: [{ label: 'Connection string', placeholder: 'mysql://…' }], mcp: 'node /pty-agent/mcp/mysql.js' },
-  { key: 'redis', label: 'Redis', fields: [{ label: 'URL', placeholder: 'redis://…' }], mcp: 'node /pty-agent/mcp/redis.js' },
-  { key: 'kafka', label: 'Kafka', fields: [{ label: 'Brokers', placeholder: 'host:9092,…' }], mcp: 'node /pty-agent/mcp/kafka.js' },
-  { key: 'rabbitmq', label: 'RabbitMQ', fields: [{ label: 'AMQP URL', placeholder: 'amqp://…' }], mcp: 'node /pty-agent/mcp/amqp.js' },
-  { key: 's3', label: 'S3 / object storage', fields: [{ label: 'Endpoint' }, { label: 'Access key' }, { label: 'Secret key' }], mcp: 'node /pty-agent/mcp/s3.js' },
-  { key: 'elasticsearch', label: 'Elasticsearch', fields: [{ label: 'Node URL', placeholder: 'https://…' }], mcp: 'node /pty-agent/mcp/es.js' },
-  { key: 'http', label: 'HTTP API', fields: [{ label: 'Base URL' }, { label: 'Auth header' }], mcp: 'node /pty-agent/mcp/http.js' },
+  { key: 'mongodb', label: 'MongoDB', fields: [{ label: 'Connection string', placeholder: 'mongodb://…' }], mcp: 'node /opt/pty-agent/mcp/cli-proxy.mjs mongo' },
+  { key: 'postgres', label: 'PostgreSQL', fields: [{ label: 'Connection string', placeholder: 'postgres://…' }], mcp: 'node /opt/pty-agent/mcp/cli-proxy.mjs postgres' },
+  { key: 'mysql', label: 'MySQL', fields: [{ label: 'Connection string', placeholder: 'mysql://…' }], mcp: 'node /opt/pty-agent/mcp/cli-proxy.mjs mysql' },
+  { key: 'redis', label: 'Redis', fields: [{ label: 'URL', placeholder: 'redis://…' }], mcp: 'node /opt/pty-agent/mcp/cli-proxy.mjs redis' },
+  { key: 'kafka', label: 'Kafka', fields: [{ label: 'Brokers', placeholder: 'host:9092,…' }], mcp: '' },
+  { key: 'rabbitmq', label: 'RabbitMQ', fields: [{ label: 'AMQP URL', placeholder: 'amqp://…' }], mcp: '' },
+  { key: 's3', label: 'S3 / object storage', fields: [{ label: 'Endpoint' }, { label: 'Access key' }, { label: 'Secret key' }], mcp: '' },
+  { key: 'elasticsearch', label: 'Elasticsearch', fields: [{ label: 'Node URL', placeholder: 'https://…' }], mcp: '' },
+  { key: 'http', label: 'HTTP API', fields: [{ label: 'Base URL' }, { label: 'Auth header' }], mcp: '' },
 ];
 
 //? Workspace env vars (hold the real secrets/config; integration tools point at them).
