@@ -1193,7 +1193,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const mode = str(payload, 'mode') === 'slideshow' ? 'slideshow' : 'video';
       //? M2 — thread the chosen style (+ any extra instructions) through the whole pipeline so it reaches the
       //? video path too (decompose), not just the slideshow images.
-      await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}) });
+      //? M3 — a target duration → the long-form beat/scene planner; sceneDurationMs sets per-scene length.
+      const durationMs = num(payload, 'durationMs');
+      const sceneDurationMs = num(payload, 'sceneDurationMs');
+      await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}), ...(durationMs === undefined ? {} : { durationMs }), ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;
     }

@@ -173,6 +173,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const { content, runContentOp, navigate, activeWorkspace } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
+  const [durationKey, setDurationKey] = useState('auto');
   const [extra, setExtra] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
@@ -197,6 +198,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
     { id: '', value: '', item: translate({ key: 'workspaces.content.styleNone' }) },
     ...[...new Map(content.styles.map((s) => [s.key, s.label])).entries()].map(([k, l]) => ({ id: k, value: k, item: l })),
   ];
+  //? M3 — target-duration presets for the long-form video planner (content-run-pipeline). 0 = auto (default arc).
+  const DURATION_MS: Record<string, number> = { auto: 0, short: 20_000, normal: 45_000, long: 90_000 };
+  const durationItems: DropdownItem[] = (['auto', 'short', 'normal', 'long'] as const).map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.dur_${k}` }) }));
 
   //? Q1: the € estimate for an action, from the snapshot's per-feature cost table. 0 (no chip) for
   //? non-metered actions (script/assemble).
@@ -213,11 +217,14 @@ export default function ContentPiece({ params }: { params: Record<string, string
       const warning = translate({ key: 'workspaces.content.costWarning' });
       const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: label ? `${warning} (${label})` : warning });
       if (!ok) return;
-      const payload: Record<string, string> = {};
+      const payload: Record<string, unknown> = {};
       if (styleKey.trim()) payload.styleKey = styleKey.trim();
       if (extra.trim()) payload.extraInstructions = extra.trim();
       if (action.needsPrompt) payload.prompt = extra.trim() || piece.title;
       if (action.needsRef && referenceUrl.trim()) payload.referenceUrl = referenceUrl.trim();
+      //? M3 — a target duration drives the long-form beat/scene planner (content-run-pipeline). 0 = auto.
+      const durMs = DURATION_MS[durationKey] ?? 0;
+      if (durMs > 0) payload.durationMs = durMs;
       runContentOp(action.op, piece.id, payload);
     })();
   };
@@ -284,6 +291,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
                   ? <video src={sp.previewAssetUrl} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
                   : <img src={sp.previewAssetUrl} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
               })()}
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">{translate({ key: 'workspaces.content.durationLabel' })}</span>
+              <Dropdown size="md" value={durationItems.find((i) => i.id === durationKey)} items={durationItems} onChange={(it) => { setDurationKey(String(it.id)); }} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>

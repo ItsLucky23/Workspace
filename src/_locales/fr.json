@@ -784,7 +784,7 @@
       "backToBoard": "Retour au contenu",
       "directionTitle": "Direction créative",
       "directionDesc": "Un style + des instructions libres, appliqués à ce que vous générez.",
-      "styleLabel": "Style",
+      "styleLabel": "Style", "durationLabel": "Durée", "dur_auto": "Auto", "dur_short": "Court (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Long (~90s)",
       "stylePlaceholder": "ex. réaliste, cinématique, anime…",
       "extraLabel": "Instructions supplémentaires",
       "extraPlaceholder": "ex. lumière chaude, énergique, sous la pluie…",

@@ -784,7 +784,7 @@
       "backToBoard": "ZurÃ¼ck zu Content",
       "directionTitle": "Kreative Richtung",
       "directionDesc": "Ein Stil + freie Anweisungen, angewendet auf das, was du generierst.",
-      "styleLabel": "Stil",
+      "styleLabel": "Stil", "durationLabel": "Länge", "dur_auto": "Auto", "dur_short": "Kurz (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Lang (~90s)",
       "stylePlaceholder": "z. B. realistisch, cinematic, Animeâ¦",
       "extraLabel": "ZusÃ¤tzliche Anweisungen",
       "extraPlaceholder": "z. B. warmes Licht, energisch, im Regenâ¦",

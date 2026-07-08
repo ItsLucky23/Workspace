@@ -784,7 +784,7 @@
       "backToBoard": "Terug naar content",
       "directionTitle": "Creatieve richting",
       "directionDesc": "Een stijl + vrije instructies, toegepast op wat je genereert.",
-      "styleLabel": "Stijl",
+      "styleLabel": "Stijl", "durationLabel": "Lengte", "dur_auto": "Auto", "dur_short": "Kort (~20s)", "dur_normal": "Normaal (~45s)", "dur_long": "Lang (~90s)",
       "stylePlaceholder": "bijv. realistisch, cinematic, animeâ¦",
       "extraLabel": "Extra instructies",
       "extraPlaceholder": "bijv. warm licht, energiek, in de regenâ¦",

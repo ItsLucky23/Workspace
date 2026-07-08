@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `c77d8a78b55dc0f2` · 17 capabilities · 168 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `774ff309a500321c` · 17 capabilities · 169 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -194,3 +194,4 @@
 - `adr-0255` L3 — designer import / copy / customize / delete
 - `adr-0256` M2 — thread the style through the video path (decompose)
 - `adr-0257` M1 — style preview asset + thumbnail affordance
+- `adr-0258` M3 — pick-a-look + long-form video duration planner

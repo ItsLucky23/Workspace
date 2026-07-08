@@ -9,7 +9,7 @@ import type { PrismaClient } from '@prisma/client';
 import { assembleContent } from './assembly';
 import { generateBeatImages } from './images';
 import { decomposeIntoScenes } from './sceneDecompose';
-import { generateScript } from './script';
+import { generateScript, planBeatCount } from './script';
 import { generateVoiceover } from './voice';
 
 export type PipelineMode = 'video' | 'slideshow';
@@ -29,20 +29,23 @@ export interface PipelineRunResult {
 //? is real. Returns which steps ran + whether any output was a stub.
 export async function runContentPipeline(
   prisma: PrismaClient,
-  args: { workspaceId: string; contentProjectId: string; mode?: PipelineMode; styleKey?: string; extraInstructions?: string },
+  args: { workspaceId: string; contentProjectId: string; mode?: PipelineMode; styleKey?: string; extraInstructions?: string; durationMs?: number; sceneDurationMs?: number },
 ): Promise<PipelineRunResult> {
   const { workspaceId, contentProjectId } = args;
   const mode: PipelineMode = args.mode ?? 'video';
   const piece = await prisma.contentProject.findFirst({ where: { workspaceId, id: contentProjectId } });
   if (!piece) return { ok: false, ranScript: false, ranVoice: false, ranVisuals: false, ranAssemble: false, mode, stub: false };
   const opts = { ...(args.styleKey ? { styleKey: args.styleKey } : {}), ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}) };
+  //? M3 — long-form planner: a target duration → ~N beats/scenes (each ≈ sceneDurationMs). 0 ⇒ the default arc.
+  const targetBeats = planBeatCount(args.durationMs, args.sceneDurationMs ?? 5000);
+  const sceneOpt = args.sceneDurationMs ? { sceneDurationMs: args.sceneDurationMs } : {};
   let stub = false;
 
   //? 1) Script — reuse the latest if the piece already has one.
   let script = await prisma.script.findFirst({ where: { workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
   let ranScript = false;
   if (!script) {
-    const r = await generateScript(prisma, { workspaceId, contentProjectId, brief: piece.brief ?? piece.title, ...opts });
+    const r = await generateScript(prisma, { workspaceId, contentProjectId, brief: piece.brief ?? piece.title, ...opts, ...(targetBeats > 0 ? { targetBeats } : {}) });
     stub = r.stub;
     ranScript = true;
     script = await prisma.script.findFirst({ where: { workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
@@ -56,7 +59,7 @@ export async function runContentPipeline(
   //? 3) Visuals — video scenes (marquee) or a still per beat.
   let ranVisuals = false;
   if (mode === 'video') {
-    const dec = await decomposeIntoScenes(prisma, { workspaceId, contentProjectId, scriptId: script.id, ...opts });
+    const dec = await decomposeIntoScenes(prisma, { workspaceId, contentProjectId, scriptId: script.id, ...opts, ...sceneOpt });
     stub = stub || dec.stub;
     ranVisuals = dec.ok;
   } else {

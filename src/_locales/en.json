@@ -784,7 +784,7 @@
       "backToBoard": "Back to content",
       "directionTitle": "Creative direction",
       "directionDesc": "A style + free-form instructions, applied to what you generate.",
-      "styleLabel": "Style",
+      "styleLabel": "Style", "durationLabel": "Length", "dur_auto": "Auto", "dur_short": "Short (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Long (~90s)",
       "stylePlaceholder": "e.g. realistic, cinematic, anime…",
       "extraLabel": "Extra instructions",
       "extraPlaceholder": "e.g. warm lighting, upbeat, in the rain…",
