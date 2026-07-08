@@ -1,6 +1,6 @@
 {
-  "hash": "f46471fc2e32049e",
-  "chunkCount": 188,
+  "hash": "6f5d6a38b7fab98f",
+  "chunkCount": 189,
   "chunks": [
     {
       "id": "cap-001",
@@ -1129,6 +1129,12 @@
       "kind": "decision",
       "title": "A1+A2 — multi-account connections + channel management",
       "text": "ADR 0260: A1+A2 — multi-account connections + channel management. Publishing stored ONE token per platform (`__publish_<platform>`), so connecting a second YouTube account overwrote the first; and channels (a platform + brand identity) could only be created in tests — no create/edit/delete op or UI. A1+A2 make \"manage all your social accounts + channels via the workspace\" real. Decision: - **A1 — re-key the connection store** so `tokenKey(platform, accountId?)` = `__publish_<platform>` (default, back-compat) or `__publish_<platform>_<accountId>` for N accounts per platform. `saveConnection`/ `getConnection` gained an optional `accountId`. The token-refresh logic (ADOPTION F1) stays orthogonal — this only changes the KEY, not the read/refresh. - **A2 — channel + account management ops** (content-* write family, RBAC): `channel-create`/`channel-edit`/ `channel-delete` (a channel = projectId + name + platform + handle + brandVoice + defaultStyleId) and `account-disconnect` (remove a connected account's token by platform + optional accountId). Channels are already on the snapshot; the CRUD makes them user-managed."
+    },
+    {
+      "id": "adr-0261",
+      "kind": "decision",
+      "title": "A3+A4 — publish routing by account + content bound to a channel",
+      "text": "ADR 0261: A3+A4 — publish routing by account + content bound to a channel. A1+A2 gave N accounts per platform + channel management. A3 makes a publish target a CHOSEN account (not just \"the platform\"), and A4 lets a content piece be created bound to a channel (\"make a video for channel Z\") so generation grounds on that channel's brand. Decision: - **A3 — thread `accountId` through the publish path.** `performUpload` + `publishAsset` gained an optional `accountId` → `getConnection(platform, accountId)`, so the upload uses the chosen account's token (default account when omitted). `content-request-publish` carries `accountId` in the suggestion patch; the accept passes it to `publishAsset`. - **A4 — `content-from-brief` accepts `channelId`.** The created `ContentProject` is bound to the channel (content-create already did), so `brandContext` + brand-RAG ground every generation on that channel's voice. The Workspace-AI can propose \"make a video for channel Z\" by re-expressing it as a content-create/ content-from-brief with the channelId (no new verb)."
     }
   ]
 }

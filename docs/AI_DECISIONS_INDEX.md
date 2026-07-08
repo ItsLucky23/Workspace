@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (171)
+## Decisions (172)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -184,6 +184,7 @@
 | 0258 | M3 — pick-a-look + long-form video duration planner | 🟢 accepted | content, video, planner, style, ai-libraries-accounts | — | `docs/decisions/0258-longform-video-planner.md` |
 | 0259 | M4 — media-style upload / copy / customize / delete (preview-aware) | 🟢 accepted | content, media, style, import-export, ai-libraries-accounts | — | `docs/decisions/0259-media-style-crud-roundtrip.md` |
 | 0260 | A1+A2 — multi-account connections + channel management | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0260-multi-account-channel-management.md` |
+| 0261 | A3+A4 — publish routing by account + content bound to a channel | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0261-publish-routing-content-channel.md` |
 
 ## Summaries
 
@@ -1556,6 +1557,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A1 — re-key the connection store** so `tokenKey(platform, accountId?)` = `__publish_<platform>` (default, back-compat) or `__publish_<platform>_<accountId>` for N accounts per platform. `saveConnection`/ `getConnection` gained an optional `accountId`. The token-refresh logic (ADOPTION F1) stays orthogonal — this only changes the KEY, not the read/refresh. **A2 — channel + account management ops** (content-* write family, RBAC): `channel-create`/`channel-edit`/ `channel-delete` (a channel = projectId + name + platform + handle + brandVoice + defaultStyleId) and `account-disconnect` (remove a connected account's token by platform + optional accountId). Channels are already on the snapshot; the CRUD makes them user-managed.
 
 → `docs/decisions/0260-multi-account-channel-management.md`
+
+### 0261 — A3+A4 — publish routing by account + content bound to a channel
+
+**0261** · accepted · tags: content, publish, accounts, channels, ai-libraries-accounts · 2026-07-08
+
+**A3 — thread `accountId` through the publish path.** `performUpload` + `publishAsset` gained an optional `accountId` → `getConnection(platform, accountId)`, so the upload uses the chosen account's token (default account when omitted). `content-request-publish` carries `accountId` in the suggestion patch; the accept passes it to `publishAsset`. **A4 — `content-from-brief` accepts `channelId`.** The created `ContentProject` is bound to the channel (content-create already did), so `brandContext` + brand-RAG ground every generation on that channel's voice. The Workspace-AI can propose "make a video for channel Z" by re-expressing it as a content-create/ content-from-brief with the channelId (no new verb).
+
+→ `docs/decisions/0261-publish-routing-content-channel.md`
 
 ## Code governed by decisions
 

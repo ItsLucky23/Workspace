@@ -57,11 +57,12 @@ type UploadOutcome = { kind: 'real'; externalUrl: string } | { kind: 'stub' } | 
 //? both the immediate path and the scheduled-fire path (O3) share one posting implementation.
 async function performUpload(
   prisma: PrismaClient, workspaceId: string,
-  args: { contentProjectId: string; assetId: string; platform: PublishPlatform },
+  args: { contentProjectId: string; assetId: string; platform: PublishPlatform; accountId?: string },
   opts: { uploadTransport?: PublishUploadTransport },
 ): Promise<UploadOutcome> {
   const oauthPlatform = args.platform as OAuthPlatform; // built platforms are youtube|tiktok
-  const connection = await getConnection(prisma, workspaceId, oauthPlatform);
+  //? A3 — route to the CHOSEN account's connection (accountId), falling back to the default per-platform token.
+  const connection = await getConnection(prisma, workspaceId, oauthPlatform, args.accountId);
   const asset = await prisma.contentAsset.findFirst({ where: { workspaceId, id: args.assetId }, select: { url: true } });
   const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true, publishVariants: true } });
   //? O2 — the per-platform post override (caption/hashtags/privacy), if the piece defines one.
@@ -78,7 +79,7 @@ async function performUpload(
 export async function publishAsset(
   prisma: PrismaClient,
   workspaceId: string,
-  args: { contentProjectId: string; assetId: string; platform: PublishPlatform; scheduledAt?: Date | null },
+  args: { contentProjectId: string; assetId: string; platform: PublishPlatform; scheduledAt?: Date | null; accountId?: string },
   opts: { uploadTransport?: PublishUploadTransport; now?: number } = {},
 ): Promise<PublishResult> {
   //? A future-ready platform: record the intent as an error job (no posting adapter yet).

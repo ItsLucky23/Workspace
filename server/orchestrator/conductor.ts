@@ -1540,7 +1540,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const assetId = str(payload, 'assetId');
       const platform = str(payload, 'platform');
       if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
-      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform } } });
+      //? A3 — route to a specific connected account when chosen (default account otherwise).
+      const accountId = str(payload, 'accountId');
+      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}${accountId ? ` (${accountId})` : ''}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}) } } });
     }
     //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
     //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the
@@ -1563,7 +1565,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const brief = str(payload, 'brief');
       if (!brief) return;
       const project = await prisma.project.create({ data: { workspaceId: action.workspaceId, name: str(payload, 'channelName') ?? 'Content', projectType: 'content', gitlabPath: '' } });
-      return prisma.contentProject.create({ data: { workspaceId: action.workspaceId, projectId: project.id, title: str(payload, 'title') ?? 'New content', brief, format: str(payload, 'format') ?? 'faceless' } });
+      //? A4 — bind the piece to a channel when given ("make a video for channel Z"), so generation grounds on
+      //? that channel's brand voice (brandContext + brand-RAG).
+      const channelId = str(payload, 'channelId');
+      return prisma.contentProject.create({ data: { workspaceId: action.workspaceId, projectId: project.id, title: str(payload, 'title') ?? 'New content', brief, format: str(payload, 'format') ?? 'faceless', ...(channelId ? { channelId } : {}) } });
     }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.
     case 'content-gen-reference-image': {
@@ -1634,7 +1639,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const contentProjectId = typeof p.contentProjectId === 'string' ? p.contentProjectId : '';
         const assetId = typeof p.assetId === 'string' ? p.assetId : '';
         const platform = typeof p.platform === 'string' ? p.platform : '';
-        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform });
+        const accountId = typeof p.accountId === 'string' ? p.accountId : undefined;
+        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}) });
       }
       return;
     }
