@@ -6,6 +6,8 @@
 
 import { tryCatch } from '@luckystack/core';
 
+import { encodeQuestion, type RawQuestion } from '../../src/workspaces/_functions/structuredQuestion';
+
 //? The carry-over envelope an agent emits at stage-done (B-O2 contract, 02 §4).
 export interface CarryOverEnvelope {
   summary: string;
@@ -32,6 +34,17 @@ function strArr(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 }
 
+//? Extract the raw question entries from a parsed `ws-needs-input` body — either a bare array or an
+//? object with a `questions` array. Each entry is a plain string (free question) OR an object
+//? ({prompt, kind, options}) that `encodeQuestion` turns into the structured needsInput envelope (P-B).
+function rawQuestions(parsed: unknown): RawQuestion[] {
+  const arr = Array.isArray(parsed)
+    ? parsed
+    : (parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>).questions : null);
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((x): x is RawQuestion => typeof x === 'string' || (x !== null && typeof x === 'object'));
+}
+
 //? Parse the agent's final message into a turn signal. `ws-carryover` → done (+ envelope);
 //? `ws-needs-input` (or a bare request) → needs-input; otherwise the turn just ended → continue.
 export async function parseTurnResult(message: string): Promise<TurnResult> {
@@ -53,7 +66,10 @@ export async function parseTurnResult(message: string): Promise<TurnResult> {
   const needs = fencedBlock(message, 'ws-needs-input');
   if (needs !== null) {
     const [, parsed] = await tryCatch(() => Promise.resolve(JSON.parse(needs) as unknown));
-    const questions = Array.isArray(parsed) ? strArr(parsed) : strArr((parsed as Record<string, unknown> | null)?.questions);
+    //? Each entry → its needsInput wire form: a free question stays plain (back-compat), an approve/choice
+    //? question becomes the `@@wsq:` envelope the P-B card decodes. Falls back to the raw block as one free
+    //? question when nothing parsed.
+    const questions = rawQuestions(parsed).map((q) => encodeQuestion(q)).filter((s) => s.length > 0);
     return { kind: 'needs-input', questions: questions.length > 0 ? questions : [needs] };
   }
   return { kind: 'continue' };

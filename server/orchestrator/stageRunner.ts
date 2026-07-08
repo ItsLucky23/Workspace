@@ -316,6 +316,19 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? needs-input → session parks busy (a human answers); continue → the turn just ended.
   await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: result.kind === 'needs-input' ? 'busy' : 'stopped' } });
 
+  //? P-B — SURFACE the agent's question. Previously the parsed questions were dropped, so an agent that
+  //? blocked on `ws-needs-input` parked its session busy but showed the human nothing. Persist the first
+  //? question (already needsInput-encoded by parseTurnResult: plain for free, `@@wsq:` for approve/choice)
+  //? onto the ticket + flip it to needs-input, then broadcast so the board/phone renders the P-B card.
+  //? `answer-input` clears it and resumes the parked session.
+  if (result.kind === 'needs-input') {
+    const question = result.questions[0] ?? '';
+    if (question.trim().length > 0) {
+      await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: question, status: 'needs-input', remindedAt: null } });
+      await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
+    }
+  }
+
   //? #4 self-handoff: the session PERSISTS (it didn't complete the stage), so if it crossed its
   //? token budget, drive a controlled handoff NOW — ask the AI (with its full context) to write a
   //? handoff, store it, and CLEAR claudeSessionId so the next turn starts fresh + reloads the

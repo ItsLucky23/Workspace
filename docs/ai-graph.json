@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 205,
-    "edges": 303,
-    "symbols": 252,
-    "callEdges": 37
+    "nodes": 206,
+    "edges": 304,
+    "symbols": 258,
+    "callEdges": 41
   },
   "nodes": [
     {
@@ -575,6 +575,11 @@
     },
     {
       "id": "workspaces/_functions/pushSubscribe.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts",
       "kind": "other",
       "route": null
     },
@@ -1701,6 +1706,10 @@
     },
     {
       "from": "workspaces/board/[ticketId]/page.tsx",
+      "to": "workspaces/_functions/structuredQuestion.ts"
+    },
+    {
+      "from": "workspaces/board/[ticketId]/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2785,6 +2794,9 @@
     ],
     "workspaces/_functions/pushSubscribe.ts": [
       "workspaces/settings/page.tsx"
+    ],
+    "workspaces/_functions/structuredQuestion.ts": [
+      "workspaces/board/[ticketId]/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
       "workspaces/_components/ImageEditor.tsx",
@@ -3997,6 +4009,42 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_functions/structuredQuestion.ts::<module>",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts::encodeQuestion",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "encodeQuestion",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts::normalizeQuestion",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "normalizeQuestion",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "parseStructuredQuestion",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts::questionPrompt",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "questionPrompt",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/structuredQuestion.ts::strArr",
+      "file": "workspaces/_functions/structuredQuestion.ts",
+      "name": "strArr",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/acceptSuggestion_server_v1.ts::<module>",
       "file": "workspaces/_sync/acceptSuggestion_server_v1.ts",
       "name": "<module>",
@@ -4749,6 +4797,22 @@
       "to": "workspaces/_data/seed.ts::ticketCreator"
     },
     {
+      "from": "workspaces/_functions/structuredQuestion.ts::encodeQuestion",
+      "to": "workspaces/_functions/structuredQuestion.ts::normalizeQuestion"
+    },
+    {
+      "from": "workspaces/_functions/structuredQuestion.ts::normalizeQuestion",
+      "to": "workspaces/_functions/structuredQuestion.ts::strArr"
+    },
+    {
+      "from": "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion",
+      "to": "workspaces/_functions/structuredQuestion.ts::normalizeQuestion"
+    },
+    {
+      "from": "workspaces/_functions/structuredQuestion.ts::questionPrompt",
+      "to": "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion"
+    },
+    {
       "from": "workspaces/_sync/contentAssetDelta_server_v1.ts::main",
       "to": "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset"
     },
@@ -4859,6 +4923,20 @@
     "workspaces/_data/seed.ts::ticketCreator": [
       "workspaces/_data/seed.ts::ticketAssignee",
       "workspaces/_data/seed.ts::ticketLinkedMembers"
+    ],
+    "workspaces/_functions/structuredQuestion.ts::normalizeQuestion": [
+      "workspaces/_functions/structuredQuestion.ts::encodeQuestion",
+      "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion",
+      "workspaces/_functions/structuredQuestion.ts::questionPrompt"
+    ],
+    "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion": [
+      "workspaces/_functions/structuredQuestion.ts::questionPrompt"
+    ],
+    "workspaces/_functions/structuredQuestion.ts::strArr": [
+      "workspaces/_functions/structuredQuestion.ts::encodeQuestion",
+      "workspaces/_functions/structuredQuestion.ts::normalizeQuestion",
+      "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion",
+      "workspaces/_functions/structuredQuestion.ts::questionPrompt"
     ],
     "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset": [
       "workspaces/_sync/contentAssetDelta_server_v1.ts::main"

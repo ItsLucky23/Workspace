@@ -965,7 +965,7 @@
       "gitlab": "GitLab",
       "agentNeedsInput": "Agent braucht deine Eingabe",
       "answerPlaceholder": "Gib deine Antwort einâ¦",
-      "send": "Senden",
+      "send": "Senden", "notePlaceholder": "Notiz hinzufügen (optional)…", "approve": "Genehmigen", "reject": "Ablehnen", "approved": "Genehmigt", "rejected": "Abgelehnt",
       "description": "Beschreibung",
       "noDescription": "Noch keine Beschreibung.",
       "editTitle": "Titel bearbeiten",

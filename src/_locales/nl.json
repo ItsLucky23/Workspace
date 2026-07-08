@@ -965,7 +965,7 @@
       "gitlab": "GitLab",
       "agentNeedsInput": "Agent heeft je input nodig",
       "answerPlaceholder": "Typ je antwoordâ¦",
-      "send": "Versturen",
+      "send": "Versturen", "notePlaceholder": "Notitie toevoegen (optioneel)…", "approve": "Goedkeuren", "reject": "Afwijzen", "approved": "Goedgekeurd", "rejected": "Afgewezen",
       "description": "Beschrijving",
       "noDescription": "Nog geen beschrijving.",
       "editTitle": "Titel bewerken",

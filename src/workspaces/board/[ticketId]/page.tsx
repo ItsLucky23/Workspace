@@ -28,6 +28,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../../_data/types';
 import { PRIORITY_DOT, PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
+import { parseStructuredQuestion } from '../../_functions/structuredQuestion';
 
 export const template = 'workspaces';
 
@@ -316,25 +317,52 @@ function Banner({ tone, icon, title, action, children }: { tone: 'warning' | 'co
   );
 }
 
+//? P-B — a structured, phone-usable answer card. The agent's question is stored in `needsInput` and
+//? decoded here: an `approve` question renders Approve/Reject (+ an optional note); a `choice` question
+//? renders one tap-target per option; a `free` question keeps the text input. Every path routes through the
+//? SAME `answerInput` op (the Conductor records it + re-fires the parked turn) — no new verb, no schema
+//? change. Optimistic: the card disappears when the ticket delta (needsInput cleared) broadcasts back.
 function NeedsInputBanner({ question, ticketKey }: { question: string; ticketKey: string }) {
   const translate = useTranslator();
   const { answerInput } = useWorkspaces();
   const [reply, setReply] = useState('');
-  //? Send the human's answer to the AI (#17): the Conductor records it + re-fires the parked turn
-  //? with `--resume`. Optimistically clear the input; the banner disappears when the ticket delta
-  //? (needsInput cleared) broadcasts back.
-  const send = () => { const a = reply.trim(); if (!a) return; answerInput(ticketKey, a); setReply(''); };
+  const [note, setNote] = useState('');
+  const sq = parseStructuredQuestion(question);
+  const answer = (a: string) => { const v = a.trim(); if (v.length === 0) return; answerInput(ticketKey, v); setReply(''); setNote(''); };
+  const withNote = (decision: string) => { answer(note.trim().length > 0 ? `${decision}: ${note.trim()}` : decision); };
   return (
     <Banner tone="warning" icon="circle-question" title={translate({ key: 'workspaces.ticket.agentNeedsInput' })}>
-      <p className="text-sm text-common mt-0.5">{question}</p>
-      <div className="flex items-center gap-2 mt-2">
-        <input
-          value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-          placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
-          className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
-        />
-        <WsButton onClick={send}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
-      </div>
+      <p className="text-sm text-common mt-0.5">{sq.prompt}</p>
+      {sq.kind === 'approve' && (
+        <div className="flex flex-col gap-2 mt-2">
+          <input
+            value={note} onChange={(e) => { setNote(e.target.value); }}
+            placeholder={translate({ key: 'workspaces.ticket.notePlaceholder' })}
+            className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
+          />
+          <div className="flex items-center gap-2">
+            <WsButton icon="check" onClick={() => { withNote(translate({ key: 'workspaces.ticket.approved' })); }}>{translate({ key: 'workspaces.ticket.approve' })}</WsButton>
+            <WsButton variant="ghost" icon="xmark" onClick={() => { withNote(translate({ key: 'workspaces.ticket.rejected' })); }}>{translate({ key: 'workspaces.ticket.reject' })}</WsButton>
+          </div>
+        </div>
+      )}
+      {sq.kind === 'choice' && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {sq.options.map((opt) => (
+            <WsButton key={opt} variant="ghost" onClick={() => { answer(opt); }}>{opt}</WsButton>
+          ))}
+        </div>
+      )}
+      {sq.kind === 'free' && (
+        <div className="flex items-center gap-2 mt-2">
+          <input
+            value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') answer(reply); }}
+            placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
+            className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
+          />
+          <WsButton onClick={() => { answer(reply); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
+        </div>
+      )}
     </Banner>
   );
 }

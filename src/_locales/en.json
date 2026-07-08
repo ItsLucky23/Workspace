@@ -964,7 +964,7 @@
       "openTerminal": "Open terminal",
       "gitlab": "GitLab",
       "agentNeedsInput": "Agent needs your input",
-      "answerPlaceholder": "Type your answer…",
+      "answerPlaceholder": "Type your answer…", "notePlaceholder": "Add a note (optional)…", "approve": "Approve", "reject": "Reject", "approved": "Approved", "rejected": "Rejected",
       "send": "Send",
       "description": "Description",
       "noDescription": "No description yet.",

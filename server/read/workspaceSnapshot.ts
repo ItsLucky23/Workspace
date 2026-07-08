@@ -18,6 +18,7 @@ import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toContentAssetSummary, toInfoDoc, toTicket } from './mappers';
+import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
@@ -441,7 +442,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? (needs-input), in one place the reviewer drains. Highest priority first.
       answerQueue: ticketRows
         .filter((t) => !t.archived && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'))
-        .map((t): AnswerQueueItem => ({ ticketKey: t.key, title: t.title, question: t.needsInput ?? '', priority: t.priority }))
+        .map((t): AnswerQueueItem => ({ ticketKey: t.key, title: t.title, question: questionPrompt(t.needsInput), priority: t.priority }))
         .toSorted((a, b) => (PRIORITY_RANK[b.priority] ?? 1) - (PRIORITY_RANK[a.priority] ?? 1)),
       //? Content platform (ADR 0069): the content-lane pieces + media €-budget status.
       content: contentSnapshot,

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (154)
+## Decisions (155)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -167,6 +167,7 @@
 | 0153 | V5/V6 — the video timeline editor UI | 🟢 accepted | content, video, editor, ui, idea-to-outcome | — | `docs/decisions/0153-video-timeline-editor.md` |
 | 0154 | O-D — "start with AI" auto-activation | 🟢 accepted | tickets, orchestration, activation, idea-to-outcome | — | `docs/decisions/0154-auto-activation.md` |
 | 0155 | B1 — client-side crop + resize in the image editor | 🟢 accepted | content, image, editor, ui, idea-to-outcome | — | `docs/decisions/0155-image-crop-resize.md` |
+| 0156 | P-B — structured approve/reject/choice cards for needs-input | 🟢 accepted | approvals, needs-input, ui, phone-first, idea-to-outcome | — | `docs/decisions/0156-structured-approvals.md` |
 
 ## Summaries
 
@@ -1403,6 +1404,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Crop is a draggable/resizable Fabric `Rect`** toggled on: its `getBoundingRect()` (clamped to the canvas by the pure `clampCropRegion`) becomes the exported sub-region via Fabric's `toDataURL({left,top,width,height})`. The rect is removed before export so it isn't baked into the output. **Resize is a preset dropdown** (`Original / 1080 / 720 / 512` px width) applied after crop through an offscreen 2D-canvas draw sized by the pure `resizeDimensions` (shrink-only, aspect-preserving). **The geometry lives in a Fabric-free helper** (`_functions/imageCrop.ts`) so `clampCropRegion` (clamp, invert-normalise, degenerate→null) and `resizeDimensions` are unit-tested without a canvas (11/11). **No new op, no provider, no spend.** Export still goes through the existing upload + `content-import-asset` path (B-23: the Conductor writes the asset), identical to B2/B3.
 
 → `docs/decisions/0155-image-crop-resize.md`
+
+### 0156 — P-B — structured approve/reject/choice cards for needs-input
+
+**0156** · accepted · tags: approvals, needs-input, ui, phone-first, idea-to-outcome · 2026-07-08
+
+**Encode structure inside the existing `needsInput` string — no schema change, no new verb.** A FREE question stays its plain prompt (every existing reader — banner, answer-queue, `isRealNeedsInput` — is unaffected); an APPROVE or CHOICE question is stored as a compact `@@wsq:` JSON envelope. The pure, isomorphic `structuredQuestion.ts` (`encodeQuestion` / `parseStructuredQuestion` / `questionPrompt`) is the single wire-shape source shared by server and client. **Close the surfacing gap in `stageRunner`.** On a needs-input turn, persist the first question (already needsInput-encoded by `parseTurnResult`) onto the ticket + flip it to `needs-input` + broadcast, so the board/phone renders the card. `parseTurnResult` now accepts structured entries (`{prompt,kind,options}`) alongside bare strings. **The card (`NeedsInputBanner`) renders by kind:** approve → Approve/Reject (+ optional note); choice → one tap-target per option; free → the text input. Every path routes through the SAME `answerInput` op — the Conductor records the answer + re-fires the parked turn with `--resume`. B-23 intact: the human's tap is a proposal→accept, the Conductor is still the only writer. **The answer-queue shows the decoded prompt** (`questionPrompt`), never the raw envelope.
+
+→ `docs/decisions/0156-structured-approvals.md`
 
 ## Code governed by decisions
 
