@@ -36,6 +36,8 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | **FASE F COMPLEET** | ✅ | | F1–F4 gecommit |
 | W1 multi-question sets (dood schema → denormalized JSON) | ✅ | 0162 | questionSet-unit 23/23 · multiQuestion-integratie 11/11 |
 | W2 non-blocking (advisory) vragen + divergence→revisie | ✅ | 0163 | questionSet-unit 37/37 · turnResultStructured 15/15 · advisoryQuestion-integratie 8/8 |
+| W3 idle-worker-container-reaper (stop, resume-safe) | ✅ | — (reaper) | workerReaper-unit 10/10 |
+| **FASE W COMPLEET** | ✅ | | W1–W3 gecommit |
 
 ---
 

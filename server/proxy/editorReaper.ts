@@ -21,7 +21,8 @@ const idleSince = new Map<string, number>();
 
 //? Read the editor port's socket states from the container's /proc/net/tcp (procps-free).
 //? `listening` = a LISTEN (0A) socket on the port; `connected` = an ESTABLISHED (01) one.
-async function editorSockState(container: string): Promise<{ listening: boolean; connected: boolean }> {
+//? Exported so the worker-reaper (W3) can skip a container a human is actively editing.
+export async function editorSockState(container: string): Promise<{ listening: boolean; connected: boolean }> {
   const r = await docker(['exec', container, 'sh', '-c', `grep -i ':${HEX}' /proc/net/tcp /proc/net/tcp6 2>/dev/null`]);
   let listening = false;
   let connected = false;
