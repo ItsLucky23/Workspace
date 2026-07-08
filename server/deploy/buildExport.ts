@@ -39,14 +39,14 @@ export async function buildExport(prisma: PrismaClient, workspaceId: string, pro
     data: { workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', downloadToken: token, status: 'building', ...(imageRef ? { imageRef } : {}), expiresAt: new Date(now + EXPORT_TTL_MS) },
   });
 
-  if (!imageRef) return failExport(prisma, artifact.id, 'export.noImage');
-  if (!(await dockerAvailable())) return failExport(prisma, artifact.id, 'docker.unavailable');
+  if (!imageRef) return failExport(prisma, workspaceId, artifact.id, 'export.noImage');
+  if (!(await dockerAvailable())) return failExport(prisma, workspaceId, artifact.id, 'docker.unavailable');
 
   const dir = path.join(workspaceDataDir(workspaceId), 'exports');
   mkdirSync(dir, { recursive: true });
   const result = isBundle
-    ? await exportBundle(prisma, artifact.id, imageRef, dir, token)
-    : await exportImage(prisma, artifact.id, imageRef, dir, token);
+    ? await exportBundle(prisma, workspaceId, artifact.id, imageRef, dir, token)
+    : await exportImage(prisma, workspaceId, artifact.id, imageRef, dir, token);
   if (!result.ok) return result;
 
   //? D4 — a ready artifact is the deploy input: fire the external deploy-hook (webhook) if configured.
@@ -55,38 +55,39 @@ export async function buildExport(prisma: PrismaClient, workspaceId: string, pro
 }
 
 //? `image` — a `docker save` OCI tarball of the whole runnable image.
-async function exportImage(prisma: PrismaClient, artifactId: string, imageRef: string, dir: string, token: string): Promise<BuildExportResult> {
+async function exportImage(prisma: PrismaClient, workspaceId: string, artifactId: string, imageRef: string, dir: string, token: string): Promise<BuildExportResult> {
   const filePath = path.join(dir, `${token}.tar`);
   const saved = await docker(['save', '-o', filePath, imageRef]);
-  if (saved.code !== 0) return failExport(prisma, artifactId, `export.saveFailed: ${saved.err.slice(0, 200)}`);
-  return finishExport(prisma, artifactId, filePath, token);
+  if (saved.code !== 0) return failExport(prisma, workspaceId, artifactId, `export.saveFailed: ${saved.err.slice(0, 200)}`);
+  return finishExport(prisma, workspaceId, artifactId, filePath, token);
 }
 
 //? `bundle` (D4) — run the project's REAL production build inside a throwaway container from its image, tar
 //? the build output IN the container (tar/gzip live in the app image), then `docker cp` the single tarball
 //? out. Cleans up the container whatever happens. Replaces the old `export.bundleNotImplemented`.
-async function exportBundle(prisma: PrismaClient, artifactId: string, imageRef: string, dir: string, token: string): Promise<BuildExportResult> {
+async function exportBundle(prisma: PrismaClient, workspaceId: string, artifactId: string, imageRef: string, dir: string, token: string): Promise<BuildExportResult> {
   //? `token` is randomBytes hex ([0-9a-f]) → already a valid docker object name.
   const name = `ws-export-${token}`;
   const filePath = path.join(dir, `${token}.tgz`);
   const built = await docker(['run', '--name', name, imageRef, 'sh', '-c', `${buildCmd()} && tar -czf /tmp/bundle.tgz -C ${buildOutputDir()} .`]);
-  if (built.code !== 0) { await docker(['rm', '-f', name]); return failExport(prisma, artifactId, `export.buildFailed: ${built.err.slice(0, 200)}`); }
+  if (built.code !== 0) { await docker(['rm', '-f', name]); return failExport(prisma, workspaceId, artifactId, `export.buildFailed: ${built.err.slice(0, 200)}`); }
   const copied = await docker(['cp', `${name}:/tmp/bundle.tgz`, filePath]);
   await docker(['rm', '-f', name]);
-  if (copied.code !== 0) return failExport(prisma, artifactId, `export.copyFailed: ${copied.err.slice(0, 200)}`);
-  return finishExport(prisma, artifactId, filePath, token);
+  if (copied.code !== 0) return failExport(prisma, workspaceId, artifactId, `export.copyFailed: ${copied.err.slice(0, 200)}`);
+  return finishExport(prisma, workspaceId, artifactId, filePath, token);
 }
 
-//? Stamp the artifact ready with its on-disk size.
-async function finishExport(prisma: PrismaClient, artifactId: string, filePath: string, token: string): Promise<BuildExportResult> {
+//? Stamp the artifact ready with its on-disk size. `updateMany` with the workspaceId keeps the write
+//? tenant-scoped (H1) — the artifact was created in this workspace's export call.
+async function finishExport(prisma: PrismaClient, workspaceId: string, artifactId: string, filePath: string, token: string): Promise<BuildExportResult> {
   const [, stat] = tryCatchSync(() => statSync(filePath));
   const sizeBytes = stat?.size ?? 0;
-  await prisma.buildArtifact.update({ where: { id: artifactId }, data: { status: 'ready', filePath, sizeBytes } });
+  await prisma.buildArtifact.updateMany({ where: { id: artifactId, workspaceId }, data: { status: 'ready', filePath, sizeBytes } });
   return { ok: true, artifactId, downloadToken: token, status: 'ready' };
 }
 
-async function failExport(prisma: PrismaClient, artifactId: string, error: string): Promise<BuildExportResult> {
-  await prisma.buildArtifact.update({ where: { id: artifactId }, data: { status: 'error', error } });
+async function failExport(prisma: PrismaClient, workspaceId: string, artifactId: string, error: string): Promise<BuildExportResult> {
+  await prisma.buildArtifact.updateMany({ where: { id: artifactId, workspaceId }, data: { status: 'error', error } });
   return { ok: false, artifactId, status: 'error', error };
 }
 
