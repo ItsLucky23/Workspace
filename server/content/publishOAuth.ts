@@ -240,21 +240,26 @@ export const realUploadTransport: PublishUploadTransport = {
 
 // --- token store (EnvVar, encrypted) ------------------------------------------
 
-const tokenKey = (platform: OAuthPlatform): string => `__publish_${platform}`;
+//? A1 — the per-connection token key. Without an accountId it is the legacy `__publish_<platform>` (ONE
+//? account per platform, back-compat); with an accountId it is `__publish_<platform>_<accountId>`, so a
+//? workspace can connect N accounts per platform. The accountId is a stable slug (channel id / chosen label).
+export const tokenKey = (platform: OAuthPlatform, accountId?: string | null): string =>
+  accountId && accountId.length > 0 ? `__publish_${platform}_${accountId}` : `__publish_${platform}`;
 
 //? Persist the OAuth tokens ENCRYPTED in the per-workspace EnvVar store (secretBox). Upsert by key.
-export async function saveConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, tokens: StoredTokens): Promise<void> {
+export async function saveConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, tokens: StoredTokens, accountId?: string | null): Promise<void> {
   const value = encryptSecret(JSON.stringify(tokens));
+  const key = tokenKey(platform, accountId);
   await prisma.envVar.upsert({
-    where: { workspaceId_key: { workspaceId, key: tokenKey(platform) } },
-    create: { workspaceId, key: tokenKey(platform), value, secret: true },
+    where: { workspaceId_key: { workspaceId, key } },
+    create: { workspaceId, key, value, secret: true },
     update: { value },
   });
 }
 
 //? Read + decrypt the stored OAuth tokens for a platform (null when not connected).
-export async function getConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform): Promise<StoredTokens | null> {
-  const row = await prisma.envVar.findFirst({ where: { workspaceId, key: tokenKey(platform) } });
+export async function getConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, accountId?: string | null): Promise<StoredTokens | null> {
+  const row = await prisma.envVar.findFirst({ where: { workspaceId, key: tokenKey(platform, accountId) } });
   if (!row) return null;
   const dec = decryptSecret(row.value);
   if (dec === null) return null;

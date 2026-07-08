@@ -1127,6 +1127,46 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await indexChannelBrand(prisma, action.workspaceId, channelId, brandVoice.trim() ? [brandVoice.trim()] : []);
       return;
     }
+    //? A2 — social-account/channel management. A channel = a platform + brand identity a piece can bind to.
+    case 'channel-create': {
+      const name = str(payload, 'name');
+      if (!name) return;
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!projectId) return { ok: false, status: 'error', error: 'env.noProject' };
+      const created = await prisma.channel.create({ data: { workspaceId: action.workspaceId, projectId, name, platform: str(payload, 'platform') ?? 'none', ...(str(payload, 'handle') ? { handle: str(payload, 'handle') } : {}), ...(str(payload, 'brandVoice') ? { brandVoice: str(payload, 'brandVoice') } : {}) } });
+      broadcastContentDirty(action.workspaceId);
+      return created;
+    }
+    case 'channel-edit': {
+      const channelId = str(payload, 'channelId');
+      if (!channelId) return;
+      const data = {
+        ...(str(payload, 'name') ? { name: str(payload, 'name') } : {}),
+        ...(str(payload, 'platform') ? { platform: str(payload, 'platform') } : {}),
+        ...('handle' in payload ? { handle: str(payload, 'handle') ?? null } : {}),
+        ...('brandVoice' in payload ? { brandVoice: str(payload, 'brandVoice') ?? null } : {}),
+        ...('defaultStyleId' in payload ? { defaultStyleId: str(payload, 'defaultStyleId') ?? null } : {}),
+      };
+      await prisma.channel.updateMany({ where: { workspaceId: action.workspaceId, id: channelId }, data });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'channel-delete': {
+      const channelId = str(payload, 'channelId');
+      if (channelId) { await prisma.channel.deleteMany({ where: { workspaceId: action.workspaceId, id: channelId } }); broadcastContentDirty(action.workspaceId); }
+      return;
+    }
+    case 'account-disconnect': {
+      //? A2 — disconnect a connected social account: remove its stored token (EnvVar). accountId optional
+      //? (omitted = the default per-platform connection). The publish surface then shows it as not connected.
+      const platform = str(payload, 'platform');
+      if (!platform) return;
+      const accountId = str(payload, 'accountId');
+      const key = `__publish_${platform}${accountId ? `_${accountId}` : ''}`;
+      await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     case 'content-edit-product': {
       //? Q2 — the per-workspace product/brand context folded into every creative generation.
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { productContext: str(payload, 'productContext') ?? '' } });

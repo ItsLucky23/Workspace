@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (170)
+## Decisions (171)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -183,6 +183,7 @@
 | 0257 | M1 — style preview asset + thumbnail affordance | 🟢 accepted | content, media, style, gallery, ai-libraries-accounts | — | `docs/decisions/0257-style-preview-asset.md` |
 | 0258 | M3 — pick-a-look + long-form video duration planner | 🟢 accepted | content, video, planner, style, ai-libraries-accounts | — | `docs/decisions/0258-longform-video-planner.md` |
 | 0259 | M4 — media-style upload / copy / customize / delete (preview-aware) | 🟢 accepted | content, media, style, import-export, ai-libraries-accounts | — | `docs/decisions/0259-media-style-crud-roundtrip.md` |
+| 0260 | A1+A2 — multi-account connections + channel management | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0260-multi-account-channel-management.md` |
 
 ## Summaries
 
@@ -1547,6 +1548,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`save-style` + `delete-style` already do create/customize/delete** per-workspace (builtins stay read-only); M1 made `save-style` accept `previewAssetUrl`/`previewKind`. **The portable style-set carries the preview.** `StyleSetEntry` + `parseStyleSet` + `exportStyleSet` + `importStyleSet` gained `previewAssetUrl`/`previewKind`, so export → parse → import preserves the look. This is the "copy/share a style and keep its look" path. **Copy a builtin into the workspace = a `save-style` pre-filled** from the gallery/builtin entry (a new key, editable) — reusing the existing op, no new surface.
 
 → `docs/decisions/0259-media-style-crud-roundtrip.md`
+
+### 0260 — A1+A2 — multi-account connections + channel management
+
+**0260** · accepted · tags: content, publish, accounts, channels, ai-libraries-accounts · 2026-07-08
+
+**A1 — re-key the connection store** so `tokenKey(platform, accountId?)` = `__publish_<platform>` (default, back-compat) or `__publish_<platform>_<accountId>` for N accounts per platform. `saveConnection`/ `getConnection` gained an optional `accountId`. The token-refresh logic (ADOPTION F1) stays orthogonal — this only changes the KEY, not the read/refresh. **A2 — channel + account management ops** (content-* write family, RBAC): `channel-create`/`channel-edit`/ `channel-delete` (a channel = projectId + name + platform + handle + brandVoice + defaultStyleId) and `account-disconnect` (remove a connected account's token by platform + optional accountId). Channels are already on the snapshot; the CRUD makes them user-managed.
+
+→ `docs/decisions/0260-multi-account-channel-management.md`
 
 ## Code governed by decisions
 
