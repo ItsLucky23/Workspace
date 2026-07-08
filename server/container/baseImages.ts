@@ -30,6 +30,26 @@ export function resolveProjectBaseImage(project: { baseImageRef?: string | null;
   return ref.length > 0 ? ref : baseImageFor(project?.stack);
 }
 
+//? S3 — the default dev-server command per stack (used when a LINKED project has no explicit `devCommand`; a
+//? greenfield project already carries one from its template). All bind 0.0.0.0:<WS_PREVIEW_PORT> so the proxy can
+//? dial the container. `PORT`/`HOST` env are set by the preview launcher for the servers that read them.
+const DEV_COMMANDS: Record<BaseStack, string> = {
+  node: 'npm run dev',
+  python: 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5173}',
+  go: 'go run .',
+  rust: 'cargo run',
+  java: './mvnw spring-boot:run || mvn spring-boot:run',
+};
+export function defaultDevCommand(stack: string | null | undefined): string {
+  return DEV_COMMANDS[isBaseStack(stack) ? stack : 'node'];
+}
+
+//? S3 — resolve a project's dev command: its explicit `devCommand`, else the stack default.
+export function resolveDevCommand(project: { devCommand?: string | null; stack?: string | null } | null): string {
+  const explicit = (project?.devCommand ?? '').trim();
+  return explicit.length > 0 ? explicit : defaultDevCommand(project?.stack);
+}
+
 //? S1 — the Dockerfile-trust guard, RELAXED to the base FAMILY: the first `FROM` must be a `workspaces/base*`
 //? image (the agent base or any stack variant), not an arbitrary upstream (still a supply-chain gate). A
 //? `# syntax=` directive before the FROM is fine. Replaces the three triplicated `extendsBase` copies.

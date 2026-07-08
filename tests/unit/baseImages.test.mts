@@ -4,7 +4,7 @@
 //? accepts ANY `workspaces/base*` family image (agent base + every stack variant) but rejects an arbitrary FROM.
 
 import { assert, eq, report } from '../_helpers.mts';
-import { baseImageFor, resolveProjectBaseImage, extendsAllowedBase, isBaseStack, BASE_STACKS } from '../../server/container/baseImages.ts';
+import { baseImageFor, resolveProjectBaseImage, extendsAllowedBase, isBaseStack, BASE_STACKS, defaultDevCommand, resolveDevCommand } from '../../server/container/baseImages.ts';
 
 // catalog: node = the agent base; others = workspaces/base-<stack>
 {
@@ -36,6 +36,18 @@ import { baseImageFor, resolveProjectBaseImage, extendsAllowedBase, isBaseStack,
   assert(!extendsAllowedBase('FROM python:3.12-slim'), 'even a real stack image (not our family) is rejected — supply-chain gate');
   assert(!extendsAllowedBase('RUN echo no from'), 'no FROM → rejected');
   assert(!extendsAllowedBase('FROM evil/workspaces-base'), 'a look-alike (not workspaces/base*) is rejected');
+}
+
+// S3 — per-stack default dev command; an explicit devCommand wins
+{
+  assert(defaultDevCommand('node') === 'npm run dev', 'node default dev command');
+  assert(defaultDevCommand('python').includes('uvicorn'), 'python default runs uvicorn');
+  assert(defaultDevCommand('go') === 'go run .', 'go default dev command');
+  assert(defaultDevCommand('rust').includes('cargo'), 'rust default runs cargo');
+  assert(defaultDevCommand(null) === 'npm run dev', 'null stack → node default');
+  eq(resolveDevCommand({ devCommand: 'make serve', stack: 'go' }), 'make serve', 'an explicit devCommand wins over the stack default');
+  eq(resolveDevCommand({ devCommand: '', stack: 'python' }), defaultDevCommand('python'), 'no devCommand → the stack default');
+  eq(resolveDevCommand(null), 'npm run dev', 'null project → node default');
 }
 
 report('tests/unit/baseImages.test.mts');

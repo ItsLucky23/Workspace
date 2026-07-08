@@ -7,7 +7,7 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker, isSafeRef, refSlug } from './runtime';
-import { resolveProjectBaseImage } from './baseImages';
+import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
 import { waitForContainerReady } from './health';
 import { getProxyProvider, refPreviewRoute, baseDomain } from '../proxy';
 
@@ -31,7 +31,7 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   await docker(['network', 'create', NET]);
   await docker(['network', 'connect', NET, container.name]);
 
-  const devCmd = (project?.devCommand ?? '').trim().length > 0 ? (project?.devCommand ?? '') : 'npm run dev';
+  const devCmd = resolveDevCommand(project); // S3 — the project's devCommand, else its stack default
   await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
 
   const ready = await waitForContainerReady(container.name, PREVIEW_PORT);

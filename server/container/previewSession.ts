@@ -9,7 +9,7 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker } from './runtime';
-import { resolveProjectBaseImage } from './baseImages';
+import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
 import { waitForContainerReady } from './health';
 import { getProxyProvider, previewRoute, baseDomain } from '../proxy';
 
@@ -37,7 +37,7 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
 
   //? Start the dev server detached in /work. HOST/PORT env cover CRA/Next; Vite needs the flags
   //? in devCommand. A previous run's server is left as-is (idempotent — same port).
-  const devCmd = (project?.devCommand ?? '').trim().length > 0 ? (project?.devCommand ?? '') : 'npm run dev';
+  const devCmd = resolveDevCommand(project); // S3 — the project's devCommand, else its stack default
   await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
 
   //? C2: don't advertise the URL until the dev server actually binds the port — probe before flipping
