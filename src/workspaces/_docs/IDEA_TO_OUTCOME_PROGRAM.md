@@ -34,7 +34,8 @@
 | **Live media-E2E proof (echte fal+ffmpeg-in-Docker)** | ✅ | — | renderLive 7/7 · liveAi 23/23 |
 | B1 crop + resize (image-editor) | ✅ | 0155 | 11/11 + browser-verify pending |
 | P-B structured approve/reject/choice-kaarten (+ gap: vraag werd nooit getoond) | ✅ | 0156 | 15/15 + 8/8; stageEngine/answerQueue/answerInput groen; browser-verify pending |
-| D3/D4 host/prod · G1/G2 greenfield | ⬜ | | |
+| D4 prod build-export (bundle) + deploy-webhook | ✅ | 0157 | 15/15 (echte container-build .tgz + echte webhook-POST) |
+| D3 demo-host · G1/G2 greenfield | ⬜ | | |
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 

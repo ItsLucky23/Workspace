@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (155)
+## Decisions (156)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -168,6 +168,7 @@
 | 0154 | O-D — "start with AI" auto-activation | 🟢 accepted | tickets, orchestration, activation, idea-to-outcome | — | `docs/decisions/0154-auto-activation.md` |
 | 0155 | B1 — client-side crop + resize in the image editor | 🟢 accepted | content, image, editor, ui, idea-to-outcome | — | `docs/decisions/0155-image-crop-resize.md` |
 | 0156 | P-B — structured approve/reject/choice cards for needs-input | 🟢 accepted | approvals, needs-input, ui, phone-first, idea-to-outcome | — | `docs/decisions/0156-structured-approvals.md` |
+| 0157 | D4 — prod build-export (bundle) + external deploy-hook | 🟢 accepted | deploy, export, ci-cd, docker, idea-to-outcome | — | `docs/decisions/0157-prod-build-export-deploy-hook.md` |
 
 ## Summaries
 
@@ -1412,6 +1413,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Encode structure inside the existing `needsInput` string — no schema change, no new verb.** A FREE question stays its plain prompt (every existing reader — banner, answer-queue, `isRealNeedsInput` — is unaffected); an APPROVE or CHOICE question is stored as a compact `@@wsq:` JSON envelope. The pure, isomorphic `structuredQuestion.ts` (`encodeQuestion` / `parseStructuredQuestion` / `questionPrompt`) is the single wire-shape source shared by server and client. **Close the surfacing gap in `stageRunner`.** On a needs-input turn, persist the first question (already needsInput-encoded by `parseTurnResult`) onto the ticket + flip it to `needs-input` + broadcast, so the board/phone renders the card. `parseTurnResult` now accepts structured entries (`{prompt,kind,options}`) alongside bare strings. **The card (`NeedsInputBanner`) renders by kind:** approve → Approve/Reject (+ optional note); choice → one tap-target per option; free → the text input. Every path routes through the SAME `answerInput` op — the Conductor records the answer + re-fires the parked turn with `--resume`. B-23 intact: the human's tap is a proposal→accept, the Conductor is still the only writer. **The answer-queue shows the decoded prompt** (`questionPrompt`), never the raw envelope.
 
 → `docs/decisions/0156-structured-approvals.md`
+
+### 0157 — D4 — prod build-export (bundle) + external deploy-hook
+
+**0157** · accepted · tags: deploy, export, ci-cd, docker, idea-to-outcome · 2026-07-08
+
+**Bundle export runs the REAL build inside a throwaway container from the project image**: `docker run` `<buildCmd> && tar -czf /tmp/bundle.tgz -C <outputDir> .`, then `docker cp` the single tarball out, then `docker rm -f`. Build + tar happen IN the container (the app image has node + tar/gzip), so nothing is assumed about the host — it works cross-platform (the host never tars). `buildCmd`/`outputDir` are read from env at CALL time (`WS_BUILD_EXPORT_CMD` default `cd /app && npm run build`, `WS_BUILD_EXPORT_DIR` default `/app/dist`) so a non-standard project pins its own build without a code change or restart. **The deploy-hook is a webhook POST** of a self-describing descriptor (`event, workspaceId, projectId, kind, artifactId, imageRef, downloadToken`) to `WS_DEPLOY_WEBHOOK_URL` (+ optional bearer), fired automatically after a ready artifact. The fetch is injectable (`DeployFetch`) so it is E2E-tested against a real local HTTP receiver. Unconfigured → `fired:false` no-op; a network failure is reported on the result, never thrown (a failed hook must not fail an export that already produced a good artifact).
+
+→ `docs/decisions/0157-prod-build-export-deploy-hook.md`
 
 ## Code governed by decisions
 
