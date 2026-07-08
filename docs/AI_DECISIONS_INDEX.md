@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (156)
+## Decisions (157)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -169,6 +169,7 @@
 | 0155 | B1 — client-side crop + resize in the image editor | 🟢 accepted | content, image, editor, ui, idea-to-outcome | — | `docs/decisions/0155-image-crop-resize.md` |
 | 0156 | P-B — structured approve/reject/choice cards for needs-input | 🟢 accepted | approvals, needs-input, ui, phone-first, idea-to-outcome | — | `docs/decisions/0156-structured-approvals.md` |
 | 0157 | D4 — prod build-export (bundle) + external deploy-hook | 🟢 accepted | deploy, export, ci-cd, docker, idea-to-outcome | — | `docs/decisions/0157-prod-build-export-deploy-hook.md` |
+| 0158 | D3 — demo-host (main on a DNS) + auto-redeploy watcher | 🟢 accepted | deploy, demo, environments, watcher, idea-to-outcome | — | `docs/decisions/0158-demo-host-auto-redeploy.md` |
 
 ## Summaries
 
@@ -1421,6 +1422,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Bundle export runs the REAL build inside a throwaway container from the project image**: `docker run` `<buildCmd> && tar -czf /tmp/bundle.tgz -C <outputDir> .`, then `docker cp` the single tarball out, then `docker rm -f`. Build + tar happen IN the container (the app image has node + tar/gzip), so nothing is assumed about the host — it works cross-platform (the host never tars). `buildCmd`/`outputDir` are read from env at CALL time (`WS_BUILD_EXPORT_CMD` default `cd /app && npm run build`, `WS_BUILD_EXPORT_DIR` default `/app/dist`) so a non-standard project pins its own build without a code change or restart. **The deploy-hook is a webhook POST** of a self-describing descriptor (`event, workspaceId, projectId, kind, artifactId, imageRef, downloadToken`) to `WS_DEPLOY_WEBHOOK_URL` (+ optional bearer), fired automatically after a ready artifact. The fetch is injectable (`DeployFetch`) so it is E2E-tested against a real local HTTP receiver. Unconfigured → `fired:false` no-op; a network failure is reported on the result, never thrown (a failed hook must not fail an export that already produced a good artifact).
 
 → `docs/decisions/0157-prod-build-export-deploy-hook.md`
+
+### 0158 — D3 — demo-host (main on a DNS) + auto-redeploy watcher
+
+**0158** · accepted · tags: deploy, demo, environments, watcher, idea-to-outcome · 2026-07-08
+
+**A `demo` env kind** (added to `ENV_KINDS`) that reuses the whole existing deploy path (clone target branch → serve → readiness → flip the stable route). No parallel deploy engine. **Three fields on `Environment`** (MongoDB — no migration): `deployedCommit` (what the current deploy runs), `autoRedeploy` (follow main), `pinnedCommit` (freeze at a fixed commit; disables auto-redeploy and is `git checkout`'d in the container so the demo serves that exact commit). **A leader-gated `demoWatch` sweep** (`startDemoWatcher`, same shape as the cron/publish schedulers): every tick it resolves each demo env's target-branch head (`branchHead`) and redeploys when it moved. The decision is the pure `shouldRedeployDemo` (auto on + not pinned + known head + head ≠ deployed); head-resolution and deploy are injectable so the sweep is tested with injected git-state, no git/container needed. **`ensureEnvironment` defaults a demo to autoRedeploy=true** unless a `pinnedCommit` is given (a pin always wins); `env-deploy` passes `pinnedCommit`/`autoRedeploy` through. No new op.
+
+→ `docs/decisions/0158-demo-host-auto-redeploy.md`
 
 ## Code governed by decisions
 

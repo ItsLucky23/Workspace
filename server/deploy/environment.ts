@@ -12,10 +12,13 @@ import { launchTicketContainer, teardownTicketContainer, docker, dockerAvailable
 import { waitForContainerReady } from '../container/health';
 import { getProxyProvider, envRoute, baseDomain } from '../proxy';
 import { normalizeGitConfig, deriveHostSlug } from '../git/branchStrategy';
+import { branchHead } from '../git/repoStore';
 
 const ENV_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
 const NET = process.env.WS_NET ?? 'workspaces-net';
-export const ENV_KINDS = ['dev', 'staging', 'prod'] as const;
+//? `demo` (D3) = a persistent env that serves the deploy branch (main) at a stable route; with autoRedeploy
+//? the demoWatch sweep redeploys it when main moves, or a pinnedCommit freezes it at a fixed commit.
+export const ENV_KINDS = ['dev', 'staging', 'prod', 'demo'] as const;
 export type EnvKind = (typeof ENV_KINDS)[number];
 
 export interface DeployResult { ok: boolean; envId?: string; url?: string; status: string; error?: string }
@@ -26,17 +29,25 @@ const envKey = (envId: string): string => `env-${envId}`;
 
 //? Find-or-create the Environment row for (project, service, kind). Returns its id. The route host is
 //? derived from the kind + the service/project slug and stored so the URL is stable across deploys.
-export async function ensureEnvironment(prisma: PrismaClient, workspaceId: string, projectId: string, serviceId: string | null, kind: string): Promise<string | null> {
+export async function ensureEnvironment(prisma: PrismaClient, workspaceId: string, projectId: string, serviceId: string | null, kind: string, opts: { autoRedeploy?: boolean; pinnedCommit?: string } = {}): Promise<string | null> {
   const project = await prisma.project.findFirst({ where: { id: projectId, workspaceId }, select: { name: true } });
   if (!project) return null;
   const service = serviceId ? await prisma.service.findFirst({ where: { id: serviceId, projectId }, select: { name: true } }) : null;
   const slug = deriveHostSlug(service?.name ?? project.name);
   const host = `${deriveHostSlug(`${asKind(kind)}-${slug}`)}.${baseDomain()}`;
+  //? D3 — a demo env follows main by default (autoRedeploy) unless it is pinned to a fixed commit. A pin
+  //? always wins and disables auto-redeploy. Non-demo kinds never auto-redeploy.
+  const pin = (opts.pinnedCommit ?? '').trim();
+  const isDemo = asKind(kind) === 'demo';
+  const autoRedeploy = isDemo && pin.length === 0 && (opts.autoRedeploy ?? true);
 
   const existing = await prisma.environment.findFirst({ where: { projectId, kind: asKind(kind), serviceId: serviceId ?? null }, select: { id: true } });
-  if (existing) return existing.id;
+  if (existing) {
+    await prisma.environment.updateMany({ where: { id: existing.id, workspaceId }, data: { autoRedeploy, pinnedCommit: pin.length > 0 ? pin : null } });
+    return existing.id;
+  }
   const created = await prisma.environment.create({
-    data: { workspaceId, projectId, serviceId: serviceId ?? null, kind: asKind(kind), route: host, status: 'idle' },
+    data: { workspaceId, projectId, serviceId: serviceId ?? null, kind: asKind(kind), route: host, status: 'idle', autoRedeploy, ...(pin.length > 0 ? { pinnedCommit: pin } : {}) },
   });
   return created.id;
 }
@@ -66,6 +77,13 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const container = await launchTicketContainer({ workspaceId, ticketKey: envKey(envId), branch, ...(image ? { image } : {}) });
   if (!container) return failEnv(prisma, envId, 'env.noContainer');
 
+  //? D3 — record which commit this deploy runs (the watcher compares against the branch head). A demo pinned
+  //? to a fixed commit checks that commit out in /work so it serves a FROZEN demo; otherwise it's the head.
+  const head = await branchHead(workspaceId, branch);
+  const pin = (env.pinnedCommit ?? '').trim();
+  if (pin.length > 0) await docker(['exec', '-w', '/work', container.name, 'git', 'checkout', pin]);
+  const deployedCommit = pin.length > 0 ? pin : head;
+
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).
   await docker(['network', 'create', NET]);
   await docker(['network', 'connect', NET, container.name]);
@@ -83,7 +101,7 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const status = ready ? 'live' : 'error';
   await prisma.environment.update({
     where: { id: envId },
-    data: { status, containerName: container.name, branch, imageRef: image ?? null, healthUrl: `http://localhost:${String(ENV_PORT)}`, lastDeployedAt: new Date(), ...(ready ? { lastError: null } : { lastError: 'env.notReady' }) },
+    data: { status, containerName: container.name, branch, imageRef: image ?? null, healthUrl: `http://localhost:${String(ENV_PORT)}`, lastDeployedAt: new Date(), ...(deployedCommit.length > 0 ? { deployedCommit } : {}), ...(ready ? { lastError: null } : { lastError: 'env.notReady' }) },
   });
   const protocol = baseDomain() === 'localhost' ? 'http' : 'https';
   return ready

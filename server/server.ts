@@ -197,6 +197,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Dynamic import (keeps the automation graph out of the pre-secret-resolution static graph).
   const { startCronScheduler } = await import('./automation/cron');
   startCronScheduler();
+  //? D3: the leader-gated demo-host watcher redeploys demo envs when their target branch (main) moves.
+  const { startDemoWatcher } = await import('./deploy/demoWatch');
+  startDemoWatcher();
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

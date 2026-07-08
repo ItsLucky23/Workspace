@@ -330,6 +330,9 @@ model Environment {
   healthUrl      String?                            // in-container readiness URL (localhost:<port>)
   lastError      String?
   lastDeployedAt DateTime?
+  deployedCommit String?                            // D3 — the git commit the current deploy is running (watcher compares against branch head)
+  autoRedeploy   Boolean   @default(false)          // D3 — demo-host follows main: the watcher redeploys on a new target-branch commit
+  pinnedCommit   String?                            // D3 — serve a FIXED commit instead of the latest branch head (a frozen demo); disables auto-redeploy
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

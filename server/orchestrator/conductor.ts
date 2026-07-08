@@ -1685,7 +1685,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!deployProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
       const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId') ?? null;
       const kind = str(payload, 'kind') ?? 'dev';
-      const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind);
+      //? D3 — a demo env can follow main (autoRedeploy, default true) or freeze at a pinned commit. Only pass
+      //? autoRedeploy when the client set it explicitly, so ensureEnvironment's demo-default still applies.
+      const pinnedCommit = str(payload, 'pinnedCommit');
+      const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind, { ...(pinnedCommit ? { pinnedCommit } : {}), ...('autoRedeploy' in payload ? { autoRedeploy: bool(payload, 'autoRedeploy') } : {}) });
       if (!envId) return { ok: false, status: 'error', error: 'env.noProject' };
       return deployEnvironment(prisma, action.workspaceId, envId);
     }
