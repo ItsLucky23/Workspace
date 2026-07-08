@@ -43,6 +43,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | T3 time-travel-preview-op + assistant-awareness (ref-spec) | ✅ | (0164) | timeTravel-integratie 14/14 (+resolveRefSpec) |
 | **FASE T COMPLEET** | ✅ | | T1–T3 gecommit |
 | S1 any-stack multi-base catalog + relaxed guard + Project.stack | ✅ | 0165 | baseImages-unit 20/20 |
+| S2 stack-starter-templates (Dockerfile+ci.yml+stack, go-template) | ✅ | — (extends 0046/0165) | templates-unit 35/35 · greenfieldTemplate-integratie 8/8 (echte git) |
 
 ---
 

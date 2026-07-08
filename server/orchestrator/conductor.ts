@@ -1735,6 +1735,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const created = await prisma.project.create({
         data: {
           workspaceId: action.workspaceId, name, gitlabPath: '',
+          //? S2 — the template's stack drives the L1 base image (any-stack, S1).
+          stack: template.stack,
           ...(template.baseImageRef ? { baseImageRef: template.baseImageRef } : {}),
           devCommand: template.devCommand,
         },
