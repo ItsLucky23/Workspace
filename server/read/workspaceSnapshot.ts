@@ -389,7 +389,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       ),
       styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin, systemPrompt: s.systemPrompt, previewAssetUrl: s.previewAssetUrl, previewKind: s.previewKind })),
       references: referenceRows.map((r) => ({ id: r.id, kind: r.kind, title: r.title, description: r.description, assetUrl: r.assetUrl, tags: r.tags })),
-      channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice ?? '' })),
+      channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, handle: c.handle, brandVoice: c.brandVoice ?? '' })),
       publishTargets,
       mediaCosts: mediaCostTable(),
       //? P3 — per-feature media model overrides (from the __media_model_<feature> EnvVars).

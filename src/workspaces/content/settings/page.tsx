@@ -173,6 +173,106 @@ function MediaModelsSection() {
   );
 }
 
+//? Inspiration/reference library — collect example ads/thumbnails/intros the content AI emulates. The
+//? description is the grounding signal; the optional asset URL is the visual shown. Uses the generic
+//? runContentOp (reference-add/reference-delete are content-* control-ops).
+const REFERENCE_KINDS = ['ad', 'thumbnail', 'intro', 'hook', 'landing', 'other'];
+function ReferenceLibrarySection() {
+  const translate = useTranslator();
+  const { content, runContentOp } = useWorkspaces();
+  const kindItems: DropdownItem[] = REFERENCE_KINDS.map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.refKind_${k}` }) }));
+  const [kind, setKind] = useState('ad');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [assetUrl, setAssetUrl] = useState('');
+  const canSave = title.trim().length > 0 && description.trim().length > 0;
+  const submit = () => {
+    if (!canSave) return;
+    runContentOp('reference-add', '', { kind, title: title.trim(), description: description.trim(), ...(assetUrl.trim() ? { assetUrl: assetUrl.trim() } : {}) });
+    setTitle(''); setDescription(''); setAssetUrl('');
+  };
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.refsTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.refsDesc' })}</div>
+      </div>
+      <div className="flex flex-col gap-1.5 mb-4">
+        {content.references.length === 0
+          ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.refsEmpty' })}</div>
+          : content.references.map((r) => (
+            <div key={r.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
+              {r.assetUrl ? <img src={r.assetUrl} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <div className="w-9 h-9 rounded-md bg-container1 flex items-center justify-center text-muted shrink-0"><Icon name="image" /></div>}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-title truncate">{r.title} <span className="text-xs text-disabled">· {r.kind}</span></div>
+                <div className="text-xs text-muted truncate">{r.description}</div>
+              </div>
+              <button type="button" onClick={() => { runContentOp('reference-delete', '', { referenceId: r.id }); }} title={translate({ key: 'workspaces.content.refDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
+            </div>
+          ))}
+      </div>
+      <div className="rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2">
+        <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.content.refNew' })}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Dropdown size="md" value={kindItems.find((i) => i.id === kind)} items={kindItems} onChange={(it) => { setKind(String(it.id)); }} />
+          <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refTitlePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        </div>
+        <textarea value={description} onChange={(e) => { setDescription(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.refDescPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
+        <input value={assetUrl} onChange={(e) => { setAssetUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refAssetPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.refSave' })}</button>
+      </div>
+    </section>
+  );
+}
+
+//? Channel manager — a channel = a platform + brand identity a piece binds to (A2). Create/delete via the
+//? generic runContentOp (channel-create/channel-delete are content-* control-ops).
+const CHANNEL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'linkedin', 'none'];
+function ChannelManagerSection() {
+  const translate = useTranslator();
+  const { content, runContentOp } = useWorkspaces();
+  const platformItems: DropdownItem[] = CHANNEL_PLATFORMS.map((p) => ({ id: p, value: p, item: p }));
+  const [name, setName] = useState('');
+  const [platform, setPlatform] = useState('youtube');
+  const [handle, setHandle] = useState('');
+  const canSave = name.trim().length > 0;
+  const submit = () => {
+    if (!canSave) return;
+    runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}) });
+    setName(''); setHandle('');
+  };
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.channelsTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.channelsDesc' })}</div>
+      </div>
+      <div className="flex flex-col gap-1.5 mb-4">
+        {content.channels.length === 0
+          ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.channelsEmpty' })}</div>
+          : content.channels.map((c) => (
+            <div key={c.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-title truncate">{c.name} <span className="text-xs text-disabled">· {c.platform}{c.handle ? ` · ${c.handle}` : ''}</span></div>
+                {c.brandVoice ? <div className="text-xs text-muted truncate">{c.brandVoice}</div> : null}
+              </div>
+              <button type="button" onClick={() => { runContentOp('channel-delete', '', { channelId: c.id }); }} title={translate({ key: 'workspaces.content.channelDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
+            </div>
+          ))}
+      </div>
+      <div className="rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2">
+        <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.content.channelNew' })}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelNamePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+          <Dropdown size="md" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); }} />
+        </div>
+        <input value={handle} onChange={(e) => { setHandle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelHandlePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.channelSave' })}</button>
+      </div>
+    </section>
+  );
+}
+
 export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
   const translate = useTranslator();
@@ -227,6 +327,12 @@ export default function ContentSettings() {
 
           {/* Style manager — reusable named styles (Q3). */}
           <StyleManagerSection />
+
+          {/* Channel manager — platforms + brand identity a piece binds to (A2). */}
+          <ChannelManagerSection />
+
+          {/* Inspiration/reference library — example ads/thumbnails/intros the AI emulates. */}
+          <ReferenceLibrarySection />
 
           {/* Media model overrides — advanced (P3). */}
           <MediaModelsSection />

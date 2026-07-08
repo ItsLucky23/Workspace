@@ -809,7 +809,7 @@
       "brandContextPlaceholder": "bijv. We verkopen milieuvriendelijke hardloopschoenen aan stedelijke millennials. Vermeld altijd gratis retour. Toon: energiek, geen jargon.",
       "brandContextSave": "Context opslaan",
       "brandContextSaved": "Opgeslagen",
-      "stylesTitle": "Stijlen",
+      "channelsTitle": "Kanalen", "channelsDesc": "Platforms + merkidentiteit waaraan een stuk gekoppeld kan worden.", "channelsEmpty": "Nog geen kanalen.", "channelNew": "Nieuw kanaal", "channelNamePlaceholder": "Kanaalnaam", "channelHandlePlaceholder": "@handle (optioneel)", "channelSave": "Kanaal toevoegen", "channelDelete": "Kanaal verwijderen", "refsTitle": "Inspiratiebibliotheek", "refsDesc": "Verzamel voorbeeld-ads, thumbnails en intro's — de AI bootst hun aanpak na.", "refsEmpty": "Nog geen referenties.", "refNew": "Referentie toevoegen", "refTitlePlaceholder": "Titel", "refDescPlaceholder": "Waarom het werkt (hier leert de AI van)", "refAssetPlaceholder": "URL van voorbeeld-afbeelding/video (optioneel)", "refSave": "Referentie toevoegen", "refDelete": "Referentie verwijderen", "refKind_ad": "Advertentie", "refKind_thumbnail": "Thumbnail", "refKind_intro": "Intro", "refKind_hook": "Hook", "refKind_landing": "Landingspagina", "refKind_other": "Overig", "stylesTitle": "Stijlen",
       "stylesDesc": "Herbruikbare benoemde stijlen waarin de AI genereert. Standaardstijlen zijn alleen-lezen; maak hieronder je eigen.",
       "stylesEmpty": "Nog geen stijlen.",
       "styleBuiltin": "Standaard",
