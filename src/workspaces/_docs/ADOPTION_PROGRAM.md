@@ -32,6 +32,8 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | F1 OAuth token-refresh (publish) | ✅ | — (hardening) | publishOAuth-unit 27/27 · publishReal-integratie (+refresh) |
 | F2 audio-mix + captions + ffprobe-timing wiren | ✅ | — (completion) | renderFormats-unit 46/46 · audioMix 15/15 · assemblyCaptionsMix-integratie 7/7 · musicSfx-regressie 6/6 |
 | F3 invite-token hardening (random+expiry+email-bind) | ✅ | — (hardening) | inviteToken-integratie 11/11 |
+| F4 PWA-manifest-icons (192/512/maskable/apple) | ✅ | — (asset/config) | pwaManifest-headless 19/19 |
+| **FASE F COMPLEET** | ✅ | | F1–F4 gecommit |
 
 ---
 
