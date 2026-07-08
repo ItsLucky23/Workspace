@@ -61,6 +61,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | N1 knowledge-graph-data-op (nodes + similarity-edges) | ✅ | — | knowledgeGraph-unit 9/9 · knowledgeGraph-integratie (N2-graph-UI = browser-follow-up) |
 | Y1 activity-presence-core (status-drempels + aggregatie) | ✅ | — | presence-unit 11/11 (DOM-streaming-engine/overlay-UI/ultrasync.watch-RBAC/screen-share = browser-ronde) |
 | C1 scheduling bruikbaar (scheduledAt door request→accept→scheduled-job) | ✅ | — | scheduledContentPublish-integratie 8/8 · scheduledPublish-regressie 9/9 (calendar-UI = browser-follow-up) |
+| C3 audience-analytics ingest + feedback (fixtures nu, live later) | ✅ | — | publishMetrics-unit 15/15 · ingest-integratie · publishReal-regressie 20/20 |
 
 ---
 

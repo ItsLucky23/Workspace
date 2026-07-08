@@ -9,6 +9,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { isLeader } from '../orchestrator/cluster';
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
+import { extractExternalId } from './publishMetrics';
 
 //? O2 — pull a validated per-platform variant out of a piece's `publishVariants` JSON. Unknown/garbage → null
 //? (the upload falls back to title-only, its prior behaviour). Pure + exported for tests.
@@ -104,7 +105,9 @@ export async function publishAsset(
   }
   const isReal = outcome.kind === 'real';
   const externalUrl = isReal ? outcome.externalUrl : `stub://${args.platform}/${args.assetId}`;
-  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: isReal ? 'done' : 'stub', externalUrl } });
+  //? C3 — record the platform post id on a real post so audience-metrics ingest can query it later.
+  const externalId = isReal ? extractExternalId(args.platform, externalUrl) : '';
+  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: isReal ? 'done' : 'stub', externalUrl, ...(externalId ? { externalId } : {}) } });
   return { ok: isReal, publishJobId: job.id, externalUrl, stub: !isReal };
 }
 

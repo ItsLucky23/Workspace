@@ -1550,6 +1550,8 @@ model PublishJob {
   scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now)
   externalUrl      String?
   error            String?
+  metrics          Json?                             // C3 — ingested audience metrics {views,likes,comments,shares,watchTimeSec,ctr,fetchedAt}
+  externalId       String?                            // C3 — the platform post id (for the analytics fetch)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
