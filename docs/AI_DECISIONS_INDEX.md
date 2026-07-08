@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (157)
+## Decisions (158)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -170,6 +170,7 @@
 | 0156 | P-B — structured approve/reject/choice cards for needs-input | 🟢 accepted | approvals, needs-input, ui, phone-first, idea-to-outcome | — | `docs/decisions/0156-structured-approvals.md` |
 | 0157 | D4 — prod build-export (bundle) + external deploy-hook | 🟢 accepted | deploy, export, ci-cd, docker, idea-to-outcome | — | `docs/decisions/0157-prod-build-export-deploy-hook.md` |
 | 0158 | D3 — demo-host (main on a DNS) + auto-redeploy watcher | 🟢 accepted | deploy, demo, environments, watcher, idea-to-outcome | — | `docs/decisions/0158-demo-host-auto-redeploy.md` |
+| 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
 
 ## Summaries
 
@@ -1430,6 +1431,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A `demo` env kind** (added to `ENV_KINDS`) that reuses the whole existing deploy path (clone target branch → serve → readiness → flip the stable route). No parallel deploy engine. **Three fields on `Environment`** (MongoDB — no migration): `deployedCommit` (what the current deploy runs), `autoRedeploy` (follow main), `pinnedCommit` (freeze at a fixed commit; disables auto-redeploy and is `git checkout`'d in the container so the demo serves that exact commit). **A leader-gated `demoWatch` sweep** (`startDemoWatcher`, same shape as the cron/publish schedulers): every tick it resolves each demo env's target-branch head (`branchHead`) and redeploys when it moved. The decision is the pure `shouldRedeployDemo` (auto on + not pinned + known head + head ≠ deployed); head-resolution and deploy are injectable so the sweep is tested with injected git-state, no git/container needed. **`ensureEnvironment` defaults a demo to autoRedeploy=true** unless a `pinnedCommit` is given (a pin always wins); `env-deploy` passes `pinnedCommit`/`autoRedeploy` through. No new op.
 
 → `docs/decisions/0158-demo-host-auto-redeploy.md`
+
+### 0159 — G1 — greenfield: real repo + seed file-tree generation
+
+**0159** · accepted · tags: greenfield, scaffold, git, repo, idea-to-outcome · 2026-07-08
+
+**Templates carry a seed `files` tree** (`StarterFile[]`) — a minimal but runnable skeleton per stack (package.json + entry + config + README + .gitignore for node-api / react-vite; requirements.txt + app/main .py for fastapi). Not a full app: the starting point the impl-stage agent fleshes out. **`initGreenfieldRepo(workspaceId, files)` in repoStore** writes the tree into a temp checkout, `git init -b main` + a self-contained identity + commit, then `git clone --bare` into the durable per-workspace `repo.git`. `isLinked` flips true → the existing worktree/container path just works (container → code). It is a **no-op when a repo already exists** (never clobber a linked repo), and self-contained (no external forge, no network). **`project-from-template` calls it best-effort** and stamps the project `gitUrl: greenfield://<workspaceId>` when it linked, so the UI/status treats it as a linked project. A git failure logs + leaves the project unlinked (the row + pipeline still exist).
+
+→ `docs/decisions/0159-greenfield-repo-gen.md`
 
 ## Code governed by decisions
 

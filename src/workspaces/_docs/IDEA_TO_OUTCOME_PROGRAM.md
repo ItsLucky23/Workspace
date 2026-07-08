@@ -36,7 +36,8 @@
 | P-B structured approve/reject/choice-kaarten (+ gap: vraag werd nooit getoond) | ✅ | 0156 | 15/15 + 8/8; stageEngine/answerQueue/answerInput groen; browser-verify pending |
 | D4 prod build-export (bundle) + deploy-webhook | ✅ | 0157 | 15/15 (echte container-build .tgz + echte webhook-POST) |
 | D3 demo-host (main-op-DNS + auto-redeploy watcher) | ✅ | 0158 | 10/10 (injected git-state; demo-kind + pinnedCommit + leader-watcher) |
-| G1 greenfield repo-gen · G2 wizard | ⬜ | | |
+| G1 greenfield echt repo + seed-file-tree | ✅ | 0159 | 7/7 (echte git: repo + main-commit + seed-tree, isLinked true) |
+| G2 welcome/template-wizard · browser-verify-pass | ⬜ | | |
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 

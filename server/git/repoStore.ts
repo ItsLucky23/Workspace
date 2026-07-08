@@ -10,7 +10,7 @@
 //? a credential-helper/askpass so the token never touches argv is a follow-up.)
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
@@ -187,7 +187,7 @@ export async function repoManifests(workspaceId: string): Promise<RepoManifests>
 
 //? Read the current bare-repo status from disk (for the snapshot). `linked` reflects
 //? whether the bare clone exists; branch/head are the current default-branch pointer.
-export async function repoStatus(workspaceId: string, gitUrl: string | undefined): Promise<RepoStatus> {
+export async function repoStatus(workspaceId: string, gitUrl?: string): Promise<RepoStatus> {
   const bare = bareRepoPath(workspaceId);
   if (!existsSync(bare)) return { linked: false, ...(gitUrl ? { gitUrl } : {}) };
   const out: RepoStatus = { linked: true, ...(gitUrl ? { gitUrl } : {}) };
@@ -212,6 +212,35 @@ export async function cloneRepo(input: { workspaceId: string; gitUrl: string; to
   //? the token is re-injected transiently per fetch (a later slice re-supplies it).
   await git(['--git-dir', bare, 'remote', 'set-url', 'origin', gitUrl]).catch(() => '');
   return repoStatus(workspaceId, gitUrl);
+}
+
+//? G1 — greenfield: initialise the workspace's bare repo from a seed FILE-TREE (no external forge). Writes
+//? the files into a temp checkout, commits them on `main`, then `git clone --bare` into the durable
+//? per-workspace `repo.git` — so `isLinked` flips true and the runtime can cut worktrees + a container from
+//? it (container → code). No-op (returns the existing status) when a repo is already present, so a second
+//? greenfield project never clobbers an existing repo. Throws on git failure (caller surfaces it).
+export async function initGreenfieldRepo(workspaceId: string, files: { path: string; content: string }[]): Promise<RepoStatus> {
+  const bare = bareRepoPath(workspaceId);
+  if (existsSync(bare)) return repoStatus(workspaceId);
+  const dir = workspaceDataDir(workspaceId);
+  mkdirSync(dir, { recursive: true });
+  const seed = path.join(dir, 'greenfield-seed');
+  rmSync(seed, { recursive: true, force: true });
+  mkdirSync(seed, { recursive: true });
+  for (const f of files) {
+    const full = path.join(seed, f.path);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, f.content);
+  }
+  //? A self-contained identity so the commit works on a host with no global git config.
+  await git(['init', '-b', 'main'], { cwd: seed });
+  await git(['config', 'user.email', 'workspaces@local'], { cwd: seed });
+  await git(['config', 'user.name', 'Workspaces'], { cwd: seed });
+  await git(['add', '-A'], { cwd: seed });
+  await git(['commit', '-m', 'chore: scaffold greenfield project'], { cwd: seed });
+  await git(['clone', '--bare', seed, bare]);
+  rmSync(seed, { recursive: true, force: true });
+  return repoStatus(workspaceId);
 }
 
 //? Add the ticket's worktree off the bare clone (07 §A step 5), freezing the default-branch

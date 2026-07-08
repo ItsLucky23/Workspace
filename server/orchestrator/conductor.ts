@@ -37,7 +37,7 @@ import type { MediaFeature } from '../media/types';
 import { publishAsset, isPublishPlatform } from '../content/publish';
 import { indexChannelBrand } from '../content/brandMemory';
 import { jsonInput } from '../util/json';
-import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead } from '../git/repoStore';
+import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
@@ -1677,6 +1677,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: doc.name, content: doc.content, summary: `Starter (${template.label})`, note: 'template', enabled: true, usedByStages: [] } });
       }
       await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      //? G1 — actually make it a REPO: init the workspace bare repo from the template's seed file-tree so
+      //? `isLinked` flips true → the runtime can cut a worktree + container from it (container → code). No-op
+      //? if a repo already exists (never clobber). Best-effort — a git failure leaves the project unlinked.
+      const [gitErr, status] = await tryCatch(() => initGreenfieldRepo(action.workspaceId, template.files));
+      if (gitErr) console.error(`[greenfield] repo init for ${name} failed:`, gitErr.message);
+      else if (status?.linked && !created.gitUrl) await prisma.project.updateMany({ where: { id: created.id, workspaceId: action.workspaceId }, data: { gitUrl: `greenfield://${action.workspaceId}` } });
       return created;
     }
     //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).
