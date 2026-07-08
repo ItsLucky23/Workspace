@@ -2,13 +2,13 @@
 
 > Doel: elke reden wegnemen waarom iemand deze tool **niet** zou kiezen — voor "bouw een nieuw softwareproduct op eender welke stack met eender welke third-party service" én voor "run een YouTube/TikTok-kanaal A-tot-Z" én voor "een team van 10 devs vertrouwt dit dagelijks". Gebaseerd op **4 verse read-only audits (2026-07-08)**: product-surface, dev-orchestratie-diepte, content-pijplijn-diepte, team/ops-readiness — plus de 5 user-wensen (2026-07-08). Draai met `/goal` over dit bestand, fase-voor-fase, waterfall (elke fase getest+gecommit vóór de volgende). Auteur-commits: `ItsLucky23`, niet gepusht. Alle bestaande invarianten blijven gelden (single-writer/B-23, frozen structured-channel-verbs, `runInTenant`, PTY-billing, geen `as any`, tryCatch, i18n×4, theme-tokens, per-item test+ADR+branch-log+commit, gates tsc+lint+ai:lint+build). Premium-UX-DoD = FREEDOM_PROGRAM §0b voor élk UI-item.
 
-## Relatie met de lopende IDEA_TO_OUTCOME-run (niet dupliceren!)
+## Relatie met IDEA_TO_OUTCOME (GELAND — 2026-07-08)
 
-Een andere agent draait `IDEA_TO_OUTCOME_PROGRAM.md`. Daar resteren: **P-B** (structured approvals), **D3** (demo-host main-op-DNS), **D4** (prod-build-export), **G1/G2** (greenfield repo-init + wizard) + de browser-verify-pass. Dit programma bouwt **bovenop** die items:
-- **W1/W2** (vragen) bouwen voort op P-B — pas starten als P-B geland is.
-- **T2** (main-zonder-commit-X) hergebruikt D3's pinned-commit/demo-env-machinerie.
-- **S2** (stack-starter-templates) bouwt op G1's bare-repo-init.
-Een item hier NIET herbouwen als de andere run het al leverde — eerst `git log`/branch-log checken.
+`IDEA_TO_OUTCOME_PROGRAM.md` is COMPLEET (ADR 0155–0160): P-B, D3, D4, G1/G2 zijn geland. Geen wacht-afspraken meer — dit programma bouwt bovenop die fundamenten:
+- **W1/W2** (vragen) bouwen voort op P-B's structured-approval-kaarten.
+- **T2** (main-zonder-commit-X) hergebruikt D3's demo-env/pinned-commit-machinerie.
+- **S2** (stack-starter-templates) bouwt op G1's repo-init.
+Een item hier NIET herbouwen als het al bestaat — eerst `git log`/branch-log checken.
 
 ## Kern-visie (user, 2026-07-08)
 
@@ -64,11 +64,13 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 - **N2 — Interactieve graph-UI (Obsidian-gevoel).** Canvas/force-layout: zoom/pan, klik → open de bron, filter per node-type, zoeken, hover-preview. Lazy-loaded (nooit in een non-graph chunk). **Verify:** browser-verified; de data-op eronder is getest.
 - **N3 — RAG-schaal + index-hygiëne.** App-side cosine-scan schaalt niet (bewuste v1); swap-pad naar Mongo `$vectorSearch` (of lokale HNSW) **achter dezelfde retrieve-API**, + index-status op de Sources-pagina (wat is geïndexeerd, coverage, staleness — "RAG moet altijd scherp zijn"). **Verify:** retrieve-API ongewijzigd (bestaande tests groen); status-op getest; grote-corpus fixture kiest het snelle pad.
 
-## FASE Y — Ultrasync: live presence (user-punt 5)
+## FASE Y — Ultrasync: activity-presence + meekijken (user-punt 5, beslist 2026-07-08)
 
-- **Y1 — Live cursors/selectie.** Ephemeral relay (patroon `presence_server_v1` — geen persist, userId uit de sessie): cursor/selectie op het board + ticket-detail (+ editors waar zinnig), gethrottled (~10Hz), kleur per user. **Verify:** relay-shape + throttle getest; browser-verify.
-- **Y2 — Team-activity ("wat doet iedereen nú").** Live per user: huidige view/ticket/actie (uit presence + de control-op-stroom) in een team-panel + avatars op de plek zelf. **Verify:** presence-aggregatie getest (meerdere users, tenant-scoped).
-- **Y3 — Follow-mode + screen-preview vanaf RBAC-level.** Fase 1 = **follow-mode**: volg iemands in-app state live (zelfde view/ticket meebewegen) — goedkoop en privacy-arm (alleen app-state, geen pixels). Fase 2 = echte screen/tab-share (WebRTC) — **OV-1**: privacy-gevoelig én zwaar; alléén met expliciete opt-in van de bekeken user + RBAC-gate, en pas na user-akkoord. **Verify (fase 1):** follow-mode volgt view-changes (relay-test); RBAC-gate getest.
+Twee modi (user-beslissing). GEEN live cursor-streaming in v1; per-input/textbox-live is expliciet v2 (vergt per-page reasoning waar het nuttig is).
+
+- **Y1 — Activity-presence (toggle, Google-Docs-gevoel).** Page-level wie-is-waar: de navbar/NavRail toont per view hoeveel users er zitten (avatars/kleuren); op de pagina zelf zie je per user of die passief kijkt of **actief iets bewerkt** (bv. "bewerkt ticket #12" — afgeleid uit presence + de control-op/edit-stroom; patroon `presence_server_v1`, ephemeral, userId uit de sessie). Status-drempels (defaults, instelbaar): **actief** = interactie <60s geleden · **idle** = daarna · **weg** = disconnect of heartbeat >5min. Doel: conflicts voorkomen ("is m'n collega dit al aan het aanpassen?"). Workspace-toggle voor de hele modus. **Verify:** presence-aggregatie + statusdrempels getest (injected clock, tenant-scoped); navbar/pagina-weergave browser-verified.
+- **Y2 — Replay-meekijken ("kijk bij mij mee", promptloos, RBAC-kijkrol).** Het idee van de user: geen pixels, maar de **app-state van de bekeken user nagespeeld met ~1s vertraging** in onze eigen UI (route/view, open ticket/panelen, geëmitte acties) — een "ghost-view". Werkt zonder enige browser-prompt en kan dus écht "altijd meekijken" zijn voor een RBAC-kijkrol (bv. de baas). Alleen in-app state, geen toetsaanslagen/pixels; eerlijkheids-default: de bekeken user ziet een badge "X kijkt mee". **Verify:** state-event-relay + replay-buffer (~1s) getest; RBAC-gate getest; badge aanwezig.
+- **Y3 — Echte pixel/tab-share (Discord-stijl, opt-in).** WebRTC `getDisplayMedia`: de gedeelde kant MOET altijd zelf een browser-prompt bevestigen (harde browser-security — geen webapp kan stil een scherm/tab capturen). Dus: kijk-verzoek → prompt bij de sharer → stream naar kijkers met de RBAC-kijkrol. Voor het promptloze "altijd meekijken" is Y2 de weg. **Verify:** signaling + verzoek-flow getest (fixture); media-pad browser-verified.
 
 ## FASE S — Any-stack (dev-audit gap #3/#1)
 
@@ -76,12 +78,14 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 - **S2 — Stack-starter-templates (bovenop G1).** G1 (andere run) levert de bare-repo-init; dit item levert per stack échte starter-code + Dockerfile + `ci.yml` + **eerste commit**, uitbreidbare template-catalog. Greenfield eindigt dan in een draaibare, committbare codebase i.p.v. een lege shell (`conductor.ts:1662-1681` maakt nu alleen een DB-rij + docs). **Verify:** greenfield python → repo met files + eerste commit + buildbare image (git-fixture, geen externe forge).
 - **S3 — Stack-agnostische defaults.** `devCommand`-default per stack (uvicorn / `go run` / `cargo run` / `npm run dev`), preview-poort configureerbaar (nu 5173-aanname in `previewSession.ts:38`), healthcheck per stack. **Verify:** per-stack defaults resolven (test); preview-args kloppen per stack.
 
-## FASE K — Services/sidecars: "any third-party service" (dev-audit gap #2/#6)
+## FASE K — Services via compose-engine (user-beslissing 2026-07-08)
 
-- **K1 — Service-catalog + provisioner.** Er is vandaag **geen enkele** manier om Kafka/Postgres/Redis/Elasticsearch aan een workspace te hangen (repo-breed: alleen docs/seed; de "catalog" in `seed.ts:514-524` provisiont niets). Bouw: catalog (postgres/redis/kafka/rabbitmq/elasticsearch/minio/mailpit) → `docker run`-sidecar per workspace/project op een **per-workspace docker-network** (tenant-grens; nu één globale bridge), health-probe, lifecycle (start/stop/status) in de UI, volumes. **Verify:** provision-op genereert de juiste container+netwerk-args (docker-stub fixture); status/lifecycle-ops getest.
-- **K2 — Env-injectie in agent- én preview-containers.** Ontworpen in `07b §6.3`, 0 implementatie-hits: connection-strings (K1-services + BYO `DbConnection`/`EnvVar`) worden nu **niet** in de containers geïnjecteerd — zelfs de BYO-workaround is e2e kapot. **Verify:** container-env bevat de creds (runtime-args fixture), tenant-scoped, secrets encrypted-at-rest blijven.
-- **K3 — Integratie-MCP-scripts echt maken.** `seed.ts` verwijst naar `/pty-agent/mcp/postgres.js` e.a. die **niet bestaan** (`docker/pty-agent/` heeft alleen `agent.mjs`) — een integratie enablen exec't een missend bestand. Schrijf de MCP-servers of herroute naar bestaande npm-MCP-packages. **Verify:** enabled integratie → bestaand command in de gegenereerde `.mcp.json` (test).
-- **K4 — `services.yml`-import.** Detecteer `.workspaces/services.yml` (of `docker-compose.yml`) in de repo → map naar K1-catalog-services, zodat een bestaand project z'n services declaratief meeneemt. **Verify:** parse+map getest (fixtures incl. onbekende service → nette fout).
+User koos de **compose-engine**: elk docker-compose-bestand moet kunnen ("alle tools die er maar zijn"), niet alleen een vaste catalog. De user heeft gelijk dat het rúnnen gelijkstaat aan lokaal `docker compose up`; de extra randen zitten niet in het runnen maar in **multi-tenancy** (twee workspaces met elk een Kafka mogen niet botsen op poorten/namen/volumes/netwerk) en **security** (een compose-bestand kan host-mounts/`privileged`/docker.sock vragen = host-overname). Die dekt K1. Vandaag bestaat er niets (geen provisioner; de "catalog" in `seed.ts:514-524` provisiont niets).
+
+- **K1 — Compose-engine per workspace (met sanitizer).** Input: een docker-compose.yml (upload of `.workspaces/compose.yml` in de repo) → **valideer/sanitize** tegen een policy (verboden: `privileged`, host-mounts buiten het workspace-volume, `network_mode: host`, docker.sock-mounts; vaste host-port-publishes herschreven naar toegewezen poorten) → **namespace** per workspace (`docker compose -p ws-<id>`, eigen per-workspace netwerk i.p.v. de globale bridge, volume-prefix) → run + health/lifecycle (start/stop/status/logs) in de UI. **Verify:** sanitizer-fixtures (kwaadaardige compose → geweigerd/herschreven); namespacing-args getest; lifecycle-ops getest (docker-stub).
+- **K2 — Service-presets (catalog = curated compose-snippets).** Eén-klik Kafka/Postgres/Redis/RabbitMQ/Elasticsearch/MinIO/Mailpit als voorgebakken compose-snippets bovenop K1 (goede defaults + healthchecks) — de makkelijke weg voor wie geen compose schrijft. **Verify:** preset → geldige gesanitizede compose → creds beschikbaar (fixture).
+- **K3 — Env-injectie in agent- én preview-containers.** Connection-strings (K1/K2-services + BYO `DbConnection`/`EnvVar`) auto-injecteren in de agent- en preview-containers, die mee op het per-workspace netwerk gaan (`07b §6.3` — ontworpen, 0 impl-hits; zelfs de BYO-workaround is vandaag e2e kapot). **Verify:** container-env bevat de creds + container zit op het ws-netwerk (runtime-args fixture); secrets blijven encrypted-at-rest.
+- **K4 — Integratie-MCP-scripts echt maken.** `seed.ts` verwijst naar `/pty-agent/mcp/postgres.js` e.a. die **niet bestaan** (`docker/pty-agent/` heeft alleen `agent.mjs`) — een integratie enablen exec't een missend bestand. Schrijf de MCP-servers of herroute naar bestaande npm-MCP-packages. **Verify:** enabled integratie → bestaand command in de gegenereerde `.mcp.json` (test).
 
 ## FASE R — Pipeline-vrijheid + multi-repo + test-gate (dev-audit #7/#8/#9)
 
@@ -101,7 +105,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 
 - **H1 — AuditLog voor admin/security-ops.** `change-role`, `save-env`/`remove-env`, `remove-member`, `transfer-ownership`, `delete-workspace`, `role-update`, `invite` muteren **zonder enig spoor** (`conductor.ts:520-736`; er is géén AuditLog-model — alleen ticket-events zijn auditbaar). Nieuw append-only `AuditLog` + record op elke governance-op + audit-view (filter op actor/type/periode; AI vs mens zoals in `TicketEvent.actor`). **Verify:** elke governance-op schrijft een row (test per op); view tenant-scoped.
 - **H2 — Per-user spend + afdwingbaar AI-budget.** `SpendRecord` heeft geen `userId` (`schema.prisma:1064`) → geen per-dev attributie; `WorkspaceBudget.pauseNew/pauseAll` is "visibility only, never a hard stop" (`spend/record.ts:29`) — alleen media-budget dwingt af. Voeg `userId` toe + per-dev usage-view + dwing budget-breach echt af op nieuwe AI-turns (zoals media al doet). **Verify:** breach → nieuwe turn geweigerd/gepauzeerd (test); spend per user zichtbaar.
-- **H3 — 2FA (TOTP) + SSO (OIDC).** Alleen e-mail+wachtwoord+OAuth vandaag; geen MFA/SSO — voor veel orgs een harde no-go voor een tool die code schrijft en secrets bewaart. TOTP eerst (klein), daarna generieke OIDC (**OV-2**). **Verify:** TOTP-flow getest (enroll/verify/recovery); OIDC-login tegen een mock-issuer (fixture).
+- **H3 — 2FA/SSO: GESCHRAPT voor deze run (user-beslissing 2026-07-08).** De user wil dit later mogelijk op **framework-niveau** oplossen (`@luckystack/login` uitbreiden met TOTP/OIDC) i.p.v. in de consumer-app. Niet bouwen; deze notitie blijft staan als toekomst-anker. (De audit-bevinding blijft waar: voor externe orgs is dit een adoptie-blocker.)
 - **H4 — Workspace-export (data-portabiliteit).** Geen self-service export — alleen brand/style-JSON en build-artifacts; een team kan zijn tickets/events/pieces/media niet meenemen (lock-in-angst = adoptie-blocker). Full-workspace-export (JSONL + media-manifest, zip; media optioneel). **Verify:** export bevat alle entiteiten tenant-scoped (test); import = out-of-scope, geflagd.
 - **H5 — Concurrency-fairness per workspace.** De admission-cap + FIFO zijn host-globaal (`capacity.ts`, default **4**) — één druk workspace verhongert de rest; 4 is krap voor 10 devs. Per-workspace fair-share/cap + instelbare limieten. **Verify:** 2 workspaces, ongelijke druk → fair-share gehonoreerd (stub-slots-test).
 - **H6 — Dag-1 onboarding + upgrade-ledger.** Diepe operator-docs bestaan, maar geen "nieuwe teamdev, dag 1"-gids; Mongo heeft geen migrations-ledger (upgrade leunt op tolerant reads). Schrijf beide (docs-item). **Verify:** gids verwijst naar echte flows; ledger-format + huidige versie vastgelegd.
@@ -111,22 +115,23 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 ## Volgorde-advies (waterfall)
 
 1. **Fase F** — stille breuk eerst (klein, direct vertrouwen in wat er al is).
-2. **Fase W + T** — user-punt 1 en 2; de dagelijkse loop wordt merkbaar beter. *W1/W2 pas ná P-B van de lopende run; T2 ná D3.*
-3. **Fase S + K + R** — de "any stack + any service"-ontgrendeling (grootste nieuwe doelgroep). *S2 ná G1.*
+2. **Fase W + T** — user-punt 1 en 2; de dagelijkse loop wordt merkbaar beter (P-B en D3 zijn geland — bouw erop voort).
+3. **Fase S + K + R** — de "any stack + any service"-ontgrendeling (grootste nieuwe doelgroep; G1 is geland — S2 bouwt erop).
 4. **Fase U + N + Y** — de premium-differentiators (user-punt 3, 4, 5).
 5. **Fase C** — kanaal-autopilot (content A-tot-Z afmaken).
 6. **Fase H** — team/enterprise-trust (de "10 devs zeggen ja"-laag).
 
 Elke fase: gebouwd → gegate → getest → ge-ADR'd → gecommit vóór de volgende. Browser-heavy UI (U2-compare, N2-graph, Y1/Y3, C1-calendar) verifiëren met de dev-server (suggest→approve) — bundelen met de nog openstaande browser-verify-pass van de IDEA_TO_OUTCOME-run.
 
-## OPEN VRAGEN (defaults als de user er niet is — log de keuze in de branch-log)
+## OPEN VRAGEN — RESOLVED (user-beslist 2026-07-08; de run stopt nergens om te vragen)
 
-- **OV-1 (Y3 screen-preview):** echte WebRTC screen-share is privacy-gevoelig + zwaar. **Default:** alleen fase 1 (follow-mode + live-cursors); echte screen-share pas na expliciete user-keuze (opt-in van de bekeken user + RBAC-gate zijn dan verplicht).
-- **OV-2 (H3 SSO):** **Default:** generieke OIDC (openid-client); SAML alleen op expliciete vraag.
-- **OV-3 (S1 basis-strategie):** **Default:** multi-base catalog (schone per-stack images + agent-layer); niet nóg meer lagen op de Node-base.
-- **OV-4 (K1 provisioner):** **Default:** eigen catalog-provisioner (`docker run` + per-workspace netwerk); compose-import (K4) is de brug, geen volwaardige compose-engine bouwen.
-- **OV-5 (T2-semantiek):** "main zonder commit X" = **synthetic revert-ref** (default) én "pinned oudere commit/timestamp" (deels D3). Beide landen in T1/T2; bevestig of revert-semantiek de bedoeling was.
-- **OV-6 (C3 keys):** analytics-ingest heeft extra OAuth-scopes/keys nodig → live-verificatie user-triggered (zoals eerdere publish-e2e); fixtures dekken de parser/flow.
+- **OV-1 (Ultrasync) → BESLIST: 2 modi.** v1 = activity-presence (page-level wie-doet-wat met kleuren, GEEN live cursors; per-input-live = v2) + replay-meekijken (~1s app-state-replay, promptloos, RBAC-kijkrol) + pixel-share als opt-in met browser-prompt. Fase Y is hierop herschreven.
+- **OV-2 (SSO/2FA) → BESLIST: geschrapt** — mogelijk later op framework-niveau (zie H3-notitie).
+- **OV-3 (any-stack) → BESLIST: multi-base catalog.**
+- **OV-4 (services) → BESLIST: compose-engine** — elk compose-bestand, met sanitizer + per-workspace namespacing; catalog = presets erbovenop. Fase K is hierop herschreven.
+- **OV-5 (main-zonder-X) → BESLIST: beide** — pinned oudere commit/timestamp én synthetic revert-ref ("main minus X").
+- **OV-6 (C3 analytics-keys) → BESLIST: fixtures nu, live later** (user-triggered met keys, zoals de publish-e2e).
+- **Run-modus (user, 2026-07-08):** alles in **ÉÉN autonome /goal-run**, volgorde = het volgorde-advies, minimale touchpoints (user is een dag weg) — ambiguïteit → sensible default + `OPEN VRAAG` in de branch-log, nooit stoppen om te vragen. Kleine npm-deps die een item nodig heeft (bv. een force-layout-lib voor N2, een WebRTC-helper voor Y3) mogen geïnstalleerd worden, mits lazy-loaded buiten de core-chunks — zelfde afspraak als de FREEDOM-run (fabric/web-push).
 
 ## Grounding
 
