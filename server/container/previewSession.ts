@@ -10,6 +10,7 @@ import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker } from './runtime';
 import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
+import { workspaceContainerContext } from './composeEngine';
 import { waitForContainerReady } from './health';
 import { getProxyProvider, previewRoute, baseDomain } from '../proxy';
 
@@ -27,8 +28,10 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   //? The ticket's OWN project (FIX-E) — not `findFirst` (which picks the workspace's oldest project and
   //? would run the wrong image/dev-command in a multi-project workspace, ADR 0035).
   const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true } });
-  //? S1 — the project's L2 image, else the L1 base for its stack (any-stack).
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, image: resolveProjectBaseImage(project) });
+  //? S1 — the project's L2 image, else the L1 base for its stack (any-stack). K3 — inject the workspace env +
+  //? the service network so the running app reaches its K1/K2 services by name.
+  const ctx = await workspaceContainerContext(prisma, workspaceId);
+  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'preview.noContainer' };
 
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).

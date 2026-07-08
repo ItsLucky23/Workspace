@@ -13,6 +13,7 @@ import type { PrismaClient } from '@prisma/client';
 import { docker } from './runtime';
 import { workspaceDataDir } from '../git/repoStore';
 import { sanitizeCompose } from './composeSanitize';
+import { resolveWorkspaceEnv } from './serviceEnv';
 
 const safe = (s: string): string => s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
 
@@ -25,6 +26,15 @@ export function stackNetwork(workspaceId: string): string { return `ws-${safe(wo
 export function withWorkspaceNetwork(sanitized: string, network: string): string {
   if (/\nnetworks\s*:/.test(`\n${sanitized}`)) return sanitized;
   return `${sanitized.trimEnd()}\nnetworks:\n  default:\n    name: ${network}\n    external: true\n`;
+}
+
+//? K3 — the launch context for a workspace's containers: the app env (resolveWorkspaceEnv) + the per-workspace
+//? service network WHEN the workspace has a running service stack (so the app can reach its services by name).
+//? Threaded into `launchTicketContainer` by the stage/preview/ref-preview callers.
+export async function workspaceContainerContext(prisma: PrismaClient, workspaceId: string): Promise<{ env: Record<string, string>; serviceNetwork?: string }> {
+  const env = await resolveWorkspaceEnv(prisma, workspaceId);
+  const running = await prisma.serviceStack.count({ where: { workspaceId, status: 'running' } });
+  return running > 0 ? { env, serviceNetwork: stackNetwork(workspaceId) } : { env };
 }
 
 export function composeUpArgs(project: string, file: string): string[] { return ['compose', '-p', project, '-f', file, 'up', '-d', '--remove-orphans']; }

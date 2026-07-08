@@ -12,6 +12,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { workspaceDataDir } from '../git/repoStore';
 import { ensureEgressInfra, egressLaunchArgs } from './egress';
+import { serviceEnvArgs } from './serviceEnv';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 //? Exported so the terminal bridge spawns the SAME docker binary (Windows conpty can't
@@ -81,7 +82,7 @@ export async function dockerAvailable(): Promise<boolean> {
 //? then clones the frozen `DEV-####` branch into `/work` AS the agent user (so the
 //? checkout is agent-owned). Rolls back the volume/container on a partial failure (§8.3).
 //? Returns null when no repo is linked (no mirror to clone).
-export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string; ref?: string }): Promise<ContainerInfo | null> {
+export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string; ref?: string; env?: Record<string, string>; serviceNetwork?: string }): Promise<ContainerInfo | null> {
   const { workspaceId, ticketKey, branch, ref } = args;
   //? Prefer the project's L2 image (Q-CT-IMAGESEL) when the caller resolved one, else L1.
   const image = args.image ?? BASE_IMAGE;
@@ -97,6 +98,8 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
   const existing = await docker(['inspect', '-f', '{{.State.Running}}', name]);
   if (existing.code === 0) {
     if (existing.out !== 'true') await docker(['start', name]);
+    //? K3 — ensure a reused container is on the per-workspace service network (idempotent; harmless if already connected).
+    if (args.serviceNetwork) await docker(['network', 'connect', args.serviceNetwork, name]);
     const id = await docker(['inspect', '-f', '{{.Id}}', name]);
     return { containerId: id.out, name, volume };
   }
@@ -127,6 +130,8 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     //? Publish the in-container pty-agent (07b §9, #11) to the host loopback on an ephemeral port;
     //? the terminal bridge resolves it via `docker inspect` (ptyAgentClient.resolvePtyAgentPort).
     '-p', `127.0.0.1::${String(PTY_AGENT_PORT)}`,
+    //? K3 — the workspace's app env (service connection strings + BYO EnvVars, `__`-internal keys filtered out).
+    ...serviceEnvArgs(args.env ?? {}),
     ...egressLaunchArgs(),
     '--label', `org.workspaces.workspace=${workspaceId}`, '--label', `org.workspaces.ticket=${ticketKey}`,
     image,
@@ -148,6 +153,8 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
     await docker(['volume', 'rm', '-f', volume]);
     throw new Error(`worktree clone failed: ${clone.err}`);
   }
+  //? K3 — join the per-workspace service network so the app can reach its K1/K2 services by name (best-effort).
+  if (args.serviceNetwork) await docker(['network', 'connect', args.serviceNetwork, name]);
   return { containerId, name, volume };
 }
 

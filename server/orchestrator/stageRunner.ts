@@ -13,6 +13,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
 import { resolveProjectBaseImage } from '../container/baseImages';
+import { workspaceContainerContext } from '../container/composeEngine';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
 import { decryptSecret } from '../crypto/secretBox';
@@ -229,7 +230,9 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? Prefer the project's built L2 image, else the L1 base for its stack (S1 — any-stack). (Multi-project
   //? `findFirst`-by-workspace wart is pre-existing, ADR 0035 / fixed in R3.)
   const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true, stack: true } });
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project) });
+  //? K3 — inject the workspace env + service network so the coding agent's build/test reaches the app's services.
+  const ctx = await workspaceContainerContext(prisma, workspaceId);
+  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
   const sessionKey = `worker:${ticket.id}:${stageKey}`;
