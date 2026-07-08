@@ -1229,7 +1229,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
       if (!script) return;
       const sceneDurationMs = typeof payload.sceneDurationMs === 'number' ? payload.sceneDurationMs : undefined;
-      await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }), ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}) });
+      //? The timeline "decompose" fires no style (no picker there) — fall back to the piece's REMEMBERED style
+      //? so standalone decomposes stay on-style. A style passed explicitly wins + is remembered for next time.
+      const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { styleKey: true } });
+      const styleKey = str(payload, 'styleKey') ?? piece?.styleKey ?? '';
+      if (str(payload, 'styleKey')) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { styleKey: str(payload, 'styleKey') } });
+      await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }), ...(styleKey ? { styleKey } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}) });
       broadcastContentDirty(action.workspaceId);
       return;
     }
@@ -1256,6 +1261,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? M3 — a target duration → the long-form beat/scene planner; sceneDurationMs sets per-scene length.
       const durationMs = num(payload, 'durationMs');
       const sceneDurationMs = num(payload, 'sceneDurationMs');
+      //? Remember the chosen style on the piece so a later timeline-only decompose stays on-style.
+      if (str(payload, 'styleKey')) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { styleKey: str(payload, 'styleKey') } });
       await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}), ...(durationMs === undefined ? {} : { durationMs }), ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;

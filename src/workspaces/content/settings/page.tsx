@@ -10,8 +10,12 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
+import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { backendUrl } from '../../../../config';
+
+//? Prefix a backend-relative /media URL for the client origin (uploads land as /media/…); pass external URLs through.
+const mediaSrc = (url: string): string => (url.startsWith('/media/') ? `${backendUrl}${url}` : url);
 
 export const template = 'workspaces';
 
@@ -180,7 +184,7 @@ function MediaModelsSection() {
 const REFERENCE_KINDS = ['ad', 'thumbnail', 'intro', 'hook', 'landing', 'other'];
 function ReferenceLibrarySection() {
   const translate = useTranslator();
-  const { content, runContentOp } = useWorkspaces();
+  const { content, runContentOp, activeWorkspace } = useWorkspaces();
   const kindItems: DropdownItem[] = REFERENCE_KINDS.map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.refKind_${k}` }) }));
   const [kind, setKind] = useState('ad');
   const [title, setTitle] = useState('');
@@ -207,7 +211,7 @@ function ReferenceLibrarySection() {
           ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.refsEmpty' })}</div>
           : content.references.map((r) => (
             <div key={r.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
-              {r.assetUrl ? <img src={r.assetUrl} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <div className="w-9 h-9 rounded-md bg-container1 flex items-center justify-center text-muted shrink-0"><Icon name="image" /></div>}
+              {r.assetUrl ? <img src={mediaSrc(r.assetUrl)} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <div className="w-9 h-9 rounded-md bg-container1 flex items-center justify-center text-muted shrink-0"><Icon name="image" /></div>}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-title truncate">{r.title} <span className="text-xs text-disabled">· {r.kind}</span></div>
                 <div className="text-xs text-muted truncate">{r.description}</div>
@@ -223,7 +227,12 @@ function ReferenceLibrarySection() {
           <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refTitlePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
         </div>
         <textarea value={description} onChange={(e) => { setDescription(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.refDescPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
-        <input value={assetUrl} onChange={(e) => { setAssetUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refAssetPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <div className="flex items-center gap-2">
+          <input value={assetUrl} onChange={(e) => { setAssetUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refAssetPlaceholder' })} className="min-w-0 flex-1 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+          {/* Real file upload → /media URL (or paste a URL above). */}
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,video/*" labelKey="workspaces.content.refUpload" icon="up-right-from-square" onUploaded={(url) => { setAssetUrl(url); }} />
+        </div>
+        {assetUrl.trim() ? <img src={mediaSrc(assetUrl.trim())} alt="" className="w-16 h-16 rounded-md object-cover border border-container2-border" /> : null}
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.refSave' })}</button>
       </div>
     </section>

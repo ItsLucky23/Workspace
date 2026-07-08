@@ -1337,6 +1337,7 @@ model ContentProject {
   stageId     String   @default("idea")             // content pipeline column
   status      String   @default("idle")             // idle|busy|needs-input|done|paused|stuck
   styleId     String?  @db.ObjectId                 // → StylePreset.id (default style for this piece)
+  styleKey    String?                               // the piece's remembered style KEY (video-gen) — reused by the timeline decompose when no style is passed
   needsInput  String?                               // denormalized open question (answer-queue)
   voiceVolume Float    @default(1)                   // V5 audio-track — linear gain for the voiceover in the mix
   musicVolume Float    @default(0.25)                // V5 audio-track — ducked linear gain for the background music
