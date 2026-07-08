@@ -3113,3 +3113,7 @@ User verfijnde de Ultrasync-laag in chat en gaf go voor verwerking. **Fase Y vol
 ## 2026-07-08 — ADOPTION_PROGRAM Y2: admin-watch volledig spoorloos + `ultrasync.watch` RBAC bevestigd
 User-beslissingen: (1) verborgen admin-watch krijgt GEEN audit-log-rij — volledig spoorloos, géén record dat admin X bij user Y keek (eerdere default "wél H1-gelogd" teruggedraaid); (2) `ultrasync.watch` wordt als nieuwe RBAC-permissie toegevoegd (9e capability naast de bestaande 8). Doc + goal-commando + memory bijgewerkt. Peer-share houdt wél de "X kijkt mee"-badge.
 **Files:** `src/workspaces/_docs/ADOPTION_PROGRAM.md`, `src/workspaces/_docs/ADOPTION_GOAL_COMMAND.md`.
+
+## 2026-07-08 — ADOPTION_GOAL_COMMAND ingekort tot <3500 tekens (/goal-limiet is 4000 chars)
+De /goal-body was 5759 tekens → /goal weigerde (limiet 4000). Ingekort tot 3466 tekens met behoud van alle essentie: volledige uitvoering van ADOPTION_PROGRAM, invarianten, per-item waterfall + gates, e2e/browser-verify, alle gelockte beslissingen (incl. spoorloze admin-watch + compose-engine), commit-per-item. Gedetailleerde beslissingen leunen nu op het plan §OPEN VRAGEN RESOLVED i.p.v. herhaald.
+**Files:** `src/workspaces/_docs/ADOPTION_GOAL_COMMAND.md`.
