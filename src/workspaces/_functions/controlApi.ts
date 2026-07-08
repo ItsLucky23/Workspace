@@ -33,6 +33,7 @@ export type ControlOp =
   | 'role-create' | 'role-update'
   // workspace settings (15/19/22)
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration'
+  | 'service-provision' | 'service-teardown'
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'forge-connect'
   | 'save-git-config' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-autonomy'

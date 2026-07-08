@@ -53,6 +53,7 @@ import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
+import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
@@ -1772,6 +1773,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const envId = str(target, 'envId') ?? str(payload, 'envId');
       if (!envId) return { ok: false };
       return teardownEnvironment(prisma, action.workspaceId, envId);
+    }
+    //? K1 — attach a third-party SERVICE STACK (docker-compose). The compose is SANITIZED (host-escapes rejected,
+    //? host-ports rewritten) + namespaced per workspace before it runs. Conductor is the only writer (B-23).
+    case 'service-provision': {
+      const name = str(payload, 'name'); const compose = str(payload, 'compose');
+      if (!name || !compose) return { ok: false, error: 'service.invalidRequest' };
+      return provisionServiceStack(prisma, action.workspaceId, name, compose);
+    }
+    case 'service-teardown': {
+      const name = str(payload, 'name') ?? str(target, 'name');
+      if (!name) return { ok: false };
+      return teardownServiceStack(prisma, action.workspaceId, name);
     }
     //? Promote up the dev→staging→prod ladder (ADR 0038) — deploys the SOURCE env's tested image to the
     //? next stage; prod is gated on an explicit approval + a live source (B-23).

@@ -68,6 +68,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'role-update': CAP.editPipeline,
   'save-env': CAP.workspaceSettings,
   'remove-env': CAP.workspaceSettings,
+  'service-provision': CAP.workspaceSettings,
+  'service-teardown': CAP.workspaceSettings,
   'save-integration': CAP.workspaceSettings,
   'remove-integration': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,

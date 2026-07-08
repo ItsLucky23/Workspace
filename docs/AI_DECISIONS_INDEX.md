@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (164)
+## Decisions (165)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -177,6 +177,7 @@
 | 0163 | W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop | 🟢 accepted | orchestrator, questions, non-blocking, needs-input, adoption, schema | — | `docs/decisions/0163-non-blocking-advisory-questions.md` |
 | 0164 | T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref) | 🟢 accepted | preview, container, git, time-travel, adoption | — | `docs/decisions/0164-ref-preview-ephemeral-container.md` |
 | 0165 | S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard) | 🟢 accepted | container, any-stack, base-image, dockerfile, adoption, schema | — | `docs/decisions/0165-multi-base-stack-catalog.md` |
+| 0166 | K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine | 🟢 accepted | container, services, compose, security, multi-tenancy, adoption, schema | — | `docs/decisions/0166-compose-engine-services.md` |
 
 ## Summaries
 
@@ -1493,6 +1494,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **One agent base, N stack variants.** The coding agent (`claude` CLI), `node-pty`, openvscode-server, the pty-agent, and the DB/git tooling are Node-based and MUST run in EVERY container — so a "clean per-stack image" is impossible; instead each stack base (`docker/base-<stack>.Dockerfile`) does `FROM workspaces/base` and adds ONLY that stack's toolchain (python/go/rust/jdk). The user's app builds/runs in the stack; the agent runs on the inherited Node layer. **A first-class catalog** (`server/container/baseImages.ts`): `BASE_STACKS = node|python|go|rust|java`, `baseImageFor(stack)` (node = the agent base, others = `workspaces/base-<stack>`, env-overridable), `resolveProjectBaseImage(project)` = the built L2 `baseImageRef` else the stack base. New `Project.stack` field (null = node) selects it; the launch callers (stageRunner, preview, ref-preview) resolve through it. **The Dockerfile-trust guard is relaxed to the FAMILY** (`extendsAllowedBase`): the first `FROM` must be a `workspaces/base*` image (agent base or any stack variant), not a single fixed image — still a supply-chain gate (an arbitrary `FROM ubuntu`/`FROM python:3.12` is rejected). The three formerly-triplicated `extendsBase` copies now delegate to this one shared guard (the cleanup the code itself had flagged).
 
 → `docs/decisions/0165-multi-base-stack-catalog.md`
+
+### 0166 — K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine
+
+**0166** · accepted · tags: container, services, compose, security, multi-tenancy, adoption, schema · 2026-07-08
+
+**A compose-ENGINE, not a fixed catalog.** A workspace attaches an arbitrary docker-compose file (`service-provision` control-op). K2 presets are curated compose snippets on top; the engine is the core. **Fail-closed SANITIZER (K1-a, `composeSanitize`)** gates every compose before it is stored or run: host-escape directives (`privileged`, `cap_add`, `devices`, `security_opt`, host bind-mounts, `/var/run/docker.sock`, `network_mode|pid|ipc: host`) REJECT the file (structural parse via the dep-free `parseYamlSubset` + a raw-text scan that catches flow-style); published host ports are REWRITTEN to container-only (no cross-workspace port collision — services are reached intra-network by name). **Per-workspace namespacing (K1-b, `composeEngine`)**: the compose runs under project `ws-<id>-<name>` on an EXTERNAL per-workspace network `ws-<id>-svc` injected into the compose (so the app/preview container + the services share one net); Docker prefixes volumes by project. Two workspaces' stacks can never collide. **`ServiceStack` model** stores the SANITIZED compose + service names + status; the Conductor is the only writer (`service-provision`/`service-teardown`, `workspaceSettings`-gated). The docker calls take an injectable runner (unit/integration-tested without a daemon).
+
+→ `docs/decisions/0166-compose-engine-services.md`
 
 ## Code governed by decisions
 

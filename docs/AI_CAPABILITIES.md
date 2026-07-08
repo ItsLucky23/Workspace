@@ -134,6 +134,8 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/saveStageConfig/v1` | — | — | — |
 | `workspaces/scanDocs/v1` | — | — | — |
 | `workspaces/scanIndex/v1` | — | — | — |
+| `workspaces/serviceProvision/v1` | — | — | — |
+| `workspaces/serviceTeardown/v1` | — | — | — |
 | `workspaces/skillToggle/v1` | — | — | — |
 | `workspaces/sprintCreate/v1` | — | — | — |
 | `workspaces/ticketArtifact/v1` | — | — | — |

@@ -287,6 +287,24 @@ model Service {
   @@index([projectId])
 }
 
+//? K1 — an attached third-party SERVICE STACK: a SANITIZED docker-compose file the workspace runs alongside its
+//? app containers (Postgres/Kafka/Redis/Elasticsearch/…). Namespaced per workspace (compose project
+//? `ws-<id>-<name>`, a per-workspace network, a volume prefix) so two workspaces' stacks never collide. The
+//? Conductor is the only writer; `composeSanitize` gates the compose before it is stored/run.
+model ServiceStack {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  name        String                              // stack name (part of the compose project name)
+  compose     String                              // the SANITIZED compose yaml (host-escapes rejected, host-ports rewritten)
+  services    String[]                            // the service names in the stack (from the sanitizer)
+  status      String   @default("stopped")        // 'stopped' | 'running' | 'error'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
 //? Per-project forge connection (ADR 0036, item A2 — GitHubForge). Generalizes the
 //? workspace GitLab fields (`Workspace.forgeType`/`gitlabUrl`/`gitlabTokenEnc`) to a
 //? PER-PROJECT row so a workspace can mix GitLab + GitHub projects (multi-project, ADR

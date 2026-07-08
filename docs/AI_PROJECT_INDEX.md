@@ -57,7 +57,7 @@
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 
-## Sync routes (50)
+## Sync routes (52)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -105,6 +105,8 @@
 | `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
 | `sync/workspaces/scanDocs/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
 | `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
+| `sync/workspaces/serviceProvision/v1` | yes | — | login | — | **no** | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
+| `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | **no** | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
 | `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | **no** | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
@@ -119,9 +121,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 93 |
+| _(unowned)_ | 95 |
 
-**Test coverage**: 3/95 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/97 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -175,7 +177,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/archive/v1`
 - `sync/workspaces/bulkArchive/v1`
 - `sync/workspaces/bulkAssign/v1`
-- … +42 more
+- … +44 more
 
 ## Pages (28)
 
