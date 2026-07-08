@@ -347,9 +347,11 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSec
 //? "From a template" (greenfield — picks a stack template → `createFromTemplate`, which inits a real repo +
 //? seed tree, G1) or "Link a repo" (name + git URL → `createProject`). The Conductor seeds the default
 //? pipeline; the client refetches + can switch to it.
-function CreateProjectForm({ onCreate }: { onCreate: (input: { name: string; gitUrl?: string }) => void }) {
+//? templates + onCreateFromTemplate are PASSED IN (not via useWorkspaces): this form renders inside the
+//? menuHandler portal, which lives ABOVE the WorkspacesProvider (MenuHandlerProvider > Router), so calling
+//? useWorkspaces() here throws. The call site (ProjectSwitcher, inside the provider) injects both.
+function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string }) => void }) {
   const translate = useTranslator();
-  const { templates, createFromTemplate } = useWorkspaces();
   const [mode, setMode] = useState<'template' | 'link'>('template');
   const [name, setName] = useState('');
   const [gitUrl, setGitUrl] = useState('');
@@ -358,7 +360,7 @@ function CreateProjectForm({ onCreate }: { onCreate: (input: { name: string; git
   const submit = () => {
     const n = name.trim();
     if (!n) return;
-    if (mode === 'template') { if (template.length === 0) return; createFromTemplate({ name: n, template }); }
+    if (mode === 'template') { if (template.length === 0) return; onCreateFromTemplate({ name: n, template }); }
     else onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) });
     void menuHandler.close();
   };
@@ -431,12 +433,12 @@ function AddServiceForm({ projectId, onCreate }: { projectId: string; onCreate: 
 //? a new project, and lists/adds/removes the active project's services. Hidden until at
 //? least one project has loaded.
 function ProjectSwitcher() {
-  const { projects, activeProject, activeProjectId, setActiveProject, createProject, services, createService, deleteService } = useWorkspaces();
+  const { projects, activeProject, activeProjectId, setActiveProject, createProject, createFromTemplate, templates, services, createService, deleteService } = useWorkspaces();
   const translate = useTranslator();
   const [open, setOpen] = useState(false);
   const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
   if (projects.length === 0) return null;
-  const openCreate = () => { setOpen(false); void menuHandler.open(<CreateProjectForm onCreate={createProject} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  const openCreate = () => { setOpen(false); void menuHandler.open(<CreateProjectForm onCreate={createProject} templates={templates} onCreateFromTemplate={createFromTemplate} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
   const openAddService = () => { if (!activeProjectId) return; setOpen(false); void menuHandler.open(<AddServiceForm projectId={activeProjectId} onCreate={createService} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
   return (
     <div className="relative" ref={ref}>
