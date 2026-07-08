@@ -529,7 +529,7 @@ function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, aiRuns } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, aiRuns, isMobile } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
@@ -557,22 +557,27 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
   };
   const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
+  //? P-A — phone-first: on mobile the panel is a full-screen sheet (no width-drag, opacity fade); on desktop
+  //? it's the resizable right-hand aside (animated WIDTH so the board's flex area resizes in lock-step). This
+  //? makes the chat + approvals inbox actually reachable on a phone (the mobile "AI" tab previously showed
+  //? nothing — the panel was `hidden lg:flex`).
+  const anim = isMobile
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : { initial: { width: 0, opacity: 0 }, animate: { width, opacity: 1 }, exit: { width: 0, opacity: 0 } };
   return (
-    //? Animate WIDTH (not translate) so the board's flex area resizes in lock-step
-    //? — no empty gap during the slide. While dragging, transition is instant.
     <motion.aside
-      className="hidden lg:flex relative shrink-0 overflow-hidden border-l border-divider bg-container1"
-      initial={{ width: 0, opacity: 0 }}
-      animate={{ width, opacity: 1 }}
-      exit={{ width: 0, opacity: 0 }}
+      className={`relative shrink-0 overflow-hidden border-l border-divider bg-container1 ${isMobile ? 'fixed inset-0 z-50 flex' : 'hidden lg:flex'}`}
+      {...anim}
       transition={dragging ? { duration: 0 } : PANEL_TRANSITION}
     >
-      <div
-        onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
-        title={translate({ key: 'workspaces.shell.dragToResize' })}
-        className={`absolute left-0 top-0 bottom-0 z-20 w-1.5 cursor-col-resize transition-colors ${dragging ? 'bg-primary/50' : 'hover:bg-primary/30'}`}
-      />
-      <div style={{ width }} className="h-full flex flex-col">
+      {!isMobile && (
+        <div
+          onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
+          title={translate({ key: 'workspaces.shell.dragToResize' })}
+          className={`absolute left-0 top-0 bottom-0 z-20 w-1.5 cursor-col-resize transition-colors ${dragging ? 'bg-primary/50' : 'hover:bg-primary/30'}`}
+        />
+      )}
+      <div style={isMobile ? undefined : { width }} className={`h-full flex flex-col ${isMobile ? 'w-full' : ''}`}>
         <div className="flex items-center justify-between h-14 px-4 border-b border-divider">
           <div className="flex items-center gap-2 font-semibold text-title">
             <span className="w-7 h-7 rounded-lg bg-primary/12 text-primary flex items-center justify-center"><Icon name="robot" /></span>

@@ -3037,3 +3037,8 @@ De ADR-0144-states nu zichtbaar in de UI: een error-render (geen keys/Docker) to
 ## 2026-07-08 — B2: tekst-overlay in de image-editor (rijke image-editor)
 De `ImageEditor` krijgt een draggable, editable **tekst-overlay** (Fabric IText): typ tekst + "Tekst toevoegen" → een verplaatsbaar tekst-object op het canvas, wit met zwarte outline; het bakt automatisch in de PNG-export (zelfde toDataURL-pad). i18n×4 (`textPlaceholder`/`addText`). Geen ADR (feature, geen architectuur-beslissing). tsc0·lint0·ai:lint clean·build groen. Browser-verify (drag/plaatsing) pending dev-server. B1(crop)/B3(meer-filters+compare) resteren.
 **Files:** `src/workspaces/_components/ImageEditor.tsx` (addText + UI), `src/_locales/*.json` (×4).
+
+## 2026-07-08 — L3 P-A: mobiele AI-panel/approvals (phone-first echt)
+De `AIPanel` was `hidden lg:flex` → de mobiele "AI"-knop toonde niets. Nu: op mobiel (`isMobile`) rendert de panel als **full-screen sheet** (`fixed inset-0 z-50`, opacity-fade, geen width-drag); op desktop (lg+) exact het oude resizable-aside. Chat + suggesties-inbox + goedkeuren nu bereikbaar op de telefoon. Geen desktop-regressie (isMobile=false → ongewijzigd). tsc0·lint0·ai:lint clean·build groen.
+**Follow-up (browser-verify):** de md–lg tablet-range blijft `hidden lg:flex` (ongewijzigd, pre-existing) + de sheet-UX (scroll/keyboard/safe-area) verifiëren met de dev-server. P-B (structured approve/reject-kaarten) resteert.
+**Files:** `src/workspaces/_shell/Shell.tsx` (AIPanel responsive).
