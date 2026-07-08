@@ -12,6 +12,7 @@ import * as pty from 'node-pty';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
+import { resolveProjectBaseImage } from '../container/baseImages';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
 import { decryptSecret } from '../crypto/secretBox';
@@ -225,9 +226,10 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined));
   const retrieved = ragErr || !hits ? [] : hits.map((h) => ({ filePath: h.filePath, content: h.content }));
 
-  //? Prefer the project's built L2 image (idempotent — reuses a running container).
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
+  //? Prefer the project's built L2 image, else the L1 base for its stack (S1 — any-stack). (Multi-project
+  //? `findFirst`-by-workspace wart is pre-existing, ADR 0035 / fixed in R3.)
+  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true, stack: true } });
+  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project) });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
   const sessionKey = `worker:${ticket.id}:${stageKey}`;

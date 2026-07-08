@@ -9,6 +9,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { runAiCompletion } from './registry';
 import { repoManifests, workspaceDataDir } from '../git/repoStore';
+import { extendsAllowedBase } from '../container/baseImages';
 import type { PrismaClient } from '@prisma/client';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
@@ -21,12 +22,10 @@ function extractDockerfile(text: string): string {
   return (fence?.[1] ?? text).trim();
 }
 
-//? The Dockerfile's FIRST `FROM` must be our L1 base (07b §1.2 / Q-CT-DOCKERFILE-TRUST:
-//? an arbitrary FROM is a supply-chain surface). A `# syntax=` directive before it is fine.
-function extendsBase(dockerfile: string): boolean {
-  const firstFrom = dockerfile.split('\n').map((l) => l.trim()).find((l) => /^FROM\s/i.test(l));
-  return firstFrom?.toLowerCase().startsWith(`from ${BASE_IMAGE.toLowerCase()}`) ?? false;
-}
+//? The Dockerfile's FIRST `FROM` must be a `workspaces/base*` image (07b §1.2 / Q-CT-DOCKERFILE-TRUST:
+//? an arbitrary FROM is a supply-chain surface). S1 — relaxed from a single image to the base FAMILY (any stack
+//? variant) via the shared guard. A `# syntax=` directive before it is fine.
+const extendsBase = extendsAllowedBase;
 
 //? Generate the draft `.workspaces/Dockerfile` from the linked repo's manifests. Persists
 //? it to the workspace data dir (the pre-commit draft) and points Project.dockerfilePath

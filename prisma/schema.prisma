@@ -256,6 +256,7 @@ model Project {
   linkedFiles       LinkedFile[]                              // D9/D19 — GENERATE vs LINK
   generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
+  stack             String?                                    // S1 — 'node'|'python'|'go'|'rust'|'java' → the L1 base image when no baseImageRef (any-stack); null = node
   dockerfilePath    String?                                    // optional per-project Dockerfile
   devCommand        String?                                    // the command that starts the app's dev server in the ticket container (preview flow); default = package.json scripts.dev
   createdAt         DateTime     @default(now())

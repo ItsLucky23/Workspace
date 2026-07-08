@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (163)
+## Decisions (164)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -176,6 +176,7 @@
 | 0162 | W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models) | 🟢 accepted | orchestrator, questions, needs-input, phone-first, adoption, schema | — | `docs/decisions/0162-multi-question-denormalized-json.md` |
 | 0163 | W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop | 🟢 accepted | orchestrator, questions, non-blocking, needs-input, adoption, schema | — | `docs/decisions/0163-non-blocking-advisory-questions.md` |
 | 0164 | T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref) | 🟢 accepted | preview, container, git, time-travel, adoption | — | `docs/decisions/0164-ref-preview-ephemeral-container.md` |
+| 0165 | S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard) | 🟢 accepted | container, any-stack, base-image, dockerfile, adoption, schema | — | `docs/decisions/0165-multi-base-stack-catalog.md` |
 
 ## Summaries
 
@@ -1484,6 +1485,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A ref-preview runs in its OWN ephemeral, ref-scoped container** — NOT the ticket's tip worker container. `launchTicketContainer` gains an optional `ref`: when present, the container/volume name get a `-ref-<slug>` suffix (`refSlug`, ≤12 docker-safe chars) and the clone becomes a FULL-history `git clone /mirror /work` + `git checkout <ref>` (`cloneExecArgs`, pure + tested) instead of the single-branch tip clone. So two refs of one branch coexist and a ref-preview never clobbers the agent's tip working container. **Ref-scoped route** (`refPreviewRoute`): distinct `id` (`<ticketKey>-ref-<slug>`) + subdomain (`<branch>-<slug>.<domain>`) per ref → side-by-side previews, idempotent per ref. **Injection-safe ref**: `isSafeRef` gates on `[0-9a-zA-Z._/-]` with no `..` before the ref reaches the clone shell; `openRefPreview` (+ the `open-ref-preview_v1` `_api` op, `workTickets`-gated) rejects a bad ref.
 
 → `docs/decisions/0164-ref-preview-ephemeral-container.md`
+
+### 0165 — S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard)
+
+**0165** · accepted · tags: container, any-stack, base-image, dockerfile, adoption, schema · 2026-07-08
+
+**One agent base, N stack variants.** The coding agent (`claude` CLI), `node-pty`, openvscode-server, the pty-agent, and the DB/git tooling are Node-based and MUST run in EVERY container — so a "clean per-stack image" is impossible; instead each stack base (`docker/base-<stack>.Dockerfile`) does `FROM workspaces/base` and adds ONLY that stack's toolchain (python/go/rust/jdk). The user's app builds/runs in the stack; the agent runs on the inherited Node layer. **A first-class catalog** (`server/container/baseImages.ts`): `BASE_STACKS = node|python|go|rust|java`, `baseImageFor(stack)` (node = the agent base, others = `workspaces/base-<stack>`, env-overridable), `resolveProjectBaseImage(project)` = the built L2 `baseImageRef` else the stack base. New `Project.stack` field (null = node) selects it; the launch callers (stageRunner, preview, ref-preview) resolve through it. **The Dockerfile-trust guard is relaxed to the FAMILY** (`extendsAllowedBase`): the first `FROM` must be a `workspaces/base*` image (agent base or any stack variant), not a single fixed image — still a supply-chain gate (an arbitrary `FROM ubuntu`/`FROM python:3.12` is rejected). The three formerly-triplicated `extendsBase` copies now delegate to this one shared guard (the cleanup the code itself had flagged).
+
+→ `docs/decisions/0165-multi-base-stack-catalog.md`
 
 ## Code governed by decisions
 

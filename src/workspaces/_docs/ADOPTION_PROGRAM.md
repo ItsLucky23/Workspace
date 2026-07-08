@@ -42,6 +42,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | T2 synthetic revert-ref ("main zonder X") + commit-as-of | ✅ | (0164) | timeTravel-integratie 9/9 (echte git) |
 | T3 time-travel-preview-op + assistant-awareness (ref-spec) | ✅ | (0164) | timeTravel-integratie 14/14 (+resolveRefSpec) |
 | **FASE T COMPLEET** | ✅ | | T1–T3 gecommit |
+| S1 any-stack multi-base catalog + relaxed guard + Project.stack | ✅ | 0165 | baseImages-unit 20/20 |
 
 ---
 

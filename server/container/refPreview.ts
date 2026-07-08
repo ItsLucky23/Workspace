@@ -7,6 +7,7 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker, isSafeRef, refSlug } from './runtime';
+import { resolveProjectBaseImage } from './baseImages';
 import { waitForContainerReady } from './health';
 import { getProxyProvider, refPreviewRoute, baseDomain } from '../proxy';
 
@@ -21,10 +22,10 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   const prisma = getPrismaClient();
   const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true, projectId: true } });
   if (!ticket?.branch) return { ok: false, error: 'preview.notActivated' };
-  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, devCommand: true } });
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true } });
 
   //? Ref-scoped ephemeral container (full-history clone + `git checkout <ref>` — see runtime.cloneExecArgs).
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, ref, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
+  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, ref, image: resolveProjectBaseImage(project) });
   if (!container) return { ok: false, error: 'preview.noContainer' };
 
   await docker(['network', 'create', NET]);
