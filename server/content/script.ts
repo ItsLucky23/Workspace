@@ -8,6 +8,7 @@ import { runAiCompletion } from '../ai/registry';
 import { resolveStyle, composeStylePrompt } from './styles';
 import { buildBrandContext } from './brandContext';
 import { buildKnowledgeContext } from './knowledgeContext';
+import { retrieveContentPlaybook } from '../rag/contentPlaybook';
 import { extractJson, coerceBeats } from './jsonParse';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
@@ -72,7 +73,11 @@ export async function generateScript(
   //? script is on-brand + uses their material.
   const brandContext = await buildBrandContext(prisma, args.workspaceId, args.contentProjectId);
   const knowledge = await buildKnowledgeContext(prisma, args.workspaceId);
-  const system = [brandContext, knowledge, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
+  //? Ground the script on DOMAIN best-practices (hooks/retention/structure) relevant to the brief, so the AI
+  //? writes what WORKS, not just what's asked. Global playbook corpus (server/rag/contentPlaybook.ts).
+  const playbook = await retrieveContentPlaybook(prisma, args.brief, 3);
+  const bestPractices = playbook.length > 0 ? `Proven content best-practices (apply these):\n${playbook.map((p) => p.content).join('\n\n')}` : '';
+  const system = [brandContext, knowledge, bestPractices, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
   const res = await runAiCompletion('script', {
     prompt: `${args.brief}\n\n${scriptFormat(args.targetBeats)}`,
     ...(system ? { system } : {}),

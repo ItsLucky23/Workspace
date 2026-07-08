@@ -203,12 +203,18 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Q2: index the product self-knowledge corpus (global, idempotent on the corpus hash) once at boot,
   //? leader-gated + delayed so leadership has settled. Best-effort — never blocks or breaks boot.
   const { ensureProductKnowledge } = await import('./rag/productKnowledge');
+  const { ensureContentPlaybook } = await import('./rag/contentPlaybook');
   const { isLeader: isLeaderNow } = await import('./orchestrator/cluster');
   setTimeout(() => {
     if (!isLeaderNow()) return;
     void ensureProductKnowledge()
       .then((r) => { if (r.entries > 0) console.log(`[product-knowledge] indexed ${String(r.entries)} chunks (hash ${r.hash ?? ''})`); })
       .catch((e: unknown) => { console.error('[product-knowledge] ensure failed:', e instanceof Error ? e.message : String(e)); });
+    //? Same shape: index the content best-practices playbook (global, idempotent on its hash) so the content
+    //? AI grounds scripts on proven craft. Best-effort.
+    void ensureContentPlaybook()
+      .then((r) => { if (r.entries > 0) console.log(`[content-playbook] indexed ${String(r.entries)} chunks (hash ${r.hash ?? ''})`); })
+      .catch((e: unknown) => { console.error('[content-playbook] ensure failed:', e instanceof Error ? e.message : String(e)); });
   }, 5000);
 })().catch((err) => {
   console.error('[server] failed to start:', err);

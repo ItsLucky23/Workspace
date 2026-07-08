@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (172)
+## Decisions (173)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -185,6 +185,7 @@
 | 0259 | M4 — media-style upload / copy / customize / delete (preview-aware) | 🟢 accepted | content, media, style, import-export, ai-libraries-accounts | — | `docs/decisions/0259-media-style-crud-roundtrip.md` |
 | 0260 | A1+A2 — multi-account connections + channel management | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0260-multi-account-channel-management.md` |
 | 0261 | A3+A4 — publish routing by account + content bound to a channel | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0261-publish-routing-content-channel.md` |
+| 0262 | Best-practices playbook — domain-expertise RAG grounding content generation | 🟢 accepted | content, rag, best-practices, ai, ai-libraries-accounts | — | `docs/decisions/0262-content-best-practices-playbook.md` |
 
 ## Summaries
 
@@ -1565,6 +1566,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A3 — thread `accountId` through the publish path.** `performUpload` + `publishAsset` gained an optional `accountId` → `getConnection(platform, accountId)`, so the upload uses the chosen account's token (default account when omitted). `content-request-publish` carries `accountId` in the suggestion patch; the accept passes it to `publishAsset`. **A4 — `content-from-brief` accepts `channelId`.** The created `ContentProject` is bound to the channel (content-create already did), so `brandContext` + brand-RAG ground every generation on that channel's voice. The Workspace-AI can propose "make a video for channel Z" by re-expressing it as a content-create/ content-from-brief with the channelId (no new verb).
 
 → `docs/decisions/0261-publish-routing-content-channel.md`
+
+### 0262 — Best-practices playbook — domain-expertise RAG grounding content generation
+
+**0262** · accepted · tags: content, rag, best-practices, ai, ai-libraries-accounts · 2026-07-08
+
+**A curated `docs/content-playbook/playbook.md`** holds platform-agnostic craft knowledge, one retrievable chunk per `###` section (hooks, scripts/retention, thumbnails, per-platform, ads). **A fourth global RAG corpus** (`server/rag/contentPlaybook.ts`) — same second-corpus pattern as product-knowledge/memory/brand: the ONE embedder + the ONE `retrieve()`, global zero-ObjectId sentinel workspace, distinct commit `content-playbook`, idempotent on a content hash, boot-ensured leader-gated. The markdown is chunked at RUNTIME (no compiled JSON / generator needed — it's small + hand-curated). **`generateScript` grounds on it**: retrieves the top-3 best-practices relevant to the brief and injects them as a "Proven content best-practices (apply these)" section in the system prompt, alongside brand + knowledge.
+
+→ `docs/decisions/0262-content-best-practices-playbook.md`
 
 ## Code governed by decisions
 
