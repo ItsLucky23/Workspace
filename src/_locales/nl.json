@@ -751,7 +751,7 @@
       "ourPrompt": "Onze prompt",
       "reasoning": "AI-reasoning / output",
       "dragToResize": "Sleep om te vergroten/verkleinen",
-      "askAiPlaceholder": "Vraag de AI iets te doenâ¦",
+      "tryAsking": "Probeer te vragen", "capVideos": "Kan ik video's bewerken in deze app?", "capNewProject": "Hoe start ik een nieuw project?", "capPublish": "Hoe publiceer ik naar TikTok?", "capDesign": "Wat kan de design-module?", "askAiPlaceholder": "Vraag de AI iets te doenâ¦",
       "aiError": "De AI is nu niet beschikbaar. Probeer het opnieuw.",
       "aiAccept": "Accepteren",
       "aiApprovePlan": "Plan goedkeuren",

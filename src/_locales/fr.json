@@ -751,7 +751,7 @@
       "ourPrompt": "Notre prompt",
       "reasoning": "Raisonnement / sortie IA",
       "dragToResize": "Glissez pour redimensionner",
-      "askAiPlaceholder": "Demandez à l’IA de faire quelque chose…",
+      "tryAsking": "Essayez de demander", "capVideos": "Puis-je monter des vidéos dans cette app ?", "capNewProject": "Comment démarrer un nouveau projet ?", "capPublish": "Comment publier sur TikTok ?", "capDesign": "Que peut faire le module design ?", "askAiPlaceholder": "Demandez à l’IA de faire quelque chose…",
       "aiError": "L’IA est indisponible pour le moment. Réessayez.",
       "aiAccept": "Accepter",
       "aiApprovePlan": "Approuver le plan",

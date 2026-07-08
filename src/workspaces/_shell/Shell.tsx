@@ -623,6 +623,16 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
               {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} />)}
+              {/* Q4 — capability starter-questions: surface what the product can do, tappable to ask. Shown
+                  while the conversation is empty (just the greeting). The AI answers from the product-knowledge. */}
+              {chat.length <= 1 && (
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <div className="text-xs text-muted px-1">{translate({ key: 'workspaces.shell.tryAsking' })}</div>
+                  {(['capVideos', 'capNewProject', 'capPublish', 'capDesign'] as const).map((k) => (
+                    <button key={k} type="button" onClick={() => { sendChat(translate({ key: `workspaces.shell.${k}` })); }} className="text-left text-sm text-common rounded-lg border border-container1-border bg-container2/40 px-3 py-1.5 hover:bg-container2 cursor-pointer">{translate({ key: `workspaces.shell.${k}` })}</button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="border-t border-divider p-3 flex items-center gap-2">
               <input
