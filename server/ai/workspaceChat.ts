@@ -9,6 +9,7 @@ import { tryCatch } from '@luckystack/core';
 import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
+import { retrieveProductKnowledge } from '../rag/productKnowledge';
 //? The proposal shape is shared with the client (it crosses the aiChat API boundary).
 import type { ChatProposal, ChatPlan } from '../../src/workspaces/_data/types';
 
@@ -40,9 +41,9 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
   };
 }
 
-function systemPrompt(ctx: Ctx, codeContext: string): string {
+function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): string {
   return [
-    'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
+    'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below — AND explain what THIS PRODUCT can do — use the product-capabilities below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
     '{"reply": string, "action": null | <action>, "plan"?: {"summary": string, "steps": <action>[]}}  where <action> = {"op": "bulk-move"|"assign"|"add-comment"|"create-ticket"|"create-content", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string, "title"?: string, "description"?: string, "brief"?: string, "format"?: string}',
     '- bulk-move: move ticketKeys to stageId (a stage id from the list). Use for pulling a high-priority/bugfix ticket forward.',
@@ -52,10 +53,12 @@ function systemPrompt(ctx: Ctx, codeContext: string): string {
     '- create-content: create a NEW content piece (video/post) from an idea (e.g. "make a 60s video about our launch"). Set `title` (required), a `brief` (what it is about, required) and an optional `format` ("faceless"|"talking-head"). Use when the user wants to MAKE media/content.',
     'For a BIG idea that needs MULTIPLE steps (e.g. "build a todo app with login and a dashboard"), instead of `action` return a `plan`: {"summary": string, "steps": [ <action>, <action>, … ]} — an ordered list of create-ticket/create-content actions the user approves at once. Break a software idea into a few focused create-ticket steps; a content idea usually stays a single create-content. Use `plan` (not `action`) whenever ≥2 steps make sense.',
     'Prefer a create action or plan when the user expresses a new goal ("I want …", "make …", "build …"). Only reference tickets/stages/members that exist below. For a code/architecture question, answer in `reply` and set action=null. If ambiguous or not doable, set action=null and explain.',
+    'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
-    ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions):\n${codeContext}`] : []),
+    ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
+    ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
   ].join('\n');
 }
 
@@ -141,7 +144,13 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   //? nothing is indexed.
   const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6));
   const codeContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
-  const res = await runAiCompletion('workspace-chat', { prompt: message, system: systemPrompt(ctx, codeContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
+  //? Q3 — ALSO ground on the PRODUCT's own capabilities (Q2 corpus), so the assistant can answer "can we edit
+  //? videos? → yes, via the media module, first generate/upload a video then the timeline editor". Kept as a
+  //? SEPARATE section from the user-code context so the model never confuses "what this product can do" with
+  //? "what the user's repo contains". Best-effort — empty when the corpus isn't indexed.
+  const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, message, 4));
+  const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 4000);
+  const res = await runAiCompletion('workspace-chat', { prompt: message, system: systemPrompt(ctx, codeContext, productContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];

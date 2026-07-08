@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (162)
+## Decisions (163)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -175,6 +175,7 @@
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
 | 0250 | Q1 — product self-knowledge corpus (generator) | 🟢 accepted | ai, rag, self-knowledge, capabilities, ai-libraries-accounts | — | `docs/decisions/0250-product-self-knowledge-corpus.md` |
 | 0251 | Q2 — product-knowledge RAG corpus (global, behind the existing retrieve) | 🟢 accepted | ai, rag, self-knowledge, retrieval, ai-libraries-accounts | — | `docs/decisions/0251-product-knowledge-rag-corpus.md` |
+| 0252 | Q3 — wire product self-knowledge into the Workspace-AI + every feature | 🟢 accepted | ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts | — | `docs/decisions/0252-wire-product-knowledge-into-ai.md` |
 
 ## Summaries
 
@@ -1475,6 +1476,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`server/rag/productKnowledge.ts`** indexes the compiled corpus into `RagEntry` under a GLOBAL scope: a reserved sentinel `workspaceId` = the zero ObjectId `000000000000000000000000` (no real workspace) + a sentinel `commitHash` = `product-knowledge`. `retrieveProductKnowledge(prisma, query, k)` = `retrieve(..., PRODUCT_WS, ..., PRODUCT_COMMIT)`, excluding a meta/marker row. Reuses the one embedder + the one cosine scan — no parallel retrieval path. **Idempotent on the corpus hash.** A marker row (`__product_meta__`) records the indexed hash; the boot `ensureProductKnowledge` re-embeds only when the corpus changed. Indexed once at boot, leader-gated + delayed so leadership has settled; best-effort (never blocks/breaks boot). **Deterministic + offline-testable.** In the default test world the LOCAL embedder (no GEMINI key) is used, so the E2E is deterministic and free: "can I edit videos?" retrieves the media/timeline-editor chunk.
 
 → `docs/decisions/0251-product-knowledge-rag-corpus.md`
+
+### 0252 — Q3 — wire product self-knowledge into the Workspace-AI + every feature
+
+**0252** · accepted · tags: ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts · 2026-07-08
+
+**`workspaceChat.interpretChat` retrieves the product corpus** (`retrieveProductKnowledge(message, 4)`) alongside the existing code-RAG, and injects it into the system prompt as a SEPARATE "What THIS product can do" section — deliberately distinct from the user-code section so the model never confuses product capabilities with the user's repository. A new instruction tells it to answer whether/how questions from that section (name the module + steps) and, when a first step maps to an op, propose it. **A compact global capability index in `registry.workspaceAiPrefix`/`runAiCompletion`** — the capability TITLES (not the full corpus), read once from the compiled shard + cached, prepended to EVERY feature's system prompt at the single choke-point. So the whole AI surface is product-aware, cheaply (~15 lines), with the detail retrieved on demand in chat. **B-23 unchanged.** The assistant still only proposes; the Conductor is the single writer.
+
+→ `docs/decisions/0252-wire-product-knowledge-into-ai.md`
 
 ## Code governed by decisions
 

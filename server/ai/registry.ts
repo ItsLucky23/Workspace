@@ -4,7 +4,10 @@
 //? backend = one entry in PROVIDERS + a union member; add a feature = one key in
 //? ./assignments. This is the ONLY module features import to reach an AI.
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { getPrismaClient, tryCatch, tryCatchSync } from '@luckystack/core';
 
 import { resolveAssignment, defaultAssignments } from './assignments';
 import { loadWorkspaceAiOverrides } from './workspaceAssignments';
@@ -26,6 +29,21 @@ async function workspaceAiPrefix(workspaceId?: string): Promise<string> {
   const instruction = ws.aiInstruction.trim();
   if (instruction.length > 0) parts.push(instruction);
   return parts.join('\n\n');
+}
+
+//? Q3 — a compact, GLOBAL product-capability index prepended to every feature's system prompt, so EVERY AI
+//? feature (not just workspace-chat) knows what the product itself offers. Titles only (bounded ~15 lines,
+//? not the full corpus — retrieval surfaces the detail in chat); loaded once from the compiled corpus + cached.
+//? Best-effort: any read/parse failure ⇒ '' (no block).
+let capIndexCache: string | null = null;
+function productCapabilityIndex(): string {
+  if (capIndexCache !== null) return capIndexCache;
+  const [err, raw] = tryCatchSync(() => readFileSync(path.join(process.cwd(), 'docs', 'AI_PRODUCT_KNOWLEDGE.json'), 'utf8'));
+  if (err || typeof raw !== 'string') { capIndexCache = ''; return capIndexCache; }
+  const [perr, parsed] = tryCatchSync(() => JSON.parse(raw) as { chunks?: { kind?: string; title?: string }[] });
+  const titles = (perr || !parsed?.chunks) ? [] : parsed.chunks.filter((c) => c.kind === 'capability' && typeof c.title === 'string').map((c) => `- ${String(c.title)}`);
+  capIndexCache = titles.length > 0 ? `This product can do the following (ask the Workspace-AI for step-by-step help on any of these):\n${titles.join('\n')}` : '';
+  return capIndexCache;
 }
 
 const PROVIDERS: Record<AiProviderId, AiProvider> = {
@@ -54,7 +72,11 @@ export async function runAiCompletion(
   //? Q4 + K4 — prepend the workspace AI steer (instruction + output language) to the system prompt (one
   //? point → every feature is steered).
   const prefix = await workspaceAiPrefix(req.workspaceId);
-  const groundedReq = prefix ? { ...req, system: [prefix, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n') } : req;
+  //? Q3 — every feature also gets the compact product-capability index (global, cached), so the whole AI
+  //? surface is product-aware, not just the chat.
+  const capIdx = productCapabilityIndex();
+  const systemParts = [capIdx, prefix, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0);
+  const groundedReq = systemParts.length > 1 || (systemParts.length === 1 && systemParts[0] !== (req.system ?? '').trim()) ? { ...req, system: systemParts.join('\n\n') } : req;
   const result = await provider.complete(groundedReq);
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
   recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
