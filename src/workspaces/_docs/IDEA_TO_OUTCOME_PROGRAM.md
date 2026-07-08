@@ -29,7 +29,8 @@
 | V5 timeline-editor-UI | ✅ | 0153 | tsc/lint/build; browser-verify pending |
 | V6 knip/transition (via V5) | ✅ | 0153 | idem |
 | O-D auto-activatie | ✅ | 0154 | 5/5 |
-| B rijke-image-editor · L3 mobiel · D3/D4 host/prod · G greenfield | ⬜ | | |
+| B2 tekst-overlay (image-editor) | ✅ | — | tsc/lint/build |
+| L3 mobiel · D3/D4 host/prod · G greenfield · B1/B3 crop/filters | ⬜ | | |
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 

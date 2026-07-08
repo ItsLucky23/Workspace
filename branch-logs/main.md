@@ -3033,3 +3033,7 @@ Alle 10 fasen Q/K/P/I/A/O/R/X/E/S afgewerkt: elke bounded/logica/backend/UI-item
 ## 2026-07-08 — P-C: stub/fout-badges op de AssetCard (eerlijkheid zichtbaar)
 De ADR-0144-states nu zichtbaar in de UI: een error-render (geen keys/Docker) toont een `wrong`-badge ("Mislukt", tip: "geen echt bestand — vereist keys+Docker"); een stub een `warning`-badge ("Voorbeeld", tip: "zonder key — geen echte media"). Error heeft voorrang (een stub-render is ook een error). i18n×4 (`assetError`/`assetErrorTip`/`assetStubTip`). Geen ADR (UI-polish, geen architectuur-beslissing). tsc0·lint0·ai:lint clean·build groen.
 **Files:** `src/workspaces/content/[pieceId]/page.tsx` (AssetCard-badges), `src/_locales/*.json` (×4).
+
+## 2026-07-08 — B2: tekst-overlay in de image-editor (rijke image-editor)
+De `ImageEditor` krijgt een draggable, editable **tekst-overlay** (Fabric IText): typ tekst + "Tekst toevoegen" → een verplaatsbaar tekst-object op het canvas, wit met zwarte outline; het bakt automatisch in de PNG-export (zelfde toDataURL-pad). i18n×4 (`textPlaceholder`/`addText`). Geen ADR (feature, geen architectuur-beslissing). tsc0·lint0·ai:lint clean·build groen. Browser-verify (drag/plaatsing) pending dev-server. B1(crop)/B3(meer-filters+compare) resteren.
+**Files:** `src/workspaces/_components/ImageEditor.tsx` (addText + UI), `src/_locales/*.json` (×4).
