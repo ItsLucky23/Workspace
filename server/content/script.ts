@@ -9,6 +9,7 @@ import { resolveStyle, composeStylePrompt } from './styles';
 import { buildBrandContext } from './brandContext';
 import { buildKnowledgeContext } from './knowledgeContext';
 import { retrieveContentPlaybook } from '../rag/contentPlaybook';
+import { retrieveReferences } from './referenceLibrary';
 import { extractJson, coerceBeats } from './jsonParse';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
@@ -77,7 +78,11 @@ export async function generateScript(
   //? writes what WORKS, not just what's asked. Global playbook corpus (server/rag/contentPlaybook.ts).
   const playbook = await retrieveContentPlaybook(prisma, args.brief, 3);
   const bestPractices = playbook.length > 0 ? `Proven content best-practices (apply these):\n${playbook.map((p) => p.content).join('\n\n')}` : '';
-  const system = [brandContext, knowledge, bestPractices, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
+  //? Ground on the workspace's own INSPIRATION library — great examples the user collected — emulating their
+  //? approach/structure, not copying them verbatim.
+  const refs = await retrieveReferences(prisma, args.workspaceId, args.brief, 2);
+  const inspiration = refs.length > 0 ? `Reference examples from this workspace's inspiration library (emulate the APPROACH/structure, do NOT copy verbatim):\n${refs.map((r) => r.content).join('\n\n')}` : '';
+  const system = [brandContext, knowledge, bestPractices, inspiration, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
   const res = await runAiCompletion('script', {
     prompt: `${args.brief}\n\n${scriptFormat(args.targetBeats)}`,
     ...(system ? { system } : {}),

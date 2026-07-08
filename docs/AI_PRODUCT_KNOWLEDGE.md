@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `7f9ec420ade503d0` · 17 capabilities · 173 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `6ee27e63b651830d` · 17 capabilities · 174 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -199,3 +199,4 @@
 - `adr-0260` A1+A2 — multi-account connections + channel management
 - `adr-0261` A3+A4 — publish routing by account + content bound to a channel
 - `adr-0262` Best-practices playbook — domain-expertise RAG grounding content generation
+- `adr-0263` Inspiration/reference library — collect examples the AI emulates

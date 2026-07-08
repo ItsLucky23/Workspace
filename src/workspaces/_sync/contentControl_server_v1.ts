@@ -20,7 +20,7 @@ const CONTENT_OPS = new Set<string>([
   'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
   'content-gen-reference-image', 'content-gen-shortform', 'content-analyze-reference-video',
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
-  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-save-audio-mix', 'channel-create', 'channel-edit', 'channel-delete', 'account-disconnect', 'content-unarchive', 'content-unpublish',
+  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-save-audio-mix', 'channel-create', 'channel-edit', 'channel-delete', 'account-disconnect', 'reference-add', 'reference-delete', 'content-unarchive', 'content-unpublish',
 ]);
 //? Type-guard: a whitelisted content op IS a ControlOp (no cast needed downstream).
 const isContentOp = (op: string): op is ControlOp => CONTENT_OPS.has(op);
@@ -44,6 +44,8 @@ export interface SyncParams {
     voiceVolume?: number; musicVolume?: number;
     //? A2 — channel/account management (channel-create/edit/delete, account-disconnect).
     channelId?: string; name?: string; platform?: string; handle?: string; brandVoice?: string; defaultStyleId?: string; accountId?: string; projectId?: string;
+    //? Inspiration/reference library (reference-add/delete).
+    referenceId?: string; description?: string; assetUrl?: string; tags?: string[];
   };
   user: SessionLayout;
   functions: Functions;

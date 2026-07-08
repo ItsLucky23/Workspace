@@ -23,6 +23,7 @@ import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
+import { addReference, deleteReference } from '../content/referenceLibrary';
 import { decomposeIntoScenes } from '../content/sceneDecompose';
 import { refineSceneRange } from '../content/sceneRefine';
 import { runContentPipeline } from '../content/runPipeline';
@@ -1164,6 +1165,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const accountId = str(payload, 'accountId');
       const key = `__publish_${platform}${accountId ? `_${accountId}` : ''}`;
       await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    //? Inspiration/reference library — a workspace collects great examples (ads/thumbnails/intros) the content
+    //? AI emulates the STRUCTURE of. The description is the grounding signal (indexed into per-workspace RAG).
+    case 'reference-add': {
+      const kind = str(payload, 'kind') ?? 'other';
+      const title = str(payload, 'title');
+      const description = str(payload, 'description');
+      if (!title || !description) return;
+      const tags = Array.isArray(payload.tags) ? payload.tags.filter((t): t is string => typeof t === 'string') : [];
+      const id = await addReference(prisma, action.workspaceId, { kind, title, description, ...(str(payload, 'assetUrl') ? { assetUrl: str(payload, 'assetUrl') } : {}), tags });
+      broadcastContentDirty(action.workspaceId);
+      return { id };
+    }
+    case 'reference-delete': {
+      const id = str(payload, 'referenceId');
+      if (!id) return;
+      await deleteReference(prisma, action.workspaceId, id);
       broadcastContentDirty(action.workspaceId);
       return;
     }

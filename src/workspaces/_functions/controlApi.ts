@@ -64,7 +64,8 @@ export type ControlOp =
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
   | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix'
-  | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose'
+  | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
+  | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

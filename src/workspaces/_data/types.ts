@@ -296,6 +296,8 @@ export interface ContentAnalyticsView {
 //? A style-library entry (U4) — a named style preset (global or per-workspace/brand). `systemPrompt` +
 //? `builtin` let the Q3 style-manager edit per-workspace styles (builtins are read-only).
 export interface ContentStyleSummary { key: string; label: string; feature: string; builtin: boolean; systemPrompt: string; previewAssetUrl?: string | null; previewKind?: string | null }
+//? Inspiration/reference library entry (an example ad/thumbnail/intro the AI emulates).
+export interface ContentReferenceSummary { id: string; kind: string; title: string; description: string; assetUrl?: string | null; tags: string[] }
 //? A channel + its brand voice (U4) — the per-channel brand snippet that feeds brand-RAG.
 export interface ContentChannelSummary { id: string; name: string; platform: string; brandVoice: string }
 //? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,
@@ -307,6 +309,7 @@ export interface ContentSnapshot {
   mediaBudget: { enabled: boolean; capCents: number; spentCents: number; alertPct: number; overAlert: boolean };
   analytics: ContentAnalyticsView;      // U4: the content-analytics dashboard fold
   styles: ContentStyleSummary[];        // U4: the style library
+  references: ContentReferenceSummary[]; // inspiration library (example ads/thumbnails/intros)
   channels: ContentChannelSummary[];    // U4: channels + their brand voice
   publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm

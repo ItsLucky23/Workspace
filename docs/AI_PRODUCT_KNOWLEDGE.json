@@ -1,6 +1,6 @@
 {
-  "hash": "7f9ec420ade503d0",
-  "chunkCount": 190,
+  "hash": "6ee27e63b651830d",
+  "chunkCount": 191,
   "chunks": [
     {
       "id": "cap-001",
@@ -1141,6 +1141,12 @@
       "kind": "decision",
       "title": "Best-practices playbook — domain-expertise RAG grounding content generation",
       "text": "ADR 0262: Best-practices playbook — domain-expertise RAG grounding content generation. The content AI knew what the PRODUCT can do (product-knowledge corpus) and HOW to render (styles), but not what makes content WORK — hooks, retention structure, thumbnail principles, ad structure, per-platform rules. So a generated script was on-brand but not necessarily good. Domain craft was missing. Decision: - **A curated `docs/content-playbook/playbook.md`** holds platform-agnostic craft knowledge, one retrievable chunk per `###` section (hooks, scripts/retention, thumbnails, per-platform, ads). - **A fourth global RAG corpus** (`server/rag/contentPlaybook.ts`) — same second-corpus pattern as product-knowledge/memory/brand: the ONE embedder + the ONE `retrieve()`, global zero-ObjectId sentinel workspace, distinct commit `content-playbook`, idempotent on a content hash, boot-ensured leader-gated. The markdown is chunked at RUNTIME (no compiled JSON / generator needed — it's small + hand-curated). - **`generateScript` grounds on it**: retrieves the top-3 best-practices relevant to the brief and injects them as a \"Proven content best-practices (apply these)\" section in the system prompt, alongside brand + knowledge."
+    },
+    {
+      "id": "adr-0263",
+      "kind": "decision",
+      "title": "Inspiration/reference library — collect examples the AI emulates",
+      "text": "ADR 0263: Inspiration/reference library — collect examples the AI emulates. Styles say HOW output renders and the best-practices playbook says what works in GENERAL, but there was no way for a workspace to say \"make it like THESE examples\" — the great ads/thumbnails/intros they've collected. That concrete, per-workspace inspiration was missing. Decision: - **A `ReferenceExample` model** (kind, title, `description` = why it works, optional `assetUrl`, tags). The human-written `description` is the grounding signal: a text model can't see the asset, so the \"why it works\" IS the inspiration; the asset is the visual shown in the library. - **Per-workspace RAG under commit `reference`** (`server/content/referenceLibrary.ts`) — mirrors brandMemory: one embedder, one `retrieve()`, indexed INCREMENTALLY (add → embed one row keyed by the example id; delete → remove that row). No global corpus (inspiration is the workspace's own). - **`generateScript` grounds on it**: retrieves the top-2 examples relevant to the brief and injects them as \"Reference examples … emulate the APPROACH/structure, do NOT copy verbatim\", alongside best-practices + brand. - **Ops** `reference-add`/`reference-delete` (content-* family, RBAC); the asset uploads via the existing media upload route → `assetUrl`. The snapshot exposes `content.references` for the library UI."
     }
   ]
 }

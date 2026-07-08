@@ -220,7 +220,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [] },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [] },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -339,7 +339,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
     //? U4 folds: content-analytics (over pieces + media spend + publish jobs), the style library (this
     //? workspace's + the global defaults), and channels + their brand voice.
-    const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows, publishConnRows, mediaJobRows] = await Promise.all([
+    const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows, publishConnRows, mediaJobRows, referenceRows] = await Promise.all([
       prisma.mediaSpend.findMany({ where: { workspaceId: contentWsId } }),
       prisma.publishJob.findMany({ where: { workspaceId: contentWsId } }),
       prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
@@ -347,6 +347,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       prisma.contentAsset.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.envVar.findMany({ where: { workspaceId: contentWsId, key: { startsWith: '__publish_' } }, select: { key: true } }),
       prisma.mediaJob.findMany({ where: { workspaceId: contentWsId } }),
+      prisma.referenceExample.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
     ]);
     //? Join each asset to its MediaJob for the live queue/timer fields (queuePosition, startedAt).
     const jobById = new Map(mediaJobRows.map((j) => [j.id, j]));
@@ -387,6 +388,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         publishJobRows.map((j) => ({ status: j.status })),
       ),
       styles: styleRows.map((s) => ({ key: s.key, label: s.label, feature: s.feature, builtin: s.builtin, systemPrompt: s.systemPrompt, previewAssetUrl: s.previewAssetUrl, previewKind: s.previewKind })),
+      references: referenceRows.map((r) => ({ id: r.id, kind: r.kind, title: r.title, description: r.description, assetUrl: r.assetUrl, tags: r.tags })),
       channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice ?? '' })),
       publishTargets,
       mediaCosts: mediaCostTable(),

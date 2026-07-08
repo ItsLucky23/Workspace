@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (173)
+## Decisions (174)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -186,6 +186,7 @@
 | 0260 | A1+A2 — multi-account connections + channel management | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0260-multi-account-channel-management.md` |
 | 0261 | A3+A4 — publish routing by account + content bound to a channel | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0261-publish-routing-content-channel.md` |
 | 0262 | Best-practices playbook — domain-expertise RAG grounding content generation | 🟢 accepted | content, rag, best-practices, ai, ai-libraries-accounts | — | `docs/decisions/0262-content-best-practices-playbook.md` |
+| 0263 | Inspiration/reference library — collect examples the AI emulates | 🟢 accepted | content, rag, inspiration, references, ai-libraries-accounts | — | `docs/decisions/0263-inspiration-reference-library.md` |
 
 ## Summaries
 
@@ -1574,6 +1575,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A curated `docs/content-playbook/playbook.md`** holds platform-agnostic craft knowledge, one retrievable chunk per `###` section (hooks, scripts/retention, thumbnails, per-platform, ads). **A fourth global RAG corpus** (`server/rag/contentPlaybook.ts`) — same second-corpus pattern as product-knowledge/memory/brand: the ONE embedder + the ONE `retrieve()`, global zero-ObjectId sentinel workspace, distinct commit `content-playbook`, idempotent on a content hash, boot-ensured leader-gated. The markdown is chunked at RUNTIME (no compiled JSON / generator needed — it's small + hand-curated). **`generateScript` grounds on it**: retrieves the top-3 best-practices relevant to the brief and injects them as a "Proven content best-practices (apply these)" section in the system prompt, alongside brand + knowledge.
 
 → `docs/decisions/0262-content-best-practices-playbook.md`
+
+### 0263 — Inspiration/reference library — collect examples the AI emulates
+
+**0263** · accepted · tags: content, rag, inspiration, references, ai-libraries-accounts · 2026-07-08
+
+**A `ReferenceExample` model** (kind, title, `description` = why it works, optional `assetUrl`, tags). The human-written `description` is the grounding signal: a text model can't see the asset, so the "why it works" IS the inspiration; the asset is the visual shown in the library. **Per-workspace RAG under commit `reference`** (`server/content/referenceLibrary.ts`) — mirrors brandMemory: one embedder, one `retrieve()`, indexed INCREMENTALLY (add → embed one row keyed by the example id; delete → remove that row). No global corpus (inspiration is the workspace's own). **`generateScript` grounds on it**: retrieves the top-2 examples relevant to the brief and injects them as "Reference examples … emulate the APPROACH/structure, do NOT copy verbatim", alongside best-practices + brand. **Ops** `reference-add`/`reference-delete` (content-* family, RBAC); the asset uploads via the existing media upload route → `assetUrl`. The snapshot exposes `content.references` for the library UI.
+
+→ `docs/decisions/0263-inspiration-reference-library.md`
 
 ## Code governed by decisions
 

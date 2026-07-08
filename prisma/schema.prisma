@@ -1485,6 +1485,22 @@ model StylePreset {
   @@index([workspaceId, feature])
 }
 
+//? A curated INSPIRATION/reference example a workspace collects (a great ad, thumbnail, video intro, hook).
+//? The `description` ("what makes it work") is what the content AI retrieves + emulates the STRUCTURE of; the
+//? optional `assetUrl` is the uploaded sample shown in the library. Distinct from StylePreset (how it renders).
+model ReferenceExample {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  kind        String                                   // 'ad' | 'thumbnail' | 'intro' | 'hook' | 'landing' | 'other'
+  title       String
+  description String                                   // why it works — the retrieval + grounding signal
+  assetUrl    String?                                  // the uploaded sample (image/video), via the media upload route
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, kind])
+}
+
 //? A metered media-spend record (ADR 0049) — one row per generation, cost in cents (€).
 //? The per-workspace cap/alert + the pre-generation guard live in F0.2 (MediaBudget).
 model MediaSpend {

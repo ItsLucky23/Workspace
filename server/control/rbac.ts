@@ -127,6 +127,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'channel-edit': CAP.workTickets,
   'channel-delete': CAP.workTickets,
   'account-disconnect': CAP.workspaceSettings,
+  'reference-add': CAP.workTickets,
+  'reference-delete': CAP.workTickets,
   'content-unarchive': CAP.workTickets,
   'content-unpublish': CAP.workTickets,
   'save-custom-task': CAP.workTickets,
