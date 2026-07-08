@@ -41,8 +41,8 @@ export async function runDemoWatch(deps: DemoWatchDeps = {}): Promise<DemoWatchR
   const prisma = getPrismaClient();
   const resolveHead = deps.resolveHead ?? branchHead;
   const redeploy = deps.redeploy ?? ((p, ws, envId) => deployEnvironment(p, ws, envId));
-  // luckystack-allow tenant-scope: leader-gated demo-host watcher — sweeps EVERY workspace's demo envs cross-tenant by design (H1).
-  const demos = await prisma.environment.findMany({ where: { kind: 'demo', autoRedeploy: true, status: { in: ['live', 'error'] } } });
+  //? Leader-gated demo-host watcher: sweeps EVERY workspace's demo envs cross-tenant by design (H1).
+  const demos = await prisma.environment.findMany({ where: { kind: 'demo', autoRedeploy: true, status: { in: ['live', 'error'] } } }); // luckystack-allow tenant-scope: leader-gated demo watcher sweeps all workspaces by design (H1)
   const redeployed: string[] = [];
   for (const env of demos) {
     const ws = await prisma.workspace.findUnique({ where: { id: env.workspaceId }, select: { gitConfig: true } });
