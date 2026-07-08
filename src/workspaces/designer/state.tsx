@@ -6,7 +6,7 @@
 //? item can be renamed, duplicated and (for non-seeds) removed. Persistence lands in a later phase.
 
 /* eslint-disable react-refresh/only-export-components -- context module: the useDesigner hook is co-exported with the DesignerProvider by design (dev-only fast-refresh rule) */
-import { createContext, use, useMemo, useState, type ReactNode } from 'react';
+import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { apiRequest, tryCatch } from '@luckystack/core/client';
 
@@ -17,6 +17,7 @@ import {
 } from './themes';
 import { APPLE_STYLE, SEED_STYLES, blankStyle, coerceStyle, type DesignStyle } from './styles';
 import { FADE_ANIM, SEED_ANIMS, blankAnim, coerceAnim, type AnimSpec } from './animations';
+import { parsePersistedLibraries } from './persisted';
 
 //? A stable, collision-free client id (no Date.now/Math.random needed — a monotonic counter is
 //? enough for client-only library items).
@@ -99,6 +100,20 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
 
   const [anims, setAnims] = useState<AnimSpec[]>(SEED_ANIMS);
   const [activeAnimId, setActiveAnimId] = useState(FADE_ANIM.id);
+
+  //? L2 — round-trip: merge the PERSISTED design artifacts (from the snapshot) into the libraries, so a
+  //? saved theme/style/anim reappears on reload + right after saving (was seed-only, one-directional). Append
+  //? by id (idempotent), never clobbering unsaved local edits.
+  useEffect(() => {
+    const parsed = parsePersistedLibraries(designArtifacts);
+    const mergeById = <T extends { id: string }>(prev: T[], add: T[]): T[] => {
+      const fresh = add.filter((p) => !prev.some((x) => x.id === p.id));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    };
+    setThemes((prev) => mergeById(prev, parsed.themes));
+    setStyles((prev) => mergeById(prev, parsed.styles));
+    setAnims((prev) => mergeById(prev, parsed.anims));
+  }, [designArtifacts]);
 
   const ctx = useMemo<DesignerCtx>(() => {
     const activeTheme = themes.find((t) => t.id === activeThemeId) ?? LUCKYSTACK_THEME;

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (164)
+## Decisions (165)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -177,6 +177,7 @@
 | 0251 | Q2 — product-knowledge RAG corpus (global, behind the existing retrieve) | 🟢 accepted | ai, rag, self-knowledge, retrieval, ai-libraries-accounts | — | `docs/decisions/0251-product-knowledge-rag-corpus.md` |
 | 0252 | Q3 — wire product self-knowledge into the Workspace-AI + every feature | 🟢 accepted | ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts | — | `docs/decisions/0252-wire-product-knowledge-into-ai.md` |
 | 0253 | L1 — premade UI-look gallery (curated combos over the existing seeds) | 🟢 accepted | design, gallery, themes, ui, ai-libraries-accounts | — | `docs/decisions/0253-premade-look-gallery.md` |
+| 0254 | L2 — designer persistence round-trip (consume the snapshot's designArtifacts) | 🟢 accepted | design, persistence, library, ai-libraries-accounts | — | `docs/decisions/0254-designer-persistence-roundtrip.md` |
 
 ## Summaries
 
@@ -1493,6 +1494,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A premade-look catalog as curated COMBINATIONS of the existing seeds** (`premades.ts`): a "look" pairs a seed palette + a seed style + an animation + heading/body fonts. Eight starter looks (Apple, Material, Glass, Brutalist, Minimal, Editorial, Playful, Neumorphic) — a strong STARTER that upload/copy/customize (L3) extends. Pure data + a `resolveLook` resolver; no new palette authoring. **A `Gallery` section** (now the Designer's default tab) renders the catalog as thumbnails and, for the selected look, live preview SURFACES under the look's vars: a nav menu, a landing hero, a card row, a replayable entrance animation (motion/react + the seed AnimSpec), and a font showcase. Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the subtree re-themes; `--ds-*` drives the shapes. "Use this look" applies its theme + style via the existing persist path.
 
 → `docs/decisions/0253-premade-look-gallery.md`
+
+### 0254 — L2 — designer persistence round-trip (consume the snapshot's designArtifacts)
+
+**0254** · accepted · tags: design, persistence, library, ai-libraries-accounts · 2026-07-08
+
+**Consume the existing snapshot `designArtifacts` — no new `list`/`load` op.** The snapshot IS the list. `persisted.ts` parses each row back into the typed shape (`artifactToTheme`/`Style`/`Anim` + a `parsePersistedLibraries` splitter), defensively: a malformed/half-set row coerces to null (never crashes the designer). The content shapes match what `useInProject` writes (`{light,dark}` for a theme, the full spec for a style/anim). **`state.tsx` merges the persisted artifacts into the libraries** via a `useEffect` on `designArtifacts`, appending by id (idempotent), never clobbering unsaved local edits. So a saved look reappears on reload AND live right after saving (refetch → the effect re-runs).
+
+→ `docs/decisions/0254-designer-persistence-roundtrip.md`
 
 ## Code governed by decisions
 

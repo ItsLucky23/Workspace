@@ -1,6 +1,6 @@
 {
-  "hash": "69349eb025bd6434",
-  "chunkCount": 181,
+  "hash": "23be31a8546081ce",
+  "chunkCount": 182,
   "chunks": [
     {
       "id": "cap-001",
@@ -1087,6 +1087,12 @@
       "kind": "decision",
       "title": "L1 — premade UI-look gallery (curated combos over the existing seeds)",
       "text": "ADR 0253: L1 — premade UI-look gallery (curated combos over the existing seeds). The Designer module already had the building blocks — palettes (DesignTheme), component styles (DesignStyle, incl. Apple/Material/Glass/Brutalist), animations, fonts — with live-preview via `themeVars`/`styleVars`. But there was no curated CATALOG of ready-made looks to browse + apply, and no rich preview surfaces (a real landing/menu/animation/font showcase). L1 adds that reference gallery. Decision: - **A premade-look catalog as curated COMBINATIONS of the existing seeds** (`premades.ts`): a \"look\" pairs a seed palette + a seed style + an animation + heading/body fonts. Eight starter looks (Apple, Material, Glass, Brutalist, Minimal, Editorial, Playful, Neumorphic) — a strong STARTER that upload/copy/customize (L3) extends. Pure data + a `resolveLook` resolver; no new palette authoring. - **A `Gallery` section** (now the Designer's default tab) renders the catalog as thumbnails and, for the selected look, live preview SURFACES under the look's vars: a nav menu, a landing hero, a card row, a replayable entrance animation (motion/react + the seed AnimSpec), and a font showcase. Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the subtree re-themes; `--ds-*` drives the shapes. \"Use this look\" applies its theme + style via the existing persist path."
+    },
+    {
+      "id": "adr-0254",
+      "kind": "decision",
+      "title": "L2 — designer persistence round-trip (consume the snapshot's designArtifacts)",
+      "text": "ADR 0254: L2 — designer persistence round-trip (consume the snapshot's designArtifacts). The Designer's libraries (themes/styles/anims) were client-held `useState` seeded from `SEED_*`. Saving a look wrote a `DesignArtifact` (save + setActive), but nothing loaded them BACK — persistence was one-directional, so a saved theme vanished on reload and never appeared in the gallery/rails. The snapshot already exposes the full `designArtifacts` rows (content included); they were consumed only for the active name. Decision: - **Consume the existing snapshot `designArtifacts` — no new `list`/`load` op.** The snapshot IS the list. `persisted.ts` parses each row back into the typed shape (`artifactToTheme`/`Style`/`Anim` + a `parsePersistedLibraries` splitter), defensively: a malformed/half-set row coerces to null (never crashes the designer). The content shapes match what `useInProject` writes (`{light,dark}` for a theme, the full spec for a style/anim). - **`state.tsx` merges the persisted artifacts into the libraries** via a `useEffect` on `designArtifacts`, appending by id (idempotent), never clobbering unsaved local edits. So a saved look reappears on reload AND live right after saving (refetch → the effect re-runs)."
     }
   ]
 }

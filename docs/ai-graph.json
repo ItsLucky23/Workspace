@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 208,
-    "edges": 315,
+    "nodes": 209,
+    "edges": 319,
     "symbols": 258,
     "callEdges": 41
   },
@@ -939,6 +939,11 @@
       "route": null
     },
     {
+      "id": "workspaces/designer/persisted.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/designer/premades.ts",
       "kind": "other",
       "route": null
@@ -1859,6 +1864,18 @@
       "to": "workspaces/designer/themes.ts"
     },
     {
+      "from": "workspaces/designer/persisted.ts",
+      "to": "workspaces/designer/animations.ts"
+    },
+    {
+      "from": "workspaces/designer/persisted.ts",
+      "to": "workspaces/designer/styles.ts"
+    },
+    {
+      "from": "workspaces/designer/persisted.ts",
+      "to": "workspaces/designer/themes.ts"
+    },
+    {
       "from": "workspaces/designer/premades.ts",
       "to": "workspaces/designer/fonts.ts"
     },
@@ -2029,6 +2046,10 @@
     {
       "from": "workspaces/designer/state.tsx",
       "to": "workspaces/designer/animations.ts"
+    },
+    {
+      "from": "workspaces/designer/state.tsx",
+      "to": "workspaces/designer/persisted.ts"
     },
     {
       "from": "workspaces/designer/state.tsx",
@@ -2956,6 +2977,7 @@
     ],
     "workspaces/designer/animations.ts": [
       "workspaces/designer/page.tsx",
+      "workspaces/designer/persisted.ts",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Gallery.tsx",
@@ -2973,6 +2995,16 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx",
       "workspaces/designer/ui.tsx"
+    ],
+    "workspaces/designer/persisted.ts": [
+      "workspaces/designer/page.tsx",
+      "workspaces/designer/sections/Animations.tsx",
+      "workspaces/designer/sections/Components.tsx",
+      "workspaces/designer/sections/Gallery.tsx",
+      "workspaces/designer/sections/Styles.tsx",
+      "workspaces/designer/sections/Themes.tsx",
+      "workspaces/designer/sections/Typography.tsx",
+      "workspaces/designer/state.tsx"
     ],
     "workspaces/designer/premades.ts": [
       "workspaces/designer/page.tsx",
@@ -3008,6 +3040,7 @@
     "workspaces/designer/styles.ts": [
       "workspaces/designer/animations.ts",
       "workspaces/designer/page.tsx",
+      "workspaces/designer/persisted.ts",
       "workspaces/designer/premades.ts",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -3019,11 +3052,15 @@
     ],
     "workspaces/designer/themes.ts": [
       "workspaces/designer/page.tsx",
+      "workspaces/designer/persisted.ts",
       "workspaces/designer/premades.ts",
+      "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
-      "workspaces/designer/sections/Typography.tsx"
+      "workspaces/designer/sections/Themes.tsx",
+      "workspaces/designer/sections/Typography.tsx",
+      "workspaces/designer/state.tsx"
     ],
     "workspaces/designer/ui.tsx": [
       "workspaces/designer/page.tsx",
@@ -3106,20 +3143,32 @@
     {
       "id": "workspaces/designer/styles.ts",
       "kind": "other",
+      "dependents": 11,
+      "directDependents": 6
+    },
+    {
+      "id": "workspaces/designer/themes.ts",
+      "kind": "other",
       "dependents": 10,
-      "directDependents": 5
+      "directDependents": 7
     },
     {
       "id": "workspaces/designer/animations.ts",
       "kind": "other",
-      "dependents": 8,
-      "directDependents": 3
+      "dependents": 9,
+      "directDependents": 4
     },
     {
       "id": "workspaces/designer/fonts.ts",
       "kind": "other",
       "dependents": 8,
       "directDependents": 2
+    },
+    {
+      "id": "workspaces/designer/persisted.ts",
+      "kind": "other",
+      "dependents": 8,
+      "directDependents": 1
     },
     {
       "id": "_components/editor/editorThemes.ts",
@@ -3174,18 +3223,6 @@
       "kind": "other",
       "dependents": 6,
       "directDependents": 3
-    },
-    {
-      "id": "workspaces/_functions/useEscapeKey.ts",
-      "kind": "other",
-      "dependents": 6,
-      "directDependents": 4
-    },
-    {
-      "id": "workspaces/designer/themes.ts",
-      "kind": "other",
-      "dependents": 6,
-      "directDependents": 6
     }
   ],
   "symbols": [
