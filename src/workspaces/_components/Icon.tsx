@@ -9,7 +9,7 @@
 import {
   FontAwesomeIcon,
   faAngleLeft, faAngleRight, faAngleDown, faArrowLeft, faBan, faBars, faBell, faBolt, faBookOpen, faBoxArchive,
-  faCalendarDay, faCaretDown, faChartColumn, faCheck, faCircleCheck, faCircleQuestion,
+  faCalendarDay, faCaretDown, faChartColumn, faCheck, faCircleCheck, faCircleQuestion, faCrop,
   faClock, faCodeBranch, faCodeMerge, faComment, faCopy, faDatabase, faDiagramProject, faDisplay, faEllipsis,
   faEye, faFileLines, faFilter, faGear, faGripVertical, faLanguage, faLink, faListCheck,
   faMagnifyingGlass, faMobileScreen, faMoon, faPaperPlane, faPause, faPlay, faPlus, faRightFromBracket,
@@ -36,6 +36,7 @@ const ICONS: Record<string, FaIcon> = {
   check: faCheck,
   'circle-check': faCircleCheck,
   'circle-question': faCircleQuestion,
+  crop: faCrop,
   clock: faClock,
   'code-branch': faCodeBranch,
   'code-merge': faCodeMerge,

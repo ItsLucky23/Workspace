@@ -8,8 +8,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
-import type { Canvas as FabricCanvas, FabricImage } from 'fabric';
+import type { Canvas as FabricCanvas, FabricImage, Rect as FabricRect } from 'fabric';
 
+import Dropdown from 'src/_components/dropdown/Dropdown';
+
+import { clampCropRegion, resizeDimensions, RESIZE_PRESETS } from '../_functions/imageCrop';
 import { uploadMedia } from '../_functions/uploadMedia';
 import { useEscapeKey } from '../_functions/useEscapeKey';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
@@ -18,18 +21,39 @@ import { WsButton } from './primitives';
 
 const CANVAS_MAX = 640;
 
+//? B1 — shrink a PNG data-URL to a target width (preserving aspect) via an offscreen canvas. Client-side,
+//? no provider. Falls back to the original data-URL if the 2D context is unavailable.
+async function resizeDataUrl(dataUrl: string, targetWidth: number): Promise<string> {
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.addEventListener('load', () => { resolve(); });
+    img.addEventListener('error', () => { reject(new Error('load')); });
+    img.src = dataUrl;
+  });
+  const { width, height } = resizeDimensions(img.naturalWidth, img.naturalHeight, targetWidth);
+  const off = document.createElement('canvas');
+  off.width = width; off.height = height;
+  const ctx = off.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, width, height);
+  return off.toDataURL('image/png');
+}
+
 export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: string; asset: { id: string; url: string }; onClose: () => void }) {
   const translate = useTranslator();
   const { activeWorkspace, runContentOp } = useWorkspaces();
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
   const imgRef = useRef<FabricImage | null>(null);
+  const cropRectRef = useRef<FabricRect | null>(null);
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);
   const [textValue, setTextValue] = useState('');
   const [grayscale, setGrayscale] = useState(false);
   const [sepia, setSepia] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
+  const [resizeKey, setResizeKey] = useState('original');
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEscapeKey(onClose);
@@ -90,11 +114,46 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
     })();
   };
 
+  //? B1 — toggle a draggable/resizable crop rectangle. On enable, drop a semi-transparent rect covering the
+  //? middle ~60% of the canvas; on disable, remove it. Its bounding box (clamped to the canvas) becomes the
+  //? exported sub-region.
+  const toggleCrop = (): void => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    if (cropMode) {
+      if (cropRectRef.current) { canvas.remove(cropRectRef.current); cropRectRef.current = null; }
+      canvas.renderAll();
+      setCropMode(false);
+      return;
+    }
+    void (async () => {
+      const fabric = await import('fabric');
+      const w = canvas.width * 0.6;
+      const h = canvas.height * 0.6;
+      const rect = new fabric.Rect({ left: (canvas.width - w) / 2, top: (canvas.height - h) / 2, width: w, height: h, fill: 'rgba(0,0,0,0.08)', stroke: '#ffffff', strokeWidth: 2, strokeDashArray: [6, 4], cornerColor: '#ffffff', transparentCorners: false });
+      canvas.add(rect); canvas.setActiveObject(rect); canvas.renderAll();
+      cropRectRef.current = rect;
+      setCropMode(true);
+    })();
+  };
+
   const exportImage = async (): Promise<File | null> => {
     const canvas = fabricRef.current;
     if (!canvas) return null;
-    const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 1 });
-    const resp = await fetch(dataUrl);
+    //? B1 — capture the crop region (if any) then remove the rect so it isn't baked into the output.
+    let region: { left: number; top: number; width: number; height: number } | null = null;
+    if (cropRectRef.current) {
+      const b = cropRectRef.current.getBoundingRect();
+      region = clampCropRegion({ left: b.left, top: b.top, width: b.width, height: b.height }, canvas.width, canvas.height);
+      canvas.remove(cropRectRef.current); cropRectRef.current = null; canvas.discardActiveObject(); canvas.renderAll();
+    }
+    const dataUrl = region
+      ? canvas.toDataURL({ format: 'png', multiplier: 1, left: region.left, top: region.top, width: region.width, height: region.height })
+      : canvas.toDataURL({ format: 'png', multiplier: 1 });
+    //? B1 — apply the resize preset (shrink-only) via an offscreen canvas.
+    const targetWidth = RESIZE_PRESETS.find((p) => p.key === resizeKey)?.width ?? null;
+    const finalUrl = targetWidth === null ? dataUrl : await resizeDataUrl(dataUrl, targetWidth);
+    const resp = await fetch(finalUrl);
     const blob = await resp.blob();
     return new File([blob], 'edited.png', { type: 'image/png' });
   };
@@ -113,6 +172,8 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
       onClose();
     })();
   };
+
+  const resizeItems = RESIZE_PRESETS.map((p) => ({ id: p.key, value: p.key, item: translate({ key: `workspaces.imageEditor.size_${p.key}` }) }));
 
   const slider = (label: string, value: number, set: (n: number) => void): React.ReactNode => (
     <label className="flex items-center gap-2 text-sm text-common">
@@ -140,6 +201,12 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
         <div className="flex items-center gap-2">
           <WsButton variant={grayscale ? 'primary' : 'ghost'} onClick={() => { setGrayscale((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.grayscale' })}</WsButton>
           <WsButton variant={sepia ? 'primary' : 'ghost'} onClick={() => { setSepia((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.sepia' })}</WsButton>
+        </div>
+        {/* B1 — crop toggle + resize preset. */}
+        <div className="flex items-center gap-2">
+          <WsButton variant={cropMode ? 'primary' : 'ghost'} icon="crop" onClick={toggleCrop}>{translate({ key: cropMode ? 'workspaces.imageEditor.cropOn' : 'workspaces.imageEditor.crop' })}</WsButton>
+          <span className="text-sm text-muted">{translate({ key: 'workspaces.imageEditor.resize' })}</span>
+          <Dropdown size="sm" items={resizeItems} value={resizeItems.find((i) => i.id === resizeKey)} onChange={(it) => { setResizeKey(String(it.value)); }} />
         </div>
         {/* B2 — text overlay: type + add a draggable text object to the canvas. */}
         <div className="flex items-center gap-2">

@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 204,
-    "edges": 301,
+    "nodes": 205,
+    "edges": 303,
     "symbols": 252,
     "callEdges": 37
   },
@@ -560,6 +560,11 @@
     },
     {
       "id": "workspaces/_functions/controlApi.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/imageCrop.ts",
       "kind": "other",
       "route": null
     },
@@ -1256,11 +1261,19 @@
     },
     {
       "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
       "from": "workspaces/_components/ImageEditor.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/ImageEditor.tsx",
+      "to": "workspaces/_functions/imageCrop.ts"
     },
     {
       "from": "workspaces/_components/ImageEditor.tsx",
@@ -2304,6 +2317,7 @@
     "_components/dropdown/Dropdown.tsx": [
       "settings/page.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
@@ -2327,6 +2341,7 @@
       "_components/dropdown/MultiSelectDropdown.tsx",
       "settings/page.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
@@ -2760,6 +2775,10 @@
       "workspaces/_sync/mrAction_server_v1.ts",
       "workspaces/_sync/projectAdmin_server_v1.ts"
     ],
+    "workspaces/_functions/imageCrop.ts": [
+      "workspaces/_components/ImageEditor.tsx",
+      "workspaces/content/[pieceId]/page.tsx"
+    ],
     "workspaces/_functions/priority.ts": [
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/page.tsx"
@@ -2982,14 +3001,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 21,
+      "dependents": 22,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 19,
-      "directDependents": 15
+      "dependents": 20,
+      "directDependents": 16
     },
     {
       "id": "workspaces/_data/modules.ts",

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (153)
+## Decisions (154)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -166,6 +166,7 @@
 | 0152 | O-C — content pipeline orchestration (content-run-pipeline) | 🟢 accepted | content, orchestration, video, idea-to-outcome | — | `docs/decisions/0152-content-pipeline-orchestration.md` |
 | 0153 | V5/V6 — the video timeline editor UI | 🟢 accepted | content, video, editor, ui, idea-to-outcome | — | `docs/decisions/0153-video-timeline-editor.md` |
 | 0154 | O-D — "start with AI" auto-activation | 🟢 accepted | tickets, orchestration, activation, idea-to-outcome | — | `docs/decisions/0154-auto-activation.md` |
+| 0155 | B1 — client-side crop + resize in the image editor | 🟢 accepted | content, image, editor, ui, idea-to-outcome | — | `docs/decisions/0155-image-crop-resize.md` |
 
 ## Summaries
 
@@ -1394,6 +1395,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`quick-add` gains an optional `startWithAi` flag.** The ticket still ENTERS at `unrefined` (the invariant "a user-created ticket always enters at unrefined; no client can place it mid-pipeline" is preserved — the Conductor is the writer). Then, when `startWithAi` is set, the Conductor advances it to the FIRST `aiEnabled` stage, records a `status-change` event ("auto-started AI at <stage>"), and runs `activateWorktreesForStage` (a no-op without a linked repo/Docker, as usual). It returns the ADVANCED row so the realtime delta shows the new stage. **Wired end to end:** the `workspaces/quickAdd` route threads `startWithAi`; the client `quickAdd` helper + the New-ticket form expose a checkbox ("Start with AI right away", i18n ×4).
 
 → `docs/decisions/0154-auto-activation.md`
+
+### 0155 — B1 — client-side crop + resize in the image editor
+
+**0155** · accepted · tags: content, image, editor, ui, idea-to-outcome · 2026-07-08
+
+**Crop is a draggable/resizable Fabric `Rect`** toggled on: its `getBoundingRect()` (clamped to the canvas by the pure `clampCropRegion`) becomes the exported sub-region via Fabric's `toDataURL({left,top,width,height})`. The rect is removed before export so it isn't baked into the output. **Resize is a preset dropdown** (`Original / 1080 / 720 / 512` px width) applied after crop through an offscreen 2D-canvas draw sized by the pure `resizeDimensions` (shrink-only, aspect-preserving). **The geometry lives in a Fabric-free helper** (`_functions/imageCrop.ts`) so `clampCropRegion` (clamp, invert-normalise, degenerate→null) and `resizeDimensions` are unit-tested without a canvas (11/11). **No new op, no provider, no spend.** Export still goes through the existing upload + `content-import-asset` path (B-23: the Conductor writes the asset), identical to B2/B3.
+
+→ `docs/decisions/0155-image-crop-resize.md`
 
 ## Code governed by decisions
 
