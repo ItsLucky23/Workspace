@@ -1,0 +1,189 @@
+# AI Product Knowledge (auto-generated — do not edit)
+
+> The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
+> `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
+> `npm run ai:product-knowledge`. Corpus hash: `425d39cf40dfac3a` · 17 capabilities · 161 decisions.
+
+## Capabilities (what the product can do)
+
+- **Can I edit videos in this product?**
+- **Can I make a video with AI from just an idea/topic?**
+- **Can I edit images?**
+- **Can I make longer videos (e.g. several minutes)?**
+- **Can I refine just one part of a video (e.g. seconds 13–18)?**
+- **Can I add or balance audio (voiceover + background music)?**
+- **Can I generate a voiceover / music / sound effects?**
+- **Can I publish a video to YouTube or TikTok?**
+- **Can I design a UI theme / pick a style?**
+- **Can I upload or customize my own theme/style?**
+- **Can I build software / a new project?**
+- **Can I preview or deploy my app?**
+- **Can the AI ask me questions while working?**
+- **What can the Workspace-AI assistant do?**
+- **Does the AI know my codebase / uploaded media?**
+- **Can I give the AI extra context or docs?**
+- **Can I manage multiple social accounts / channels?**
+
+## Decisions (why it is the way it is)
+
+- `adr-0001` 0001-workspaces-v1-schema-shape
+- `adr-0002` 0002-fase1-inprocess-conductor
+- `adr-0004` 0004-app-owned-secret-encryption
+- `adr-0005` 0005-per-action-typed-api-write-routes
+- `adr-0006` 0006-realtime-sync-delta-transport
+- `adr-0007` 0007-pluggable-ai-provider-layer
+- `adr-0008` 0008-container-runtime-model
+- `adr-0009` 0009-register-flow-ai-operations
+- `adr-0010` 0010-per-container-editor-with-user-profile
+- `adr-0011` 0011-pluggable-proxy-and-git-workflow-config
+- `adr-0012` 0012-editor-engine-edit-lock-and-proxy-boot-reconcile
+- `adr-0013` 0013-engine-control-plane-completion
+- `adr-0014` 0014-market-hardening-gitlab-ingestion-capacity-edge-auth
+- `adr-0015` 0015-multi-instance-safety-deel-a
+- `adr-0016` 0016-egress-control
+- `adr-0017` 0017-rag-codebase-intelligence
+- `adr-0018` 0018-builtin-mr-review
+- `adr-0019` 0019-ticket-priority-notification-preferences
+- `adr-0020` 0020-capacity-manager-hard-cap
+- `adr-0021` 0021-real-git-merge
+- `adr-0022` 0022-crash-recovery-watchdog
+- `adr-0023` 0023-in-container-pty-agent
+- `adr-0024` 0024-client-gaps-answer-input-presence
+- `adr-0025` 0025-cost-usage-tracking
+- `adr-0026` 0026-observability
+- `adr-0027` 0027-automation-plugin-engine
+- `adr-0028` 0028-token-self-handoff
+- `adr-0029` 0029-forge-provider-abstraction
+- `adr-0030` 0030-editor-loose-ends
+- `adr-0031` 0031-multi-instance-verification
+- `adr-0032` 0032-self-host-installer-dr
+- `adr-0033` 0033-studio-design-marketing-module
+- `adr-0034` 0034-tool-module-pipeline-coupling
+- `adr-0035` 0035-multi-project-multi-service
+- `adr-0036` 0036-github-forge-per-project
+- `adr-0037` 0037-environments-persistent-server
+- `adr-0038` 0038-deploy-cd-downloadable-builds
+- `adr-0039` 0039-builtin-ci-quality-gates
+- `adr-0040` 0040-security-dependency-scanning
+- `adr-0041` 0041-ai-mr-review
+- `adr-0042` 0042-ai-assisted-rollback
+- `adr-0043` 0043-user-app-db-migrations
+- `adr-0044` 0044-reasoning-plan-critique
+- `adr-0045` 0045-rag-institutional-memory
+- `adr-0046` 0046-greenfield-scaffolding
+- `adr-0047` 0047-delivery-analytics
+- `adr-0048` 0048-review-ergonomics
+- `adr-0049` 0049-content-platform-pivot
+- `adr-0050` 0050-content-data-model
+- `adr-0051` 0051-media-budget-guard
+- `adr-0052` 0052-media-provider-abstraction
+- `adr-0053` 0053-style-preset-system
+- `adr-0054` 0054-content-pipeline
+- `adr-0055` 0055-content-script-generation
+- `adr-0056` 0056-content-voiceover
+- `adr-0057` 0057-content-beat-images
+- `adr-0058` 0058-content-assembly
+- `adr-0059` 0059-reference-image
+- `adr-0060` 0060-short-form-clips
+- `adr-0061` 0061-reference-video-analysis
+- `adr-0062` 0062-media-asset-avatar
+- `adr-0063` 0063-music-sfx
+- `adr-0064` 0064-model-3d
+- `adr-0065` 0065-publish-gate
+- `adr-0066` 0066-publish-tiktok
+- `adr-0067` 0067-content-automation
+- `adr-0068` 0068-nav-grouping
+- `adr-0069` 0069-content-snapshot-ui
+- `adr-0070` 0070-copilot
+- `adr-0071` 0071-content-memory-analytics
+- `adr-0072` 0072-depth-program
+- `adr-0073` 0073-tenant-scope-lint-guard
+- `adr-0074` 0074-encryption-fail-closed
+- `adr-0075` 0075-mr-push-to-origin
+- `adr-0076` 0076-container-readiness-probes
+- `adr-0077` 0077-forge-retry-pagination
+- `adr-0078` 0078-real-ci-yaml-pty-ready
+- `adr-0079` 0079-real-fal-media-gen
+- `adr-0080` 0080-real-voice-music-gen
+- `adr-0081` 0081-real-llm-parsing
+- `adr-0082` 0082-real-ffmpeg-render
+- `adr-0083` 0083-real-publishing-oauth
+- `adr-0084` 0084-content-ui-reach
+- `adr-0085` 0085-content-create-ui
+- `adr-0086` 0086-content-settings-setup
+- `adr-0087` 0087-content-insights-brand
+- `adr-0088` 0088-key-setup-guide
+- `adr-0089` 0089-typecheck-gate-and-json-input
+- `adr-0090` 0090-deterministic-test-provider-world
+- `adr-0091` 0091-per-workspace-media-keys
+- `adr-0092` 0092-publishing-oauth-connect-flow
+- `adr-0093` 0093-live-ai-verification
+- `adr-0094` 0094-premium-motion-layer
+- `adr-0095` 0095-suno-api-integration
+- `adr-0096` 0096-fal-transport-robustness
+- `adr-0097` 0097-workspace-modules
+- `adr-0098` 0098-queue-aware-media-generation
+- `adr-0099` 0099-queue-aware-all-flows-and-workspace-sync
+- `adr-0100` 0100-media-cost-transparency
+- `adr-0101` 0101-brand-product-grounding
+- `adr-0102` 0102-style-manager
+- `adr-0103` 0103-workspace-ai-instruction
+- `adr-0104` 0104-gemini-workspace-key
+- `adr-0105` 0105-stage-persona-in-ui
+- `adr-0106` 0106-media-upload-import
+- `adr-0107` 0107-doc-upload-infosource
+- `adr-0108` 0108-creative-knowledge-grounding
+- `adr-0109` 0109-output-language
+- `adr-0110` 0110-text-provider-per-feature
+- `adr-0111` 0111-gemini-model-temperature
+- `adr-0112` 0112-media-model-choice
+- `adr-0113` 0113-content-regenerate-variations
+- `adr-0114` 0114-content-version-lineage
+- `adr-0115` 0115-studio-refine
+- `adr-0116` 0116-web-push-pwa
+- `adr-0117` 0117-push-fanout-notifications
+- `adr-0118` 0118-push-per-type-preferences
+- `adr-0119` 0119-autonomy-dials
+- `adr-0120` 0120-needs-input-reping
+- `adr-0121` 0121-export-formats-captions
+- `adr-0122` 0122-post-scheduling
+- `adr-0123` 0123-branding-watermark
+- `adr-0124` 0124-per-platform-publish-variants
+- `adr-0125` 0125-outbound-webhook-action
+- `adr-0126` 0126-custom-gemini-endpoint
+- `adr-0127` 0127-mcp-integration-wiring
+- `adr-0128` 0128-brand-kit-portability
+- `adr-0129` 0129-cheap-preview
+- `adr-0130` 0130-undo-unpublish
+- `adr-0131` 0131-custom-ai-tasks
+- `adr-0132` 0132-inpaint-feature
+- `adr-0133` 0133-output-templates
+- `adr-0134` 0134-style-set-portability
+- `adr-0135` 0135-cross-workspace-copy
+- `adr-0136` 0136-public-api-pats
+- `adr-0137` 0137-content-inpaint-op
+- `adr-0138` 0138-image-region-editor
+- `adr-0139` 0139-image-editor-essentials
+- `adr-0140` 0140-video-timeline-reorder
+- `adr-0141` 0141-audio-mix-plan
+- `adr-0142` 0142-setup-wizard
+- `adr-0143` 0143-premium-ux-sweep
+- `adr-0144` 0144-honesty-fixes
+- `adr-0145` 0145-conversational-intake-copilot
+- `adr-0146` 0146-video-scene-model
+- `adr-0147` 0147-multi-clip-video-render
+- `adr-0148` 0148-long-video-decomposition
+- `adr-0149` 0149-range-refine
+- `adr-0150` 0150-youtube-byte-upload
+- `adr-0151` 0151-tiktok-status-polling
+- `adr-0152` 0152-content-pipeline-orchestration
+- `adr-0153` 0153-video-timeline-editor
+- `adr-0154` 0154-auto-activation
+- `adr-0155` 0155-image-crop-resize
+- `adr-0156` 0156-structured-approvals
+- `adr-0157` 0157-prod-build-export-deploy-hook
+- `adr-0158` 0158-demo-host-auto-redeploy
+- `adr-0159` 0159-greenfield-repo-gen
+- `adr-0160` 0160-greenfield-wizard-ui
+- `adr-0161` 0161-timeline-audio-track
+- `adr-0250` Q1 — product self-knowledge corpus (generator)

@@ -22,6 +22,8 @@ echo "[pre-commit] Regenerating docs/AI_PROJECT_INDEX.md..."
 npm run ai:project-index --silent
 echo "[pre-commit] Regenerating docs/AI_DECISIONS_INDEX.md..."
 npm run ai:decisions --silent
+echo "[pre-commit] Regenerating docs/AI_PRODUCT_KNOWLEDGE.*..."
+npm run ai:product-knowledge --silent
 echo "[pre-commit] Regenerating docs/AI_LESSONS_INDEX.md..."
 npm run ai:lessons --silent
 echo "[pre-commit] Regenerating docs/AI_EXAMPLES_INDEX.md..."
@@ -36,5 +38,5 @@ echo "[pre-commit] Regenerating docs/AI_CONTEXT_BUDGET.md..."
 npm run ai:context-budget --silent
 echo "[pre-commit] Checking hand-written doc staleness (report-only)..."
 npm run ai:doc-staleness --silent || true
-git add docs/AI_CAPABILITIES.md docs/AI_PROJECT_INDEX.md docs/AI_DECISIONS_INDEX.md docs/AI_LESSONS_INDEX.md docs/AI_EXAMPLES_INDEX.md docs/AI_RUNBOOKS.md docs/AI_PRODUCT_OVERVIEW.md docs/ai-graph.json docs/AI_CONTEXT_BUDGET.md
+git add docs/AI_CAPABILITIES.md docs/AI_PROJECT_INDEX.md docs/AI_DECISIONS_INDEX.md docs/AI_PRODUCT_KNOWLEDGE.md docs/AI_PRODUCT_KNOWLEDGE.json docs/AI_LESSONS_INDEX.md docs/AI_EXAMPLES_INDEX.md docs/AI_RUNBOOKS.md docs/AI_PRODUCT_OVERVIEW.md docs/ai-graph.json docs/AI_CONTEXT_BUDGET.md
 git add docs/ai-product 2>/dev/null || true

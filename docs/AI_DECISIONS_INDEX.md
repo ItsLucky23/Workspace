@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (160)
+## Decisions (161)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -173,6 +173,7 @@
 | 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
+| 0250 | Q1 — product self-knowledge corpus (generator) | 🟢 accepted | ai, rag, self-knowledge, capabilities, ai-libraries-accounts | — | `docs/decisions/0250-product-self-knowledge-corpus.md` |
 
 ## Summaries
 
@@ -1457,6 +1458,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Per-piece mix on `ContentProject`** (MongoDB, no migration): `voiceVolume` (default 1) + `musicVolume` (default 0.25, ducked). Persisted by a new **`content-save-audio-mix`** control-op (content-* write family; no new frozen verb) — RBAC `workTickets`, clamped (voice ≤ 2, music ≤ 1) by the Conductor (B-23). **The render honours the gains.** `buildVideoStitchPlan` gained an optional `mix` ({musicFile, voiceVolume, musicVolume}); when there's music OR a non-default voice gain it routes voice (+ ducked music) through the existing `buildAudioMixPlan` (E4) → `[aout]`. **Guarded** so the plain single-voice path is byte-identical — the live render test is unchanged (re-run 7/7). `renderScenes` + `assembly` thread the piece's music asset + gains in. **The snapshot surfaces** `voiceVolume`/`musicVolume` + the newest voice/music asset urls on `ContentPieceSummary`, so the editor can draw the track without another fetch. **A real waveform** in `VideoTimelineEditor`: `decodePeaks` fetches + `decodeAudioData` → per-block peak bars on a canvas, theme-driven (fillStyle reads the canvas's resolved `text-primary`, no hardcoded hex), degrading to a flat baseline on any fetch/decode failure (stub url, no `AudioContext`). Voice + duck sliders save via `content-save-audio-mix`.
 
 → `docs/decisions/0161-timeline-audio-track.md`
+
+### 0250 — Q1 — product self-knowledge corpus (generator)
+
+**0250** · accepted · tags: ai, rag, self-knowledge, capabilities, ai-libraries-accounts · 2026-07-08
+
+**A hand-curated capability Q&A** (`docs/product-knowledge/capabilities.md`) is the primary source: plain- language "can I do X? → yes, via module Y, steps ..." blocks, one `### Q:` per capability. This is what makes the AI genuinely helpful ("how do I ...") rather than just factual. **A deterministic generator** (`scripts/generateProductKnowledge.mjs`, `npm run ai:product-knowledge`, wired into the pre-commit hook) compiles the Q&A + every ADR (title + Context/Decision summary) into two artifacts: `docs/AI_PRODUCT_KNOWLEDGE.md` (human digest) + `docs/AI_PRODUCT_KNOWLEDGE.json` (`{hash, chunks:[{id,kind,title,text}]}` — the embedding input). Pure-Node, no timestamps → byte-identical no-op runs. **A content `hash`** on the shard lets the runtime boot-ensure (Q2) re-embed only when the corpus changed.
+
+→ `docs/decisions/0250-product-self-knowledge-corpus.md`
 
 ## Code governed by decisions
 
