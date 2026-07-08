@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (10)
+## Lessons (11)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -23,6 +23,7 @@
 | 0008 | The claude-cli provider runs in a scratch cwd — AI-gen prompts must be pure-context | 🟡 medium | ai-provider, docs-gen, dockerfile-gen | ai, claude-cli, prompt | `docs/lessons/0008-claude-cli-provider-runs-in-a-scratch-cwd.md` |
 | 0009 | Driving claude autonomously in a container — CLAUDE_CONFIG_DIR, bypassPermissions, sh-c Stop hook | 🟠 high | orchestrator, stage-runner, container | claude-cli, docker, engine | `docs/lessons/0009-in-container-claude-drive-gotchas.md` |
 | 0010 | A static import at server.ts top can build the default Prisma client before secrets resolve | 🟠 high | server/boot, secret-manager, prisma | — | `docs/lessons/0010-static-import-breaks-secret-resolution-order.md` |
+| 0011 | A form opened via menuHandler.open renders ABOVE WorkspacesProvider — useWorkspaces() throws | 🟠 high | src/workspaces/_shell, menuHandler, react-context | — | `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md` |
 
 ## Takeaways
 
@@ -105,3 +106,11 @@ Any feature that drives an interactive `claude` over `docker exec` must: set `CL
 Background-loop starters whose module graph reaches the Conductor (or any module-level `getPrismaClient()`) must be **dynamically imported** in `server.ts` AFTER `initSecretManager`: `const { startTicketWatchdog } = await import('./orchestrator/watchdog'); startTicketWatchdog();` — this is the same pattern the error-tracking adapters already use. Symptom → cause: "URL must start with mongo" from ONLY the background loops (not the routes) ⇒ a default client was constructed pre-secret-resolution ⇒ find the new static import that pulled the Conductor into the boot graph and make it dynamic. Related Mongo gotcha found the same day: `prisma.findMany({ where: { field: null } })` does NOT match documents where the optional field is unset — filter such fields in code, not the query.
 
 → `docs/lessons/0010-static-import-breaks-secret-resolution-order.md`
+
+### 0011 — A form opened via menuHandler.open renders ABOVE WorkspacesProvider — useWorkspaces() throws
+
+**0011** · high · src/workspaces/_shell, menuHandler, react-context · 2026-07-08
+
+A component rendered via `menuHandler.open(...)` (or any portal above the Router) must NOT call `useWorkspaces()` (or any workspaces-scoped hook). **Inject what it needs as props** from the call site, which lives inside the provider (e.g. `ProjectSwitcher` passes `templates` + `onCreateFromTemplate`). Components rendered **inline in a page** (`{open && <Editor/>}` in a `*/page.tsx`) ARE inside the provider — `useWorkspaces()` is fine there. This is why `ImageEditor` / `VideoTimelineEditor` / `NeedsInputBanner` (all inline) are safe and `menuHandler` forms are not. This class of bug is invisible to tsc/lint/build (it's a runtime context boundary) — a quick live browser open of any new `menuHandler` form catches it instantly.
+
+→ `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md`

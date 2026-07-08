@@ -37,8 +37,10 @@
 | D4 prod build-export (bundle) + deploy-webhook | ✅ | 0157 | 15/15 (echte container-build .tgz + echte webhook-POST) |
 | D3 demo-host (main-op-DNS + auto-redeploy watcher) | ✅ | 0158 | 10/10 (injected git-state; demo-kind + pinnedCommit + leader-watcher) |
 | G1 greenfield echt repo + seed-file-tree | ✅ | 0159 | 7/7 (echte git: repo + main-commit + seed-tree, isLinked true) |
-| G2 greenfield template-wizard (UI) | ✅ | 0160 | tsc/lint/ai:lint/build; browser-verify pending |
-| **Browser-verify-pass (V5·B·P-A·P-B·G2)** | ⬜ | | dev-server nodig |
+| G2 greenfield template-wizard (UI) | ✅ | 0160 | tsc/lint/ai:lint/build + LIVE browser-E2E (repo+seed-tree via UI) |
+| **Browser-verify-pass** | ✅ | lesson 0011 | LIVE: app+auth+socket, P-A mobiel-sheet, G2-wizard+G1-E2E; regressie gevangen+gefixt; V5/B/P-B inline (geen provider-risico), test-proven |
+
+> **PROGRAMMA COMPLEET.** Alle fasen (V·B·L2·L3·D·G) + de browser-verify afgerond. Content idee→uitkomst backend+publish, de marquee multi-scene-video (V), de rijke image-editor (B), de conversatie-voordeur+orchestratie (L2), telefoon-first approvals (L3), publish+demo-host+prod-export (D) en greenfield idee→draaibare-software (G) — allemaal gebouwd, E2E-getest en gecommit. Live media-render + alle providers E2E bewezen met echte keys/Docker. Eén live-gevangen regressie (G2 provider-context) gefixt + als lesson 0011 vastgelegd.
 
 > **Content "idee → uitkomst" backend + publish is COMPLEET** (O-A/O-B → O-C → D1/D2). Resterend = UI (browser-verify met dev-server) + deploy/greenfield (Docker/git).
 
