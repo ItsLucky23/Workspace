@@ -1,6 +1,6 @@
 {
-  "hash": "425d39cf40dfac3a",
-  "chunkCount": 178,
+  "hash": "e570436d8dd54abf",
+  "chunkCount": 179,
   "chunks": [
     {
       "id": "cap-001",
@@ -1069,6 +1069,12 @@
       "kind": "decision",
       "title": "Q1 — product self-knowledge corpus (generator)",
       "text": "ADR 0250: Q1 — product self-knowledge corpus (generator). The in-app Workspace-AI grounds only on the workspace snapshot + the user's linked code (RAG). It has ZERO knowledge of what the PRODUCT itself can do, so it cannot answer \"can we edit videos?\" (\"yes — via the media module, first generate/upload a video then use the timeline editor\"). The rich self-knowledge (161 ADRs + the capability inventory) exists as committed docs but is only reachable by the dev-time `@luckystack/mcp` server, never at runtime. Q1 compiles that knowledge into a retrievable corpus. > **ADR numbering:** this program (`AI_LIBRARIES_ACCOUNTS_PROGRAM.md`) runs on the `feat/ai-libraries-accounts` > branch in parallel with the ADOPTION run, which consumes 0162+. To avoid merge-time number collisions, this > program's ADRs start at **0250**. Decision: - **A hand-curated capability Q&A** (`docs/product-knowledge/capabilities.md`) is the primary source: plain- language \"can I do X? → yes, via module Y, steps ...\" blocks, one `### Q:` per capability. This is what makes the AI genuinely helpful (\"how do I ...\") rather than just factual. - **A deterministic generator** (`scripts/generateProductKnowledge.mjs`, `npm run ai:product-knowledge`, wired into the pre-commit hook) compiles the Q&A + every ADR (title + Context/Decision summary) into two artifacts: `docs/AI_PRODUCT_KNOWLEDGE.md` (human digest) + `docs/AI_PRODUCT_KNOWLEDGE.json` (`{hash, chunks:[{id,kind,title,text}]}` — the embedding input). Pure-Node, "
+    },
+    {
+      "id": "adr-0251",
+      "kind": "decision",
+      "title": "Q2 — product-knowledge RAG corpus (global, behind the existing retrieve)",
+      "text": "ADR 0251: Q2 — product-knowledge RAG corpus (global, behind the existing retrieve). Q1 compiled the product's self-knowledge into `docs/AI_PRODUCT_KNOWLEDGE.json` (capability Q&A + ADR summaries). Q2 makes it retrievable at chat-time so the Workspace-AI can answer capability questions. The RAG store (`RagEntry` + `retrieve()`) already exists and is reused twice for non-code corpora (institutional memory, per-channel brand) via a sentinel \"commit\" — this is the third instance. Decision: - **`server/rag/productKnowledge.ts`** indexes the compiled corpus into `RagEntry` under a GLOBAL scope: a reserved sentinel `workspaceId` = the zero ObjectId `000000000000000000000000` (no real workspace) + a sentinel `commitHash` = `product-knowledge`. `retrieveProductKnowledge(prisma, query, k)` = `retrieve(..., PRODUCT_WS, ..., PRODUCT_COMMIT)`, excluding a meta/marker row. Reuses the one embedder + the one cosine scan — no parallel retrieval path. - **Idempotent on the corpus hash.** A marker row (`__product_meta__`) records the indexed hash; the boot `ensureProductKnowledge` re-embeds only when the corpus changed. Indexed once at boot, leader-gated + delayed so leadership has settled; best-effort (never blocks/breaks boot). - **Deterministic + offline-testable.** In the default test world the LOCAL embedder (no GEMINI key) is used, so the E2E is deterministic and free: \"can I edit videos?\" retrieves the media/timeline-editor chunk."
     }
   ]
 }

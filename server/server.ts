@@ -200,6 +200,16 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? D3: the leader-gated demo-host watcher redeploys demo envs when their target branch (main) moves.
   const { startDemoWatcher } = await import('./deploy/demoWatch');
   startDemoWatcher();
+  //? Q2: index the product self-knowledge corpus (global, idempotent on the corpus hash) once at boot,
+  //? leader-gated + delayed so leadership has settled. Best-effort — never blocks or breaks boot.
+  const { ensureProductKnowledge } = await import('./rag/productKnowledge');
+  const { isLeader: isLeaderNow } = await import('./orchestrator/cluster');
+  setTimeout(() => {
+    if (!isLeaderNow()) return;
+    void ensureProductKnowledge()
+      .then((r) => { if (r.entries > 0) console.log(`[product-knowledge] indexed ${String(r.entries)} chunks (hash ${r.hash ?? ''})`); })
+      .catch((e: unknown) => { console.error('[product-knowledge] ensure failed:', e instanceof Error ? e.message : String(e)); });
+  }, 5000);
 })().catch((err) => {
   console.error('[server] failed to start:', err);
   process.exit(1);

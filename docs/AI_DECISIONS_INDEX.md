@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (161)
+## Decisions (162)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -174,6 +174,7 @@
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
 | 0250 | Q1 — product self-knowledge corpus (generator) | 🟢 accepted | ai, rag, self-knowledge, capabilities, ai-libraries-accounts | — | `docs/decisions/0250-product-self-knowledge-corpus.md` |
+| 0251 | Q2 — product-knowledge RAG corpus (global, behind the existing retrieve) | 🟢 accepted | ai, rag, self-knowledge, retrieval, ai-libraries-accounts | — | `docs/decisions/0251-product-knowledge-rag-corpus.md` |
 
 ## Summaries
 
@@ -1466,6 +1467,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A hand-curated capability Q&A** (`docs/product-knowledge/capabilities.md`) is the primary source: plain- language "can I do X? → yes, via module Y, steps ..." blocks, one `### Q:` per capability. This is what makes the AI genuinely helpful ("how do I ...") rather than just factual. **A deterministic generator** (`scripts/generateProductKnowledge.mjs`, `npm run ai:product-knowledge`, wired into the pre-commit hook) compiles the Q&A + every ADR (title + Context/Decision summary) into two artifacts: `docs/AI_PRODUCT_KNOWLEDGE.md` (human digest) + `docs/AI_PRODUCT_KNOWLEDGE.json` (`{hash, chunks:[{id,kind,title,text}]}` — the embedding input). Pure-Node, no timestamps → byte-identical no-op runs. **A content `hash`** on the shard lets the runtime boot-ensure (Q2) re-embed only when the corpus changed.
 
 → `docs/decisions/0250-product-self-knowledge-corpus.md`
+
+### 0251 — Q2 — product-knowledge RAG corpus (global, behind the existing retrieve)
+
+**0251** · accepted · tags: ai, rag, self-knowledge, retrieval, ai-libraries-accounts · 2026-07-08
+
+**`server/rag/productKnowledge.ts`** indexes the compiled corpus into `RagEntry` under a GLOBAL scope: a reserved sentinel `workspaceId` = the zero ObjectId `000000000000000000000000` (no real workspace) + a sentinel `commitHash` = `product-knowledge`. `retrieveProductKnowledge(prisma, query, k)` = `retrieve(..., PRODUCT_WS, ..., PRODUCT_COMMIT)`, excluding a meta/marker row. Reuses the one embedder + the one cosine scan — no parallel retrieval path. **Idempotent on the corpus hash.** A marker row (`__product_meta__`) records the indexed hash; the boot `ensureProductKnowledge` re-embeds only when the corpus changed. Indexed once at boot, leader-gated + delayed so leadership has settled; best-effort (never blocks/breaks boot). **Deterministic + offline-testable.** In the default test world the LOCAL embedder (no GEMINI key) is used, so the E2E is deterministic and free: "can I edit videos?" retrieves the media/timeline-editor chunk.
+
+→ `docs/decisions/0251-product-knowledge-rag-corpus.md`
 
 ## Code governed by decisions
 
