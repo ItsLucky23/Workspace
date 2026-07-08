@@ -30,6 +30,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | Item | Status | ADR | Test |
 |---|---|---|---|
 | F1 OAuth token-refresh (publish) | ✅ | — (hardening) | publishOAuth-unit 27/27 · publishReal-integratie (+refresh) |
+| F2 audio-mix + captions + ffprobe-timing wiren | ✅ | — (completion) | renderFormats-unit 46/46 · audioMix 15/15 · assemblyCaptionsMix-integratie 7/7 · musicSfx-regressie 6/6 |
 
 ---
 

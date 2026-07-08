@@ -4,7 +4,7 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 
-const { buildFfmpegPlan, resolveRenderFormat, buildSrt, buildVtt } = await import('../../server/content/render.ts');
+const { buildFfmpegPlan, resolveRenderFormat, buildSrt, buildVtt, buildTimedSrt, buildTimedVtt, parseFfprobeDurationMs } = await import('../../server/content/render.ts');
 
 const beats = [{ imageFile: 'a.png', durationMs: 2000 }, { imageFile: 'b.png', durationMs: 2000 }];
 
@@ -73,6 +73,40 @@ const beats = [{ imageFile: 'a.png', durationMs: 2000 }, { imageFile: 'b.png', d
   assert(mix?.filter.includes('[aout]') && mix.map === '[aout]', 'the mixed stream is mapped out');
   const solo = buildAudioMixPlan([{ label: '0:a', volume: 1 }]);
   assert(solo?.filter.includes('amix=inputs=1'), 'a single track still routes through amix → one output');
+}
+
+// F2 — beat-path audio mix (voice + ducked music + sfx) is additive; no-mix path unchanged
+{
+  const mixPlan = buildFfmpegPlan(beats, 'voice.mp3', 'list.txt', 'out.mp4', undefined, null, { musicFile: 'music.mp3', sfxFile: 'whoosh.mp3', musicVolume: 0.25, sfxVolume: 0.6 });
+  const s = mixPlan.args.join(' ');
+  assert(s.includes('-i /media/voice.mp3') && s.includes('-i /media/music.mp3') && s.includes('-i /media/whoosh.mp3'), 'voice + music + sfx are all inputs');
+  assert(s.includes('amix=inputs=3'), 'the three audio tracks are amixed');
+  assert(s.includes('volume=0.25') && s.includes('volume=0.60'), 'music ducked (0.25) + sfx gain (0.60)');
+  assert(s.includes('-filter_complex') && s.includes('-map [outv]') && s.includes('-map [aout]'), 'mixed video + audio are both mapped via filter_complex');
+
+  const plain = buildFfmpegPlan(beats, 'voice.mp3', 'list.txt', 'out.mp4');
+  assert(plain.args.includes('-vf') && !plain.args.join(' ').includes('amix'), 'no mix → the simple -vf single-voice path is unchanged');
+
+  const wmMix = buildFfmpegPlan(beats, 'voice.mp3', 'list.txt', 'out.mp4', undefined, { file: 'logo.png', position: 'br' }, { musicFile: 'm.mp3' });
+  const ws = wmMix.args.join(' ');
+  assert(ws.includes('overlay=W-w-24:H-h-24') && ws.includes('amix=inputs=2'), 'watermark + music mix compose (overlay + amix together)');
+}
+
+// F2 — timed captions (real per-segment timing) + ffprobe duration parse
+{
+  const segs = [{ text: 'Hello', startMs: 0, durationMs: 2000 }, { text: 'World', startMs: 2000, durationMs: 3000 }];
+  const srt = buildTimedSrt(segs);
+  assert(srt.includes('00:00:00,000 --> 00:00:02,000') && srt.includes('00:00:02,000 --> 00:00:05,000'), 'srt uses the real per-segment start+duration');
+  assert(srt.includes('Hello') && srt.includes('World'), 'srt carries the segment text');
+  const vtt = buildTimedVtt(segs);
+  assert(vtt.startsWith('WEBVTT') && vtt.includes('00:00:02.000 --> 00:00:05.000'), 'vtt has the header + real timing');
+  eq(buildTimedSrt([]), '', 'no segments → empty srt');
+  eq(buildTimedVtt([{ text: '  ', startMs: 0, durationMs: 1000 }]), 'WEBVTT\n', 'blank-only segments → header-only vtt');
+
+  eq(parseFfprobeDurationMs('12.345000'), 12345, 'ffprobe seconds → whole ms');
+  eq(parseFfprobeDurationMs('\n7.5\n'), 7500, 'trims whitespace + parses');
+  eq(parseFfprobeDurationMs('N/A'), null, 'non-numeric probe output → null');
+  eq(parseFfprobeDurationMs('0'), null, 'zero duration → null');
 }
 
 report('tests/unit/renderFormats.test.mts');

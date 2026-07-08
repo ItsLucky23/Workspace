@@ -4,11 +4,14 @@
 //? ffmpeg/Docker is unavailable, the render degrades to the valid-shaped stub asset — the complete-output
 //? the user downloads + posts manually. The Conductor calls this (B-23).
 
+import { randomUUID } from 'node:crypto';
+
 import type { PrismaClient } from '@prisma/client';
 
+import { persistMediaBytes } from '../media/store';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
-import { renderTimeline, renderScenes, type FfmpegRunner } from './render';
+import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
 
 export interface AssembleResult {
   ok: boolean;
@@ -22,14 +25,15 @@ export interface AssembleResult {
 export async function assembleContent(
   prisma: PrismaClient,
   args: { workspaceId: string; contentProjectId: string },
-  opts: { run?: FfmpegRunner } = {},
+  opts: { run?: FfmpegRunner; probe?: DurationProbe } = {},
 ): Promise<AssembleResult> {
   const script = await prisma.script.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId }, orderBy: { createdAt: 'desc' } });
   if (!script) return { ok: false, stub: false, beatCount: 0, totalMs: 0 };
   const beats = await prisma.beat.findMany({ where: { workspaceId: args.workspaceId, scriptId: script.id }, orderBy: { order: 'asc' } });
   const voice = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'voice' }, orderBy: { createdAt: 'desc' } });
-  //? V5 audio-track — the piece's background music + its per-track gains (voice / ducked music) for the mix.
+  //? V5/F2 audio-track — the piece's background music + sfx + per-track gains (voice / ducked music) for the mix.
   const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
+  const sfx = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'sfx' }, orderBy: { createdAt: 'desc' } });
   const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true } });
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
@@ -59,6 +63,30 @@ export async function assembleContent(
   const effectiveTotalMs = useScenes ? renderScenesInput.reduce((sum, s) => sum + s.durationMs, 0) : totalMs;
   const segmentCount = useScenes ? scenes.length : beats.length;
 
+  //? F2 — emit REAL-timed .srt/.vtt captions from the beat texts. The per-beat durations are anchored to the
+  //? ACTUAL voice length (ffprobe, Docker-gated + injectable) when available, else the deterministic estimate;
+  //? both files are written to the media store so the export carries downloadable captions. Skipped when there
+  //? is no narratable text. Failure to probe never blocks (falls back to the estimate).
+  let captionsSrtUrl: string | null = null;
+  let captionsVttUrl: string | null = null;
+  const captionSource = timeline.filter((t) => t.text.trim().length > 0);
+  if (captionSource.length > 0) {
+    const estTotal = captionSource.reduce((sum, t) => sum + t.durationMs, 0);
+    const voiceFile = voice?.url ? await localizeAsset(voice.url) : null;
+    const realMs = voiceFile ? await probeDurationMs(voiceFile, opts) : null;
+    const scaleF = realMs !== null && estTotal > 0 ? realMs / estTotal : 1;
+    let cursor = 0;
+    const segments: CaptionSegment[] = captionSource.map((t) => {
+      const durationMs = Math.max(1, Math.round(t.durationMs * scaleF));
+      const seg: CaptionSegment = { text: t.text, startMs: cursor, durationMs };
+      cursor += durationMs;
+      return seg;
+    });
+    const cid = randomUUID();
+    captionsSrtUrl = persistMediaBytes(Buffer.from(buildTimedSrt(segments), 'utf8'), 'srt', `${cid}-cc`).url;
+    captionsVttUrl = persistMediaBytes(Buffer.from(buildTimedVtt(segments), 'utf8'), 'vtt', cid).url;
+  }
+
   const renderJob = await prisma.renderJob.create({
     data: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, composition: 'faceless', input: { timeline, voiceAssetId: voice?.id ?? null, totalMs }, status: 'running', costCents: 0 },
   });
@@ -74,8 +102,8 @@ export async function assembleContent(
   //? Attempt the REAL ffmpeg render; degrade to a valid-shaped stub when assets are still `stub://`
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
   const render = useScenes
-    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
-    : await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null }, opts);
+    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
+    : await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts);
   const stub = !render.ok;
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.
@@ -85,7 +113,7 @@ export async function assembleContent(
       url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: render.ok ? 'ready' : 'error',
-      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });
