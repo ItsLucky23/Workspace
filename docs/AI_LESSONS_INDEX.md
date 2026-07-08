@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (11)
+## Lessons (12)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,7 @@
 | 0009 | Driving claude autonomously in a container — CLAUDE_CONFIG_DIR, bypassPermissions, sh-c Stop hook | 🟠 high | orchestrator, stage-runner, container | claude-cli, docker, engine | `docs/lessons/0009-in-container-claude-drive-gotchas.md` |
 | 0010 | A static import at server.ts top can build the default Prisma client before secrets resolve | 🟠 high | server/boot, secret-manager, prisma | — | `docs/lessons/0010-static-import-breaks-secret-resolution-order.md` |
 | 0011 | A form opened via menuHandler.open renders ABOVE WorkspacesProvider — useWorkspaces() throws | 🟠 high | src/workspaces/_shell, menuHandler, react-context | — | `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md` |
+| 0012 | prisma generate EPERMs on the locked query-engine DLL — never blanket-kill node, never --no-engine | 🟠 high | prisma, schema-change, windows, dev-server | — | `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md` |
 
 ## Takeaways
 
@@ -114,3 +115,11 @@ Background-loop starters whose module graph reaches the Conductor (or any module
 A component rendered via `menuHandler.open(...)` (or any portal above the Router) must NOT call `useWorkspaces()` (or any workspaces-scoped hook). **Inject what it needs as props** from the call site, which lives inside the provider (e.g. `ProjectSwitcher` passes `templates` + `onCreateFromTemplate`). Components rendered **inline in a page** (`{open && <Editor/>}` in a `*/page.tsx`) ARE inside the provider — `useWorkspaces()` is fine there. This is why `ImageEditor` / `VideoTimelineEditor` / `NeedsInputBanner` (all inline) are safe and `menuHandler` forms are not. This class of bug is invisible to tsc/lint/build (it's a runtime context boundary) — a quick live browser open of any new `menuHandler` form catches it instantly.
 
 → `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md`
+
+### 0012 — prisma generate EPERMs on the locked query-engine DLL — never blanket-kill node, never --no-engine
+
+**0012** · high · prisma, schema-change, windows, dev-server · 2026-07-08
+
+**Find the exact holder, don't blanket-kill `node`** (that would also kill Claude Code, MCP servers, the other agent). Identify it: `Get-Process node | ? { $_.Modules | ? { $_.FileName -like '*query_engine-windows*' } }`, then `Get-CimInstance Win32_Process -Filter "ProcessId=<id>"` for the command line + parent chain. If a **supervisor** (`@luckystack/devkit` `supervisor.js`) owns it, stop the SUPERVISOR (and the launching `npm run server` / cmd), not just the server child, so it stops respawning — then regenerate, then *restart `npm run server`** to leave the environment as you found it. The `/goal` "backend DOWN on schema change" authorization covers this. The DLL on disk is version-tied (not schema-tied); for an ADDITIVE optional field only the client TS types need refreshing, but you still must regenerate in normal (library) mode with the DLL free. **Never use `prisma generate --no-engine`** in this repo — it breaks the runtime datasource. If you tried it, recover with a normal `npm run prisma:generate` once the DLL is free.
+
+→ `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md`

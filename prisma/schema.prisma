@@ -222,9 +222,10 @@ model Invite {
   email        String
   roleKey      String                          // → WorkspaceRole.key to grant on accept
   invitedById  String?  @db.ObjectId           // User.id who sent it
-  token        String                          // single-use accept token
+  token        String                          // single-use accept token (crypto-random, unguessable)
   status       String   @default("pending")    // 'pending' | 'accepted' | 'revoked' | 'expired'
   createdAt    DateTime @default(now())
+  expiresAt    DateTime?                        // F3 — invites lapse; an expired invite cannot be accepted
   acceptedAt   DateTime?
 
   @@unique([workspaceId, email])

@@ -14,6 +14,8 @@
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
 import { Prisma, type Ticket as DbTicket } from '@prisma/client';
 
+import { randomBytes } from 'node:crypto';
+
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
@@ -741,7 +743,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'invite': {
       const email = str(payload, 'email');
       if (!email) return;
-      const invite = await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+      //? F3 — a CRYPTO-RANDOM, unguessable token (was `inv-${clientRequestId}`: derived from a client-supplied
+      //? id → forgeable/replayable) + a 7-day expiry. The token reaches only the matched-email invitee via the
+      //? email-scoped `myInvites` snapshot; accept-invite additionally binds it to that email + rejects expiry.
+      const token = randomBytes(24).toString('base64url');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const invite = await prisma.invite.upsert({
+        where: { workspaceId_email: { workspaceId: action.workspaceId, email } },
+        create: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt },
+        update: { roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt, acceptedAt: null },
+      });
       //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
       //? unconfigured) — never block or fail the authoritative write on delivery.
       const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
@@ -759,6 +770,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!token) return;
       const inv = await prisma.invite.findFirst({ where: { token, status: 'pending' } });
       if (!inv) return;
+      //? F3 — an expired invite cannot be accepted; mark it so it stops surfacing (light sweep-on-touch).
+      if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) {
+        await prisma.invite.update({ where: { id: inv.id }, data: { status: 'expired' } });
+        return;
+      }
+      //? F3 — bind the invite to its target email: only the account whose email matches the invite may accept it
+      //? (defense-in-depth beyond the now-unguessable token). Case-insensitive.
+      const acceptor = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (acceptor?.email.trim().toLowerCase() !== inv.email.trim().toLowerCase()) return;
       await prisma.workspaceMember.create({ data: { workspaceId: inv.workspaceId, userId, roleKey: inv.roleKey } });
       await prisma.invite.update({ where: { id: inv.id }, data: { status: 'accepted', acceptedAt: new Date() } });
       return;
