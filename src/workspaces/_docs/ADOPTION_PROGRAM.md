@@ -66,6 +66,9 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | H2 per-user spend-attributie + budget-check | ✅ | — | userSpend-unit 11/11 · attributie-integratie · spend-regressie 17/17 |
 | H4 workspace-data-export (portability/backup, secrets uitgesloten) | ✅ | — | workspaceExport-integratie 10/10 |
 | H5 concurrency-fairness (round-robin drain per workspace) | ✅ | 0168 | capacityFairness-unit 5/5 · capacity-regressie groen |
+| H6 onboarding-doc (nieuwe teams & admins) | ✅ | — | `src/workspaces/_docs/ONBOARDING.md` |
+| **FASE H COMPLEET** (H3-SSO geschrapt) | ✅ | | H1/H2/H4/H5/H6 |
+| **ALLE 11 FASEN — BACKEND-KERN COMPLEET** | ✅ | | resteert: browser-gen-ronde (UI-tegels) + gescopede follow-ups (R3-b, live-Docker/keys) |
 
 ---
 

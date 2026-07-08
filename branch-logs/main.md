@@ -3237,3 +3237,26 @@ De audit vond geen manier om workspace-data te exporteren (portability/backup/GD
 ## 2026-07-08 — ADOPTION H5: concurrency-fairness (round-robin drain, ADR 0168)
 De audit vond dat de CapacityManager de deferred-queue puur FIFO draint → 1 workspace die de queue floodt starft de rest. H5 (ADR 0168): faire drain — de active-ZSET-member is nu workspace-getagd (`<ws>::<ticketKey>`, TTL-self-healing behouden) zodat occupancy per workspace telbaar is; `inFlightByWorkspace` + pure `pickFairNext` (kies de vroegst-gequeuede turn van de MINST-belaste workspace; strict-less-than houdt FIFO op gelijke stand) + `dequeueFairDeferred` (lrange→pick→lrem). `drainCapacityQueue` gebruikt nu de faire versie; `acquireSlot`/`releaseSlot` krijgen workspaceId (enige callers=conductor). Gates: tsc0·lint·ai:lint·build groen; capacityFairness-unit 5/5 (least-loaded-first · absent-ws=0 · FIFO-tie · empty) + capacity-regressie groen (cap/urgent/dedupe/TTL, test-calls ge-update). Per-user-fairness = latere refinement (workspace-granulariteit past bij een host-wide cap).
 **Files:** `server/orchestrator/capacity.ts` (ws-tagged member + inFlightByWorkspace + pickFairNext + dequeueFairDeferred), `server/orchestrator/conductor.ts` (wiring), `tests/integration/capacity.test.mts` (signature-update), `docs/decisions/0168-*.md` (nw), `tests/unit/capacityFairness.test.mts` (nw), `src/workspaces/_docs/ADOPTION_PROGRAM.md`.
+
+## 2026-07-08 — ADOPTION H6 + FASE H COMPLEET + programma-afronding (backend-kern)
+H6 (docs-only): `src/workspaces/_docs/ONBOARDING.md` — nieuwe-team/admin-onboarding (workspace+module aanmaken, team uitnodigen+RBAC, repo koppelen, pipeline instellen, eerste ticket, kosten/eerlijkheid, content/design-modules), verwijst naar V1_SCOPE/BUILD_HANDOFF + de 9 invarianten. **FASE H COMPLEET** (H1 audit-log/H2 per-user-spend/H4 export/H5 fairness/H6 onboarding; H3-SSO geschrapt).
+
+### SAMENVATTING ADOPTION_PROGRAM — alle 11 fasen (backend-kern) gebouwd/getest/gecommit
+- **F** OAuth-refresh · audio-mix/captions/ffprobe · invite-hardening · PWA-icons.
+- **W** multi-question (ADR 0162) · non-blocking advisory (0163) · worker-reaper.
+- **T** ref-preview (0164) · synthetic revert-ref "main-zonder-X" · time-travel.
+- **S** any-stack multi-base catalog (0165) · stack-templates · per-stack dev-cmds.
+- **K** compose-engine+sanitizer (0166) · service-presets · env-injectie · echte MCP.
+- **R** stage-reshape-persist (R1) · deterministische test-gate (R2) · webhook-routing-per-project (R3).
+- **U** UI-review-intake + taxonomie (U1).
+- **N** knowledge-graph-data-op + similarity-edges (N1).
+- **Y** activity-presence-core (Y1).
+- **C** scheduling-threading (C1) · audience-analytics-ingest (C3).
+- **H** audit-log (H1, ADR 0167) · per-user-spend (H2) · export (H4) · fairness (H5, ADR 0168) · onboarding (H6).
+**ADRs 0162–0168; ~45 nieuwe testbestanden, alle groen; lesson 0012.**
+
+### AANNAMES / GESCOPEDE FOLLOW-UPS (bewust, gedocumenteerd — nooit gehaast/riskant afgeraffeld)
+- **Browser-gen-ronde** (dev-server+client+agent-browser nodig, buiten deze backend-run): U2/U3-redesign-compare, N2-graph-UI (force-layout), Y2 DOM-streaming-engine + presence-overlay + `ultrasync.watch`-RBAC + Y3 pixel-share, content-calendar-UI, en de UI-tegels voor audit/spend/export/analytics-insights. De backend-ops/data eronder zijn af + getest.
+- **R3-b** — volledige `repoStore`/`runtime` `bareRepoPath` per-project re-key: groot cross-cutting op het core-git-pad; half-gedaan = inconsistent + Docker-verify nodig → aparte veilige ronde.
+- **Live-Docker/keys** (user-triggered): stack-image-builds, `compose up`, echte CI/preview-run, live publish + analytics-fetch. Alles structuur/fixture-getest, nooit geblokkeerd op een key.
+- **Kleine wirings**: download-knop-UI (H4-bundle→file), enforce-hook per-user-budget (H2), topPerformers→ideator-prompt (C3), stage-editor-knoppen→R1-ops.
