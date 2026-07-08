@@ -65,6 +65,16 @@ export function artifactToAnim(a: PersistedArtifact): AnimSpec | null {
   };
 }
 
+//? L3 — validate that an IMPORTED/COPIED artifact's content is a real theme/style/anim before it is saved
+//? (so a garbage JSON upload can't poison the library). Reuses the same coercion as the round-trip parsers.
+export function validArtifactContent(kind: string, content: unknown, name = 'x'): boolean {
+  const row: PersistedArtifact = { id: 'x', kind, name, description: '', content, source: 'manual', active: false };
+  if (kind === 'theme') return artifactToTheme(row) !== null;
+  if (kind === 'style') return artifactToStyle(row) !== null;
+  if (kind === 'animation') return artifactToAnim(row) !== null;
+  return false;
+}
+
 //? Split the persisted artifacts into the three typed libraries (nulls dropped).
 export function parsePersistedLibraries(artifacts: PersistedArtifact[]): { themes: DesignTheme[]; styles: DesignStyle[]; anims: AnimSpec[] } {
   const themes: DesignTheme[] = [];

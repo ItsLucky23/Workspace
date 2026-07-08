@@ -34,6 +34,17 @@ export const PREMADE_LOOKS: PremadeLook[] = [
 
 export interface ResolvedLook { look: PremadeLook; theme: DesignTheme; style: DesignStyle; fontHeading: string; fontBody: string }
 
+//? L3 — the save payloads for "copy this premade look into my workspace": a theme artifact (its palette) +
+//? a style artifact (its component spec, with the look's fonts baked in). These match the `designerLibrary`
+//? save op shape and round-trip via persisted.ts.
+export function lookToArtifacts(resolved: ResolvedLook): { kind: string; name: string; description: string; content: unknown; source: string }[] {
+  const style = { ...resolved.style, fontHeading: resolved.fontHeading, fontBody: resolved.fontBody };
+  return [
+    { kind: 'theme', name: `${resolved.look.name} theme`, description: resolved.look.description, content: { light: resolved.theme.light, dark: resolved.theme.dark }, source: 'manual' },
+    { kind: 'style', name: `${resolved.look.name} style`, description: resolved.look.description, content: style, source: 'manual' },
+  ];
+}
+
 //? Resolve a look's id into its concrete theme + style + font stacks (null when any ref is unknown).
 export function resolveLook(id: string): ResolvedLook | null {
   const look = PREMADE_LOOKS.find((l) => l.id === id);

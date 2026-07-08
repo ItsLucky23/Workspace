@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (165)
+## Decisions (166)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -178,6 +178,7 @@
 | 0252 | Q3 — wire product self-knowledge into the Workspace-AI + every feature | 🟢 accepted | ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts | — | `docs/decisions/0252-wire-product-knowledge-into-ai.md` |
 | 0253 | L1 — premade UI-look gallery (curated combos over the existing seeds) | 🟢 accepted | design, gallery, themes, ui, ai-libraries-accounts | — | `docs/decisions/0253-premade-look-gallery.md` |
 | 0254 | L2 — designer persistence round-trip (consume the snapshot's designArtifacts) | 🟢 accepted | design, persistence, library, ai-libraries-accounts | — | `docs/decisions/0254-designer-persistence-roundtrip.md` |
+| 0255 | L3 — designer import / copy / customize / delete | 🟢 accepted | design, gallery, import, crud, ai-libraries-accounts | — | `docs/decisions/0255-designer-import-copy-crud.md` |
 
 ## Summaries
 
@@ -1502,6 +1503,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Consume the existing snapshot `designArtifacts` — no new `list`/`load` op.** The snapshot IS the list. `persisted.ts` parses each row back into the typed shape (`artifactToTheme`/`Style`/`Anim` + a `parsePersistedLibraries` splitter), defensively: a malformed/half-set row coerces to null (never crashes the designer). The content shapes match what `useInProject` writes (`{light,dark}` for a theme, the full spec for a style/anim). **`state.tsx` merges the persisted artifacts into the libraries** via a `useEffect` on `designArtifacts`, appending by id (idempotent), never clobbering unsaved local edits. So a saved look reappears on reload AND live right after saving (refetch → the effect re-runs).
 
 → `docs/decisions/0254-designer-persistence-roundtrip.md`
+
+### 0255 — L3 — designer import / copy / customize / delete
+
+**0255** · accepted · tags: design, gallery, import, crud, ai-libraries-accounts · 2026-07-08
+
+**Copy a premade → workspace artifacts.** `lookToArtifacts(resolved)` produces a theme artifact (its palette) + a style artifact (its component spec with the look's fonts baked in), saved via the existing `designerLibrary` `save` op. They round-trip (L2) into the editable rails, so "copy" = "make it mine". **Import a theme/style/anim JSON.** A file picker in the gallery reads the JSON, and **`validArtifactContent` (pure, reuses the L2 coercion) refuses anything that isn't a real theme/style/anim** before saving — a garbage upload can't poison the library. Reuses `save`; no new op. **Customize + delete reuse existing surfaces.** Rail edits (rename/duplicate/token-edit) now persist through L2; delete is the existing per-workspace `deleteDesignArtifact` (premades/seeds stay read-only).
+
+→ `docs/decisions/0255-designer-import-copy-crud.md`
 
 ## Code governed by decisions
 

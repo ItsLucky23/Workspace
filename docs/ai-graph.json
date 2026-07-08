@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 209,
-    "edges": 319,
+    "edges": 321,
     "symbols": 258,
     "callEdges": 41
   },
@@ -1965,7 +1965,15 @@
     },
     {
       "from": "workspaces/designer/sections/Gallery.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/designer/sections/Gallery.tsx",
       "to": "workspaces/designer/animations.ts"
+    },
+    {
+      "from": "workspaces/designer/sections/Gallery.tsx",
+      "to": "workspaces/designer/persisted.ts"
     },
     {
       "from": "workspaces/designer/sections/Gallery.tsx",
@@ -3090,7 +3098,7 @@
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
       "dependents": 41,
-      "directDependents": 30
+      "directDependents": 31
     },
     {
       "id": "_components/Avatar.tsx",
@@ -3168,7 +3176,7 @@
       "id": "workspaces/designer/persisted.ts",
       "kind": "other",
       "dependents": 8,
-      "directDependents": 1
+      "directDependents": 2
     },
     {
       "id": "_components/editor/editorThemes.ts",

@@ -5,15 +5,17 @@
 //? path). Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the whole
 //? subtree re-themes; `--ds-*` (radius/shadow) drive the shapes via inline style.
 
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 
 import { motion } from 'motion/react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { useTranslator, i18nNotify as notify, apiRequest, tryCatch } from '@luckystack/core/client';
 
+import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import Icon from '../../_components/Icon';
 import { WsButton } from '../../_components/primitives';
-import { PREMADE_LOOKS, resolveLook, type ResolvedLook } from '../premades';
+import { PREMADE_LOOKS, resolveLook, lookToArtifacts, type ResolvedLook } from '../premades';
+import { validArtifactContent } from '../persisted';
 import { SEED_ANIMS, animFrom, ANIM_TO, animTransition } from '../animations';
 import { themeVars } from '../themes';
 import { styleVars } from '../styles';
@@ -84,12 +86,20 @@ function LookPreview({ resolved, mode, compact, replayKey }: { resolved: Resolve
   );
 }
 
+//? L3 — persist one artifact via the designerLibrary save op. Returns ok.
+async function saveArtifact(workspaceId: string, artifact: { kind: string; name: string; content: unknown }): Promise<boolean> {
+  const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
+  return !err && res?.status === 'success';
+}
+
 export default function Gallery() {
   const translate = useTranslator();
   const d = useDesigner();
+  const { activeWorkspace, refetch } = useWorkspaces();
   const [selectedId, setSelectedId] = useState(PREMADE_LOOKS[0]?.id ?? '');
   const [replay, setReplay] = useState(0);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const selected = resolveLook(selectedId);
 
   const useLook = (): void => {
@@ -100,11 +110,38 @@ export default function Gallery() {
     void Promise.all([d.useInProject('theme'), d.useInProject('style')]).then(() => { setBusy(false); });
   };
 
+  //? L3 — save a COPY of the premade (its theme + style artifacts) into the workspace library (customizable).
+  const copyLook = (): void => {
+    if (!selected || busy) return;
+    setBusy(true);
+    void Promise.all(lookToArtifacts(selected).map((a) => saveArtifact(activeWorkspace.id, a)))
+      .then((oks) => { notify[oks.every(Boolean) ? 'success' : 'error']({ key: oks.every(Boolean) ? 'workspaces.gallery.copied' : 'workspaces.gallery.copyFailed' }); refetch(); setBusy(false); });
+  };
+
+  //? L3 — import a theme/style/animation JSON ({ kind, name, content }) → validate → save. Bad JSON is refused.
+  const onImportFile = (file: File): void => {
+    void (async () => {
+      const text = await file.text();
+      const [err, raw] = await tryCatch(() => Promise.resolve(JSON.parse(text) as unknown));
+      const parsed = (!err && raw !== null && typeof raw === 'object') ? raw as { kind?: unknown; name?: unknown; content?: unknown } : null;
+      const kind = typeof parsed?.kind === 'string' ? parsed.kind : '';
+      const name = typeof parsed?.name === 'string' ? parsed.name : '';
+      if (!parsed || name.trim().length === 0 || !validArtifactContent(kind, parsed.content, name)) { notify.error({ key: 'workspaces.gallery.importFailed' }); return; }
+      const ok = await saveArtifact(activeWorkspace.id, { kind, name, content: parsed.content });
+      notify[ok ? 'success' : 'error']({ key: ok ? 'workspaces.gallery.imported' : 'workspaces.gallery.importFailed' });
+      if (ok) refetch();
+    })();
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.gallery.title' })}</div>
-        <p className="text-sm text-muted">{translate({ key: 'workspaces.gallery.subtitle' })}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.gallery.title' })}</div>
+          <p className="text-sm text-muted">{translate({ key: 'workspaces.gallery.subtitle' })}</p>
+        </div>
+        <WsButton variant="ghost" icon="up-right-from-square" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.gallery.import' })}</WsButton>
+        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = ''; }} />
       </div>
       {/* catalog grid — compact thumbnails */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -129,6 +166,7 @@ export default function Gallery() {
             <div className="text-sm font-medium text-title">{selected.look.name}</div>
             <div className="flex items-center gap-2">
               <WsButton variant="ghost" icon="bolt" onClick={() => { setReplay((v) => v + 1); }}>{translate({ key: 'workspaces.gallery.replay' })}</WsButton>
+              <WsButton variant="ghost" icon="copy" onClick={copyLook} disabled={busy}>{translate({ key: 'workspaces.gallery.copy' })}</WsButton>
               <WsButton icon={busy ? 'spinner' : 'check'} onClick={useLook}>{translate({ key: 'workspaces.gallery.use' })}</WsButton>
             </div>
           </div>

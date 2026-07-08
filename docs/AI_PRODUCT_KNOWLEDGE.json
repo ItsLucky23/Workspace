@@ -1,6 +1,6 @@
 {
-  "hash": "23be31a8546081ce",
-  "chunkCount": 182,
+  "hash": "5dc2ea3ed45e97a8",
+  "chunkCount": 183,
   "chunks": [
     {
       "id": "cap-001",
@@ -1093,6 +1093,12 @@
       "kind": "decision",
       "title": "L2 — designer persistence round-trip (consume the snapshot's designArtifacts)",
       "text": "ADR 0254: L2 — designer persistence round-trip (consume the snapshot's designArtifacts). The Designer's libraries (themes/styles/anims) were client-held `useState` seeded from `SEED_*`. Saving a look wrote a `DesignArtifact` (save + setActive), but nothing loaded them BACK — persistence was one-directional, so a saved theme vanished on reload and never appeared in the gallery/rails. The snapshot already exposes the full `designArtifacts` rows (content included); they were consumed only for the active name. Decision: - **Consume the existing snapshot `designArtifacts` — no new `list`/`load` op.** The snapshot IS the list. `persisted.ts` parses each row back into the typed shape (`artifactToTheme`/`Style`/`Anim` + a `parsePersistedLibraries` splitter), defensively: a malformed/half-set row coerces to null (never crashes the designer). The content shapes match what `useInProject` writes (`{light,dark}` for a theme, the full spec for a style/anim). - **`state.tsx` merges the persisted artifacts into the libraries** via a `useEffect` on `designArtifacts`, appending by id (idempotent), never clobbering unsaved local edits. So a saved look reappears on reload AND live right after saving (refetch → the effect re-runs)."
+    },
+    {
+      "id": "adr-0255",
+      "kind": "decision",
+      "title": "L3 — designer import / copy / customize / delete",
+      "text": "ADR 0255: L3 — designer import / copy / customize / delete. L1 gave a premade-look gallery and L2 the persistence round-trip. L3 lets a user make the library their own: copy a premade into their workspace, import a theme/style JSON, customize it, and delete their own. Decision: - **Copy a premade → workspace artifacts.** `lookToArtifacts(resolved)` produces a theme artifact (its palette) + a style artifact (its component spec with the look's fonts baked in), saved via the existing `designerLibrary` `save` op. They round-trip (L2) into the editable rails, so \"copy\" = \"make it mine\". - **Import a theme/style/anim JSON.** A file picker in the gallery reads the JSON, and **`validArtifactContent` (pure, reuses the L2 coercion) refuses anything that isn't a real theme/style/anim** before saving — a garbage upload can't poison the library. Reuses `save`; no new op. - **Customize + delete reuse existing surfaces.** Rail edits (rename/duplicate/token-edit) now persist through L2; delete is the existing per-workspace `deleteDesignArtifact` (premades/seeds stay read-only)."
     }
   ]
 }
