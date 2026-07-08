@@ -3260,3 +3260,10 @@ H6 (docs-only): `src/workspaces/_docs/ONBOARDING.md` — nieuwe-team/admin-onboa
 - **R3-b** — volledige `repoStore`/`runtime` `bareRepoPath` per-project re-key: groot cross-cutting op het core-git-pad; half-gedaan = inconsistent + Docker-verify nodig → aparte veilige ronde.
 - **Live-Docker/keys** (user-triggered): stack-image-builds, `compose up`, echte CI/preview-run, live publish + analytics-fetch. Alles structuur/fixture-getest, nooit geblokkeerd op een key.
 - **Kleine wirings**: download-knop-UI (H4-bundle→file), enforce-hook per-user-budget (H2), topPerformers→ideator-prompt (C3), stage-editor-knoppen→R1-ops.
+
+## 2026-07-08 — Full-suite e2e-run: 181/182 groen + 2 test-fixes
+Volledige `runWsTests` (182 bestanden) na de ADOPTION-run: **179 direct groen**, 3 rood → onderzocht:
+- **memberRoles** (ECHTE regressie van F3): de test verwachtte het OUDE, raadbare invite-token `inv-<clientRequestId>`; F3's hardening maakte er een crypto-random secret van (precies de fix). Test aangepast: vind de invite via de unieke e-mail + assert dat het token GEEN `inv-`-prefix heeft (borgt de hardening). → 8/8.
+- **mediaRegistry** (PRE-EXISTING drift, NIET van deze run): commit `7cd3995` (FREEDOM_PROGRAM E1) voegde een 9e MediaFeature `inpaint` toe zonder de test-count te updaten; de per-item-gate draaide toen niet dit bestand. Legitieme feature → count 8→9. → 18/18.
+- **tests/e2e/httpControl** (GEEN regressie): e2e-test die de dev-server op poort 80 vereist (ECONNREFUSED); server-start is een developer-action (Rule 8) → kan niet draaien zonder `npm run server`. Buiten scope van een backend-run.
+**Eindstand: 181/182 groen; de enige rode is de server-afhankelijke e2e (draait groen zodra de dev-server aanstaat).**

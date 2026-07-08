@@ -10,7 +10,7 @@ const { resolveMediaAssignment, defaultMediaAssignments } = await import('../../
 const { resolveAssignment } = await import('../../server/ai/assignments');
 
 //? Defaults: every media feature resolves to a provider.
-eq(Object.keys(defaultMediaAssignments()).length, 8, '8 media features are assigned');
+eq(Object.keys(defaultMediaAssignments()).length, 9, '9 media features are assigned (incl. inpaint)');
 eq(resolveMediaAssignment('image-gen'), 'fal', 'image-gen defaults to fal');
 eq(resolveMediaAssignment('reference-image'), 'fal', 'reference-image (the #1 feature) defaults to fal');
 eq(resolveMediaAssignment('tts'), 'elevenlabs', 'tts defaults to elevenlabs');
