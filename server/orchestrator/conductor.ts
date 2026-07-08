@@ -1546,7 +1546,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const assetId = str(payload, 'assetId');
       const platform = str(payload, 'platform');
       if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
-      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform } } });
+      //? C1 — an optional `scheduledAt` (ISO) parks the post for later; the leader loop (runScheduledPublish)
+      //? fires it when due. Only kept when it is a valid FUTURE timestamp, else it publishes on accept.
+      const schedRaw = str(payload, 'scheduledAt');
+      const schedMs = schedRaw ? Date.parse(schedRaw) : Number.NaN;
+      const scheduledAt = Number.isFinite(schedMs) && schedMs > Date.now() ? new Date(schedMs).toISOString() : null;
+      const title = scheduledAt ? `Schedule for ${platform}` : `Publish to ${platform}`;
+      const body = scheduledAt ? `Schedule this content for ${platform} at ${scheduledAt}?` : `Ready to publish this content to ${platform}? This is public and hard to undo.`;
+      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title, body, patch: { contentProjectId, assetId, platform, ...(scheduledAt ? { scheduledAt } : {}) } } });
     }
     //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
     //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the
@@ -1674,7 +1681,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const contentProjectId = typeof p.contentProjectId === 'string' ? p.contentProjectId : '';
         const assetId = typeof p.assetId === 'string' ? p.assetId : '';
         const platform = typeof p.platform === 'string' ? p.platform : '';
-        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform });
+        //? C1 — honour a scheduled post: parse the patch's `scheduledAt`; publishAsset parks it as a 'scheduled'
+        //? PublishJob the leader loop fires when due (else it posts now).
+        const schedMs = typeof p.scheduledAt === 'string' ? Date.parse(p.scheduledAt) : Number.NaN;
+        const scheduledAt = Number.isFinite(schedMs) ? new Date(schedMs) : null;
+        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, scheduledAt });
       }
       return;
     }
