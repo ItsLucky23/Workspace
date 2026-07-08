@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (46)
+## API routes (47)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,7 @@
 | `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
 | `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
 | `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/auditLog/v1` | POST | login | 12 | — | **no** | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
 | `api/workspaces/brandExport/v1` | POST | login | 30 | — | **no** | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
 | `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
 | `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
@@ -126,9 +127,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 100 |
+| _(unowned)_ | 101 |
 
-**Test coverage**: 3/102 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/103 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -145,6 +146,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/settings/updateUser/v1`
 - `api/workspaces/acceptInvite/v1`
 - `api/workspaces/aiChat/v1`
+- `api/workspaces/auditLog/v1`
 - `api/workspaces/brandExport/v1`
 - `api/workspaces/brandImport/v1`
 - `api/workspaces/buildProjectImage/v1`
@@ -181,8 +183,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/agentControl/v1`
 - `sync/workspaces/answerInput/v1`
 - `sync/workspaces/archive/v1`
-- `sync/workspaces/bulkArchive/v1`
-- … +49 more
+- … +50 more
 
 ## Pages (28)
 

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (165)
+## Decisions (166)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -178,6 +178,7 @@
 | 0164 | T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref) | 🟢 accepted | preview, container, git, time-travel, adoption | — | `docs/decisions/0164-ref-preview-ephemeral-container.md` |
 | 0165 | S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard) | 🟢 accepted | container, any-stack, base-image, dockerfile, adoption, schema | — | `docs/decisions/0165-multi-base-stack-catalog.md` |
 | 0166 | K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine | 🟢 accepted | container, services, compose, security, multi-tenancy, adoption, schema | — | `docs/decisions/0166-compose-engine-services.md` |
+| 0167 | H1 — an append-only admin/security audit log for governance ops | 🟢 accepted | governance, audit, security, team-trust, adoption, schema | — | `docs/decisions/0167-governance-audit-log.md` |
 
 ## Summaries
 
@@ -1502,6 +1503,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A compose-ENGINE, not a fixed catalog.** A workspace attaches an arbitrary docker-compose file (`service-provision` control-op). K2 presets are curated compose snippets on top; the engine is the core. **Fail-closed SANITIZER (K1-a, `composeSanitize`)** gates every compose before it is stored or run: host-escape directives (`privileged`, `cap_add`, `devices`, `security_opt`, host bind-mounts, `/var/run/docker.sock`, `network_mode|pid|ipc: host`) REJECT the file (structural parse via the dep-free `parseYamlSubset` + a raw-text scan that catches flow-style); published host ports are REWRITTEN to container-only (no cross-workspace port collision — services are reached intra-network by name). **Per-workspace namespacing (K1-b, `composeEngine`)**: the compose runs under project `ws-<id>-<name>` on an EXTERNAL per-workspace network `ws-<id>-svc` injected into the compose (so the app/preview container + the services share one net); Docker prefixes volumes by project. Two workspaces' stacks can never collide. **`ServiceStack` model** stores the SANITIZED compose + service names + status; the Conductor is the only writer (`service-provision`/`service-teardown`, `workspaceSettings`-gated). The docker calls take an injectable runner (unit/integration-tested without a daemon).
 
 → `docs/decisions/0166-compose-engine-services.md`
+
+### 0167 — H1 — an append-only admin/security audit log for governance ops
+
+**0167** · accepted · tags: governance, audit, security, team-trust, adoption, schema · 2026-07-08
+
+**A dedicated append-only `AuditLog`** (`{workspaceId, actorId, action, target, metadata, createdAt}`), separate from `TicketEvent` (which is per-ticket + seq-ordered). A pure `recordAudit(prisma, ws, actorId, action, target?, meta?)` helper — best-effort (a failure NEVER breaks the op; the authoritative write already ran) — is called at the END of each governance conductor case, on the Conductor (the only writer, B-23). **Never log the secret VALUE** — `save-env` records the KEY + `{secret: true}`, never the plaintext; the metadata carries only safe context (old→new role, invited email + role). **A read view** (`listAuditLog` + `audit-log_v1` `_api`, `workspaceSettings`-gated) returns the entries newest-first with the actor's name resolved, tenant-scoped.
+
+→ `docs/decisions/0167-governance-audit-log.md`
 
 ## Code governed by decisions
 

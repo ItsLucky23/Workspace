@@ -62,6 +62,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | Y1 activity-presence-core (status-drempels + aggregatie) | ✅ | — | presence-unit 11/11 (DOM-streaming-engine/overlay-UI/ultrasync.watch-RBAC/screen-share = browser-ronde) |
 | C1 scheduling bruikbaar (scheduledAt door request→accept→scheduled-job) | ✅ | — | scheduledContentPublish-integratie 8/8 · scheduledPublish-regressie 9/9 (calendar-UI = browser-follow-up) |
 | C3 audience-analytics ingest + feedback (fixtures nu, live later) | ✅ | — | publishMetrics-unit 15/15 · ingest-integratie · publishReal-regressie 20/20 |
+| H1 admin/security audit-log (governance-ops → AuditLog) | ✅ | 0167 | auditLog-integratie 10/10 |
 
 ---
 

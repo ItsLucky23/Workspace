@@ -322,6 +322,22 @@ model UiReviewRequest {
   @@index([workspaceId, status])
 }
 
+//? H1 — the admin/security AUDIT LOG. The audit found governance ops (role changes, secret read/writes, member
+//? removal, ownership transfer, workspace deletion, invites) left ZERO trace — an admin couldn't answer "who did
+//? what". This append-only log records every such op: WHO (actor userId), WHAT (action), on WHICH target, WHEN.
+//? Conductor-only writer (the ops it records already run there).
+model AuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  actorId     String?  @db.ObjectId               // the user who performed it (null = system)
+  action      String                              // e.g. 'change-role' | 'save-env' | 'remove-member' | 'transfer-ownership'
+  target      String?                             // the affected entity (member id / env key / role key …)
+  metadata    Json?                               // extra context (old→new role, etc.) — never the secret VALUE
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
 //? Per-project forge connection (ADR 0036, item A2 — GitHubForge). Generalizes the
 //? workspace GitLab fields (`Workspace.forgeType`/`gitlabUrl`/`gitlabTokenEnc`) to a
 //? PER-PROJECT row so a workspace can mix GitLab + GitHub projects (multi-project, ADR

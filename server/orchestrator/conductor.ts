@@ -56,6 +56,7 @@ import { dockerAvailable } from '../container/runtime';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
 import { presetCompose } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
+import { recordAudit } from '../control/audit';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
@@ -534,6 +535,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const roleKey = str(payload, 'roleKey') ?? str(payload, 'role');
       if (!memberId || !roleKey) return;
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey } });
+      await recordAudit(prisma, action.workspaceId, userId, 'change-role', memberId, { roleKey });
       return;
     }
     case 'save-env': {
@@ -546,14 +548,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const stored = secret ? encryptSecret(value) : value;
       const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key } });
       //? Return the upserted row so the realtime `_sync` route broadcasts the delta.
-      return existing
+      const row = await (existing
         ? prisma.envVar.update({ where: { id: existing.id }, data: { value: stored, secret } })
-        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } });
+        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } }));
+      //? H1 — audit the fact + the key (never the secret VALUE).
+      await recordAudit(prisma, action.workspaceId, userId, 'save-env', key, { secret });
+      return row;
     }
     case 'remove-env': {
       const envId = str(target, 'envId');
       if (!envId) return;
       await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, id: envId } });
+      await recordAudit(prisma, action.workspaceId, userId, 'remove-env', envId);
       return;
     }
     case 'rename-workspace': {
@@ -704,7 +710,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     // ---- members / RBAC / workspace lifecycle ----
     case 'remove-member': {
       const memberId = str(target, 'memberId');
-      if (memberId) await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+      if (memberId) {
+        await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+        await recordAudit(prisma, action.workspaceId, userId, 'remove-member', memberId);
+      }
       return;
     }
     case 'transfer-ownership': {
@@ -713,9 +722,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ownerId: memberId } });
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { roleKey: 'admin' } });
+      await recordAudit(prisma, action.workspaceId, userId, 'transfer-ownership', memberId, { from: userId });
       return;
     }
     case 'delete-workspace': {
+      //? H1 — record BEFORE the cascade wipes the workspace (the row lives under it; a durable copy would need an
+      //? out-of-tenant sink — noted). The intent is audited even though the log is deleted with the workspace.
+      await recordAudit(prisma, action.workspaceId, userId, 'delete-workspace', action.workspaceId);
       await cascadeDeleteWorkspace(action.workspaceId);
       return;
     }
@@ -733,6 +746,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (label) data.label = label;
       if (Array.isArray(payload.perms)) data.perms = boolArr(payload, 'perms');
       await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
+      await recordAudit(prisma, action.workspaceId, userId, 'role-update', key, { ...(label ? { label } : {}), ...(Array.isArray(payload.perms) ? { permsChanged: true } : {}) });
       //? Return the updated role so the realtime `_sync` route broadcasts the delta.
       return prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key } });
     }
@@ -758,6 +772,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         create: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt },
         update: { roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt, acceptedAt: null },
       });
+      await recordAudit(prisma, action.workspaceId, userId, 'invite', email, { roleKey: str(payload, 'roleKey') ?? 'member' });
       //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
       //? unconfigured) — never block or fail the authoritative write on delivery.
       const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
