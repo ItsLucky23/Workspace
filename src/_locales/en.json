@@ -716,7 +716,7 @@
       "createWorkspace": "Create workspace",
       "manageMembers": "Manage members",
       "projects": "Projects",
-      "createProject": "New project",
+      "createProject": "New project", "fromTemplate": "From a template", "linkRepo": "Link a repo",
       "projectNamePh": "Project name",
       "projectGitUrlPh": "Git URL (optional)",
       "services": "Services",

@@ -716,7 +716,7 @@
       "createWorkspace": "Workspace aanmaken",
       "manageMembers": "Leden beheren",
       "projects": "Projecten",
-      "createProject": "Nieuw project",
+      "createProject": "Nieuw project", "fromTemplate": "Uit een template", "linkRepo": "Repo koppelen",
       "projectNamePh": "Projectnaam",
       "projectGitUrlPh": "Git-URL (optioneel)",
       "services": "Services",

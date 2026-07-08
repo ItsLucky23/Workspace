@@ -343,30 +343,57 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSec
   );
 }
 
-//? Multi-project (ADR 0035): create a new project in the active workspace (name +
-//? optional git URL). The Conductor seeds its own default pipeline; the client
-//? refetches + can switch to it.
+//? Multi-project (ADR 0035) + G2 greenfield wizard: create a new project in the active workspace. Two modes:
+//? "From a template" (greenfield — picks a stack template → `createFromTemplate`, which inits a real repo +
+//? seed tree, G1) or "Link a repo" (name + git URL → `createProject`). The Conductor seeds the default
+//? pipeline; the client refetches + can switch to it.
 function CreateProjectForm({ onCreate }: { onCreate: (input: { name: string; gitUrl?: string }) => void }) {
   const translate = useTranslator();
+  const { templates, createFromTemplate } = useWorkspaces();
+  const [mode, setMode] = useState<'template' | 'link'>('template');
   const [name, setName] = useState('');
   const [gitUrl, setGitUrl] = useState('');
-  const submit = () => { const n = name.trim(); if (!n) return; onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) }); void menuHandler.close(); };
+  const [template, setTemplate] = useState(templates[0]?.key ?? '');
+  const canSubmit = name.trim().length > 0 && (mode === 'link' || template.length > 0);
+  const submit = () => {
+    const n = name.trim();
+    if (!n) return;
+    if (mode === 'template') { if (template.length === 0) return; createFromTemplate({ name: n, template }); }
+    else onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) });
+    void menuHandler.close();
+  };
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createProject' })}</div>
+      {/* G2 — mode toggle: greenfield template vs link an existing repo. */}
+      <div className="flex items-center gap-1 rounded-lg bg-container2/60 p-1">
+        <button type="button" onClick={() => { setMode('template'); }} className={`flex-1 rounded-md px-3 py-1.5 text-sm cursor-pointer ${mode === 'template' ? 'bg-primary text-common-primary' : 'text-common hover:bg-container2'}`}>{translate({ key: 'workspaces.shell.fromTemplate' })}</button>
+        <button type="button" onClick={() => { setMode('link'); }} className={`flex-1 rounded-md px-3 py-1.5 text-sm cursor-pointer ${mode === 'link' ? 'bg-primary text-common-primary' : 'text-common hover:bg-container2'}`}>{translate({ key: 'workspaces.shell.linkRepo' })}</button>
+      </div>
       <input
         value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         placeholder={translate({ key: 'workspaces.shell.projectNamePh' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
-      <input
-        value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder={translate({ key: 'workspaces.shell.projectGitUrlPh' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
+      {mode === 'template' ? (
+        <div className="flex flex-col gap-2">
+          {templates.map((t) => (
+            <button key={t.key} type="button" onClick={() => { setTemplate(t.key); }} className={`flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left cursor-pointer ${template === t.key ? 'border-primary bg-primary/10' : 'border-container1-border bg-container2/50 hover:bg-container2'}`}>
+              <span className="text-sm font-medium text-title">{t.label}</span>
+              <span className="text-xs text-muted">{t.description}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <input
+          value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+          placeholder={translate({ key: 'workspaces.shell.projectGitUrlPh' })}
+          className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+        />
+      )}
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
+        <WsButton icon="plus" onClick={submit} disabled={!canSubmit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
       </div>
     </div>
   );

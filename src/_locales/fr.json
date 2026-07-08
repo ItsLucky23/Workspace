@@ -716,7 +716,7 @@
       "createWorkspace": "Créer un workspace",
       "manageMembers": "Gérer les membres",
       "projects": "Projets",
-      "createProject": "Nouveau projet",
+      "createProject": "Nouveau projet", "fromTemplate": "À partir d'un modèle", "linkRepo": "Lier un dépôt",
       "projectNamePh": "Nom du projet",
       "projectGitUrlPh": "URL Git (facultatif)",
       "services": "Services",

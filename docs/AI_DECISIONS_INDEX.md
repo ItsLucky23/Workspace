@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (158)
+## Decisions (159)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -171,6 +171,7 @@
 | 0157 | D4 — prod build-export (bundle) + external deploy-hook | 🟢 accepted | deploy, export, ci-cd, docker, idea-to-outcome | — | `docs/decisions/0157-prod-build-export-deploy-hook.md` |
 | 0158 | D3 — demo-host (main on a DNS) + auto-redeploy watcher | 🟢 accepted | deploy, demo, environments, watcher, idea-to-outcome | — | `docs/decisions/0158-demo-host-auto-redeploy.md` |
 | 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
+| 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 
 ## Summaries
 
@@ -1439,6 +1440,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Templates carry a seed `files` tree** (`StarterFile[]`) — a minimal but runnable skeleton per stack (package.json + entry + config + README + .gitignore for node-api / react-vite; requirements.txt + app/main .py for fastapi). Not a full app: the starting point the impl-stage agent fleshes out. **`initGreenfieldRepo(workspaceId, files)` in repoStore** writes the tree into a temp checkout, `git init -b main` + a self-contained identity + commit, then `git clone --bare` into the durable per-workspace `repo.git`. `isLinked` flips true → the existing worktree/container path just works (container → code). It is a **no-op when a repo already exists** (never clobber a linked repo), and self-contained (no external forge, no network). **`project-from-template` calls it best-effort** and stamps the project `gitUrl: greenfield://<workspaceId>` when it linked, so the UI/status treats it as a linked project. A git failure logs + leaves the project unlinked (the row + pipeline still exist).
 
 → `docs/decisions/0159-greenfield-repo-gen.md`
+
+### 0160 — G2 — greenfield template-wizard UI
+
+**0160** · accepted · tags: greenfield, ui, wizard, scaffold, idea-to-outcome · 2026-07-08
+
+**Extend the existing `CreateProjectForm`** (the "New project" menu off the project switcher) with a two-mode toggle: **From a template** (greenfield — a stack-template picker → `createFromTemplate`, which runs G1's real-repo init) and **Link a repo** (the pre-existing name + git-URL → `createProject`). Template mode is the default (greenfield-first). **The picker is driven by the snapshot `templates`** (label + description cards, single-select). Submit branches on mode; the create button disables until a name (and, in template mode, a template) is chosen. **No new op, no new screen file.** The wizard is the create-project menu the switcher already opens, so it works for the first project and every later one.
+
+→ `docs/decisions/0160-greenfield-wizard-ui.md`
 
 ## Code governed by decisions
 
