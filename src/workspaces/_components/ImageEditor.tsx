@@ -54,6 +54,7 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
   const [sepia, setSepia] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [resizeKey, setResizeKey] = useState('original');
+  const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEscapeKey(onClose);
@@ -189,18 +190,29 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
           <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.imageEditor.title' })}</div>
           <button type="button" onClick={onClose} className="text-muted hover:text-title cursor-pointer"><Icon name="xmark" /></button>
         </div>
-        <div className="flex items-center justify-center rounded-xl border border-container1-border bg-container1 p-2 overflow-auto">
-          <canvas ref={canvasElRef} className="rounded-lg" />
+        {/* B3 — in-canvas variation-compare: the ORIGINAL asset side-by-side with the live edit. */}
+        <div className="flex items-stretch justify-center gap-2 rounded-xl border border-container1-border bg-container1 p-2 overflow-auto">
+          {compare && (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.imageEditor.original' })}</span>
+              <img src={asset.url} alt="" className="rounded-lg max-h-[70vh] object-contain" />
+            </div>
+          )}
+          <div className="flex flex-col items-center gap-1">
+            {compare && <span className="text-xs text-muted">{translate({ key: 'workspaces.imageEditor.edited' })}</span>}
+            <canvas ref={canvasElRef} className="rounded-lg" />
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           {slider(translate({ key: 'workspaces.imageEditor.brightness' }), brightness, setBrightness)}
           {slider(translate({ key: 'workspaces.imageEditor.contrast' }), contrast, setContrast)}
           {slider(translate({ key: 'workspaces.imageEditor.saturation' }), saturation, setSaturation)}
         </div>
-        {/* B3 — one-tap look filters. */}
+        {/* B3 — one-tap look filters + the compare toggle. */}
         <div className="flex items-center gap-2">
           <WsButton variant={grayscale ? 'primary' : 'ghost'} onClick={() => { setGrayscale((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.grayscale' })}</WsButton>
           <WsButton variant={sepia ? 'primary' : 'ghost'} onClick={() => { setSepia((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.sepia' })}</WsButton>
+          <WsButton variant={compare ? 'primary' : 'ghost'} icon="eye" onClick={() => { setCompare((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.compare' })}</WsButton>
         </div>
         {/* B1 — crop toggle + resize preset. */}
         <div className="flex items-center gap-2">
