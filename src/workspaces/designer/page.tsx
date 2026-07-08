@@ -19,11 +19,13 @@ import Styles from './sections/Styles';
 import Animations from './sections/Animations';
 import Themes from './sections/Themes';
 import Typography from './sections/Typography';
+import Gallery from './sections/Gallery';
 
 export const template = 'workspaces';
 
-type SectionId = 'components' | 'styles' | 'animations' | 'themes' | 'typography';
+type SectionId = 'gallery' | 'components' | 'styles' | 'animations' | 'themes' | 'typography';
 const SECTIONS: { id: SectionId; icon: IconName }[] = [
+  { id: 'gallery', icon: 'table-cells-large' },
   { id: 'components', icon: 'grip' },
   { id: 'styles', icon: 'wand-magic-sparkles' },
   { id: 'animations', icon: 'wave-square' },
@@ -45,7 +47,7 @@ const AI_SECTIONS = new Set<SectionId>(['themes', 'styles', 'animations']);
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const [section, setSection] = useState<SectionId>('components');
+  const [section, setSection] = useState<SectionId>('gallery');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState(false);
@@ -132,6 +134,7 @@ function DesignerShell() {
 
       {/* active section */}
       <div className="flex-1 min-h-0">
+        {section === 'gallery' && <Gallery />}
         {section === 'components' && <Components />}
         {section === 'styles' && <Styles />}
         {section === 'animations' && <Animations />}

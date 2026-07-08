@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (163)
+## Decisions (164)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -176,6 +176,7 @@
 | 0250 | Q1 — product self-knowledge corpus (generator) | 🟢 accepted | ai, rag, self-knowledge, capabilities, ai-libraries-accounts | — | `docs/decisions/0250-product-self-knowledge-corpus.md` |
 | 0251 | Q2 — product-knowledge RAG corpus (global, behind the existing retrieve) | 🟢 accepted | ai, rag, self-knowledge, retrieval, ai-libraries-accounts | — | `docs/decisions/0251-product-knowledge-rag-corpus.md` |
 | 0252 | Q3 — wire product self-knowledge into the Workspace-AI + every feature | 🟢 accepted | ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts | — | `docs/decisions/0252-wire-product-knowledge-into-ai.md` |
+| 0253 | L1 — premade UI-look gallery (curated combos over the existing seeds) | 🟢 accepted | design, gallery, themes, ui, ai-libraries-accounts | — | `docs/decisions/0253-premade-look-gallery.md` |
 
 ## Summaries
 
@@ -1484,6 +1485,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **`workspaceChat.interpretChat` retrieves the product corpus** (`retrieveProductKnowledge(message, 4)`) alongside the existing code-RAG, and injects it into the system prompt as a SEPARATE "What THIS product can do" section — deliberately distinct from the user-code section so the model never confuses product capabilities with the user's repository. A new instruction tells it to answer whether/how questions from that section (name the module + steps) and, when a first step maps to an op, propose it. **A compact global capability index in `registry.workspaceAiPrefix`/`runAiCompletion`** — the capability TITLES (not the full corpus), read once from the compiled shard + cached, prepended to EVERY feature's system prompt at the single choke-point. So the whole AI surface is product-aware, cheaply (~15 lines), with the detail retrieved on demand in chat. **B-23 unchanged.** The assistant still only proposes; the Conductor is the single writer.
 
 → `docs/decisions/0252-wire-product-knowledge-into-ai.md`
+
+### 0253 — L1 — premade UI-look gallery (curated combos over the existing seeds)
+
+**0253** · accepted · tags: design, gallery, themes, ui, ai-libraries-accounts · 2026-07-08
+
+**A premade-look catalog as curated COMBINATIONS of the existing seeds** (`premades.ts`): a "look" pairs a seed palette + a seed style + an animation + heading/body fonts. Eight starter looks (Apple, Material, Glass, Brutalist, Minimal, Editorial, Playful, Neumorphic) — a strong STARTER that upload/copy/customize (L3) extends. Pure data + a `resolveLook` resolver; no new palette authoring. **A `Gallery` section** (now the Designer's default tab) renders the catalog as thumbnails and, for the selected look, live preview SURFACES under the look's vars: a nav menu, a landing hero, a card row, a replayable entrance animation (motion/react + the seed AnimSpec), and a font showcase. Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the subtree re-themes; `--ds-*` drives the shapes. "Use this look" applies its theme + style via the existing persist path.
+
+→ `docs/decisions/0253-premade-look-gallery.md`
 
 ## Code governed by decisions
 

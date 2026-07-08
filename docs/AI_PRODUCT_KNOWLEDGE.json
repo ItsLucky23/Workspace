@@ -1,6 +1,6 @@
 {
-  "hash": "de1774f145000b99",
-  "chunkCount": 180,
+  "hash": "69349eb025bd6434",
+  "chunkCount": 181,
   "chunks": [
     {
       "id": "cap-001",
@@ -1081,6 +1081,12 @@
       "kind": "decision",
       "title": "Q3 — wire product self-knowledge into the Workspace-AI + every feature",
       "text": "ADR 0252: Q3 — wire product self-knowledge into the Workspace-AI + every feature. Q1 compiled the product's self-knowledge and Q2 made it retrievable, but nothing consumed it yet. Q3 wires it into the in-app AI so it actually answers \"can we edit videos?\" from the corpus. Decision: - **`workspaceChat.interpretChat` retrieves the product corpus** (`retrieveProductKnowledge(message, 4)`) alongside the existing code-RAG, and injects it into the system prompt as a SEPARATE \"What THIS product can do\" section — deliberately distinct from the user-code section so the model never confuses product capabilities with the user's repository. A new instruction tells it to answer whether/how questions from that section (name the module + steps) and, when a first step maps to an op, propose it. - **A compact global capability index in `registry.workspaceAiPrefix`/`runAiCompletion`** — the capability TITLES (not the full corpus), read once from the compiled shard + cached, prepended to EVERY feature's system prompt at the single choke-point. So the whole AI surface is product-aware, cheaply (~15 lines), with the detail retrieved on demand in chat. - **B-23 unchanged.** The assistant still only proposes; the Conductor is the single writer."
+    },
+    {
+      "id": "adr-0253",
+      "kind": "decision",
+      "title": "L1 — premade UI-look gallery (curated combos over the existing seeds)",
+      "text": "ADR 0253: L1 — premade UI-look gallery (curated combos over the existing seeds). The Designer module already had the building blocks — palettes (DesignTheme), component styles (DesignStyle, incl. Apple/Material/Glass/Brutalist), animations, fonts — with live-preview via `themeVars`/`styleVars`. But there was no curated CATALOG of ready-made looks to browse + apply, and no rich preview surfaces (a real landing/menu/animation/font showcase). L1 adds that reference gallery. Decision: - **A premade-look catalog as curated COMBINATIONS of the existing seeds** (`premades.ts`): a \"look\" pairs a seed palette + a seed style + an animation + heading/body fonts. Eight starter looks (Apple, Material, Glass, Brutalist, Minimal, Editorial, Playful, Neumorphic) — a strong STARTER that upload/copy/customize (L3) extends. Pure data + a `resolveLook` resolver; no new palette authoring. - **A `Gallery` section** (now the Designer's default tab) renders the catalog as thumbnails and, for the selected look, live preview SURFACES under the look's vars: a nav menu, a landing hero, a card row, a replayable entrance animation (motion/react + the seed AnimSpec), and a font showcase. Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the subtree re-themes; `--ds-*` drives the shapes. \"Use this look\" applies its theme + style via the existing persist path."
     }
   ]
 }
