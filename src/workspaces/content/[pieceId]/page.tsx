@@ -40,6 +40,9 @@ function assetHref(url: string): string | null {
 //? `perItem` = the cost is per produced unit (per-beat images), shown as "≈ €X / item".
 interface GenAction { op: string; labelKey: string; icon: IconName; needsRef?: boolean; needsPrompt?: boolean; costFeature?: string; perItem?: boolean }
 const ACTIONS: GenAction[] = [
+  //? M1/M3 — the one-shot whole-video pipeline (script → voice → styled scenes → assemble). This is the ONLY
+  //? op that consumes the style picker + the length picker (styleKey + durationMs), so it must be reachable.
+  { op: 'content-run-pipeline', labelKey: 'workspaces.content.actPipeline', icon: 'wand-magic-sparkles', costFeature: 'video-gen' },
   { op: 'content-gen-script', labelKey: 'workspaces.content.actScript', icon: 'file-lines' },
   { op: 'content-gen-voice', labelKey: 'workspaces.content.actVoice', icon: 'wave-square', costFeature: 'tts' },
   { op: 'content-gen-images', labelKey: 'workspaces.content.actImages', icon: 'table-cells-large', costFeature: 'image-gen', perItem: true },
@@ -222,9 +225,13 @@ export default function ContentPiece({ params }: { params: Record<string, string
       if (extra.trim()) payload.extraInstructions = extra.trim();
       if (action.needsPrompt) payload.prompt = extra.trim() || piece.title;
       if (action.needsRef && referenceUrl.trim()) payload.referenceUrl = referenceUrl.trim();
-      //? M3 — a target duration drives the long-form beat/scene planner (content-run-pipeline). 0 = auto.
-      const durMs = DURATION_MS[durationKey] ?? 0;
-      if (durMs > 0) payload.durationMs = durMs;
+      //? M1/M3 — the whole-video pipeline runs the video path; the target duration drives the long-form
+      //? beat/scene planner. durationMs only applies here (other ops ignore it). 0 = auto (default arc).
+      if (action.op === 'content-run-pipeline') {
+        payload.mode = 'video';
+        const durMs = DURATION_MS[durationKey] ?? 0;
+        if (durMs > 0) payload.durationMs = durMs;
+      }
       runContentOp(action.op, piece.id, payload);
     })();
   };
@@ -283,13 +290,16 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <span className="text-muted">{translate({ key: 'workspaces.content.styleLabel' })}</span>
               {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string. */}
               <Dropdown size="md" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
-              {/* M1 — a thumbnail preview of the chosen style's look, when the style carries a preview asset. */}
+              {/* M1 — a thumbnail preview of the chosen style's look, when the style carries a preview asset.
+                  Prefer a video-gen style's preview (the piece is a video), and prefix backend-relative /media URLs. */}
               {(() => {
-                const sp = content.styles.find((s) => s.key === styleKey && (s.previewAssetUrl ?? '').length > 0);
-                if (!sp?.previewAssetUrl) return null;
+                const withPreview = content.styles.filter((s) => s.key === styleKey && (s.previewAssetUrl ?? '').length > 0);
+                const sp = withPreview.find((s) => s.feature === 'video-gen') ?? withPreview[0];
+                const src = sp?.previewAssetUrl ? assetHref(sp.previewAssetUrl) : null;
+                if (!src) return null;
                 return sp.previewKind === 'video'
-                  ? <video src={sp.previewAssetUrl} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
-                  : <img src={sp.previewAssetUrl} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
+                  ? <video src={src} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
+                  : <img src={src} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
               })()}
             </label>
             <label className="flex flex-col gap-1 text-sm">

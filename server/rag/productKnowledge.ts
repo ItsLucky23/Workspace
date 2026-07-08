@@ -14,8 +14,13 @@ import path from 'node:path';
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts } from './embed';
+import { embedTexts, embedTag } from './embed';
 import { retrieve, type RetrievedChunk } from './index';
+
+//? The marker value binds the corpus hash to the EMBEDDER identity — so switching embedder (e.g. adding a
+//? GEMINI key: local 256-dim → gemini 768-dim) changes the marker and forces a re-embed, instead of leaving
+//? stale vectors from a different vector space that would silently wreck cosine ranking.
+const markerValue = (hash: string): string => `${hash}:${embedTag()}`;
 
 //? Reserved global scope for the product corpus. The zero ObjectId is a valid 24-hex id no workspace uses.
 export const PRODUCT_WS = '000000000000000000000000';
@@ -52,7 +57,7 @@ export async function indexProductKnowledge(prisma: PrismaClient): Promise<Produ
   if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'product.embedFailed' };
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT } });
   const rows = chunks.map((c, i) => ({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));
-  rows.push({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: META_PATH, chunkId: '0', content: corpus.hash, embedding: vectors[chunks.length] ?? [] });
+  rows.push({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[chunks.length] ?? [] });
   await prisma.ragEntry.createMany({ data: rows });
   return { ok: true, entries: chunks.length, hash: corpus.hash };
 }
@@ -63,7 +68,7 @@ export async function ensureProductKnowledge(prisma: PrismaClient = getPrismaCli
   const corpus = await loadCorpus();
   if (!corpus) return { ok: false, entries: 0, error: 'product.corpusMissing' };
   const marker = await prisma.ragEntry.findFirst({ where: { workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: META_PATH }, select: { content: true } });
-  if (marker?.content === corpus.hash) return { ok: true, entries: 0, hash: corpus.hash };
+  if (marker?.content === markerValue(corpus.hash)) return { ok: true, entries: 0, hash: corpus.hash };
   return indexProductKnowledge(prisma);
 }
 

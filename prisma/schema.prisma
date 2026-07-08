@@ -1525,6 +1525,7 @@ model PublishJob {
   contentProjectId String   @db.ObjectId
   assetId          String   @db.ObjectId
   platform         String                            // 'youtube' | 'tiktok' | 'instagram' | 'linkedin'
+  accountId        String?                            // A3 — which connected account to publish with (null = default)
   status           String   @default("queued")       // 'queued' | 'scheduled' | 'done' | 'error'
   scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now)
   externalUrl      String?

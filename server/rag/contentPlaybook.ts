@@ -15,8 +15,12 @@ import path from 'node:path';
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts } from './embed';
+import { embedTexts, embedTag } from './embed';
 import { retrieve, type RetrievedChunk } from './index';
+
+//? Bind the corpus hash to the EMBEDDER identity so an embedder switch (dim change) forces a re-embed rather
+//? than leaving stale vectors from a different vector space (see server/rag/productKnowledge.ts).
+const markerValue = (hash: string): string => `${hash}:${embedTag()}`;
 
 //? Same reserved global scope as the other global corpora; a DISTINCT commit partitions this corpus.
 export const PLAYBOOK_WS = '000000000000000000000000';
@@ -75,7 +79,7 @@ export async function indexContentPlaybook(prisma: PrismaClient): Promise<Playbo
   if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'playbook.embedFailed' };
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT } });
   const rows = corpus.chunks.map((c, i) => ({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));
-  rows.push({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: META_PATH, chunkId: '0', content: corpus.hash, embedding: vectors[corpus.chunks.length] ?? [] });
+  rows.push({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[corpus.chunks.length] ?? [] });
   await prisma.ragEntry.createMany({ data: rows });
   return { ok: true, entries: corpus.chunks.length, hash: corpus.hash };
 }
@@ -85,7 +89,7 @@ export async function ensureContentPlaybook(prisma: PrismaClient = getPrismaClie
   const corpus = await loadPlaybook();
   if (!corpus) return { ok: false, entries: 0, error: 'playbook.corpusMissing' };
   const marker = await prisma.ragEntry.findFirst({ where: { workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: META_PATH }, select: { content: true } });
-  if (marker?.content === corpus.hash) return { ok: true, entries: 0, hash: corpus.hash };
+  if (marker?.content === markerValue(corpus.hash)) return { ok: true, entries: 0, hash: corpus.hash };
   return indexContentPlaybook(prisma);
 }
 

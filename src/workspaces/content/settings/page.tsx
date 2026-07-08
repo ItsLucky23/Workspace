@@ -4,8 +4,9 @@
 
 import { useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 
+import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
@@ -190,6 +191,10 @@ function ReferenceLibrarySection() {
     if (!canSave) return;
     runContentOp('reference-add', '', { kind, title: title.trim(), description: description.trim(), ...(assetUrl.trim() ? { assetUrl: assetUrl.trim() } : {}) });
     setTitle(''); setDescription(''); setAssetUrl('');
+    notify.success({ key: 'workspaces.content.refAdded' });
+  };
+  const removeReference = (id: string): void => {
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.refDelete' }), content: translate({ key: 'workspaces.content.refDeleteConfirm' }) }).then((ok) => { if (ok) runContentOp('reference-delete', '', { referenceId: id }); });
   };
   return (
     <section className="rounded-2xl border border-container1-border bg-container1 p-5">
@@ -207,7 +212,7 @@ function ReferenceLibrarySection() {
                 <div className="text-sm font-medium text-title truncate">{r.title} <span className="text-xs text-disabled">· {r.kind}</span></div>
                 <div className="text-xs text-muted truncate">{r.description}</div>
               </div>
-              <button type="button" onClick={() => { runContentOp('reference-delete', '', { referenceId: r.id }); }} title={translate({ key: 'workspaces.content.refDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
+              <button type="button" onClick={() => { removeReference(r.id); }} title={translate({ key: 'workspaces.content.refDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
             </div>
           ))}
       </div>
@@ -235,11 +240,15 @@ function ChannelManagerSection() {
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState('youtube');
   const [handle, setHandle] = useState('');
+  const [brandVoice, setBrandVoice] = useState('');
   const canSave = name.trim().length > 0;
   const submit = () => {
     if (!canSave) return;
-    runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}) });
-    setName(''); setHandle('');
+    runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}) });
+    setName(''); setHandle(''); setBrandVoice('');
+  };
+  const removeChannel = (id: string): void => {
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.channelDelete' }), content: translate({ key: 'workspaces.content.channelDeleteConfirm' }) }).then((ok) => { if (ok) runContentOp('channel-delete', '', { channelId: id }); });
   };
   return (
     <section className="rounded-2xl border border-container1-border bg-container1 p-5">
@@ -256,7 +265,7 @@ function ChannelManagerSection() {
                 <div className="text-sm font-medium text-title truncate">{c.name} <span className="text-xs text-disabled">· {c.platform}{c.handle ? ` · ${c.handle}` : ''}</span></div>
                 {c.brandVoice ? <div className="text-xs text-muted truncate">{c.brandVoice}</div> : null}
               </div>
-              <button type="button" onClick={() => { runContentOp('channel-delete', '', { channelId: c.id }); }} title={translate({ key: 'workspaces.content.channelDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
+              <button type="button" onClick={() => { removeChannel(c.id); }} title={translate({ key: 'workspaces.content.channelDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
             </div>
           ))}
       </div>
@@ -267,6 +276,7 @@ function ChannelManagerSection() {
           <Dropdown size="md" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); }} />
         </div>
         <input value={handle} onChange={(e) => { setHandle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelHandlePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <input value={brandVoice} onChange={(e) => { setBrandVoice(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelVoicePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.channelSave' })}</button>
       </div>
     </section>
@@ -274,7 +284,11 @@ function ChannelManagerSection() {
 }
 
 export default function ContentSettings() {
-  const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate } = useWorkspaces();
+  const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate, runContentOp } = useWorkspaces();
+  //? A3 — disconnect a connected platform's default account (confirm first — removing a credential).
+  const disconnectPlatform = (platform: string): void => {
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishDisconnect' }), content: translate({ key: 'workspaces.content.publishDisconnectConfirm' }) }).then((ok) => { if (ok) runContentOp('account-disconnect', '', { platform }); });
+  };
   const translate = useTranslator();
 
   //? Start the OAuth connect: send the browser to the backend `start` route, which redirects to the
@@ -398,7 +412,10 @@ export default function ContentSettings() {
                   <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-container2-border bg-container2 px-3 py-2.5">
                     <span className="text-sm font-medium text-title">{translate({ key: p.nameKey })}</span>
                     {connected ? (
-                      <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.publishConnected' })}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.publishConnected' })}</span>
+                        <button type="button" onClick={() => { disconnectPlatform(p.id); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.publishDisconnect' })}</button>
+                      </div>
                     ) : (
                       <button type="button" onClick={() => { connectPlatform(p.id); }} className="rounded-lg border border-primary-border bg-primary/10 text-primary px-3 py-1.5 text-sm font-medium hover:bg-primary/20 cursor-pointer flex items-center gap-1.5">
                         <Icon name="link" /> {translate({ key: 'workspaces.content.publishConnect' })}

@@ -91,7 +91,7 @@ export async function publishAsset(
   //? O3 — a future schedule: park the intent as a 'scheduled' job; the leader loop fires it when due.
   const now = opts.now ?? Date.now();
   if (args.scheduledAt && args.scheduledAt.getTime() > now) {
-    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: 'scheduled', scheduledAt: args.scheduledAt } });
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...(args.accountId ? { accountId: args.accountId } : {}), status: 'scheduled', scheduledAt: args.scheduledAt } });
     return { ok: true, publishJobId: job.id, stub: false, scheduled: true };
   }
 
@@ -116,7 +116,7 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
   for (const job of due) {
     const platform = job.platform;
     if (!BUILT_PLATFORMS.includes(platform as PublishPlatform)) { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } }).catch(() => null); continue; }
-    const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform: platform as PublishPlatform }, opts));
+    const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform: platform as PublishPlatform, ...(job.accountId ? { accountId: job.accountId } : {}) }, opts));
     if (err || !res || res.kind === 'error') { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'publish.uploadFailed' } }).catch(() => null); continue; }
     //? A scheduled post with no connection is 'stub' (honest), a real one is 'done'.
     const externalUrl = res.kind === 'real' ? res.externalUrl : `stub://${platform}/${job.assetId}`;

@@ -15,11 +15,19 @@ export interface DesignArtifactInput { id?: string; kind: string; name: string; 
 export async function saveDesignArtifact(prisma: PrismaClient, workspaceId: string, a: DesignArtifactInput): Promise<string> {
   const content = asJson(a.content);
   const source = a.source === 'ai' || a.source === 'seed' ? a.source : 'manual';
+  const name = a.name.trim();
   if (a.id) {
-    await prisma.designArtifact.updateMany({ where: { workspaceId, id: a.id }, data: { name: a.name.trim(), description: a.description ?? null, content } });
+    await prisma.designArtifact.updateMany({ where: { workspaceId, id: a.id }, data: { name, description: a.description ?? null, content } });
     return a.id;
   }
-  const created = await prisma.designArtifact.create({ data: { workspaceId, active: false, kind: a.kind, name: a.name.trim(), description: a.description ?? null, content, source }, select: { id: true } });
+  //? No id → upsert by (kind, name) so re-saving the same look ("Use this look", re-import, re-copy) UPDATES
+  //? the existing row instead of piling up duplicate rows in the library (they surface via the L2 round-trip).
+  const existing = await prisma.designArtifact.findFirst({ where: { workspaceId, kind: a.kind, name }, select: { id: true } });
+  if (existing) {
+    await prisma.designArtifact.update({ where: { id: existing.id }, data: { description: a.description ?? null, content } });
+    return existing.id;
+  }
+  const created = await prisma.designArtifact.create({ data: { workspaceId, active: false, kind: a.kind, name, description: a.description ?? null, content, source }, select: { id: true } });
   return created.id;
 }
 

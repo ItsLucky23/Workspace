@@ -12,6 +12,7 @@ import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdo
 
 import Icon, { type IconName } from '../_components/Icon';
 import { Segmented, WsButton } from '../_components/primitives';
+import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { DesignerProvider, useDesigner } from './state';
 import type { ThemeMode } from './themes';
 import Components from './sections/Components';
@@ -34,8 +35,12 @@ const SECTIONS: { id: SectionId; icon: IconName }[] = [
 ];
 
 export default function DesignerPage() {
+  //? Key the provider by workspace so switching workspace while in the designer REMOUNTS it — otherwise the
+  //? seed+persisted `themes`/`styles`/`anims` state (merged from the snapshot) would carry workspace A's
+  //? custom library into workspace B (row-isolation must hold client-side too).
+  const { activeWorkspace } = useWorkspaces();
   return (
-    <DesignerProvider>
+    <DesignerProvider key={activeWorkspace.id}>
       <DesignerShell />
     </DesignerProvider>
   );

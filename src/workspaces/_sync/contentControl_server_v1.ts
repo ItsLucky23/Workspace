@@ -42,10 +42,13 @@ export interface SyncParams {
     sceneDurationMs?: number; startMs?: number; endMs?: number; instruction?: string; mode?: string;
     //? V5 audio-track — per-piece voice gain + ducked music gain (content-save-audio-mix).
     voiceVolume?: number; musicVolume?: number;
-    //? A2 — channel/account management (channel-create/edit/delete, account-disconnect).
-    channelId?: string; name?: string; platform?: string; handle?: string; brandVoice?: string; defaultStyleId?: string; accountId?: string; projectId?: string;
+    //? A2 — channel/account management (channel-create/edit/delete, account-disconnect). `platform` +
+    //? `projectId` are already declared above; only the genuinely-new fields here.
+    channelId?: string; name?: string; handle?: string; brandVoice?: string; defaultStyleId?: string; accountId?: string;
     //? Inspiration/reference library (reference-add/delete).
     referenceId?: string; description?: string; assetUrl?: string; tags?: string[];
+    //? M3 — long-form target duration for content-run-pipeline (was missing from the contract).
+    durationMs?: number;
   };
   user: SessionLayout;
   functions: Functions;

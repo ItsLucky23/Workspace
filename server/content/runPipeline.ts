@@ -41,10 +41,11 @@ export async function runContentPipeline(
   const sceneOpt = args.sceneDurationMs ? { sceneDurationMs: args.sceneDurationMs } : {};
   let stub = false;
 
-  //? 1) Script — reuse the latest if the piece already has one.
+  //? 1) Script — reuse the latest if the piece already has one, UNLESS a target duration was given: the user
+  //? asked for a specific length, so regenerate to hit the planned beat count (else the old beat count wins).
   let script = await prisma.script.findFirst({ where: { workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
   let ranScript = false;
-  if (!script) {
+  if (!script || targetBeats > 0) {
     const r = await generateScript(prisma, { workspaceId, contentProjectId, brief: piece.brief ?? piece.title, ...opts, ...(targetBeats > 0 ? { targetBeats } : {}) });
     stub = r.stub;
     ranScript = true;

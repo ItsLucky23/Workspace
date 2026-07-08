@@ -22,6 +22,14 @@ assert(validArtifactContent('style', 42) === false, 'a non-object style is refus
 assert(validArtifactContent('animation', { fade: true, duration: 0.3 }) === true, 'an animation JSON validates');
 assert(validArtifactContent('nonsense', {}) === false, 'an unknown kind is refused');
 
+//? L3 tightening — an EMPTY or unrelated object must NOT pass as a style/anim (the coercion is all-defaults,
+//? so without a field-presence gate any object would be "valid" and poison the library).
+assert(validArtifactContent('style', {}) === false, 'an empty object is NOT a valid style');
+assert(validArtifactContent('style', { foo: 1, bar: 2 }) === false, 'an unrelated object is NOT a valid style');
+assert(validArtifactContent('animation', {}) === false, 'an empty object is NOT a valid animation');
+assert(validArtifactContent('animation', { nope: true }) === false, 'an unrelated object is NOT a valid animation');
+assert(validArtifactContent('style', { radius: 8, fontHeading: 'x', shadow: 'none' }) === true, 'a partial-but-recognizable style validates');
+
 //? A premade look → saveable artifacts (theme + style) that each pass validation.
 for (const l of PREMADE_LOOKS) {
   const r = resolveLook(l.id);

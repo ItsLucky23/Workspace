@@ -69,13 +69,24 @@ export async function indexWorkspace(
 
 //? Retrieve the top-K chunks most relevant to `query`. Scoped to `commitHash` when given, else the
 //? most recently indexed commit for the workspace. Empty when nothing is indexed.
+//? Reserved commit names for the NON-code corpora that share a workspace's RagEntry rows (memory + the
+//? inspiration library) — plus the `brand:<channelId>` prefix. When retrieve() is called WITHOUT a ref (code
+//? grounding), the default "latest commit" pick MUST skip these, else a recently-added reference example or a
+//? brand snippet (newer createdAt than the last code index) would hijack a code query. The two GLOBAL corpora
+//? (product-knowledge/content-playbook) live under the sentinel workspace, so they never reach a real ws here.
+export const RESERVED_CORPUS_COMMITS = ['reference', 'institutional-memory', 'product-knowledge', 'content-playbook'];
+
 export async function retrieve(
   prisma: PrismaClient, workspaceId: string, query: string, k = 6, commitHash?: string,
 ): Promise<RetrievedChunk[]> {
   if (query.trim().length === 0) return [];
   let ref = commitHash;
   if (!ref) {
-    const latest = await prisma.ragEntry.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, select: { commitHash: true } });
+    //? Pick the latest CODE commit — exclude the named non-code corpora + the brand:* prefix (see above).
+    const latest = await prisma.ragEntry.findFirst({
+      where: { workspaceId, NOT: [{ commitHash: { in: RESERVED_CORPUS_COMMITS } }, { commitHash: { startsWith: 'brand:' } }] },
+      orderBy: { createdAt: 'desc' }, select: { commitHash: true },
+    });
     if (!latest) return [];
     ref = latest.commitHash;
   }

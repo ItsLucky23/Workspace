@@ -65,13 +65,21 @@ export function artifactToAnim(a: PersistedArtifact): AnimSpec | null {
   };
 }
 
+//? The recognizable fields of a style / anim — an IMPORT must carry at least a few, else the lenient
+//? coercion (all-defaults) would accept ANY object (even `{}` or unrelated JSON) as a "valid" style/anim.
+const STYLE_KEYS = ['radius', 'radiusLg', 'pill', 'shadow', 'border', 'density', 'fontHeading', 'fontBody', 'weightHeading', 'tracking', 'motion', 'blur'];
+const ANIM_KEYS = ['fade', 'x', 'y', 'scale', 'rotate', 'easing', 'duration', 'bounce'];
+const hasEnoughKeys = (content: unknown, keys: string[], min: number): boolean =>
+  isObj(content) && keys.filter((k) => k in content).length >= min;
+
 //? L3 — validate that an IMPORTED/COPIED artifact's content is a real theme/style/anim before it is saved
-//? (so a garbage JSON upload can't poison the library). Reuses the same coercion as the round-trip parsers.
+//? (so a garbage JSON upload can't poison the library). Themes are strict (all tokens); style/anim additionally
+//? require enough recognizable fields, because the round-trip parsers coerce ANY object to all-defaults.
 export function validArtifactContent(kind: string, content: unknown, name = 'x'): boolean {
   const row: PersistedArtifact = { id: 'x', kind, name, description: '', content, source: 'manual', active: false };
   if (kind === 'theme') return artifactToTheme(row) !== null;
-  if (kind === 'style') return artifactToStyle(row) !== null;
-  if (kind === 'animation') return artifactToAnim(row) !== null;
+  if (kind === 'style') return artifactToStyle(row) !== null && hasEnoughKeys(content, STYLE_KEYS, 3);
+  if (kind === 'animation') return artifactToAnim(row) !== null && hasEnoughKeys(content, ANIM_KEYS, 2);
   return false;
 }
 

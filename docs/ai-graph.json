@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 209,
-    "edges": 321,
+    "edges": 323,
     "symbols": 258,
     "callEdges": 41
   },
@@ -1809,6 +1809,10 @@
     },
     {
       "from": "workspaces/content/settings/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -1830,6 +1834,10 @@
     {
       "from": "workspaces/designer/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/designer/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/designer/page.tsx",
@@ -2395,6 +2403,7 @@
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
@@ -2572,6 +2581,7 @@
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
@@ -3098,7 +3108,7 @@
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
       "dependents": 41,
-      "directDependents": 31
+      "directDependents": 32
     },
     {
       "id": "_components/Avatar.tsx",
@@ -3121,14 +3131,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 24,
+      "dependents": 25,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 24,
-      "directDependents": 16
+      "dependents": 25,
+      "directDependents": 17
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",

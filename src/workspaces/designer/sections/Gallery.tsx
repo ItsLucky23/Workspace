@@ -43,6 +43,8 @@ function LookPreview({ resolved, mode, compact, replayKey, loop }: { resolved: R
     return () => { clearInterval(id); };
   }, [loop, reduce]);
   const animKey = (replayKey ?? 0) + tick;
+  //? Reduced motion: suppress the entrance TRANSFORM too (not just the loop) — no slide/scale on mount.
+  const from = reduce ? false : animFrom(anim);
   const { fontHeading, fontBody } = resolved;
   const card: CSSProperties = { borderRadius: 'var(--ds-radius-lg)', boxShadow: 'var(--ds-shadow)', borderWidth: 'var(--ds-border-width)', borderColor: 'var(--ds-border-color)', borderStyle: 'solid' };
   const btn: CSSProperties = { borderRadius: 'var(--ds-radius-pill)', boxShadow: 'var(--ds-shadow-sm)', paddingLeft: 'var(--ds-pad-x)', paddingRight: 'var(--ds-pad-x)', paddingTop: 'var(--ds-pad-y)', paddingBottom: 'var(--ds-pad-y)' };
@@ -56,12 +58,12 @@ function LookPreview({ resolved, mode, compact, replayKey, loop }: { resolved: R
             <span>{translate({ key: 'workspaces.gallery.navHome' })}</span>
             <span>{translate({ key: 'workspaces.gallery.navPricing' })}</span>
             <span>{translate({ key: 'workspaces.gallery.navDocs' })}</span>
-            <motion.span key={`nav-${String(animKey)}`} initial={animFrom(anim)} animate={ANIM_TO} transition={{ ...animTransition(anim), delay: 0.05 }} className="text-title-primary bg-primary px-2.5 py-1" style={btn}>{translate({ key: 'workspaces.gallery.navStart' })}</motion.span>
+            <motion.span key={`nav-${String(animKey)}`} initial={from} animate={ANIM_TO} transition={{ ...animTransition(anim), delay: 0.05 }} className="text-title-primary bg-primary px-2.5 py-1" style={btn}>{translate({ key: 'workspaces.gallery.navStart' })}</motion.span>
           </div>
         )}
       </div>
       {/* landing hero (looping entrance — demonstrates the look's motion feel) */}
-      <motion.div key={animKey} initial={animFrom(anim)} animate={ANIM_TO} transition={animTransition(anim)} className="px-4 py-5 flex flex-col items-start gap-2">
+      <motion.div key={animKey} initial={from} animate={ANIM_TO} transition={animTransition(anim)} className="px-4 py-5 flex flex-col items-start gap-2">
         <span className="text-[10px] uppercase tracking-widest text-primary">{translate({ key: 'workspaces.gallery.eyebrow' })}</span>
         <div className="text-2xl font-bold text-title leading-tight" style={{ fontFamily: fontHeading, fontWeight: resolved.style.weightHeading, letterSpacing: resolved.style.tracking }}>{translate({ key: 'workspaces.gallery.heroTitle' })}</div>
         {!compact && <p className="text-sm text-common max-w-md">{translate({ key: 'workspaces.gallery.heroBody' })}</p>}
@@ -75,7 +77,7 @@ function LookPreview({ resolved, mode, compact, replayKey, loop }: { resolved: R
           {/* card row — staggered in, so the motion feel shows across multiple surfaces */}
           <div className="grid grid-cols-3 gap-2 px-4 pb-4">
             {[0, 1, 2].map((i) => (
-              <motion.div key={`card-${String(i)}-${String(animKey)}`} initial={animFrom(anim)} animate={ANIM_TO} transition={{ ...animTransition(anim), delay: 0.12 + i * 0.09 }} className="bg-container1 p-3 flex flex-col gap-1" style={card}>
+              <motion.div key={`card-${String(i)}-${String(animKey)}`} initial={from} animate={ANIM_TO} transition={{ ...animTransition(anim), delay: 0.12 + i * 0.09 }} className="bg-container1 p-3 flex flex-col gap-1" style={card}>
                 <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center text-primary"><Icon name="bolt" /></div>
                 <div className="text-xs font-medium text-title" style={{ fontFamily: fontHeading }}>{translate({ key: 'workspaces.gallery.cardTitle' })}</div>
                 <div className="text-[11px] text-muted">{translate({ key: 'workspaces.gallery.cardBody' })}</div>
@@ -117,7 +119,10 @@ export default function Gallery() {
     setBusy(true);
     d.setActiveThemeId(selected.theme.id);
     d.setActiveStyleId(selected.style.id);
-    void Promise.all([d.useInProject('theme'), d.useInProject('style')]).then(() => { setBusy(false); });
+    void Promise.all([d.useInProject('theme'), d.useInProject('style')]).then((oks) => {
+      notify[oks.every(Boolean) ? 'success' : 'error']({ key: oks.every(Boolean) ? 'workspaces.gallery.applied' : 'workspaces.gallery.applyFailed' });
+      setBusy(false);
+    });
   };
 
   //? L3 — save a COPY of the premade (its theme + style artifacts) into the workspace library (customizable).

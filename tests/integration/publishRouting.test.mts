@@ -7,7 +7,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { saveConnection } = await import('../../server/content/publishOAuth');
-const { publishAsset } = await import('../../server/content/publish');
+const { publishAsset, runScheduledPublish } = await import('../../server/content/publish');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T>, timeoutMs = 8000, stepMs = 60): Promise<T | null> {
@@ -43,6 +43,19 @@ try {
   const toMain = await publishAsset(prisma, wsId, { contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', accountId: 'main' }, { uploadTransport: transport });
   eq(usedToken, 'tok-main', 'publish routed to the "main" account token');
   assert(toMain.ok, 'the routed publish succeeded (main)');
+
+  // ---- A1/A3: a SCHEDULED publish keeps its accountId (was dropped — PublishJob had no accountId) --------
+  usedToken = '';
+  const future = new Date(Date.now() + 3_600_000);
+  const sched = await publishAsset(prisma, wsId, { contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', accountId: 'second', scheduledAt: future }, { uploadTransport: transport });
+  assert(sched.scheduled === true, 'the publish is parked as scheduled');
+  const job = await prisma.publishJob.findFirst({ where: { workspaceId: wsId, status: 'scheduled' } });
+  eq(job?.accountId, 'second', 'the scheduled job persisted the chosen accountId');
+  eq(usedToken, '', 'nothing uploaded yet (still scheduled)');
+  //? Fire it as if now is past due → it must upload with the SECOND account token, not the default.
+  const fired = await runScheduledPublish(prisma, future.getTime() + 1000, { uploadTransport: transport });
+  assert(fired.fired >= 1, 'the due scheduled job fired');
+  eq(usedToken, 'tok-second', 'the scheduled publish used the chosen account token (accountId survived)');
 
   // ---- A4: content binds to a channel ---------------------------------------------------------------
   await enqueueControlAction({ workspaceId: wsId, op: 'channel-create', target: {}, payload: { name: 'Chan Z', platform: 'youtube', brandVoice: 'punchy' }, userId: owner.id, clientRequestId: `pr-cc-${String(stamp)}` });

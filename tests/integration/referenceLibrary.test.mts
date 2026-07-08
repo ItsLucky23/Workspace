@@ -8,6 +8,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { retrieveReferences } = await import('../../server/content/referenceLibrary');
+const { retrieve } = await import('../../server/rag/index');
 const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,6 +38,11 @@ try {
   const hits = await poll(async () => { const h = await retrieveReferences(prisma, wsId, 'help me make a high-converting ad for my product', 3); return h.length > 0 ? h : null; });
   assert(hits !== null && hits.length > 0, 'a brief retrieves the reference example');
   assert(/problem-agitation-solution|call-to-action/i.test((hits ?? []).map((h) => h.content).join(' ')), 'the retrieved example carries its structure/approach');
+
+  //? RAG isolation: the DEFAULT (no-ref) retrieve — used for CODE grounding — must NOT pick the 'reference'
+  //? corpus even though it's the newest RagEntry write (else a reference example hijacks code questions).
+  const codeGrounding = await retrieve(prisma, wsId, 'help me make a high-converting ad for my product', 3);
+  assert(!codeGrounding.some((h) => h.filePath === ref?.id), 'the default (code) retrieve does NOT leak the reference corpus');
 
   //? The snapshot exposes the reference for the library UI.
   const snap = await buildSnapshot(prisma, owner.id, wsId);
