@@ -28,6 +28,8 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);
   const [textValue, setTextValue] = useState('');
+  const [grayscale, setGrayscale] = useState(false);
+  const [sepia, setSepia] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEscapeKey(onClose);
@@ -54,22 +56,25 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.url]);
 
-  //? Re-apply the adjustment filters whenever a slider moves.
+  //? Re-apply the adjustment filters whenever a slider moves or a toggle flips.
   useEffect(() => {
     const img = imgRef.current;
     const canvas = fabricRef.current;
     if (!img || !canvas) return;
     void (async () => {
       const { filters } = await import('fabric');
+      //? B3 — the base slider filters + optional one-tap looks (grayscale / sepia).
       img.filters = [
         new filters.Brightness({ brightness }),
         new filters.Contrast({ contrast }),
         new filters.Saturation({ saturation }),
+        ...(grayscale ? [new filters.Grayscale()] : []),
+        ...(sepia ? [new filters.Sepia()] : []),
       ];
       img.applyFilters();
       canvas.renderAll();
     })();
-  }, [brightness, contrast, saturation]);
+  }, [brightness, contrast, saturation, grayscale, sepia]);
 
   //? B2 — add a draggable, editable text overlay (Fabric IText). It stays interactive on the canvas and is
   //? baked into the exported PNG (the same toDataURL path), so no extra export handling is needed.
@@ -131,13 +136,18 @@ export default function ImageEditor({ pieceId, asset, onClose }: { pieceId: stri
           {slider(translate({ key: 'workspaces.imageEditor.contrast' }), contrast, setContrast)}
           {slider(translate({ key: 'workspaces.imageEditor.saturation' }), saturation, setSaturation)}
         </div>
+        {/* B3 — one-tap look filters. */}
+        <div className="flex items-center gap-2">
+          <WsButton variant={grayscale ? 'primary' : 'ghost'} onClick={() => { setGrayscale((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.grayscale' })}</WsButton>
+          <WsButton variant={sepia ? 'primary' : 'ghost'} onClick={() => { setSepia((v) => !v); }}>{translate({ key: 'workspaces.imageEditor.sepia' })}</WsButton>
+        </div>
         {/* B2 — text overlay: type + add a draggable text object to the canvas. */}
         <div className="flex items-center gap-2">
           <input type="text" value={textValue} onChange={(e) => { setTextValue(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') addText(); }} placeholder={translate({ key: 'workspaces.imageEditor.textPlaceholder' })} className="flex-1 rounded-lg border border-container1-border bg-background px-2 py-1 text-sm text-common" />
           <WsButton variant="ghost" icon="plus" onClick={addText} disabled={textValue.trim().length === 0}>{translate({ key: 'workspaces.imageEditor.addText' })}</WsButton>
         </div>
         <div className="flex items-center justify-end gap-2">
-          <WsButton icon="rotate-left" onClick={() => { setBrightness(0); setContrast(0); setSaturation(0); }}>{translate({ key: 'workspaces.imageEditor.reset' })}</WsButton>
+          <WsButton icon="rotate-left" onClick={() => { setBrightness(0); setContrast(0); setSaturation(0); setGrayscale(false); setSepia(false); }}>{translate({ key: 'workspaces.imageEditor.reset' })}</WsButton>
           <WsButton icon={busy ? 'spinner' : 'check'} onClick={apply}>{translate({ key: busy ? 'workspaces.imageEditor.saving' : 'workspaces.imageEditor.save' })}</WsButton>
         </div>
         {!ready && <div className="text-xs text-muted">{translate({ key: 'workspaces.editor.loading' })}</div>}

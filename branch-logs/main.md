@@ -3042,3 +3042,7 @@ De `ImageEditor` krijgt een draggable, editable **tekst-overlay** (Fabric IText)
 De `AIPanel` was `hidden lg:flex` → de mobiele "AI"-knop toonde niets. Nu: op mobiel (`isMobile`) rendert de panel als **full-screen sheet** (`fixed inset-0 z-50`, opacity-fade, geen width-drag); op desktop (lg+) exact het oude resizable-aside. Chat + suggesties-inbox + goedkeuren nu bereikbaar op de telefoon. Geen desktop-regressie (isMobile=false → ongewijzigd). tsc0·lint0·ai:lint clean·build groen.
 **Follow-up (browser-verify):** de md–lg tablet-range blijft `hidden lg:flex` (ongewijzigd, pre-existing) + de sheet-UX (scroll/keyboard/safe-area) verifiëren met de dev-server. P-B (structured approve/reject-kaarten) resteert.
 **Files:** `src/workspaces/_shell/Shell.tsx` (AIPanel responsive).
+
+## 2026-07-08 — B3: extra look-filters in de image-editor (grayscale/sepia)
+De `ImageEditor` krijgt one-tap look-filters (Fabric `Grayscale`/`Sepia`), toggle-knoppen naast de sliders, meegenomen in de reset + de PNG-export. i18n×4 (`grayscale`/`sepia`). Fase B nu: B2(tekst)+B3(filters) ✅; B1(crop) resteert als kleine follow-up. tsc0·lint0·build groen.
+**Files:** `src/workspaces/_components/ImageEditor.tsx`, `src/_locales/*.json` (×4).
