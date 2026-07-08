@@ -1122,6 +1122,7 @@ model WorkspaceNote {
 model SpendRecord {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId  String   @db.ObjectId
+  userId       String?  @db.ObjectId               // H2 — the user this turn's cost is attributed to (ticket assignee/creator)
   ticketId     String?  @db.ObjectId
   stageId      String?                             // StageKind key
   sessionKey   String                              // the AgentSession this turn belongs to

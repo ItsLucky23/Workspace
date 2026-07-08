@@ -286,7 +286,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? CLAUDE.md + stage instructions, output ≈ the assistant message (the CLI exposes no usage field
   //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
   await tryCatch(() => recordTurnSpend(prisma, {
-    workspaceId, ticketId: ticket.id, stageId: stageKey, sessionKey,
+    workspaceId, userId: ticket.assigneeId ?? null, ticketId: ticket.id, stageId: stageKey, sessionKey,
     model: cfg.modelCfg.base.model, inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
   }));
 
