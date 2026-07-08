@@ -56,7 +56,7 @@ export async function runContentPipeline(
   //? 3) Visuals — video scenes (marquee) or a still per beat.
   let ranVisuals = false;
   if (mode === 'video') {
-    const dec = await decomposeIntoScenes(prisma, { workspaceId, contentProjectId, scriptId: script.id });
+    const dec = await decomposeIntoScenes(prisma, { workspaceId, contentProjectId, scriptId: script.id, ...opts });
     stub = stub || dec.stub;
     ranVisuals = dec.ok;
   } else {

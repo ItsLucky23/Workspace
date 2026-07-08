@@ -1165,7 +1165,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const script = await prisma.script.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
       if (!script) return;
       const sceneDurationMs = typeof payload.sceneDurationMs === 'number' ? payload.sceneDurationMs : undefined;
-      await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
+      await decomposeIntoScenes(prisma, { workspaceId: action.workspaceId, contentProjectId, scriptId: script.id, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }), ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}) });
       broadcastContentDirty(action.workspaceId);
       return;
     }
@@ -1187,7 +1187,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const contentProjectId = str(payload, 'contentProjectId');
       if (!contentProjectId) return;
       const mode = str(payload, 'mode') === 'slideshow' ? 'slideshow' : 'video';
-      await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode });
+      //? M2 — thread the chosen style (+ any extra instructions) through the whole pipeline so it reaches the
+      //? video path too (decompose), not just the slideshow images.
+      await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}) });
       broadcastContentDirty(action.workspaceId);
       return;
     }

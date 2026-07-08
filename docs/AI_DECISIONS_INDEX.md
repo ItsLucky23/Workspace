@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (166)
+## Decisions (167)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -179,6 +179,7 @@
 | 0253 | L1 — premade UI-look gallery (curated combos over the existing seeds) | 🟢 accepted | design, gallery, themes, ui, ai-libraries-accounts | — | `docs/decisions/0253-premade-look-gallery.md` |
 | 0254 | L2 — designer persistence round-trip (consume the snapshot's designArtifacts) | 🟢 accepted | design, persistence, library, ai-libraries-accounts | — | `docs/decisions/0254-designer-persistence-roundtrip.md` |
 | 0255 | L3 — designer import / copy / customize / delete | 🟢 accepted | design, gallery, import, crud, ai-libraries-accounts | — | `docs/decisions/0255-designer-import-copy-crud.md` |
+| 0256 | M2 — thread the style through the video path (decompose) | 🟢 accepted | content, video, style, media, ai-libraries-accounts | — | `docs/decisions/0256-style-through-video-path.md` |
 
 ## Summaries
 
@@ -1511,6 +1512,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Copy a premade → workspace artifacts.** `lookToArtifacts(resolved)` produces a theme artifact (its palette) + a style artifact (its component spec with the look's fonts baked in), saved via the existing `designerLibrary` `save` op. They round-trip (L2) into the editable rails, so "copy" = "make it mine". **Import a theme/style/anim JSON.** A file picker in the gallery reads the JSON, and **`validArtifactContent` (pure, reuses the L2 coercion) refuses anything that isn't a real theme/style/anim** before saving — a garbage upload can't poison the library. Reuses `save`; no new op. **Customize + delete reuse existing surfaces.** Rail edits (rename/duplicate/token-edit) now persist through L2; delete is the existing per-workspace `deleteDesignArtifact` (premades/seeds stay read-only).
 
 → `docs/decisions/0255-designer-import-copy-crud.md`
+
+### 0256 — M2 — thread the style through the video path (decompose)
+
+**0256** · accepted · tags: content, video, style, media, ai-libraries-accounts · 2026-07-08
+
+**`decomposeIntoScenes` resolves the piece's `video-gen` style and rides it on every scene request.** It gained `styleKey`/`extraInstructions` params, calls `resolveStyle(ws, 'video-gen', styleKey)`, and passes `request.style` + `styleId` — the exact pattern `images.ts` already uses for the slideshow path. **`buildSceneRequest` is extracted (pure + exported)** so a unit test asserts the style rides every scene- gen request, deterministically. **The wiring is completed end-to-end:** `runContentPipeline` now forwards `...opts` to `decomposeIntoScenes`, and the two conductor ops (`content-run-pipeline`, `content-decompose-video`) forward `styleKey` + `extraInstructions` from the payload.
+
+→ `docs/decisions/0256-style-through-video-path.md`
 
 ## Code governed by decisions
 

@@ -7,7 +7,9 @@ import type { PrismaClient } from '@prisma/client';
 
 import { checkMediaBudget } from '../media/budget';
 import { estimateMediaCostCents } from '../media/registry';
+import { resolveStyle } from './styles';
 import { runQueuedMediaAsset } from './queuedMediaJob';
+import type { MediaStyle, MediaGenerationRequest } from '../media/types';
 
 export interface ScenePromptSpec { order: number; prompt: string; sourceText: string }
 
@@ -25,15 +27,26 @@ export function buildContinuityPrompts(beats: { order: number; text: string; vis
 
 export interface DecomposeResult { ok: boolean; sceneCount: number; costCents: number; stub: boolean; blocked: boolean }
 
+//? M2 — build ONE scene's media-generation request. Pure + exported so a test can assert the style rides
+//? every scene-gen request (the fix: the video path used to carry no style). Mirrors images.ts's request shape.
+export function buildSceneRequest(prompt: string, order: number, workspaceId: string, style?: MediaStyle, extraInstructions?: string): MediaGenerationRequest {
+  return { prompt, ...(style ? { style } : {}), ...(extraInstructions ? { extraInstructions } : {}), workspaceId, label: `Scene ${String(order)} clip` };
+}
+
 //? Decompose the piece's script beats into generated video scenes. Re-decomposing REPLACES the scene list.
 //? Stops early (partial) if the media budget is hit. `sceneDurationMs` is the per-scene on-timeline length.
 export async function decomposeIntoScenes(
   prisma: PrismaClient,
-  args: { workspaceId: string; contentProjectId: string; scriptId: string; sceneDurationMs?: number },
+  args: { workspaceId: string; contentProjectId: string; scriptId: string; sceneDurationMs?: number; styleKey?: string; extraInstructions?: string },
 ): Promise<DecomposeResult> {
   const { workspaceId, contentProjectId } = args;
   const beats = await prisma.beat.findMany({ where: { workspaceId, scriptId: args.scriptId }, orderBy: { order: 'asc' }, select: { order: true, text: true, visualPrompt: true } });
   if (beats.length === 0) return { ok: false, sceneCount: 0, costCents: 0, stub: false, blocked: false };
+
+  //? M2 — resolve the piece's VIDEO-GEN style so EVERY scene's generation carries it (e.g. "stick-man
+  //? figures" on every clip). Previously decompose passed no style → the video path was ungenerated-style.
+  const resolved = await resolveStyle(prisma, workspaceId, 'video-gen', args.styleKey);
+  const style: MediaStyle | undefined = resolved ? { key: resolved.key, systemPrompt: resolved.systemPrompt } : undefined;
 
   const specs = buildContinuityPrompts(beats);
   //? A fresh decomposition replaces the piece's scenes (the editor's manual edits are a separate save).
@@ -51,9 +64,10 @@ export async function decomposeIntoScenes(
     const transitionIn = i === 0 ? 'cut' : 'xfade';
     const r = await runQueuedMediaAsset(prisma, {
       workspaceId, contentProjectId, feature: 'video-gen', kind: 'video',
+      ...(resolved ? { styleId: resolved.id } : {}),
       input: { prompt: spec.prompt, sceneOrder: spec.order },
       initialMetadata: { feature: 'video-gen', sceneOrder: spec.order },
-      request: { prompt: spec.prompt, workspaceId, label: `Scene ${String(spec.order)} clip` },
+      request: buildSceneRequest(spec.prompt, spec.order, workspaceId, style, args.extraInstructions),
       onComplete: async (assetId) => {
         await prisma.videoScene.create({ data: { workspaceId, contentProjectId, order: spec.order, videoAssetId: assetId, durationMs, transitionIn, prompt: spec.prompt } });
       },

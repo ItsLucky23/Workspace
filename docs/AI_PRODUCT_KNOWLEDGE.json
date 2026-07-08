@@ -1,6 +1,6 @@
 {
-  "hash": "5dc2ea3ed45e97a8",
-  "chunkCount": 183,
+  "hash": "8ff03d5f8dabbc01",
+  "chunkCount": 184,
   "chunks": [
     {
       "id": "cap-001",
@@ -1099,6 +1099,12 @@
       "kind": "decision",
       "title": "L3 — designer import / copy / customize / delete",
       "text": "ADR 0255: L3 — designer import / copy / customize / delete. L1 gave a premade-look gallery and L2 the persistence round-trip. L3 lets a user make the library their own: copy a premade into their workspace, import a theme/style JSON, customize it, and delete their own. Decision: - **Copy a premade → workspace artifacts.** `lookToArtifacts(resolved)` produces a theme artifact (its palette) + a style artifact (its component spec with the look's fonts baked in), saved via the existing `designerLibrary` `save` op. They round-trip (L2) into the editable rails, so \"copy\" = \"make it mine\". - **Import a theme/style/anim JSON.** A file picker in the gallery reads the JSON, and **`validArtifactContent` (pure, reuses the L2 coercion) refuses anything that isn't a real theme/style/anim** before saving — a garbage upload can't poison the library. Reuses `save`; no new op. - **Customize + delete reuse existing surfaces.** Rail edits (rename/duplicate/token-edit) now persist through L2; delete is the existing per-workspace `deleteDesignArtifact` (premades/seeds stay read-only)."
+    },
+    {
+      "id": "adr-0256",
+      "kind": "decision",
+      "title": "M2 — thread the style through the video path (decompose)",
+      "text": "ADR 0256: M2 — thread the style through the video path (decompose). Picking a style (\"stick-man figures\") only affected the SLIDESHOW path (per-beat images all styled). The real-video path was ungenerated-style: `runContentPipeline` did not pass its `opts` to `decomposeIntoScenes`, and `decomposeIntoScenes` had no `styleKey` param — it sent each scene's beat prompt with NO `style`. So a styled video request produced unstyled clips. This is the single highest-value content fix in the program. Decision: - **`decomposeIntoScenes` resolves the piece's `video-gen` style and rides it on every scene request.** It gained `styleKey`/`extraInstructions` params, calls `resolveStyle(ws, 'video-gen', styleKey)`, and passes `request.style` + `styleId` — the exact pattern `images.ts` already uses for the slideshow path. - **`buildSceneRequest` is extracted (pure + exported)** so a unit test asserts the style rides every scene- gen request, deterministically. - **The wiring is completed end-to-end:** `runContentPipeline` now forwards `...opts` to `decomposeIntoScenes`, and the two conductor ops (`content-run-pipeline`, `content-decompose-video`) forward `styleKey` + `extraInstructions` from the payload."
     }
   ]
 }
