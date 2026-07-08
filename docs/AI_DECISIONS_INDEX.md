@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (161)
+## Decisions (162)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -174,6 +174,7 @@
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
 | 0162 | W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models) | 🟢 accepted | orchestrator, questions, needs-input, phone-first, adoption, schema | — | `docs/decisions/0162-multi-question-denormalized-json.md` |
+| 0163 | W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop | 🟢 accepted | orchestrator, questions, non-blocking, needs-input, adoption, schema | — | `docs/decisions/0163-non-blocking-advisory-questions.md` |
 
 ## Summaries
 
@@ -1466,6 +1467,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Store the full set denormalized on the ticket**, not in the relational models: add `Ticket.needsInputQuestions Json?` = `[{ q, a }]` (q = the stored needsInput wire form — plain for free, `@@wsq:` for approve/choice; a = the answer or null). `Ticket.needsInput` stays the banner = the first UNANSWERED question (back-compat with every existing reader: the banner, the answer-queue, `isRealNeedsInput`, the P-B card). **A pure core module** `server/orchestrator/questionSet.ts` (`parseNeedsInputQuestions` with a legacy single-banner fallback, `applyAnswers`, `firstUnanswered`, `buildCombinedAnswerPrompt`) — no DB, unit-tested. **No new structured-channel verb** (frozen 7+6 intact): the existing `answer-input` control-op carries either a single `answer` (fills the first open question → the phone-first STEPPER advances the banner) or an `answers[]` batch (fills the open questions in order). The parked `claude` turn is resumed **only once every question is answered** — a single question resumes with the bare answer (byte-identical to the pre-W1 flow), many resume with a numbered, envelope-decoded `Q→A` prompt. Single-writer/B-23 unchanged (Conductor is the only writer).
 
 → `docs/decisions/0162-multi-question-denormalized-json.md`
+
+### 0163 — W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop
+
+**0163** · accepted · tags: orchestrator, questions, non-blocking, needs-input, adoption, schema · 2026-07-08
+
+**A non-blocking question rides the DONE envelope, not `ws-needs-input`.** The agent, instead of stopping, makes a sensible assumption, keeps working, and records the question in the `ws-carryover` block's `openQuestions` as an object `{ question, assumption }`. `parseTurnResult` splits `openQuestions` into plain strings (unchanged, still fed to the next stage's `{{openQuestions}}` as before) + `advisories` (`{q, assumption}`). renderStage's guidance now tells the agent this explicitly, reserving `ws-needs-input` for TRULY blocking questions. **The ticket never parks on an advisory.** On stage-done, advisories are appended (dedup by question) to a new denormalized `Ticket.advisoryQuestions Json?` = `[{q,assumption,a,resolved}]`; the turn completes normally. **Resolving reuses the frozen `answer-input` op (no new verb).** `answer-input` with an `advisoryIndex` + `answer` resolves one advisory: a MATCHING answer (trim + case-insensitive) just marks it resolved; a DIVERGENT answer marks it resolved AND fires a **revision turn** (`reprovisionTicket` with `claude --resume` + a correction prompt naming the assumption + the human's answer). Pure core (`parseAdvisories`, `resolveAdvisory`) in `questionSet.ts`. Single-writer/B-23 unchanged.
+
+→ `docs/decisions/0163-non-blocking-advisory-questions.md`
 
 ## Code governed by decisions
 

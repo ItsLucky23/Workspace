@@ -33,4 +33,20 @@ if (bare.kind === 'needs-input') eq(bare.questions[0], 'Just tell me', 'bare-arr
 //? carryover + continue are unaffected.
 eq((await parseTurnResult('Still going.')).kind, 'continue', 'no marker → continue');
 
+//? W2 — a done-envelope's openQuestions can mix plain strings (passed forward) with `{question, assumption}`
+//? advisory objects (NON-blocking questions the agent proceeded past). They split correctly.
+const done = await parseTurnResult('```ws-carryover\n{"summary":"done","changedFiles":["a.ts"],"openQuestions":["a plain note",{"question":"Which port?","assumption":"8080"}]}\n```');
+assert(done.kind === 'done', 'carryover → done');
+if (done.kind === 'done') {
+  eq(done.envelope.advisories?.length, 1, 'one advisory extracted');
+  eq(done.envelope.advisories?.[0].q, 'Which port?', 'advisory question captured');
+  eq(done.envelope.advisories?.[0].assumption, '8080', 'advisory assumption captured');
+  assert(done.envelope.openQuestions.includes('a plain note'), 'the plain note stays in openQuestions');
+  assert(done.envelope.openQuestions.some((s) => s.includes('Which port?') && s.includes('8080')), 'the advisory renders into openQuestions as "Q (assumed: A)" for the next stage');
+}
+
+//? A done envelope with no advisories omits the field (back-compat).
+const plainDone = await parseTurnResult('```ws-carryover\n{"summary":"x","openQuestions":["just a note"]}\n```');
+if (plainDone.kind === 'done') eq(plainDone.envelope.advisories, undefined, 'no advisory objects → advisories omitted');
+
 report('tests/unit/turnResultStructured.test.mts');

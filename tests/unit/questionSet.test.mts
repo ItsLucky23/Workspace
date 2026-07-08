@@ -4,7 +4,7 @@
 //? numbered, envelope-decoded Q→A list for many. Pure, no DB.
 
 import { assert, eq, report } from '../_helpers.mts';
-import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt } from '../../server/orchestrator/questionSet';
+import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt, parseAdvisories, resolveAdvisory } from '../../server/orchestrator/questionSet';
 
 try {
   // parse — JSON set, legacy banner fallback, empty
@@ -47,6 +47,34 @@ try {
   assert(combined.includes('1. Deploy now?') && combined.includes('→ yes'), 'combined prompt numbers Q1 + its answer');
   assert(combined.includes('2. Which env?') && combined.includes('→ prod'), 'the @@wsq envelope is decoded to its human prompt (Which env?)');
   assert(!combined.includes('@@wsq'), 'the raw envelope is NOT leaked into the resume prompt');
+
+  // W2 — advisory (non-blocking) questions
+  const adv = parseAdvisories([{ q: 'Which port?', assumption: '8080', a: null, resolved: false }, { q: 'bad' }, 'nope']);
+  eq(adv.length, 2, 'parses valid advisory entries (tolerant of malformed)');
+  eq(adv[0].assumption, '8080', 'keeps the assumption');
+  eq(adv[1].assumption, '', 'a missing assumption defaults to empty');
+
+  // matching answer → resolved, NO revision
+  const match = resolveAdvisory(adv, 0, '8080');
+  assert(match.applied && match.list[0].resolved && match.list[0].a === '8080', 'a matching answer marks it resolved');
+  eq(match.diverged, false, 'a matching answer does not diverge');
+  eq(match.revisionPrompt, null, 'no revision prompt when the answer matches the assumption');
+  assert(adv[0].resolved === false, 'resolveAdvisory does not mutate the input');
+
+  // case/whitespace-only difference is NOT a divergence
+  eq(resolveAdvisory(adv, 0, '  8080 ').diverged, false, 'whitespace/case difference is not a real divergence');
+
+  // divergent answer → resolved + a revision prompt
+  const diff = resolveAdvisory(adv, 0, '3000');
+  assert(diff.applied && diff.diverged, 'a different answer diverges');
+  assert(diff.revisionPrompt !== null && diff.revisionPrompt.includes('8080') && diff.revisionPrompt.includes('3000'), 'the revision prompt names the assumption + the correction');
+  assert((diff.revisionPrompt ?? '').includes('Which port?'), 'the revision prompt includes the question text');
+
+  // bad index / blank answer → no-op
+  eq(resolveAdvisory(adv, 9, 'x').applied, false, 'a bad index is a no-op');
+  eq(resolveAdvisory(adv, 0, '   ').applied, false, 'a blank answer is a no-op');
+  const already = resolveAdvisory([{ q: 'Q', assumption: 'A', a: 'A', resolved: true }], 0, 'B');
+  eq(already.applied, false, 'an already-resolved advisory is a no-op');
 
   eq(0, 0, 'question-set core verified');
 } catch (error) {

@@ -632,6 +632,7 @@ model Ticket {
   carryOver      String?                         // the HUMAN one-liner (derived from the latest CarryOver envelope summary, 04b §14)
   needsInput     String?                         // denormalized banner = first open question (04 §2)
   needsInputQuestions Json?                       // W1 — the FULL open-question set [{q,a}] (multi-question; banner = first unanswered). Null = single/legacy.
+  advisoryQuestions Json?                          // W2 — NON-blocking questions the agent PROCEEDED past with an assumption [{q,assumption,a,resolved}]. A divergent answer schedules a revision turn; the ticket never parks on these.
   remindedAt     DateTime?                        // A5 — last time the watchdog re-pinged the assignee about this open question (null = never / cleared on answer)
   priority       String   @default("normal")     // low|normal|high|urgent — `urgent` = hotfix/security tier that force-passes the capacity cap (#12)
   archived       Boolean  @default(false)        // doc 13 bulk Archive — soft, never deletes

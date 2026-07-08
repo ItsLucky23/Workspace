@@ -19,6 +19,7 @@ import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
+import { parseAdvisories } from './questionSet';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
@@ -289,6 +290,16 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     const nextStage = await prisma.pipelineStage.findFirst({ where: { workspaceId, order: { gt: stageRow.order } }, orderBy: { order: 'asc' } });
     await prisma.carryOver.create({ data: { workspaceId, ticketId: ticket.id, fromStageId: stageKey, toStageId: nextStage?.key ?? stageKey, sessionId: session.id, envelope: envelopeJson(result.envelope) } });
     await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { carryOver: result.envelope.summary } });
+    //? W2 — surface NON-blocking questions the agent proceeded past with assumptions on the ticket (append to any
+    //? existing unresolved set, dedup by question) WITHOUT parking it. A human can later resolve them; a divergent
+    //? answer schedules a revision turn (answer-input `advisoryIndex`). The turn otherwise completes normally.
+    if (result.envelope.advisories && result.envelope.advisories.length > 0) {
+      const current = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { advisoryQuestions: true } });
+      const existing = parseAdvisories(current?.advisoryQuestions);
+      const seen = new Set(existing.map((x) => x.q));
+      const additions = result.envelope.advisories.filter((a) => !seen.has(a.q)).map((a) => ({ q: a.q, assumption: a.assumption, a: null, resolved: false }));
+      if (additions.length > 0) await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { advisoryQuestions: jsonInput([...existing, ...additions]) } });
+    }
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
     //? A4 — the effective gate = the stage's own flag modulated by the workspace autonomy level.
     const [, wsRow] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { autonomyLevel: true } }));

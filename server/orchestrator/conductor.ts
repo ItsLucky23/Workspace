@@ -43,7 +43,7 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfi
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
-import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt } from './questionSet';
+import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt, parseAdvisories, resolveAdvisory } from './questionSet';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { applyMigration, introspectDb } from '../db/migrate';
 import { indexWorkspace } from '../rag';
@@ -916,6 +916,20 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const batch = Array.isArray(payload.answers) ? payload.answers.filter((x): x is string => typeof x === 'string') : null;
       const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key } });
       if (!ticket) return;
+      //? W2 — resolving a NON-blocking ADVISORY question (the ticket never parked on it). A divergent answer
+      //? schedules a revision turn with the correction as the resume prompt; a matching one just marks it resolved.
+      const advisoryIndex = typeof payload.advisoryIndex === 'number' ? payload.advisoryIndex : null;
+      if (advisoryIndex !== null) {
+        const advisories = parseAdvisories(ticket.advisoryQuestions);
+        const res = resolveAdvisory(advisories, advisoryIndex, single ?? '');
+        if (!res.applied) return;
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { advisoryQuestions: jsonInput(res.list) } });
+        const [ta] = await ticketIdsForKeys(action.workspaceId, [key]);
+        if (ta) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: ta.id, authorKind: 'user', authorId: userId, body: `↩︎ (advisory) ${questionPrompt(advisories[advisoryIndex]?.q ?? '')} → ${single ?? ''}` } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        if (res.revisionPrompt !== null) await reprovisionTicket(action.workspaceId, key, true, res.revisionPrompt);
+        return ticketRowsForKeys(action.workspaceId, [key]);
+      }
       const openSet = parseNeedsInputQuestions(ticket.needsInputQuestions, ticket.needsInput);
       if (openSet.length === 0) return;
       const { set, newlyAnswered, appliedCount } = applyAnswers(openSet, { single, batch });
