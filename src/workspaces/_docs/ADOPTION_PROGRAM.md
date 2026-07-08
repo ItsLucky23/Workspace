@@ -64,6 +64,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | C3 audience-analytics ingest + feedback (fixtures nu, live later) | ✅ | — | publishMetrics-unit 15/15 · ingest-integratie · publishReal-regressie 20/20 |
 | H1 admin/security audit-log (governance-ops → AuditLog) | ✅ | 0167 | auditLog-integratie 10/10 |
 | H2 per-user spend-attributie + budget-check | ✅ | — | userSpend-unit 11/11 · attributie-integratie · spend-regressie 17/17 |
+| H4 workspace-data-export (portability/backup, secrets uitgesloten) | ✅ | — | workspaceExport-integratie 10/10 |
 
 ---
 

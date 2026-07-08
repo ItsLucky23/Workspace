@@ -85,6 +85,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/styleExport/v1` | POST | 30 | — | — |
 | `workspaces/styleImport/v1` | POST | 20 | — | — |
 | `workspaces/timeTravelPreview/v1` | POST | 12 | — | — |
+| `workspaces/workspaceExport/v1` | POST | 6 | — | — |
 
 ### Sync routes (`_sync/`)
 
