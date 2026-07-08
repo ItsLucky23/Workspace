@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (162)
+## Decisions (163)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -175,6 +175,7 @@
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
 | 0162 | W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models) | 🟢 accepted | orchestrator, questions, needs-input, phone-first, adoption, schema | — | `docs/decisions/0162-multi-question-denormalized-json.md` |
 | 0163 | W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop | 🟢 accepted | orchestrator, questions, non-blocking, needs-input, adoption, schema | — | `docs/decisions/0163-non-blocking-advisory-questions.md` |
+| 0164 | T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref) | 🟢 accepted | preview, container, git, time-travel, adoption | — | `docs/decisions/0164-ref-preview-ephemeral-container.md` |
 
 ## Summaries
 
@@ -1475,6 +1476,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A non-blocking question rides the DONE envelope, not `ws-needs-input`.** The agent, instead of stopping, makes a sensible assumption, keeps working, and records the question in the `ws-carryover` block's `openQuestions` as an object `{ question, assumption }`. `parseTurnResult` splits `openQuestions` into plain strings (unchanged, still fed to the next stage's `{{openQuestions}}` as before) + `advisories` (`{q, assumption}`). renderStage's guidance now tells the agent this explicitly, reserving `ws-needs-input` for TRULY blocking questions. **The ticket never parks on an advisory.** On stage-done, advisories are appended (dedup by question) to a new denormalized `Ticket.advisoryQuestions Json?` = `[{q,assumption,a,resolved}]`; the turn completes normally. **Resolving reuses the frozen `answer-input` op (no new verb).** `answer-input` with an `advisoryIndex` + `answer` resolves one advisory: a MATCHING answer (trim + case-insensitive) just marks it resolved; a DIVERGENT answer marks it resolved AND fires a **revision turn** (`reprovisionTicket` with `claude --resume` + a correction prompt naming the assumption + the human's answer). Pure core (`parseAdvisories`, `resolveAdvisory`) in `questionSet.ts`. Single-writer/B-23 unchanged.
 
 → `docs/decisions/0163-non-blocking-advisory-questions.md`
+
+### 0164 — T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref)
+
+**0164** · accepted · tags: preview, container, git, time-travel, adoption · 2026-07-08
+
+**A ref-preview runs in its OWN ephemeral, ref-scoped container** — NOT the ticket's tip worker container. `launchTicketContainer` gains an optional `ref`: when present, the container/volume name get a `-ref-<slug>` suffix (`refSlug`, ≤12 docker-safe chars) and the clone becomes a FULL-history `git clone /mirror /work` + `git checkout <ref>` (`cloneExecArgs`, pure + tested) instead of the single-branch tip clone. So two refs of one branch coexist and a ref-preview never clobbers the agent's tip working container. **Ref-scoped route** (`refPreviewRoute`): distinct `id` (`<ticketKey>-ref-<slug>`) + subdomain (`<branch>-<slug>.<domain>`) per ref → side-by-side previews, idempotent per ref. **Injection-safe ref**: `isSafeRef` gates on `[0-9a-zA-Z._/-]` with no `..` before the ref reaches the clone shell; `openRefPreview` (+ the `open-ref-preview_v1` `_api` op, `workTickets`-gated) rejects a bad ref.
+
+→ `docs/decisions/0164-ref-preview-ephemeral-container.md`
 
 ## Code governed by decisions
 

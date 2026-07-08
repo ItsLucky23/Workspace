@@ -38,6 +38,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | W2 non-blocking (advisory) vragen + divergence→revisie | ✅ | 0163 | questionSet-unit 37/37 · turnResultStructured 15/15 · advisoryQuestion-integratie 8/8 |
 | W3 idle-worker-container-reaper (stop, resume-safe) | ✅ | — (reaper) | workerReaper-unit 10/10 |
 | **FASE W COMPLEET** | ✅ | | W1–W3 gecommit |
+| T1 preview op willekeurige git-ref (ephemere ref-container) | ✅ | 0164 | refPreview-unit 15/15 |
 
 ---
 

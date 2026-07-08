@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 206,
+    "nodes": 207,
     "edges": 304,
-    "symbols": 258,
+    "symbols": 260,
     "callEdges": 41
   },
   "nodes": [
@@ -407,6 +407,11 @@
       "id": "workspaces/_api/openPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/openPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/openRefPreview/v1"
     },
     {
       "id": "workspaces/_api/pushConfig_v1.ts",
@@ -3711,6 +3716,18 @@
     {
       "id": "workspaces/_api/openPreview_v1.ts::main",
       "file": "workspaces/_api/openPreview_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts::<module>",
+      "file": "workspaces/_api/openRefPreview_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts::main",
+      "file": "workspaces/_api/openRefPreview_v1.ts",
       "name": "main",
       "kind": "function"
     },

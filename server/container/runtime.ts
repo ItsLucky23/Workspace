@@ -42,9 +42,29 @@ export function docker(args: string[]): Promise<DockerResult> {
 function safe(s: string): string {
   return s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
 }
-export function containerName(workspaceId: string, ticketKey: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}`; }
-function volumeName(workspaceId: string, ticketKey: string): string { return `wsvol-${safe(workspaceId)}-${safe(ticketKey)}`; }
+//? T1 — an optional `refSuffix` scopes a container/volume to a specific git ref, so a ref-preview at an OLD
+//? commit gets its OWN ephemeral container and never clobbers the ticket's tip worker container.
+export function containerName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
+function volumeName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `wsvol-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
 function bareMirrorPath(workspaceId: string): string { return path.join(workspaceDataDir(workspaceId), 'repo.git'); }
+
+//? T1 — a git ref (SHA / branch / tag) is safe to interpolate into the clone shell ONLY if it's plain
+//? `[0-9a-zA-Z._/-]` and carries no `..` (range / path-traversal). Pure + exported for the caller to gate on.
+const SAFE_REF = /^[0-9a-zA-Z._/-]{1,200}$/;
+export function isSafeRef(ref: string): boolean { return SAFE_REF.test(ref) && !ref.includes('..'); }
+
+//? T1 — a short docker-safe slug for a ref (≤12 normalized chars) → the ref-scoped container/volume/route name.
+export function refSlug(ref: string): string { return safe(ref).slice(0, 12) || 'ref'; }
+
+//? T1 — the docker-exec that populates /work: a plain branch-tip clone (the default, unchanged) OR, when a
+//? `ref` is given, a FULL-history clone + `git checkout <ref>` (detached for a SHA) so any commit is previewable.
+//? The ref MUST be pre-validated with `isSafeRef` (the caller does). Pure + exported for tests.
+export function cloneExecArgs(name: string, branch: string, ref?: string): string[] {
+  if (ref !== undefined && ref.length > 0) {
+    return ['exec', name, 'sh', '-lc', `git clone /mirror /work && git -C /work checkout ${ref}`];
+  }
+  return ['exec', name, 'git', 'clone', '--branch', branch, '--single-branch', '/mirror', '/work'];
+}
 
 export interface ContainerInfo { containerId: string; name: string; volume: string }
 
@@ -61,14 +81,17 @@ export async function dockerAvailable(): Promise<boolean> {
 //? then clones the frozen `DEV-####` branch into `/work` AS the agent user (so the
 //? checkout is agent-owned). Rolls back the volume/container on a partial failure (§8.3).
 //? Returns null when no repo is linked (no mirror to clone).
-export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string }): Promise<ContainerInfo | null> {
-  const { workspaceId, ticketKey, branch } = args;
+export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string; ref?: string }): Promise<ContainerInfo | null> {
+  const { workspaceId, ticketKey, branch, ref } = args;
   //? Prefer the project's L2 image (Q-CT-IMAGESEL) when the caller resolved one, else L1.
   const image = args.image ?? BASE_IMAGE;
   const mirror = bareMirrorPath(workspaceId);
   if (!existsSync(mirror)) return null;
-  const name = containerName(workspaceId, ticketKey);
-  const volume = volumeName(workspaceId, ticketKey);
+  //? T1 — a ref-preview gets its OWN ephemeral container/volume (ref-scoped name), so it never disturbs the
+  //? ticket's tip worker container and two refs of one branch can run side by side.
+  const suffix = ref !== undefined && ref.length > 0 ? refSlug(ref) : undefined;
+  const name = containerName(workspaceId, ticketKey, suffix);
+  const volume = volumeName(workspaceId, ticketKey, suffix);
 
   //? Reuse an existing container (re-activation / re-entry) instead of recreating.
   const existing = await docker(['inspect', '-f', '{{.State.Running}}', name]);
@@ -119,7 +142,7 @@ export async function launchTicketContainer(args: { workspaceId: string; ticketK
   //? detaching checkout needed; the branch stays put until the agent commits.
   //? (dubious-ownership on the host-uid-owned /mirror is handled by the baked
   //? `safe.directory=*` system config in L1 — `-c` is ignored by git for this key.)
-  const clone = await docker(['exec', name, 'git', 'clone', '--branch', branch, '--single-branch', '/mirror', '/work']);
+  const clone = await docker(cloneExecArgs(name, branch, ref));
   if (clone.code !== 0) {
     await docker(['rm', '-f', name]);
     await docker(['volume', 'rm', '-f', volume]);
