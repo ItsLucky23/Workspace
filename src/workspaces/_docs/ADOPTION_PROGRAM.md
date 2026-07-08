@@ -65,6 +65,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | H1 admin/security audit-log (governance-ops → AuditLog) | ✅ | 0167 | auditLog-integratie 10/10 |
 | H2 per-user spend-attributie + budget-check | ✅ | — | userSpend-unit 11/11 · attributie-integratie · spend-regressie 17/17 |
 | H4 workspace-data-export (portability/backup, secrets uitgesloten) | ✅ | — | workspaceExport-integratie 10/10 |
+| H5 concurrency-fairness (round-robin drain per workspace) | ✅ | 0168 | capacityFairness-unit 5/5 · capacity-regressie groen |
 
 ---
 

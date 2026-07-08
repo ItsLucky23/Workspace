@@ -63,7 +63,7 @@ import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../de
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
-import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
+import { acquireSlot, releaseSlot, enqueueDeferred, dequeueFairDeferred, inFlightByWorkspace } from './capacity';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
@@ -426,7 +426,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? approval, ADR 0018). A rejected turn is parked on the FIFO queue + banner; a completing
       //? turn releases its slot and drains the next parked turn (`drainCapacityQueue`).
       const urgent = t?.priority === 'urgent';
-      const admitted = await acquireSlot(key, urgent, Date.now());
+      const admitted = await acquireSlot(key, workspaceId, urgent, Date.now());
       if (!admitted) {
         const queued = await enqueueDeferred({ workspaceId, key, stageId });
         console.log(`[conductor] runStage ${key}@${stageId} deferred — capacity full${queued ? ' (queued)' : ' (already queued)'}`);
@@ -441,7 +441,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       } finally {
         //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
         //? next parked turn in — the queue drains at the pace turns complete.
-        await releaseSlot(key);
+        await releaseSlot(key, workspaceId);
         void drainCapacityQueue();
       }
     }).then(([error]) => {
@@ -455,7 +455,9 @@ async function provisionContainers(workspaceId: string, activated: { key: string
 //? no longer activated (moved/archived). Called on every slot release, so the backlog drains
 //? one turn per completion without any polling.
 async function drainCapacityQueue(): Promise<void> {
-  const next = await dequeueDeferred();
+  //? H5 — drain FAIRLY: serve the parked turn from the workspace holding the fewest slots (round-robin), so one
+  //? workspace's backlog can't starve the others. Falls back to FIFO within a workspace.
+  const next = await dequeueFairDeferred(await inFlightByWorkspace(Date.now()));
   if (!next) return;
   const t = await prisma.ticket.findFirst({ where: { workspaceId: next.workspaceId, key: next.key }, select: { branch: true, stageId: true } });
   if (!t?.branch) return;

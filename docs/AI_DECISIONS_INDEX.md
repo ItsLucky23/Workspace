@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (166)
+## Decisions (167)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -179,6 +179,7 @@
 | 0165 | S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard) | 🟢 accepted | container, any-stack, base-image, dockerfile, adoption, schema | — | `docs/decisions/0165-multi-base-stack-catalog.md` |
 | 0166 | K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine | 🟢 accepted | container, services, compose, security, multi-tenancy, adoption, schema | — | `docs/decisions/0166-compose-engine-services.md` |
 | 0167 | H1 — an append-only admin/security audit log for governance ops | 🟢 accepted | governance, audit, security, team-trust, adoption, schema | — | `docs/decisions/0167-governance-audit-log.md` |
+| 0168 | H5 — fair (round-robin) capacity draining across workspaces | 🟢 accepted | capacity, fairness, scheduler, multi-tenant, adoption | — | `docs/decisions/0168-fair-capacity-draining.md` |
 
 ## Summaries
 
@@ -1511,6 +1512,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A dedicated append-only `AuditLog`** (`{workspaceId, actorId, action, target, metadata, createdAt}`), separate from `TicketEvent` (which is per-ticket + seq-ordered). A pure `recordAudit(prisma, ws, actorId, action, target?, meta?)` helper — best-effort (a failure NEVER breaks the op; the authoritative write already ran) — is called at the END of each governance conductor case, on the Conductor (the only writer, B-23). **Never log the secret VALUE** — `save-env` records the KEY + `{secret: true}`, never the plaintext; the metadata carries only safe context (old→new role, invited email + role). **A read view** (`listAuditLog` + `audit-log_v1` `_api`, `workspaceSettings`-gated) returns the entries newest-first with the actor's name resolved, tenant-scoped.
 
 → `docs/decisions/0167-governance-audit-log.md`
+
+### 0168 — H5 — fair (round-robin) capacity draining across workspaces
+
+**0168** · accepted · tags: capacity, fairness, scheduler, multi-tenant, adoption · 2026-07-08
+
+**Drain the LEAST-LOADED workspace first** (round-robin), FIFO within a workspace. On each slot-release, `drainCapacityQueue` reads current occupancy per workspace and `pickFairNext` selects the earliest-queued turn whose workspace holds the fewest active slots (strict-less-than on ties preserves FIFO). **Occupancy per workspace is derived from the active set**, made possible by TAGGING each active ZSET member as `<workspaceId>::<ticketKey>` (was the bare ticketKey). This keeps the existing TTL self-healing (the score is still acquire-time, so a crashed instance's slots still evict) — no drift-prone side counter. **`pickFairNext` is pure** (queue items + an in-flight map → the chosen item + index), unit-tested; the Redis read/LREM lives in `dequeueFairDeferred`.
+
+→ `docs/decisions/0168-fair-capacity-draining.md`
 
 ## Code governed by decisions
 
