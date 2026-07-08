@@ -54,6 +54,7 @@ import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
+import { presetCompose } from '../container/servicePresets';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
@@ -1777,7 +1778,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     //? K1 — attach a third-party SERVICE STACK (docker-compose). The compose is SANITIZED (host-escapes rejected,
     //? host-ports rewritten) + namespaced per workspace before it runs. Conductor is the only writer (B-23).
     case 'service-provision': {
-      const name = str(payload, 'name'); const compose = str(payload, 'compose');
+      const name = str(payload, 'name');
+      //? K2 — a preset key resolves to its curated compose; else the user's own compose (K1 bring-your-own).
+      const presetKey = str(payload, 'preset');
+      const compose = presetKey ? (presetCompose(presetKey) ?? '') : str(payload, 'compose');
       if (!name || !compose) return { ok: false, error: 'service.invalidRequest' };
       return provisionServiceStack(prisma, action.workspaceId, name, compose);
     }

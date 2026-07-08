@@ -11,7 +11,8 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { name: string; compose: string; clientRequestId: string };
+  //? Either a K2 `preset` key (curated compose) OR a bring-your-own `compose` (K1). `preset` wins when set.
+  clientInput: { name: string; compose?: string; preset?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -23,11 +24,12 @@ function rejected(result: unknown): boolean {
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { name, compose, clientRequestId } = clientInput;
-  if (name.trim().length === 0 || compose.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { name, compose, preset, clientRequestId } = clientInput;
+  const hasSource = (preset ?? '').trim().length > 0 || (compose ?? '').trim().length > 0;
+  if (name.trim().length === 0 || !hasSource) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'service-provision', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { name: name.trim(), compose }, clientRequestId,
+    payload: { name: name.trim(), ...(preset ? { preset } : {}), ...(compose ? { compose } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   //? The compose was sanitizer-rejected (host-escape / bad shape) → surface a typed error (details logged server-side).

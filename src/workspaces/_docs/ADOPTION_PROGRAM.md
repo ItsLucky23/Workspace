@@ -48,6 +48,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | **FASE S COMPLEET** | ✅ | | S1–S3 gecommit |
 | K1-a compose-sanitizer (security-kern) | ✅ | 0166 | composeSanitize-unit 31/31 |
 | K1-b compose-provisioner + ServiceStack + control-ops | ✅ | 0166 | composeEngine-unit 9/9 · serviceStack-integratie 12/12 |
+| K2 service-presets (curated compose-snippets, 7 services) | ✅ | (0166) | servicePresets-unit 39/39 |
 
 ---
 
