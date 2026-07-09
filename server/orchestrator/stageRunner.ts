@@ -12,12 +12,18 @@ import * as pty from 'node-pty';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
+import { resolveProjectBaseImage } from '../container/baseImages';
+import { workspaceContainerContext } from '../container/composeEngine';
+import { runPipeline } from '../ci/runner';
+import { isTestStage, testStageCiVerdict } from '../ci/gate';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
 import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta } from '../read/broadcast';
+import { jsonInput } from '../util/json';
+import { parseAdvisories } from './questionSet';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
@@ -223,9 +229,12 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined));
   const retrieved = ragErr || !hits ? [] : hits.map((h) => ({ filePath: h.filePath, content: h.content }));
 
-  //? Prefer the project's built L2 image (idempotent — reuses a running container).
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) });
+  //? Prefer the project's built L2 image, else the L1 base for its stack (S1 — any-stack). (Multi-project
+  //? `findFirst`-by-workspace wart is pre-existing, ADR 0035 / fixed in R3.)
+  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true, stack: true } });
+  //? K3 — inject the workspace env + service network so the coding agent's build/test reaches the app's services.
+  const ctx = await workspaceContainerContext(prisma, workspaceId);
+  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
   const sessionKey = `worker:${ticket.id}:${stageKey}`;
@@ -277,7 +286,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? CLAUDE.md + stage instructions, output ≈ the assistant message (the CLI exposes no usage field
   //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
   await tryCatch(() => recordTurnSpend(prisma, {
-    workspaceId, ticketId: ticket.id, stageId: stageKey, sessionKey,
+    workspaceId, userId: ticket.assigneeId ?? null, ticketId: ticket.id, stageId: stageKey, sessionKey,
     model: cfg.modelCfg.base.model, inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
   }));
 
@@ -288,12 +297,32 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     const nextStage = await prisma.pipelineStage.findFirst({ where: { workspaceId, order: { gt: stageRow.order } }, orderBy: { order: 'asc' } });
     await prisma.carryOver.create({ data: { workspaceId, ticketId: ticket.id, fromStageId: stageKey, toStageId: nextStage?.key ?? stageKey, sessionId: session.id, envelope: envelopeJson(result.envelope) } });
     await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { carryOver: result.envelope.summary } });
+    //? W2 — surface NON-blocking questions the agent proceeded past with assumptions on the ticket (append to any
+    //? existing unresolved set, dedup by question) WITHOUT parking it. A human can later resolve them; a divergent
+    //? answer schedules a revision turn (answer-input `advisoryIndex`). The turn otherwise completes normally.
+    if (result.envelope.advisories && result.envelope.advisories.length > 0) {
+      const current = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { advisoryQuestions: true } });
+      const existing = parseAdvisories(current?.advisoryQuestions);
+      const seen = new Set(existing.map((x) => x.q));
+      const additions = result.envelope.advisories.filter((a) => !seen.has(a.q)).map((a) => ({ q: a.q, assumption: a.assumption, a: null, resolved: false }));
+      if (additions.length > 0) await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { advisoryQuestions: jsonInput([...existing, ...additions]) } });
+    }
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
     //? A4 — the effective gate = the stage's own flag modulated by the workspace autonomy level.
     const [, wsRow] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { autonomyLevel: true } }));
     const gated = resolveStageGate(stageRow.gateForApproval, wsRow?.autonomyLevel);
-    //? Advance the ticket to the next stage unless this stage is gated for human approval.
-    if (nextStage && !gated) {
+    //? R2 — a TEST stage auto-fires the deterministic CI gate: a RED run BLOCKS advancement + parks the ticket
+    //? (was free-text only). `runPipeline` self-handles no-ci.yml ('none') / no-docker ('canceled') → nogate.
+    let ciBlocked = false;
+    if (isTestStage(stageRow.kind)) {
+      const [, ci] = await tryCatch(() => runPipeline(prisma, workspaceId, ticket.projectId, { branch: ticket.branch ?? ticketKey, commitHash: ticket.commitHash ?? '', ticketId: ticket.id, trigger: 'test-stage' }));
+      if (ci && testStageCiVerdict(ci.status) === 'fail') {
+        ciBlocked = true;
+        await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: 'CI failed — fix the failing tests before this ticket advances.', status: 'needs-input', remindedAt: null } });
+      }
+    }
+    //? Advance the ticket to the next stage unless this stage is gated for human approval OR the CI gate is red.
+    if (nextStage && !gated && !ciBlocked) {
       await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { stageId: nextStage.key } });
     }
     //? Realtime (item 5): the engine advance was silent before — broadcast the updated ticket so
@@ -322,9 +351,15 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? onto the ticket + flip it to needs-input, then broadcast so the board/phone renders the P-B card.
   //? `answer-input` clears it and resumes the parked session.
   if (result.kind === 'needs-input') {
-    const question = result.questions[0] ?? '';
-    if (question.trim().length > 0) {
-      await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: question, status: 'needs-input', remindedAt: null } });
+    //? W1 — persist the FULL question set (was: only questions[0], the rest silently dropped). The banner
+    //? stays the first question (back-compat with every existing reader); `needsInputQuestions` carries the
+    //? whole [{q,a}] list so answer-input can step through them + resume once with all answers.
+    const qs = result.questions.map((q) => q.trim()).filter((q) => q.length > 0);
+    if (qs.length > 0) {
+      await prisma.ticket.updateMany({
+        where: { workspaceId, key: ticketKey },
+        data: { needsInput: qs[0], needsInputQuestions: jsonInput(qs.map((q) => ({ q, a: null }))), status: 'needs-input', remindedAt: null },
+      });
       await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
     }
   }

@@ -14,6 +14,8 @@
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
 import { Prisma, type Ticket as DbTicket } from '@prisma/client';
 
+import { randomBytes } from 'node:crypto';
+
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { sendInviteEmail } from '../email/sendInviteEmail';
@@ -42,6 +44,8 @@ import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfi
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
+import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt, parseAdvisories, resolveAdvisory } from './questionSet';
+import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { applyMigration, introspectDb } from '../db/migrate';
 import { indexWorkspace } from '../rag';
 import { indexInstitutionalMemory } from '../rag/memory';
@@ -50,13 +54,17 @@ import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
+import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
+import { presetCompose } from '../container/servicePresets';
+import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
+import { recordAudit } from '../control/audit';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
-import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferred } from './capacity';
+import { acquireSlot, releaseSlot, enqueueDeferred, dequeueFairDeferred, inFlightByWorkspace } from './capacity';
 import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
@@ -419,7 +427,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       //? approval, ADR 0018). A rejected turn is parked on the FIFO queue + banner; a completing
       //? turn releases its slot and drains the next parked turn (`drainCapacityQueue`).
       const urgent = t?.priority === 'urgent';
-      const admitted = await acquireSlot(key, urgent, Date.now());
+      const admitted = await acquireSlot(key, workspaceId, urgent, Date.now());
       if (!admitted) {
         const queued = await enqueueDeferred({ workspaceId, key, stageId });
         console.log(`[conductor] runStage ${key}@${stageId} deferred — capacity full${queued ? ' (queued)' : ' (already queued)'}`);
@@ -434,7 +442,7 @@ async function provisionContainers(workspaceId: string, activated: { key: string
       } finally {
         //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
         //? next parked turn in — the queue drains at the pace turns complete.
-        await releaseSlot(key);
+        await releaseSlot(key, workspaceId);
         void drainCapacityQueue();
       }
     }).then(([error]) => {
@@ -448,7 +456,9 @@ async function provisionContainers(workspaceId: string, activated: { key: string
 //? no longer activated (moved/archived). Called on every slot release, so the backlog drains
 //? one turn per completion without any polling.
 async function drainCapacityQueue(): Promise<void> {
-  const next = await dequeueDeferred();
+  //? H5 — drain FAIRLY: serve the parked turn from the workspace holding the fewest slots (round-robin), so one
+  //? workspace's backlog can't starve the others. Falls back to FIFO within a workspace.
+  const next = await dequeueFairDeferred(await inFlightByWorkspace(Date.now()));
   if (!next) return;
   const t = await prisma.ticket.findFirst({ where: { workspaceId: next.workspaceId, key: next.key }, select: { branch: true, stageId: true } });
   if (!t?.branch) return;
@@ -528,6 +538,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const roleKey = str(payload, 'roleKey') ?? str(payload, 'role');
       if (!memberId || !roleKey) return;
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey } });
+      await recordAudit(prisma, action.workspaceId, userId, 'change-role', memberId, { roleKey });
       return;
     }
     case 'save-env': {
@@ -540,14 +551,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const stored = secret ? encryptSecret(value) : value;
       const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key } });
       //? Return the upserted row so the realtime `_sync` route broadcasts the delta.
-      return existing
+      const row = await (existing
         ? prisma.envVar.update({ where: { id: existing.id }, data: { value: stored, secret } })
-        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } });
+        : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } }));
+      //? H1 — audit the fact + the key (never the secret VALUE).
+      await recordAudit(prisma, action.workspaceId, userId, 'save-env', key, { secret });
+      return row;
     }
     case 'remove-env': {
       const envId = str(target, 'envId');
       if (!envId) return;
       await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, id: envId } });
+      await recordAudit(prisma, action.workspaceId, userId, 'remove-env', envId);
       return;
     }
     case 'rename-workspace': {
@@ -698,7 +713,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     // ---- members / RBAC / workspace lifecycle ----
     case 'remove-member': {
       const memberId = str(target, 'memberId');
-      if (memberId) await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+      if (memberId) {
+        await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+        await recordAudit(prisma, action.workspaceId, userId, 'remove-member', memberId);
+      }
       return;
     }
     case 'transfer-ownership': {
@@ -707,9 +725,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ownerId: memberId } });
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { roleKey: 'admin' } });
+      await recordAudit(prisma, action.workspaceId, userId, 'transfer-ownership', memberId, { from: userId });
       return;
     }
     case 'delete-workspace': {
+      //? H1 — record BEFORE the cascade wipes the workspace (the row lives under it; a durable copy would need an
+      //? out-of-tenant sink — noted). The intent is audited even though the log is deleted with the workspace.
+      await recordAudit(prisma, action.workspaceId, userId, 'delete-workspace', action.workspaceId);
       await cascadeDeleteWorkspace(action.workspaceId);
       return;
     }
@@ -727,6 +749,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (label) data.label = label;
       if (Array.isArray(payload.perms)) data.perms = boolArr(payload, 'perms');
       await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
+      await recordAudit(prisma, action.workspaceId, userId, 'role-update', key, { ...(label ? { label } : {}), ...(Array.isArray(payload.perms) ? { permsChanged: true } : {}) });
       //? Return the updated role so the realtime `_sync` route broadcasts the delta.
       return prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key } });
     }
@@ -742,7 +765,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'invite': {
       const email = str(payload, 'email');
       if (!email) return;
-      const invite = await prisma.invite.create({ data: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token: `inv-${action.clientRequestId}`, status: 'pending' } });
+      //? F3 — a CRYPTO-RANDOM, unguessable token (was `inv-${clientRequestId}`: derived from a client-supplied
+      //? id → forgeable/replayable) + a 7-day expiry. The token reaches only the matched-email invitee via the
+      //? email-scoped `myInvites` snapshot; accept-invite additionally binds it to that email + rejects expiry.
+      const token = randomBytes(24).toString('base64url');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const invite = await prisma.invite.upsert({
+        where: { workspaceId_email: { workspaceId: action.workspaceId, email } },
+        create: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt },
+        update: { roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt, acceptedAt: null },
+      });
+      await recordAudit(prisma, action.workspaceId, userId, 'invite', email, { roleKey: str(payload, 'roleKey') ?? 'member' });
       //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
       //? unconfigured) — never block or fail the authoritative write on delivery.
       const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
@@ -760,6 +793,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!token) return;
       const inv = await prisma.invite.findFirst({ where: { token, status: 'pending' } });
       if (!inv) return;
+      //? F3 — an expired invite cannot be accepted; mark it so it stops surfacing (light sweep-on-touch).
+      if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) {
+        await prisma.invite.update({ where: { id: inv.id }, data: { status: 'expired' } });
+        return;
+      }
+      //? F3 — bind the invite to its target email: only the account whose email matches the invite may accept it
+      //? (defense-in-depth beyond the now-unguessable token). Case-insensitive.
+      const acceptor = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (acceptor?.email.trim().toLowerCase() !== inv.email.trim().toLowerCase()) return;
       await prisma.workspaceMember.create({ data: { workspaceId: inv.workspaceId, userId, roleKey: inv.roleKey } });
       await prisma.invite.update({ where: { id: inv.id }, data: { status: 'accepted', acceptedAt: new Date() } });
       return;
@@ -885,18 +927,48 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return;
     }
     case 'answer-input': {
-      //? #17: a human answers the ticket's open question. Record it as a comment (audit trail),
-      //? clear the needs-input banner, and RE-FIRE the parked turn with `--resume` + the answer as
-      //? the prompt (builds on #1's resume path). Only meaningful while the ticket is at needs-input.
+      //? #17 / W1: a human answers the ticket's open question(s). MULTI-QUESTION: a `answers` array batch-fills
+      //? the open questions in order; a single `answer` fills the first unanswered one (the phone-first stepper).
+      //? Each answer is recorded as a comment (audit trail). The parked turn is RE-FIRED with `--resume` ONLY
+      //? once EVERY question is answered — until then the banner just advances to the next question (no resume).
       const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
-      const answer = str(payload, 'answer');
-      if (!key || !answer || answer.trim().length === 0) return;
+      if (!key) return;
+      const single = str(payload, 'answer');
+      const batch = Array.isArray(payload.answers) ? payload.answers.filter((x): x is string => typeof x === 'string') : null;
+      const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key } });
+      if (!ticket) return;
+      //? W2 — resolving a NON-blocking ADVISORY question (the ticket never parked on it). A divergent answer
+      //? schedules a revision turn with the correction as the resume prompt; a matching one just marks it resolved.
+      const advisoryIndex = typeof payload.advisoryIndex === 'number' ? payload.advisoryIndex : null;
+      if (advisoryIndex !== null) {
+        const advisories = parseAdvisories(ticket.advisoryQuestions);
+        const res = resolveAdvisory(advisories, advisoryIndex, single ?? '');
+        if (!res.applied) return;
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { advisoryQuestions: jsonInput(res.list) } });
+        const [ta] = await ticketIdsForKeys(action.workspaceId, [key]);
+        if (ta) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: ta.id, authorKind: 'user', authorId: userId, body: `↩︎ (advisory) ${questionPrompt(advisories[advisoryIndex]?.q ?? '')} → ${single ?? ''}` } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        if (res.revisionPrompt !== null) await reprovisionTicket(action.workspaceId, key, true, res.revisionPrompt);
+        return ticketRowsForKeys(action.workspaceId, [key]);
+      }
+      const openSet = parseNeedsInputQuestions(ticket.needsInputQuestions, ticket.needsInput);
+      if (openSet.length === 0) return;
+      const { set, newlyAnswered, appliedCount } = applyAnswers(openSet, { single, batch });
+      if (appliedCount === 0) return; // nothing answerable → no-op
       const [t] = await ticketIdsForKeys(action.workspaceId, [key]);
-      if (t) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${answer}` } });
-      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, status: 'idle', remindedAt: null } });
-      if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question');
+      if (t) for (const { q, a } of newlyAnswered) await prisma.workspaceNote.create({ data: { workspaceId: action.workspaceId, ticketId: t.id, authorKind: 'user', authorId: userId, body: `↩︎ ${questionPrompt(q)} → ${a ?? ''}` } });
+      const nextBanner = firstUnanswered(set);
+      if (nextBanner !== null) {
+        //? Still open questions → advance the banner + keep parked (do NOT resume yet).
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: nextBanner, needsInputQuestions: jsonInput(set), remindedAt: null } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        return ticketRowsForKeys(action.workspaceId, [key]);
+      }
+      //? All answered → clear + resume the parked turn once with the combined answers.
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { needsInput: null, needsInputQuestions: null, status: 'idle', remindedAt: null } });
+      if (t) await recordTicketEvent(action.workspaceId, t.id, 'comment', userId, 'answered the AI question(s)');
       await broadcastTicketDelta(prisma, action.workspaceId, [key]);
-      await reprovisionTicket(action.workspaceId, key, true, answer);
+      await reprovisionTicket(action.workspaceId, key, true, buildCombinedAnswerPrompt(set));
       return ticketRowsForKeys(action.workspaceId, [key]);
     }
     case 'kill': {
@@ -1569,7 +1641,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!contentProjectId || !assetId || !platform || !isPublishPlatform(platform)) return;
       //? A3 — route to a specific connected account when chosen (default account otherwise).
       const accountId = str(payload, 'accountId');
-      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title: `Publish to ${platform}${accountId ? ` (${accountId})` : ''}`, body: `Ready to publish this content to ${platform}? This is public and hard to undo.`, patch: { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}) } } });
+      //? C1 — an optional `scheduledAt` (ISO) parks the post for later; the leader loop (runScheduledPublish)
+      //? fires it when due. Only kept when it is a valid FUTURE timestamp, else it publishes on accept.
+      const schedRaw = str(payload, 'scheduledAt');
+      const schedMs = schedRaw ? Date.parse(schedRaw) : Number.NaN;
+      const scheduledAt = Number.isFinite(schedMs) && schedMs > Date.now() ? new Date(schedMs).toISOString() : null;
+      const acctLabel = accountId ? ` (${accountId})` : '';
+      const title = scheduledAt ? `Schedule for ${platform}${acctLabel}` : `Publish to ${platform}${acctLabel}`;
+      const body = scheduledAt ? `Schedule this content for ${platform} at ${scheduledAt}?` : `Ready to publish this content to ${platform}? This is public and hard to undo.`;
+      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title, body, patch: { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}), ...(scheduledAt ? { scheduledAt } : {}) } } });
     }
     //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
     //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the
@@ -1644,6 +1724,40 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? Return the updated stage so the realtime `_sync` route broadcasts the delta.
       return prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key: stageId } });
     }
+    //? R1 — durably ADD a pipeline stage (the editor previously mutated React state only → a refresh discarded it).
+    //? Appended at the end; the client supplies a unique `key` + `name` (+ optional `kind`).
+    case 'stage-create': {
+      const key = str(payload, 'key'); const name = str(payload, 'name');
+      if (!key || !name) return { ok: false, error: 'stage.invalidRequest' };
+      const kind = str(payload, 'kind') ?? 'code';
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      const dupe = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
+      if (dupe) return { ok: false, error: 'stage.keyExists' };
+      const last = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, ...(projectId ? { projectId } : {}) }, orderBy: { order: 'desc' }, select: { order: true } });
+      const order = (last?.order ?? -1) + 1;
+      return prisma.pipelineStage.create({ data: {
+        workspaceId: action.workspaceId, projectId: projectId ?? '', key, kind, name, order, aiEnabled: true, wipLimit: null,
+        roleKey: kind === 'code' ? 'code' : kind, systemPrompt: '', customInstructions: '', promptTemplate: '{{summary}}', definitionOfDone: '',
+        skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
+        modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+        network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
+        hooks: {},
+      } });
+    }
+    //? R1 — durably REMOVE a pipeline stage.
+    case 'stage-delete': {
+      const stageId = str(target, 'stageId') ?? str(payload, 'stageId') ?? str(payload, 'key');
+      if (!stageId) return { ok: false };
+      await prisma.pipelineStage.deleteMany({ where: { workspaceId: action.workspaceId, key: stageId } });
+      return { ok: true, deleted: stageId };
+    }
+    //? R1 — persist a new stage ORDER: `order` lists the stage keys in their new sequence → each stage's `order`
+    //? is set to its index (so a drag-reorder survives a refresh).
+    case 'stage-reorder': {
+      const order = strArr(payload, 'order');
+      for (let i = 0; i < order.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: order[i] }, data: { order: i } });
+      return { ok: true, count: order.length };
+    }
     // ---- suggestions ----
     case 'accept-suggestion': {
       const suggestionId = str(target, 'suggestionId');
@@ -1667,7 +1781,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const assetId = typeof p.assetId === 'string' ? p.assetId : '';
         const platform = typeof p.platform === 'string' ? p.platform : '';
         const accountId = typeof p.accountId === 'string' ? p.accountId : undefined;
-        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}) });
+        //? C1 — honour a scheduled post: parse the patch's `scheduledAt`; publishAsset parks it as a 'scheduled'
+        //? PublishJob the leader loop fires when due (else it posts now). A3 — route to the chosen account.
+        const schedMs = typeof p.scheduledAt === 'string' ? Date.parse(p.scheduledAt) : Number.NaN;
+        const scheduledAt = Number.isFinite(schedMs) ? new Date(schedMs) : null;
+        if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}), scheduledAt });
       }
       return;
     }
@@ -1765,6 +1883,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const created = await prisma.project.create({
         data: {
           workspaceId: action.workspaceId, name, gitlabPath: '',
+          //? S2 — the template's stack drives the L1 base image (any-stack, S1).
+          stack: template.stack,
           ...(template.baseImageRef ? { baseImageRef: template.baseImageRef } : {}),
           devCommand: template.devCommand,
         },
@@ -1800,6 +1920,30 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const envId = str(target, 'envId') ?? str(payload, 'envId');
       if (!envId) return { ok: false };
       return teardownEnvironment(prisma, action.workspaceId, envId);
+    }
+    //? K1 — attach a third-party SERVICE STACK (docker-compose). The compose is SANITIZED (host-escapes rejected,
+    //? host-ports rewritten) + namespaced per workspace before it runs. Conductor is the only writer (B-23).
+    case 'service-provision': {
+      const name = str(payload, 'name');
+      //? K2 — a preset key resolves to its curated compose; else the user's own compose (K1 bring-your-own).
+      const presetKey = str(payload, 'preset');
+      const compose = presetKey ? (presetCompose(presetKey) ?? '') : str(payload, 'compose');
+      if (!name || !compose) return { ok: false, error: 'service.invalidRequest' };
+      return provisionServiceStack(prisma, action.workspaceId, name, compose);
+    }
+    case 'service-teardown': {
+      const name = str(payload, 'name') ?? str(target, 'name');
+      if (!name) return { ok: false };
+      return teardownServiceStack(prisma, action.workspaceId, name);
+    }
+    //? U1 — persist a "unfuck the UI" review request (screenshots + ticked problems + notes). Off-taxonomy
+    //? problems + non-/media screenshots are dropped (sanitized). B-23: the Conductor is the only writer.
+    case 'ui-review-create': {
+      const screenshots = sanitizeScreenshots(payload.screenshots);
+      const problems = sanitizeProblems(payload.problems);
+      if (screenshots.length === 0 && problems.length === 0) return { ok: false, error: 'uiReview.empty' };
+      const page = str(payload, 'page'); const notes = str(payload, 'notes');
+      return prisma.uiReviewRequest.create({ data: { workspaceId: action.workspaceId, screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}), createdById: userId, status: 'open' } });
     }
     //? Promote up the dev→staging→prod ladder (ADR 0038) — deploys the SOURCE env's tested image to the
     //? next stage; prod is gated on an explicit approval + a live source (B-23).

@@ -44,6 +44,7 @@ import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { startEditorReaper } from './proxy/editorReaper';
+import { startWorkerReaper } from './orchestrator/workerReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
@@ -182,6 +183,9 @@ import { startLeaderElection } from './orchestrator/cluster';
   void import('./deploy/environment').then(({ reassertEnvironmentRoutes }) => reassertEnvironmentRoutes()).catch((e: unknown) => { console.error('[env] boot re-assert error:', e); });
   //? Periodically evict idle live editors + prune their routes (CapacityManager). Leader-gated.
   startEditorReaper();
+  //? W3 — periodically STOP the worker container of a parked (needs-input) ticket after it idles, freeing
+  //? CPU/RAM; the reprovision path restarts it on answer/resume. Leader-gated.
+  startWorkerReaper();
   //? Continuously sync GitLab issues → tickets for every workspace with a linked repo. Leader-gated.
   startGitlabSyncPoller();
   //? Crash-recovery (#1): reconcile interrupted turns on boot + periodically detect stuck/idle turns

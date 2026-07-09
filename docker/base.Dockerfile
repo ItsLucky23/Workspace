@@ -55,6 +55,8 @@ LABEL org.workspaces.openvscode-version="${OVS_VERSION}"
 #? here (node-pty is the global install above, resolved via NODE_PATH). BUILD CONTEXT = REPO ROOT:
 #?   docker build -f docker/base.Dockerfile -t workspaces/base:0.1.0 .
 COPY docker/pty-agent/agent.mjs /opt/pty-agent/agent.mjs
+#? K4 — the integration MCP servers (e.g. cli-proxy.mjs: query an attached DB via the baked CLI + injected env).
+COPY docker/pty-agent/mcp/ /opt/pty-agent/mcp/
 
 #? Non-root agent (07b §7): baked uid/gid; everything below runs as this user.
 RUN useradd --create-home --uid 10001 --shell /bin/bash agent

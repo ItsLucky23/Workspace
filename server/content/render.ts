@@ -42,7 +42,14 @@ export type WatermarkPosition = 'br' | 'bl' | 'tr' | 'tl';
 export interface Watermark { file: string; position?: WatermarkPosition }
 const OVERLAY_XY: Record<WatermarkPosition, string> = { br: 'W-w-24:H-h-24', bl: '24:H-h-24', tr: 'W-w-24:24', tl: '24:24' };
 
-export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, listName: string, outName: string, format?: RenderFormat, watermark?: Watermark | null): { concatList: string; args: string[]; hasVideo: boolean } {
+//? F2 — a shared audio-mix spec: an optional background music track (ducked) + an optional sfx track mixed
+//? over the voice, with per-track linear gains. Used by BOTH the slideshow (buildFfmpegPlan) and the scene
+//? stitch (buildVideoStitchPlan) so "voice + music" works on every render path, not just edited scene timelines.
+export interface AudioMix { musicFile?: string | null; sfxFile?: string | null; voiceVolume?: number; musicVolume?: number; sfxVolume?: number }
+const MUSIC_DUCK = 0.25;
+const SFX_GAIN = 0.6;
+
+export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, listName: string, outName: string, format?: RenderFormat, watermark?: Watermark | null, mix?: AudioMix | null): { concatList: string; args: string[]; hasVideo: boolean } {
   const fmt = format ?? FORMAT_PRESETS['16:9'];
   const usable = beats.filter((b): b is { imageFile: string; durationMs: number } => typeof b.imageFile === 'string' && b.imageFile.length > 0);
   const lines: string[] = [];
@@ -55,6 +62,34 @@ export function buildFfmpegPlan(beats: RenderBeat[], audioFile: string | null, l
 
   const { width: w, height: h, fps } = fmt;
   const scale = `scale=${String(w)}:${String(h)}:force_original_aspect_ratio=decrease,pad=${String(w)}:${String(h)}:(ow-iw)/2:(oh-ih)/2,setsar=1`;
+
+  //? F2 — voice + music/sfx mix for the slideshow path. Purely ADDITIVE: this branch only runs when a music
+  //? or sfx track is present (or a non-default voice gain), so the single-voice / no-mix path below stays
+  //? byte-for-byte identical (the existing render + live tests can't regress).
+  const musicFile = mix?.musicFile ?? null;
+  const sfxFile = mix?.sfxFile ?? null;
+  const voiceVolume = mix?.voiceVolume ?? 1;
+  const useMix = audioFile !== null && (musicFile !== null || sfxFile !== null || voiceVolume !== 1);
+  if (useMix) {
+    const mixArgs = ['-y', '-f', 'concat', '-safe', '0', '-i', `/media/${listName}`];
+    let idx = 1;
+    const voiceIdx = idx++; mixArgs.push('-i', `/media/${audioFile}`);
+    let musicIdx = -1; if (musicFile !== null) { musicIdx = idx++; mixArgs.push('-i', `/media/${musicFile}`); }
+    let sfxIdx = -1; if (sfxFile !== null) { sfxIdx = idx++; mixArgs.push('-i', `/media/${sfxFile}`); }
+    const wmIdx = watermark ? idx : -1; if (watermark) mixArgs.push('-i', `/media/${watermark.file}`);
+    const tracks: AudioTrack[] = [{ label: `${String(voiceIdx)}:a`, volume: voiceVolume }];
+    if (musicIdx >= 0) tracks.push({ label: `${String(musicIdx)}:a`, volume: mix?.musicVolume ?? MUSIC_DUCK });
+    if (sfxIdx >= 0) tracks.push({ label: `${String(sfxIdx)}:a`, volume: mix?.sfxVolume ?? SFX_GAIN });
+    const audioPlan = buildAudioMixPlan(tracks);
+    const vfilter = watermark
+      ? `[0:v]${scale}[bg];[bg][${String(wmIdx)}:v]overlay=${OVERLAY_XY[watermark.position ?? 'br']}[outv]`
+      : `[0:v]${scale}[outv]`;
+    mixArgs.push('-filter_complex', audioPlan ? `${vfilter};${audioPlan.filter}` : vfilter, '-map', '[outv]');
+    if (audioPlan) mixArgs.push('-map', audioPlan.map, '-c:a', 'aac');
+    mixArgs.push('-r', String(fps), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-shortest', `/media/${outName}`);
+    return { concatList, args: mixArgs, hasVideo: usable.length > 0 };
+  }
+
   const args = ['-y', '-f', 'concat', '-safe', '0', '-i', `/media/${listName}`];
   if (audioFile !== null) args.push('-i', `/media/${audioFile}`);
   if (watermark) {
@@ -87,7 +122,7 @@ export interface RenderScene {
 //? loop for a still) to the same size/fps, then joined — a plain `concat` when every transition is a hard cut,
 //? or an `xfade` chain when any scene crossfades in. Optional audio is mapped through. Pure + exported for
 //? tests; the actual ffmpeg run reuses the injectable runner. Returns hasVideo:false when nothing is usable.
-export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | null, outName: string, format: RenderFormat, mix?: { musicFile?: string | null; voiceVolume?: number; musicVolume?: number }): { args: string[]; hasVideo: boolean } {
+export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | null, outName: string, format: RenderFormat, mix?: AudioMix | null): { args: string[]; hasVideo: boolean } {
   const usable = scenes.filter((s) => (s.videoFile ?? s.imageFile ?? '').length > 0);
   if (usable.length === 0) return { args: [], hasVideo: false };
   const { width: w, height: h, fps } = format;
@@ -105,13 +140,17 @@ export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | 
   //? branch only kicks in when there's music OR a non-default voice gain, so the single-voice path (and the
   //? live render test) is byte-for-byte unchanged.
   const musicFile = mix?.musicFile ?? null;
+  const sfxFile = mix?.sfxFile ?? null;
   const voiceVolume = mix?.voiceVolume ?? 1;
-  const musicVolume = mix?.musicVolume ?? 0.25;
+  const musicVolume = mix?.musicVolume ?? MUSIC_DUCK;
+  const sfxVolume = mix?.sfxVolume ?? SFX_GAIN;
   const voiceIdx = usable.length;
   const musicIdx = usable.length + (audioFile === null ? 0 : 1);
-  const useMix = audioFile !== null && (musicFile !== null || voiceVolume !== 1);
+  const sfxIdx = musicIdx + (musicFile === null ? 0 : 1);
+  const useMix = audioFile !== null && (musicFile !== null || sfxFile !== null || voiceVolume !== 1);
   if (audioFile !== null) args.push('-i', `/media/${audioFile}`);
   if (musicFile !== null) args.push('-i', `/media/${musicFile}`);
+  if (sfxFile !== null) args.push('-i', `/media/${sfxFile}`);
 
   //? Normalize each scene to one uniform stream [vN] (trim a clip; scale/fps/format everything).
   const filters: string[] = [];
@@ -154,6 +193,7 @@ export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | 
   if (useMix) {
     audioTracks.push({ label: `${String(voiceIdx)}:a`, volume: voiceVolume });
     if (musicFile !== null) audioTracks.push({ label: `${String(musicIdx)}:a`, volume: musicVolume });
+    if (sfxFile !== null) audioTracks.push({ label: `${String(sfxIdx)}:a`, volume: sfxVolume });
   }
   const audioPlan = useMix ? buildAudioMixPlan(audioTracks) : null;
   const complex = audioPlan ? [...filters, audioPlan.filter].join(';') : filters.join(';');
@@ -212,6 +252,28 @@ export function buildVtt(captions: string[], totalMs: number): string {
   return `WEBVTT\n\n${cues}\n`;
 }
 
+//? F2 — captions with REAL per-segment timing (from the beats' own durations, anchored to the actual voice
+//? length) instead of the even split above. Each segment carries its start + duration in ms. Pure + exported.
+export interface CaptionSegment { text: string; startMs: number; durationMs: number }
+export function buildTimedSrt(segments: CaptionSegment[]): string {
+  const segs = segments.filter((s) => s.text.trim().length > 0);
+  if (segs.length === 0) return '';
+  return segs.map((s, i) => `${String(i + 1)}\n${srtTime(s.startMs, ',')} --> ${srtTime(s.startMs + Math.max(1, s.durationMs), ',')}\n${s.text.trim()}\n`).join('\n');
+}
+export function buildTimedVtt(segments: CaptionSegment[]): string {
+  const segs = segments.filter((s) => s.text.trim().length > 0);
+  if (segs.length === 0) return 'WEBVTT\n';
+  const cues = segs.map((s) => `${srtTime(s.startMs, '.')} --> ${srtTime(s.startMs + Math.max(1, s.durationMs), '.')}\n${s.text.trim()}`).join('\n\n');
+  return `WEBVTT\n\n${cues}\n`;
+}
+
+//? F2 — parse an ffprobe `format=duration` value (seconds, e.g. "12.345000") into whole ms. Pure + exported.
+//? Returns null for a non-numeric/empty probe output (→ caller falls back to the estimated timing).
+export function parseFfprobeDurationMs(out: string): number | null {
+  const secs = Number.parseFloat(out.trim());
+  return Number.isFinite(secs) && secs > 0 ? Math.round(secs * 1000) : null;
+}
+
 //? The ffmpeg runner — runs the container with MEDIA_DIR mounted at /media. Injectable for tests.
 export type FfmpegRunner = (args: string[]) => Promise<{ code: number; err: string }>;
 
@@ -220,6 +282,22 @@ export type FfmpegRunner = (args: string[]) => Promise<{ code: number; err: stri
 const dockerHostPath = (p: string): string => p.replaceAll('\\', '/');
 
 const dockerFfmpegRunner: FfmpegRunner = (args) => docker(['run', '--rm', '-v', `${dockerHostPath(MEDIA_DIR)}:/media`, FFMPEG_IMAGE, ...args]).then((r) => ({ code: r.code, err: r.err }));
+
+//? F2 — probe the REAL duration (ms) of a media file under MEDIA_DIR via ffprobe-in-Docker (same image as the
+//? render, `--entrypoint ffprobe`). Injectable + Docker-gated: `opts.probe` overrides the transport in tests,
+//? and any failure (no Docker / bad file) yields null so the caller keeps its deterministic estimate — never
+//? blocks the pipeline.
+export type DurationProbe = (file: string) => Promise<string | null>;
+const dockerFfprobe: DurationProbe = async (file) => {
+  const [err, r] = await tryCatch(() => docker(['run', '--rm', '--entrypoint', 'ffprobe', '-v', `${dockerHostPath(MEDIA_DIR)}:/media`, FFMPEG_IMAGE, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', `/media/${file}`]));
+  if (err || r?.code !== 0) return null;
+  return r.out;
+};
+export async function probeDurationMs(file: string, opts: { probe?: DurationProbe } = {}): Promise<number | null> {
+  const probe = opts.probe ?? dockerFfprobe;
+  const out = await probe(file);
+  return out === null ? null : parseFfprobeDurationMs(out);
+}
 
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
@@ -250,7 +328,7 @@ export interface RenderResult { ok: boolean; url?: string; storageRef?: string; 
 //? optional voiceover. Localizes assets → writes the concat list → runs ffmpeg → returns the served url.
 //? Typed degrade (`ok:false`) when nothing is renderable or ffmpeg/Docker fails, so assembly stubs.
 export async function renderTimeline(
-  input: { beats: { imageUrl: string | null; durationMs: number }[]; voiceUrl: string | null; format?: string; watermarkUrl?: string | null; watermarkPosition?: string },
+  input: { beats: { imageUrl: string | null; durationMs: number }[]; voiceUrl: string | null; format?: string; watermarkUrl?: string | null; watermarkPosition?: string; musicUrl?: string | null; sfxUrl?: string | null; voiceVolume?: number; musicVolume?: number; sfxVolume?: number },
   opts: { run?: FfmpegRunner } = {},
 ): Promise<RenderResult> {
   const run = opts.run ?? dockerFfmpegRunner;
@@ -261,11 +339,20 @@ export async function renderTimeline(
   const wmFile = input.watermarkUrl ? await localizeAsset(input.watermarkUrl) : null;
   const pos = input.watermarkPosition;
   const watermark: Watermark | null = wmFile ? { file: wmFile, position: pos === 'bl' || pos === 'tr' || pos === 'tl' ? pos : 'br' } : null;
+  //? F2 — the slideshow's audio mix: voice + optional (ducked) music + optional sfx. undefined tracks ⇒ the
+  //? single-voice path (unchanged). An un-localizable music/sfx url is skipped, not fatal.
+  const mix: AudioMix = {
+    musicFile: input.musicUrl ? await localizeAsset(input.musicUrl) : null,
+    sfxFile: input.sfxUrl ? await localizeAsset(input.sfxUrl) : null,
+    ...(typeof input.voiceVolume === 'number' ? { voiceVolume: input.voiceVolume } : {}),
+    ...(typeof input.musicVolume === 'number' ? { musicVolume: input.musicVolume } : {}),
+    ...(typeof input.sfxVolume === 'number' ? { sfxVolume: input.sfxVolume } : {}),
+  };
 
   const id = randomUUID();
   const listName = `${id}.txt`;
   const outName = `${id}.mp4`;
-  const plan = buildFfmpegPlan(beats, audioFile, listName, outName, resolveRenderFormat(input.format), watermark);
+  const plan = buildFfmpegPlan(beats, audioFile, listName, outName, resolveRenderFormat(input.format), watermark, mix);
   if (!plan.hasVideo) return { ok: false, error: 'render.noRenderableAssets' };
 
   writeFileSync(path.join(MEDIA_DIR, listName), plan.concatList);
@@ -283,7 +370,7 @@ export async function renderTimeline(
 //? slideshow). Localizes each scene's clip/still + the voiceover, stitches via buildVideoStitchPlan, runs
 //? ffmpeg. Typed degrade (ok:false) when nothing is renderable or ffmpeg/Docker fails, so assembly stubs.
 export async function renderScenes(
-  input: { scenes: { videoUrl: string | null; imageUrl: string | null; startTrimMs: number; durationMs: number; transitionIn: string }[]; voiceUrl: string | null; format?: string; musicUrl?: string | null; voiceVolume?: number; musicVolume?: number },
+  input: { scenes: { videoUrl: string | null; imageUrl: string | null; startTrimMs: number; durationMs: number; transitionIn: string }[]; voiceUrl: string | null; format?: string; musicUrl?: string | null; sfxUrl?: string | null; voiceVolume?: number; musicVolume?: number; sfxVolume?: number },
   opts: { run?: FfmpegRunner } = {},
 ): Promise<RenderResult> {
   const run = opts.run ?? dockerFfmpegRunner;
@@ -299,9 +386,8 @@ export async function renderScenes(
   }
   const id = randomUUID();
   const outName = `${id}.mp4`;
-  //? V5 audio-track — thread the piece's music + per-track gains into the stitch mix (undefined ⇒ voice-only).
-  const musicFile = await localizeAsset(input.musicUrl);
-  const mix = { musicFile, ...(typeof input.voiceVolume === 'number' ? { voiceVolume: input.voiceVolume } : {}), ...(typeof input.musicVolume === 'number' ? { musicVolume: input.musicVolume } : {}) };
+  //? V5/F2 audio-track — thread the piece's music + sfx + per-track gains into the stitch mix (undefined ⇒ voice-only).
+  const mix: AudioMix = { musicFile: await localizeAsset(input.musicUrl), sfxFile: await localizeAsset(input.sfxUrl), ...(typeof input.voiceVolume === 'number' ? { voiceVolume: input.voiceVolume } : {}), ...(typeof input.musicVolume === 'number' ? { musicVolume: input.musicVolume } : {}), ...(typeof input.sfxVolume === 'number' ? { sfxVolume: input.sfxVolume } : {}) };
   const plan = buildVideoStitchPlan(scenes, await localizeAsset(input.voiceUrl), outName, resolveRenderFormat(input.format), mix);
   if (!plan.hasVideo) return { ok: false, error: 'render.noRenderableAssets' };
   const [err, res] = await tryCatch(() => run(plan.args));

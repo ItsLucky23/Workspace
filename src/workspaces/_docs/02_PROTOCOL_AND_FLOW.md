@@ -44,7 +44,7 @@ The stable, tiny **verb surface**. Transport is **mechanism-flexible** (01 §1):
 |---|---|---|
 | `report_status` | `{ statusKey, note?, complexityScore?:1–10 }` | bump heartbeat; emit `ws-ai:status`; feed model auto-escalation |
 | `emit_event` | `{ type:'command'\|'file-change'\|'comment', text }` | append `TicketEvent`; emit `ws-ai:event` (most events come from hooks; this is for narrated milestones) |
-| `request_input` | `{ questions:Question[] }` | **blocking** — Conductor sets `needs-input`, fires `ws-ai:needs-input` + `Notification`, holds the call open until the user answers; returns `{ answers }`. The man-in-the-middle pivot. |
+| `request_input` | `{ questions:Question[] }` | **ERRATA (ADOPTION W1, 2026-07-08): NOT implemented as a blocking held-open call.** The real mechanism is **park-and-resume**: the agent ends its turn with a `ws-needs-input` block (Stop-hook), the ticket parks (`Ticket.needsInput` + `Ticket.needsInputQuestions=[{q,a}]`), and the frozen `answer-input` op resumes the turn via `claude --resume` once all questions are answered (multi-question stepper). See [09] ERRATA + ADR 0162. Originally speced as: blocking — Conductor sets `needs-input`, holds the call open, returns `{ answers }`. |
 | `emit_carryover` | the envelope (§4) | validate vs schema; persist `CarryOver`; mark stage `done` |
 | `emit_signal` | `{ type, payload }` | append `WorkspaceSignal` for serial consumption by the Conductor (§6) |
 | `emit_handoff` | `{ summary, decisions, state, next, gotchas, carried? }` | store a `Handoff` for the token-optimization self-handoff (06) |

@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { workspaceDataDir } from '../git/repoStore';
 
-const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
+import { extendsAllowedBase } from './baseImages';
 
 export interface DraftReadResult { ok: boolean; dockerfile: string; error?: string }
 export interface DraftSaveResult { ok: boolean; error?: string }
@@ -18,13 +18,10 @@ function draftPath(workspaceId: string): string {
   return path.join(workspaceDataDir(workspaceId), 'draft.Dockerfile');
 }
 
-//? The draft's FIRST `FROM` must be our L1 base (a `# syntax=` directive before it is fine).
-//? NOTE: `dockerfileGen.ts` + `imageBuild.ts` each carry an identical local copy of this
-//? guard; a later cleanup could import this one (reported, not refactored here).
-export function extendsBase(dockerfile: string): boolean {
-  const firstFrom = dockerfile.split('\n').map((l) => l.trim()).find((l) => /^FROM\s/i.test(l));
-  return firstFrom?.toLowerCase().startsWith(`from ${BASE_IMAGE.toLowerCase()}`) ?? false;
-}
+//? The draft's FIRST `FROM` must be a `workspaces/base*` family image (a `# syntax=` directive before it is
+//? fine). S1 — the three formerly-triplicated `extendsBase` copies (here, dockerfileGen, imageBuild) now all
+//? delegate to the shared `extendsAllowedBase` (relaxed to the base catalog family).
+export const extendsBase = extendsAllowedBase;
 
 //? Read the persisted draft so the review UI survives a reload without paying another
 //? (slow) AI turn. Returns a typed `dockerfile.noDraft` when none has been generated yet.

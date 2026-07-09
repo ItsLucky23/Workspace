@@ -222,9 +222,10 @@ model Invite {
   email        String
   roleKey      String                          // → WorkspaceRole.key to grant on accept
   invitedById  String?  @db.ObjectId           // User.id who sent it
-  token        String                          // single-use accept token
+  token        String                          // single-use accept token (crypto-random, unguessable)
   status       String   @default("pending")    // 'pending' | 'accepted' | 'revoked' | 'expired'
   createdAt    DateTime @default(now())
+  expiresAt    DateTime?                        // F3 — invites lapse; an expired invite cannot be accepted
   acceptedAt   DateTime?
 
   @@unique([workspaceId, email])
@@ -255,6 +256,7 @@ model Project {
   linkedFiles       LinkedFile[]                              // D9/D19 — GENERATE vs LINK
   generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
+  stack             String?                                    // S1 — 'node'|'python'|'go'|'rust'|'java' → the L1 base image when no baseImageRef (any-stack); null = node
   dockerfilePath    String?                                    // optional per-project Dockerfile
   devCommand        String?                                    // the command that starts the app's dev server in the ticket container (preview flow); default = package.json scripts.dev
   createdAt         DateTime     @default(now())
@@ -283,6 +285,57 @@ model Service {
 
   @@index([workspaceId])
   @@index([projectId])
+}
+
+//? K1 — an attached third-party SERVICE STACK: a SANITIZED docker-compose file the workspace runs alongside its
+//? app containers (Postgres/Kafka/Redis/Elasticsearch/…). Namespaced per workspace (compose project
+//? `ws-<id>-<name>`, a per-workspace network, a volume prefix) so two workspaces' stacks never collide. The
+//? Conductor is the only writer; `composeSanitize` gates the compose before it is stored/run.
+model ServiceStack {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  name        String                              // stack name (part of the compose project name)
+  compose     String                              // the SANITIZED compose yaml (host-escapes rejected, host-ports rewritten)
+  services    String[]                            // the service names in the stack (from the sanitizer)
+  status      String   @default("stopped")        // 'stopped' | 'running' | 'error'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+//? U1 — a "unfuck the UI" review request: uploaded screenshots + ticked problems (the UI_PROBLEMS taxonomy) +
+//? free-text notes. U2 turns an accepted one into N redesign variants → a ticket with the chosen design + the
+//? ticked problems as stage instructions. Conductor-only writer (B-23).
+model UiReviewRequest {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  page        String?                             // which page/flow (free label)
+  screenshots String[]                            // /media/… urls (K1 upload)
+  problems    String[]                            // taxonomy keys (server/ui/uiReview UI_PROBLEMS)
+  notes       String?                             // free-text ("anything off-list")
+  status      String   @default("open")           // 'open' | 'redesigned' | 'closed'
+  createdById String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, status])
+}
+
+//? H1 — the admin/security AUDIT LOG. The audit found governance ops (role changes, secret read/writes, member
+//? removal, ownership transfer, workspace deletion, invites) left ZERO trace — an admin couldn't answer "who did
+//? what". This append-only log records every such op: WHO (actor userId), WHAT (action), on WHICH target, WHEN.
+//? Conductor-only writer (the ops it records already run there).
+model AuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  actorId     String?  @db.ObjectId               // the user who performed it (null = system)
+  action      String                              // e.g. 'change-role' | 'save-env' | 'remove-member' | 'transfer-ownership'
+  target      String?                             // the affected entity (member id / env key / role key …)
+  metadata    Json?                               // extra context (old→new role, etc.) — never the secret VALUE
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
 }
 
 //? Per-project forge connection (ADR 0036, item A2 — GitHubForge). Generalizes the
@@ -630,6 +683,8 @@ model Ticket {
   sprintId       String?  @db.ObjectId
   carryOver      String?                         // the HUMAN one-liner (derived from the latest CarryOver envelope summary, 04b §14)
   needsInput     String?                         // denormalized banner = first open question (04 §2)
+  needsInputQuestions Json?                       // W1 — the FULL open-question set [{q,a}] (multi-question; banner = first unanswered). Null = single/legacy.
+  advisoryQuestions Json?                          // W2 — NON-blocking questions the agent PROCEEDED past with an assumption [{q,assumption,a,resolved}]. A divergent answer schedules a revision turn; the ticket never parks on these.
   remindedAt     DateTime?                        // A5 — last time the watchdog re-pinged the assignee about this open question (null = never / cleared on answer)
   priority       String   @default("normal")     // low|normal|high|urgent — `urgent` = hotfix/security tier that force-passes the capacity cap (#12)
   archived       Boolean  @default(false)        // doc 13 bulk Archive — soft, never deletes
@@ -1067,6 +1122,7 @@ model WorkspaceNote {
 model SpendRecord {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId  String   @db.ObjectId
+  userId       String?  @db.ObjectId               // H2 — the user this turn's cost is attributed to (ticket assignee/creator)
   ticketId     String?  @db.ObjectId
   stageId      String?                             // StageKind key
   sessionKey   String                              // the AgentSession this turn belongs to
@@ -1531,6 +1587,8 @@ model PublishJob {
   scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now)
   externalUrl      String?
   error            String?
+  metrics          Json?                             // C3 — ingested audience metrics {views,likes,comments,shares,watchTimeSec,ctr,fetchedAt}
+  externalId       String?                            // C3 — the platform post id (for the analytics fetch)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

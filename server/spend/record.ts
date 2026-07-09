@@ -19,7 +19,7 @@ const MODEL_PRICE_PER_1K: Record<string, number> = {};
 const priceFor = (model: string): number => MODEL_PRICE_PER_1K[model] ?? 0;
 
 export interface TurnSpendInput {
-  workspaceId: string; ticketId?: string | null; stageId?: string | null;
+  workspaceId: string; userId?: string | null; ticketId?: string | null; stageId?: string | null;
   sessionKey: string; model: string; inputChars: number; outputChars: number;
 }
 
@@ -33,7 +33,7 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
   const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(input.model);
   await prisma.spendRecord.create({
     data: {
-      workspaceId: input.workspaceId, ticketId: input.ticketId ?? null, stageId: input.stageId ?? null,
+      workspaceId: input.workspaceId, userId: input.userId ?? null, ticketId: input.ticketId ?? null, stageId: input.stageId ?? null,
       sessionKey: input.sessionKey, tokensIn, tokensOut, model: input.model, costEstimate,
     },
   });
@@ -51,6 +51,29 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 //? A SpendRecord row (the fields the aggregate reads) — decoupled from Prisma's model type so
 //? `aggregateUsage` is a PURE, unit-testable function the snapshot feeds tenant-scoped rows into.
 export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date }
+
+//? H2 — per-user spend rows (attribution). Pure over rows carrying a userId + tokens + cost.
+export interface UserSpendRow { userId: string | null; tokensIn: number; tokensOut: number; costEstimate: number }
+export interface UserUsage { userId: string; tokensIn: number; tokensOut: number; turns: number; costEstimate: number }
+
+//? Aggregate spend PER USER (the H2 attribution / fairness read): who is burning the tokens. Unattributed rows
+//? (no userId — e.g. system turns) are grouped under 'system'. Sorted by total tokens desc. Pure.
+export function aggregateByUser(rows: UserSpendRow[]): UserUsage[] {
+  const perUser = new Map<string, UserUsage>();
+  for (const r of rows) {
+    const key = r.userId ?? 'system';
+    const cur = perUser.get(key) ?? { userId: key, tokensIn: 0, tokensOut: 0, turns: 0, costEstimate: 0 };
+    cur.tokensIn += r.tokensIn; cur.tokensOut += r.tokensOut; cur.turns += 1; cur.costEstimate += r.costEstimate;
+    perUser.set(key, cur);
+  }
+  return [...perUser.values()].toSorted((a, b) => (b.tokensIn + b.tokensOut) - (a.tokensIn + a.tokensOut));
+}
+
+//? H2 — a per-user budget check (advisory, matching #16's visibility-first model): has this user's token spend in
+//? the window crossed their cap? `capTokens <= 0` = no cap (never exceeded). Pure — the caller decides to warn/pause.
+export function userBudgetExceeded(userTokens: number, capTokens: number): boolean {
+  return capTokens > 0 && userTokens >= capTokens;
+}
 
 //? Aggregate SpendRecord rows → the Usage read (replaces the seed dummies). Pure + deterministic
 //? (`now` injected). `ticketKeyById` maps the stored ObjectId → the DEV-#### key the frontend renders.

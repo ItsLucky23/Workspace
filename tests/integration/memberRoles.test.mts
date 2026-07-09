@@ -47,11 +47,14 @@ try {
   });
   assert(changed !== null, 'change-role flipped the second member roleKey to admin');
 
-  //? invite → payload { email, roleKey }. Assert a pending Invite row (token = inv-<clientRequestId>).
+  //? invite → payload { email, roleKey }. Assert a pending Invite row. The token is a crypto-random secret
+  //? (F3 hardening — no longer the guessable `inv-<clientRequestId>`), so find the invite by its unique email.
   const inviteReqId = `invite-${String(stamp)}`;
-  await enqueueControlAction({ workspaceId: wsId, op: 'invite', target: {}, payload: { email: `invitee-${String(stamp)}@youcomm.nl`, roleKey: 'member' }, userId: owner.id, clientRequestId: inviteReqId });
-  const invite = await poll(() => prisma.invite.findFirst({ where: { workspaceId: wsId, token: `inv-${inviteReqId}` } }));
+  const inviteEmail = `invitee-${String(stamp)}@youcomm.nl`;
+  await enqueueControlAction({ workspaceId: wsId, op: 'invite', target: {}, payload: { email: inviteEmail, roleKey: 'member' }, userId: owner.id, clientRequestId: inviteReqId });
+  const invite = await poll(() => prisma.invite.findFirst({ where: { workspaceId: wsId, email: inviteEmail } }));
   assert(invite !== null, 'invite created an Invite row');
+  assert((invite?.token ?? '').length >= 24 && !(invite?.token ?? '').startsWith('inv-'), 'the invite token is a crypto-random secret, not the guessable inv-<reqId>');
   eq(invite?.status ?? '', 'pending', 'invite starts in pending status');
 
   //? revoke-invite → target.inviteId (the DB id). Assert status flips to revoked.

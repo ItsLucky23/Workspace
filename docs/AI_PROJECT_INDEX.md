@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (43)
+## API routes (48)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,7 @@
 | `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
 | `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
 | `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/auditLog/v1` | POST | login | 12 | — | **no** | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
 | `api/workspaces/brandExport/v1` | POST | login | 30 | — | **no** | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
 | `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
 | `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
@@ -39,9 +40,11 @@
 | `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
 | `api/workspaces/issuePat/v1` | POST | login | 10 | — | **no** | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
+| `api/workspaces/knowledgeGraph/v1` | POST | login | 12 | — | **no** | — | Workspaces — [knowledge-graph] (N1) the Obsidian-view data: the workspace knowledge as nodes (sources / |
 | `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
+| `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
@@ -54,8 +57,10 @@
 | `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
 | `api/workspaces/styleExport/v1` | POST | login | 30 | — | **no** | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
+| `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
+| `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 
-## Sync routes (50)
+## Sync routes (56)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -103,12 +108,18 @@
 | `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
 | `sync/workspaces/scanDocs/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
 | `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
+| `sync/workspaces/serviceProvision/v1` | yes | — | login | — | **no** | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
+| `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | **no** | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/stageCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
+| `sync/workspaces/stageDelete/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-delete] (R1) durably REMOVE a pipeline stage. The client refetches the pipeline after. |
+| `sync/workspaces/stageReorder/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-reorder] (R1) persist a new pipeline stage ORDER (drag-reorder survives a refresh). |
 | `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | **no** | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
+| `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
 
 ## Ownership & coverage
 
@@ -117,9 +128,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 91 |
+| _(unowned)_ | 102 |
 
-**Test coverage**: 3/93 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/104 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -136,6 +147,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/settings/updateUser/v1`
 - `api/workspaces/acceptInvite/v1`
 - `api/workspaces/aiChat/v1`
+- `api/workspaces/auditLog/v1`
 - `api/workspaces/brandExport/v1`
 - `api/workspaces/brandImport/v1`
 - `api/workspaces/buildProjectImage/v1`
@@ -150,9 +162,11 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/generateDockerfile/v1`
 - `api/workspaces/generateDocs/v1`
 - `api/workspaces/issuePat/v1`
+- `api/workspaces/knowledgeGraph/v1`
 - `api/workspaces/markRead/v1`
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
+- `api/workspaces/openRefPreview/v1`
 - `api/workspaces/pushConfig/v1`
 - `api/workspaces/revokePat/v1`
 - `api/workspaces/saveDevCommand/v1`
@@ -163,17 +177,14 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioSaveBrief/v1`
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
+- `api/workspaces/timeTravelPreview/v1`
+- `api/workspaces/workspaceExport/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/addInfoDoc/v1`
 - `sync/workspaces/agentControl/v1`
 - `sync/workspaces/answerInput/v1`
-- `sync/workspaces/archive/v1`
-- `sync/workspaces/bulkArchive/v1`
-- `sync/workspaces/bulkAssign/v1`
-- `sync/workspaces/bulkMove/v1`
-- `sync/workspaces/bulkSprint/v1`
-- … +40 more
+- … +51 more
 
 ## Pages (28)
 

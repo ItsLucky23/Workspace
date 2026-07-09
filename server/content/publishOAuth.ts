@@ -62,6 +62,19 @@ export function buildExchangeRequest(platform: OAuthPlatform, input: { code: str
   return { url: cfg.tokenUrl, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() };
 }
 
+//? F1 — build the refresh-token grant (both providers reuse their token endpoint with grant_type=refresh_token;
+//? Google keys on client_id, TikTok on client_key). Pure + exported. The audit found stored refresh tokens were
+//? never used, so any post >~1h after connect (incl. every scheduled post) failed silently — this closes it.
+export function buildRefreshRequest(platform: OAuthPlatform, refreshToken: string): HttpRequest {
+  const cfg = CFG[platform];
+  const idKey = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const body = new URLSearchParams({
+    [idKey]: env(cfg.clientIdEnv), client_secret: env(cfg.clientSecretEnv),
+    grant_type: 'refresh_token', refresh_token: refreshToken,
+  });
+  return { url: cfg.tokenUrl, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() };
+}
+
 //? Parse a token response (both providers return access_token/refresh_token/expires_in, TikTok nests
 //? some under `data`). Pure + exported. Returns null when no access token is present.
 export function parseTokenResponse(json: unknown): StoredTokens | null {
@@ -161,6 +174,7 @@ async function readAssetBytes(assetUrl: string): Promise<Buffer | null> {
 // --- transports (injectable) ---------------------------------------------------
 
 export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }) => Promise<StoredTokens | null> }
+export interface OAuthRefreshTransport { refresh: (platform: OAuthPlatform, refreshToken: string) => Promise<StoredTokens | null> }
 export interface PublishUploadTransport { upload: (platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }) => Promise<{ externalUrl: string } | null> }
 
 //? Run a pure-built HttpRequest and return the parsed JSON.
@@ -177,6 +191,11 @@ async function runJson(reqShape: HttpRequest): Promise<unknown> {
 
 export const realOAuthTransport: OAuthTransport = {
   exchange: async (platform, input) => parseTokenResponse(await runJson(buildExchangeRequest(platform, input))),
+};
+
+//? F1 — the REAL refresh transport: run the refresh grant + parse the new tokens.
+export const realRefreshTransport: OAuthRefreshTransport = {
+  refresh: async (platform, refreshToken) => parseTokenResponse(await runJson(buildRefreshRequest(platform, refreshToken))),
 };
 
 //? D1 — the REAL YouTube resumable upload, all three legs: (1) POST the metadata → read the session URI from
@@ -266,6 +285,36 @@ export async function getConnection(prisma: PrismaClient, workspaceId: string, p
   const [err, parsed] = await tryCatch(() => Promise.resolve(JSON.parse(dec) as StoredTokens));
   if (err || !parsed || typeof parsed.accessToken !== 'string') return null;
   return parsed;
+}
+
+//? F1 — a token is expired (or about to be) when its `expiresAt` is within the skew window of now. A token with
+//? no `expiresAt` is treated as non-expiring (we only refresh when we know it lapsed). Pure + exported.
+const REFRESH_SKEW_MS = 60_000;
+export function isTokenExpired(tokens: StoredTokens, now: number, skewMs = REFRESH_SKEW_MS): boolean {
+  return typeof tokens.expiresAt === 'number' && tokens.expiresAt - skewMs <= now;
+}
+
+//? F1 — return a USABLE connection: the stored tokens, transparently refreshed when expired. If the tokens are
+//? expired AND a refresh token exists, run the refresh grant, persist the new tokens re-encrypted, and return
+//? them; a Google refresh omits a new refresh_token, so the old one is preserved. If the refresh fails we return
+//? the stale tokens (the upload then errors honestly — never a fabricated success). Refresh transport injectable.
+export async function getValidConnection(
+  prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform,
+  //? A3 — `accountId` selects which connected account (default when omitted); F1 refreshes that account's
+  //? token and re-saves it under the SAME per-account key.
+  opts: { refreshTransport?: OAuthRefreshTransport; now?: number; accountId?: string | null } = {},
+): Promise<StoredTokens | null> {
+  const stored = await getConnection(prisma, workspaceId, platform, opts.accountId);
+  if (!stored) return null;
+  const now = opts.now ?? Date.now();
+  const refreshToken = stored.refreshToken;
+  if (!isTokenExpired(stored, now) || refreshToken === undefined || refreshToken.length === 0) return stored;
+  const transport = opts.refreshTransport ?? realRefreshTransport;
+  const [err, refreshed] = await tryCatch(() => transport.refresh(platform, refreshToken));
+  if (err || !refreshed) return stored;
+  const merged: StoredTokens = { ...refreshed, refreshToken: refreshed.refreshToken ?? refreshToken };
+  await saveConnection(prisma, workspaceId, platform, merged, opts.accountId);
+  return merged;
 }
 
 //? Complete a connect: exchange the OAuth code for tokens + store them encrypted. Returns ok.

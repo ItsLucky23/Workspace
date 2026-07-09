@@ -14,17 +14,15 @@ import type { PrismaClient } from '@prisma/client';
 import { docker, dockerAvailable } from './runtime';
 import { workspaceDataDir, repoManifests } from '../git/repoStore';
 
-const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
+import { extendsAllowedBase } from './baseImages';
+
 const LOCKFILES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']);
 
 export interface ImageBuildResult { ok: boolean; tag?: string; error?: string }
 
-//? Defense in depth: re-validate the on-disk draft's first FROM before building — the
-//? file is Admin-editable between generate and build.
-function extendsBase(dockerfile: string): boolean {
-  const firstFrom = dockerfile.split('\n').map((l) => l.trim()).find((l) => /^FROM\s/i.test(l));
-  return firstFrom?.toLowerCase().startsWith(`from ${BASE_IMAGE.toLowerCase()}`) ?? false;
-}
+//? Defense in depth: re-validate the on-disk draft's first FROM (must be a `workspaces/base*` family image —
+//? S1 relaxed via the shared guard) before building — the file is Admin-editable between generate and build.
+const extendsBase = extendsAllowedBase;
 
 export async function buildProjectImage(prisma: PrismaClient, workspaceId: string): Promise<ImageBuildResult> {
   if (!(await dockerAvailable())) return { ok: false, error: 'docker.unavailable' };

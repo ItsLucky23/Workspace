@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (175)
+## Decisions (182)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -173,6 +173,13 @@
 | 0159 | G1 — greenfield: real repo + seed file-tree generation | 🟢 accepted | greenfield, scaffold, git, repo, idea-to-outcome | — | `docs/decisions/0159-greenfield-repo-gen.md` |
 | 0160 | G2 — greenfield template-wizard UI | 🟢 accepted | greenfield, ui, wizard, scaffold, idea-to-outcome | — | `docs/decisions/0160-greenfield-wizard-ui.md` |
 | 0161 | V5 completion — the timeline audio track (waveform + voice/duck sliders) | 🟢 accepted | content, video, audio, editor, render, idea-to-outcome | — | `docs/decisions/0161-timeline-audio-track.md` |
+| 0162 | W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models) | 🟢 accepted | orchestrator, questions, needs-input, phone-first, adoption, schema | — | `docs/decisions/0162-multi-question-denormalized-json.md` |
+| 0163 | W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop | 🟢 accepted | orchestrator, questions, non-blocking, needs-input, adoption, schema | — | `docs/decisions/0163-non-blocking-advisory-questions.md` |
+| 0164 | T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref) | 🟢 accepted | preview, container, git, time-travel, adoption | — | `docs/decisions/0164-ref-preview-ephemeral-container.md` |
+| 0165 | S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard) | 🟢 accepted | container, any-stack, base-image, dockerfile, adoption, schema | — | `docs/decisions/0165-multi-base-stack-catalog.md` |
+| 0166 | K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine | 🟢 accepted | container, services, compose, security, multi-tenancy, adoption, schema | — | `docs/decisions/0166-compose-engine-services.md` |
+| 0167 | H1 — an append-only admin/security audit log for governance ops | 🟢 accepted | governance, audit, security, team-trust, adoption, schema | — | `docs/decisions/0167-governance-audit-log.md` |
+| 0168 | H5 — fair (round-robin) capacity draining across workspaces | 🟢 accepted | capacity, fairness, scheduler, multi-tenant, adoption | — | `docs/decisions/0168-fair-capacity-draining.md` |
 | 0250 | Q1 — product self-knowledge corpus (generator) | 🟢 accepted | ai, rag, self-knowledge, capabilities, ai-libraries-accounts | — | `docs/decisions/0250-product-self-knowledge-corpus.md` |
 | 0251 | Q2 — product-knowledge RAG corpus (global, behind the existing retrieve) | 🟢 accepted | ai, rag, self-knowledge, retrieval, ai-libraries-accounts | — | `docs/decisions/0251-product-knowledge-rag-corpus.md` |
 | 0252 | Q3 — wire product self-knowledge into the Workspace-AI + every feature | 🟢 accepted | ai, rag, self-knowledge, workspace-chat, ai-libraries-accounts | — | `docs/decisions/0252-wire-product-knowledge-into-ai.md` |
@@ -1472,6 +1479,62 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **Per-piece mix on `ContentProject`** (MongoDB, no migration): `voiceVolume` (default 1) + `musicVolume` (default 0.25, ducked). Persisted by a new **`content-save-audio-mix`** control-op (content-* write family; no new frozen verb) — RBAC `workTickets`, clamped (voice ≤ 2, music ≤ 1) by the Conductor (B-23). **The render honours the gains.** `buildVideoStitchPlan` gained an optional `mix` ({musicFile, voiceVolume, musicVolume}); when there's music OR a non-default voice gain it routes voice (+ ducked music) through the existing `buildAudioMixPlan` (E4) → `[aout]`. **Guarded** so the plain single-voice path is byte-identical — the live render test is unchanged (re-run 7/7). `renderScenes` + `assembly` thread the piece's music asset + gains in. **The snapshot surfaces** `voiceVolume`/`musicVolume` + the newest voice/music asset urls on `ContentPieceSummary`, so the editor can draw the track without another fetch. **A real waveform** in `VideoTimelineEditor`: `decodePeaks` fetches + `decodeAudioData` → per-block peak bars on a canvas, theme-driven (fillStyle reads the canvas's resolved `text-primary`, no hardcoded hex), degrading to a flat baseline on any fetch/decode failure (stub url, no `AudioContext`). Voice + duck sliders save via `content-save-audio-mix`.
 
 → `docs/decisions/0161-timeline-audio-track.md`
+
+### 0162 — W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models)
+
+**0162** · accepted · tags: orchestrator, questions, needs-input, phone-first, adoption, schema · 2026-07-08
+
+**Store the full set denormalized on the ticket**, not in the relational models: add `Ticket.needsInputQuestions Json?` = `[{ q, a }]` (q = the stored needsInput wire form — plain for free, `@@wsq:` for approve/choice; a = the answer or null). `Ticket.needsInput` stays the banner = the first UNANSWERED question (back-compat with every existing reader: the banner, the answer-queue, `isRealNeedsInput`, the P-B card). **A pure core module** `server/orchestrator/questionSet.ts` (`parseNeedsInputQuestions` with a legacy single-banner fallback, `applyAnswers`, `firstUnanswered`, `buildCombinedAnswerPrompt`) — no DB, unit-tested. **No new structured-channel verb** (frozen 7+6 intact): the existing `answer-input` control-op carries either a single `answer` (fills the first open question → the phone-first STEPPER advances the banner) or an `answers[]` batch (fills the open questions in order). The parked `claude` turn is resumed **only once every question is answered** — a single question resumes with the bare answer (byte-identical to the pre-W1 flow), many resume with a numbered, envelope-decoded `Q→A` prompt. Single-writer/B-23 unchanged (Conductor is the only writer).
+
+→ `docs/decisions/0162-multi-question-denormalized-json.md`
+
+### 0163 — W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop
+
+**0163** · accepted · tags: orchestrator, questions, non-blocking, needs-input, adoption, schema · 2026-07-08
+
+**A non-blocking question rides the DONE envelope, not `ws-needs-input`.** The agent, instead of stopping, makes a sensible assumption, keeps working, and records the question in the `ws-carryover` block's `openQuestions` as an object `{ question, assumption }`. `parseTurnResult` splits `openQuestions` into plain strings (unchanged, still fed to the next stage's `{{openQuestions}}` as before) + `advisories` (`{q, assumption}`). renderStage's guidance now tells the agent this explicitly, reserving `ws-needs-input` for TRULY blocking questions. **The ticket never parks on an advisory.** On stage-done, advisories are appended (dedup by question) to a new denormalized `Ticket.advisoryQuestions Json?` = `[{q,assumption,a,resolved}]`; the turn completes normally. **Resolving reuses the frozen `answer-input` op (no new verb).** `answer-input` with an `advisoryIndex` + `answer` resolves one advisory: a MATCHING answer (trim + case-insensitive) just marks it resolved; a DIVERGENT answer marks it resolved AND fires a **revision turn** (`reprovisionTicket` with `claude --resume` + a correction prompt naming the assumption + the human's answer). Pure core (`parseAdvisories`, `resolveAdvisory`) in `questionSet.ts`. Single-writer/B-23 unchanged.
+
+→ `docs/decisions/0163-non-blocking-advisory-questions.md`
+
+### 0164 — T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref)
+
+**0164** · accepted · tags: preview, container, git, time-travel, adoption · 2026-07-08
+
+**A ref-preview runs in its OWN ephemeral, ref-scoped container** — NOT the ticket's tip worker container. `launchTicketContainer` gains an optional `ref`: when present, the container/volume name get a `-ref-<slug>` suffix (`refSlug`, ≤12 docker-safe chars) and the clone becomes a FULL-history `git clone /mirror /work` + `git checkout <ref>` (`cloneExecArgs`, pure + tested) instead of the single-branch tip clone. So two refs of one branch coexist and a ref-preview never clobbers the agent's tip working container. **Ref-scoped route** (`refPreviewRoute`): distinct `id` (`<ticketKey>-ref-<slug>`) + subdomain (`<branch>-<slug>.<domain>`) per ref → side-by-side previews, idempotent per ref. **Injection-safe ref**: `isSafeRef` gates on `[0-9a-zA-Z._/-]` with no `..` before the ref reaches the clone shell; `openRefPreview` (+ the `open-ref-preview_v1` `_api` op, `workTickets`-gated) rejects a bad ref.
+
+→ `docs/decisions/0164-ref-preview-ephemeral-container.md`
+
+### 0165 — S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard)
+
+**0165** · accepted · tags: container, any-stack, base-image, dockerfile, adoption, schema · 2026-07-08
+
+**One agent base, N stack variants.** The coding agent (`claude` CLI), `node-pty`, openvscode-server, the pty-agent, and the DB/git tooling are Node-based and MUST run in EVERY container — so a "clean per-stack image" is impossible; instead each stack base (`docker/base-<stack>.Dockerfile`) does `FROM workspaces/base` and adds ONLY that stack's toolchain (python/go/rust/jdk). The user's app builds/runs in the stack; the agent runs on the inherited Node layer. **A first-class catalog** (`server/container/baseImages.ts`): `BASE_STACKS = node|python|go|rust|java`, `baseImageFor(stack)` (node = the agent base, others = `workspaces/base-<stack>`, env-overridable), `resolveProjectBaseImage(project)` = the built L2 `baseImageRef` else the stack base. New `Project.stack` field (null = node) selects it; the launch callers (stageRunner, preview, ref-preview) resolve through it. **The Dockerfile-trust guard is relaxed to the FAMILY** (`extendsAllowedBase`): the first `FROM` must be a `workspaces/base*` image (agent base or any stack variant), not a single fixed image — still a supply-chain gate (an arbitrary `FROM ubuntu`/`FROM python:3.12` is rejected). The three formerly-triplicated `extendsBase` copies now delegate to this one shared guard (the cleanup the code itself had flagged).
+
+→ `docs/decisions/0165-multi-base-stack-catalog.md`
+
+### 0166 — K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine
+
+**0166** · accepted · tags: container, services, compose, security, multi-tenancy, adoption, schema · 2026-07-08
+
+**A compose-ENGINE, not a fixed catalog.** A workspace attaches an arbitrary docker-compose file (`service-provision` control-op). K2 presets are curated compose snippets on top; the engine is the core. **Fail-closed SANITIZER (K1-a, `composeSanitize`)** gates every compose before it is stored or run: host-escape directives (`privileged`, `cap_add`, `devices`, `security_opt`, host bind-mounts, `/var/run/docker.sock`, `network_mode|pid|ipc: host`) REJECT the file (structural parse via the dep-free `parseYamlSubset` + a raw-text scan that catches flow-style); published host ports are REWRITTEN to container-only (no cross-workspace port collision — services are reached intra-network by name). **Per-workspace namespacing (K1-b, `composeEngine`)**: the compose runs under project `ws-<id>-<name>` on an EXTERNAL per-workspace network `ws-<id>-svc` injected into the compose (so the app/preview container + the services share one net); Docker prefixes volumes by project. Two workspaces' stacks can never collide. **`ServiceStack` model** stores the SANITIZED compose + service names + status; the Conductor is the only writer (`service-provision`/`service-teardown`, `workspaceSettings`-gated). The docker calls take an injectable runner (unit/integration-tested without a daemon).
+
+→ `docs/decisions/0166-compose-engine-services.md`
+
+### 0167 — H1 — an append-only admin/security audit log for governance ops
+
+**0167** · accepted · tags: governance, audit, security, team-trust, adoption, schema · 2026-07-08
+
+**A dedicated append-only `AuditLog`** (`{workspaceId, actorId, action, target, metadata, createdAt}`), separate from `TicketEvent` (which is per-ticket + seq-ordered). A pure `recordAudit(prisma, ws, actorId, action, target?, meta?)` helper — best-effort (a failure NEVER breaks the op; the authoritative write already ran) — is called at the END of each governance conductor case, on the Conductor (the only writer, B-23). **Never log the secret VALUE** — `save-env` records the KEY + `{secret: true}`, never the plaintext; the metadata carries only safe context (old→new role, invited email + role). **A read view** (`listAuditLog` + `audit-log_v1` `_api`, `workspaceSettings`-gated) returns the entries newest-first with the actor's name resolved, tenant-scoped.
+
+→ `docs/decisions/0167-governance-audit-log.md`
+
+### 0168 — H5 — fair (round-robin) capacity draining across workspaces
+
+**0168** · accepted · tags: capacity, fairness, scheduler, multi-tenant, adoption · 2026-07-08
+
+**Drain the LEAST-LOADED workspace first** (round-robin), FIFO within a workspace. On each slot-release, `drainCapacityQueue` reads current occupancy per workspace and `pickFairNext` selects the earliest-queued turn whose workspace holds the fewest active slots (strict-less-than on ties preserves FIFO). **Occupancy per workspace is derived from the active set**, made possible by TAGGING each active ZSET member as `<workspaceId>::<ticketKey>` (was the bare ticketKey). This keeps the existing TTL self-healing (the score is still acquire-time, so a crashed instance's slots still evict) — no drift-prone side counter. **`pickFairNext` is pure** (queue items + an in-flight map → the chosen item + index), unit-tested; the Redis read/LREM lives in `dequeueFairDeferred`.
+
+→ `docs/decisions/0168-fair-capacity-draining.md`
 
 ### 0250 — Q1 — product self-knowledge corpus (generator)
 

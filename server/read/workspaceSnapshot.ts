@@ -243,7 +243,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
   //? has no tenant to scope to, and an invite lives in the INVITING workspace.
   const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-  const inviteRowsForMe = userRow?.email ? await prisma.invite.findMany({ where: { email: userRow.email, status: 'pending' } }) : [];
+  const inviteRowsForMe = userRow?.email ? await prisma.invite.findMany({ where: { email: userRow.email, status: 'pending', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } }) : [];
   const inviteWsIds = [...new Set(inviteRowsForMe.map((i) => i.workspaceId))];
   const inviteWsRows = inviteWsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: inviteWsIds } }, select: { id: true, name: true } }) : [];
   const inviteWsName = new Map(inviteWsRows.map((w) => [w.id, w.name]));

@@ -44,6 +44,17 @@ export function previewRoute(input: { ticketKey: string; branch: string; contain
   };
 }
 
+//? T1 — the route for a REF-preview: keyed by ticket + ref (distinct id + host per ref) so two refs of one
+//? branch coexist. host = `<branch-slug>-<refSlug>.<baseDomain>`, id = `<ticketKey>-ref-<refSlug>`.
+export function refPreviewRoute(input: { ticketKey: string; branch: string; refSlug: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
+  return {
+    id: `${input.ticketKey.toLowerCase()}-ref-${input.refSlug}`,
+    host: `${deriveHostSlug(`${input.branch}-${input.refSlug}`)}.${baseDomain()}`,
+    target: `${input.containerName}:${String(input.port ?? 5173)}`,
+    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+  };
+}
+
 //? Build the STABLE route for a persistent environment (ADR 0037, B1): host =
 //? `<kind>-<serviceSlug>.<baseDomain>`, target = `<containerName>:<port>`. Unlike previewRoute
 //? (keyed by ticket + branch, ephemeral), the id/host are stable across deploys so the URL never

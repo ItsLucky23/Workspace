@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 209,
+    "nodes": 220,
     "edges": 324,
-    "symbols": 258,
-    "callEdges": 41
+    "symbols": 281,
+    "callEdges": 42
   },
   "nodes": [
     {
@@ -314,6 +314,11 @@
       "route": "api/workspaces/aiChat/v1"
     },
     {
+      "id": "workspaces/_api/auditLog_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/auditLog/v1"
+    },
+    {
       "id": "workspaces/_api/brandExport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/brandExport/v1"
@@ -394,6 +399,11 @@
       "route": "api/workspaces/issuePat/v1"
     },
     {
+      "id": "workspaces/_api/knowledgeGraph_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/knowledgeGraph/v1"
+    },
+    {
       "id": "workspaces/_api/markRead_v1.ts",
       "kind": "api",
       "route": "api/workspaces/markRead/v1"
@@ -407,6 +417,11 @@
       "id": "workspaces/_api/openPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/openPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/openRefPreview/v1"
     },
     {
       "id": "workspaces/_api/pushConfig_v1.ts",
@@ -477,6 +492,16 @@
       "id": "workspaces/_api/styleImport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/styleImport/v1"
+    },
+    {
+      "id": "workspaces/_api/timeTravelPreview_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/timeTravelPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/workspaceExport_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/workspaceExport/v1"
     },
     {
       "id": "workspaces/_components/AutomationPanel.tsx",
@@ -849,6 +874,16 @@
       "route": "sync/workspaces/scanIndex/v1"
     },
     {
+      "id": "workspaces/_sync/serviceProvision_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/serviceProvision/v1"
+    },
+    {
+      "id": "workspaces/_sync/serviceTeardown_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/serviceTeardown/v1"
+    },
+    {
       "id": "workspaces/_sync/skillToggle_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/skillToggle/v1"
@@ -857,6 +892,21 @@
       "id": "workspaces/_sync/sprintCreate_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/sprintCreate/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageCreate/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageDelete/v1"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/stageReorder/v1"
     },
     {
       "id": "workspaces/_sync/ticketArtifact_server_v1.ts",
@@ -877,6 +927,11 @@
       "id": "workspaces/_sync/triggerAction_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/triggerAction/v1"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewCreate_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/uiReviewCreate/v1"
     },
     {
       "id": "workspaces/activity/page.tsx",
@@ -3593,6 +3648,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/auditLog_v1.ts::<module>",
+      "file": "workspaces/_api/auditLog_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/auditLog_v1.ts::main",
+      "file": "workspaces/_api/auditLog_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/brandExport_v1.ts::<module>",
       "file": "workspaces/_api/brandExport_v1.ts",
       "name": "<module>",
@@ -3815,6 +3882,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/knowledgeGraph_v1.ts::<module>",
+      "file": "workspaces/_api/knowledgeGraph_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/knowledgeGraph_v1.ts::main",
+      "file": "workspaces/_api/knowledgeGraph_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/markRead_v1.ts::<module>",
       "file": "workspaces/_api/markRead_v1.ts",
       "name": "<module>",
@@ -3847,6 +3926,18 @@
     {
       "id": "workspaces/_api/openPreview_v1.ts::main",
       "file": "workspaces/_api/openPreview_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts::<module>",
+      "file": "workspaces/_api/openRefPreview_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.ts::main",
+      "file": "workspaces/_api/openRefPreview_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -4045,6 +4136,30 @@
     {
       "id": "workspaces/_api/styleImport_v1.ts::main",
       "file": "workspaces/_api/styleImport_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/timeTravelPreview_v1.ts::<module>",
+      "file": "workspaces/_api/timeTravelPreview_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/timeTravelPreview_v1.ts::main",
+      "file": "workspaces/_api/timeTravelPreview_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/workspaceExport_v1.ts::<module>",
+      "file": "workspaces/_api/workspaceExport_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/workspaceExport_v1.ts::main",
+      "file": "workspaces/_api/workspaceExport_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -4727,6 +4842,36 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/serviceProvision_server_v1.ts::<module>",
+      "file": "workspaces/_sync/serviceProvision_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/serviceProvision_server_v1.ts::main",
+      "file": "workspaces/_sync/serviceProvision_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/serviceProvision_server_v1.ts::rejected",
+      "file": "workspaces/_sync/serviceProvision_server_v1.ts",
+      "name": "rejected",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/serviceTeardown_server_v1.ts::<module>",
+      "file": "workspaces/_sync/serviceTeardown_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/serviceTeardown_server_v1.ts::main",
+      "file": "workspaces/_sync/serviceTeardown_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/skillToggle_server_v1.ts::<module>",
       "file": "workspaces/_sync/skillToggle_server_v1.ts",
       "name": "<module>",
@@ -4747,6 +4892,42 @@
     {
       "id": "workspaces/_sync/sprintCreate_server_v1.ts::main",
       "file": "workspaces/_sync/sprintCreate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageCreate_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageCreate_server_v1.ts::main",
+      "file": "workspaces/_sync/stageCreate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageDelete_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageDelete_server_v1.ts::main",
+      "file": "workspaces/_sync/stageDelete_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts::<module>",
+      "file": "workspaces/_sync/stageReorder_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/stageReorder_server_v1.ts::main",
+      "file": "workspaces/_sync/stageReorder_server_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -4795,6 +4976,18 @@
     {
       "id": "workspaces/_sync/triggerAction_server_v1.ts::main",
       "file": "workspaces/_sync/triggerAction_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewCreate_server_v1.ts::<module>",
+      "file": "workspaces/_sync/uiReviewCreate_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewCreate_server_v1.ts::main",
+      "file": "workspaces/_sync/uiReviewCreate_server_v1.ts",
       "name": "main",
       "kind": "function"
     }
@@ -4963,6 +5156,10 @@
     {
       "from": "workspaces/_sync/saveSections_server_v1.ts::main",
       "to": "workspaces/_data/modules.ts::sanitizeSections"
+    },
+    {
+      "from": "workspaces/_sync/serviceProvision_server_v1.ts::main",
+      "to": "workspaces/_sync/serviceProvision_server_v1.ts::rejected"
     }
   ],
   "symbolBlastRadius": {
@@ -5082,6 +5279,9 @@
     ],
     "workspaces/_sync/contentSettings_server_v1.ts::isSettingsOp": [
       "workspaces/_sync/contentSettings_server_v1.ts::main"
+    ],
+    "workspaces/_sync/serviceProvision_server_v1.ts::rejected": [
+      "workspaces/_sync/serviceProvision_server_v1.ts::main"
     ]
   }
 }

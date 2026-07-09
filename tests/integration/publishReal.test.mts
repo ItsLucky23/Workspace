@@ -62,6 +62,33 @@ try {
   assert(!failed.ok && failed.error === 'publish.uploadFailed', 'a connected-but-failed upload is an honest error (not a fake success)');
   const failedJob = await prisma.publishJob.findFirst({ where: { workspaceId: wsId, id: failed.publishJobId ?? '' } });
   eq(failedJob?.status, 'error', 'the failed upload is recorded as an error job, not done');
+
+  // 5) F1 — an EXPIRED token is transparently refreshed, persisted re-encrypted, and the upload uses the FRESH token.
+  await saveConnection(prisma, wsId, 'youtube', { accessToken: 'AT-stale', refreshToken: 'RT-keep', expiresAt: stamp - 10_000 });
+  let refreshedWith = '';
+  let uploadUsed = '';
+  const refreshed = await publishAsset(prisma, wsId, { contentProjectId: project.id, assetId: asset.id, platform: 'youtube' }, {
+    now: stamp,
+    refreshTransport: { refresh: async (_platform, rt) => { refreshedWith = rt; return { accessToken: 'AT-fresh', expiresAt: stamp + 3600_000 }; } },
+    uploadTransport: { upload: async (_platform, input) => { uploadUsed = input.accessToken; return { externalUrl: 'https://youtube.com/watch?v=FRESH' }; } },
+  });
+  eq(refreshedWith, 'RT-keep', 'the refresh grant used the stored refresh token');
+  eq(uploadUsed, 'AT-fresh', 'the upload used the REFRESHED access token, not the stale one');
+  assert(refreshed.ok && refreshed.stub === false, 'the refreshed publish is a real post');
+  const persisted = await getConnection(prisma, wsId, 'youtube');
+  eq(persisted?.accessToken, 'AT-fresh', 'the fresh access token was persisted');
+  eq(persisted?.refreshToken, 'RT-keep', 'the refresh token was preserved (Google omits a new one)');
+
+  // 6) F1 — a still-valid token is NOT refreshed (no needless grant).
+  await saveConnection(prisma, wsId, 'youtube', { accessToken: 'AT-valid', refreshToken: 'RT-keep', expiresAt: stamp + 3600_000 });
+  let refreshCalled = false;
+  const noRefresh = await publishAsset(prisma, wsId, { contentProjectId: project.id, assetId: asset.id, platform: 'youtube' }, {
+    now: stamp,
+    refreshTransport: { refresh: async () => { refreshCalled = true; return null; } },
+    uploadTransport: { upload: async (_platform, input) => ({ externalUrl: `https://youtube.com/watch?v=${input.accessToken}` }) },
+  });
+  assert(!refreshCalled, 'a still-valid token triggers no refresh grant');
+  eq(noRefresh.externalUrl, 'https://youtube.com/watch?v=AT-valid', 'the upload used the still-valid token unchanged');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

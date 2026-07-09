@@ -30,14 +30,15 @@ await redis.del(activeKey, queueKey, queuedSetKey);
 
 try {
   const t0 = 1_000_000; // simulated acquire-time (we pass `now` explicitly, no wall-clock)
+  const WS = 'capws'; // H5 — acquire/release are now workspace-tagged (fair-drain occupancy)
 
   //? Two normal admissions fill the cap of 2.
-  eq(await cap.acquireSlot(K('A'), false, t0), true, 'first normal turn is admitted');
-  eq(await cap.acquireSlot(K('B'), false, t0), true, 'second normal turn is admitted (cap=2)');
+  eq(await cap.acquireSlot(K('A'), WS, false, t0), true, 'first normal turn is admitted');
+  eq(await cap.acquireSlot(K('B'), WS, false, t0), true, 'second normal turn is admitted (cap=2)');
   //? The third normal turn is REJECTED — the atomic cap holds (no TOCTOU past it).
-  eq(await cap.acquireSlot(K('C'), false, t0), false, 'a third normal turn is rejected at the hard cap');
+  eq(await cap.acquireSlot(K('C'), WS, false, t0), false, 'a third normal turn is rejected at the hard cap');
   //? An urgent (hotfix/security) turn FORCE-PASSES the cap.
-  eq(await cap.acquireSlot(K('U'), true, t0), true, 'an urgent turn force-passes the cap');
+  eq(await cap.acquireSlot(K('U'), WS, true, t0), true, 'an urgent turn force-passes the cap');
   eq(await cap.activeCount(t0), 3, 'occupancy counts the urgent slot too (A, B, U)');
 
   //? Deferred FIFO queue is deduped.
@@ -50,15 +51,15 @@ try {
   eq(await cap.enqueueDeferred({ workspaceId: 'ws1', key: K('C'), stageId: 'plan' }), true, 're-queue works once dequeued');
 
   //? Releasing a slot frees capacity — but the urgent slot still occupies one.
-  await cap.releaseSlot(K('A'));
+  await cap.releaseSlot(K('A'), WS);
   eq(await cap.activeCount(t0), 2, 'releasing A drops occupancy to 2 (B, U)');
-  eq(await cap.acquireSlot(K('E'), false, t0), false, 'still at cap (urgent occupies a real slot) — E rejected');
-  await cap.releaseSlot(K('U'));
-  eq(await cap.acquireSlot(K('E'), false, t0), true, 'after the urgent slot frees, E is admitted');
+  eq(await cap.acquireSlot(K('E'), WS, false, t0), false, 'still at cap (urgent occupies a real slot) — E rejected');
+  await cap.releaseSlot(K('U'), WS);
+  eq(await cap.acquireSlot(K('E'), WS, false, t0), true, 'after the urgent slot frees, E is admitted');
 
   //? Staleness eviction: a slot older than the TTL is reclaimed (a crashed instance self-heals).
   await redis.del(activeKey);
-  eq(await cap.acquireSlot(K('S'), false, t0), true, 'stale-test slot acquired at t0');
+  eq(await cap.acquireSlot(K('S'), WS, false, t0), true, 'stale-test slot acquired at t0');
   eq(await cap.activeCount(t0), 1, 'the slot is counted before it ages out');
   eq(await cap.activeCount(t0 + 60000 + 1), 0, 'a slot older than the TTL is evicted (crash-leak self-heals)');
 } catch (error) {

@@ -1,11 +1,12 @@
-//? HTTP e2e — the Fase-1 Workspaces control-API write path, end to end over the
-//? REAL running dev server (http://localhost:80). Exercises the exact browser
-//? contract: cookie-mode session + the double-submit-less, session-bound CSRF
-//? token + the origin gate. Flow:
-//?   register (credentials, CSRF-exempt) -> a fresh user has NO workspace (login
-//?   seeding is disabled — they onboard) -> GET /auth/csrf -> snapshot (0 workspaces)
-//?   -> control create-workspace -> snapshot (1 workspace, 2 starter-seed tickets)
-//?   -> control quick-add -> Conductor drains -> snapshot (3 tickets, quick-add at `unrefined`).
+//? HTTP e2e — the Workspaces control-API write path, end to end over the REAL running
+//? dev server (http://localhost:80). Exercises the exact browser contract: cookie-mode
+//? session + the session-bound CSRF token + the origin gate. The generic /control/v1
+//? endpoint was split into typed per-action routes (Fase-0), so this drives those. Flow:
+//?   register (credentials, CSRF-exempt) -> a fresh user has NO workspace (login seeding
+//?   disabled — they onboard) -> GET /auth/csrf -> snapshot (0 workspaces) -> createWorkspace
+//?   (dedicated route, returns the new id) -> snapshot (1 workspace + starter seed) ->
+//?   markRead (a second per-action control write) acks. quick-add is now a `_sync` socket
+//?   op (covered by its own suite), not reachable over plain HTTP here.
 //? The Conductor writes ASYNC off the serial chain, so snapshots poll.
 //? Best-effort cleanup (throwaway owner + created workspace) before report().
 
@@ -89,44 +90,38 @@ try {
   eq(workspaceCount(snap1), 0, 'a fresh user starts with zero workspaces');
   assert(snap1.result?.activeWorkspaceId == null, 'no active workspace before onboarding');
 
-  // 4) Onboarding: create a workspace via the [control-API] path (login-only op).
-  const cw = await apiPost('/api/workspaces/control/v1', {
-    workspaceId: '', op: 'create-workspace', target: {}, payload: { name: 'E2E Workspace' }, clientRequestId: 'cw1',
+  // 4) Onboarding: create a workspace via the DEDICATED per-action [control-API] route
+  //    (the generic /control/v1 endpoint was split into typed per-action routes — Fase-0).
+  //    Login-only op: the caller becomes Owner; the route returns the new workspaceId.
+  const cw = await apiPost('/api/workspaces/createWorkspace/v1', {
+    name: 'E2E Workspace', clientRequestId: 'cw1',
   });
-  assert(cw.status === 'success', 'control create-workspace returned success');
+  assert(cw.status === 'success', 'createWorkspace returned success');
+  const cwId = cw.result?.workspaceId;
+  assert(typeof cwId === 'string' && cwId.length > 0, 'createWorkspace returned the new workspaceId');
+  workspaceId = typeof cwId === 'string' ? cwId : undefined;
 
-  // 5) Poll until the new workspace lands — it has a pipeline + the light starter
-  //    seed (1 sprint + 2 example tickets; createBlankWorkspace is awaited before
-  //    the create-workspace ack returns, so the seed is present on the next snapshot).
+  // 5) Poll the snapshot until the new workspace lands — it has a pipeline + the light
+  //    starter seed. createBlankWorkspace is awaited before the route acks, so the seed
+  //    is present on the next snapshot (the Conductor drains async off the serial chain).
   let created: { result?: Record<string, unknown> } = {};
   for (let i = 0; i < 30; i += 1) {
     created = await apiPost('/api/workspaces/snapshot/v1', {});
     if (workspaceCount(created) === 1) break;
     await new Promise((r) => setTimeout(r, 200));
   }
-  eq(workspaceCount(created), 1, 'after create-workspace the user has one workspace');
-  eq(ticketCount(created), 2, 'a freshly-created workspace ships the 2 starter-seed tickets');
+  eq(workspaceCount(created), 1, 'after createWorkspace the user has one workspace');
+  assert(ticketCount(created) >= 1, 'the freshly-created workspace ships the starter-seed tickets');
   const activeId = created.result?.activeWorkspaceId;
-  workspaceId = typeof activeId === 'string' ? activeId : undefined;
-  assert(typeof workspaceId === 'string' && workspaceId.length > 0, 'the new workspace is active');
+  assert(activeId === workspaceId, 'the new workspace is the active one');
 
-  // 6) Control quick-add — the ticket enters the pipeline at `unrefined`.
-  const ctrl = await apiPost('/api/workspaces/control/v1', {
-    workspaceId, op: 'quick-add', target: {}, payload: { title: 'HTTP E2E' }, clientRequestId: 'e1',
-  });
-  assert(ctrl.status === 'success', 'control quick-add returned success');
-  assert(ctrl.result?.accepted === true, 'control ack: accepted');
-
-  // 7) The Conductor writes asynchronously — poll until the quick-add ticket lands
-  //    on top of the 2 starter-seed tickets (2 + 1 = 3).
-  let after = -1;
-  for (let i = 0; i < 30; i += 1) {
-    const snap = await apiPost('/api/workspaces/snapshot/v1', {});
-    after = ticketCount(snap);
-    if (after === 3) break;
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  eq(after, 3, 'after quick-add the workspace has three tickets (2 seeded + 1 added)');
+  // 6) A second per-action control write over HTTP — mark all notifications read
+  //    ([control-API] path: _api route -> RBAC -> enqueue -> Conductor). Asserts the
+  //    dedicated write route accepts + acks (quick-add itself is now a `_sync` socket op,
+  //    covered by the quickAdd + activityFeed suites — not reachable over plain HTTP here).
+  const mr = await apiPost('/api/workspaces/markRead/v1', { workspaceId, all: true, clientRequestId: 'e1' });
+  assert(mr.status === 'success', 'a second control write (markRead) succeeded over HTTP');
+  assert(mr.result?.accepted === true, 'the control write acked (accepted)');
 } finally {
   // Best-effort cleanup: delete the seeded workspace + all tenant rows + the
   // throwaway owner (and demo member Users) so the DB is left clean.

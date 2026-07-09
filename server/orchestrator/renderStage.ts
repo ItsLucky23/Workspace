@@ -106,6 +106,7 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     doneGuidance,
     '```ws-carryover\\n{ "summary": "...", "changedFiles": [], "openQuestions": [] }\\n```',
     'If you are blocked and need a human, end with a ```ws-needs-input block listing the questions instead.',
+    'NON-BLOCKING questions (W2): if a question does NOT block your progress, DO NOT stop — make a sensible assumption, keep working, and record it in `openQuestions` as `{ "question": "...", "assumption": "what you assumed" }`. The human can correct it later; a divergent answer will trigger a revision turn. Reserve `ws-needs-input` for questions that TRULY block you.',
   ].filter((s) => s.trim().length > 0).join('\n\n');
 
   //? settings.json — permissions derived from the stage commands (allow/ask/deny) + the
