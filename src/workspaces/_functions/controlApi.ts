@@ -137,4 +137,6 @@ export type Capability = (typeof RBAC_CAPABILITIES)[number];
 //? control-API request is even sent (V1_SCOPE §3.3 confirm-on-important).
 export const CONFIRM_REQUIRED: ReadonlySet<ControlOp> = new Set<ControlOp>([
   'delete-workspace', 'transfer-ownership', 'remove-member', 'kill', 'pause-all',
+  //? SEC8 — tearing down an environment kills its container + route (destructive, B-23 confirm).
+  'env-teardown',
 ]);

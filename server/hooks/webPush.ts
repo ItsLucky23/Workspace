@@ -64,13 +64,18 @@ export async function sendWebPush(prisma: PrismaClient, userId: string, payload:
   if (!(await categoryAllowed(prisma, userId, category))) return;
   const [, subs] = await tryCatch(() => prisma.pushSubscription.findMany({ where: { userId } }));
   if (!subs || subs.length === 0) return;
-  const body = JSON.stringify({ title: payload.title, body: payload.body, ...(payload.url ? { url: payload.url } : {}), ...(payload.tag ? { tag: payload.tag } : {}) });
+  //? SEC4 (Q-SEC-NOTIF-PUSH, D80 reversed) — the push PAYLOAD is redacted by default: the OS
+  //? notification store / lock screen only gets the title + a generic line; the real body is read
+  //? in-app behind auth. A device opts into full-body pushes via `PushSubscription.fullBodyOptIn`.
+  const fullBody = JSON.stringify({ title: payload.title, body: payload.body, ...(payload.url ? { url: payload.url } : {}), ...(payload.tag ? { tag: payload.tag } : {}) });
+  const redactedBody = JSON.stringify({ title: payload.title, body: 'Open the app to view.', ...(payload.url ? { url: payload.url } : {}), ...(payload.tag ? { tag: payload.tag } : {}) });
   for (const sub of subs) {
     const keys = sub.keys;
     if (keys === null || typeof keys !== 'object' || Array.isArray(keys)) continue;
     const p256dh = (keys as Record<string, unknown>).p256dh;
     const auth = (keys as Record<string, unknown>).auth;
     if (typeof p256dh !== 'string' || typeof auth !== 'string') continue;
+    const body = sub.fullBodyOptIn ? fullBody : redactedBody;
     const [err] = await tryCatch(() => lib.sendNotification({ endpoint: sub.endpoint, keys: { p256dh, auth } }, body));
     if (err) {
       //? 404/410 = the browser dropped the subscription → prune it so we stop trying.

@@ -1,6 +1,6 @@
 {
-  "hash": "62b0397742c4c099",
-  "chunkCount": 200,
+  "hash": "ec79d58939f82fe0",
+  "chunkCount": 201,
   "chunks": [
     {
       "id": "cap-001",
@@ -1201,6 +1201,12 @@
       "kind": "decision",
       "title": "0265-chat-op-catalog",
       "text": "ADR 0265: 0265-chat-op-catalog. The Workspace-AI could propose exactly 5 of the 138 control-ops (a hardcoded enum in `server/ai/workspaceChat.ts`) — the scan reports (SCAN_UNIVERSAL_TOOL / COMPLETENESS_SCAN) measured assistant-reachability at ~3.6% against the CLAUDE.md dual-mandate \"every action via UI AND via the workspace-AI\". The user decided (2026-07-09, UNIVERSAL_TOOL_PROGRAM §0): nearly ALL ops must become proposable, with destructive ones behind an extra explicit confirm. Decision: 1. **A single exhaustive op-catalog** (`server/ai/opCatalog.ts`, `Record<ControlOp, OpSpec>` — a missing op is a tsc error) classifies every op as `enabled` (proposable now + client-dispatchable), `later` (safe; flips to enabled when its dispatcher lands) or `excluded` (never via chat). 2. **Excluded forever:** secret-bearing ops (`save-env`, `save-integration`, `save-media-provider`, `gitlab-settings`, `forge-connect`, `db-connect`, `account-disconnect`) — secret values must never flow through the LLM/chat transcript — plus plumbing/legacy/dead ops (`create-workspace`, `accept-invite`, `accept-suggestion`, `mark-read`, `copilot-propose`, `answer-input`, `preview-up/down`, and the 5 ops the legacy rich chat path already covers). 3. **Generic validation before proposal:** params are spec-typed; workspace references (ticketKey/stageId/pieceId/envId/serviceName/preset) validate against the REAL context (`loadCtx` now also loads pieces/environments/services); undeclared fields are stripped. RBA"
+    },
+    {
+      "id": "adr-0266",
+      "kind": "decision",
+      "title": "0266-security-hardening-sweep",
+      "text": "ADR 0266: 0266-security-hardening-sweep. The completeness/universal-tool scans surfaced a cluster of security defects (Rule 19). They fall in five groups: RBAC privilege-escalation (a `manageMembers`-only member could mint/assign admin-tier roles; the `promoteAdmin`/`demoteAdmin` capabilities were dead code; role perms had no ceiling and built-in roles were only client-locked), owner-protection (crafted sync-requests could re-role or remove the owner → dangling `ownerId`), a secret leak (internal `__`-prefixed EnvVars — provider API keys, OAuth-token JSON — were shipped in the workspace snapshot + Env tab and over the delta channel), a redacted-push regression (`PushSubscription.fullBodyOptIn` was stored but never read, so the full notification body always hit the lock screen despite the D80-reversed posture), a webhook SSRF hole (the trigger `webhook` action POSTed to any URL incl. loopback/metadata), a prod-deploy bypass (the direct prod Deploy button/op skipped the promote ladder's approval + green-CI + security gates), a missing confirm on the destructive `env-teardown`, a caller-scoping bug on single-notification mark-read, and the git clone/push token travelling in argv/URL. Decision: Fix all of them at the authoritative layer (the Conductor / server read-path / helpers), not the UI: - **SEC1** `change-role`: owner membership is never re-roled through this op; promoting INTO an admin-tier role requires `promoteAdmin`; re-roling a member who currently HOLDS an admin-tier"
     }
   ]
 }

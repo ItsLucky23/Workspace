@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `62b0397742c4c099` · 17 capabilities · 183 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `ec79d58939f82fe0` · 17 capabilities · 184 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -209,3 +209,4 @@
 - `adr-0263` 0263-inspiration-reference-library
 - `adr-0264` 0264-named-looks-in-agent-prompt
 - `adr-0265` 0265-chat-op-catalog
+- `adr-0266` 0266-security-hardening-sweep

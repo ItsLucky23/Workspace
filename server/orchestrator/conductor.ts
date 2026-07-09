@@ -527,6 +527,22 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   return { signalSeq, result };
 }
 
+//? SEC1/SEC2 (COMPLETION FASE SEC) — RBAC-hardening helpers. Positional capability indices
+//? mirror `server/control/rbac.ts` CAP (promoteAdmin=5, demoteAdmin=6, ownerActions=7).
+const CAP_PROMOTE_ADMIN = 5;
+const CAP_DEMOTE_ADMIN = 6;
+//? A role is "admin-tier" when it holds any of the promote/demote/owner capabilities.
+function isAdminTierPerms(perms: boolean[]): boolean {
+  return perms[CAP_PROMOTE_ADMIN] === true || perms[CAP_DEMOTE_ADMIN] === true || perms[7] === true;
+}
+//? The acting member's capability row (null when the actor is not a member — reject-by-default).
+async function actorPerms(workspaceId: string, userId: string): Promise<boolean[] | null> {
+  const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId }, select: { roleKey: true } });
+  if (!member) return null;
+  const role = await prisma.workspaceRole.findFirst({ where: { workspaceId, key: member.roleKey }, select: { perms: true } });
+  return role?.perms ?? null;
+}
+
 //? The op dispatch. Runs INSIDE runInTenant(workspaceId). Fase 1 implements the
 //? self-contained non-AI writes; the rest are scaffolded (logged no-op) until their
 //? slice lands (member/settings/board breadth + the Fase-2 AI-session ops).
@@ -537,6 +553,20 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const memberId = str(target, 'memberId');
       const roleKey = str(payload, 'roleKey') ?? str(payload, 'role');
       if (!memberId || !roleKey) return;
+      //? SEC1 — owner-protection + privilege-ceiling. The owner's membership can never be re-roled
+      //? through change-role (only transfer-ownership moves it); promoting INTO an admin-tier role
+      //? requires promoteAdmin; re-roling a member who currently HOLDS an admin-tier role requires
+      //? demoteAdmin. Prevents a manageMembers-only holder from minting (or stripping) admins.
+      const ws = await prisma.workspace.findFirst({ where: { id: action.workspaceId }, select: { ownerId: true } });
+      if (ws?.ownerId === memberId) return { ok: false, error: 'member.ownerProtected' };
+      const acting = await actorPerms(action.workspaceId, userId);
+      if (!acting) return { ok: false, error: 'rbac' };
+      const newRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: roleKey }, select: { perms: true } });
+      if (!newRole) return { ok: false, error: 'role.unknown' };
+      if (isAdminTierPerms(newRole.perms) && acting[CAP_PROMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      const targetMember = await prisma.workspaceMember.findFirst({ where: { workspaceId: action.workspaceId, userId: memberId }, select: { roleKey: true } });
+      const currentRole = targetMember ? await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: targetMember.roleKey }, select: { perms: true } }) : null;
+      if (currentRole && isAdminTierPerms(currentRole.perms) && acting[CAP_DEMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey } });
       await recordAudit(prisma, action.workspaceId, userId, 'change-role', memberId, { roleKey });
       return;
@@ -714,6 +744,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'remove-member': {
       const memberId = str(target, 'memberId');
       if (memberId) {
+        //? SEC3 — owner-protection: removing the owner's membership would leave a dangling
+        //? `ownerId` (a crafted sync-request could do it; the UI never offered it).
+        const wsRow = await prisma.workspace.findFirst({ where: { id: action.workspaceId }, select: { ownerId: true } });
+        if (wsRow?.ownerId === memberId) return { ok: false, error: 'member.ownerProtected' };
         await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
         await recordAudit(prisma, action.workspaceId, userId, 'remove-member', memberId);
       }
@@ -738,16 +772,35 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'role-create': {
       const key = str(payload, 'key'); const label = str(payload, 'label') ?? key;
       if (!key || !label) return;
+      //? SEC2 — capability-ceiling: the actor cannot mint a role holding a perm the actor lacks
+      //? (an editPipeline-tier member could otherwise create an owner-tier role and self-assign).
+      const creatorPerms = await actorPerms(action.workspaceId, userId);
+      if (!creatorPerms) return { ok: false, error: 'rbac' };
+      const newPerms = boolArr(payload, 'perms');
+      if (newPerms.some((granted, i) => granted && creatorPerms[i] !== true)) return { ok: false, error: 'rbac' };
+      //? H1/SEC2 — audit role creation (perm grants are governance events).
+      const created = await prisma.workspaceRole.create({ data: { workspaceId: action.workspaceId, key, label, perms: newPerms, builtIn: false } });
+      await recordAudit(prisma, action.workspaceId, userId, 'role-create', key, { perms: newPerms });
       //? Return the created role so the realtime `_sync` route broadcasts the delta.
-      return prisma.workspaceRole.create({ data: { workspaceId: action.workspaceId, key, label, perms: boolArr(payload, 'perms'), builtIn: false } });
+      return created;
     }
     case 'role-update': {
       const key = str(target, 'roleKey') ?? str(payload, 'key');
       if (!key) return;
+      //? SEC2 — built-in roles are immutable server-side (the client `locked` flag was the only
+      //? guard) + the same capability-ceiling as role-create for perm changes.
+      const existingRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { builtIn: true } });
+      if (existingRole?.builtIn === true) return { ok: false, error: 'role.builtInImmutable' };
       const label = str(payload, 'label');
       const data: { label?: string; perms?: boolean[] } = {};
       if (label) data.label = label;
-      if (Array.isArray(payload.perms)) data.perms = boolArr(payload, 'perms');
+      if (Array.isArray(payload.perms)) {
+        const updaterPerms = await actorPerms(action.workspaceId, userId);
+        if (!updaterPerms) return { ok: false, error: 'rbac' };
+        const nextPerms = boolArr(payload, 'perms');
+        if (nextPerms.some((granted, i) => granted && updaterPerms[i] !== true)) return { ok: false, error: 'rbac' };
+        data.perms = nextPerms;
+      }
       await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
       await recordAudit(prisma, action.workspaceId, userId, 'role-update', key, { ...(label ? { label } : {}), ...(Array.isArray(payload.perms) ? { permsChanged: true } : {}) });
       //? Return the updated role so the realtime `_sync` route broadcasts the delta.
@@ -1905,10 +1958,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).
     case 'env-deploy': {
+      const kind = str(payload, 'kind') ?? 'dev';
+      //? SEC7 — prod is ONLY reachable via env-promote (approval + green CI + no security findings,
+      //? promote.ts). A direct prod env-deploy would bypass all three gates.
+      if (kind === 'prod') return { ok: false, status: 'error', error: 'env.prodViaPromote' };
       const deployProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
       if (!deployProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
       const serviceId = str(target, 'serviceId') ?? str(payload, 'serviceId') ?? null;
-      const kind = str(payload, 'kind') ?? 'dev';
       //? D3 — a demo env can follow main (autoRedeploy, default true) or freeze at a pinned commit. Only pass
       //? autoRedeploy when the client set it explicitly, so ensureEnvironment's demo-default still applies.
       const pinnedCommit = str(payload, 'pinnedCommit');
@@ -2085,7 +2141,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         await prisma.notification.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { read: true } });
       } else {
         const notificationId = str(target, 'notificationId');
-        if (notificationId) await prisma.notification.updateMany({ where: { workspaceId: action.workspaceId, id: notificationId }, data: { read: true } });
+        //? SEC5 — scope the single-notification branch to the CALLER's rows (the all-branch already
+        //? did); without `userId` any member could mark another member's notification read.
+        if (notificationId) await prisma.notification.updateMany({ where: { workspaceId: action.workspaceId, id: notificationId, userId }, data: { read: true } });
       }
       return;
     }

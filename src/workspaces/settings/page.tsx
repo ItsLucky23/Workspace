@@ -290,8 +290,10 @@ export default function AccountSettings() {
                     {env?.status === 'live' && kind !== 'prod' && (
                       <button type="button" onClick={() => { const toProd = kind === 'staging'; if (!toProd) { promoteEnv({ fromKind: kind }); return; } void menuHandler.confirm({ title: translate({ key: 'workspaces.account.promote' }), content: `${kind} → prod` }).then((ok) => { if (ok) promoteEnv({ fromKind: kind, approved: true }); }); }} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.account.promote' })}</button>
                     )}
-                    <WsButton variant="secondary" disabled={!activeProject || env?.status === 'deploying'} onClick={() => { deployEnv({ kind }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>
-                    {env && <button type="button" onClick={() => { teardownEnv(env.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
+                    {/* SEC7 — prod has NO direct deploy (it bypasses the approval/CI/security gates); it is only reachable via promote. */}
+                    {kind !== 'prod' && <WsButton variant="secondary" disabled={!activeProject || env?.status === 'deploying'} onClick={() => { deployEnv({ kind }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>}
+                    {/* SEC8 — teardown kills the container + route: explicit confirm first (B-23). */}
+                    {env && <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.account.teardown' }), content: `${kind} — ${env.route}` }).then((ok) => { if (ok) teardownEnv(env.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
                   </span>
                 </Row>
               );

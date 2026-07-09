@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (183)
+## Decisions (184)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -196,6 +196,7 @@
 | 0263 | Inspiration/reference library — collect examples the AI emulates | 🟢 accepted | content, rag, inspiration, references, ai-libraries-accounts | — | `docs/decisions/0263-inspiration-reference-library.md` |
 | 0264 | Named design looks + references in the agent prompts | 🟢 accepted | design, agent-context, rag, grounding, ai-libraries-accounts | — | `docs/decisions/0264-named-looks-in-agent-prompt.md` |
 | 0265 | chat op catalog | 🟢 accepted | assistant, control-api, rbac, security | — | `docs/decisions/0265-chat-op-catalog.md` |
+| 0266 | security hardening sweep | 🟢 accepted | security, rbac, ssrf, push, git | — | `docs/decisions/0266-security-hardening-sweep.md` |
 
 ## Summaries
 
@@ -1664,6 +1665,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 1. **A single exhaustive op-catalog** (`server/ai/opCatalog.ts`, `Record<ControlOp, OpSpec>` — a missing op is a tsc error) classifies every op as `enabled` (proposable now + client-dispatchable), `later` (safe; flips to enabled when its dispatcher lands) or `excluded` (never via chat). 2. **Excluded forever:** secret-bearing ops (`save-env`, `save-integration`, `save-media-provider`, `gitlab-settings`, `forge-connect`, `db-connect`, `account-disconnect`) — secret values must never flow through the LLM/chat transcript — plus plumbing/legacy/dead ops (`create-workspace`, `accept-invite`, `accept-suggestion`, `mark-read`, `copilot-propose`, `answer-input`, `preview-up/down`, and the 5 ops the legacy rich chat path already covers). 3. **Generic validation before proposal:** params are spec-typed; workspace references (ticketKey/stageId/pieceId/envId/serviceName/preset) validate against the REAL context (`loadCtx` now also loads pieces/environments/services); undeclared fields are stripped. RBAC + payload validation still run at the write path on accept (B-23 unchanged — the AI only proposes, the Conductor stays the only writer, no new verbs anywhere). 4. **Destructive ops carry `destructive: true`** → the client wraps accept in `menuHandler.confirm` (one combined confirm for plans). `env-promote`'s confirm doubles as the promote `approved` flag; prod stays further gated server-side (green CI + security). 5. **Server/client lockstep by test, not import:** the server bundle can't import `src/` runtime values (same constraint as OP_CAPABILITY), so the enabled tranche exists twice — `server/ai/opCatalog.ts` and `src/workspaces/_data/chatOps.ts` + `chatDispatch.ts` (`Record<ChatEnabledOp, …>` = compile-forced total) — and `tests/unit/opCatalogParity.test.mts` fails on any drift. 6. **First tranche = 28 ops** (agent-controls, deploy/env, CI/reasoning/memory, DB-safe half, projects/greenfield, service stacks preset-only, stage reshape, content lifecycle + run-pipeline + regenerate). Paid per-asset gen ops stay `later` until the cost-confirm work (UNIVERSAL_TOOL B4) lands, so chat can't trigger spend without a price shown.
 
 → `docs/decisions/0265-chat-op-catalog.md`
+
+### 0266 — security hardening sweep
+
+**0266** · accepted · tags: security, rbac, ssrf, push, git · 2026-07-09
+
+Fix all of them at the authoritative layer (the Conductor / server read-path / helpers), not the UI:
+
+→ `docs/decisions/0266-security-hardening-sweep.md`
 
 ## Code governed by decisions
 

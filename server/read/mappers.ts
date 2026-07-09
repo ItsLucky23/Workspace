@@ -159,6 +159,9 @@ function isDbEnvVar(v: unknown): v is DbEnvVar {
 //? values are decrypted for display (falls back to the raw value for legacy plaintext rows).
 export function envDelta(result: unknown): EnvVar | null {
   if (!isDbEnvVar(result)) return null;
+  //? RS-B1 (SECURITY) — internal `__`-rows never leave the server over the delta channel either
+  //? (mirrors the snapshot filter).
+  if (result.key.startsWith('__')) return null;
   const value = result.secret ? (decryptSecret(result.value) ?? result.value) : result.value;
   return { id: result.id, key: result.key, value, secret: result.secret };
 }

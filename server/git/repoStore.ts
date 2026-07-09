@@ -5,9 +5,10 @@
 //? git-worktrees from (GIT_STRATEGY §0/§1, 07b §4). One bare repo per workspace;
 //? per-ticket worktrees are added off it at ticket-create/stage-entry (a later slice).
 //?
-//? Auth: a token is injected into the clone URL only for the git process and is NEVER
-//? persisted or logged — only the clean `gitUrl` is stored on `Project`. (Hardening to
-//? a credential-helper/askpass so the token never touches argv is a follow-up.)
+//? Auth (SEC9): the token NEVER touches argv or the URL — git receives only the username
+//? convention in the URL and reads the password from a GIT_ASKPASS helper that echoes it
+//? from the spawn env. Nothing is persisted or logged (errors are token-scrubbed); only the
+//? clean `gitUrl` is stored on `Project`.
 
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -42,9 +43,9 @@ export function isLinked(workspaceId: string): boolean {
 
 //? Run a git command, capturing stdout. Rejects with a token-scrubbed message on
 //? non-zero exit so a bad URL/token surfaces without leaking the credential.
-function git(args: string[], opts: { cwd?: string } = {}): Promise<string> {
+function git(args: string[], opts: { cwd?: string; env?: Record<string, string> } = {}): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('git', args, { cwd: opts.cwd, windowsHide: true });
+    const proc = spawn('git', args, { cwd: opts.cwd, windowsHide: true, ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}) });
     let out = '';
     let err = '';
     proc.stdout.on('data', (d) => { out += String(d); });
@@ -61,13 +62,39 @@ function scrub(s: string): string {
   return s.replaceAll(/\/\/[^/@\s]+:[^/@\s]+@/g, '//***@');
 }
 
-//? Inject the token into an https URL per host convention (GitHub uses
-//? x-access-token, GitLab/others use oauth2). No token → returned unchanged.
-function withAuth(gitUrl: string, token: string | undefined): string {
+//? SEC9 — the URL only ever carries the USERNAME convention (GitHub: x-access-token,
+//? GitLab/others: oauth2); the TOKEN itself never touches argv. Git asks its askpass
+//? helper for the password, which echoes it from the spawn env (`authEnv`). Exported
+//? for the unit test that locks the no-token-in-argv property down.
+export function withAuth(gitUrl: string, token: string | undefined): string {
   if (!token || !gitUrl.startsWith('https://')) return gitUrl;
   const rest = gitUrl.slice('https://'.length);
   const user = rest.startsWith('github.com') ? 'x-access-token' : 'oauth2';
-  return `https://${user}:${token}@${rest}`;
+  return `https://${user}@${rest}`;
+}
+
+//? SEC9 — a tiny static askpass script (echoes the env token; the script itself contains NO
+//? secret) written once under data/ and referenced via GIT_ASKPASS. Cross-platform: .cmd on
+//? Windows, sh script elsewhere.
+function askpassPath(): string {
+  const dir = path.join(process.cwd(), 'data');
+  mkdirSync(dir, { recursive: true });
+  if (process.platform === 'win32') {
+    const p = path.join(dir, 'git-askpass.cmd');
+    if (!existsSync(p)) writeFileSync(p, '@echo %WS_GIT_ASKPASS_TOKEN%\r\n');
+    return p;
+  }
+  const p = path.join(dir, 'git-askpass.sh');
+  if (!existsSync(p)) writeFileSync(p, '#!/bin/sh\necho "$WS_GIT_ASKPASS_TOKEN"\n', { mode: 0o700 });
+  return p;
+}
+
+//? SEC9 — the env for an authenticated git call: the token travels ONLY via the environment
+//? (never argv/URL); GIT_TERMINAL_PROMPT=0 hard-fails instead of hanging when auth is missing.
+//? Exported for the unit test.
+export function authEnv(token: string | undefined): Record<string, string> {
+  if (!token) return {};
+  return { GIT_ASKPASS: askpassPath(), WS_GIT_ASKPASS_TOKEN: token, GIT_TERMINAL_PROMPT: '0' };
 }
 
 //? A documentation file discovered in the linked repo (docs-init scan). Read straight
@@ -207,7 +234,7 @@ export async function cloneRepo(input: { workspaceId: string; gitUrl: string; to
   mkdirSync(dir, { recursive: true });
   //? Fresh clone each link (idempotent re-link) — discard any prior bare repo.
   if (existsSync(bare)) rmSync(bare, { recursive: true, force: true });
-  await git(['clone', '--bare', withAuth(gitUrl, token), bare]);
+  await git(['clone', '--bare', withAuth(gitUrl, token), bare], { env: authEnv(token) });
   //? Persist the origin WITHOUT the token so later fetches use the stored (clean) URL;
   //? the token is re-injected transiently per fetch (a later slice re-supplies it).
   await git(['--git-dir', bare, 'remote', 'set-url', 'origin', gitUrl]).catch(() => '');
@@ -360,7 +387,7 @@ async function cleanupWorktree(bare: string, wt: string): Promise<void> {
 export async function pushBranch(input: { workspaceId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
   const wt = worktreePath(input.workspaceId, input.ticketKey);
   //? Bounded retry/backoff so a transient network blip doesn't drop an approved push (C3).
-  await withRetry(() => git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`]), { attempts: 3, baseMs: 200 });
+  await withRetry(() => git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`], { env: authEnv(input.token) }), { attempts: 3, baseMs: 200 });
 }
 
 //? Push a branch ref straight from the BARE clone to origin (C1). Used after a server-side
@@ -371,5 +398,5 @@ export async function pushBranch(input: { workspaceId: string; ticketKey: string
 export async function pushRef(input: { workspaceId: string; gitUrl: string; token: string; ref: string }): Promise<void> {
   const bare = bareRepoPath(input.workspaceId);
   if (!existsSync(bare)) throw new Error('not-linked');
-  await withRetry(() => git(['--git-dir', bare, 'push', withAuth(input.gitUrl, input.token), `${input.ref}:${input.ref}`]), { attempts: 3, baseMs: 200 });
+  await withRetry(() => git(['--git-dir', bare, 'push', withAuth(input.gitUrl, input.token), `${input.ref}:${input.ref}`], { env: authEnv(input.token) }), { attempts: 3, baseMs: 200 });
 }

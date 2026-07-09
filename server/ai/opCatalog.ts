@@ -132,8 +132,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   // ---- environments / deploy
   'env-deploy': {
     mode: 'enabled',
-    hint: 'deploy the active project to a persistent environment. params: kind (dev|staging|prod|demo), serviceId?',
-    params: { kind: { kind: 'enum', required: true, values: ['dev', 'staging', 'prod', 'demo'] }, serviceId: { kind: 'string' } },
+    hint: 'deploy the active project to a persistent environment. params: kind (dev|staging|demo — prod is ONLY reachable via env-promote), serviceId?',
+    //? SEC7 — no direct prod deploys (the Conductor rejects them too); prod goes through env-promote.
+    params: { kind: { kind: 'enum', required: true, values: ['dev', 'staging', 'demo'] }, serviceId: { kind: 'string' } },
   },
   'env-teardown': {
     mode: 'enabled', destructive: true,

@@ -8,7 +8,7 @@
 //? the #1 watchdog reprovisions it) · invoke-agent-role (dispatch a registered non-coding role →
 //? artifact). Self-contained (no Conductor import → no cycle; the Conductor calls fireEvent).
 
-import { tryCatch } from '@luckystack/core';
+import { tryCatch, tryCatchSync } from '@luckystack/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
@@ -46,6 +46,26 @@ function str(o: Record<string, unknown>, k: string): string | undefined {
   return typeof v === 'string' ? v : undefined;
 }
 
+//? SEC6 — SSRF guard for the user-configured webhook action: block loopback, private-range,
+//? link-local (incl. cloud metadata 169.254.169.254) and *.internal/*.local targets so a
+//? self-hosted multi-tenant deployment can't be probed from a trigger. Literal/hostname check
+//? only (DNS-rebinding needs a resolving proxy — out of scope here); exported for tests.
+export function isBlockedWebhookTarget(rawUrl: string): boolean {
+  const [err, parsed] = tryCatchSync(() => new URL(rawUrl));
+  if (err || !parsed) return true;
+  const bare = parsed.hostname.toLowerCase().replaceAll(/^\[|\]$/g, ''); // strip ipv6 brackets
+  if (bare === 'localhost' || bare.endsWith('.localhost') || bare.endsWith('.local') || bare.endsWith('.internal')) return true;
+  if (bare === '::1' || bare === '::' || bare.startsWith('fe80:') || bare.startsWith('fc') || bare.startsWith('fd')) return true;
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(bare);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  if (a === 127 || a === 10 || a === 0) return true;                 // loopback / RFC1918 / unspecified
+  if (a === 169 && b === 254) return true;                           // link-local + cloud metadata
+  if (a === 172 && b >= 16 && b <= 31) return true;                  // RFC1918
+  if (a === 192 && b === 168) return true;                           // RFC1918
+  return false;
+}
+
 //? Directly run an action (past any gate). Best-effort per action; a bad action is a noop, never a
 //? throw, so one misconfigured trigger can't wedge the pipeline.
 export async function executeTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
@@ -63,10 +83,11 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
     }
     case 'webhook': {
       //? X2 — POST a compact event envelope to a user-configured URL. Requires http(s); a non-2xx/throw is an
-      //? error outcome (best-effort, never throws). SSRF hardening (blocking internal targets) is a follow-up —
-      //? the URL is the workspace-owner's own configured endpoint.
+      //? error outcome (best-effort, never throws). SEC6: internal/loopback/link-local/metadata targets are
+      //? refused (self-hosted multi-tenant SSRF posture).
       const url = str(a.params, 'url');
       if (!url || !/^https?:\/\//i.test(url)) return { status: 'noop', detail: 'no-url' };
+      if (isBlockedWebhookTarget(url)) return { status: 'error', detail: 'webhook-target-blocked' };
       const payload = { event: a.triggerName ?? 'trigger', ticketKey: a.ticketKey ?? null, payload: a.params.payload ?? null, workspaceId };
       const [err, res] = await tryCatch(() => webhookPoster(url, JSON.stringify(payload)));
       if (err || !res?.ok) return { status: 'error', detail: 'webhook-failed' };

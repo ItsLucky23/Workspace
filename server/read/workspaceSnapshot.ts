@@ -490,7 +490,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       }),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
-      envVars: envRows.map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),
+      //? RS-B1 (SECURITY) — internal `__`-rows (provider keys, OAuth-token JSON, per-feature
+      //? overrides) NEVER reach the client env list (mirrors serviceEnv.ts's container filter).
+      //? The derived aiOverrides/mediaModels projections above expose only feature→id mappings.
+      envVars: envRows.filter((e) => !e.key.startsWith('__')).map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),
       integrations: integrationRows.map((it): IntegrationTool => ({ id: it.id, name: it.name, type: it.type, fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })), mcp: it.mcp })),
       invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sent: 'pending' })),
       //? Events store ticket ObjectIds, but the frontend keys tickets by their
