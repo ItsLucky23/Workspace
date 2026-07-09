@@ -68,7 +68,11 @@ export function parseLiveScript(text: string): ParsedScript {
 export async function generateScript(
   prisma: PrismaClient,
   args: { workspaceId: string; contentProjectId: string; brief: string; styleKey?: string; extraInstructions?: string; targetBeats?: number },
+  //? `complete` is injectable so a test can capture the composed `system` prompt (proving best-practices +
+  //? references are actually injected — stub mode discards the prompt, so it can't be asserted otherwise).
+  opts: { complete?: typeof runAiCompletion } = {},
 ): Promise<{ scriptId: string; beatCount: number; stub: boolean; providerId: string }> {
+  const complete = opts.complete ?? runAiCompletion;
   const style = await resolveStyle(prisma, args.workspaceId, 'script', args.styleKey);
   //? Q2 brand/product grounding + K3 knowledge grounding (the user's enabled context-docs) prepended so the
   //? script is on-brand + uses their material.
@@ -83,7 +87,7 @@ export async function generateScript(
   const refs = await retrieveReferences(prisma, args.workspaceId, args.brief, 2);
   const inspiration = refs.length > 0 ? `Reference examples from this workspace's inspiration library (emulate the APPROACH/structure, do NOT copy verbatim):\n${refs.map((r) => r.content).join('\n\n')}` : '';
   const system = [brandContext, knowledge, bestPractices, inspiration, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
-  const res = await runAiCompletion('script', {
+  const res = await complete('script', {
     prompt: `${args.brief}\n\n${scriptFormat(args.targetBeats)}`,
     ...(system ? { system } : {}),
     workspaceId: args.workspaceId,

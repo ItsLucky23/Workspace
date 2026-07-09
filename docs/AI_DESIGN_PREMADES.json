@@ -1,0 +1,318 @@
+{
+  "generatedFrom": "src/workspaces/designer/premades.ts",
+  "count": 8,
+  "looks": [
+    {
+      "id": "apple",
+      "name": "Apple",
+      "description": "Clean, airy, restrained — soft radii and subtle depth.",
+      "theme": {
+        "light": {
+          "background": "#F5F5F5",
+          "container1": "#FFFFFF",
+          "primary": "#3B82F6",
+          "primary-hover": "#2563EB",
+          "secondary": "#3B82F6",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0B0F19",
+          "container1": "#111827",
+          "primary": "#3B82F6",
+          "primary-hover": "#60A5FA",
+          "secondary": "#3B82F6",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 12,
+        "radiusLg": 20,
+        "pill": false,
+        "border": "none",
+        "density": "comfortable",
+        "motion": "smooth",
+        "shadow": "0 8px 30px rgba(0,0,0,0.10)",
+        "weightHeading": 600
+      },
+      "fontHeading": "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", system-ui, sans-serif",
+      "fontBody": "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", system-ui, sans-serif"
+    },
+    {
+      "id": "material",
+      "name": "Material",
+      "description": "Bold surfaces, crisp elevation, confident colour.",
+      "theme": {
+        "light": {
+          "background": "#F5F5F5",
+          "container1": "#FFFFFF",
+          "primary": "#059669",
+          "primary-hover": "#047857",
+          "secondary": "#059669",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0B0F19",
+          "container1": "#111827",
+          "primary": "#10B981",
+          "primary-hover": "#34D399",
+          "secondary": "#10B981",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 8,
+        "radiusLg": 12,
+        "pill": false,
+        "border": "none",
+        "density": "cozy",
+        "motion": "snappy",
+        "shadow": "0 2px 6px rgba(0,0,0,0.16), 0 1px 2px rgba(0,0,0,0.12)",
+        "weightHeading": 700
+      },
+      "fontHeading": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "fontBody": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "glass",
+      "name": "Glassmorphic",
+      "description": "Frosted, translucent panels with a premium sheen.",
+      "theme": {
+        "light": {
+          "background": "#F6F5FA",
+          "container1": "#FFFFFF",
+          "primary": "#7C3AED",
+          "primary-hover": "#6D28D9",
+          "secondary": "#7C3AED",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0C0A16",
+          "container1": "#151327",
+          "primary": "#8B5CF6",
+          "primary-hover": "#A78BFA",
+          "secondary": "#8B5CF6",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 16,
+        "radiusLg": 24,
+        "pill": false,
+        "border": "hairline",
+        "density": "comfortable",
+        "motion": "smooth",
+        "shadow": "0 8px 32px rgba(0,0,0,0.18)",
+        "weightHeading": 600
+      },
+      "fontHeading": "\"Century Gothic\", \"URW Gothic\", \"Apple SD Gothic Neo\", sans-serif",
+      "fontBody": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "brutalist",
+      "name": "Brutalist",
+      "description": "Hard edges, heavy borders, unapologetic type.",
+      "theme": {
+        "light": {
+          "background": "#FBF7F2",
+          "container1": "#FFFFFF",
+          "primary": "#EA580C",
+          "primary-hover": "#C2410C",
+          "secondary": "#EA580C",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#17120E",
+          "container1": "#221A13",
+          "primary": "#F97316",
+          "primary-hover": "#FB923C",
+          "secondary": "#F97316",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 0,
+        "radiusLg": 0,
+        "pill": false,
+        "border": "bold",
+        "density": "compact",
+        "motion": "snappy",
+        "shadow": "4px 4px 0 rgba(0,0,0,0.9)",
+        "weightHeading": 800
+      },
+      "fontHeading": "Impact, \"Haettenschweiler\", \"Arial Narrow Bold\", sans-serif",
+      "fontBody": "Arial, \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "id": "minimal",
+      "name": "Minimal",
+      "description": "The quietest look — hairlines, generous whitespace.",
+      "theme": {
+        "light": {
+          "background": "#F5F5F5",
+          "container1": "#FFFFFF",
+          "primary": "#3B82F6",
+          "primary-hover": "#2563EB",
+          "secondary": "#3B82F6",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0B0F19",
+          "container1": "#111827",
+          "primary": "#3B82F6",
+          "primary-hover": "#60A5FA",
+          "secondary": "#3B82F6",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 6,
+        "radiusLg": 8,
+        "pill": false,
+        "border": "hairline",
+        "density": "comfortable",
+        "motion": "snappy",
+        "shadow": "none",
+        "weightHeading": 500
+      },
+      "fontHeading": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+      "fontBody": "\"Helvetica Neue\", Helvetica, Arial, sans-serif"
+    },
+    {
+      "id": "editorial",
+      "name": "Editorial",
+      "description": "Serif headings, magazine rhythm, considered spacing.",
+      "theme": {
+        "light": {
+          "background": "#FBF7F2",
+          "container1": "#FFFFFF",
+          "primary": "#EA580C",
+          "primary-hover": "#C2410C",
+          "secondary": "#EA580C",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#17120E",
+          "container1": "#221A13",
+          "primary": "#F97316",
+          "primary-hover": "#FB923C",
+          "secondary": "#F97316",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 4,
+        "radiusLg": 6,
+        "pill": false,
+        "border": "hairline",
+        "density": "comfortable",
+        "motion": "smooth",
+        "shadow": "0 1px 2px rgba(0,0,0,0.06)",
+        "weightHeading": 700
+      },
+      "fontHeading": "Georgia, \"Times New Roman\", serif",
+      "fontBody": "Georgia, \"Times New Roman\", serif"
+    },
+    {
+      "id": "playful",
+      "name": "Playful",
+      "description": "Rounded, bouncy, friendly — high energy.",
+      "theme": {
+        "light": {
+          "background": "#F6F5FA",
+          "container1": "#FFFFFF",
+          "primary": "#7C3AED",
+          "primary-hover": "#6D28D9",
+          "secondary": "#7C3AED",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0C0A16",
+          "container1": "#151327",
+          "primary": "#8B5CF6",
+          "primary-hover": "#A78BFA",
+          "secondary": "#8B5CF6",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 18,
+        "radiusLg": 28,
+        "pill": true,
+        "border": "none",
+        "density": "cozy",
+        "motion": "bouncy",
+        "shadow": "0 10px 24px rgba(0,0,0,0.14)",
+        "weightHeading": 700
+      },
+      "fontHeading": "\"Trebuchet MS\", Verdana, sans-serif",
+      "fontBody": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "neumorphic",
+      "name": "Neumorphic",
+      "description": "Soft, extruded surfaces with gentle shadows.",
+      "theme": {
+        "light": {
+          "background": "#F5F5F5",
+          "container1": "#FFFFFF",
+          "primary": "#059669",
+          "primary-hover": "#047857",
+          "secondary": "#059669",
+          "title": "#1E1F21",
+          "common": "#454648",
+          "muted": "#6B7280"
+        },
+        "dark": {
+          "background": "#0B0F19",
+          "container1": "#111827",
+          "primary": "#10B981",
+          "primary-hover": "#34D399",
+          "secondary": "#10B981",
+          "title": "#F1F5F9",
+          "common": "#CBD5E1",
+          "muted": "#94A3B8"
+        }
+      },
+      "style": {
+        "radius": 16,
+        "radiusLg": 24,
+        "pill": false,
+        "border": "none",
+        "density": "comfortable",
+        "motion": "smooth",
+        "shadow": "8px 8px 18px rgba(0,0,0,0.12), -8px -8px 18px rgba(255,255,255,0.55)",
+        "weightHeading": 600
+      },
+      "fontHeading": "\"Century Gothic\", \"URW Gothic\", \"Apple SD Gothic Neo\", sans-serif",
+      "fontBody": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+    }
+  ]
+}

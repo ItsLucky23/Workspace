@@ -17,6 +17,7 @@ import {
 import { isModuleEnabled } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from './defaultPipeline';
 import { createStarterLibrary } from './starterLibrary';
+import { rebuildDesignSystemDoc } from '../designer/designSystemDoc';
 import { encryptSecret } from '../crypto/secretBox';
 
 const OWNER_PERMS = [true, true, true, true, true, true, true, true];
@@ -96,6 +97,10 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
       number += 1;
     }
   }
+
+  //? Seed the design-system context-doc so the coding agent knows the named looks (apple, material, …) from
+  //? day one — even before the user touches the Designer. Best-effort; never fails workspace creation.
+  await rebuildDesignSystemDoc(prisma, workspaceId).catch(() => null);
 
   return { workspaceId };
 }

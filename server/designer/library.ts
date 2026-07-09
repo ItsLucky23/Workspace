@@ -16,19 +16,22 @@ export async function saveDesignArtifact(prisma: PrismaClient, workspaceId: stri
   const content = asJson(a.content);
   const source = a.source === 'ai' || a.source === 'seed' ? a.source : 'manual';
   const name = a.name.trim();
-  if (a.id) {
-    await prisma.designArtifact.updateMany({ where: { workspaceId, id: a.id }, data: { name, description: a.description ?? null, content } });
-    return a.id;
-  }
   //? No id → upsert by (kind, name) so re-saving the same look ("Use this look", re-import, re-copy) UPDATES
   //? the existing row instead of piling up duplicate rows in the library (they surface via the L2 round-trip).
-  const existing = await prisma.designArtifact.findFirst({ where: { workspaceId, kind: a.kind, name }, select: { id: true } });
+  const existing = a.id
+    ? { id: a.id }
+    : await prisma.designArtifact.findFirst({ where: { workspaceId, kind: a.kind, name }, select: { id: true } });
+  let id: string;
   if (existing) {
-    await prisma.designArtifact.update({ where: { id: existing.id }, data: { description: a.description ?? null, content } });
-    return existing.id;
+    await prisma.designArtifact.updateMany({ where: { workspaceId, id: existing.id }, data: { name, description: a.description ?? null, content } });
+    id = existing.id;
+  } else {
+    const created = await prisma.designArtifact.create({ data: { workspaceId, active: false, kind: a.kind, name, description: a.description ?? null, content, source }, select: { id: true } });
+    id = created.id;
   }
-  const created = await prisma.designArtifact.create({ data: { workspaceId, active: false, kind: a.kind, name, description: a.description ?? null, content, source }, select: { id: true } });
-  return created.id;
+  //? Refresh the design-system doc so the saved look joins the named-looks catalog the coding agent reads.
+  await rebuildDesignSystemDoc(prisma, workspaceId);
+  return id;
 }
 
 //? Mark the one active theme/style for its kind, then rebuild the design-system doc. false if unknown.
@@ -42,7 +45,7 @@ export async function setActiveDesignArtifact(prisma: PrismaClient, workspaceId:
 }
 
 export async function deleteDesignArtifact(prisma: PrismaClient, workspaceId: string, id: string): Promise<void> {
-  const wasActive = await prisma.designArtifact.findFirst({ where: { workspaceId, id }, select: { active: true } });
   await prisma.designArtifact.deleteMany({ where: { workspaceId, id } });
-  if (wasActive?.active) await rebuildDesignSystemDoc(prisma, workspaceId);
+  //? Always rebuild — the deleted look must leave the named-looks catalog too, not only when it was active.
+  await rebuildDesignSystemDoc(prisma, workspaceId);
 }

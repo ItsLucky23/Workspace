@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (174)
+## Decisions (175)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -187,6 +187,7 @@
 | 0261 | A3+A4 — publish routing by account + content bound to a channel | 🟢 accepted | content, publish, accounts, channels, ai-libraries-accounts | — | `docs/decisions/0261-publish-routing-content-channel.md` |
 | 0262 | Best-practices playbook — domain-expertise RAG grounding content generation | 🟢 accepted | content, rag, best-practices, ai, ai-libraries-accounts | — | `docs/decisions/0262-content-best-practices-playbook.md` |
 | 0263 | Inspiration/reference library — collect examples the AI emulates | 🟢 accepted | content, rag, inspiration, references, ai-libraries-accounts | — | `docs/decisions/0263-inspiration-reference-library.md` |
+| 0264 | Named design looks + references in the agent prompts | 🟢 accepted | design, agent-context, rag, grounding, ai-libraries-accounts | — | `docs/decisions/0264-named-looks-in-agent-prompt.md` |
 
 ## Summaries
 
@@ -1583,6 +1584,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 **A `ReferenceExample` model** (kind, title, `description` = why it works, optional `assetUrl`, tags). The human-written `description` is the grounding signal: a text model can't see the asset, so the "why it works" IS the inspiration; the asset is the visual shown in the library. **Per-workspace RAG under commit `reference`** (`server/content/referenceLibrary.ts`) — mirrors brandMemory: one embedder, one `retrieve()`, indexed INCREMENTALLY (add → embed one row keyed by the example id; delete → remove that row). No global corpus (inspiration is the workspace's own). **`generateScript` grounds on it**: retrieves the top-2 examples relevant to the brief and injects them as "Reference examples … emulate the APPROACH/structure, do NOT copy verbatim", alongside best-practices + brand. **Ops** `reference-add`/`reference-delete` (content-* family, RBAC); the asset uploads via the existing media upload route → `assetUrl`. The snapshot exposes `content.references` for the library UI.
 
 → `docs/decisions/0263-inspiration-reference-library.md`
+
+### 0264 — Named design looks + references in the agent prompts
+
+**0264** · accepted · tags: design, agent-context, rag, grounding, ai-libraries-accounts · 2026-07-09
+
+**A named-looks catalog in the design-system doc.** `buildDesignSystemDoc` now appends a catalog of every named look — the built-in premades (apple/material/…) AND the workspace's saved themes/styles — with each look's distinguishing tokens (primary/bg/text colours, radius, fonts, motion). So the agent can build in ANY named look, not just the active one. **Premades come from a compiled JSON.** `scripts/generateDesignPremades.mjs` reads the client premade definitions (they only import types, so a tsx script can load them) → `docs/AI_DESIGN_PREMADES.json`, which the server reads. No client→server duplication; regenerate with `npm run ai:design-premades`. **The doc exists from day one.** `rebuildDesignSystemDoc` is seeded on workspace creation and refreshed on every save/delete/setActive (not only setActive), so the named looks are available even before the user opens the Designer, and saved looks join/leave the catalog immediately. **`generateScript.complete` is injectable** so a test captures the composed system prompt and PROVES the best-practices + inspiration references are injected (closing the coverage gap the review flagged).
+
+→ `docs/decisions/0264-named-looks-in-agent-prompt.md`
 
 ## Code governed by decisions
 

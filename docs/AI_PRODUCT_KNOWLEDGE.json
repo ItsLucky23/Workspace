@@ -1,6 +1,6 @@
 {
-  "hash": "6ee27e63b651830d",
-  "chunkCount": 191,
+  "hash": "2ac02ea59c286256",
+  "chunkCount": 192,
   "chunks": [
     {
       "id": "cap-001",
@@ -1147,6 +1147,12 @@
       "kind": "decision",
       "title": "Inspiration/reference library — collect examples the AI emulates",
       "text": "ADR 0263: Inspiration/reference library — collect examples the AI emulates. Styles say HOW output renders and the best-practices playbook says what works in GENERAL, but there was no way for a workspace to say \"make it like THESE examples\" — the great ads/thumbnails/intros they've collected. That concrete, per-workspace inspiration was missing. Decision: - **A `ReferenceExample` model** (kind, title, `description` = why it works, optional `assetUrl`, tags). The human-written `description` is the grounding signal: a text model can't see the asset, so the \"why it works\" IS the inspiration; the asset is the visual shown in the library. - **Per-workspace RAG under commit `reference`** (`server/content/referenceLibrary.ts`) — mirrors brandMemory: one embedder, one `retrieve()`, indexed INCREMENTALLY (add → embed one row keyed by the example id; delete → remove that row). No global corpus (inspiration is the workspace's own). - **`generateScript` grounds on it**: retrieves the top-2 examples relevant to the brief and injects them as \"Reference examples … emulate the APPROACH/structure, do NOT copy verbatim\", alongside best-practices + brand. - **Ops** `reference-add`/`reference-delete` (content-* family, RBAC); the asset uploads via the existing media upload route → `assetUrl`. The snapshot exposes `content.references` for the library UI."
+    },
+    {
+      "id": "adr-0264",
+      "kind": "decision",
+      "title": "Named design looks + references in the agent prompts",
+      "text": "ADR 0264: Named design looks + references in the agent prompts. The `design-system` context-doc the coding agent reads carried ONLY the active theme + style, so a ticket \"build the dropdown in the Apple style\" couldn't ground on Apple unless Apple was the active system. And the content-script prompt's best-practices/reference injection was retrieval-tested but the INJECTION itself was never asserted (stub mode discards the prompt). The user wants named references always available in prompts. Decision: - **A named-looks catalog in the design-system doc.** `buildDesignSystemDoc` now appends a catalog of every named look — the built-in premades (apple/material/…) AND the workspace's saved themes/styles — with each look's distinguishing tokens (primary/bg/text colours, radius, fonts, motion). So the agent can build in ANY named look, not just the active one. - **Premades come from a compiled JSON.** `scripts/generateDesignPremades.mjs` reads the client premade definitions (they only import types, so a tsx script can load them) → `docs/AI_DESIGN_PREMADES.json`, which the server reads. No client→server duplication; regenerate with `npm run ai:design-premades`. - **The doc exists from day one.** `rebuildDesignSystemDoc` is seeded on workspace creation and refreshed on every save/delete/setActive (not only setActive), so the named looks are available even before the user opens the Designer, and saved looks join/leave the catalog immediately. - **`generateScript.complete` is injectabl"
     }
   ]
 }

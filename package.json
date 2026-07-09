@@ -18,6 +18,7 @@
     "ai:project-index": "node scripts/generateProjectIndex.mjs",
     "ai:decisions": "node scripts/generateDecisionsIndex.mjs",
     "ai:product-knowledge": "node scripts/generateProductKnowledge.mjs",
+    "ai:design-premades": "tsx scripts/generateDesignPremades.mjs",
     "ai:lessons": "node scripts/generateLessonsIndex.mjs",
     "ai:examples": "node scripts/generateExamplesIndex.mjs",
     "ai:runbooks": "node scripts/generateRunbooks.mjs",
