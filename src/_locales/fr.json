@@ -1485,7 +1485,16 @@
       "mobileEmptyTitle": "Rien dans {{stage}}",
       "mobileEmptySub": "Récupérez des tickets depuis GitLab pour commencer.",
       "emptyStagesTitle": "Configuration de votre tableau…",
-      "emptyStagesSub": "Chargement de vos étapes de pipeline."
+      "emptyStagesSub": "Chargement de vos étapes de pipeline.",
+      "newTicketTitle": "Nouveau ticket",
+      "newTicketTitlePlaceholder": "Titre du ticket…",
+      "newTicketStage": "Étape",
+      "allSprints": "Tous les sprints",
+      "filterStatus": "Statut",
+      "filterAssignee": "Assigné",
+      "allStatuses": "Tous les statuts",
+      "allAssignees": "Tous les assignés",
+      "clearFilters": "Effacer les filtres"
     },
     "activity": {
       "title": "Activité",
