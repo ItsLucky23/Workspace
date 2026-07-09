@@ -753,6 +753,8 @@
       "reasoning": "KI-Reasoning / Output",
       "dragToResize": "Zum GrÃ¶ÃenÃ¤ndern ziehen",
       "tryAsking": "Versuch zu fragen", "capVideos": "Kann ich in dieser App Videos bearbeiten?", "capNewProject": "Wie starte ich ein neues Projekt?", "capPublish": "Wie veröffentliche ich auf TikTok?", "capDesign": "Was kann das Design-Modul?", "askAiPlaceholder": "Bitte die AI, etwas zu tunâ¦",
+      "confirmDestructiveTitle": "Destruktive Aktion bestätigen",
+      "confirmDestructiveContent": "Diese Aktion ist destruktiv oder schwer rückgängig zu machen: {summary}. Fortfahren?",
       "aiError": "Die KI ist gerade nicht verfÃ¼gbar. Bitte erneut versuchen.",
       "aiAccept": "Ãbernehmen",
       "aiApprovePlan": "Plan genehmigen",

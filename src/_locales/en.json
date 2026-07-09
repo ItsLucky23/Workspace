@@ -753,6 +753,8 @@
       "reasoning": "AI reasoning / output",
       "dragToResize": "Drag to resize",
       "tryAsking": "Try asking", "capVideos": "Can I edit videos in this app?", "capNewProject": "How do I start a new project?", "capPublish": "How do I publish to TikTok?", "capDesign": "What can the design module do?", "askAiPlaceholder": "Ask the AI to do something…",
+      "confirmDestructiveTitle": "Confirm destructive action",
+      "confirmDestructiveContent": "This action is destructive or hard to reverse: {summary}. Continue?",
       "aiError": "The AI is unavailable right now. Please try again.",
       "aiAccept": "Accept",
       "aiApprovePlan": "Approve plan",

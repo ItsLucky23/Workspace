@@ -11,6 +11,9 @@
 //? UI never sees it. Anything the screens render but the schema doesn't store yet
 //? (derived/display helpers) is marked `// ui-only`.
 
+//? X1 — ChatProposal.op may be any catalog-enabled control-op (type-only import; erases at runtime).
+import type { ControlOp } from '../_functions/controlApi';
+
 export type Role = 'owner' | 'admin' | 'member';
 
 //? Ticket lifecycle: STAGE = pipeline column, STATUS = state within that stage.
@@ -645,8 +648,14 @@ export interface ChatProposal {
   //? O-B (IDEA_TO_OUTCOME): the Assistant can now propose CREATE ops too — not just reshuffle the board.
   //? Each still maps to an EXISTING control verb (no new verbs): create-ticket → quick-add,
   //? create-content → content-from-brief. The AI only proposes; accept dispatches (single-writer intact).
-  op: 'bulk-move' | 'assign' | 'add-comment' | 'create-ticket' | 'create-content';
+  //? X1 (UNIVERSAL_TOOL/COMPLETION): beyond the 5 legacy shapes, `op` may be ANY catalog-enabled
+  //? ControlOp (server/ai/opCatalog.ts validates + the CHAT_ENABLED_OPS tranche in chatOps.ts
+  //? dispatches). Generic ops carry their validated fields in `params`; `destructive: true` makes
+  //? the client wrap the accept in an extra explicit confirm (B-23 confirm-on-important).
+  op: 'assign' | 'create-ticket' | 'create-content' | ControlOp;
   summary: string;          // human-readable ("Move DEV-3 → Review")
+  destructive?: boolean;    // extra confirm required at accept (X1 generic ops)
+  params?: Record<string, unknown>; // generic-op fields, already server-validated against the workspace
   ticketKeys?: string[];
   stageId?: string;
   assigneeId?: string;

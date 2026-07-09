@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 220,
-    "edges": 324,
+    "nodes": 222,
+    "edges": 331,
     "symbols": 281,
     "callEdges": 42
   },
@@ -569,6 +569,11 @@
       "route": null
     },
     {
+      "id": "workspaces/_data/chatOps.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
       "route": null
@@ -580,6 +585,11 @@
     },
     {
       "id": "workspaces/_data/types.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/chatDispatch.ts",
       "kind": "other",
       "route": null
     },
@@ -1495,6 +1505,22 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/_data/types.ts",
+      "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
+      "from": "workspaces/_functions/chatDispatch.ts",
+      "to": "_sockets/syncRequest.ts"
+    },
+    {
+      "from": "workspaces/_functions/chatDispatch.ts",
+      "to": "workspaces/_data/chatOps.ts"
+    },
+    {
+      "from": "workspaces/_functions/chatDispatch.ts",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
       "from": "workspaces/_functions/priority.ts",
       "to": "workspaces/_data/types.ts"
     },
@@ -1572,6 +1598,10 @@
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
       "to": "_providers/socketStatusProvider.tsx"
     },
     {
@@ -1584,7 +1614,15 @@
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_data/chatOps.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
       "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_functions/chatDispatch.ts"
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
@@ -2457,6 +2495,7 @@
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/backlog/page.tsx",
@@ -2635,6 +2674,7 @@
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/backlog/page.tsx",
@@ -2697,6 +2737,7 @@
       "_sockets/socketInitializer.ts",
       "docs/page.tsx",
       "main.tsx",
+      "workspaces/_functions/chatDispatch.ts",
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
@@ -2867,6 +2908,13 @@
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/terminals/page.tsx"
     ],
+    "workspaces/_data/chatOps.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_functions/chatDispatch.ts",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
     "workspaces/_data/modules.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
@@ -2900,10 +2948,12 @@
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_components/primitives.tsx",
+      "workspaces/_functions/chatDispatch.ts",
       "workspaces/_functions/priority.ts",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
@@ -2936,11 +2986,65 @@
       "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
+    "workspaces/_functions/chatDispatch.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
     "workspaces/_functions/controlApi.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/ImageEditor.tsx",
+      "workspaces/_components/ImageRegionEditor.tsx",
+      "workspaces/_components/MrReviewPanel.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupWizard.tsx",
+      "workspaces/_components/VideoTimelineEditor.tsx",
+      "workspaces/_components/primitives.tsx",
+      "workspaces/_data/types.ts",
+      "workspaces/_functions/chatDispatch.ts",
+      "workspaces/_functions/priority.ts",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Onboarding.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "workspaces/_sync/contentControl_server_v1.ts",
       "workspaces/_sync/contentSettings_server_v1.ts",
       "workspaces/_sync/mrAction_server_v1.ts",
-      "workspaces/_sync/projectAdmin_server_v1.ts"
+      "workspaces/_sync/projectAdmin_server_v1.ts",
+      "workspaces/_sync/saveGitConfig_server_v1.ts",
+      "workspaces/_sync/saveIntegration_server_v1.ts",
+      "workspaces/_sync/saveStageConfig_server_v1.ts",
+      "workspaces/activity/page.tsx",
+      "workspaces/backlog/page.tsx",
+      "workspaces/board/[ticketId]/DiffView.tsx",
+      "workspaces/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/insights/page.tsx",
+      "workspaces/content/page.tsx",
+      "workspaces/designer/page.tsx",
+      "workspaces/designer/sections/Animations.tsx",
+      "workspaces/designer/sections/Components.tsx",
+      "workspaces/designer/sections/Gallery.tsx",
+      "workspaces/designer/sections/Styles.tsx",
+      "workspaces/designer/sections/Themes.tsx",
+      "workspaces/interviewer/page.tsx",
+      "workspaces/marketing/page.tsx",
+      "workspaces/page.tsx",
+      "workspaces/pipeline/page.tsx",
+      "workspaces/scheduled/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/sources/page.tsx",
+      "workspaces/studio/page.tsx",
+      "workspaces/terminals/page.tsx",
+      "workspaces/usage/page.tsx",
+      "workspaces/workspace/page.tsx"
     ],
     "workspaces/_functions/imageCrop.ts": [
       "workspaces/_components/ImageEditor.tsx",
@@ -3154,10 +3258,16 @@
   },
   "godNodes": [
     {
+      "id": "workspaces/_functions/controlApi.ts",
+      "kind": "other",
+      "dependents": 52,
+      "directDependents": 5
+    },
+    {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 45,
-      "directDependents": 29
+      "dependents": 47,
+      "directDependents": 30
     },
     {
       "id": "workspaces/_components/Icon.tsx",
@@ -3192,14 +3302,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 25,
+      "dependents": 26,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 25,
-      "directDependents": 17
+      "dependents": 26,
+      "directDependents": 18
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -3235,6 +3345,12 @@
       "id": "workspaces/designer/animations.ts",
       "kind": "other",
       "dependents": 9,
+      "directDependents": 4
+    },
+    {
+      "id": "_sockets/syncRequest.ts",
+      "kind": "other",
+      "dependents": 8,
       "directDependents": 4
     },
     {
@@ -3274,12 +3390,6 @@
       "directDependents": 1
     },
     {
-      "id": "_sockets/syncRequest.ts",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 3
-    },
-    {
       "id": "workspaces/_components/ModulePicker.tsx",
       "kind": "other",
       "dependents": 7,
@@ -3296,12 +3406,6 @@
       "kind": "other",
       "dependents": 7,
       "directDependents": 7
-    },
-    {
-      "id": "_sockets/socketInitializer.ts",
-      "kind": "other",
-      "dependents": 6,
-      "directDependents": 3
     }
   ],
   "symbols": [

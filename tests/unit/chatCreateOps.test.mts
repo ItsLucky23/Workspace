@@ -9,6 +9,8 @@ const ctx: Ctx = {
   tickets: [{ key: 'DEV-1', title: 'Existing', stageId: 'unrefined' }],
   stages: [{ id: 'unrefined', name: 'Unrefined' }, { id: 'refined', name: 'Refined' }],
   members: [{ id: 'u1', name: 'Alice' }],
+  //? X1 widened Ctx — empty here; the generic-op paths are covered by opCatalogParity.test.mts.
+  pieces: [], environments: [], services: [],
 };
 
 try {

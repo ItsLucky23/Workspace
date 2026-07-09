@@ -19,6 +19,9 @@ import { syncRequest, useSyncEvents } from 'src/_sockets/syncRequest';
 
 import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
+import { menuHandler } from 'src/_functions/menuHandler';
+import { isChatEnabledOp } from '../_data/chatOps';
+import { CHAT_DISPATCH } from '../_functions/chatDispatch';
 import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
@@ -848,21 +851,49 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     //? O-B — create ops route to the EXISTING verbs (quick-add / content-from-brief), not a new one.
     else if (p.op === 'create-ticket' && p.title) void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
     else if (p.op === 'create-content' && p.title && p.brief) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
-  }, [refetch]);
+    //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
+    //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
+    else if (isChatEnabledOp(p.op)) CHAT_DISPATCH[p.op](p, { room, activeProjectId: snap.activeProjectId, nextReqId, refetch });
+  }, [refetch, snap.activeProjectId]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
     const room = snap.activeWorkspaceId;
-    if (room) dispatchProposal(p, room);
-    setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
-  }, [snap.activeWorkspaceId, dispatchProposal]);
+    if (!room) return;
+    const consume = () => { setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m))); };
+    //? X1 — destructive generic ops get an EXPLICIT extra confirm before dispatch (B-23
+    //? confirm-on-important; user decision 2026-07-09). Declining leaves the bubble actionable.
+    if (p.destructive) {
+      void menuHandler.confirm({
+        title: translate({ key: 'workspaces.shell.confirmDestructiveTitle' }),
+        content: translate({ key: 'workspaces.shell.confirmDestructiveContent', params: [{ key: 'summary', value: p.summary }] }),
+      }).then((ok) => { if (ok) { dispatchProposal(p, room); consume(); } });
+      return;
+    }
+    dispatchProposal(p, room);
+    consume();
+  }, [snap.activeWorkspaceId, dispatchProposal, translate]);
 
   //? O-A — approve a whole intake plan: dispatch each step in order (single-writer intact; each step is an
   //? existing verb). One approval → the Conductor materializes every ticket/piece the plan proposed.
   const acceptChatPlan = useCallback((messageId: string, plan: ChatPlan) => {
     const room = snap.activeWorkspaceId;
-    if (room) for (const step of plan.steps) dispatchProposal(step, room);
-    setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
-  }, [snap.activeWorkspaceId, dispatchProposal]);
+    if (!room) return;
+    const run = () => {
+      for (const step of plan.steps) dispatchProposal(step, room);
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
+    };
+    //? X1 — a plan containing destructive steps gets ONE explicit confirm listing them (the plan
+    //? approval itself covers the rest — B-23 confirm-on-important).
+    const destructive = plan.steps.filter((s) => s.destructive === true);
+    if (destructive.length > 0) {
+      void menuHandler.confirm({
+        title: translate({ key: 'workspaces.shell.confirmDestructiveTitle' }),
+        content: translate({ key: 'workspaces.shell.confirmDestructiveContent', params: [{ key: 'summary', value: destructive.map((s) => s.summary).join(' · ') }] }),
+      }).then((ok) => { if (ok) run(); });
+      return;
+    }
+    run();
+  }, [snap.activeWorkspaceId, dispatchProposal, translate]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 

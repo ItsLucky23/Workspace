@@ -10,6 +10,9 @@ import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
+//? X1 — the generic op-catalog: every catalog-enabled control-op becomes proposable (still
+//? propose→accept→Conductor; destructive ops carry an extra client confirm).
+import { catalogPromptLines, validateGenericAction } from './opCatalog';
 //? The proposal shape is shared with the client (it crosses the aiChat API boundary).
 import type { ChatProposal, ChatPlan } from '../../src/workspaces/_data/types';
 
@@ -24,13 +27,21 @@ export interface Ctx {
   tickets: { key: string; title: string; stageId: string }[];
   stages: { id: string; name: string }[];
   members: { id: string; name: string }[];
+  //? X1 (A3-slice) — the generic ops reference content pieces, environments and service stacks,
+  //? so the model gets (and the validator checks against) the real ids/names, not guesses.
+  pieces: { id: string; title: string; stageId: string }[];
+  environments: { id: string; kind: string; status: string }[];
+  services: { name: string; status: string }[];
 }
 
 async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> {
-  const [tickets, stages, memberRows] = await Promise.all([
+  const [tickets, stages, memberRows, pieces, environments, services] = await Promise.all([
     prisma.ticket.findMany({ where: { workspaceId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
+    prisma.contentProject.findMany({ where: { workspaceId, archived: false }, select: { id: true, title: true, stageId: true }, take: 30, orderBy: { updatedAt: 'desc' } }),
+    prisma.environment.findMany({ where: { workspaceId }, select: { id: true, kind: true, status: true }, take: 12 }),
+    prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
@@ -38,6 +49,9 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     tickets: tickets.map((t) => ({ key: t.key, title: t.title, stageId: t.stageId })),
     stages: stages.map((s) => ({ id: s.key, name: s.name })),
     members: users.map((u) => ({ id: u.id, name: u.name ?? u.id })),
+    pieces: pieces.map((p) => ({ id: p.id, title: p.title, stageId: p.stageId })),
+    environments: environments.map((e) => ({ id: e.id, kind: e.kind, status: e.status })),
+    services: services.map((s) => ({ name: s.name, status: s.status })),
   };
 }
 
@@ -53,11 +67,18 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     '- create-content: create a NEW content piece (video/post) from an idea (e.g. "make a 60s video about our launch"). Set `title` (required), a `brief` (what it is about, required) and an optional `format` ("faceless"|"talking-head"). Use when the user wants to MAKE media/content.',
     'For a BIG idea that needs MULTIPLE steps (e.g. "build a todo app with login and a dashboard"), instead of `action` return a `plan`: {"summary": string, "steps": [ <action>, <action>, … ]} — an ordered list of create-ticket/create-content actions the user approves at once. Break a software idea into a few focused create-ticket steps; a content idea usually stays a single create-content. Use `plan` (not `action`) whenever ≥2 steps make sense.',
     'Prefer a create action or plan when the user expresses a new goal ("I want …", "make …", "build …"). Only reference tickets/stages/members that exist below. For a code/architecture question, answer in `reply` and set action=null. If ambiguous or not doable, set action=null and explain.',
+    //? X1 — the generic catalog: any enabled control-op is proposable. The action object carries the
+    //? op + its listed params as TOP-LEVEL fields (same JSON shape as the core actions above).
+    'BEYOND the core actions, you may also propose ANY of these workspace ops (set "op" to the op name and add its listed params as top-level fields in the action object). Ids/keys MUST come from the lists below — never invent them. Ops marked [destructive] make the app ask the user for an extra confirmation — still propose them when that is what the user asks; mention the impact in `reply`. Ops that cost money (media generation/pipeline) also get a cost-confirm — say so in `reply`.',
+    ...catalogPromptLines(),
     'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
+    `Content pieces (pieceId — title [stage]): ${ctx.pieces.map((p) => `${p.id} — ${p.title} [${p.stageId}]`).join('; ') || '(none)'}`,
+    `Environments (envId — kind [status]): ${ctx.environments.map((e) => `${e.id} — ${e.kind} [${e.status}]`).join('; ') || '(none)'}`,
+    `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
   ].join('\n');
@@ -121,7 +142,9 @@ export function validateChatAction(raw: unknown, ctx: Ctx): ChatProposal | null 
     const format = typeof a.format === 'string' && a.format.trim().length > 0 ? a.format.trim() : undefined;
     return { op, title, brief, ...(format ? { format } : {}), summary: `Create content: ${title}` };
   }
-  return null;
+  //? X1 — everything else falls through to the generic catalog: any ENABLED op validates against
+  //? the catalog's param spec + the real workspace context (unknown/disabled/dangling → null).
+  return validateGenericAction(raw, ctx);
 }
 
 //? O-A — validate a multi-step intake plan: each step must independently validate (same guard as a single

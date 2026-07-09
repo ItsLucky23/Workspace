@@ -1,6 +1,6 @@
 {
-  "hash": "bc13f474bad99a3a",
-  "chunkCount": 199,
+  "hash": "62b0397742c4c099",
+  "chunkCount": 200,
   "chunks": [
     {
       "id": "cap-001",
@@ -1195,6 +1195,12 @@
       "kind": "decision",
       "title": "0264-named-looks-in-agent-prompt",
       "text": "ADR 0264: 0264-named-looks-in-agent-prompt. The `design-system` context-doc the coding agent reads carried ONLY the active theme + style, so a ticket \"build the dropdown in the Apple style\" couldn't ground on Apple unless Apple was the active system. And the content-script prompt's best-practices/reference injection was retrieval-tested but the INJECTION itself was never asserted (stub mode discards the prompt). The user wants named references always available in prompts. Decision: - **A named-looks catalog in the design-system doc.** `buildDesignSystemDoc` now appends a catalog of every named look — the built-in premades (apple/material/…) AND the workspace's saved themes/styles — with each look's distinguishing tokens (primary/bg/text colours, radius, fonts, motion). So the agent can build in ANY named look, not just the active one. - **Premades come from a compiled JSON.** `scripts/generateDesignPremades.mjs` reads the client premade definitions (they only import types, so a tsx script can load them) → `docs/AI_DESIGN_PREMADES.json`, which the server reads. No client→server duplication; regenerate with `npm run ai:design-premades`. - **The doc exists from day one.** `rebuildDesignSystemDoc` is seeded on workspace creation and refreshed on every save/delete/setActive (not only setActive), so the named looks are available even before the user opens the Designer, and saved looks join/leave the catalog immediately. - **`generateScript.complete` is injectable** so a test captur"
+    },
+    {
+      "id": "adr-0265",
+      "kind": "decision",
+      "title": "0265-chat-op-catalog",
+      "text": "ADR 0265: 0265-chat-op-catalog. The Workspace-AI could propose exactly 5 of the 138 control-ops (a hardcoded enum in `server/ai/workspaceChat.ts`) — the scan reports (SCAN_UNIVERSAL_TOOL / COMPLETENESS_SCAN) measured assistant-reachability at ~3.6% against the CLAUDE.md dual-mandate \"every action via UI AND via the workspace-AI\". The user decided (2026-07-09, UNIVERSAL_TOOL_PROGRAM §0): nearly ALL ops must become proposable, with destructive ones behind an extra explicit confirm. Decision: 1. **A single exhaustive op-catalog** (`server/ai/opCatalog.ts`, `Record<ControlOp, OpSpec>` — a missing op is a tsc error) classifies every op as `enabled` (proposable now + client-dispatchable), `later` (safe; flips to enabled when its dispatcher lands) or `excluded` (never via chat). 2. **Excluded forever:** secret-bearing ops (`save-env`, `save-integration`, `save-media-provider`, `gitlab-settings`, `forge-connect`, `db-connect`, `account-disconnect`) — secret values must never flow through the LLM/chat transcript — plus plumbing/legacy/dead ops (`create-workspace`, `accept-invite`, `accept-suggestion`, `mark-read`, `copilot-propose`, `answer-input`, `preview-up/down`, and the 5 ops the legacy rich chat path already covers). 3. **Generic validation before proposal:** params are spec-typed; workspace references (ticketKey/stageId/pieceId/envId/serviceName/preset) validate against the REAL context (`loadCtx` now also loads pieces/environments/services); undeclared fields are stripped. RBA"
     }
   ]
 }
