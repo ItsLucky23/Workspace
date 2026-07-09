@@ -3274,3 +3274,6 @@ User-goal: alles opnieuw e2e testen, alle commands toegestaan. Dev-server gestar
 
 ## 2026-07-09 — Volledige suite 182/182 GROEN (mét draaiende dev-server)
 Na de httpControl-e2e-fix + met de dev-server op poort 80: **volledige `runWsTests` = 182/182 test-bestanden groen** (incl. de HTTP-e2e tegen de echte server). Alle ADOPTION-backend-fasen + de bestaande suite volledig groen bevestigd. Gates (tsc0·lint·ai:lint) eerder groen. Dev-server was door mij gestart voor de e2e en wordt daarna weer gestopt (server-start = developer-action, Rule 8) — de vorige staat was DOWN.
+
+## 2026-07-09 — MERGE: feat/ai-libraries-accounts → main (fast-forward, 079f6c8)
+`feat/ai-libraries-accounts` (Q self-aware AIs · L design-lib · M media-styles · A social-accounts + grounding, ADRs 0250–0264) fast-forwarded into main. It merged the concurrent main work (F1 token-refresh, C1 scheduling, time-travel, containers) IN first — nothing lost. **Read `docs/HANDOVER_AI_LIBRARIES_ACCOUNTS.md` — it has the ⚠️ first-action (`npm install` + `prisma:generate`: schema changed) + the F1×A3 merge details.** Post-merge all green: lint0·build·ai:lint 0-blocking; full unit suite 0 failures; publishOAuth 27/27 + publishRouting 11/11 + scheduledPublish 9/9 (F1+A3 combined). Open: 2nd-account OAuth connect flow (deferred — no apps).
