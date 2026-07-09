@@ -16,7 +16,7 @@ import Icon from '../../_components/Icon';
 import { WsButton } from '../../_components/primitives';
 import { PREMADE_LOOKS, resolveLook, lookToArtifacts, type ResolvedLook } from '../premades';
 import { validArtifactContent } from '../persisted';
-import { SEED_ANIMS, animFrom, ANIM_TO, animTransition } from '../animations';
+import { SEED_ANIMS, FADE_ANIM, animFrom, ANIM_TO, animTransition } from '../animations';
 import { themeVars } from '../themes';
 import { styleVars } from '../styles';
 import { useDesigner } from '../state';
@@ -32,7 +32,8 @@ const FONT_SPECIMEN = 'Aa';
 //? surface + a replayable entrance animation.
 function LookPreview({ resolved, mode, compact, replayKey, loop }: { resolved: ResolvedLook; mode: 'light' | 'dark'; compact?: boolean; replayKey?: number; loop?: boolean }) {
   const translate = useTranslator();
-  const anim = SEED_ANIMS.find((a) => a.id === resolved.look.animId) ?? SEED_ANIMS[0];
+  //? Fall back to FADE_ANIM (a definite AnimSpec) — not SEED_ANIMS[0], whose indexed type is `| undefined`.
+  const anim = SEED_ANIMS.find((a) => a.id === resolved.look.animId) ?? FADE_ANIM;
   //? The animation style IS part of a look's identity, so the surfaces REPLAY it on a loop (every ~2.6s) —
   //? you see the motion feel without clicking, on every card. Honours prefers-reduced-motion (no loop then).
   const reduce = useReducedMotion();

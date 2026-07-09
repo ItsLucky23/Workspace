@@ -297,7 +297,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 const sp = withPreview.find((s) => s.feature === 'video-gen') ?? withPreview[0];
                 const src = sp?.previewAssetUrl ? assetHref(sp.previewAssetUrl) : null;
                 if (!src) return null;
-                return sp.previewKind === 'video'
+                return sp?.previewKind === 'video'
                   ? <video src={src} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
                   : <img src={src} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
               })()}

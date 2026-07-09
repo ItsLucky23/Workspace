@@ -30,7 +30,7 @@ export interface DecomposeResult { ok: boolean; sceneCount: number; costCents: n
 //? M2 — build ONE scene's media-generation request. Pure + exported so a test can assert the style rides
 //? every scene-gen request (the fix: the video path used to carry no style). Mirrors images.ts's request shape.
 export function buildSceneRequest(prompt: string, order: number, workspaceId: string, style?: MediaStyle, extraInstructions?: string): MediaGenerationRequest {
-  return { prompt, ...(style ? { style } : {}), ...(extraInstructions ? { extraInstructions } : {}), workspaceId, label: `Scene ${String(order)} clip` };
+  return { feature: 'video-gen', prompt, ...(style ? { style } : {}), ...(extraInstructions ? { extraInstructions } : {}), workspaceId, label: `Scene ${String(order)} clip` };
 }
 
 //? Decompose the piece's script beats into generated video scenes. Re-decomposing REPLACES the scene list.
