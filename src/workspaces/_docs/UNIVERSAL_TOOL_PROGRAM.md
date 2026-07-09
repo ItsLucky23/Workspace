@@ -1,0 +1,100 @@
+# UNIVERSAL_TOOL_PROGRAM — het /goal-bouwplan na de universele-tool-scan
+
+> **Bron:** `SCAN_UNIVERSAL_TOOL_2026-07-09.md` (7-agent read-only audit, file:line-geverifieerd).
+> **Doel:** alle P0/P1/P2-bevindingen afmaken zodat Workspaces de "universele tool"-ambitie waarmaakt: iedere codebase ontwikkelen, tijdelijke services testen, commit X op DNS Y publiceren, uploads/foto's/video's volwaardig bewerken en genereren, advertenties máken als user, en alles zowel via UI als via de workspace-AI.
+> **Methode:** waterfall, item-voor-item. Elk item: bouwen → gates (`tsc` 0 · `npm run lint` · `npm run ai:lint` · `npm run build`) → tests (unit/integratie, fixture-injectable) → branch-log-entry + INDEX → commit (auteur ItsLucky23, NIET pushen). Durable keuzes → ADR + `npm run ai:decisions`. Browser-verify per UI-item zodra de dev-server draait (mag ik zelf starten — user-besluit 2026-07-09). E2E met echte keys/OAuth-apps = allerlaatste ronde (user-afspraak).
+> **Invarianten:** alle 9 standing invariants uit CLAUDE.md blijven gelden (B-23 single-writer, frozen verbs — GEEN nieuwe verbs, alles via bestaande ops + propose→accept; runInTenant; PTY-billing; V1_SCOPE-precedentie).
+
+## §0 — Gelockte user-beslissingen (2026-07-09, niet heropenen)
+
+| # | Vraag | Besluit |
+|---|---|---|
+| 1 | Scope | **P0 + P1 + P2 volledig** (incl. demo-recorder + UX-ronde + ads-lagen hieronder) |
+| 2 | Assistant-dekking | **Vrijwel alle ops proposable via chat**; destructieve/irreversibele ops (teardown, unpublish, prod-promote, spend/budget, delete-families) krijgen een expliciete extra confirm bovenop propose→accept |
+| 3 | R3-b multi-repo | **Nu doen, mét Docker-verify** (2 repo's in 1 workspace live bewijzen) |
+| 4 | DNS | **Beide**: vrij kiesbaar subdomein op het base-domein ÉN `Environment.customDomain` met A/CNAME + Caddy on-demand TLS |
+| 5 | Ads | **Creatie-gericht, géén ad-platform-push**: (a) ad-creatives als volwaardig content-type met per-platform formaten/specs/CTA/end-cards; (b) A/B-varianten + meting via de metrics-loop, winnaar → ideator; (c) landing-deploy + UTM/shortlink-kliktracking. Google/Meta/TikTok Ads-API's = OUT |
+| 6 | Stacks | **Beide**: catalogus uitbreiden (php/dotnet/ruby + `generic`-base) ÉN expert-modus arbitraire `FROM` met duidelijke waarschuwing dat agent/editor-features kunnen ontbreken |
+| 7 | Vision/v2v | **Gemini-vision** (multimodaal, key aanwezig) voor foto-critique/instruct-edit + **fal video-to-video** als nieuwe MediaFeature (model env-overridable). Fixture-getest; live pas in de eind-E2E |
+| 8 | Autonomie | **Alles toegestaan**: commit per item, dev-server zelf starten, agent-browser voor browser-verify. Parallelle ultracode-sessie zit niet in de weg |
+
+## §0b — RECONCILIATIE met COMPLETION_PROGRAM.md (2026-07-09, ná de ultracode-scan van de parallelle sessie)
+
+De parallelle ultracode-scan leverde **`COMPLETION_PROGRAM.md`** (~130 wiring/security/UX-items, 21 clusters) op. Beide programma's overlappen zwaar op de "ontsluiting"-helft. **Om dubbel werk te voorkomen geldt vanaf nu:**
+
+- **COMPLETION_PROGRAM is leidend voor alle wiring/ontsluiting/security-items.** De volgende fasen uit DIT doc zijn daar SUPERSEDED en worden dáár uitgevoerd: mijn Fase A → COMPLETION X1/X2/X3 · mijn B1 → K1/K2 · B2 → RS-A · B3 → G1/G2 + D1 · B6 → K3, I-fase, S1-S3, P-fase, CC/CP-fasen · B7 → A1/A2, R2, S4, T-items · mijn G1-G4 → CP1-CP12 + CC-fase.
+- **DIT doc blijft leidend voor de delta's die COMPLETION níet heeft:** **B4** (kosten-confirms + cheap-toggle) · **B5** (upload→VideoScene + audio-behoud + codec-normalisatie) · **C** (R3-b volledige repoStore/worktree/greenfield re-key — COMPLETION K5 doet alleen dockerfileGen/imageBuild-scope) · **D1-D4** (prod-build-serving, vrij subdomein, customDomain + Caddy on-demand TLS, één-stap "commit X op DNS Y") · **E** (stacks: php/dotnet/ruby/generic + expert-FROM) · **F1-F9** (format→render, captions-mux, continuïteit, render-thumbnails, vision-critique, instruct-edit, video-restyle, timeline-preview, audio-lite) · **H** (ads-creatie) · **I** (demo-recorder) · **J1-J3** (onboarding-keten, empty-states, jargon/glossarium — RS-C dekt alleen nav-i18n/mojibake/mobiel).
+- **Gecombineerde uitvoeringsvolgorde:** COMPLETION **X** (op-catalog-multiplier) → COMPLETION **SEC + RS-B** (security: priv-esc, owner-protection, push-lek, SSRF, prod-bypass, `__`-secrets-lek in snapshot!) → COMPLETION **RS-C1/C2** (mojibake = zichtbaarste bug) → dit-doc **C** (R3-b, raakt het git-pad waar veel op bouwt) → daarna afwisselend per domein: COMPLETION-wiring-fase + de bijbehorende delta-fase uit dit doc (bv. COMPLETION K + delta B4/B5; COMPLETION D + delta D1-D4; COMPLETION CC/CG/CP/CB + delta F/G-rest/H) → delta E, I, J → COMPLETION Z + delta K (eind-live/browser-verify gebundeld).
+- VOORTGANG wordt bijgehouden in het doc waar het item leeft (COMPLETION-tabel resp. branch-log).
+
+## §1 — Fasen & volgorde (deps-gedreven; zie §0b voor wat superseded is)
+
+**A → B → C → D → E → F → G → H → I → J → K.** A eerst (multiplier: elke latere op wordt meteen AI-bereikbaar). C (R3-b) vóór D/E omdat deploy/stacks het git-pad raken. K = afsluitende browser-verify + eind-E2E.
+
+### Fase A — Assistant-dekking (5 → vrijwel alle ops)
+- **A1 op-catalog + risicoclassificatie.** Eén source-of-truth `server/control/opCatalog.ts`: per ControlOp {beschrijving-voor-LLM, params-schema-hint, capability (bestaat al in rbac OP_CAPABILITY), `destructive: boolean`, `category`}. Destructief = teardown/delete/unpublish/prod-promote/budget/spend/raise-cap/rm-achtig. *Verify:* unit-test dat ALLE 138 ops in de catalog staan (drift-guard tegen de controlApi-union) + destructive-set expliciet geassert.
+- **A2 generieke chat-validatie.** `validateChatAction`/`validatePlan` herschrijven van hardcoded 5-whitelist naar catalog-gedreven: elke op proposable mits RBAC-capability van de user het toelaat; plan-steps idem. Geen nieuwe verbs — de assistant PROPOSET bestaande ops, accept → Conductor (B-23 intact). *Verify:* tests — voorheen-geweigerde op (bv. `service-provision`) valideert nu; op zonder capability weigert; onbekende op weigert.
+- **A3 context-verbreding `interpretChat`.** Naast board-context ook content-pieces/scenes/assets, environments/deploys, services, stages, budget-status in de prompt-context (compact, per-workspace snapshot-gedreven). Systemprompt: op-catalog-samenvatting + "leg uit wat je voorstelt". *Verify:* fixture-chat "zet kafka aan" → proposal `service-provision{preset:'kafka'}`; "maak scene 2 korter" → `content-save-scenes`-proposal; "publiceer commit <sha> op demo" → `env-deploy{kind:'demo',pinnedCommit}`.
+- **A4 accept-dispatch + destructive-confirm client.** `WorkspacesProvider` accept-map generiek over de catalog; bij `destructive:true` → `menuHandler.confirm` met op-naam + gevolgen vóór dispatch. Reject-knop op proposals/plans (was accept-only). *Verify:* unit op dispatch-mapping; browser-verify confirm-flow.
+
+### Fase B — P0-ontsluiting (backends bestaan al)
+- **B1 services-panel.** Nieuwe sectie (workspace-settings of eigen pagina): presets-picker (7 presets) + eigen-compose-textarea → `service-provision`; status/teardown per stack. PLUS: presets registreren hun connection-string-EnvVars automatisch (bv. `KAFKA_BROKERS=kafka:9092`) zodat agent + user-app ze meteen zien (`servicePresets.ts` uitbreiden met `env`-map → `serviceEnv`). *Verify:* provision→EnvVars aanwezig in container-env (fixture-docker), teardown ruimt op; UI browser-verify.
+- **B2 stage-editor → R1-ops.** `pipeline/page.tsx` add/remove/move door-wiren naar `stage-create`/`stage-delete`/`stage-reorder` (bestaande ops). *Verify:* stage toevoegen → refresh → staat er nog; reorder persist.
+- **B3 deploy/preview-UI.** Settings-envs uitbreiden met `demo`-kind + `pinnedCommit`-veld (+ auto-redeploy-toggle waar demoWatch al op draait); ticket/board "Preview commit/ref…"-control die `openRefPreview`/`timeTravelPreview_v1` aanroept ("main zonder commit X", "as of gisteren"). *Verify:* demo-env aanmaken via UI → route live (Docker); time-travel-preview vanaf UI.
+- **B4 kosten-confirms + cheap-toggle.** Refine-range, Decompose, Inpaint, Regenerate×N krijgen de bestaande costLabel/`menuHandler.confirm`-flow (cost-table bestaat, `mediaCostTable`); bedrag × count tonen. Plus per-request "goedkope preview"-toggle die de geteste `cheap`-flag zet (ADR 0129-seam). *Verify:* elke betaalde editor-op toont € vooraf; cheap-flag bereikt provider (fixture-assert).
+- **B5 upload→VideoScene + audio-behoud.** Timeline-editor: "asset toevoegen als scene" (picker over ready video-assets incl. uploads) → `content-save-scenes` met `videoAssetId`. Render: audio van scene-clips meemixen (ffmpeg: per-clip audio → amix met voice/music, met per-scene mute/gain). Codec-normalisatie-pass vóór concat/xfade (re-encode naar uniform profiel). *Verify:* stitch van 2 geüploade clips mét hun eigen audio + overgang → echte mp4 (Docker-ffmpeg-test); mixed-codec fixture faalt niet.
+- **B6 kleine-UI-batch onbereikbare ops.** Budget (raise-cap/edit-budget/resume-spend in usage/settings), DB-panel (db-connect/migrate-create/apply/introspect op project-settings), CI-knoppen (ci-run/ci-allow-red op MR-panel), mr-review-knop, PAT-beheer (issue/revoke in settings), gitlab-verify/resync, content-lifecycle (advance/archive/unarchive/unpublish op piece-pagina), channel-edit, output-templates (save/apply/delete bij render), copy-workspace-assets, sprint-edit, gen-avatar-knop, analyze-reference-video-knop, reorder-beats. *Verify:* op-dekkingsmatrix-hertelling: 0 ops zonder ÉN UI ÉN assistant-pad (op bewust-interne na — documenteer die lijst expliciet).
+- **B7 dode knoppen wiren of verwijderen.** `pause-all`/`resume-all` echt aanroepen; preview-down; Sources regenerate/reindex per-doc; Terminals context-menu; ticket open-in-GitLab; snooze. Wat bewust Fase-2 blijft → knop weg of disabled+tooltip "binnenkort". *Verify:* geen zichtbare knop meer die niets doet (sweep-checklist).
+
+### Fase C — R3-b multi-repo re-key
+- **C1.** `repoStore`/`runtime`/`imageBuild`/`draft.Dockerfile`/greenfield keyen op `(workspaceId, projectId)`; migratiepad voor bestaande `data/workspaces/<id>/repo.git` → `.../<projectId>/repo.git` (eenmalige move op boot, idempotent); `cloneRepo` NOOIT meer rmSync op andermans repo; worktrees per project. *Verify:* unit+integratie met echte git (2 projecten, 2 repo's, kruislings worktrees/builds) + **Docker-verify live**: 2 projecten in 1 workspace, tickets in beide, containers krijgen de juiste repo. ADR.
+
+### Fase D — Deploy: prod-build + DNS Y
+- **D1 prod-serve.** `prod`/`demo`-envs serveren de échte build: hergebruik `buildExport`-flow → image met prod-build + static/preview-serve i.p.v. `npm run dev`. Per-stack prod-command in `baseImages`. *Verify:* prod-env serveert build-output (Docker), dev blijft dev.
+- **D2 vrij subdomein.** `Environment.subdomain` (user-kiesbaar, gevalideerd/uniek) i.p.v. afgeleide slug; UI-veld. *Verify:* env op zelfgekozen subdomein bereikbaar.
+- **D3 custom domain + on-demand TLS.** `Environment.customDomain` + Caddy on-demand-TLS config (ask-endpoint dat alleen bekende domains toestaat — SSRF/mis-issue-guard) + DNS-instructie-UI (A/CNAME target tonen) + status-check. *Verify:* fixture-test ask-endpoint (bekend domein ja / onbekend nee); Caddy-config-gen unit; live-TLS = eind-E2E.
+- **D4 "publish commit X op DNS Y" één-stap.** Op + UI + assistant-pad (via Fase A) die in één keer demo-env + pin + (sub)domein zet. *Verify:* chat-fixture "zet commit <sha> op preview.mijndomein.nl" → correcte proposal-keten.
+
+### Fase E — Stacks
+- **E1 catalogus-uitbreiding.** `php`, `dotnet`, `ruby` + `generic` bases (FROM agent-base + toolchain; generic = kaal, AI installeert zelf) + dev-command-defaults + starter-templates (laravel-achtig php-api, dotnet-webapi, rails-api of sinatra, generic-leeg). *Verify:* templates-tests à la S2 (35/35-patroon) + greenfield-integratie per stack.
+- **E2 expert-modus arbitraire FROM.** `Project.allowCustomBase` (expliciete opt-in, UI-waarschuwing "PTY-agent/editor mogelijk beperkt"); guard laat dan elk base-image toe; best-effort tooling-layer (node+claude-cli via een append-stage indien apt/apk beschikbaar, anders duidelijk gedegradeerde modus zichtbaar op het ticket). *Verify:* sanitize/build-tests: zonder opt-in geweigerd zoals nu; met opt-in geaccepteerd + warning-flag zichtbaar in snapshot.
+
+### Fase F — Media-kwaliteit
+- **F1 format→render.** `assembleContent`/`renderScenes` krijgen het piece-format door (9:16/1:1/16:9 bestaat al in `resolveRenderFormat`); format-picker op de piece (O1-follow-up). Uploads schalen mee (crop/pad-keuze). *Verify:* 9:16-render produceert echt 1080×1920-plan (unit op ffmpeg-plan) + Docker-render.
+- **F2 captions-mux.** Optie "captions inbranden" (subtitles-filter) of soft-mux (mov_text) naast sidecar. *Verify:* plan-unit + Docker-render met zichtbare subs.
+- **F3 scene-continuïteit.** Last-frame-extractie (ffmpeg) van clip N → als image-conditioning (`image_url`) in de gen van clip N+1 (fal-modellen die i2v ondersteunen; env-overridable, fallback = huidige tekst-continuity). *Verify:* fixture-assert dat frame-URL de provider bereikt; plan-test.
+- **F4 render-thumbnails.** Poster-frame per render (ffmpeg -ss) als ContentAsset; gebruikt in galerij + publish. *Verify:* render → thumbnail-asset bestaat.
+- **F5 vision-critique.** Nieuwe AiFeature `image-critique` (Gemini multimodaal: echte image-bytes/URL als input, niet als tekst): "wat kan beter" + concrete edit-suggesties die naar bestaande ops mappen (inpaint/adjust/regenerate-met-tweak). Knop op image-assets + assistant-bereikbaar. *Verify:* fixture-transport asserteert dat image-data (niet alleen URL-string) in de request zit; suggestie→op-mapping unit.
+- **F6 instruct-edit.** MediaFeature `image-edit` (whole-image, mask-loos, flux-kontext-achtig model via env) — "verander de lucht in zonsondergang" op een bestaand asset, met versie-lineage. *Verify:* composeFalInput-unit (image_url+prompt, geen mask); registry/cost/feature-ripple compleet (7 Record-maps!).
+- **F7 video-to-video restyle.** MediaFeature `video-restyle` (fal v2v-model env-overridable, `FAL_MODEL_V2V`): input video-asset + style-prompt → nieuw video-asset (lineage). Knop op video-assets ("Restyle: cinematic…" met style-picker) + timeline-scene-restyle. *Verify:* fixture-assert video_url+prompt bereiken provider; kosten in cost-table; queue-lifecycle intact.
+- **F8 timeline-preview.** Playback in de editor vóór render: sequentiële `<video>`-playback van scene-clips met trim-windows (client-side, gratis; overgangen benaderd met CSS-fade). *Verify:* browser-verify.
+- **F9 audio-editor-lite.** Losse audio-assets: waveform + trim + gain → lokale ffmpeg-op (`content-trim-audio` of hergebruik import-flow met bewerkte upload). *Verify:* trim produceert korter asset (Docker-ffmpeg-test).
+
+### Fase G — Publish-keten afmaken (organisch)
+- **G1 publishVariants-writer.** AI-compose per platform (caption/hashtags/privacy per platform-vocab) als op `content-compose-variants` + edit-UI; gebruikt bij publish (consumer bestaat al). *Verify:* compose→publish-payload bevat variant (unit); UI-round-trip.
+- **G2 publish-UX.** Account-picker (multi-account bestaat backend), schedule-picker (scheduledAt bestaat), kalender-weergave van geplande posts (C1-follow-up). *Verify:* publish-op krijgt accountId+scheduledAt door; kalender toont scheduled jobs.
+- **G3 metrics-loop sluiten.** Production-caller voor `ingestPublishMetrics` (leader-loop/cron-trigger, fixture-transport) → `topPerformers` → ideator-prompt-injectie (beide helften bestaan). *Verify:* fixture-metrics → ideator-context bevat winnaars.
+- **G4 IG/LinkedIn eerlijk.** Uit de channels/publish-picker of expliciet "nog niet ondersteund"-badge (geen dode keuzes). *Verify:* UI biedt geen kanaal aan dat `platform.notBuilt` geeft.
+
+### Fase H — Ads-creatie (user maakt advertenties; GEEN ad-platform-API's)
+- **H1 ad-creative content-type.** `ContentPiece`-kind of template-set "advertisement": per-platform ad-specs (YouTube pre-roll 15/30s, TikTok/Reels 9:16 met hook-eerste-3s, display-banners via Studio-HTML, thumbnail/end-card met CTA-overlay). Bouwt op F1-formats + Studio-`ads`-copy + bestaande pipeline; CTA/end-card als render-overlay (ffmpeg drawtext/overlay, lokaal). *Verify:* ad-preset → render-plan met juiste duur/formaat/end-card; Studio-copy gekoppeld aan de piece.
+- **H2 A/B-varianten + meting.** N ad-varianten (hook/copy/thumbnail-permutaties via I1-regenerate + G1-variants), gelabeld als experiment; metrics per variant (G3-loop) → vergelijking-UI + winnaar→ideator. *Verify:* experiment-model round-trip; fixture-metrics wijzen winnaar aan.
+- **H3 landing + tracking.** Landing-artifact (Studio) deploybaar naar een env/subdomein (D2-hergebruik); `ShortLink`-model + redirect-route met klik-registratie + UTM-passthrough; kliks zichtbaar in insights + per-experiment. *Verify:* shortlink-redirect + klik-count (integratie, geen externe dep); landing live op subdomein (Docker).
+
+### Fase I — Demo-video van eigen software
+- **I1 capture-container.** `workspaces/capture`-image (chromium headless + ffmpeg of playwright-video): input = preview/env-URL + scenario-script (JSON: stappen/waits/viewport) → output = mp4 + screenshots naar media-store. Conductor-op `capture-run` (single-writer; draait als job). *Verify:* capture van een fixture-pagina produceert echte mp4 (Docker).
+- **I2 walkthrough-driver.** AI-feature die uit de app-context (routes/PRODUCT-intent/RAG) een scenario-script + voiceover-script genereert; propose→accept → capture-run. *Verify:* fixture: gegeven route-lijst → valide scenario-JSON.
+- **I3 footage→video.** Capture-mp4 → VideoScenes (B5-pad) → montage met voiceover/captions/branding/styles (bestaande pipeline); optioneel F7-restyle eroverheen. *Verify:* end-to-end fixture: capture-asset → scenes → render-plan.
+
+### Fase J — UX-ronde (novice-proof)
+- **J1** Onboarding-keten: module-picker → SetupWizard (bestaat) → eerste-stappen-checklist per module; board-empty-state met CTA's ("maak je eerste ticket / verbind een repo / maak content"). **J2** Empty-states-sweep alle pagina's (geen "no match"-framing op lege data; uitleg + actie). **J3** Jargon: `InfoDot`-tooltips breed + glossarium-pagina; labels hertalen waar mogelijk. **J4** Nav-i18n: alle Shell-chrome/pipeline-labels/provider-fallbacks door `useTranslator` (i18n×4) + `<title>` fix. **J5** Quiet-hours/DND (spec `additions/16` bestaat) + multi-question-stepper-kaart (W1-follow-up) + reject op chat-proposals (in A4). **J6** Mobiel: usage-tabel `overflow-x-auto`, terminals-pagina mobile-notice. *Verify per item:* browser-verify + i18n-completeness-check (ai:lint untranslated-JSX = 0 nieuwe findings).
+
+### Fase K — Afsluiting
+- **K1** Browser-verify-ronde: alle nieuwe UI + de pending backlog (VideoTimelineEditor, ImageEditor-B, ImageRegionEditor, P-B-kaarten). **K2** Op-dekkingsmatrix-hermeting + rapport-update (§6-cijfers). **K3** Volledige suite (`runWsTests`) + gates groen. **K4** Eind-E2E-checklist schrijven voor de user-getriggerde live-ronde (keys/OAuth/DNS/Docker): wat, hoe, verwacht resultaat. **K5** Scan-rapport + dit program bijwerken met eindstatus; ADR-index + memory.
+
+## §2 — Werkafspraken tijdens de run
+- Frozen verbs: geen nieuwe sync/API-verbs; alles = bestaande control-op-families + nieuwe ops via het bestaande Conductor-patroon (conductor-case + rbac OP_CAPABILITY + controlApi-union + sync-whitelist + clientInput — cheat-sheet in memory/freedom-program).
+- Elke nieuwe MediaFeature: LET OP de feature-ripple (7 `Record<MediaFeature>`-maps + cost-table + supports + unions).
+- Elke UI: framework-componenten (`Dropdown`, `menuHandler.confirm`, …), Tailwind-tokens, i18n×4, premium-UX-DoD (FREEDOM §0b).
+- Destructieve acties: B-23-confirm. Ad-spend bestaat niet (geen platform-push) — tracking-only.
+- Bij twijfel over een spec-conflict: V1_SCOPE-precedentie; echte conflicten → OPEN VRAAG in branch-log, default kiezen en doorgaan (user is akkoord met autonome run).
