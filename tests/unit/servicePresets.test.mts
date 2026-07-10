@@ -3,8 +3,9 @@
 //? `presetCompose` resolves/΄misses correctly. Pure.
 
 import { assert, eq, report } from '../_helpers.mts';
-import { listServicePresets, presetCompose } from '../../server/container/servicePresets.ts';
+import { listServicePresets, presetCompose, presetEnv } from '../../server/container/servicePresets.ts';
 import { sanitizeCompose } from '../../server/container/composeSanitize.ts';
+import { serviceEnvArgs } from '../../server/container/serviceEnv.ts';
 
 const presets = listServicePresets();
 const keys = presets.map((p) => p.key);
@@ -22,6 +23,23 @@ for (const p of presets) {
   assert(r.services.length >= 1, `${p.key} declares at least one service`);
   eq(r.rewrites.length, 0, `${p.key} publishes no host ports (nothing to rewrite — intra-network only)`);
 }
+
+//? K3 — every preset publishes connection-string env pointing at the service's INTRA-NETWORK name (no host,
+//? no localhost, no published port) so the app/agent reaches it by name once the container joins the service net.
+for (const p of presets) {
+  const env = presetEnv(p.key);
+  assert(Object.keys(env).length >= 1, `${p.key} publishes at least one connection-string env var`);
+  //? Each value points at a service hostname, never localhost/127.0.0.1 (those wouldn't resolve inside the net).
+  for (const [k, v] of Object.entries(env)) {
+    assert(!/localhost|127\.0\.0\.1/.test(v), `${p.key}.${k} does not point at localhost (uses the service name)`);
+  }
+  //? The env is docker-run-safe (no `=`/whitespace in keys).
+  assert(serviceEnvArgs(env).length === Object.keys(env).length * 2, `${p.key} env produces valid -e KEY=VALUE args`);
+}
+//? The headline scenario: Kafka is reachable by broker address, Postgres by a full DATABASE_URL.
+eq(presetEnv('kafka').KAFKA_BROKERS, 'kafka:9092', 'the kafka preset publishes KAFKA_BROKERS=kafka:9092');
+assert((presetEnv('postgres').DATABASE_URL ?? '').startsWith('postgresql://'), 'the postgres preset publishes a DATABASE_URL');
+eq(Object.keys(presetEnv('nonsense')).length, 0, 'an unknown preset publishes no env');
 
 eq(presetCompose('nonsense'), null, 'an unknown preset key resolves to null');
 assert((presetCompose('postgres') ?? '').includes('POSTGRES_PASSWORD'), 'the postgres preset seeds dev creds');

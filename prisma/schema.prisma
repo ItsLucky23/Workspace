@@ -1256,6 +1256,7 @@ model EnvVar {
   key         String
   value       String                              // encrypted when `secret`
   secret      Boolean  @default(false)
+  serviceName String?                             // K3 — set when this EnvVar was published by a service preset (removed on that stack's teardown)
   createdAt   DateTime @default(now())
 
   @@unique([workspaceId, key])

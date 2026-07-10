@@ -55,7 +55,7 @@ import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
-import { presetCompose } from '../container/servicePresets';
+import { presetCompose, presetEnv } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
 import { recordAudit } from '../control/audit';
 import { runStage } from './stageRunner';
@@ -1993,11 +1993,26 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const presetKey = str(payload, 'preset');
       const compose = presetKey ? (presetCompose(presetKey) ?? '') : str(payload, 'compose');
       if (!name || !compose) return { ok: false, error: 'service.invalidRequest' };
-      return provisionServiceStack(prisma, action.workspaceId, name, compose);
+      const result = await provisionServiceStack(prisma, action.workspaceId, name, compose);
+      //? K3 — a preset publishes its connection-string env (KAFKA_BROKERS/DATABASE_URL/…) as visible workspace
+      //? EnvVars so the agent + preview containers reach the service by name. Only on a successful provision;
+      //? namespaced `SVC_<name>_` so teardown removes exactly this stack's rows without touching user env.
+      if (presetKey && (result as { ok?: boolean }).ok !== false) {
+        const env = presetEnv(presetKey);
+        for (const [key, v] of Object.entries(env)) {
+          const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
+          await (existing
+            ? prisma.envVar.update({ where: { id: existing.id }, data: { value: v, secret: false, serviceName: name } })
+            : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: v, secret: false, serviceName: name } }));
+        }
+      }
+      return result;
     }
     case 'service-teardown': {
       const name = str(payload, 'name') ?? str(target, 'name');
       if (!name) return { ok: false };
+      //? K3 — remove the connection-string EnvVars this stack published (matched by serviceName).
+      await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, serviceName: name } });
       return teardownServiceStack(prisma, action.workspaceId, name);
     }
     //? U1 — persist a "unfuck the UI" review request (screenshots + ticked problems + notes). Off-taxonomy
