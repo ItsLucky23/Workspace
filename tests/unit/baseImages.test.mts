@@ -15,7 +15,7 @@ import { baseImageFor, resolveProjectBaseImage, extendsAllowedBase, isBaseStack,
   assert(baseImageFor('java').startsWith('workspaces/base-java:'), 'java → workspaces/base-java');
   assert(baseImageFor(null).startsWith('workspaces/base:'), 'null stack → node base (default)');
   assert(baseImageFor('cobol').startsWith('workspaces/base:'), 'an unknown stack falls back to node base');
-  eq(BASE_STACKS.length, 5, 'five stacks catalogued');
+  eq(BASE_STACKS.length, 9, 'nine stacks catalogued (E1 added php/dotnet/ruby/generic)');
   assert(isBaseStack('python') && !isBaseStack('cobol'), 'isBaseStack gates the catalog');
 }
 

@@ -32,10 +32,17 @@ export async function buildProjectImage(prisma: PrismaClient, workspaceId: strin
   const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
   if (!resolvedId) return { ok: false, error: 'project.notFound' };
   const project = { id: resolvedId };
+  //? E2 — expert opt-in: a project with `allowCustomBase` may use an arbitrary Dockerfile FROM (the guard is
+  //? relaxed). A loud warning is logged since the agent/editor toolchain may be absent in a non-base image.
+  const projectRow = await prisma.project.findFirst({ where: { id: resolvedId, workspaceId }, select: { allowCustomBase: true } });
+  const allowCustomBase = projectRow?.allowCustomBase === true;
   const dfPath = projectDraftPath(workspaceId, project.id);
   if (!existsSync(dfPath)) return { ok: false, error: 'dockerfile.noDraft' };
   const draft = readFileSync(dfPath);
-  if (!extendsBase(draft.toString('utf8'))) return { ok: false, error: 'dockerfile.invalidBase' };
+  if (!extendsBase(draft.toString('utf8'))) {
+    if (!allowCustomBase) return { ok: false, error: 'dockerfile.invalidBase' };
+    console.warn(`[imageBuild] project ${resolvedId}: custom Dockerfile base (allowCustomBase) — agent/editor toolchain may be degraded in this image.`);
+  }
 
   //? Fold the project lockfile into the hash so a dependency bump rebuilds exactly once.
   const manifests = await repoManifests(workspaceId, project.id);

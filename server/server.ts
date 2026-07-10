@@ -46,6 +46,7 @@ import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { startEditorReaper } from './proxy/editorReaper';
 import { startWorkerReaper } from './orchestrator/workerReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
+import { registerTlsAsk } from './proxy/tlsAsk';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
@@ -114,6 +115,8 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Edge-auth subrequest endpoint for the editor/preview subdomains (Track B5) — must be
   //? registered before the server starts handling requests.
   registerEditorAuthCheck();
+  //? D3 — the Caddy on-demand-TLS ask endpoint (authorizes cert issuance only for known custom domains).
+  registerTlsAsk();
   //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
   //? Pre-params custom routes so probes don't require a session.
   registerObservabilityEndpoints();

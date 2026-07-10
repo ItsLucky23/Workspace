@@ -13,6 +13,7 @@ import { waitForContainerReady } from '../container/health';
 import { getProxyProvider, envRoute, baseDomain } from '../proxy';
 import { normalizeGitConfig, deriveHostSlug } from '../git/branchStrategy';
 import { branchHead } from '../git/repoStore';
+import { resolveDevCommand, resolveProdCommand } from '../container/baseImages';
 
 const ENV_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
 const NET = process.env.WS_NET ?? 'workspaces-net';
@@ -29,25 +30,46 @@ const envKey = (envId: string): string => `env-${envId}`;
 
 //? Find-or-create the Environment row for (project, service, kind). Returns its id. The route host is
 //? derived from the kind + the service/project slug and stored so the URL is stable across deploys.
-export async function ensureEnvironment(prisma: PrismaClient, workspaceId: string, projectId: string, serviceId: string | null, kind: string, opts: { autoRedeploy?: boolean; pinnedCommit?: string } = {}): Promise<string | null> {
+//? D2 — a DNS-safe subdomain label: lowercase alphanumerics + single dashes, 1-63 chars, no leading/trailing
+//? dash. Returns '' for an invalid/empty input (→ fall back to the derived host). Pure.
+export function sanitizeSubdomain(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim().toLowerCase().replaceAll(/[^a-z0-9-]/g, '-').replaceAll(/-+/g, '-').replaceAll(/^-|-$/g, '');
+  return s.length > 0 && s.length <= 63 ? s : '';
+}
+//? D3 — a valid custom domain: a dotted FQDN of DNS-safe labels (e.g. `preview.mijndomein.nl`). Pure.
+export function sanitizeCustomDomain(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim().toLowerCase().replaceAll(/^https?:\/\//g, '').replaceAll(/\/.*$/g, '');
+  return /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(s) ? s : '';
+}
+
+export async function ensureEnvironment(prisma: PrismaClient, workspaceId: string, projectId: string, serviceId: string | null, kind: string, opts: { autoRedeploy?: boolean; pinnedCommit?: string; subdomain?: string; customDomain?: string } = {}): Promise<string | null> {
   const project = await prisma.project.findFirst({ where: { id: projectId, workspaceId }, select: { name: true } });
   if (!project) return null;
   const service = serviceId ? await prisma.service.findFirst({ where: { id: serviceId, projectId }, select: { name: true } }) : null;
   const slug = deriveHostSlug(service?.name ?? project.name);
-  const host = `${deriveHostSlug(`${asKind(kind)}-${slug}`)}.${baseDomain()}`;
+  //? D2/D3 — host precedence: a valid customDomain (served with on-demand TLS) → a user-chosen subdomain on the
+  //? base domain → the derived `<kind>-<slug>`. A subdomain must be unique across environments (loud fallback:
+  //? a clash keeps the derived host rather than hijacking another env's route).
+  const customDomain = sanitizeCustomDomain(opts.customDomain);
+  const wantSub = sanitizeSubdomain(opts.subdomain);
+  const subFree = wantSub.length > 0 ? (await prisma.environment.findFirst({ where: { subdomain: wantSub, NOT: { projectId, kind: asKind(kind), serviceId: serviceId ?? null } }, select: { id: true } })) === null : false;
+  const subdomain = subFree ? wantSub : '';
+  const derivedHost = `${deriveHostSlug(`${asKind(kind)}-${slug}`)}.${baseDomain()}`;
+  const host = customDomain.length > 0 ? customDomain : (subdomain.length > 0 ? `${subdomain}.${baseDomain()}` : derivedHost);
   //? D3 — a demo env follows main by default (autoRedeploy) unless it is pinned to a fixed commit. A pin
   //? always wins and disables auto-redeploy. Non-demo kinds never auto-redeploy.
   const pin = (opts.pinnedCommit ?? '').trim();
   const isDemo = asKind(kind) === 'demo';
   const autoRedeploy = isDemo && pin.length === 0 && (opts.autoRedeploy ?? true);
+  const routeFields = { route: host, ...(subdomain.length > 0 ? { subdomain } : { subdomain: null }), ...(customDomain.length > 0 ? { customDomain } : { customDomain: null }) };
 
   const existing = await prisma.environment.findFirst({ where: { projectId, kind: asKind(kind), serviceId: serviceId ?? null }, select: { id: true } });
   if (existing) {
-    await prisma.environment.updateMany({ where: { id: existing.id, workspaceId }, data: { autoRedeploy, pinnedCommit: pin.length > 0 ? pin : null } });
+    await prisma.environment.updateMany({ where: { id: existing.id, workspaceId }, data: { autoRedeploy, pinnedCommit: pin.length > 0 ? pin : null, ...routeFields } });
     return existing.id;
   }
   const created = await prisma.environment.create({
-    data: { workspaceId, projectId, serviceId: serviceId ?? null, kind: asKind(kind), route: host, status: 'idle', autoRedeploy, ...(pin.length > 0 ? { pinnedCommit: pin } : {}) },
+    data: { workspaceId, projectId, serviceId: serviceId ?? null, kind: asKind(kind), status: 'idle', autoRedeploy, ...(pin.length > 0 ? { pinnedCommit: pin } : {}), ...routeFields },
   });
   return created.id;
 }
@@ -67,12 +89,18 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   //? Resolve the deploy branch (gitConfig.targetBranch, default main) + image + serve command.
   const [ws, project, service] = await Promise.all([
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } }),
-    prisma.project.findFirst({ where: { id: env.projectId }, select: { baseImageRef: true, devCommand: true } }),
-    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true } }) : Promise.resolve(null),
+    prisma.project.findFirst({ where: { id: env.projectId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, stack: true } }),
+    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true, prodCommand: true } }) : Promise.resolve(null),
   ]);
   const branch = normalizeGitConfig(ws?.gitConfig ?? null).targetBranch;
   const image = opts.imageRef ?? service?.baseImageRef ?? project?.baseImageRef ?? undefined;
-  const devCmd = ((service?.devCommand ?? project?.devCommand) ?? '').trim() || 'npm run dev';
+  //? D1 — prod/demo envs serve the real BUILD (prodCommand: build then serve), not the dev server. dev/staging
+  //? keep the dev server (fast iteration). A per-service/project override wins over the stack default.
+  const isProd = env.kind === 'prod' || env.kind === 'demo';
+  const stack = project?.stack ?? null;
+  const serveCmd = isProd
+    ? resolveProdCommand({ prodCommand: service?.prodCommand ?? project?.prodCommand ?? null, stack })
+    : resolveDevCommand({ devCommand: service?.devCommand ?? project?.devCommand ?? null, stack });
 
   const container = await launchTicketContainer({ workspaceId, projectId: env.projectId, ticketKey: envKey(envId), branch, ...(image ? { image } : {}) });
   if (!container) return failEnv(prisma, envId, 'env.noContainer');
@@ -87,8 +115,9 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).
   await docker(['network', 'create', NET]);
   await docker(['network', 'connect', NET, container.name]);
-  //? Start the serve command detached in /work (HOST/PORT cover CRA/Next; Vite needs flags in devCommand).
-  await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(ENV_PORT)}`, container.name, 'sh', '-lc', devCmd]);
+  //? Start the serve command detached in /work (HOST/PORT cover CRA/Next; Vite needs flags in the command).
+  //? D1 — for prod/demo this builds + serves the production output; for dev/staging it's the dev server.
+  await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(ENV_PORT)}`, container.name, 'sh', '-lc', serveCmd]);
 
   //? Only flip the stable route once the app actually serves (readiness), so a broken deploy doesn't
   //? blackhole the live URL.

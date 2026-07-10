@@ -2080,7 +2080,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? D3 — a demo env can follow main (autoRedeploy, default true) or freeze at a pinned commit. Only pass
       //? autoRedeploy when the client set it explicitly, so ensureEnvironment's demo-default still applies.
       const pinnedCommit = str(payload, 'pinnedCommit');
-      const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind, { ...(pinnedCommit ? { pinnedCommit } : {}), ...('autoRedeploy' in payload ? { autoRedeploy: bool(payload, 'autoRedeploy') } : {}) });
+      //? D2/D4 — a user-chosen subdomain, and D3 — a custom domain (served with on-demand TLS). Threaded so
+      //? "publish commit X on DNS Y" is one deploy call (kind:'demo' + pinnedCommit + subdomain/customDomain).
+      const subdomain = str(payload, 'subdomain');
+      const customDomain = str(payload, 'customDomain');
+      const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind, { ...(pinnedCommit ? { pinnedCommit } : {}), ...('autoRedeploy' in payload ? { autoRedeploy: bool(payload, 'autoRedeploy') } : {}), ...(subdomain ? { subdomain } : {}), ...(customDomain ? { customDomain } : {}) });
       if (!envId) return { ok: false, status: 'error', error: 'env.noProject' };
       return deployEnvironment(prisma, action.workspaceId, envId);
     }

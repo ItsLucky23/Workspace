@@ -720,13 +720,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, [snap.activeWorkspaceId, refetch]);
   //? Environments (ADR 0037): deploy the active project (or a service) to a dev/staging/prod env,
   //? or tear one down. Deploy is slow (container launch + readiness) → refetch after it settles.
-  const deployEnvApi = useCallback((input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean }) => {
+  const deployEnvApi = useCallback((input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || !snap.activeProjectId) return;
     void (async () => {
       //? D1/D3 — a `demo` env can pin a specific commit ("commit X at a stable URL") and/or auto-redeploy on
-      //? branch move. pinnedCommit/autoRedeploy are only threaded when set (else the demo-env defaults apply).
-      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-deploy', projectId: snap.activeProjectId ?? '', kind: input.kind, ...(input.serviceId ? { serviceId: input.serviceId } : {}), ...(input.pinnedCommit ? { pinnedCommit: input.pinnedCommit } : {}), ...(typeof input.autoRedeploy === 'boolean' ? { autoRedeploy: input.autoRedeploy } : {}), clientRequestId: nextReqId() }, receiver: room });
+      //? branch move. D2/D4 — a chosen subdomain or D3 custom domain sets the DNS in the same deploy call.
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-deploy', projectId: snap.activeProjectId ?? '', kind: input.kind, ...(input.serviceId ? { serviceId: input.serviceId } : {}), ...(input.pinnedCommit ? { pinnedCommit: input.pinnedCommit } : {}), ...(typeof input.autoRedeploy === 'boolean' ? { autoRedeploy: input.autoRedeploy } : {}), ...(input.subdomain ? { subdomain: input.subdomain } : {}), ...(input.customDomain ? { customDomain: input.customDomain } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
   }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);

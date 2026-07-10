@@ -473,15 +473,21 @@ function WorkflowTab() {
 function DevCommandCard({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
   const [cmd, setCmd] = useState('');
+  //? D1/E1/E2 — the prod serve command, the stack (any-stack base image + defaults), and the expert custom-base opt-in.
+  const [prodCmd, setProdCmd] = useState('');
+  const [stack, setStack] = useState('node');
+  const [allowCustomBase, setAllowCustomBase] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
   const save = async (): Promise<void> => {
     setSaving(true); setStatus(null);
-    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, devCommand: cmd } }));
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, devCommand: cmd, prodCommand: prodCmd, stack, allowCustomBase } }));
     setSaving(false);
     if (err || res?.status !== 'success') { setStatus({ kind: 'err', text: translate({ key: 'workspaces.workspaceSettings.devCommandError' }) }); return; }
     setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.devCommandSaved' }) });
   };
+  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
   return (
     <div className="w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.devCommandTitle' })}</div>
@@ -491,8 +497,16 @@ function DevCommandCard({ workspaceId }: { workspaceId: string }) {
           <Icon name={status.kind === 'ok' ? 'circle-check' : 'triangle-exclamation'} className={status.kind === 'ok' ? 'text-correct' : ''} /><span>{status.text}</span>
         </div>
       )}
-      <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted w-20">{translate({ key: 'workspaces.workspaceSettings.stack' })}</span>
+        <Dropdown size="sm" items={STACK_ITEMS} value={STACK_ITEMS.find((it) => it.id === stack)} onChange={(it) => { setStack(String(it.value)); }} />
+      </div>
+      <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })} className={inputCls} />
+      <input value={prodCmd} onChange={(e) => { setProdCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.prodCommandPlaceholder' })} className={inputCls} />
+      <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
+        <input type="checkbox" checked={allowCustomBase} onChange={(e) => { setAllowCustomBase(e.target.checked); }} />
+        {translate({ key: 'workspaces.workspaceSettings.allowCustomBase' })}
+      </label>
       <div><WsButton icon="check" disabled={saving} onClick={() => { void save(); }}>{translate({ key: saving ? 'workspaces.workspaceSettings.devCommandSaving' : 'workspaces.workspaceSettings.devCommandSave' })}</WsButton></div>
     </div>
   );

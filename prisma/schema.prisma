@@ -256,9 +256,11 @@ model Project {
   linkedFiles       LinkedFile[]                              // D9/D19 — GENERATE vs LINK
   generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
-  stack             String?                                    // S1 — 'node'|'python'|'go'|'rust'|'java' → the L1 base image when no baseImageRef (any-stack); null = node
+  stack             String?                                    // S1/E1 — 'node'|'python'|'go'|'rust'|'java'|'php'|'dotnet'|'ruby'|'generic' → the L1 base image when no baseImageRef (any-stack); null = node
   dockerfilePath    String?                                    // optional per-project Dockerfile
   devCommand        String?                                    // the command that starts the app's dev server in the ticket container (preview flow); default = package.json scripts.dev
+  prodCommand       String?                                    // D1 — the production serve command for prod/demo envs (build then serve); default = the stack's prod command
+  allowCustomBase   Boolean  @default(false)                   // E2 — expert opt-in: allow an arbitrary Dockerfile FROM (agent/editor features may be degraded)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -280,6 +282,7 @@ model Service {
   deployUnit   String?                            // deployable-artifact name (null ⇒ = name)
   baseImageRef String?                            // per-service image override (falls back to Project.baseImageRef)
   devCommand   String?                            // dev-server command for preview (falls back to Project.devCommand)
+  prodCommand  String?                            // D1 — prod serve command override (falls back to Project.prodCommand)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -386,6 +389,8 @@ model Environment {
   deployedCommit String?                            // D3 — the git commit the current deploy is running (watcher compares against branch head)
   autoRedeploy   Boolean   @default(false)          // D3 — demo-host follows main: the watcher redeploys on a new target-branch commit
   pinnedCommit   String?                            // D3 — serve a FIXED commit instead of the latest branch head (a frozen demo); disables auto-redeploy
+  subdomain      String?                            // D2 — a user-chosen subdomain on the base domain (validated/unique) instead of the derived <kind>-<slug>
+  customDomain   String?                            // D3 — a user-owned domain (A/CNAME → this host) served with Caddy on-demand TLS (gated by the tls-ask endpoint)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

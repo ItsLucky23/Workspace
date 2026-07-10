@@ -8,7 +8,9 @@
 //? The default agent base tag (the Node stack) — env-overridable, kept in sync with the other modules' default.
 const BASE_TAG = (process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0').trim();
 
-export const BASE_STACKS = ['node', 'python', 'go', 'rust', 'java'] as const;
+//? E1 (any-stack) — the catalog. `php/dotnet/ruby` add their toolchain FROM the agent base; `generic` is the
+//? bare agent base (no assumed toolchain — the AI installs what the repo needs + sets an explicit devCommand).
+export const BASE_STACKS = ['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const;
 export type BaseStack = (typeof BASE_STACKS)[number];
 
 export function isBaseStack(s: string | null | undefined): s is BaseStack {
@@ -19,7 +21,8 @@ export function isBaseStack(s: string | null | undefined): s is BaseStack {
 //? FROM the agent base + the toolchain — see docker/base-<stack>.Dockerfile). All env-overridable per stack.
 export function baseImageFor(stack: string | null | undefined): string {
   const s: BaseStack = isBaseStack(stack) ? stack : 'node';
-  if (s === 'node') return BASE_TAG;
+  //? `node` IS the agent base; `generic` is the bare agent base too (no toolchain layer — the AI installs).
+  if (s === 'node' || s === 'generic') return BASE_TAG;
   const override = (process.env[`WS_BASE_IMAGE_${s.toUpperCase()}`] ?? '').trim();
   return override.length > 0 ? override : `workspaces/base-${s}:${BASE_TAG.split(':')[1] ?? '0.1.0'}`;
 }
@@ -39,9 +42,39 @@ const DEV_COMMANDS: Record<BaseStack, string> = {
   go: 'go run .',
   rust: 'cargo run',
   java: './mvnw spring-boot:run || mvn spring-boot:run',
+  //? E1 — new stacks. php = the built-in server (Laravel's artisan serve if present, else `php -S`); dotnet =
+  //? `dotnet watch`; ruby = rails/rack. generic has no assumed toolchain → a placeholder the AI overrides.
+  php: 'php artisan serve --host=0.0.0.0 --port=${PORT:-5173} || php -S 0.0.0.0:${PORT:-5173} -t public',
+  dotnet: 'dotnet watch run --urls http://0.0.0.0:${PORT:-5173}',
+  ruby: 'bundle exec rails server -b 0.0.0.0 -p ${PORT:-5173} || bundle exec rackup -o 0.0.0.0 -p ${PORT:-5173}',
+  generic: 'echo "set an explicit devCommand for this project" && sleep infinity',
 };
 export function defaultDevCommand(stack: string | null | undefined): string {
   return DEV_COMMANDS[isBaseStack(stack) ? stack : 'node'];
+}
+
+//? D1 — the default PRODUCTION serve command per stack (used by prod/demo envs: build then serve the built
+//? output, distinct from the dev server). A project may override via `prodCommand`. Node builds + serves the
+//? Vite/CRA preview; the others run their production server. All bind 0.0.0.0:<PORT> for the proxy.
+const PROD_COMMANDS: Record<BaseStack, string> = {
+  node: 'npm run build && (npm run preview -- --host 0.0.0.0 --port ${PORT:-5173} || npx --yes serve -s dist -l ${PORT:-5173})',
+  python: 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5173}',
+  go: 'go build -o /tmp/app . && /tmp/app',
+  rust: 'cargo build --release && ./target/release/*',
+  java: './mvnw -q package -DskipTests && java -jar target/*.jar',
+  php: 'php artisan serve --host=0.0.0.0 --port=${PORT:-5173} || php -S 0.0.0.0:${PORT:-5173} -t public',
+  dotnet: 'dotnet publish -c Release -o /tmp/pub && dotnet /tmp/pub/*.dll --urls http://0.0.0.0:${PORT:-5173}',
+  ruby: 'bundle exec rails server -e production -b 0.0.0.0 -p ${PORT:-5173} || bundle exec rackup -o 0.0.0.0 -p ${PORT:-5173}',
+  generic: 'echo "set an explicit prodCommand for this project" && sleep infinity',
+};
+export function defaultProdCommand(stack: string | null | undefined): string {
+  return PROD_COMMANDS[isBaseStack(stack) ? stack : 'node'];
+}
+
+//? D1 — resolve a project's PROD serve command: its explicit `prodCommand`, else the stack default.
+export function resolveProdCommand(project: { prodCommand?: string | null; stack?: string | null } | null): string {
+  const explicit = (project?.prodCommand ?? '').trim();
+  return explicit.length > 0 ? explicit : defaultProdCommand(project?.stack);
 }
 
 //? S3 — resolve a project's dev command: its explicit `devCommand`, else the stack default.
