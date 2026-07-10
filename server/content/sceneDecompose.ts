@@ -9,7 +9,13 @@ import { checkMediaBudget } from '../media/budget';
 import { estimateMediaCostCents } from '../media/registry';
 import { resolveStyle } from './styles';
 import { runQueuedMediaAsset } from './queuedMediaJob';
+import { extractLastFrame, localizeAsset } from './render';
 import type { MediaStyle, MediaGenerationRequest } from '../media/types';
+
+//? F3 — scene-continuity: condition each scene's clip on the PREVIOUS clip's last frame (i2v). OFF by default
+//? (a text-to-video default model would 422 on an image_url); the operator opts in once they've pinned an i2v
+//? model via FAL_MODEL_VIDEO. Fallback = the text-only continuity prompts (buildContinuityPrompts).
+const sceneContinuityOn = (): boolean => { const v = (process.env.WS_SCENE_CONTINUITY ?? '').toLowerCase(); return v === 'on' || v === 'true' || v === '1'; };
 
 export interface ScenePromptSpec { order: number; prompt: string; sourceText: string }
 
@@ -29,8 +35,8 @@ export interface DecomposeResult { ok: boolean; sceneCount: number; costCents: n
 
 //? M2 — build ONE scene's media-generation request. Pure + exported so a test can assert the style rides
 //? every scene-gen request (the fix: the video path used to carry no style). Mirrors images.ts's request shape.
-export function buildSceneRequest(prompt: string, order: number, workspaceId: string, style?: MediaStyle, extraInstructions?: string): MediaGenerationRequest {
-  return { feature: 'video-gen', prompt, ...(style ? { style } : {}), ...(extraInstructions ? { extraInstructions } : {}), workspaceId, label: `Scene ${String(order)} clip` };
+export function buildSceneRequest(prompt: string, order: number, workspaceId: string, style?: MediaStyle, extraInstructions?: string, referenceUrl?: string): MediaGenerationRequest {
+  return { feature: 'video-gen', prompt, ...(style ? { style } : {}), ...(extraInstructions ? { extraInstructions } : {}), ...(referenceUrl ? { referenceUrl } : {}), workspaceId, label: `Scene ${String(order)} clip` };
 }
 
 //? Decompose the piece's script beats into generated video scenes. Re-decomposing REPLACES the scene list.
@@ -57,6 +63,9 @@ export async function decomposeIntoScenes(
   let sceneCount = 0;
   let costCents = 0;
   let stub = false;
+  //? F3 — the previous clip's last frame (when continuity is on), fed as i2v conditioning to the next scene.
+  const continuity = sceneContinuityOn();
+  let prevFrameUrl: string | null = null;
   for (const [i, spec] of specs.entries()) {
     const budget = await checkMediaBudget(prisma, workspaceId, estimate);
     if (!budget.ok) return { ok: sceneCount > 0, sceneCount, costCents, stub, blocked: true };
@@ -67,7 +76,7 @@ export async function decomposeIntoScenes(
       ...(resolved ? { styleId: resolved.id } : {}),
       input: { prompt: spec.prompt, sceneOrder: spec.order },
       initialMetadata: { feature: 'video-gen', sceneOrder: spec.order },
-      request: buildSceneRequest(spec.prompt, spec.order, workspaceId, style, args.extraInstructions),
+      request: buildSceneRequest(spec.prompt, spec.order, workspaceId, style, args.extraInstructions, continuity ? (prevFrameUrl ?? undefined) : undefined),
       onComplete: async (assetId) => {
         await prisma.videoScene.create({ data: { workspaceId, contentProjectId, order: spec.order, videoAssetId: assetId, durationMs, transitionIn, prompt: spec.prompt } });
       },
@@ -76,6 +85,11 @@ export async function decomposeIntoScenes(
     stub = stub || r.stub;
     sceneCount += 1;
     costCents += r.costCents;
+    //? Extract THIS clip's last frame to condition the next scene (best-effort; a real, non-stub clip only).
+    if (continuity && !r.stub && r.url) {
+      const clipName = await localizeAsset(r.url);
+      prevFrameUrl = clipName ? await extractLastFrame(clipName) : null;
+    }
   }
   return { ok: sceneCount > 0, sceneCount, costCents, stub, blocked: false };
 }

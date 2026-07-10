@@ -409,6 +409,23 @@ export async function trimAudioFile(inName: string, startMs: number, endMs: numb
   return `/media/${outName}`;
 }
 
+//? F3 — the ffmpeg args to grab the LAST frame of a clip (scene-continuity: this frame conditions the next
+//? scene's i2v generation so consecutive clips flow together). `-sseof -0.5` seeks 0.5s before the end (before
+//? `-i`, a fast seek); `-update 1 -frames:v 1` writes the single last frame. Pure + exported for tests.
+export function buildLastFrameArgs(clipName: string, outName: string): string[] {
+  return ['-y', '-sseof', '-0.5', '-i', `/media/${clipName}`, '-update', '1', '-frames:v', '1', '-q:v', '3', `/media/${outName}`];
+}
+
+//? Extract a clip's last frame → its served `/media/<name>.jpg` url. Best-effort: any failure (no Docker, a
+//? sub-0.5s clip, ffmpeg error) yields null so continuity simply falls back to text-only prompts.
+export async function extractLastFrame(clipName: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const outName = `${clipName.replace(/\.[^.]+$/, '')}-lastframe.jpg`;
+  const [err, res] = await tryCatch(() => run(buildLastFrameArgs(clipName, outName)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {

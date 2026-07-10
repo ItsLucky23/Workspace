@@ -104,6 +104,10 @@ export function composeFalInput(req: MediaGenerationRequest): { model: string; i
   const prompt = composeMediaPrompt(req);
   const input: Record<string, unknown> = { ...cheapParams(req.feature, reqCheap), ...restParams, prompt };
   if (req.feature === 'reference-image' && req.referenceUrl) input.image_url = req.referenceUrl;
+  //? F3 — scene-continuity: an image-to-video model conditions the next clip on the PREVIOUS clip's last frame
+  //? (passed as `referenceUrl`). Only set when the caller supplies it (gated by WS_SCENE_CONTINUITY upstream, so
+  //? a text-to-video default model never gets an unexpected image_url).
+  if (req.feature === 'video-gen' && req.referenceUrl) input.image_url = req.referenceUrl;
   return { model, input };
 }
 
