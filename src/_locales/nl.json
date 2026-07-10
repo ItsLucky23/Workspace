@@ -836,7 +836,7 @@
       "backToBoard": "Terug naar content",
       "directionTitle": "Creatieve richting",
       "directionDesc": "Een stijl + vrije instructies, toegepast op wat je genereert.",
-      "styleLabel": "Stijl", "durationLabel": "Lengte", "dur_auto": "Auto", "dur_short": "Kort (~20s)", "dur_normal": "Normaal (~45s)", "dur_long": "Lang (~90s)",
+      "styleLabel": "Stijl", "durationLabel": "Lengte", "dur_auto": "Auto", "dur_short": "Kort (~20s)", "dur_normal": "Normaal (~45s)", "dur_long": "Lang (~90s)", "captionLabel": "Ondertitels", "cap_sidecar": "Los bestand", "cap_burn": "Ingebrand", "cap_soft": "Zachte track",
       "stylePlaceholder": "bijv. realistisch, cinematic, anime…",
       "extraLabel": "Extra instructies",
       "extraPlaceholder": "bijv. warm licht, energiek, in de regen…",

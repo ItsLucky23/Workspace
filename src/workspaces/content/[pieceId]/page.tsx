@@ -229,6 +229,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [durationKey, setDurationKey] = useState('auto');
+  //? F2 — how captions are delivered on the rendered video (sidecar .srt only / burned-in / soft mov_text track).
+  const [captionKey, setCaptionKey] = useState('sidecar');
   const [extra, setExtra] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
@@ -256,6 +258,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
   //? M3 — target-duration presets for the long-form video planner (content-run-pipeline). 0 = auto (default arc).
   const DURATION_MS: Record<string, number> = { auto: 0, short: 20_000, normal: 45_000, long: 90_000 };
   const durationItems: DropdownItem[] = (['auto', 'short', 'normal', 'long'] as const).map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.dur_${k}` }) }));
+  const captionItems: DropdownItem[] = (['sidecar', 'burn', 'soft'] as const).map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.cap_${k}` }) }));
 
   //? Q1: the € estimate for an action, from the snapshot's per-feature cost table. 0 (no chip) for
   //? non-metered actions (script/assemble).
@@ -283,6 +286,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
         payload.mode = 'video';
         const durMs = DURATION_MS[durationKey] ?? 0;
         if (durMs > 0) payload.durationMs = durMs;
+        //? F2 — non-default caption delivery (sidecar is the server default, so only send when it differs).
+        if (captionKey !== 'sidecar') payload.captionMode = captionKey;
       }
       runContentOp(action.op, piece.id, payload);
     })();
@@ -383,6 +388,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.durationLabel' })}</span>
               <Dropdown size="md" value={durationItems.find((i) => i.id === durationKey)} items={durationItems} onChange={(it) => { setDurationKey(String(it.id)); }} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">{translate({ key: 'workspaces.content.captionLabel' })}</span>
+              <Dropdown size="md" value={captionItems.find((i) => i.id === captionKey)} items={captionItems} onChange={(it) => { setCaptionKey(String(it.id)); }} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>

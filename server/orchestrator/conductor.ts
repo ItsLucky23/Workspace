@@ -1397,6 +1397,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? F1 — persist the chosen aspect ratio (9:16/1:1/16:9) so assemble renders it + a later re-render stays on-format.
       const aspect = str(payload, 'aspectRatio');
       if (aspect === '16:9' || aspect === '9:16' || aspect === '1:1') await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { aspectRatio: aspect } });
+      //? F2 — persist the caption-delivery mode (sidecar/burn/soft) so assemble applies it + a re-render keeps it.
+      const capMode = str(payload, 'captionMode');
+      if (capMode === 'sidecar' || capMode === 'burn' || capMode === 'soft') await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { captionMode: capMode } });
       await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}), ...(durationMs === undefined ? {} : { durationMs }), ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;

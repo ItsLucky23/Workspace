@@ -1392,6 +1392,7 @@ model ContentProject {
   publishVariants Json?                             // O2 — per-platform post overrides: { [platform]: { caption?, hashtags?, privacy? } }
   format      String   @default("faceless")         // 'faceless' | 'short' | 'explainer' | 'ad' | 'avatar' | 'image'
   aspectRatio String   @default("16:9")             // F1 — render aspect: '16:9' | '9:16' (shorts/reels) | '1:1'; threaded to assemble/render
+  captionMode String   @default("sidecar")          // F2 — captions delivery: 'sidecar' (downloadable .srt/.vtt only) | 'burn' (hard-subtitled into the mp4) | 'soft' (mov_text track)
   stageId     String   @default("idea")             // content pipeline column
   status      String   @default("idle")             // idle|busy|needs-input|done|paused|stuck
   styleId     String?  @db.ObjectId                 // → StylePreset.id (default style for this piece)

@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { persistMediaBytes } from '../media/store';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
-import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
+import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
 
 export interface AssembleResult {
   ok: boolean;
@@ -34,7 +34,7 @@ export async function assembleContent(
   //? V5/F2 audio-track — the piece's background music + sfx + per-track gains (voice / ducked music) for the mix.
   const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
   const sfx = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'sfx' }, orderBy: { createdAt: 'desc' } });
-  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true } });
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true, captionMode: true } });
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
   const timeline = beats.map((b) => ({ order: b.order, text: b.text, imageAssetId: b.imageAssetId ?? null, durationMs: b.durationMs ?? 3000 }));
@@ -108,15 +108,27 @@ export async function assembleContent(
     ? await renderScenes({ scenes: renderScenesInput, format: aspect, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
     : await renderTimeline({ beats: renderBeats, format: aspect, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts);
   const stub = !render.ok;
+  //? F2 — captions delivery. 'sidecar' (default) leaves the mp4 clean + only the downloadable .srt/.vtt.
+  //? 'burn'/'soft' run a SECOND ffmpeg pass over the finished mp4 (best-effort — a failure keeps the clean
+  //? render, never loses the video). The captioned mp4 becomes the asset's url; the sidecars stay too.
+  const captionMode = piece?.captionMode ?? 'sidecar';
+  let finalUrl = render.url ?? '';
+  let captionsBurned = false;
+  if (render.ok && captionsSrtUrl && (captionMode === 'burn' || captionMode === 'soft') && render.url) {
+    const srtName = captionsSrtUrl.replace(/^\/media\//, '');
+    const inName = render.url.replace(/^\/media\//, '');
+    const ccUrl = await applyCaptions(inName, srtName, captionMode, opts);
+    if (ccUrl) { finalUrl = ccUrl; captionsBurned = true; }
+  }
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.
   await prisma.contentAsset.update({
     where: { id: asset.id },
     data: {
-      url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
+      url: render.ok ? finalUrl : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: render.ok ? 'ready' : 'error',
-      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(render.posterUrl ? { posterUrl: render.posterUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(captionsBurned ? { captionMode } : {}), ...(render.posterUrl ? { posterUrl: render.posterUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });

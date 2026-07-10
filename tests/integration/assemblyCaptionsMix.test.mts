@@ -44,7 +44,9 @@ try {
   let capturedArgs: string[] = [];
   const res = await assembleContent(prisma, { workspaceId: wsId, contentProjectId: piece.id }, {
     run: async (a) => {
-      capturedArgs = a;
+      //? F4/F2 — the render now triggers follow-up ffmpeg passes (poster-frame, optional caption mux); capture
+      //? the FIRST call (the render plan itself) so this assertion still inspects the render, not a later pass.
+      if (capturedArgs.length === 0) capturedArgs = a;
       const out = a[a.length - 1]; // /media/<id>.mp4
       const id = out.slice('/media/'.length).replace(/\.mp4$/, '');
       track(persistMediaBytes(Buffer.from('mp4'), 'mp4', id).url);

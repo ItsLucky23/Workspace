@@ -363,6 +363,29 @@ async function extractPoster(mp4Name: string, run: FfmpegRunner): Promise<string
   return `/media/${posterName}`;
 }
 
+//? F2 — a SECOND-pass ffmpeg that adds the sidecar captions to a finished mp4, as a separate step so the
+//? load-bearing render filtergraphs are never touched (zero regression). Two modes:
+//?  • 'burn' — hard-subtitle via the `subtitles=` video filter (re-encodes video; captions are baked in).
+//?  • 'soft' — mux the .srt as a `mov_text` subtitle track (stream-copy video/audio; toggleable in players).
+//? The subtitle path is the container-internal `/media/<srt>` (POSIX — no Windows escaping footgun). Pure +
+//? exported for tests.
+export function buildCaptionPassArgs(inName: string, srtName: string, outName: string, mode: 'burn' | 'soft'): string[] {
+  if (mode === 'soft') {
+    return ['-y', '-i', `/media/${inName}`, '-i', `/media/${srtName}`, '-map', '0', '-map', '1', '-c', 'copy', '-c:s', 'mov_text', `/media/${outName}`];
+  }
+  return ['-y', '-i', `/media/${inName}`, '-vf', `subtitles=/media/${srtName}`, '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
+}
+
+//? Apply captions to a rendered mp4 → the new served `/media/<name>` url. Best-effort: any failure (no Docker,
+//? a bad srt) yields null so the caller keeps the un-captioned render rather than losing the video.
+export async function applyCaptions(inName: string, srtName: string, mode: 'burn' | 'soft', opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const outName = `${inName.replace(/\.mp4$/, '')}-cc.mp4`;
+  const [err, res] = await tryCatch(() => run(buildCaptionPassArgs(inName, srtName, outName, mode)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {
