@@ -658,6 +658,8 @@
       "promote": "Promote",
       "exportBuild": "Export build",
       "download": "Download",
+      "pinCommitPh": "commit sha (optional)",
+      "pinDeploy": "Pin & deploy",
       "buildExports": "Downloadable builds",
       "sshKeysTitle": "SSH keys",
       "sshKeysDesc": "Required to open terminals. Your private key stays on your device; we only store the public half.",

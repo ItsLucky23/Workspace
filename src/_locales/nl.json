@@ -658,6 +658,8 @@
       "promote": "Promoveren",
       "exportBuild": "Build exporteren",
       "download": "Downloaden",
+      "pinCommitPh": "commit-sha (optioneel)",
+      "pinDeploy": "Pin & deploy",
       "buildExports": "Downloadbare builds",
       "sshKeysTitle": "SSH-keys",
       "sshKeysDesc": "Vereist om terminals te openen. Je private key blijft op je apparaat; wij bewaren alleen de publieke helft.",

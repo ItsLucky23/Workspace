@@ -159,6 +159,8 @@ export default function AccountSettings() {
     { key: 'rabbitmq', label: 'RabbitMQ' }, { key: 'elasticsearch', label: 'Elasticsearch' }, { key: 'minio', label: 'MinIO (S3)' }, { key: 'mailpit', label: 'Mailpit' },
   ], []);
   const [servicePreset, setServicePreset] = useState('postgres');
+  //? D1/D3 — the commit to pin the demo host at (blank = follow main + auto-redeploy).
+  const [pinnedCommit, setPinnedCommit] = useState('');
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
@@ -304,6 +306,24 @@ export default function AccountSettings() {
                 </Row>
               );
             })}
+            {/* D1/D3 — demo host: "commit X at a stable URL". Pin a commit (frozen demo) or leave blank + auto-redeploy on main. */}
+            {(() => {
+              const demo = environments.find((e) => e.kind === 'demo' && e.serviceId === undefined);
+              return (
+                <Row>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium text-title uppercase w-16">demo</span>
+                    {demo
+                      ? <span className={`inline-flex items-center gap-1 text-xs ${demo.status === 'live' ? 'text-correct' : (demo.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${demo.status === 'live' ? 'bg-correct' : (demo.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} />{demo.status}{demo.status === 'live' && demo.url ? <a href={demo.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-1 truncate">{demo.route}</a> : null}</span>
+                      : <input value={pinnedCommit} onChange={(e) => { setPinnedCommit(e.target.value); }} placeholder={translate({ key: 'workspaces.account.pinCommitPh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary w-40" />}
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <WsButton variant="secondary" disabled={!activeProject || demo?.status === 'deploying'} onClick={() => { deployEnv({ kind: 'demo', ...(pinnedCommit.trim() ? { pinnedCommit: pinnedCommit.trim(), autoRedeploy: false } : { autoRedeploy: true }) }); }}>{translate({ key: pinnedCommit.trim() ? 'workspaces.account.pinDeploy' : 'workspaces.account.deploy' })}</WsButton>
+                    {demo && <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.account.teardown' }), content: `demo — ${demo.route}` }).then((ok) => { if (ok) teardownEnv(demo.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
+                  </span>
+                </Row>
+              );
+            })()}
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.buildExports' })}</span>
               <WsButton variant="secondary" disabled={!activeProject} onClick={() => { exportBuild('image'); }}>{translate({ key: 'workspaces.account.exportBuild' })}</WsButton>
@@ -324,8 +344,8 @@ export default function AccountSettings() {
               </span>
               <WsButton variant="secondary" onClick={() => { provisionServiceStack({ name: servicePreset, preset: servicePreset }); }}>{translate({ key: 'workspaces.services.provision' })}</WsButton>
             </Row>
-            {(serviceStacks ?? []).length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
-            {(serviceStacks ?? []).map((s) => (
+            {serviceStacks.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
+            {serviceStacks.map((s) => (
               <Row key={s.id}>
                 <span className="flex items-center gap-2 min-w-0">
                   <span className={`inline-flex items-center gap-1 text-xs ${s.status === 'running' ? 'text-correct' : (s.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${s.status === 'running' ? 'bg-correct' : (s.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} /></span>

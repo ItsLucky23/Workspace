@@ -88,7 +88,7 @@ export interface WorkspacesCtx {
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
   //? Environments (ADR 0037): the active project's dev/staging/prod deployments + deploy/teardown.
   environments: EnvironmentSummary[];
-  deployEnv: (input: { kind: string; serviceId?: string }) => void;
+  deployEnv: (input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean }) => void;
   teardownEnv: (envId: string) => void;
   //? Deploy/CD (ADR 0038): promote up the ladder + export a downloadable build.
   promoteEnv: (input: { fromKind: string; approved?: boolean }) => void;
