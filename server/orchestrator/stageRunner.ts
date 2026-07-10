@@ -226,7 +226,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
   //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).
-  const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined));
+  const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined, ticket.projectId));
   const retrieved = ragErr || !hits ? [] : hits.map((h) => ({ filePath: h.filePath, content: h.content }));
 
   //? R3-b — prefer THIS ticket's project's built L2 image, else the L1 base for its stack (S1 — any-stack).

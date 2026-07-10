@@ -81,14 +81,16 @@ export async function indexWorkspace(
 export const RESERVED_CORPUS_COMMITS = ['reference', 'institutional-memory', 'product-knowledge', 'content-playbook'];
 
 export async function retrieve(
-  prisma: PrismaClient, workspaceId: string, query: string, k = 6, commitHash?: string,
+  prisma: PrismaClient, workspaceId: string, query: string, k = 6, commitHash?: string, projectId?: string,
 ): Promise<RetrievedChunk[]> {
   if (query.trim().length === 0) return [];
   let ref = commitHash;
   if (!ref) {
-    //? Pick the latest CODE commit — exclude the named non-code corpora + the brand:* prefix (see above).
+    //? R3-b — pick the latest CODE commit OF THE NAMED PROJECT (each project has its own repo/commits now;
+    //? without the projectId filter a 2nd project's newer index would hijack the 1st project's code query).
+    //? Exclude the named non-code corpora + the brand:* prefix (workspace-level, project-agnostic).
     const latest = await prisma.ragEntry.findFirst({
-      where: { workspaceId, NOT: [{ commitHash: { in: RESERVED_CORPUS_COMMITS } }, { commitHash: { startsWith: 'brand:' } }] },
+      where: { workspaceId, ...(projectId ? { projectId } : {}), NOT: [{ commitHash: { in: RESERVED_CORPUS_COMMITS } }, { commitHash: { startsWith: 'brand:' } }] },
       orderBy: { createdAt: 'desc' }, select: { commitHash: true },
     });
     if (!latest) return [];

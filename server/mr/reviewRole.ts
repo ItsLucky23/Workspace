@@ -97,7 +97,7 @@ export function registerMrReviewRole(): void {
       const diffText = rawDiff ?? '';
       if (diffText.trim().length === 0) return { kind: 'mr-review', title: 'AI MR review', body: 'Empty diff — nothing to review.' };
 
-      const [, chunks] = await tryCatch(() => retrieve(prisma, ctx.workspaceId, mr.title, 6));
+      const [, chunks] = await tryCatch(() => retrieve(prisma, ctx.workspaceId, mr.title, 6, undefined, mr.projectId));
       const ragContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 5000);
       const { system, prompt } = buildReviewPrompt(diffText, ragContext);
 
