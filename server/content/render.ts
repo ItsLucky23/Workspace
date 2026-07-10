@@ -209,7 +209,7 @@ export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | 
   if (preserveClipAudio) {
     //? Next free input index (after the video inputs + any music/sfx that a no-voice mix might have added — here
     //? audioFile is null so voice/music/sfx were only added when present; recompute the real input count).
-    let nextIdx = usable.length + (musicFile !== null ? 1 : 0) + (sfxFile !== null ? 1 : 0);
+    let nextIdx = usable.length + (musicFile === null ? 0 : 1) + (sfxFile === null ? 0 : 1);
     const aLabels: string[] = [];
     for (const [i, s] of usable.entries()) {
       if (s.hasAudio === true && (s.videoFile ?? '').length > 0) {
@@ -426,7 +426,7 @@ export async function renderScenes(
     const videoFile = await localizeAsset(s.videoUrl);
     //? B5 — detect whether this clip carries its own audio, so the stitch can PRESERVE it (combine uploaded
     //? videos WITH their sound) when there's no separate voiceover. Best-effort (false without Docker).
-    const hasAudio = videoFile !== null ? await probeHasAudio(videoFile) : false;
+    const hasAudio = videoFile === null ? false : await probeHasAudio(videoFile);
     scenes.push({
       videoFile,
       imageFile: await localizeAsset(s.imageUrl),
