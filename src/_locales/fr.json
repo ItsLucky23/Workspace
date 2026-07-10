@@ -621,6 +621,15 @@
         "teardown": "Démonter",
         "empty": "Aucun service actif. Choisissez un préréglage et ajoutez-en un."
       },
+      "pat": {
+        "title": "Jetons API",
+        "desc": "Émettez des jetons pour l’API publique (créer des tickets/contenus depuis vos scripts). Le jeton brut est affiché une seule fois.",
+        "namePh": "Nom du jeton",
+        "issue": "Émettre un jeton",
+        "revoke": "Révoquer",
+        "empty": "Aucun jeton API.",
+        "copyNow": "Copiez ce jeton maintenant — il ne sera plus affiché :"
+      },
     "account": {
       "keyNotFound": "Nous n’avons pas trouvé de clé privée pour la clé publique fournie.",
       "defaultKeyName": "Clé de {{name}}",

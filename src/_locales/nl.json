@@ -621,6 +621,15 @@
         "teardown": "Afbreken",
         "empty": "Geen services actief. Kies een preset en voeg er een toe."
       },
+      "pat": {
+        "title": "API-tokens",
+        "desc": "Geef tokens uit voor de publieke API (tickets/content aanmaken vanuit je eigen scripts). Het ruwe token wordt één keer getoond.",
+        "namePh": "Tokennaam",
+        "issue": "Token uitgeven",
+        "revoke": "Intrekken",
+        "empty": "Nog geen API-tokens.",
+        "copyNow": "Kopieer dit token nu — het wordt niet opnieuw getoond:"
+      },
     "account": {
       "keyNotFound": "We konden geen private key vinden bij de opgegeven public key.",
       "defaultKeyName": "Key van {{name}}",

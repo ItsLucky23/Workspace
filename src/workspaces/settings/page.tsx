@@ -95,6 +95,54 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
   );
 }
 
+//? X3 — API tokens (Personal Access Tokens) panel: issue (raw token shown ONCE), list (prefix + scopes), revoke.
+//? Talks to the issuePat/listPats/revokePat `_api` routes directly (not a [control-API] op — it's account state).
+interface PatRow { id: string; name: string; prefix: string; scopes: string[] }
+function PatPanel({ workspaceId }: { workspaceId: string }) {
+  const translate = useTranslator();
+  const [rows, setRows] = useState<PatRow[]>([]);
+  const [name, setName] = useState('');
+  const [scopeTickets, setScopeTickets] = useState(true);
+  const [scopeContent, setScopeContent] = useState(false);
+  const [rawOnce, setRawOnce] = useState<string | null>(null);
+  const load = useCallback(() => {
+    void apiRequest({ name: 'workspaces/listPats', version: 'v1', data: { workspaceId } }).then((r) => { if (r.status === 'success') setRows(r.result.tokens); });
+  }, [workspaceId]);
+  useEffect(() => { load(); }, [load]);
+  const issue = () => {
+    const scopes = [...(scopeTickets ? ['tickets:write'] : []), ...(scopeContent ? ['content:write'] : [])];
+    if (scopes.length === 0) return;
+    void apiRequest({ name: 'workspaces/issuePat', version: 'v1', data: { workspaceId, name: name.trim() || 'API token', scopes } }).then((r) => {
+      if (r.status === 'success') { setRawOnce(r.result.token); setName(''); load(); }
+    });
+  };
+  const revoke = (patId: string) => { void apiRequest({ name: 'workspaces/revokePat', version: 'v1', data: { patId } }).then(() => { load(); }); };
+  return (
+    <Card title={translate({ key: 'workspaces.pat.title' })} desc={translate({ key: 'workspaces.pat.desc' })}>
+      {rawOnce !== null && (
+        <div className="rounded-lg border border-warning-border bg-warning/10 p-2.5 mb-2 text-xs">
+          <div className="text-title font-semibold mb-1">{translate({ key: 'workspaces.pat.copyNow' })}</div>
+          <code className="block bg-container2 rounded px-2 py-1 font-mono break-all text-common">{rawOnce}</code>
+          <button type="button" onClick={() => { setRawOnce(null); }} className="text-muted hover:text-common mt-1 cursor-pointer">{translate({ key: 'workspaces.shell.cancel' })}</button>
+        </div>
+      )}
+      <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-divider">
+        <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.pat.namePh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary flex-1 min-w-32" />
+        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeTickets} onChange={(e) => { setScopeTickets(e.target.checked); }} /> tickets:write</label>
+        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeContent} onChange={(e) => { setScopeContent(e.target.checked); }} /> content:write</label>
+        <WsButton variant="secondary" onClick={issue}>{translate({ key: 'workspaces.pat.issue' })}</WsButton>
+      </div>
+      {rows.length === 0 && <div className="text-xs text-muted pt-2">{translate({ key: 'workspaces.pat.empty' })}</div>}
+      {rows.map((t) => (
+        <Row key={t.id}>
+          <span className="flex items-center gap-2 min-w-0"><span className="text-sm text-title">{t.name}</span><code className="text-xs text-muted font-mono">{t.prefix}…</code><span className="text-xs text-muted truncate">{t.scopes.join(', ')}</span></span>
+          <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.pat.revoke' }), content: t.name }).then((ok) => { if (ok) revoke(t.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.pat.revoke' })}</button>
+        </Row>
+      ))}
+    </Card>
+  );
+}
+
 function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
   const translate = useTranslator();
   const { membersById } = useWorkspaces();
@@ -152,7 +200,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -356,6 +404,9 @@ export default function AccountSettings() {
               </Row>
             ))}
           </Card>
+
+          {/* X3 — API tokens (issue/list/revoke) for the public API. */}
+          <PatPanel workspaceId={activeWorkspace.id} />
 
           <Card
             title={translate({ key: 'workspaces.account.sshKeysTitle' })}

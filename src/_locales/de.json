@@ -621,6 +621,15 @@
         "teardown": "Abbauen",
         "empty": "Keine Services aktiv. Wähle ein Preset und füge eins hinzu."
       },
+      "pat": {
+        "title": "API-Tokens",
+        "desc": "Tokens für die öffentliche API ausstellen (Tickets/Inhalte aus eigenen Skripten). Das Roh-Token wird einmal angezeigt.",
+        "namePh": "Token-Name",
+        "issue": "Token ausstellen",
+        "revoke": "Widerrufen",
+        "empty": "Noch keine API-Tokens.",
+        "copyNow": "Kopiere dieses Token jetzt — es wird nicht erneut angezeigt:"
+      },
     "account": {
       "keyNotFound": "Wir konnten keinen privaten Schlüssel für den angegebenen öffentlichen Schlüssel finden.",
       "defaultKeyName": "Schlüssel von {{name}}",

@@ -621,6 +621,15 @@
         "teardown": "Tear down",
         "empty": "No services running. Pick a preset and add one."
       },
+      "pat": {
+        "title": "API tokens",
+        "desc": "Issue tokens for the public API (create tickets / content from your own scripts). The raw token is shown once.",
+        "namePh": "Token name",
+        "issue": "Issue token",
+        "revoke": "Revoke",
+        "empty": "No API tokens yet.",
+        "copyNow": "Copy this token now — it will not be shown again:"
+      },
     "account": {
       "keyNotFound": "We couldn’t find a private key for the given public key.",
       "defaultKeyName": "{{name}}'s key",
