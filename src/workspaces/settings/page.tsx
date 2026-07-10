@@ -324,8 +324,8 @@ export default function AccountSettings() {
               </span>
               <WsButton variant="secondary" onClick={() => { provisionServiceStack({ name: servicePreset, preset: servicePreset }); }}>{translate({ key: 'workspaces.services.provision' })}</WsButton>
             </Row>
-            {serviceStacks.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
-            {serviceStacks.map((s) => (
+            {(serviceStacks ?? []).length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
+            {(serviceStacks ?? []).map((s) => (
               <Row key={s.id}>
                 <span className="flex items-center gap-2 min-w-0">
                   <span className={`inline-flex items-center gap-1 text-xs ${s.status === 'running' ? 'text-correct' : (s.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${s.status === 'running' ? 'bg-correct' : (s.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} /></span>
