@@ -41,6 +41,26 @@ try {
   assert(aStr.includes('-map 2:a'), 'the audio (input index 2 = after the 2 clips) is mapped');
   assert(aStr.includes('-shortest'), 'the render is bounded to the shortest stream');
 
+  //? B5 — PRESERVE uploaded clips' own audio when there's NO voiceover. A stitch of clips WITH audio must map a
+  //? concatenated clip-audio track (was silent before — only voice/music/sfx were ever mapped).
+  const audioClip = (v: string, dur: number): RenderScene => ({ videoFile: v, imageFile: null, startTrimMs: 0, durationMs: dur, transitionIn: 'cut', hasAudio: true });
+  const preserved = buildVideoStitchPlan([audioClip('a.mp4', 4000), audioClip('b.mp4', 3000)], null, 'out.mp4', fmt);
+  const pStr = preserved.args.join(' ');
+  assert(pStr.includes('[0:a]atrim') && pStr.includes('[1:a]atrim'), 'each clip\'s own audio is trimmed');
+  assert(pStr.includes('concat=n=2:v=0:a=1[outa]'), 'the clip audio tracks are concatenated into [outa]');
+  assert(pStr.includes('-map [outa]'), 'the preserved clip audio is mapped (no longer silent)');
+
+  //? A still MIXED with an audio clip → the still contributes SILENCE so the audio stays aligned (never crashes
+  //? on a missing track).
+  const mixed = buildVideoStitchPlan([{ videoFile: null, imageFile: 's.jpg', startTrimMs: 0, durationMs: 2000, transitionIn: 'cut' }, audioClip('b.mp4', 3000)], null, 'out.mp4', fmt);
+  const mStr = mixed.args.join(' ');
+  assert(mStr.includes('anullsrc'), 'a still contributes silence to the audio concat');
+  assert(mStr.includes('[1:a]atrim') && mStr.includes('[outa]'), 'the audio clip contributes its real audio + a mapped [outa]');
+
+  //? A clip with NO audio track (hasAudio false) + no voiceover → stays silent (unchanged), never maps a missing track.
+  const noAudio = buildVideoStitchPlan([clip('a.mp4', 4000), clip('b.mp4', 4000)], null, 'out.mp4', fmt);
+  assert(!noAudio.args.join(' ').includes('[outa]'), 'clips without audio stay silent (no bogus audio map)');
+
   //? 5) nothing renderable → degrade.
   eq(buildVideoStitchPlan([], null, 'out.mp4', fmt).hasVideo, false, 'an empty scene list has no video');
   eq(buildVideoStitchPlan([{ videoFile: null, imageFile: null, startTrimMs: 0, durationMs: 1000, transitionIn: 'cut' }], null, 'out.mp4', fmt).hasVideo, false, 'a scene with no clip/still is not renderable');

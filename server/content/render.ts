@@ -116,6 +116,7 @@ export interface RenderScene {
   startTrimMs: number;        // trim in-point within the source clip
   durationMs: number;         // on-timeline duration of this scene
   transitionIn: 'cut' | 'fade' | 'xfade';
+  hasAudio?: boolean;         // B5 — the source clip carries an audio track (ffprobe-detected) → preserve it in the stitch
 }
 
 //? Build the ffmpeg filter_complex plan that STITCHES real scenes: each scene is normalized (trim for a clip,
@@ -196,10 +197,42 @@ export function buildVideoStitchPlan(scenes: RenderScene[], audioFile: string | 
     if (sfxFile !== null) audioTracks.push({ label: `${String(sfxIdx)}:a`, volume: sfxVolume });
   }
   const audioPlan = useMix ? buildAudioMixPlan(audioTracks) : null;
+
+  //? B5 — PRESERVE the uploaded clips' OWN audio when there is NO separate voiceover and at least one scene
+  //? carries an audio track. Without this a stitch of uploaded videos is SILENT (only voice/music/sfx were ever
+  //? mapped). Per scene: a clip WITH audio contributes its trimmed audio; a still or audio-less clip contributes
+  //? matching silence — so the audio concat lines up 1:1 with the video concat. Only on the CUT path (no
+  //? crossfade) where the video is a plain concat, so audio + video stay in sync. The silence sources are
+  //? appended as extra lavfi inputs AFTER the real ones (their indices start past voice/music/sfx).
+  const preserveClipAudio = audioFile === null && !anyCrossfade && usable.some((s) => s.hasAudio === true && (s.videoFile ?? '').length > 0);
+  let clipAudioMap: string | null = null;
+  if (preserveClipAudio) {
+    //? Next free input index (after the video inputs + any music/sfx that a no-voice mix might have added — here
+    //? audioFile is null so voice/music/sfx were only added when present; recompute the real input count).
+    let nextIdx = usable.length + (musicFile !== null ? 1 : 0) + (sfxFile !== null ? 1 : 0);
+    const aLabels: string[] = [];
+    for (const [i, s] of usable.entries()) {
+      if (s.hasAudio === true && (s.videoFile ?? '').length > 0) {
+        const start = (s.startTrimMs / 1000).toFixed(2);
+        const end = ((s.startTrimMs + s.durationMs) / 1000).toFixed(2);
+        filters.push(`[${String(i)}:a]atrim=${start}:${end},asetpts=PTS-STARTPTS[ca${String(i)}]`);
+        aLabels.push(`[ca${String(i)}]`);
+      } else {
+        //? silence of this scene's duration (a still, or a clip with no audio track)
+        args.push('-f', 'lavfi', '-t', (s.durationMs / 1000).toFixed(2), '-i', 'anullsrc=r=44100:cl=stereo');
+        aLabels.push(`[${String(nextIdx)}:a]`);
+        nextIdx += 1;
+      }
+    }
+    filters.push(`${aLabels.join('')}concat=n=${String(aLabels.length)}:v=0:a=1[outa]`);
+    clipAudioMap = '[outa]';
+  }
+
   const complex = audioPlan ? [...filters, audioPlan.filter].join(';') : filters.join(';');
   args.push('-filter_complex', complex, '-map', '[outv]');
   if (audioPlan) args.push('-map', audioPlan.map, '-c:a', 'aac', '-shortest');
   else if (audioFile !== null) args.push('-map', `${String(usable.length)}:a`, '-c:a', 'aac', '-shortest');
+  else if (clipAudioMap !== null) args.push('-map', clipAudioMap, '-c:a', 'aac', '-shortest');
   args.push('-r', String(fps), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`);
   return { args, hasVideo: true };
 }
@@ -299,6 +332,20 @@ export async function probeDurationMs(file: string, opts: { probe?: DurationProb
   return out === null ? null : parseFfprobeDurationMs(out);
 }
 
+//? B5 — does `file` carry an AUDIO stream? ffprobe lists audio-stream indices; a non-empty result = has audio.
+//? Docker-gated + injectable; any failure yields false so the stitch stays safe (never maps a missing track).
+export type AudioProbe = (file: string) => Promise<string | null>;
+const dockerFfprobeAudio: AudioProbe = async (file) => {
+  const [err, r] = await tryCatch(() => docker(['run', '--rm', '--entrypoint', 'ffprobe', '-v', `${dockerHostPath(MEDIA_DIR)}:/media`, FFMPEG_IMAGE, '-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'default=noprint_wrappers=1:nokey=1', `/media/${file}`]));
+  if (err || r?.code !== 0) return null;
+  return r.out;
+};
+export async function probeHasAudio(file: string, opts: { probe?: AudioProbe } = {}): Promise<boolean> {
+  const probe = opts.probe ?? dockerFfprobeAudio;
+  const out = await probe(file);
+  return typeof out === 'string' && out.trim().length > 0;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {
@@ -376,12 +423,17 @@ export async function renderScenes(
   const run = opts.run ?? dockerFfmpegRunner;
   const scenes: RenderScene[] = [];
   for (const s of input.scenes) {
+    const videoFile = await localizeAsset(s.videoUrl);
+    //? B5 — detect whether this clip carries its own audio, so the stitch can PRESERVE it (combine uploaded
+    //? videos WITH their sound) when there's no separate voiceover. Best-effort (false without Docker).
+    const hasAudio = videoFile !== null ? await probeHasAudio(videoFile) : false;
     scenes.push({
-      videoFile: await localizeAsset(s.videoUrl),
+      videoFile,
       imageFile: await localizeAsset(s.imageUrl),
       startTrimMs: Math.max(0, s.startTrimMs),
       durationMs: Math.max(200, s.durationMs),
       transitionIn: s.transitionIn === 'fade' || s.transitionIn === 'xfade' ? s.transitionIn : 'cut',
+      hasAudio,
     });
   }
   const id = randomUUID();
