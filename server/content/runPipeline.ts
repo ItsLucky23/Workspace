@@ -11,8 +11,19 @@ import { generateBeatImages } from './images';
 import { decomposeIntoScenes } from './sceneDecompose';
 import { generateScript, planBeatCount } from './script';
 import { generateVoiceover } from './voice';
+import { CONTENT_STAGES, type ContentStage } from './pipeline';
 
 export type PipelineMode = 'video' | 'slideshow';
+
+//? CC1 — advance the piece's content-stage as the pipeline lands each step (script → generate → review),
+//? FORWARD-ONLY: a piece already further along never regresses. Idempotent per step. The Conductor calls
+//? runContentPipeline (B-23) so this stays within the single-writer path.
+async function advanceStage(prisma: PrismaClient, workspaceId: string, contentProjectId: string, to: ContentStage): Promise<void> {
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId, id: contentProjectId }, select: { stageId: true } });
+  const curIdx = piece ? (CONTENT_STAGES as readonly string[]).indexOf(piece.stageId) : -1;
+  const toIdx = (CONTENT_STAGES as readonly string[]).indexOf(to);
+  if (toIdx > curIdx) await prisma.contentProject.updateMany({ where: { workspaceId, id: contentProjectId }, data: { stageId: to } });
+}
 
 export interface PipelineRunResult {
   ok: boolean;
@@ -52,6 +63,8 @@ export async function runContentPipeline(
     script = await prisma.script.findFirst({ where: { workspaceId, contentProjectId }, orderBy: { createdAt: 'desc' } });
   }
   if (!script) return { ok: false, ranScript, ranVoice: false, ranVisuals: false, ranAssemble: false, mode, stub };
+  //? CC1 — a script exists → the piece is at least at the 'script' stage.
+  await advanceStage(prisma, workspaceId, contentProjectId, 'script');
 
   //? 2) Voiceover.
   const voice = await generateVoiceover(prisma, { workspaceId, contentProjectId, scriptId: script.id, ...opts });
@@ -68,10 +81,14 @@ export async function runContentPipeline(
     stub = stub || img.stub;
     ranVisuals = img.ok;
   }
+  //? CC1 — visuals produced → the piece reached the 'generate' stage.
+  if (ranVisuals) await advanceStage(prisma, workspaceId, contentProjectId, 'generate');
 
   //? 4) Assemble → the final render (real stitch when there are scenes/Docker, else an honest stub — ADR 0144/0147).
   const asm = await assembleContent(prisma, { workspaceId, contentProjectId });
   stub = stub || asm.stub;
+  //? CC1 — a render exists → the piece is ready for human review (publish stays an explicit gated op).
+  if (asm.ok) await advanceStage(prisma, workspaceId, contentProjectId, 'review');
 
   return { ok: true, ranScript, ranVoice: true, ranVisuals, ranAssemble: asm.ok, mode, stub };
 }

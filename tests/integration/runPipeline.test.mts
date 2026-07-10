@@ -43,6 +43,11 @@ try {
   const scenes = await prisma.videoScene.count({ where: { workspaceId: wsId, contentProjectId: pieceId } });
   eq(scenes, beats, 'a video scene was decomposed per beat (video mode)');
 
+  //? CC1 — the pipeline auto-advanced the content stage as steps landed (idea → … → review), so the
+  //? 6-stage board actually flows instead of the piece sitting on 'idea'. Publish stays a gated op.
+  const advanced = await prisma.contentProject.findFirst({ where: { workspaceId: wsId, id: pieceId }, select: { stageId: true } });
+  eq(advanced?.stageId, 'review', 'the piece advanced to the review stage after a full pipeline run');
+
   //? Re-running reuses the existing script (does not pile up a second one).
   await enqueueControlAction({ workspaceId: wsId, op: 'content-run-pipeline', target: {}, payload: { contentProjectId: pieceId, mode: 'video' }, userId: owner.id, clientRequestId: `rp-run2-${String(stamp)}` });
   await wait(1500);
