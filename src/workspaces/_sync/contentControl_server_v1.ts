@@ -51,6 +51,8 @@ export interface SyncParams {
     durationMs?: number;
     //? F1 — render aspect ratio ('16:9' | '9:16' | '1:1') persisted on the piece + used by assemble.
     aspectRatio?: string;
+    //? G1 — per-platform publish composer: caption/hashtags/privacy persisted into publishVariants on publish.
+    caption?: string; hashtags?: string[]; privacy?: string;
   };
   user: SessionLayout;
   functions: Functions;

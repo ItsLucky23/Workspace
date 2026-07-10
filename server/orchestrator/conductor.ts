@@ -1707,6 +1707,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const schedRaw = str(payload, 'scheduledAt');
       const schedMs = schedRaw ? Date.parse(schedRaw) : Number.NaN;
       const scheduledAt = Number.isFinite(schedMs) && schedMs > Date.now() ? new Date(schedMs).toISOString() : null;
+      //? G1 — the publish composer can set a per-platform caption/hashtags/privacy. Persist them into the
+      //? piece's `publishVariants` JSON (merged by platform) BEFORE publishing, so the upload's
+      //? extractPublishVariant reads them instead of falling back to a private, title-only post.
+      const caption = str(payload, 'caption');
+      const privacy = str(payload, 'privacy');
+      const hashtags = strArr(payload, 'hashtags');
+      const hasVariant = caption !== undefined || (privacy === 'public' || privacy === 'unlisted' || privacy === 'private') || hashtags.length > 0;
+      if (hasVariant) {
+        const proj = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { publishVariants: true } });
+        const existing = proj?.publishVariants;
+        const current: Record<string, unknown> = (existing !== null && typeof existing === 'object' && !Array.isArray(existing)) ? { ...(existing as Record<string, unknown>) } : {};
+        current[platform] = {
+          ...(caption === undefined ? {} : { caption }),
+          ...(hashtags.length > 0 ? { hashtags } : {}),
+          ...(privacy === 'public' || privacy === 'unlisted' || privacy === 'private' ? { privacy } : {}),
+        };
+        await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { publishVariants: jsonInput(current) } });
+      }
       const acctLabel = accountId ? ` (${accountId})` : '';
       const title = scheduledAt ? `Schedule for ${platform}${acctLabel}` : `Publish to ${platform}${acctLabel}`;
       const body = scheduledAt ? `Schedule this content for ${platform} at ${scheduledAt}?` : `Ready to publish this content to ${platform}? This is public and hard to undo.`;
