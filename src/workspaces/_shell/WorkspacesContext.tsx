@@ -169,6 +169,10 @@ export interface WorkspacesCtx {
   //? Pipeline (7a.2) — full per-stage config from the DB composites.
   stageConfigs: PipelineStageCfg[];
   saveStageConfig: (cfg: PipelineStageCfg) => void;
+  //? R1 — durably ADD / REMOVE / REORDER pipeline stages (was React-state-only → lost on refresh).
+  createStage: (input: { key: string; name: string; kind?: string }) => void;
+  deleteStage: (stageKey: string) => void;
+  reorderStages: (order: string[]) => void;
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;

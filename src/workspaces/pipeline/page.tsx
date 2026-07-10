@@ -581,7 +581,7 @@ export const template = 'workspaces';
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, stageConfigs, saveStageConfig } = useWorkspaces();
+  const { activeWorkspace, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   const [selectedId, setSelectedId] = useState<string>(stageConfigs[0]?.id ?? '');
   const [tab, setTab] = useState('general');
@@ -608,21 +608,30 @@ export default function Pipeline() {
     if (!a || !b) return p;
     copy[i] = b;
     copy[j] = a;
-    return copy.map((st, idx) => ({ ...st, order: idx }));
+    const reordered = copy.map((st, idx) => ({ ...st, order: idx }));
+    //? R1 — persist the new order (stage ids in sequence) so a reorder survives a refresh.
+    reorderStages(reordered.map((st) => st.id));
+    return reordered;
   }); };
 
   const addStage = () => {
-    const id = `stage-${String(stages.length)}-${String(Date.now())}`;
-    setStages((p) => [...p, blankStage(id, `Stage ${String(p.length + 1)}`, p.length)]);
-    setSelectedId(id);
+    const key = `stage-${String(stages.length)}-${String(Date.now())}`;
+    const name = `Stage ${String(stages.length + 1)}`;
+    setStages((p) => [...p, blankStage(key, name, p.length)]);
+    setSelectedId(key);
     setTab('general');
+    //? R1 — persist the new stage immediately (was React-state-only → lost on refresh).
+    createStage({ key, name, kind: 'code' });
   };
 
   const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s?.name ?? '' }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
     if (!ok) return;
     const fallback = stages.find((x) => x.id !== selectedId)?.id ?? '';
+    const removed = selectedId;
     setStages((p) => p.filter((x) => x.id !== selectedId).map((st, idx) => ({ ...st, order: idx })));
     setSelectedId(fallback);
+    //? R1 — persist the deletion.
+    if (removed) deleteStage(removed);
   });
 
   const validate = () => {

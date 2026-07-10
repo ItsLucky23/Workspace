@@ -1091,6 +1091,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes
+      //? (Conductor single-writer). The editor calls these so structural edits survive a refresh.
+      createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteStage: (stageKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { stageId: stageKey, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      reorderStages: (order) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { order, clientRequestId: nextReqId() }, receiver: room }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
       //? Module gating: optimistically flip the active workspace's enabledSections (instant
