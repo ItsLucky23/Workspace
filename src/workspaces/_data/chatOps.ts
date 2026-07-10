@@ -27,6 +27,7 @@ export const CHAT_ENABLED_OPS = [
   'content-critique-image',
   // F7 — video-to-video restyle (paid gen)
   'content-video-restyle',
+  'content-edit-image',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

@@ -879,6 +879,7 @@
       "importOwn": "Eigenes importieren",
       "modelsTitle": "Medienmodelle (erweitert)",
       "modelsDesc": "Überschreibe das KI-Modell pro Funktion (z. B. ein Low-Poly-3D-Modell oder ein schnelleres/günstigeres Bildmodell). Leer = die Vorgabe.",
+      "instructEdit": "KI-Bearbeitung", "instructEditNeedsPrompt": "Gib zuerst eine Anweisung im Richtungsfeld ein (z. B. \"ändere den Himmel in Sonnenuntergang\").",
       "critique": "Kritik",
       "restyle": "Umstylen",
       "regenerate": "Neu generieren",

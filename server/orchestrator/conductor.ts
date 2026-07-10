@@ -1524,6 +1524,28 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
       return;
     }
+    case 'content-edit-image': {
+      //? F6 — instruct-edit ("change the sky to sunset"): a WHOLE source image (an asset's url or a raw
+      //? referenceUrl) + an instruction → a NEW edited image (fal flux-kontext, mask-less). Chains to the source
+      //? for lineage (I2). Queue-aware generateMediaAsset (honest stub without a key).
+      const contentProjectId = str(payload, 'contentProjectId');
+      const prompt = str(payload, 'prompt');
+      let referenceUrl = str(payload, 'referenceUrl');
+      const sourceAssetId = str(payload, 'assetId');
+      if (!contentProjectId || !prompt) return;
+      if (!referenceUrl && sourceAssetId) {
+        const src = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: sourceAssetId, kind: { in: ['image', 'render'] } }, select: { url: true } });
+        referenceUrl = src?.url ?? undefined;
+      }
+      if (!referenceUrl) return;
+      const r = await generateMediaAsset(prisma, { workspaceId: action.workspaceId, contentProjectId, feature: 'image-edit', prompt, referenceUrl, label: 'Instruct edit' });
+      if (r.assetId && sourceAssetId) {
+        const parent = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: sourceAssetId }, select: { id: true, parentId: true } });
+        if (parent) await prisma.contentAsset.update({ where: { id: r.assetId }, data: { parentId: parent.parentId ?? parent.id } });
+      }
+      if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
+      return;
+    }
     case 'content-regenerate': {
       //? I1 — re-run a produced asset's generation (same feature/prompt/reference/style from its MediaJob) as
       //? N NEW variations, with an optional "make it more X" tweak. Each goes through the queue-aware lifecycle

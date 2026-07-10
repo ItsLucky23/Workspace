@@ -23,7 +23,7 @@ export interface MediaAssetResult {
 //? UI icon before the provider result lands (it's re-confirmed from res.asset on completion).
 const FEATURE_KIND: Record<MediaFeature, string> = {
   'image-gen': 'image', 'reference-image': 'image', 'video-gen': 'video', 'avatar': 'avatar',
-  'model-3d': 'model-3d', 'tts': 'voice', 'music': 'music', 'sfx': 'sfx', 'inpaint': 'image', 'video-restyle': 'video',
+  'model-3d': 'model-3d', 'tts': 'voice', 'music': 'music', 'sfx': 'sfx', 'inpaint': 'image', 'video-restyle': 'video', 'image-edit': 'image',
 };
 
 export async function generateMediaAsset(

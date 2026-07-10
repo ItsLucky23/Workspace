@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -169,7 +169,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
   );
 }
 
-function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onInstructEdit, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onInstructEdit: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   //? F4 — a render's url is an .mp4 (can't be an <img>); use its extracted poster frame as the thumbnail.
   //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
@@ -233,6 +233,8 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditR
           <button type="button" onClick={() => { onEditImage(asset); }} title={translate({ key: 'workspaces.imageEditor.edit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="sliders" /> {translate({ key: 'workspaces.imageEditor.edit' })}</button>
           {/* F5 — AI critique: "what should change about this photo" (advisory; the model sees the pixels). */}
           <button type="button" onClick={() => { onCritique(asset.id); }} title={translate({ key: 'workspaces.content.critique' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="comment-dots" /> {translate({ key: 'workspaces.content.critique' })}</button>
+          {/* F6 — AI instruct-edit: "change the sky to sunset" (whole-image, uses the direction field as the prompt). */}
+          <button type="button" onClick={() => { onInstructEdit(asset.id); }} title={translate({ key: 'workspaces.content.instructEdit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.content.instructEdit' })}</button>
         </div>
       )}
       {/* F7 — video-to-video restyle ("make it cinematic") on a ready video asset. */}
@@ -382,6 +384,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
       runContentOp('content-video-restyle', piece.id, { assetId, prompt: extra.trim() || 'cinematic, warm colour grade, shallow depth of field' });
     })();
   };
+  //? F6 — instruct-edit an image asset ("change the sky to sunset"), whole-image. Uses the free-form direction
+  //? field as the instruction (required); paid → cost-confirm with the € amount.
+  const instructEdit = (assetId: string) => {
+    void (async () => {
+      if (extra.trim().length === 0) { notify.error({ key: 'workspaces.content.instructEditNeedsPrompt' }); return; }
+      if (!(await confirmPaid('image-edit'))) return;
+      runContentOp('content-edit-image', piece.id, { assetId, prompt: extra.trim() });
+    })();
+  };
   //? F9 — open the audio-editor-lite for a standalone audio asset → content-trim-audio (local, no cost).
   const trimAudio = (asset: ContentAssetSummary) => {
     const url = assetHref(asset.url);
@@ -498,7 +509,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
                 </div>
               )}
             </div>

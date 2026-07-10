@@ -18,6 +18,7 @@ const DEFAULT_MEDIA_ASSIGNMENTS: Record<MediaFeature, MediaProviderId> = {
   'music': 'suno',
   'inpaint': 'fal',
   'video-restyle': 'fal',
+  'image-edit': 'fal',
 };
 
 //? Resolve the provider for a media feature. `overrides` = the per-workspace map (unset → default).

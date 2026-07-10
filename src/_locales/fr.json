@@ -879,6 +879,7 @@
       "importOwn": "Importer le vôtre",
       "modelsTitle": "Modèles média (avancé)",
       "modelsDesc": "Remplacez le modèle IA par fonction (ex. un modèle 3D low-poly, ou un modèle d'image plus rapide/économique). Vide = la valeur par défaut.",
+      "instructEdit": "Édition IA", "instructEditNeedsPrompt": "Saisis d'abord une instruction dans le champ de direction (ex. \"change le ciel en coucher de soleil\").",
       "critique": "Critiquer",
       "restyle": "Restyler",
       "regenerate": "Régénérer",

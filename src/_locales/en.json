@@ -879,6 +879,7 @@
       "importOwn": "Import your own",
       "modelsTitle": "Media models (advanced)",
       "modelsDesc": "Override the AI model per feature (e.g. a low-poly 3D model, or a faster/cheaper image model). Empty = the built-in default.",
+      "instructEdit": "AI edit", "instructEditNeedsPrompt": "Type an instruction in the direction field first (e.g. \"change the sky to sunset\").",
       "critique": "Critique",
       "restyle": "Restyle",
       "regenerate": "Regenerate",
