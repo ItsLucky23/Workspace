@@ -356,7 +356,8 @@ export function buildPosterArgs(mp4Name: string, posterName: string): string[] {
 
 //? Extract a poster frame for a rendered mp4 → its served `/media/<name>.jpg` url. Best-effort: any
 //? failure (no Docker, a 0.5s-shorter clip, ffmpeg error) yields null so the render itself still succeeds.
-async function extractPoster(mp4Name: string, run: FfmpegRunner): Promise<string | null> {
+export async function extractPoster(mp4Name: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
   const posterName = `${mp4Name.replace(/\.mp4$/, '')}-poster.jpg`;
   const [err, res] = await tryCatch(() => run(buildPosterArgs(mp4Name, posterName)));
   if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, posterName))) return null;
@@ -491,7 +492,7 @@ export async function renderTimeline(
   const outPath = path.join(MEDIA_DIR, outName);
   if (!existsSync(outPath)) return { ok: false, error: 'render.noOutput' };
   //? F4 — a real poster thumbnail (best-effort; null just means the gallery falls back to the icon).
-  const posterUrl = await extractPoster(outName, run);
+  const posterUrl = await extractPoster(outName, { run });
   return { ok: true, url: `/media/${outName}`, storageRef: outPath, ...(posterUrl ? { posterUrl } : {}) };
 }
 
@@ -532,6 +533,6 @@ export async function renderScenes(
   const outPath = path.join(MEDIA_DIR, outName);
   if (!existsSync(outPath)) return { ok: false, error: 'render.noOutput' };
   //? F4 — a real poster thumbnail (best-effort; null just means the gallery falls back to the icon).
-  const posterUrl = await extractPoster(outName, run);
+  const posterUrl = await extractPoster(outName, { run });
   return { ok: true, url: `/media/${outName}`, storageRef: outPath, ...(posterUrl ? { posterUrl } : {}) };
 }
