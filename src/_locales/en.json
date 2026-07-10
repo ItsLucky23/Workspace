@@ -789,6 +789,18 @@
       "dismiss": "Dismiss",
       "snooze": "Snooze"
     },
+      "publish": {
+        "title": "Publish to {platform}",
+        "captionPh": "Caption / description…",
+        "hashtagsPh": "hashtags (space or comma separated)",
+        "privacy": "Privacy",
+        "priv_public": "Public",
+        "priv_unlisted": "Unlisted",
+        "priv_private": "Private",
+        "schedule": "Schedule (optional)",
+        "publishBtn": "Publish",
+        "scheduleBtn": "Schedule"
+      },
     "content": {
       "title": "Content",
       "subtitle": "AI content — from brief to a downloadable, publishable piece.",

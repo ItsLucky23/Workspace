@@ -789,6 +789,18 @@
       "dismiss": "Verwerfen",
       "snooze": "Später"
     },
+      "publish": {
+        "title": "Auf {platform} veröffentlichen",
+        "captionPh": "Beschriftung / Beschreibung…",
+        "hashtagsPh": "Hashtags (Leerzeichen/Komma getrennt)",
+        "privacy": "Sichtbarkeit",
+        "priv_public": "Öffentlich",
+        "priv_unlisted": "Nicht gelistet",
+        "priv_private": "Privat",
+        "schedule": "Planen (optional)",
+        "publishBtn": "Veröffentlichen",
+        "scheduleBtn": "Planen"
+      },
     "content": {
       "title": "Content",
       "subtitle": "KI-Content — vom Briefing bis zum herunterladbaren, veröffentlichbaren Stück.",

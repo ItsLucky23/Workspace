@@ -11,7 +11,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { EmptyState } from '../../_components/primitives';
+import { EmptyState, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -103,6 +103,39 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
 //? an open/download link when reachable, and — for a finished render — a publish button per connected
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
+//? G1/CP1 — the publish composer form: caption + hashtags + privacy + optional schedule for ONE platform.
+//? Submits the fields to content-request-publish (G1 persists them as the per-platform publishVariant).
+function PublishComposer({ platform, onSubmit, translate }: { platform: string; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string }) => void; translate: ReturnType<typeof useTranslator> }) {
+  const [caption, setCaption] = useState('');
+  const [hashtags, setHashtags] = useState('');
+  const [privacy, setPrivacy] = useState('public');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
+  const privItems = (['public', 'unlisted', 'private'] as const).map((p) => ({ id: p, value: p, item: translate({ key: `workspaces.publish.priv_${p}` }) }));
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title capitalize">{translate({ key: 'workspaces.publish.title', params: [{ key: 'platform', value: platform }] })}</div>
+      <textarea value={caption} onChange={(e) => { setCaption(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.publish.captionPh' })} className="w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary" />
+      <input value={hashtags} onChange={(e) => { setHashtags(e.target.value); }} placeholder={translate({ key: 'workspaces.publish.hashtagsPh' })} className={inputCls} />
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-common">{translate({ key: 'workspaces.publish.privacy' })}</span>
+        <Dropdown size="sm" items={privItems} value={privItems.find((it) => it.id === privacy)} onChange={(it) => { setPrivacy(String(it.value)); }} />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-common">{translate({ key: 'workspaces.publish.schedule' })}</span>
+        <input type="datetime-local" value={scheduledAt} onChange={(e) => { setScheduledAt(e.target.value); }} className="h-9 px-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary" />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="paper-plane" onClick={() => {
+          const tags = hashtags.split(/[\s,]+/).map((t) => t.replace(/^#/, '').trim()).filter((t) => t.length > 0);
+          onSubmit({ ...(caption.trim() ? { caption: caption.trim() } : {}), ...(tags.length > 0 ? { hashtags: tags } : {}), privacy, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}) });
+        }}>{translate({ key: scheduledAt ? 'workspaces.publish.scheduleBtn' : 'workspaces.publish.publishBtn' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
@@ -251,12 +284,16 @@ export default function ContentPiece({ params }: { params: Record<string, string
   //? Request publish of a finished render to a connected platform. Confirmed (it's public + hard to undo),
   //? then fired as content-request-publish — which only PROPOSES it; the post happens on accept (B-23).
   const connectedPlatforms = content.publishTargets.filter((t) => t.connected).map((t) => t.platform);
+  //? G1/CP1 — open the publish COMPOSER: per-platform caption + hashtags + privacy + optional schedule, then
+  //? fire content-request-publish (which persists the variant + proposes the post; B-23 gated on accept).
   const requestPublish = (assetId: string, platform: string) => {
-    void (async () => {
-      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishConfirmTitle' }), content: translate({ key: 'workspaces.content.publishConfirmBody' }) });
-      if (!ok) return;
-      runContentOp('content-request-publish', piece.id, { assetId, platform });
-    })();
+    void menuHandler.open(
+      <PublishComposer platform={platform} translate={translate} onSubmit={(fields) => {
+        void menuHandler.close();
+        runContentOp('content-request-publish', piece.id, { assetId, platform, ...fields });
+      }} />,
+      { dimBackground: true, background: 'bg-container1', size: 'sm' },
+    );
   };
 
   //? B4 — the € cost of a media feature from the snapshot cost table (0 = unknown/free).

@@ -789,6 +789,18 @@
       "dismiss": "Ignorer",
       "snooze": "Reporter"
     },
+      "publish": {
+        "title": "Publier sur {platform}",
+        "captionPh": "Légende / description…",
+        "hashtagsPh": "hashtags (espaces ou virgules)",
+        "privacy": "Confidentialité",
+        "priv_public": "Public",
+        "priv_unlisted": "Non répertorié",
+        "priv_private": "Privé",
+        "schedule": "Planifier (optionnel)",
+        "publishBtn": "Publier",
+        "scheduleBtn": "Planifier"
+      },
     "content": {
       "title": "Contenu",
       "subtitle": "Contenu IA — du brief à une pièce téléchargeable et publiable.",

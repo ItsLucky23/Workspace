@@ -789,6 +789,18 @@
       "dismiss": "Negeren",
       "snooze": "Snoozen"
     },
+      "publish": {
+        "title": "Publiceren naar {platform}",
+        "captionPh": "Bijschrift / beschrijving…",
+        "hashtagsPh": "hashtags (spatie of komma gescheiden)",
+        "privacy": "Zichtbaarheid",
+        "priv_public": "Openbaar",
+        "priv_unlisted": "Verborgen",
+        "priv_private": "Privé",
+        "schedule": "Inplannen (optioneel)",
+        "publishBtn": "Publiceren",
+        "scheduleBtn": "Inplannen"
+      },
     "content": {
       "title": "Content",
       "subtitle": "AI-content — van brief tot een downloadbaar, publiceerbaar stuk.",

@@ -3402,3 +3402,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de `workspaceExport`-route (H4, GDPR/backup JSON, secrets uitgesloten) had geen caller. Toegevoegd: een "Workspace-data"-card in settings met een Download-knop die de export ophaalt + client-side als JSON-bestand downloadt (Blob). i18n×4.
 **Verify:** card + Download-knop live browser-bevestigd renderend; localeIntegrity 8/8; gates tsc0·lint0·build✓.
 **Files:** `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-10 — ✅ CP1/CP2 publish-composer UI (caption/hashtags/privacy/schedule)
+**Wat:** de G1-publishVariant-writer + C1-scheduling hadden geen UI (publish stuurde alleen {assetId, platform} → titel-only/private). Nu opent publish een `PublishComposer`-formulier: caption (textarea), hashtags (spatie/komma → array), privacy-Dropdown (public/unlisted/private), optioneel datetime-schedule → `content-request-publish` met caption/hashtags/privacy/scheduledAt (G1 persisteert de per-platform-variant, C1 plant in). i18n×4.
+**Verify:** backend publishVariantWriter 8/8 + scheduledContentPublish 8/8 (de op-kant) + localeIntegrity 8/8; gates tsc0·lint0·build✓. Visuele composer-verify (content-workspace + ready render nodig) → content-E2E-ronde.
+**Files:** `src/workspaces/content/[pieceId]/page.tsx` (PublishComposer + requestPublish), `src/_locales/{en,nl,de,fr}.json`.
