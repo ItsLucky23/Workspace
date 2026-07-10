@@ -72,10 +72,62 @@ function Waveform({ url }: { url: string }) {
   return <canvas ref={ref} width={480} height={36} className="w-full h-9 rounded bg-container2 text-primary" />;
 }
 
-export default function VideoTimelineEditor({ pieceId, scenes, voiceUrl, musicUrl, voiceVolume, musicVolume, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; voiceUrl: string | null; musicUrl: string | null; voiceVolume: number; musicVolume: number; onClose: () => void }) {
+//? F8 — client-side timeline preview: play the scenes in sequence (a clip seeked to its trim-in + played, a
+//? still shown for its duration), so the user can eyeball the cut BEFORE paying for a render. Muted + local +
+//? free; transitions are approximated with a short CSS opacity fade. `urlOf` resolves a scene's asset id → a
+//? playable url (built by the piece page from its assets). Advance is timer-driven off each scene's durationMs.
+function PreviewPlayer({ scenes, urlOf, translate }: { scenes: EditScene[]; urlOf: (id: string | null) => string | null; translate: ReturnType<typeof useTranslator> }) {
+  const [idx, setIdx] = useState(-1);
+  const [fade, setFade] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = (): void => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (fadeRef.current) { clearTimeout(fadeRef.current); fadeRef.current = null; }
+  };
+  const stop = (): void => { clearTimers(); setIdx(-1); setFade(false); };
+  const playFrom = (i: number): void => {
+    if (i >= scenes.length) { stop(); return; }
+    //? Approximate a fade/xfade transition with a brief opacity dip on the incoming scene (cuts don't dip).
+    if (i > 0 && scenes[i]?.transitionIn !== 'cut') { setFade(true); fadeRef.current = setTimeout(() => { setFade(false); }, 250); }
+    setIdx(i);
+    timerRef.current = setTimeout(() => { playFrom(i + 1); }, Math.max(300, scenes[i]?.durationMs ?? 1000));
+  };
+  useEffect(() => () => { clearTimers(); }, []);
+
+  const cur = idx >= 0 ? scenes[idx] : null;
+  const curVideo = cur ? urlOf(cur.videoAssetId) : null;
+  const curImage = cur ? urlOf(cur.imageAssetId) : null;
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v && curVideo && cur) { v.currentTime = cur.startTrimMs / 1000; void v.play().catch(() => { /* autoplay may be blocked; the frame still shows */ }); }
+  }, [idx, curVideo, cur]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <WsButton icon={idx >= 0 ? 'stop' : 'play'} variant="secondary" onClick={() => { if (idx >= 0) stop(); else playFrom(0); }}>{translate({ key: idx >= 0 ? 'workspaces.timeline.stopPreview' : 'workspaces.timeline.preview' })}</WsButton>
+        {idx >= 0 && <span className="text-xs text-muted">{translate({ key: 'workspaces.timeline.scene' })} {idx + 1}/{scenes.length}</span>}
+      </div>
+      {idx >= 0 && (
+        <div className={`w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center transition-opacity duration-200 ${fade ? 'opacity-0' : 'opacity-100'}`}>
+          {curVideo
+            // eslint-disable-next-line jsx-a11y/media-has-caption -- muted local preview of the user's own clip; captions n/a
+            ? <video ref={videoRef} src={curVideo} muted autoPlay playsInline className="w-full h-full object-contain" />
+            : (curImage ? <img src={curImage} alt="" className="w-full h-full object-contain" /> : <Icon name="film" className="text-2xl text-muted" />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, voiceUrl, musicUrl, voiceVolume, musicVolume, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; assetUrls: Record<string, string>; voiceUrl: string | null; musicUrl: string | null; voiceVolume: number; musicVolume: number; onClose: () => void }) {
   const translate = useTranslator();
   const { runContentOp } = useWorkspaces();
   useEscapeKey(onClose);
+  const urlOf = useMemo(() => (id: string | null): string | null => (id ? (assetUrls[id] ?? null) : null), [assetUrls]);
 
   const [local, setLocal] = useState<EditScene[]>(() => scenes.toSorted((a, b) => a.order - b.order));
   const [selected, setSelected] = useState(0);
@@ -162,6 +214,9 @@ export default function VideoTimelineEditor({ pieceId, scenes, voiceUrl, musicUr
             </div>
           )}
         <div className="text-xs text-muted">{totalLabel}</div>
+
+        {/* F8 — free client-side preview of the cut before rendering. */}
+        {local.length > 0 && <PreviewPlayer scenes={local} urlOf={urlOf} translate={translate} />}
 
         {sel && (
           <div className="rounded-xl border border-container1-border bg-container1 p-3 flex flex-col gap-2">

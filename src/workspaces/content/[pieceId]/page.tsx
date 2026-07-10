@@ -280,6 +280,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [showTimeline, setShowTimeline] = useState(false);
 
   const piece = useMemo(() => content.pieces.find((p) => p.id === id), [content.pieces, id]);
+  //? F8 — a resolved assetId → playable-url map for the timeline preview (scenes carry only asset ids). Declared
+  //? BEFORE the `!piece` early return so the hook order is stable (rules-of-hooks); empty when the piece is absent.
+  const sceneAssetUrls = useMemo(() => Object.fromEntries((piece?.assets ?? []).map((a): [string, string] => [a.id, assetHref(a.url) ?? '']).filter(([, u]) => u.length > 0)), [piece?.assets]);
 
   if (!piece) {
     return (
@@ -504,7 +507,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
       </div>
       {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}
       {editImageAsset && <ImageEditor pieceId={piece.id} asset={{ id: editImageAsset.id, url: editImageAsset.url }} onClose={() => { setEditImageAsset(null); }} />}
-      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} voiceUrl={piece.voiceUrl} musicUrl={piece.musicUrl} voiceVolume={piece.voiceVolume} musicVolume={piece.musicVolume} onClose={() => { setShowTimeline(false); }} />}
+      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} assetUrls={sceneAssetUrls} voiceUrl={piece.voiceUrl} musicUrl={piece.musicUrl} voiceVolume={piece.voiceVolume} musicVolume={piece.musicVolume} onClose={() => { setShowTimeline(false); }} />}
     </div>
   );
 }
