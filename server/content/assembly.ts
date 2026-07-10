@@ -34,7 +34,7 @@ export async function assembleContent(
   //? V5/F2 audio-track — the piece's background music + sfx + per-track gains (voice / ducked music) for the mix.
   const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
   const sfx = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'sfx' }, orderBy: { createdAt: 'desc' } });
-  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true } });
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true } });
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
   const timeline = beats.map((b) => ({ order: b.order, text: b.text, imageAssetId: b.imageAssetId ?? null, durationMs: b.durationMs ?? 3000 }));
@@ -101,9 +101,12 @@ export async function assembleContent(
 
   //? Attempt the REAL ffmpeg render; degrade to a valid-shaped stub when assets are still `stub://`
   //? (dummy mode) or ffmpeg/Docker is unavailable — the pipeline stays green without keys/Docker.
+  //? F1 — the piece's chosen aspect ratio (9:16 shorts/reels, 1:1, default 16:9) reaches the renderer.
+  //? Previously assemble never passed `format`, so every render was 16:9 regardless of the piece.
+  const aspect = piece?.aspectRatio ?? '16:9';
   const render = useScenes
-    ? await renderScenes({ scenes: renderScenesInput, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
-    : await renderTimeline({ beats: renderBeats, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts);
+    ? await renderScenes({ scenes: renderScenesInput, format: aspect, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts)
+    : await renderTimeline({ beats: renderBeats, format: aspect, voiceUrl: voice?.url ?? null, musicUrl: music?.url ?? null, sfxUrl: sfx?.url ?? null, ...(typeof piece?.voiceVolume === 'number' ? { voiceVolume: piece.voiceVolume } : {}), ...(typeof piece?.musicVolume === 'number' ? { musicVolume: piece.musicVolume } : {}) }, opts);
   const stub = !render.ok;
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.

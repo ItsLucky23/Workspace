@@ -49,6 +49,8 @@ export interface SyncParams {
     referenceId?: string; description?: string; assetUrl?: string; tags?: string[];
     //? M3 — long-form target duration for content-run-pipeline (was missing from the contract).
     durationMs?: number;
+    //? F1 — render aspect ratio ('16:9' | '9:16' | '1:1') persisted on the piece + used by assemble.
+    aspectRatio?: string;
   };
   user: SessionLayout;
   functions: Functions;
