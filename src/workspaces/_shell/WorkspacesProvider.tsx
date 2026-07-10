@@ -1093,6 +1093,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      //? I1 — run the built-in CI at a ticket's MR head (projectAdmin ci-run op → Conductor → runPipeline).
+      runCi: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
       //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes
       //? (Conductor single-writer). The editor calls these so structural edits survive a refresh.
       createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

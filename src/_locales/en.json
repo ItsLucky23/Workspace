@@ -1111,6 +1111,8 @@
       "ragNotIndexed": "Code not indexed yet"
     },
     "mr": {
+        "runCi": "Run CI",
+        "aiReview": "AI review",
       "loading": "Loading merge request…",
       "loadFailed": "Could not load the merge request.",
       "retry": "Retry",

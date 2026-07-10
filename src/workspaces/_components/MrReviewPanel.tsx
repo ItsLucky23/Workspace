@@ -72,7 +72,7 @@ export default function MrReviewPanel({ ticket }: { ticket: Ticket }) {
 
 function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
   const translate = useTranslator();
-  const { mrAction, currentUser } = useWorkspaces();
+  const { mrAction, currentUser, runCi } = useWorkspaces();
   const [busy, setBusy] = useState<null | 'approve' | 'merge' | 'rollback'>(null);
 
   const isOpen = mr.status === 'open';
@@ -140,6 +140,8 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex items-center gap-2">
+              {/* I1 — run the built-in CI at this MR's head (ci-run op, previously no button). */}
+              <WsButton variant="ghost" icon="wave-square" disabled={busy !== null} onClick={() => { runCi(ticketKey); }}>{translate({ key: 'workspaces.mr.runCi' })}</WsButton>
               <WsButton variant="secondary" icon="circle-check" disabled={busy !== null || alreadyApproved} onClick={approve}>
                 {translate({ key: alreadyApproved ? 'workspaces.mr.approved' : 'workspaces.mr.approve' })}
               </WsButton>

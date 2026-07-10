@@ -169,6 +169,8 @@ export interface WorkspacesCtx {
   //? Pipeline (7a.2) — full per-stage config from the DB composites.
   stageConfigs: PipelineStageCfg[];
   saveStageConfig: (cfg: PipelineStageCfg) => void;
+  //? I1 — run the built-in CI at a ticket's MR head (ci-run control-op via projectAdmin).
+  runCi: (ticketKey: string) => void;
   //? R1 — durably ADD / REMOVE / REORDER pipeline stages (was React-state-only → lost on refresh).
   createStage: (input: { key: string; name: string; kind?: string }) => void;
   deleteStage: (stageKey: string) => void;
