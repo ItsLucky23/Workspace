@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (12)
+## Lessons (13)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -25,6 +25,7 @@
 | 0010 | A static import at server.ts top can build the default Prisma client before secrets resolve | 🟠 high | server/boot, secret-manager, prisma | — | `docs/lessons/0010-static-import-breaks-secret-resolution-order.md` |
 | 0011 | A form opened via menuHandler.open renders ABOVE WorkspacesProvider — useWorkspaces() throws | 🟠 high | src/workspaces/_shell, menuHandler, react-context | — | `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md` |
 | 0012 | prisma generate EPERMs on the locked query-engine DLL — never blanket-kill node, never --no-engine | 🟠 high | prisma, schema-change, windows, dev-server | — | `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md` |
+| 0013 | .eslintcache holds stale type-aware results after prisma generate — phantom "error typed" lint on a new field | 🟡 medium | prisma, schema-change, eslint, dev-tooling | — | `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md` |
 
 ## Takeaways
 
@@ -123,3 +124,11 @@ A component rendered via `menuHandler.open(...)` (or any portal above the Router
 **Find the exact holder, don't blanket-kill `node`** (that would also kill Claude Code, MCP servers, the other agent). Identify it: `Get-Process node | ? { $_.Modules | ? { $_.FileName -like '*query_engine-windows*' } }`, then `Get-CimInstance Win32_Process -Filter "ProcessId=<id>"` for the command line + parent chain. If a **supervisor** (`@luckystack/devkit` `supervisor.js`) owns it, stop the SUPERVISOR (and the launching `npm run server` / cmd), not just the server child, so it stops respawning — then regenerate, then *restart `npm run server`** to leave the environment as you found it. The `/goal` "backend DOWN on schema change" authorization covers this. The DLL on disk is version-tied (not schema-tied); for an ADDITIVE optional field only the client TS types need refreshing, but you still must regenerate in normal (library) mode with the DLL free. **Never use `prisma generate --no-engine`** in this repo — it breaks the runtime datasource. If you tried it, recover with a normal `npm run prisma:generate` once the DLL is free.
 
 → `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md`
+
+### 0013 — .eslintcache holds stale type-aware results after prisma generate — phantom "error typed" lint on a new field
+
+**0013** · medium · prisma, schema-change, eslint, dev-tooling · 2026-07-10
+
+After a `prisma generate` / schema change, if lint reports `error typed` / `no-unsafe-*` on a **new** model field while `tsc` is clean, it's the eslint cache — `rm -f .eslintcache` and re-run `npm run lint`. The signal is the **tsc-clean vs eslint-error disagreement on a Prisma field** — don't start casting or re-typing the code to satisfy eslint; the code is fine, the cache is stale. Related Windows/prisma pitfall on the generate step itself: [[0012-prisma-generate-eperm-locked-engine-dll]].
+
+→ `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md`
