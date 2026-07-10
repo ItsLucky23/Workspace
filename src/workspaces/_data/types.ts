@@ -265,6 +265,7 @@ export interface ContentAssetSummary {
   startedAt?: number;    // epoch ms the job left the queue + began — the UI elapsed-timer anchor (status='processing')
   regenerable?: boolean; // I1: a ready, AI-generated (not imported) asset can be regenerated / varied
   variant?: boolean;     // I2: this asset was regenerated/varied from another (has a parent in the version lineage)
+  critique?: string;     // F5: a stored AI critique of an image asset (content-critique-image)
 }
 
 //? V1 — a timeline VIDEO SCENE surfaced to the editor: a real clip (or a still) with trim + a transition.

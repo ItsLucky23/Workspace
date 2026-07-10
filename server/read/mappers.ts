@@ -98,12 +98,15 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
   //? I1 — regenerable = a ready, AI-generated (has a MediaJob), non-imported asset.
   const imported = typeof m === 'object' && m !== null && 'imported' in m && m.imported === true;
   const regenerable = Boolean(job) && a.status === 'ready' && !imported;
+  //? F5 — a stored AI critique (from content-critique-image) surfaces under the image asset.
+  const critique = typeof m === 'object' && m !== null && 'critique' in m && typeof m.critique === 'string' ? m.critique : undefined;
   return {
     id: a.id, kind: a.kind, url: a.url ?? '', status, stub,
     ...(stale || job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
     ...(stale || !job?.startedAt ? {} : { startedAt: job.startedAt.getTime() }),
     ...(regenerable ? { regenerable: true } : {}),
     ...(a.parentId ? { variant: true } : {}),
+    ...(critique ? { critique } : {}),
   };
 }
 

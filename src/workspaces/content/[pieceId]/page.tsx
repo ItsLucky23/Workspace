@@ -103,7 +103,7 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? One produced asset: a thumbnail for openable images, else an icon, with its kind + a stub/status badge,
 //? an open/download link when reachable, and — for a finished render — a publish button per connected
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
-function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
   const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
@@ -158,7 +158,19 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditR
         <div className="flex items-center gap-1 px-2 pb-2">
           <button type="button" onClick={() => { onEditRegion(asset); }} title={translate({ key: 'workspaces.editor.edit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.editor.edit' })}</button>
           <button type="button" onClick={() => { onEditImage(asset); }} title={translate({ key: 'workspaces.imageEditor.edit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="sliders" /> {translate({ key: 'workspaces.imageEditor.edit' })}</button>
+          {/* F5 — AI critique: "what should change about this photo" (advisory; the model sees the pixels). */}
+          <button type="button" onClick={() => { onCritique(asset.id); }} title={translate({ key: 'workspaces.content.critique' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="comment-dots" /> {translate({ key: 'workspaces.content.critique' })}</button>
         </div>
+      )}
+      {/* F7 — video-to-video restyle ("make it cinematic") on a ready video asset. */}
+      {asset.kind === 'video' && asset.status === 'ready' && !asset.stub && asset.url.length > 0 && (
+        <div className="flex items-center gap-1 px-2 pb-2">
+          <button type="button" onClick={() => { onRestyle(asset.id); }} title={translate({ key: 'workspaces.content.restyle' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="film" /> {translate({ key: 'workspaces.content.restyle' })}</button>
+        </div>
+      )}
+      {/* F5 — surface a stored critique under the image so the user sees the feedback. */}
+      {asset.critique && asset.critique.length > 0 && (
+        <div className="px-2 pb-2 text-[10px] text-muted whitespace-pre-line border-t border-container2-border pt-1.5">{asset.critique}</div>
       )}
       {/* I1 — regenerate + variations for a ready AI-generated asset (uses the current direction as a tweak). */}
       {asset.regenerable && (
@@ -247,12 +259,34 @@ export default function ContentPiece({ params }: { params: Record<string, string
     })();
   };
 
+  //? B4 — the € cost of a media feature from the snapshot cost table (0 = unknown/free).
+  const costForFeature = (feature: string): number => content.mediaCosts.find((c) => c.feature === feature)?.cents ?? 0;
+  //? A paid-op confirm that SHOWS the price (× count where relevant) — closes the B4 "silent expensive tweak" gap.
+  const confirmPaid = async (feature: string, count = 1): Promise<boolean> => {
+    const cents = costForFeature(feature) * count;
+    const label = cents > 0 ? ` (≈ ${euro(cents)}${count > 1 ? ` — ${String(count)}×` : ''})` : '';
+    return menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: `${translate({ key: 'workspaces.content.costWarning' })}${label}` });
+  };
+
   //? I1 — regenerate an asset (N variations), using the current free-form direction as the tweak. Costs money.
   const regenerate = (assetId: string, count: number) => {
     void (async () => {
-      const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.content.confirmTitle' }), content: translate({ key: 'workspaces.content.costWarning' }) });
-      if (!ok) return;
+      //? B4 — show the € amount × count (was a generic "costs money" with no price).
+      if (!(await confirmPaid('image-gen', count))) return;
       runContentOp('content-regenerate', piece.id, { assetId, count: String(count), ...(extra.trim() ? { tweak: extra.trim() } : {}) });
+    })();
+  };
+
+  //? F5 — AI critique of an image asset ("what should change about this photo"). Advisory + cheap → no
+  //? cost-confirm; the result lands on the asset (metadata.critique) via a snapshot refresh.
+  const critique = (assetId: string) => {
+    runContentOp('content-critique-image', piece.id, { assetId, ...(extra.trim() ? { prompt: extra.trim() } : {}) });
+  };
+  //? F7 — video-to-video restyle ("make this clip cinematic"). Paid → cost-confirm with the € amount.
+  const restyle = (assetId: string) => {
+    void (async () => {
+      if (!(await confirmPaid('video-restyle'))) return;
+      runContentOp('content-video-restyle', piece.id, { assetId, prompt: extra.trim() || 'cinematic, warm colour grade, shallow depth of field' });
     })();
   };
 
@@ -359,7 +393,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onRestyle={restyle} translate={translate} />)}
                 </div>
               )}
             </div>
