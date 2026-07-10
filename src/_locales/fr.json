@@ -968,6 +968,17 @@
       "ticketPlural": "tickets",
       "runawayNote": "Le contrôle d’emballement (détection de blocage/inactivité) fait passer une session en « besoin d’input » — indépendamment de tout plafond de dépense."
     },
+      "timetravel": {
+        "button": "Version passée",
+        "title": "Aperçu d’une version passée",
+        "mode": "Version",
+        "mode_commit": "Commit spécifique",
+        "mode_revert": "Main moins un commit",
+        "mode_asof": "À une date",
+        "commitPh": "sha du commit",
+        "revertPh": "sha du commit à retirer",
+        "preview": "Aperçu"
+      },
     "ticket": {
       "tabOverview": "Aperçu",
       "tabTerminal": "Terminal",

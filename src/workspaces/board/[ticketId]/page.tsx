@@ -178,6 +178,36 @@ function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; works
 //? C2 agent controls + preview launcher on the ticket. Pause/resume/kill drive the engine's
 //? context-methods (the engine skips the auto-turn while a live editor is open — editGuard).
 //? Open preview starts the ticket's dev server (Project.devCommand) and surfaces the URL.
+//? T1/T3 — the time-travel form: pick a raw commit, "main minus commit X", or "as of a date" → a past-version
+//? preview. Submits a RefSpec to timeTravelPreview (git-only resolve → ephemeral ref-preview container).
+type TravelSpec = { kind: 'commit'; value: string } | { kind: 'revert'; value: string } | { kind: 'asof'; whenMs: number };
+function TimeTravelForm({ onSubmit, translate }: { onSubmit: (spec: TravelSpec) => void; translate: ReturnType<typeof useTranslator> }) {
+  const [mode, setMode] = useState<'commit' | 'revert' | 'asof'>('commit');
+  const [value, setValue] = useState('');
+  const [when, setWhen] = useState('');
+  const modeItems: DropdownItem[] = (['commit', 'revert', 'asof'] as const).map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.timetravel.mode_${m}` }) }));
+  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.timetravel.title' })}</div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-common">{translate({ key: 'workspaces.timetravel.mode' })}</span>
+        <Dropdown size="sm" items={modeItems} value={modeItems.find((it) => it.id === mode)} onChange={(it) => { setMode(it.value === 'revert' ? 'revert' : (it.value === 'asof' ? 'asof' : 'commit')); }} />
+      </div>
+      {mode === 'asof'
+        ? <input type="datetime-local" value={when} onChange={(e) => { setWhen(e.target.value); }} className={inputCls} />
+        : <input value={value} onChange={(e) => { setValue(e.target.value); }} placeholder={translate({ key: mode === 'revert' ? 'workspaces.timetravel.revertPh' : 'workspaces.timetravel.commitPh' })} className={inputCls} />}
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="clock-rotate-left" onClick={() => {
+          if (mode === 'asof') { if (when) onSubmit({ kind: 'asof', whenMs: new Date(when).getTime() }); return; }
+          const v = value.trim(); if (v) onSubmit({ kind: mode, value: v });
+        }}>{translate({ key: 'workspaces.timetravel.preview' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function TicketControls({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
@@ -197,6 +227,20 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
     else setPreview({ loading: false, err: true });
   };
 
+  //? T1/T3 — time-travel preview: open the ticket's app at a PAST version (a raw commit, "main minus commit X",
+  //? or "as of a date"). Resolves the spec (git-only) → an ephemeral ref-preview container. The timeTravelPreview
+  //? routes existed but had NO caller; this wires them.
+  const timeTravel = (spec: { kind: 'commit'; value: string } | { kind: 'revert'; value: string } | { kind: 'asof'; whenMs: number }): void => {
+    setPreview({ loading: true });
+    void apiRequest({ name: 'workspaces/timeTravelPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, branch: ticket.branch ?? 'main', spec } }).then((r) => {
+      if (r.status === 'success' && r.result.ok && r.result.url) { setPreview({ loading: false, url: r.result.url }); globalThis.open(r.result.url, '_blank'); }
+      else setPreview({ loading: false, err: true });
+    });
+  };
+  const openTimeTravel = (): void => {
+    void menuHandler.open(<TimeTravelForm translate={translate} onSubmit={(spec) => { void menuHandler.close(); timeTravel(spec); }} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
+  };
+
   return (
     <div className="px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
       <WsButton variant="ghost" icon="pause" disabled={ctx.workspacePaused} onClick={() => { ctx.pauseTicket(ticket.id); }}>{translate({ key: 'workspaces.ticket.pauseAgent' })}</WsButton>
@@ -206,6 +250,8 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
       <WsButton variant="secondary" icon="display" disabled={preview.loading} onClick={() => { void openPreview(); }}>
         {translate({ key: preview.loading ? 'workspaces.ticket.previewOpening' : 'workspaces.ticket.openPreview' })}
       </WsButton>
+      {/* T1/T3 — preview a PAST version (commit / main-minus-X / as-of). */}
+      <WsButton variant="ghost" icon="clock-rotate-left" disabled={preview.loading} onClick={openTimeTravel}>{translate({ key: 'workspaces.timetravel.button' })}</WsButton>
       {preview.url !== undefined && <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-xs">{preview.url}</a>}
       {preview.err === true && <span className="text-xs text-wrong">{translate({ key: 'workspaces.ticket.previewFailed' })}</span>}
     </div>

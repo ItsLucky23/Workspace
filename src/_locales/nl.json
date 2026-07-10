@@ -968,6 +968,17 @@
       "ticketPlural": "tickets",
       "runawayNote": "Runaway-beheersing (vastloop-/idle-detectie) schaalt een sessie op naar “input nodig” — los van welke uitgavenlimiet dan ook."
     },
+      "timetravel": {
+        "button": "Oude versie",
+        "title": "Bekijk een oude versie",
+        "mode": "Versie",
+        "mode_commit": "Specifieke commit",
+        "mode_revert": "Main min een commit",
+        "mode_asof": "Op een datum",
+        "commitPh": "commit-sha",
+        "revertPh": "commit-sha om te verwijderen",
+        "preview": "Preview"
+      },
     "ticket": {
       "tabOverview": "Overzicht",
       "tabTerminal": "Terminal",

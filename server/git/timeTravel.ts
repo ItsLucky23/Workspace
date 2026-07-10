@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
-import { workspaceDataDir } from './repoStore';
+import { bareMirrorPathFor } from './repoStore';
 import { isSafeRef } from '../container/runtime';
 
 //? Run git, capturing exit code + stdout/stderr (never throws — the caller branches on `code`, e.g. a revert
@@ -24,8 +24,9 @@ function git(args: string[], cwd?: string): Promise<{ code: number; out: string;
   });
 }
 
-//? The per-workspace bare mirror path (mirrors runtime/repoStore).
-export function bareMirrorDir(workspaceId: string): string { return path.join(workspaceDataDir(workspaceId), 'repo.git'); }
+//? R3-b — the per-PROJECT bare mirror path (with the legacy-fallback resolution shared with repoStore/runtime).
+//? Was per-workspace → time-travel looked at the wrong repo in a multi-project workspace.
+export function bareMirrorDir(workspaceId: string, projectId: string): string { return bareMirrorPathFor(workspaceId, projectId); }
 
 //? A short git-ref-safe slug.
 export function synthSlug(seed: string): string { return seed.toLowerCase().replaceAll(/[^a-z0-9]+/g, '').slice(0, 12) || 'x'; }
@@ -93,9 +94,9 @@ export async function resolveRefSpec(bareDir: string, branch: string, spec: RefS
 }
 
 //? Workspace wrappers (resolve the bare mirror path from the workspace id).
-export function commitAsOfForWorkspace(workspaceId: string, branch: string, whenMs: number): Promise<string> {
-  return commitAsOf(bareMirrorDir(workspaceId), branch, whenMs);
+export function commitAsOfForWorkspace(workspaceId: string, projectId: string, branch: string, whenMs: number): Promise<string> {
+  return commitAsOf(bareMirrorDir(workspaceId, projectId), branch, whenMs);
 }
-export function prepareRevertRefForWorkspace(workspaceId: string, branch: string, sha: string): Promise<SyntheticRefResult> {
-  return prepareRevertRef(bareMirrorDir(workspaceId), branch, sha);
+export function prepareRevertRefForWorkspace(workspaceId: string, projectId: string, branch: string, sha: string): Promise<SyntheticRefResult> {
+  return prepareRevertRef(bareMirrorDir(workspaceId, projectId), branch, sha);
 }

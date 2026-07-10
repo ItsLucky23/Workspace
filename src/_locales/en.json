@@ -968,6 +968,17 @@
       "ticketPlural": "tickets",
       "runawayNote": "Runaway control (stuck/idle detection) escalates a session to “needs input” — independent of any spend cap."
     },
+      "timetravel": {
+        "button": "Past version",
+        "title": "Preview a past version",
+        "mode": "Version",
+        "mode_commit": "Specific commit",
+        "mode_revert": "Main minus a commit",
+        "mode_asof": "As of a date",
+        "commitPh": "commit sha",
+        "revertPh": "commit sha to remove",
+        "preview": "Preview"
+      },
     "ticket": {
       "tabOverview": "Overview",
       "tabTerminal": "Terminal",

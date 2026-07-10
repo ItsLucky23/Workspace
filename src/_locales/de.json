@@ -968,6 +968,17 @@
       "ticketPlural": "Tickets",
       "runawayNote": "Die Runaway-Kontrolle (Stuck-/Idle-Erkennung) eskaliert eine Session zu „Eingabe nötig“ — unabhängig von jedem Ausgabenlimit."
     },
+      "timetravel": {
+        "button": "Alte Version",
+        "title": "Alte Version ansehen",
+        "mode": "Version",
+        "mode_commit": "Bestimmter Commit",
+        "mode_revert": "Main minus einen Commit",
+        "mode_asof": "Zu einem Datum",
+        "commitPh": "Commit-SHA",
+        "revertPh": "zu entfernender Commit-SHA",
+        "preview": "Vorschau"
+      },
     "ticket": {
       "tabOverview": "Übersicht",
       "tabTerminal": "Terminal",

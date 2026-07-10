@@ -28,8 +28,11 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || !ticketKey || !branch || (kind !== 'commit' && kind !== 'revert' && kind !== 'asof')) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
+  //? R3-b — resolve the ticket's PROJECT so time-travel reads the right per-project bare mirror.
+  const ticket = await functions.db.prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { projectId: true } });
+  if (!ticket) return { status: 'error', errorCode: 'api.invalidRequest' };
   //? Resolve the time-travel spec → a concrete ref (or a typed conflict/error the client surfaces + can offer AI help on).
-  const resolved = await resolveRefSpec(bareMirrorDir(workspaceId), branch, spec);
+  const resolved = await resolveRefSpec(bareMirrorDir(workspaceId, ticket.projectId), branch, spec);
   if (!resolved.ok || !resolved.ref) {
     return { status: 'success', result: { ok: false, conflict: resolved.conflict === true, error: resolved.error ?? 'ref.unresolved' } };
   }
