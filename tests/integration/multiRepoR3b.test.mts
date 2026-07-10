@@ -64,6 +64,17 @@ try {
   assert(!existsSync(legacyBare), 'the legacy path is gone after migration');
   assert(existsSync(path.join(projectDataDir(wsId, projC.id), 'repo.git', 'MARKER')), 'the repo now lives in the project slot');
   eq(migrateLegacyRepoLayout([{ workspaceId: wsId, projectId: projC.id }]), 0, 'migration is idempotent (no legacy left)');
+
+  //? RESILIENCE — a legacy repo that could NOT be migrated (e.g. Windows EPERM: a running container holds
+  //? repo.git) must still WORK: a project with no own repo but a legacy per-workspace repo present falls back
+  //? to the legacy path, so the workspace is never broken by a failed/pending migration.
+  const projD = await prisma.project.create({ data: { workspaceId: wsId, name: 'Unmigrated', gitlabPath: 'ws/unmig', stack: 'node' } });
+  const legacyBare2 = path.join(workspaceDataDir(wsId), 'repo.git');
+  execFileSync('git', ['init', '--bare', '-q', legacyBare2]);
+  assert(!existsSync(path.join(projectDataDir(wsId, projD.id), 'repo.git')), 'projD has no own repo (migration did not run)');
+  assert(isLinked(wsId, projD.id), 'a project with only a legacy per-workspace repo still reports linked (fallback)');
+  const h = await branchHead(wsId, projD.id, 'HEAD').catch(() => '');
+  void h; // a bare-init repo has no commits; the point is isLinked resolves the legacy path without throwing
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

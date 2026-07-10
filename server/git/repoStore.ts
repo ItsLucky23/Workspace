@@ -37,11 +37,26 @@ export function workspaceDataDir(workspaceId: string): string {
 export function projectDataDir(workspaceId: string, projectId: string): string {
   return path.join(workspaceDataDir(workspaceId), 'projects', projectId);
 }
+//? R3-b resilience: the ROOT a project's repo/worktrees live under. Normally the per-project dir, BUT if that
+//? project has NO repo yet AND a LEGACY per-workspace `repo.git` still exists (a migration that hasn't run or
+//? failed — e.g. a Windows EPERM because a running container holds the file), fall back to the legacy root so
+//? the existing repo keeps working. A migrated/new project always uses its own dir → full multi-repo isolation.
+function projectRoot(workspaceId: string, projectId: string): string {
+  const projDir = projectDataDir(workspaceId, projectId);
+  if (existsSync(path.join(projDir, 'repo.git'))) return projDir;
+  if (existsSync(path.join(workspaceDataDir(workspaceId), 'repo.git'))) return workspaceDataDir(workspaceId);
+  return projDir;
+}
 function bareRepoPath(workspaceId: string, projectId: string): string {
-  return path.join(projectDataDir(workspaceId, projectId), 'repo.git');
+  return path.join(projectRoot(workspaceId, projectId), 'repo.git');
+}
+//? Exported for the container runtime, which mounts the project's bare mirror into the ticket container
+//? (same legacy-fallback resolution as the git functions).
+export function bareMirrorPathFor(workspaceId: string, projectId: string): string {
+  return bareRepoPath(workspaceId, projectId);
 }
 function worktreePath(workspaceId: string, projectId: string, ticketKey: string): string {
-  return path.join(projectDataDir(workspaceId, projectId), 'worktrees', ticketKey);
+  return path.join(projectRoot(workspaceId, projectId), 'worktrees', ticketKey);
 }
 
 //? R3-b one-time migration: move a legacy per-WORKSPACE repo (`data/workspaces/<ws>/repo.git` +
@@ -54,13 +69,22 @@ export function migrateLegacyRepoLayout(pairs: { workspaceId: string; projectId:
     const legacyBare = path.join(workspaceDataDir(workspaceId), 'repo.git');
     if (!existsSync(legacyBare)) continue;
     const targetDir = projectDataDir(workspaceId, projectId);
-    const targetBare = bareRepoPath(workspaceId, projectId);
+    //? STRICT project path here (never the legacy-fallback) — the target is where we MOVE the repo TO.
+    const targetBare = path.join(targetDir, 'repo.git');
     if (existsSync(targetBare)) continue; // already migrated / project already has its own repo
-    mkdirSync(targetDir, { recursive: true });
-    for (const name of ['repo.git', 'worktrees', 'draft.Dockerfile']) {
-      const from = path.join(workspaceDataDir(workspaceId), name);
-      if (existsSync(from)) renameSync(from, path.join(targetDir, name));
-    }
+    //? Per-workspace resilience: if the repo.git rename fails (e.g. Windows EPERM — a running container holds
+    //? the file), SKIP this workspace and leave the legacy layout intact. The projectRoot() read-fallback keeps
+    //? that workspace working on the legacy path until the file is free (next boot with no holder). Never a
+    //? half-move: repo.git is renamed FIRST; only if it succeeds do worktrees/draft follow.
+    const [err] = tryCatchSync(() => {
+      mkdirSync(targetDir, { recursive: true });
+      renameSync(legacyBare, targetBare); // the critical one — atomic; throws (caught) if locked
+      for (const name of ['worktrees', 'draft.Dockerfile']) {
+        const from = path.join(workspaceDataDir(workspaceId), name);
+        if (existsSync(from)) renameSync(from, path.join(targetDir, name));
+      }
+    });
+    if (err) { console.warn(`[R3-b] repo migration for ${workspaceId} deferred (${err.message.split(':')[0]}) — using legacy fallback`); continue; }
     moved += 1;
   }
   return moved;

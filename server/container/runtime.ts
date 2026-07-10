@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import { workspaceDataDir } from '../git/repoStore';
+import { bareMirrorPathFor } from '../git/repoStore';
 import { ensureEgressInfra, egressLaunchArgs } from './egress';
 import { serviceEnvArgs } from './serviceEnv';
 
@@ -47,9 +47,9 @@ function safe(s: string): string {
 //? commit gets its OWN ephemeral container and never clobbers the ticket's tip worker container.
 export function containerName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
 function volumeName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `wsvol-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
-//? R3-b — the container clones from the owning PROJECT's bare mirror (was per-workspace → a 2nd
-//? project's ticket would clone the 1st project's repo).
-function bareMirrorPath(workspaceId: string, projectId: string): string { return path.join(workspaceDataDir(workspaceId), 'projects', projectId, 'repo.git'); }
+//? R3-b — the container clones from the owning PROJECT's bare mirror (was per-workspace → a 2nd project's
+//? ticket would clone the 1st project's repo). Uses the shared legacy-fallback resolution.
+const bareMirrorPath = bareMirrorPathFor;
 
 //? T1 — a git ref (SHA / branch / tag) is safe to interpolate into the clone shell ONLY if it's plain
 //? `[0-9a-zA-Z._/-]` and carries no `..` (range / path-traversal). Pure + exported for the caller to gate on.
