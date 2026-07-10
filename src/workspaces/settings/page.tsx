@@ -152,7 +152,13 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack } = useWorkspaces();
+  //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
+  const SERVICE_PRESETS = useMemo(() => [
+    { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
+    { key: 'rabbitmq', label: 'RabbitMQ' }, { key: 'elasticsearch', label: 'Elasticsearch' }, { key: 'minio', label: 'MinIO (S3)' }, { key: 'mailpit', label: 'Mailpit' },
+  ], []);
+  const [servicePreset, setServicePreset] = useState('postgres');
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
@@ -306,6 +312,27 @@ export default function AccountSettings() {
               <Row key={b.id}>
                 <span className="flex items-center gap-2 text-sm text-title min-w-0"><Icon name="diagram-project" className="text-muted" /> {b.kind} <span className="text-xs text-muted">{b.status}{b.sizeBytes > 0 ? ` · ${String(Math.round(b.sizeBytes / 1_048_576))} MB` : ''}</span></span>
                 {b.status === 'ready' && b.downloadUrl ? <a href={b.downloadUrl} className="text-xs text-primary hover:underline shrink-0">{translate({ key: 'workspaces.account.download' })}</a> : <span className="text-xs text-disabled shrink-0">{b.error ?? '—'}</span>}
+              </Row>
+            ))}
+          </Card>
+
+          {/* K1/K3 — Services: spin up a third-party service stack (Kafka/Postgres/…) to develop/test against. */}
+          <Card title={translate({ key: 'workspaces.services.title' })} desc={translate({ key: 'workspaces.services.desc' })}>
+            <Row>
+              <span className="flex items-center gap-2 min-w-0">
+                <Dropdown size="sm" items={SERVICE_PRESETS.map((p) => ({ id: p.key, value: p.key, item: p.label }))} value={SERVICE_PRESETS.map((p) => ({ id: p.key, value: p.key, item: p.label })).find((it) => it.id === servicePreset)} onChange={(it) => { setServicePreset(String(it.value)); }} />
+              </span>
+              <WsButton variant="secondary" onClick={() => { provisionServiceStack({ name: servicePreset, preset: servicePreset }); }}>{translate({ key: 'workspaces.services.provision' })}</WsButton>
+            </Row>
+            {serviceStacks.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
+            {serviceStacks.map((s) => (
+              <Row key={s.id}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className={`inline-flex items-center gap-1 text-xs ${s.status === 'running' ? 'text-correct' : (s.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${s.status === 'running' ? 'bg-correct' : (s.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} /></span>
+                  <span className="text-sm font-medium text-title">{s.name}</span>
+                  <span className="text-xs text-muted truncate">{s.services.join(', ')}</span>
+                </span>
+                <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.services.teardown' }), content: s.name }).then((ok) => { if (ok) teardownServiceStack(s.name); }); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.services.teardown' })}</button>
               </Row>
             ))}
           </Card>

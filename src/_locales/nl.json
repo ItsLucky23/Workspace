@@ -614,6 +614,13 @@
       "tokenPlaceholder": "glpat-••••••••••••",
       "renameWorkspaceTooltip": "Workspace hernoemen"
     },
+      "services": {
+        "title": "Services",
+        "desc": "Start een externe service (Kafka, Postgres, Redis…) om tegen te ontwikkelen en testen. Bereikbaar op naam vanuit je app + de AI.",
+        "provision": "Service toevoegen",
+        "teardown": "Afbreken",
+        "empty": "Geen services actief. Kies een preset en voeg er een toe."
+      },
     "account": {
       "keyNotFound": "We konden geen private key vinden bij de opgegeven public key.",
       "defaultKeyName": "Key van {{name}}",

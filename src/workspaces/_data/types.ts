@@ -107,6 +107,15 @@ export interface ServiceSummary {
   path: string;
 }
 
+//? K1/K3 — a provisioned third-party SERVICE STACK (docker-compose: Kafka/Postgres/…). Workspace-scoped.
+//? The Services panel lists these; the compose itself is server-only (not shipped to the client).
+export interface ServiceStackSummary {
+  id: string;
+  name: string;
+  status: string;      // 'stopped' | 'running' | 'error'
+  services: string[];  // the service names inside the stack
+}
+
 //? The switcher-facing subset of a Project (ADR 0035 multi-project). The board /
 //? pipeline / sources render the ACTIVE project's data; this drives the shell picker.
 export interface ProjectSummary {

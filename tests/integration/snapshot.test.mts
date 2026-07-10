@@ -38,6 +38,16 @@ try {
   eq(snap.workspaces[0]?.id, workspaceId, 'the listed workspace is the seeded one');
   eq(snap.workspaces[0]?.role, 'owner', "the owner's role on the workspace is 'owner'");
 
+  // ---- K1/K3: provisioned service stacks are surfaced (the Services panel reads these) ----
+  assert(Array.isArray(snap.serviceStacks), 'the snapshot exposes serviceStacks (Services panel data)');
+  await prisma.serviceStack.create({ data: { workspaceId, name: 'kafka', compose: 'services:\n  kafka:\n    image: apache/kafka:3.9.0\n', services: ['kafka'], status: 'running' } });
+  const snap2 = await buildSnapshot(prisma, owner.id);
+  const kafka = snap2.serviceStacks.find((s) => s.name === 'kafka');
+  assert(kafka !== undefined, 'a provisioned stack appears in the snapshot');
+  eq(kafka?.status, 'running', 'the stack status is surfaced');
+  eq((kafka?.services ?? []).join(','), 'kafka', 'the stack service names are surfaced');
+  assert(!JSON.stringify(snap2.serviceStacks).includes('image:'), 'the raw compose is NOT shipped to the client (server-only)');
+
   // ---- tickets: keyed by DEV-#### (not ObjectId), valid status ----
   eq(snap.tickets.length, 12, 'twelve demo tickets in the snapshot');
   const dev1240 = snap.tickets.find((t) => t.id === 'DEV-1240');

@@ -29,7 +29,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -42,6 +42,7 @@ interface Snap {
   projects: ProjectSummary[];
   activeProjectId: string | null;
   services: ServiceSummary[];
+  serviceStacks: ServiceStackSummary[];
   //? The active project's persistent environments (ADR 0037).
   environments: EnvironmentSummary[];
   //? The active project's downloadable build exports (ADR 0038).
@@ -89,7 +90,7 @@ interface Snap {
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
-  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], environments: [], buildArtifacts: [],
+  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], serviceStacks: [], environments: [], buildArtifacts: [],
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
@@ -687,6 +688,24 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  //? K1/K3 — provision a third-party service stack (a K2 preset or a bring-your-own compose) + teardown.
+  //? The compose is sanitized + namespaced server-side; a preset also publishes its connection-string env.
+  const provisionServiceStackApi = useCallback((input: { name: string; preset?: string; compose?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || input.name.trim().length === 0) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/serviceProvision', version: 'v1', data: { name: input.name.trim(), ...(input.preset ? { preset: input.preset } : {}), ...(input.compose ? { compose: input.compose } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+  const teardownServiceStackApi = useCallback((stackName: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/serviceTeardown', version: 'v1', data: { name: stackName, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   const connectForgeApi = useCallback((input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => {
     const room = snap.activeWorkspaceId;
@@ -977,6 +996,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createFromTemplate: createFromTemplateApi,
       createService: createServiceApi,
       deleteService: deleteServiceApi,
+      serviceStacks: snap.serviceStacks,
+      provisionServiceStack: provisionServiceStackApi,
+      teardownServiceStack: teardownServiceStackApi,
       connectForge: connectForgeApi,
       environments: snap.environments,
       deployEnv: deployEnvApi,
@@ -1189,7 +1211,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

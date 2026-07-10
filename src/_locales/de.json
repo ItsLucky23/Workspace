@@ -614,6 +614,13 @@
       "tokenPlaceholder": "glpat-••••••••••••",
       "renameWorkspaceTooltip": "Workspace umbenennen"
     },
+      "services": {
+        "title": "Services",
+        "desc": "Starte einen Drittanbieter-Service (Kafka, Postgres, Redis…) zum Entwickeln und Testen. Per Name aus deiner App + der KI erreichbar.",
+        "provision": "Service hinzufügen",
+        "teardown": "Abbauen",
+        "empty": "Keine Services aktiv. Wähle ein Preset und füge eins hinzu."
+      },
     "account": {
       "keyNotFound": "Wir konnten keinen privaten Schlüssel für den angegebenen öffentlichen Schlüssel finden.",
       "defaultKeyName": "Schlüssel von {{name}}",

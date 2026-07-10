@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 
 export type WsView =
@@ -80,6 +80,10 @@ export interface WorkspacesCtx {
   createFromTemplate: (input: { name: string; template: string }) => void;
   createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
   deleteService: (serviceId: string) => void;
+  //? K1/K3 — provisioned third-party service stacks (Kafka/Postgres/…) + provision/teardown.
+  serviceStacks: ServiceStackSummary[];
+  provisionServiceStack: (input: { name: string; preset?: string; compose?: string }) => void;
+  teardownServiceStack: (name: string) => void;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
   //? Environments (ADR 0037): the active project's dev/staging/prod deployments + deploy/teardown.
