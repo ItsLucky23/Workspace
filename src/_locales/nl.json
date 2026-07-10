@@ -630,6 +630,12 @@
         "empty": "Nog geen API-tokens.",
         "copyNow": "Kopieer dit token nu — het wordt niet opnieuw getoond:"
       },
+      "dataExport": {
+        "title": "Workspace-data",
+        "desc": "Download een JSON-export van deze workspace (portabiliteit / back-up). Secrets worden uitgesloten.",
+        "hint": "Exporteer alles wat deze workspace bevat.",
+        "download": "Downloaden"
+      },
     "account": {
       "keyNotFound": "We konden geen private key vinden bij de opgegeven public key.",
       "defaultKeyName": "Key van {{name}}",

@@ -3397,3 +3397,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de PAT-backend (issuePat/revokePat) had geen UI + geen list-route. Toegevoegd: `listPats_v1` read-route (caller's eigen niet-ingetrokken tokens; nooit hash/raw) + `PatPanel` in settings (naam + scope-checkboxes tickets:write/content:write → issue; raw-token ÉÉN keer getoond in een waarschuwings-banner; lijst met prefix+scopes; revoke met confirm). i18n×4.
 **Verify:** **LIVE browser-E2E: token uitgegeven → raw `wsk_918f2d3a…` één keer getoond → rij verschijnt met prefix+scope+Revoke** (issue→list-cyclus bewezen). localeIntegrity 8/8 + gates tsc0·lint0·build✓.
 **Files:** `src/workspaces/_api/listPats_v1.ts` (nw), `src/workspaces/settings/page.tsx` (PatPanel), `src/_locales/{en,nl,de,fr}.json`, generated apiTypes.
+
+## 2026-07-10 — ✅ H4 workspace-data-export-knop (browser-bevestigd)
+**Wat:** de `workspaceExport`-route (H4, GDPR/backup JSON, secrets uitgesloten) had geen caller. Toegevoegd: een "Workspace-data"-card in settings met een Download-knop die de export ophaalt + client-side als JSON-bestand downloadt (Blob). i18n×4.
+**Verify:** card + Download-knop live browser-bevestigd renderend; localeIntegrity 8/8; gates tsc0·lint0·build✓.
+**Files:** `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

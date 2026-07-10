@@ -630,6 +630,12 @@
         "empty": "Noch keine API-Tokens.",
         "copyNow": "Kopiere dieses Token jetzt — es wird nicht erneut angezeigt:"
       },
+      "dataExport": {
+        "title": "Workspace-Daten",
+        "desc": "Lade einen JSON-Export dieses Workspace herunter (Portabilität / Backup). Secrets ausgeschlossen.",
+        "hint": "Exportiere alles, was dieser Workspace enthält.",
+        "download": "Herunterladen"
+      },
     "account": {
       "keyNotFound": "Wir konnten keinen privaten Schlüssel für den angegebenen öffentlichen Schlüssel finden.",
       "defaultKeyName": "Schlüssel von {{name}}",

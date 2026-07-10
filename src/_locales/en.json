@@ -630,6 +630,12 @@
         "empty": "No API tokens yet.",
         "copyNow": "Copy this token now — it will not be shown again:"
       },
+      "dataExport": {
+        "title": "Workspace data",
+        "desc": "Download a JSON export of this workspace (portability / backup). Secrets are excluded.",
+        "hint": "Export everything this workspace holds.",
+        "download": "Download"
+      },
     "account": {
       "keyNotFound": "We couldn’t find a private key for the given public key.",
       "defaultKeyName": "{{name}}'s key",

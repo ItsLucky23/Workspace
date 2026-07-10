@@ -408,6 +408,22 @@ export default function AccountSettings() {
           {/* X3 — API tokens (issue/list/revoke) for the public API. */}
           <PatPanel workspaceId={activeWorkspace.id} />
 
+          {/* H4 — download a tenant-scoped JSON export of the workspace (portability/backup; secrets excluded). */}
+          <Card title={translate({ key: 'workspaces.dataExport.title' })} desc={translate({ key: 'workspaces.dataExport.desc' })}>
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.dataExport.hint' })}</span>
+              <WsButton variant="secondary" icon="download" onClick={() => {
+                void apiRequest({ name: 'workspaces/workspaceExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
+                  if (r.status !== 'success') return;
+                  const blob = new Blob([JSON.stringify(r.result, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `workspace-${activeWorkspace.id}.json`; a.click();
+                  URL.revokeObjectURL(url);
+                });
+              }}>{translate({ key: 'workspaces.dataExport.download' })}</WsButton>
+            </Row>
+          </Card>
+
           <Card
             title={translate({ key: 'workspaces.account.sshKeysTitle' })}
             desc={translate({ key: 'workspaces.account.sshKeysDesc' })}

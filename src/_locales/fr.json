@@ -630,6 +630,12 @@
         "empty": "Aucun jeton API.",
         "copyNow": "Copiez ce jeton maintenant — il ne sera plus affiché :"
       },
+      "dataExport": {
+        "title": "Données du workspace",
+        "desc": "Téléchargez un export JSON de ce workspace (portabilité / sauvegarde). Les secrets sont exclus.",
+        "hint": "Exportez tout ce que contient ce workspace.",
+        "download": "Télécharger"
+      },
     "account": {
       "keyNotFound": "Nous n’avons pas trouvé de clé privée pour la clé publique fournie.",
       "defaultKeyName": "Clé de {{name}}",
