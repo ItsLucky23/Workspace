@@ -10,7 +10,7 @@ import path from 'node:path';
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { workspaceDataDir, pushRef } = await import('../../server/git/repoStore');
+const { workspaceDataDir, bareMirrorPathFor, pushRef } = await import('../../server/git/repoStore');
 const { pushMergedTarget } = await import('../../server/git/forge');
 const { mergeMr, approveMr } = await import('../../server/mr/service');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
@@ -28,10 +28,15 @@ try {
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
   dataDir = workspaceDataDir(wsId);
+  //? R3-b — the bare repo is per-(workspace,project). Resolve the seeded project up front so the bare clone
+  //? lands where pushRef/mergeMr look for it (`bareMirrorPathFor`), and pass projectId through.
+  const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
+  const projectId = project?.id ?? '';
   const srcDir = path.join(dataDir, '_src');
   const originBare = path.join(dataDir, 'origin.git');
-  const bareDir = path.join(dataDir, 'repo.git');
+  const bareDir = bareMirrorPathFor(wsId, projectId);
   mkdirSync(srcDir, { recursive: true });
+  mkdirSync(path.dirname(bareDir), { recursive: true });
 
   //? Source repo: main(base) + feature adds b.txt (a clean merge that advances main).
   g(srcDir, 'init', '-q', '-b', 'main');
@@ -52,14 +57,13 @@ try {
 
   //? Point the workspace's project at origin + give it a forge token (so pushMergedTarget resolves
   //? a push target). gitUrl is a local path — withAuth leaves non-https URLs untouched.
-  const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
-  await prisma.project.update({ where: { id: project?.id ?? '' }, data: { gitUrl: originBare } });
+  await prisma.project.update({ where: { id: projectId }, data: { gitUrl: originBare } });
   await prisma.workspace.update({ where: { id: wsId }, data: { forgeType: 'gitlab', gitlabUrl: 'https://gitlab.example', gitlabTokenEnc: encryptSecret('test-token') } });
 
   //? 1) pushRef directly: advance main locally by fast-forwarding to feature, then push to origin.
   g(bareDir, 'branch', '-f', 'main', 'feature');
   const bareMain = g(bareDir, 'rev-parse', 'main');
-  await pushRef({ workspaceId: wsId, gitUrl: originBare, token: 'test-token', ref: 'main' });
+  await pushRef({ workspaceId: wsId, projectId, gitUrl: originBare, token: 'test-token', ref: 'main' });
   eq(g(originBare, 'rev-parse', 'main'), bareMain, 'pushRef advanced origin/main to the local tip');
   assert(g(originBare, 'rev-parse', 'main') !== originMainBefore, 'origin/main actually moved');
 
@@ -69,9 +73,9 @@ try {
   g(originBare, 'branch', '-f', 'main', base);
 
   //? 2) mergeMr end-to-end pushes to origin. Ticket on feature + an MR targeting main, approved.
-  const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-9100', number: 9100, title: 'Push me', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature', priority: 'normal' } });
+  const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId, key: 'DEV-9100', number: 9100, title: 'Push me', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature', priority: 'normal' } });
   const featureHead = g(bareDir, 'rev-parse', 'feature');
-  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', ticketId: ticket.id, number: 1, title: 'Push me', sourceBranch: 'feature', targetBranch: 'main', status: 'open', headSha: featureHead, mergeStrategy: 'merge' } });
+  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId, ticketId: ticket.id, number: 1, title: 'Push me', sourceBranch: 'feature', targetBranch: 'main', status: 'open', headSha: featureHead, mergeStrategy: 'merge' } });
   await approveMr(prisma, wsId, mr.id, owner.id);
   const merged = await mergeMr(prisma, wsId, mr.id);
   assert(merged.ok, 'mergeMr succeeds');
@@ -80,7 +84,7 @@ try {
   eq(g(originBare, 'rev-parse', 'main'), mergedSha, "origin/main IS the merge commit — the forge received the merge");
 
   //? 3) A local-only project (no gitUrl) is a SKIP, never a push error.
-  await prisma.project.update({ where: { id: project?.id ?? '' }, data: { gitUrl: null } });
+  await prisma.project.update({ where: { id: projectId }, data: { gitUrl: null } });
   const skip = await pushMergedTarget(prisma, wsId, ticket.id, 'main');
   assert(!skip.pushed && skip.skipped === true && skip.error === undefined, 'no gitUrl → skipped (not an error)');
 } catch (error) {
