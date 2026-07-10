@@ -71,14 +71,6 @@ export async function syncForgeIssues(prisma: PrismaClient, workspaceId: string,
   return { ok: true, synced: keys.length, keys };
 }
 
-//? Back-compat: sync the workspace's FIRST project (the single-project era's entry point). Kept for
-//? the poller's per-workspace loop; multi-project callers pass an explicit projectId to syncForgeIssues.
-export async function syncGitlabIssues(prisma: PrismaClient, workspaceId: string): Promise<GitlabSyncResult> {
-  const project = await prisma.project.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
-  if (!project) return { ok: false, synced: 0, keys: [], error: 'forge.notConfigured' };
-  return syncForgeIssues(prisma, workspaceId, project.id);
-}
-
 function fetchIssues(forge: ResolvedForge): Promise<ForgeIssue[]> {
   return forge.mode === 'github' ? fetchGithubIssues(forge.base, forge.repoPath, forge.token ?? '') : fetchGitlabIssues(forge.base, forge.repoPath, forge.token ?? '');
 }

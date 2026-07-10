@@ -1,7 +1,8 @@
 //? R3 — webhook issue-routing across MULTIPLE projects (the multi-repo #8 gap: every issue landed on project #1).
 //? Verifies: parseWebhookEvent extracts the source repo (GitHub full_name / GitLab path_with_namespace); and
-//? ingestIssueEvent routes the ticket to the project whose linked repo MATCHES, falling back to the first project
-//? for an unknown/absent repo (single-project = zero regression).
+//? ingestIssueEvent routes the ticket to the project whose linked repo MATCHES. In a MULTI-project workspace an
+//? unroutable repo is SKIPPED (not dumped on an arbitrary project); a SINGLE-project workspace still falls back
+//? (zero regression).
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
@@ -42,10 +43,27 @@ try {
   const ticketA = await prisma.ticket.findFirst({ where: { workspaceId: wsId, key: 'DEV-43' }, select: { projectId: true } });
   eq(ticketA?.projectId, projA.id, 'the second issue routed to project A');
 
-  // an unknown/absent repo falls back to the first project (no crash, zero regression)
+  // an unknown repo in a MULTI-project workspace is SKIPPED, not mis-routed to an arbitrary project.
   const evX = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/unknown' }, object_attributes: { iid: 44, action: 'open', title: 'Unrouted', state: 'opened' } });
   const keyX = await ingestIssueEvent(prisma, wsId, evX);
-  eq(keyX, 'DEV-44', 'an unroutable issue still ingests (falls back to the first project)');
+  eq(keyX, null, 'an unroutable issue in a multi-project workspace is skipped (not dumped on project A)');
+  eq(await prisma.ticket.count({ where: { workspaceId: wsId, key: 'DEV-44' } }), 0, 'no ticket was created for the unroutable issue');
+
+  // ...but in a SINGLE-project workspace an unknown/absent repo still falls back (zero regression).
+  //? `createBlankWorkspace` seeds exactly ONE project (gitlabPath=''); an event repo that matches nothing
+  //? therefore has a single unambiguous target to fall back to.
+  const solo = await createBlankWorkspace(prisma, owner.id, 'Solo WS');
+  const soloWs = solo.workspaceId;
+  try {
+    const soloProj = await prisma.project.findFirst({ where: { workspaceId: soloWs }, select: { id: true } });
+    const evS = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/mismatch' }, object_attributes: { iid: 45, action: 'open', title: 'Solo fallback', state: 'opened' } });
+    const keyS = await ingestIssueEvent(prisma, soloWs, evS);
+    eq(keyS, 'DEV-45', 'a single-project workspace still ingests an unroutable issue (fallback)');
+    const ticketS = await prisma.ticket.findFirst({ where: { workspaceId: soloWs, key: 'DEV-45' }, select: { projectId: true } });
+    eq(ticketS?.projectId, soloProj?.id, 'it lands on the single project');
+  } finally {
+    await cleanupWorkspace(prisma, soloWs, [owner.id]).catch(() => undefined);
+  }
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

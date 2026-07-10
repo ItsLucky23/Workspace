@@ -3428,3 +3428,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** `retrieve`-project-scoping al gedekt door ragProjectScope 5/5 (blijft groen); threading type-checked. Gates tsc0·lint0·build✓.
 **Gerapporteerd (niet gefixt, user beslist):** poller `gitlabSync.ts:77` + `webhookIngest.ts:102` (findFirst-eerste-project → issue-mis-routing in multi-project), `ragStatus` (UI-status, laag), `interviewer/role.ts:38` (content-domein).
 **Files:** `server/ai/workspaceChat.ts`, `src/workspaces/_api/aiChat_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/interviewer/page.tsx`.
+
+## 2026-07-10 — ✅ Bug-fix: issue-routing naar het juiste project (multi-project)
+**Wat:** twee findFirst-eerste-project-plekken uit de R3-b-audit gefixt. (1) `gitlabSync.syncGitlabIssues` — dode back-compat-wrapper (0 aanroepers; de echte poller `pollLinkedProjects` itereert al per project) → verwijderd. (2) `webhookIngest.ingestIssueEvent` — viel bij géén repo-match terug op het EERSTE project → mis-routing in een multi-project-workspace. Nu: repo-match blijft leidend; bij géén match valt het alleen terug als de workspace precies 1 project heeft (ondubbelzinnig, zero-regressie), anders skip + log (nooit stille mis-route).
+**Verify:** `webhookRouting` uitgebreid 10/10 (multi-project-onbekende-repo → geskipt + 0 tickets; single-project → fallback intact); forge 26/26, forgeConnect 13/13, multiProject 17/17, webhookAction 12/12 blijven groen. Gates tsc0·lint0·build✓.
+**Files:** `server/git/gitlabSync.ts`, `server/git/webhookIngest.ts`, `tests/integration/webhookRouting.test.mts`.

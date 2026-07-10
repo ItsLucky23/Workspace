@@ -96,10 +96,19 @@ async function resolveProjectByRepo(prisma: PrismaClient, workspaceId: string, r
 export async function ingestIssueEvent(prisma: PrismaClient, workspaceId: string, event: ForgeIssueEvent): Promise<string | null> {
   if (event.kind !== 'issue' || event.iid <= 0) return null;
   //? R3 — route to the project whose linked repo MATCHES the webhook's source repo (multi-repo): match
-  //? `gitlabPath` (or the trailing owner/name of `gitUrl`) against the event repo. Fall back to the first
-  //? project when there is no match (single-project workspaces / an unroutable event) — zero regression.
+  //? `gitlabPath` (or the trailing owner/name of `gitUrl`) against the event repo.
   let project = event.repo ? await resolveProjectByRepo(prisma, workspaceId, event.repo) : null;
-  project ??= await prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+  //? No repo match → only fall back to "the project" when the workspace has exactly ONE (unambiguous,
+  //? zero-regression for single-project workspaces). In a MULTI-project workspace, dumping an unroutable
+  //? event onto an arbitrary first project is worse than skipping — drop it + log (never silent mis-route).
+  if (!project) {
+    const some = await prisma.project.findMany({ where: { workspaceId }, select: { id: true }, take: 2 });
+    if (some.length === 1) project = some[0] ?? null;
+    else {
+      console.warn(`[webhookIngest] issue DEV-${String(event.iid)}: repo "${event.repo ?? '?'}" matched no project in workspace ${workspaceId} (${String(some.length)}+ projects) — skipped to avoid mis-routing`);
+      return null;
+    }
+  }
   if (!project) return null;
   const key = `DEV-${String(event.iid)}`;
   const common = { title: event.title, description: event.description, labels: event.labels, issueUrl: event.url };
