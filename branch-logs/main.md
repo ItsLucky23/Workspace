@@ -3486,3 +3486,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 ## 2026-07-10 — 🔧 E2E browser-fix: DNS-instructie interpoleerde niet ({domain} → {{domain}})
 **Wat:** browser-E2E van het D deploy-DNS-panel: het panel rendert live (subdomein/custom-domain/commit-sha-velden, 0 console-errors), maar de DNS-hint toonde letterlijk `{domain}`. De param-placeholder-conventie is `{{domain}}` (dubbele accolades), niet enkele. Gefixt in 4 locales → toont nu "Point preview.mijndomein.nl via CNAME…". D-UI E2E-bevestigd.
 **Files:** `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-10 — ✅ D/E/F E2E-ronde afgerond
+**E2E-resultaten:** (1) volledige backend-suite (218 files) parallel groen; mergePush R3-b-staleness gefixt. (2) D deploy-DNS-panel LIVE browser-geverifieerd (subdomein/custom-domain/commit-sha-velden renderen, 0 console-errors) + een echte i18n-bug gevonden & gefixt (`{domain}`→`{{domain}}` interpolatie). (3) registratie→Dev-workspace-flow live. (4) "via workspace-AI": alle D/E/F-actie-ops zijn opCatalog-`enabled` (assistant-proposable) — env-deploy-hint aangevuld met pinnedCommit/subdomain/customDomain zodat de AI "zet commit X op DNS Y" in één call kan.
+**Staande live-ronde-afhankelijkheden (extern, altijd uitgesteld):** E stack-picker-UI (DevCommandCard) rendert pas met een gelinkte GitLab-repo in een Dev-module-workspace; live Docker-deploy + Caddy-TLS (echt publiek domein) + live fal/ffmpeg-media (echte keys). De backend-logica hiervan is volledig unit/integratie-bewezen.
+**Files:** `server/ai/opCatalog.ts`.

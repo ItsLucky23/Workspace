@@ -132,9 +132,10 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   // ---- environments / deploy
   'env-deploy': {
     mode: 'enabled',
-    hint: 'deploy the active project to a persistent environment. params: kind (dev|staging|demo — prod is ONLY reachable via env-promote), serviceId?',
+    hint: 'deploy the active project to a persistent environment ("publish commit X on DNS Y" in one call). params: kind (dev|staging|demo — prod is ONLY reachable via env-promote), serviceId?, pinnedCommit? (a sha to freeze a demo at), subdomain? (a chosen subdomain on the base domain), customDomain? (a user-owned domain, served with auto-TLS)',
     //? SEC7 — no direct prod deploys (the Conductor rejects them too); prod goes through env-promote.
-    params: { kind: { kind: 'enum', required: true, values: ['dev', 'staging', 'demo'] }, serviceId: { kind: 'string' } },
+    //? D2/D3/D4 — the DNS + pin params so the assistant can do "put commit <sha> on preview.mydomain.com".
+    params: { kind: { kind: 'enum', required: true, values: ['dev', 'staging', 'demo'] }, serviceId: { kind: 'string' }, pinnedCommit: { kind: 'string' }, subdomain: { kind: 'string' }, customDomain: { kind: 'string' } },
   },
   'env-teardown': {
     mode: 'enabled', destructive: true,
