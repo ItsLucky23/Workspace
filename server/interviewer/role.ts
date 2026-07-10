@@ -9,6 +9,7 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag/index';
+import { resolveProjectId } from '../orchestrator/projectResolve';
 import { parseFindings, recordFindings } from './findings';
 
 //? Pure prompt builder (unit-testable). `focus` narrows the review (e.g. "the auth flow"); empty =
@@ -34,8 +35,11 @@ export function registerInterviewerRole(): void {
     run: async (ctx) => {
       const focus = typeof ctx.params.focus === 'string' ? ctx.params.focus : '';
       //? Ground the ideas in the real codebase via RAG (top chunks for the focus, or a broad query).
+      //? R3-b — scope to the trigger's target project (or the workspace's first) so a multi-project
+      //? workspace grounds on a DETERMINISTIC project, not whichever one indexed last.
       const query = focus.trim().length > 0 ? focus : 'architecture, reliability, code quality, UX, security, product gaps';
-      const [, chunks] = await tryCatch(() => retrieve(getPrismaClient(), ctx.workspaceId, query, 6));
+      const projId = await resolveProjectId(getPrismaClient(), ctx.workspaceId, typeof ctx.params.projectId === 'string' ? ctx.params.projectId : null);
+      const [, chunks] = await tryCatch(() => retrieve(getPrismaClient(), ctx.workspaceId, query, 6, undefined, projId ?? undefined));
       const context = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
       const { system, prompt } = buildInterviewerPrompt(focus, context);
       const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: 'Interviewer · improvement ideas' }));

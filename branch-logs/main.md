@@ -3433,3 +3433,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** twee findFirst-eerste-project-plekken uit de R3-b-audit gefixt. (1) `gitlabSync.syncGitlabIssues` — dode back-compat-wrapper (0 aanroepers; de echte poller `pollLinkedProjects` itereert al per project) → verwijderd. (2) `webhookIngest.ingestIssueEvent` — viel bij géén repo-match terug op het EERSTE project → mis-routing in een multi-project-workspace. Nu: repo-match blijft leidend; bij géén match valt het alleen terug als de workspace precies 1 project heeft (ondubbelzinnig, zero-regressie), anders skip + log (nooit stille mis-route).
 **Verify:** `webhookRouting` uitgebreid 10/10 (multi-project-onbekende-repo → geskipt + 0 tickets; single-project → fallback intact); forge 26/26, forgeConnect 13/13, multiProject 17/17, webhookAction 12/12 blijven groen. Gates tsc0·lint0·build✓.
 **Files:** `server/git/gitlabSync.ts`, `server/git/webhookIngest.ts`, `tests/integration/webhookRouting.test.mts`.
+
+## 2026-07-10 — ✅ findFirst-audit afgesloten: dode ragStatus weg + interviewer project-scoped
+**Wat:** de laatste twee findFirst-plekken uit de audit afgehandeld. (1) `ragStatus` had 0 aanroepers → dode code verwijderd. (2) `interviewer/role.ts` grondde de RAG workspace-breed → nu via `resolveProjectId(ctx.params.projectId)` → `retrieve(..., projId)` (deterministisch project i.p.v. laatst-geïndexeerde). Daarmee is de hele "findFirst-workspace na R3-b"-categorie (U5) dicht.
+**Verify:** rag 5/5, ragProjectScope 5/5, interviewerRole 11/11, interviewerFindings 8/8. Gates tsc0·lint0·build✓.
+**Files:** `server/rag/index.ts`, `server/interviewer/role.ts`.

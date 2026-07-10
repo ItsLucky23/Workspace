@@ -108,10 +108,3 @@ export async function retrieve(
   scored.sort((a, b) => b.score - a.score);
   return scored.filter((s) => s.score > 0).slice(0, k);
 }
-
-//? Whether the workspace has any indexed chunks (for the UI status).
-export async function ragStatus(prisma: PrismaClient, workspaceId: string): Promise<{ indexed: boolean; chunks: number; commitHash: string | null }> {
-  const count = await prisma.ragEntry.count({ where: { workspaceId } });
-  const latest = count > 0 ? await prisma.ragEntry.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, select: { commitHash: true } }) : null;
-  return { indexed: count > 0, chunks: count, commitHash: latest?.commitHash ?? null };
-}
