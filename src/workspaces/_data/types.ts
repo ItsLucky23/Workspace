@@ -287,6 +287,7 @@ export interface ContentAssetSummary {
   regenerable?: boolean; // I1: a ready, AI-generated (not imported) asset can be regenerated / varied
   variant?: boolean;     // I2: this asset was regenerated/varied from another (has a parent in the version lineage)
   critique?: string;     // F5: a stored AI critique of an image asset (content-critique-image)
+  posterUrl?: string;    // F4: a poster frame extracted from a rendered mp4 (the gallery/publish thumbnail)
 }
 
 //? V1 — a timeline VIDEO SCENE surfaced to the editor: a real clip (or a still) with trim + a transition.

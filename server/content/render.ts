@@ -346,6 +346,23 @@ export async function probeHasAudio(file: string, opts: { probe?: AudioProbe } =
   return typeof out === 'string' && out.trim().length > 0;
 }
 
+//? F4 — the ffmpeg args to grab ONE poster frame from a rendered mp4 (a real thumbnail for the gallery +
+//? publish; a `render` asset's url is an .mp4, so an `<img src=mp4>` was a broken thumbnail). Seek a touch
+//? in (`-ss 0.5`, before `-i` for a fast seek) so a black first frame doesn't become the poster. Pure +
+//? exported for tests.
+export function buildPosterArgs(mp4Name: string, posterName: string): string[] {
+  return ['-y', '-ss', '0.5', '-i', `/media/${mp4Name}`, '-frames:v', '1', '-q:v', '3', `/media/${posterName}`];
+}
+
+//? Extract a poster frame for a rendered mp4 → its served `/media/<name>.jpg` url. Best-effort: any
+//? failure (no Docker, a 0.5s-shorter clip, ffmpeg error) yields null so the render itself still succeeds.
+async function extractPoster(mp4Name: string, run: FfmpegRunner): Promise<string | null> {
+  const posterName = `${mp4Name.replace(/\.mp4$/, '')}-poster.jpg`;
+  const [err, res] = await tryCatch(() => run(buildPosterArgs(mp4Name, posterName)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, posterName))) return null;
+  return `/media/${posterName}`;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {
@@ -369,7 +386,7 @@ export async function localizeAsset(url: string | null | undefined): Promise<str
   return null;
 }
 
-export interface RenderResult { ok: boolean; url?: string; storageRef?: string; error?: string }
+export interface RenderResult { ok: boolean; url?: string; storageRef?: string; posterUrl?: string; error?: string }
 
 //? Render the timeline into a real mp4. `beats` carry an image asset URL + a duration; `voiceUrl` is the
 //? optional voiceover. Localizes assets → writes the concat list → runs ffmpeg → returns the served url.
@@ -410,7 +427,9 @@ export async function renderTimeline(
   }
   const outPath = path.join(MEDIA_DIR, outName);
   if (!existsSync(outPath)) return { ok: false, error: 'render.noOutput' };
-  return { ok: true, url: `/media/${outName}`, storageRef: outPath };
+  //? F4 — a real poster thumbnail (best-effort; null just means the gallery falls back to the icon).
+  const posterUrl = await extractPoster(outName, run);
+  return { ok: true, url: `/media/${outName}`, storageRef: outPath, ...(posterUrl ? { posterUrl } : {}) };
 }
 
 //? V2 — render the multi-clip SCENE timeline into a real mp4 (the real-video path, distinct from the beat
@@ -449,5 +468,7 @@ export async function renderScenes(
   }
   const outPath = path.join(MEDIA_DIR, outName);
   if (!existsSync(outPath)) return { ok: false, error: 'render.noOutput' };
-  return { ok: true, url: `/media/${outName}`, storageRef: outPath };
+  //? F4 — a real poster thumbnail (best-effort; null just means the gallery falls back to the icon).
+  const posterUrl = await extractPoster(outName, run);
+  return { ok: true, url: `/media/${outName}`, storageRef: outPath, ...(posterUrl ? { posterUrl } : {}) };
 }

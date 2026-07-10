@@ -3438,3 +3438,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de laatste twee findFirst-plekken uit de audit afgehandeld. (1) `ragStatus` had 0 aanroepers → dode code verwijderd. (2) `interviewer/role.ts` grondde de RAG workspace-breed → nu via `resolveProjectId(ctx.params.projectId)` → `retrieve(..., projId)` (deterministisch project i.p.v. laatst-geïndexeerde). Daarmee is de hele "findFirst-workspace na R3-b"-categorie (U5) dicht.
 **Verify:** rag 5/5, ragProjectScope 5/5, interviewerRole 11/11, interviewerFindings 8/8. Gates tsc0·lint0·build✓.
 **Files:** `server/rag/index.ts`, `server/interviewer/role.ts`.
+
+## 2026-07-10 — ✅ F4 render-thumbnails (posterframe per render)
+**Wat:** een `render`-asset z'n url is een .mp4 → de galerij toonde een gebroken `<img src=mp4>`. Nu extraheert de render een echt posterframe (`ffmpeg -ss 0.5 -i out.mp4 -frames:v 1`) → `RenderResult.posterUrl` → asset-metadata → `ContentAssetSummary.posterUrl` → galerij gebruikt het als thumbnail (fallback = kind-icoon). Best-effort: poster-mislukking laat de render zelf slagen. Beide render-paden (slideshow + scene-stitch) gedekt.
+**Verify:** nieuwe unit `posterFrame` 5/5 (exacte args, seek-vóór-i, 1 frame, .jpg); render 18/18, contentAssembly 12/12, contentAssetSummary 14/14 blijven groen. Gates tsc0·lint0·ai:lint0·build✓. Live posterframe = mediaproof-ronde (zoals B5).
+**Files:** `server/content/render.ts`, `server/content/assembly.ts`, `server/read/mappers.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx`, `tests/unit/posterFrame.test.mts`.

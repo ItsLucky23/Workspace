@@ -138,15 +138,22 @@ function PublishComposer({ platform, onSubmit, translate }: { platform: string; 
 
 function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
-  const isImage = (asset.kind === 'image' || asset.kind === 'render') && href !== null && asset.status === 'ready';
+  //? F4 — a render's url is an .mp4 (can't be an <img>); use its extracted poster frame as the thumbnail.
+  //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
+  const posterHref = asset.posterUrl ? assetHref(asset.posterUrl) : null;
+  let previewSrc: string | null = null;
+  if (asset.status === 'ready') {
+    if (asset.kind === 'image') previewSrc = href;
+    else if (asset.kind === 'render') previewSrc = posterHref;
+  }
   const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
   return (
     <div className="rounded-xl border border-container2-border bg-container2 overflow-hidden flex flex-col">
       <div className="aspect-square bg-container1 flex items-center justify-center relative">
         {asset.status === 'queued' || asset.status === 'processing' ? (
           <GenProgress asset={asset} translate={translate} />
-        ) : (isImage && href ? (
-          <img src={href} alt={asset.kind} className="w-full h-full object-cover" />
+        ) : (previewSrc ? (
+          <img src={previewSrc} alt={asset.kind} className="w-full h-full object-cover" />
         ) : (
           <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className="text-2xl text-muted" />
         ))}

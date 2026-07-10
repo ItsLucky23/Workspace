@@ -116,7 +116,7 @@ export async function assembleContent(
       url: render.ok ? (render.url ?? '') : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: render.ok ? 'ready' : 'error',
-      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(render.posterUrl ? { posterUrl: render.posterUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });

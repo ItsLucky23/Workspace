@@ -100,6 +100,9 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
   const regenerable = Boolean(job) && a.status === 'ready' && !imported;
   //? F5 — a stored AI critique (from content-critique-image) surfaces under the image asset.
   const critique = typeof m === 'object' && m !== null && 'critique' in m && typeof m.critique === 'string' ? m.critique : undefined;
+  //? F4 — a real poster frame extracted from a rendered mp4 (a `render` asset's url is an .mp4, so the
+  //? gallery uses this as the thumbnail instead of a broken `<img src=mp4>`).
+  const posterUrl = typeof m === 'object' && m !== null && 'posterUrl' in m && typeof m.posterUrl === 'string' ? m.posterUrl : undefined;
   return {
     id: a.id, kind: a.kind, url: a.url ?? '', status, stub,
     ...(stale || job?.queuePosition == null ? {} : { queuePosition: job.queuePosition }),
@@ -107,6 +110,7 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
     ...(regenerable ? { regenerable: true } : {}),
     ...(a.parentId ? { variant: true } : {}),
     ...(critique ? { critique } : {}),
+    ...(posterUrl ? { posterUrl } : {}),
   };
 }
 
