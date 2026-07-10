@@ -10,6 +10,9 @@ import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
+//? R3-b — repos are per-(workspace,project); the code-RAG must be scoped to the ACTIVE project
+//? or the chat grounds on whichever project indexed last (answering about the wrong codebase).
+import { resolveProjectId } from '../orchestrator/projectResolve';
 //? X1 — the generic op-catalog: every catalog-enabled control-op becomes proposable (still
 //? propose→accept→Conductor; destructive ops carry an extra client confirm).
 import { catalogPromptLines, validateGenericAction } from './opCatalog';
@@ -161,12 +164,14 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
 }
 
 //? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
-export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string): Promise<ChatResult> {
+export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string): Promise<ChatResult> {
   const ctx = await loadCtx(prisma, workspaceId);
   //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
   //? so "how does X work?" answers from real code instead of flying blind. Best-effort — empty when
-  //? nothing is indexed.
-  const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6));
+  //? nothing is indexed. R3-b — scope to the active project so a multi-project workspace grounds on the
+  //? RIGHT repo (else `retrieve`'s fallback picks whichever project indexed last).
+  const projId = await resolveProjectId(prisma, workspaceId, projectId ?? null);
+  const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6, undefined, projId ?? undefined));
   const codeContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
   //? Q3 — ALSO ground on the PRODUCT's own capabilities (Q2 corpus), so the assistant can answer "can we edit
   //? videos? → yes, via the media module, first generate/upload a video then the timeline editor". Kept as a

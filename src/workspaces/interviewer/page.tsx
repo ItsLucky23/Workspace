@@ -40,7 +40,7 @@ const STARTERS: { icon: string; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace, interviewFindings, makeTicketFromFinding, dismissFinding } = useWorkspaces();
+  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -58,7 +58,7 @@ export default function Interviewer() {
     setDraft('');
     setBusy(true);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}) } }));
       setMessages((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) return { ...m, pending: false, text: translate({ key: 'workspaces.interviewer.error' }) };

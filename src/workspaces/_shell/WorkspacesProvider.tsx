@@ -881,7 +881,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const aiId = `a${stamp}`;
     setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}) } }));
       setChat((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) {

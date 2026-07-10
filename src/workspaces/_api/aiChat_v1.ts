@@ -16,7 +16,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; message: string };
+  data: { workspaceId: string; message: string; projectId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -28,6 +28,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? Membership gate — the AI must never expose one workspace's state to a non-member.
   const member = await functions.db.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
   if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
-  const result = await interpretChat(functions.db.prisma, workspaceId, message);
+  //? R3-b — thread the caller's active project so the code-RAG grounds on the right repo (resolver validates it).
+  const result = await interpretChat(functions.db.prisma, workspaceId, message, data.projectId);
   return { status: 'success', result };
 };
