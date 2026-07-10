@@ -14,7 +14,7 @@ import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, Media
 //? Re-exported so the fal test + callers can import the shared prompt composer from here.
 export { composeMediaPrompt } from '../prompt';
 
-const SUPPORTED: MediaFeature[] = ['image-gen', 'reference-image', 'video-gen', 'model-3d', 'avatar', 'inpaint'];
+const SUPPORTED: MediaFeature[] = ['image-gen', 'reference-image', 'video-gen', 'model-3d', 'avatar', 'inpaint', 'video-restyle'];
 
 const envStr = (name: string, fallback: string): string => (process.env[name] ?? '').trim() || fallback;
 const envNum = (name: string, fallback: number): number => Number(process.env[name] ?? '') || fallback;
@@ -43,6 +43,8 @@ function falModelFor(feature: MediaFeature, reqCheap?: boolean): string {
     'avatar': env('FAL_MODEL_AVATAR', 'fal-ai/ltx-video'),
     //? E1 — flux inpaint (region-edit). Env-overridable so the operator pins their verified inpaint endpoint.
     'inpaint': env('FAL_MODEL_INPAINT', 'fal-ai/flux-general/inpainting'),
+    //? F7 — video-to-video restyle. Env-overridable so the operator pins their verified v2v endpoint.
+    'video-restyle': env('FAL_MODEL_VIDEO_RESTYLE', 'fal-ai/ltx-video/video-to-video'),
     'tts': '', 'music': '', 'sfx': '',
   };
   return models[feature];
@@ -87,6 +89,11 @@ export function composeFalInput(req: MediaGenerationRequest): { model: string; i
   if (req.feature === 'inpaint') {
     return { model, input: { ...(req.referenceUrl ? { image_url: req.referenceUrl } : {}), ...(req.maskUrl ? { mask_url: req.maskUrl } : {}), ...restParams, prompt: composeMediaPrompt(req) } };
   }
+  //? F7 — video-restyle (video-to-video): the SOURCE video (referenceUrl) + the style prompt ("make it
+  //? cinematic") → a new video. `video_url` is the fal v2v input; the style is the prompt.
+  if (req.feature === 'video-restyle') {
+    return { model, input: { ...(req.referenceUrl ? { video_url: req.referenceUrl } : {}), ...cheapParams('video-gen', reqCheap), ...restParams, prompt: composeMediaPrompt(req) } };
+  }
   const prompt = composeMediaPrompt(req);
   const input: Record<string, unknown> = { ...cheapParams(req.feature, reqCheap), ...restParams, prompt };
   if (req.feature === 'reference-image' && req.referenceUrl) input.image_url = req.referenceUrl;
@@ -96,7 +103,7 @@ export function composeFalInput(req: MediaGenerationRequest): { model: string; i
 //? The asset kind fal produces per feature.
 const FEATURE_ASSET_KIND: Record<MediaFeature, string> = {
   'image-gen': 'image', 'reference-image': 'image', 'video-gen': 'video', 'model-3d': 'model-3d',
-  'avatar': 'avatar', 'tts': 'voice', 'music': 'music', 'sfx': 'sfx', 'inpaint': 'image',
+  'avatar': 'avatar', 'tts': 'voice', 'music': 'music', 'sfx': 'sfx', 'inpaint': 'image', 'video-restyle': 'video',
 };
 
 //? Live € cost per feature (cents) — realistic magnitudes for budgeting (video » image). Overridable
@@ -106,6 +113,7 @@ export function liveMediaCostCents(feature: MediaFeature): number {
   const costs: Record<MediaFeature, number> = {
     'image-gen': env('FAL_COST_IMAGE', 4), 'reference-image': env('FAL_COST_REFERENCE_IMAGE', 5),
     'video-gen': env('FAL_COST_VIDEO', 40), 'model-3d': env('FAL_COST_3D', 20), 'avatar': env('FAL_COST_AVATAR', 30),
+    'video-restyle': env('FAL_COST_VIDEO_RESTYLE', 45),
     'tts': 2, 'music': 6, 'sfx': 1, 'inpaint': env('FAL_COST_INPAINT', 5),
   };
   return costs[feature];

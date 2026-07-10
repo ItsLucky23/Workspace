@@ -42,6 +42,14 @@ const { composeMediaPrompt, composeFalInput, extractFalAsset, createFalProvider,
   eq((img.input as { prompt?: string }).prompt, 'x', 'input carries the prompt');
   const ref = composeFalInput({ feature: 'reference-image', prompt: 'like this', referenceUrl: 'https://ref/img.png' });
   eq((ref.input as { image_url?: string }).image_url, 'https://ref/img.png', 'reference-image carries the reference image_url');
+  //? F7 — video-restyle (video-to-video): the SOURCE video goes in as `video_url`, the style as the prompt.
+  const restyle = composeFalInput({ feature: 'video-restyle', prompt: 'cinematic, warm grade', referenceUrl: 'https://cdn/src.mp4' });
+  assert(restyle.model.length > 0, 'video-restyle resolves a v2v model');
+  eq((restyle.input as { video_url?: string }).video_url, 'https://cdn/src.mp4', 'video-restyle carries the source as video_url (not image_url)');
+  eq((restyle.input as { image_url?: string }).image_url, undefined, 'video-restyle does NOT send an image_url');
+  eq((restyle.input as { prompt?: string }).prompt, 'cinematic, warm grade', 'the style is the prompt');
+  eq(extractFalAsset('video-restyle', { video: { url: 'https://cdn/out.mp4' } })?.kind, 'video', 'video-restyle produces a video asset');
+  assert(liveMediaCostCents('video-restyle') > 0, 'video-restyle has a live cost');
 }
 
 // 3) asset extraction per model shape

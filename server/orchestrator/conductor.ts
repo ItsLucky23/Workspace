@@ -1478,6 +1478,28 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, assetId);
       return;
     }
+    case 'content-video-restyle': {
+      //? F7 — video-to-video restyle ("make this clip cinematic"): take a SOURCE video (an uploaded/generated
+      //? asset's url, or a raw referenceUrl) + a style prompt → a NEW restyled video asset (fal v2v). Chains to
+      //? the source for lineage (I2). Goes through the queue-aware generateMediaAsset (honest stub without a key).
+      const contentProjectId = str(payload, 'contentProjectId');
+      const prompt = str(payload, 'prompt');
+      let referenceUrl = str(payload, 'referenceUrl');
+      const sourceAssetId = str(payload, 'assetId');
+      if (!contentProjectId || !prompt) return;
+      if (!referenceUrl && sourceAssetId) {
+        const src = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: sourceAssetId, kind: 'video' }, select: { url: true } });
+        referenceUrl = src?.url ?? undefined;
+      }
+      if (!referenceUrl) return;
+      const r = await generateMediaAsset(prisma, { workspaceId: action.workspaceId, contentProjectId, feature: 'video-restyle', prompt, referenceUrl, label: 'Video restyle' });
+      if (r.assetId && sourceAssetId) {
+        const parent = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: sourceAssetId }, select: { id: true, parentId: true } });
+        if (parent) await prisma.contentAsset.update({ where: { id: r.assetId }, data: { parentId: parent.parentId ?? parent.id } });
+      }
+      if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
+      return;
+    }
     case 'content-regenerate': {
       //? I1 — re-run a produced asset's generation (same feature/prompt/reference/style from its MediaJob) as
       //? N NEW variations, with an optional "make it more X" tweak. Each goes through the queue-aware lifecycle

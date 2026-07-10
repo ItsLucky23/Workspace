@@ -25,6 +25,8 @@ export const CHAT_ENABLED_OPS = [
   'content-run-pipeline', 'content-advance', 'content-archive', 'content-unarchive', 'content-regenerate',
   // F5 — AI image critique (advisory, no asset write)
   'content-critique-image',
+  // F7 — video-to-video restyle (paid gen)
+  'content-video-restyle',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

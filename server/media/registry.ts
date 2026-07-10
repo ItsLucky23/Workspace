@@ -29,6 +29,7 @@ const FEATURE_KIND: Record<MediaFeature, string> = {
   'avatar': 'avatar',
   'model-3d': 'model-3d',
   'inpaint': 'image',
+  'video-restyle': 'video',
 };
 
 //? Declared STUB cost per feature (cents) — realistic-order magnitudes so the €-budget guard is
@@ -43,6 +44,7 @@ const STUB_COST_CENTS: Record<MediaFeature, number> = {
   'avatar': 30,
   'model-3d': 20,
   'inpaint': 5,
+  'video-restyle': 45,
 };
 
 //? Build a valid-shaped stub result for a feature (dummy-data mode).

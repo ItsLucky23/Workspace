@@ -160,4 +160,9 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const prompt = str(p, 'prompt');
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-critique-image', contentProjectId: pieceId, assetId, ...(prompt ? { prompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  'content-video-restyle': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId'); const prompt = str(p, 'prompt');
+    if (!pieceId || !assetId || !prompt) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-video-restyle', contentProjectId: pieceId, assetId, prompt, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
 };

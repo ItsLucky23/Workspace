@@ -16,7 +16,8 @@ export type MediaFeature =
   | 'sfx'
   | 'avatar'
   | 'model-3d'
-  | 'inpaint';         //? E1 — region-edit: an image + a mask + an instruction → a new region-edited image (fal flux-inpaint)
+  | 'inpaint'          //? E1 — region-edit: an image + a mask + an instruction → a new region-edited image (fal flux-inpaint)
+  | 'video-restyle';   //? F7 — video-to-video: a SOURCE video + a style prompt ("make it cinematic") → a NEW restyled video (fal v2v)
 
 //? A concrete media backend. `fal` = the image/video/3d gateway; `elevenlabs` = voice/sfx; `suno` =
 //? music (M2). (Assembly/render is ffmpeg — a distinct path in M4, not a gen provider. Avatar gets a
