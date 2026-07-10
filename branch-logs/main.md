@@ -3482,3 +3482,7 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 ## 2026-07-10 — 🔧 E2E-ronde D/E/F: full-suite groen + mergePush R3-b-staleness gefixt
 **Wat:** volledige backend-suite parallel gedraaid (218 files) → 216 groen, rbac een parallel-flake (7/7 geïsoleerd), en `mergePush` echt kapot: sinds de R3-b-commit vereist `pushRef` een `projectId` + de bare ligt per-project (`bareMirrorPathFor`), maar de test gebruikte nog het workspace-level `repo.git` → "path undefined". Test bijgewerkt naar de per-project-layout. Backend-E2E van D/E/F = groen.
 **Files:** `tests/integration/mergePush.test.mts`.
+
+## 2026-07-10 — 🔧 E2E browser-fix: DNS-instructie interpoleerde niet ({domain} → {{domain}})
+**Wat:** browser-E2E van het D deploy-DNS-panel: het panel rendert live (subdomein/custom-domain/commit-sha-velden, 0 console-errors), maar de DNS-hint toonde letterlijk `{domain}`. De param-placeholder-conventie is `{{domain}}` (dubbele accolades), niet enkele. Gefixt in 4 locales → toont nu "Point preview.mijndomein.nl via CNAME…". D-UI E2E-bevestigd.
+**Files:** `src/_locales/{en,nl,de,fr}.json`.

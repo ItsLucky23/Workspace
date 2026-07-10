@@ -689,7 +689,7 @@
       "promote": "Promouvoir",
       "exportBuild": "Exporter le build",
       "download": "Télécharger",
-      "subdomainPh": "sous-domaine (optionnel)", "customDomainPh": "domaine personnalisé, ex. app.mondomaine.fr (optionnel)", "dnsInstruction": "Pointez {domain} via CNAME vers votre hôte Workspaces (ou un enregistrement A vers son IP). Le HTTPS est émis automatiquement à la première visite.",
+      "subdomainPh": "sous-domaine (optionnel)", "customDomainPh": "domaine personnalisé, ex. app.mondomaine.fr (optionnel)", "dnsInstruction": "Pointez {{domain}} via CNAME vers votre hôte Workspaces (ou un enregistrement A vers son IP). Le HTTPS est émis automatiquement à la première visite.",
       "pinCommitPh": "sha du commit (optionnel)",
       "pinDeploy": "Épingler & déployer",
       "buildExports": "Builds téléchargeables",

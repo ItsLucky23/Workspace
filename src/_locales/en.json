@@ -689,7 +689,7 @@
       "promote": "Promote",
       "exportBuild": "Export build",
       "download": "Download",
-      "subdomainPh": "subdomain (optional)", "customDomainPh": "custom domain, e.g. app.mydomain.com (optional)", "dnsInstruction": "Point {domain} via CNAME to your Workspaces host (or an A-record to its IP). HTTPS is issued automatically on the first visit.",
+      "subdomainPh": "subdomain (optional)", "customDomainPh": "custom domain, e.g. app.mydomain.com (optional)", "dnsInstruction": "Point {{domain}} via CNAME to your Workspaces host (or an A-record to its IP). HTTPS is issued automatically on the first visit.",
       "pinCommitPh": "commit sha (optional)",
       "pinDeploy": "Pin & deploy",
       "buildExports": "Downloadable builds",
