@@ -621,6 +621,20 @@
         "teardown": "Abbauen",
         "empty": "Keine Services aktiv. Wähle ein Preset und füge eins hinzu."
       },
+      "db": {
+        "title": "Datenbank",
+        "desc": "Verbinde eine App-Datenbank, erstelle und wende Schema-Migrationen an und introspiziere das Schema. Prod-Anwendungen erfordern eine Bestätigung.",
+        "namePh": "Verbindungsname",
+        "urlPh": "Verbindungs-URL (verschlüsselt)",
+        "connect": "Verbinden",
+        "noConnections": "Noch keine Datenbanken verbunden.",
+        "introspect": "Introspizieren",
+        "migNamePh": "Migrationsname",
+        "sqlPh": "-- Forward-Migrations-SQL",
+        "createMigration": "Migration erstellen",
+        "apply": "Anwenden",
+        "applyProdConfirm": "Diese Migration auf PRODUKTION anwenden?"
+      },
       "pat": {
         "title": "API-Tokens",
         "desc": "Tokens für die öffentliche API ausstellen (Tickets/Inhalte aus eigenen Skripten). Das Roh-Token wird einmal angezeigt.",

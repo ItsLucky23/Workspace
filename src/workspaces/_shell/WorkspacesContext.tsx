@@ -12,7 +12,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 
 export type WsView =
@@ -84,6 +84,13 @@ export interface WorkspacesCtx {
   serviceStacks: ServiceStackSummary[];
   provisionServiceStack: (input: { name: string; preset?: string; compose?: string }) => void;
   teardownServiceStack: (name: string) => void;
+  //? ADR 0043 — DB panel: connections + migrations + the 4 control-ops.
+  dbConnections: DbConnectionSummary[];
+  migrations: MigrationSummary[];
+  dbConnect: (input: { name: string; kind: string; url: string; envKind?: string; serviceId?: string }) => void;
+  dbMigrateCreate: (input: { name: string; sql: string; rollbackSql?: string; envKind?: string }) => void;
+  dbMigrateApply: (input: { migrationId: string; approved?: boolean }) => void;
+  dbIntrospect: (connectionId: string) => void;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
   //? Environments (ADR 0037): the active project's dev/staging/prod deployments + deploy/teardown.

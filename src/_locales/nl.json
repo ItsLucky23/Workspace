@@ -621,6 +621,20 @@
         "teardown": "Afbreken",
         "empty": "Geen services actief. Kies een preset en voeg er een toe."
       },
+      "db": {
+        "title": "Database",
+        "desc": "Verbind een database van je app, schrijf en pas schema-migraties toe, en introspecteer het schema. Prod-toepassingen vereisen bevestiging.",
+        "namePh": "Verbindingsnaam",
+        "urlPh": "Verbindings-URL (versleuteld)",
+        "connect": "Verbinden",
+        "noConnections": "Nog geen databases verbonden.",
+        "introspect": "Introspecteren",
+        "migNamePh": "Migratienaam",
+        "sqlPh": "-- forward migratie-SQL",
+        "createMigration": "Migratie aanmaken",
+        "apply": "Toepassen",
+        "applyProdConfirm": "Deze migratie op PRODUCTIE toepassen?"
+      },
       "pat": {
         "title": "API-tokens",
         "desc": "Geef tokens uit voor de publieke API (tickets/content aanmaken vanuit je eigen scripts). Het ruwe token wordt één keer getoond.",

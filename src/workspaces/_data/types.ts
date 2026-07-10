@@ -116,6 +116,27 @@ export interface ServiceStackSummary {
   services: string[];  // the service names inside the stack
 }
 
+//? ADR 0043 — a user-app DATABASE connection (dev/staging/prod), for the DB panel.
+//? The URL itself is server-only (encrypted); the client sees only the metadata.
+export interface DbConnectionSummary {
+  id: string;
+  projectId: string;
+  name: string;
+  kind: string;      // 'postgres' | 'mysql' | 'mongo'
+  envKind: string;   // 'dev' | 'staging' | 'prod'
+}
+
+//? ADR 0043 — a schema migration awaiting/after apply. The DB panel lists these + drives apply.
+export interface MigrationSummary {
+  id: string;
+  projectId: string;
+  name: string;
+  envKind: string;
+  status: string;    // 'pending' | 'applied' | 'failed'
+  error?: string | null;
+  createdAt: string;
+}
+
 //? The switcher-facing subset of a Project (ADR 0035 multi-project). The board /
 //? pipeline / sources render the ACTIVE project's data; this drives the shell picker.
 export interface ProjectSummary {

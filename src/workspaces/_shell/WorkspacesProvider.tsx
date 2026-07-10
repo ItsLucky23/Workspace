@@ -29,7 +29,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 
@@ -43,6 +43,9 @@ interface Snap {
   activeProjectId: string | null;
   services: ServiceSummary[];
   serviceStacks: ServiceStackSummary[];
+  //? ADR 0043 — the active project's DB connections + migrations (DB panel).
+  dbConnections: DbConnectionSummary[];
+  migrations: MigrationSummary[];
   //? The active project's persistent environments (ADR 0037).
   environments: EnvironmentSummary[];
   //? The active project's downloadable build exports (ADR 0038).
@@ -90,7 +93,7 @@ interface Snap {
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
 const EMPTY_SNAP: Snap = {
-  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], serviceStacks: [], environments: [], buildArtifacts: [],
+  workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [],
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
@@ -753,6 +756,36 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
+  //? ADR 0043 — DB panel: connect a user-app database, create + apply a migration, or introspect a
+  //? connection's schema. All go through the projectAdmin control-op → Conductor (the only writer, B-23).
+  const dbConnectApi = useCallback((input: { name: string; kind: string; url: string; envKind?: string; serviceId?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || !snap.activeProjectId) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-connect', projectId: snap.activeProjectId ?? '', name: input.name, kind: input.kind, url: input.url, ...(input.envKind ? { envKind: input.envKind } : {}), ...(input.serviceId ? { serviceId: input.serviceId } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
+  const dbMigrateCreateApi = useCallback((input: { name: string; sql: string; rollbackSql?: string; envKind?: string }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room || !snap.activeProjectId) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-create', projectId: snap.activeProjectId ?? '', name: input.name, sql: input.sql, ...(input.rollbackSql ? { rollbackSql: input.rollbackSql } : {}), ...(input.envKind ? { envKind: input.envKind } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
+  const dbMigrateApplyApi = useCallback((input: { migrationId: string; approved?: boolean }) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-apply', migrationId: input.migrationId, ...(input.approved ? { approved: true } : {}), clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
+  const dbIntrospectApi = useCallback((connectionId: string) => {
+    const room = snap.activeWorkspaceId;
+    if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', connectionId, clientRequestId: nextReqId() }, receiver: room });
+  }, [snap.activeWorkspaceId]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
     if (room) void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name: sprintName, active: false, clientRequestId: nextReqId() }, receiver: room });
@@ -1001,6 +1034,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       serviceStacks: snap.serviceStacks,
       provisionServiceStack: provisionServiceStackApi,
       teardownServiceStack: teardownServiceStackApi,
+      dbConnections: snap.dbConnections,
+      migrations: snap.migrations,
+      dbConnect: dbConnectApi,
+      dbMigrateCreate: dbMigrateCreateApi,
+      dbMigrateApply: dbMigrateApplyApi,
+      dbIntrospect: dbIntrospectApi,
       connectForge: connectForgeApi,
       environments: snap.environments,
       deployEnv: deployEnvApi,
@@ -1220,7 +1259,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

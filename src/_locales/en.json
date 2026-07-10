@@ -621,6 +621,20 @@
         "teardown": "Tear down",
         "empty": "No services running. Pick a preset and add one."
       },
+      "db": {
+        "title": "Database",
+        "desc": "Connect a user-app database, author and apply schema migrations, and introspect the schema. Prod applies require confirmation.",
+        "namePh": "Connection name",
+        "urlPh": "Connection URL (encrypted)",
+        "connect": "Connect",
+        "noConnections": "No databases connected yet.",
+        "introspect": "Introspect",
+        "migNamePh": "Migration name",
+        "sqlPh": "-- forward migration SQL",
+        "createMigration": "Create migration",
+        "apply": "Apply",
+        "applyProdConfirm": "Apply this migration to PRODUCTION?"
+      },
       "pat": {
         "title": "API tokens",
         "desc": "Issue tokens for the public API (create tickets / content from your own scripts). The raw token is shown once.",

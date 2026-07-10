@@ -200,7 +200,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -209,6 +209,15 @@ export default function AccountSettings() {
   const [servicePreset, setServicePreset] = useState('postgres');
   //? D1/D3 — the commit to pin the demo host at (blank = follow main + auto-redeploy).
   const [pinnedCommit, setPinnedCommit] = useState('');
+  //? ADR 0043 — DB panel form state (connect a database + author a migration).
+  const DB_KINDS = useMemo(() => [{ key: 'postgres', label: 'PostgreSQL' }, { key: 'mysql', label: 'MySQL' }, { key: 'mongo', label: 'MongoDB' }], []);
+  const [dbName, setDbName] = useState('');
+  const [dbKind, setDbKind] = useState('postgres');
+  const [dbUrl, setDbUrl] = useState('');
+  const [dbEnvKind, setDbEnvKind] = useState('dev');
+  const [migName, setMigName] = useState('');
+  const [migSql, setMigSql] = useState('');
+  const dbInputCls = `h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
   const { session } = useSession<SessionLayout>();
   const setLanguage = useUpdateLanguage();
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
@@ -401,6 +410,51 @@ export default function AccountSettings() {
                   <span className="text-xs text-muted truncate">{s.services.join(', ')}</span>
                 </span>
                 <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.services.teardown' }), content: s.name }).then((ok) => { if (ok) teardownServiceStack(s.name); }); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.services.teardown' })}</button>
+              </Row>
+            ))}
+          </Card>
+
+          {/* ADR 0043 — Database: connect a user-app DB, author + apply migrations, introspect schema. */}
+          <Card title={translate({ key: 'workspaces.db.title' })} desc={translate({ key: 'workspaces.db.desc' })}>
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={dbName} onChange={(e) => { setDbName(e.target.value); }} placeholder={translate({ key: 'workspaces.db.namePh' })} className={dbInputCls} />
+                <Dropdown size="sm" items={DB_KINDS.map((k) => ({ id: k.key, value: k.key, item: k.label }))} value={DB_KINDS.map((k) => ({ id: k.key, value: k.key, item: k.label })).find((it) => it.id === dbKind)} onChange={(it) => { setDbKind(String(it.value)); }} />
+                <Dropdown size="sm" items={['dev', 'staging', 'prod'].map((k) => ({ id: k, value: k, item: k }))} value={['dev', 'staging', 'prod'].map((k) => ({ id: k, value: k, item: k })).find((it) => it.id === dbEnvKind)} onChange={(it) => { setDbEnvKind(String(it.value)); }} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={dbUrl} onChange={(e) => { setDbUrl(e.target.value); }} type="password" placeholder={translate({ key: 'workspaces.db.urlPh' })} className={`${dbInputCls} flex-1 min-w-48`} />
+                <WsButton variant="secondary" disabled={!dbName || !dbUrl} onClick={() => { dbConnect({ name: dbName, kind: dbKind, url: dbUrl, envKind: dbEnvKind }); setDbName(''); setDbUrl(''); }}>{translate({ key: 'workspaces.db.connect' })}</WsButton>
+              </div>
+            </div>
+            {dbConnections.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.db.noConnections' })}</div>}
+            {dbConnections.map((c) => (
+              <Row key={c.id}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-medium text-title">{c.name}</span>
+                  <span className="text-xs text-muted">{c.kind} · {c.envKind}</span>
+                </span>
+                <button type="button" onClick={() => { dbIntrospect(c.id); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.db.introspect' })}</button>
+              </Row>
+            ))}
+            <div className="flex flex-col gap-2 mt-2 border-t border-divider pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={migName} onChange={(e) => { setMigName(e.target.value); }} placeholder={translate({ key: 'workspaces.db.migNamePh' })} className={dbInputCls} />
+                <WsButton variant="secondary" disabled={!migName || !migSql} onClick={() => { dbMigrateCreate({ name: migName, sql: migSql, envKind: dbEnvKind }); setMigName(''); setMigSql(''); }}>{translate({ key: 'workspaces.db.createMigration' })}</WsButton>
+              </div>
+              <textarea value={migSql} onChange={(e) => { setMigSql(e.target.value); }} placeholder={translate({ key: 'workspaces.db.sqlPh' })} rows={3} className={`${dbInputCls} h-auto py-2 font-mono text-xs`} />
+            </div>
+            {migrations.map((m) => (
+              <Row key={m.id}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className={`inline-flex w-1.5 h-1.5 rounded-full ${m.status === 'applied' ? 'bg-correct' : (m.status === 'failed' ? 'bg-wrong' : 'bg-warning')}`} />
+                  <span className="text-sm font-medium text-title">{m.name}</span>
+                  <span className="text-xs text-muted">{m.envKind} · {m.status}</span>
+                  {m.error && <span className="text-xs text-wrong truncate">{m.error}</span>}
+                </span>
+                {m.status === 'pending' && (
+                  <button type="button" onClick={() => { if (m.envKind === 'prod') { void menuHandler.confirm({ title: translate({ key: 'workspaces.db.applyProdConfirm' }), content: m.name }).then((ok) => { if (ok) dbMigrateApply({ migrationId: m.id, approved: true }); }); } else { dbMigrateApply({ migrationId: m.id }); } }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.db.apply' })}</button>
+                )}
               </Row>
             ))}
           </Card>

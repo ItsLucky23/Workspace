@@ -35,7 +35,7 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
@@ -147,6 +147,8 @@ export interface WorkspaceSnapshot {
   //? The active project's declared services (monorepo build/deploy units, ADR 0035).
   services: ServiceSummary[];
   serviceStacks: ServiceStackSummary[];
+  dbConnections: DbConnectionSummary[];
+  migrations: MigrationSummary[];
   //? The active project's persistent environments (dev/staging/prod deployments, ADR 0037).
   environments: EnvironmentSummary[];
   //? The active project's recent downloadable build exports (ADR 0038).
@@ -214,7 +216,7 @@ export interface WorkspaceSnapshot {
 }
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
-  projects: [], services: [], serviceStacks: [], environments: [], buildArtifacts: [], templates: listTemplates(),
+  projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
@@ -266,6 +268,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? K1/K3 — provisioned service stacks (workspace-scoped, not per-project).
     const serviceStackRows = await tenantDb.serviceStack.findMany({ orderBy: { createdAt: 'asc' } });
     const buildArtifactRows = activeProjectId ? await tenantDb.buildArtifact.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
+    //? ADR 0043 — the active project's DB connections + migrations (for the DB panel). URLs stay server-only.
+    const dbConnectionRows = activeProjectId ? await tenantDb.dbConnection.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
+    const migrationRows = activeProjectId ? await tenantDb.migration.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
 
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
@@ -420,6 +425,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       activeProjectId,
       services: serviceRows.map((s): ServiceSummary => ({ id: s.id, projectId: s.projectId, name: s.name, path: s.path })),
       serviceStacks: serviceStackRows.map((s): ServiceStackSummary => ({ id: s.id, name: s.name, status: s.status, services: s.services })),
+      dbConnections: dbConnectionRows.map((c): DbConnectionSummary => ({ id: c.id, projectId: c.projectId, name: c.name, kind: c.kind, envKind: c.envKind })),
+      migrations: migrationRows.map((m): MigrationSummary => ({ id: m.id, projectId: m.projectId, name: m.name, envKind: m.envKind, status: m.status, ...(m.error ? { error: m.error } : {}), createdAt: m.createdAt.toISOString() })),
       environments: environmentRows.map((e): EnvironmentSummary => ({
         id: e.id, projectId: e.projectId, ...(e.serviceId ? { serviceId: e.serviceId } : {}), kind: e.kind, route: e.route, status: e.status,
         url: `${baseDomain() === 'localhost' ? 'http' : 'https'}://${e.route}/`,

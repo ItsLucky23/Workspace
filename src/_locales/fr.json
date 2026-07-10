@@ -621,6 +621,20 @@
         "teardown": "Démonter",
         "empty": "Aucun service actif. Choisissez un préréglage et ajoutez-en un."
       },
+      "db": {
+        "title": "Base de données",
+        "desc": "Connectez une base de données d'application, rédigez et appliquez des migrations de schéma, et introspectez le schéma. Les applications en prod nécessitent une confirmation.",
+        "namePh": "Nom de la connexion",
+        "urlPh": "URL de connexion (chiffrée)",
+        "connect": "Connecter",
+        "noConnections": "Aucune base de données connectée.",
+        "introspect": "Introspecter",
+        "migNamePh": "Nom de la migration",
+        "sqlPh": "-- SQL de migration",
+        "createMigration": "Créer la migration",
+        "apply": "Appliquer",
+        "applyProdConfirm": "Appliquer cette migration en PRODUCTION ?"
+      },
       "pat": {
         "title": "Jetons API",
         "desc": "Émettez des jetons pour l’API publique (créer des tickets/contenus depuis vos scripts). Le jeton brut est affiché une seule fois.",
