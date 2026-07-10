@@ -10,7 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { tryCatch } from '@luckystack/core';
+import { tryCatch, getPrismaClient } from '@luckystack/core';
 
 import { docker, containerName, launchTicketContainer } from './runtime';
 import { waitForContainerReady } from './health';
@@ -95,9 +95,12 @@ export async function openEditorForTicket(input: {
     return finalizeEditor(input.workspaceId, input.ticketKey, input.branch, name, cached);
   }
 
-  //? FRESH: ensure the ticket container (reuses if running; null ⇒ no linked repo).
+  //? FRESH: ensure the ticket container (reuses if running; null ⇒ no linked repo). R3-b — resolve
+  //? the ticket's project so the container clones from THAT project's repo.
+  const ticket = await getPrismaClient().ticket.findFirst({ where: { workspaceId: input.workspaceId, key: input.ticketKey }, select: { projectId: true } });
+  if (!ticket) return { ok: false, error: 'editor.noTicket' };
   const [launchErr, container] = await tryCatch(() => launchTicketContainer({
-    workspaceId: input.workspaceId, ticketKey: input.ticketKey, branch: input.branch, ...(input.image ? { image: input.image } : {}),
+    workspaceId: input.workspaceId, projectId: ticket.projectId, ticketKey: input.ticketKey, branch: input.branch, ...(input.image ? { image: input.image } : {}),
   }));
   if (launchErr) return { ok: false, error: `editor.launchFailed: ${String(launchErr).slice(0, 150)}` };
   if (!container) return { ok: false, error: 'editor.noContainer' };

@@ -8,6 +8,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { saveDockerfileDraft } from '../../../server/container/dockerfileDraft';
+import { resolveProjectId } from '../../../server/orchestrator/projectResolve';
 import { hasCapability, CAP } from '../../../server/control/rbac';
 
 export const rateLimit: number | false = 30;
@@ -16,7 +17,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; dockerfile: string };
+  data: { workspaceId: string; dockerfile: string; projectId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -26,6 +27,9 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || typeof data.dockerfile !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workspaceSettings);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const result = saveDockerfileDraft(workspaceId, data.dockerfile);
+  //? R3-b — write to the active/target project's own draft slot.
+  const projectId = await resolveProjectId(functions.db.prisma, workspaceId, data.projectId);
+  if (!projectId) return { status: 'error', errorCode: 'api.invalidRequest' };
+  const result = saveDockerfileDraft(workspaceId, projectId, data.dockerfile);
   return { status: 'success', result };
 };

@@ -28,7 +28,7 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   //? Ref-scoped ephemeral container (full-history clone + `git checkout <ref>` — see runtime.cloneExecArgs). K3 —
   //? inject the workspace env + service network.
   const ctx = await workspaceContainerContext(prisma, workspaceId);
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch, ref, image: resolveProjectBaseImage(project), ...ctx });
+  const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch, ref, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'preview.noContainer' };
 
   await docker(['network', 'create', NET]);

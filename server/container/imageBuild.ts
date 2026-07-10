@@ -12,7 +12,9 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import type { PrismaClient } from '@prisma/client';
 import { docker, dockerAvailable } from './runtime';
-import { workspaceDataDir, repoManifests } from '../git/repoStore';
+import { repoManifests } from '../git/repoStore';
+import { draftPath as projectDraftPath } from './dockerfileDraft';
+import { resolveProjectId } from '../orchestrator/projectResolve';
 
 import { extendsAllowedBase } from './baseImages';
 
@@ -24,17 +26,19 @@ export interface ImageBuildResult { ok: boolean; tag?: string; error?: string }
 //? S1 relaxed via the shared guard) before building — the file is Admin-editable between generate and build.
 const extendsBase = extendsAllowedBase;
 
-export async function buildProjectImage(prisma: PrismaClient, workspaceId: string): Promise<ImageBuildResult> {
+export async function buildProjectImage(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<ImageBuildResult> {
   if (!(await dockerAvailable())) return { ok: false, error: 'docker.unavailable' };
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
-  if (!project) return { ok: false, error: 'project.notFound' };
-  const draftPath = path.join(workspaceDataDir(workspaceId), 'draft.Dockerfile');
-  if (!existsSync(draftPath)) return { ok: false, error: 'dockerfile.noDraft' };
-  const draft = readFileSync(draftPath);
+  //? R3-b — build the ACTIVE/target project (resolveProjectId), not always the first one.
+  const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
+  if (!resolvedId) return { ok: false, error: 'project.notFound' };
+  const project = { id: resolvedId };
+  const dfPath = projectDraftPath(workspaceId, project.id);
+  if (!existsSync(dfPath)) return { ok: false, error: 'dockerfile.noDraft' };
+  const draft = readFileSync(dfPath);
   if (!extendsBase(draft.toString('utf8'))) return { ok: false, error: 'dockerfile.invalidBase' };
 
   //? Fold the project lockfile into the hash so a dependency bump rebuilds exactly once.
-  const manifests = await repoManifests(workspaceId);
+  const manifests = await repoManifests(workspaceId, project.id);
   const lockfile = manifests.manifests.find((m) => LOCKFILES.has(m.path.toLowerCase().split('/').at(-1) ?? ''));
   const hash = createHash('sha256').update(draft).update(lockfile?.content ?? '').digest('hex').slice(0, 16);
   const tag = `workspaces/proj-${project.id}:${hash}`;

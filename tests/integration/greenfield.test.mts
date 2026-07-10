@@ -32,19 +32,20 @@ try {
   const project = await poll(() => prisma.project.findFirst({ where: { workspaceId: wsId, name: 'My Greenfield API' } }));
   assert(project !== null, 'the greenfield project row was created');
 
-  //? The workspace now has a REAL repo with a main commit (this is what flips isLinked → container → code).
-  const linked = await poll(() => Promise.resolve(isLinked(wsId) ? true : null));
-  assert(linked === true, 'the workspace bare repo exists (isLinked)');
-  const head = await poll(() => branchHead(wsId, 'main').then((h) => (h.length > 0 ? h : null)));
+  const projId = project?.id ?? '';
+  //? The project now has a REAL repo with a main commit (this is what flips isLinked → container → code).
+  const linked = await poll(() => Promise.resolve(isLinked(wsId, projId) ? true : null));
+  assert(linked === true, 'the project bare repo exists (isLinked)');
+  const head = await poll(() => branchHead(wsId, projId, 'main').then((h) => (h.length > 0 ? h : null)));
   assert((head ?? '').length >= 7, 'main has a real commit hash');
   eq(project?.gitUrl ?? '', `greenfield://${wsId}`, 'the project is marked linked to the greenfield repo');
 
   //? The seed file-tree is actually committed on main.
-  const pkg = await showRepoFile(wsId, 'main', 'package.json');
+  const pkg = await showRepoFile(wsId, projId, 'main', 'package.json');
   assert(pkg.includes('node-api'), 'package.json from the template is committed');
-  const entry = await showRepoFile(wsId, 'main', 'src/index.js');
+  const entry = await showRepoFile(wsId, projId, 'main', 'src/index.js');
   assert(entry.includes('createServer'), 'the entry file (src/index.js) is committed + runnable');
-  const files = await listRepoFiles(wsId, 'main');
+  const files = await listRepoFiles(wsId, projId, 'main');
   assert(files.some((f) => f.path === 'package.json'), 'listRepoFiles sees the seed tree');
   console.log(`[gf] ✓ greenfield repo @ ${(head ?? '').slice(0, 8)} with ${String(files.length)} indexed file(s)`);
 } catch (error) {

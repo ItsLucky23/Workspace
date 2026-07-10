@@ -84,7 +84,7 @@ export function registerMrReviewRole(): void {
     mutates: false,
     run: async (ctx) => {
       const prisma = getPrismaClient();
-      const mrSelect = { id: true, sourceBranch: true, targetBranch: true, title: true } as const;
+      const mrSelect = { id: true, projectId: true, sourceBranch: true, targetBranch: true, title: true } as const;
       const mrId = typeof ctx.params.mrId === 'string' ? ctx.params.mrId : '';
       let mr = mrId ? await prisma.mergeRequest.findFirst({ where: { workspaceId: ctx.workspaceId, id: mrId }, select: mrSelect }) : null;
       if (!mr && ctx.ticketKey) {
@@ -93,7 +93,7 @@ export function registerMrReviewRole(): void {
       }
       if (!mr) return { kind: 'mr-review', title: 'AI MR review', body: 'No merge request to review.' };
 
-      const [, rawDiff] = await tryCatch(() => branchDiff(ctx.workspaceId, mr.targetBranch, mr.sourceBranch));
+      const [, rawDiff] = await tryCatch(() => branchDiff(ctx.workspaceId, mr.projectId, mr.targetBranch, mr.sourceBranch));
       const diffText = rawDiff ?? '';
       if (diffText.trim().length === 0) return { kind: 'mr-review', title: 'AI MR review', body: 'Empty diff — nothing to review.' };
 

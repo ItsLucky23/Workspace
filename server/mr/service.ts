@@ -41,7 +41,7 @@ export async function createMr(prisma: PrismaClient, workspaceId: string, ticket
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } });
   const cfg = normalizeGitConfig(ws?.gitConfig ?? null);
   const source = ticket.branch;
-  const headSha = await branchHead(workspaceId, source);
+  const headSha = await branchHead(workspaceId, ticket.projectId, source);
 
   const existing = await prisma.mergeRequest.findFirst({ where: { workspaceId, ticketId: ticket.id, sourceBranch: source, status: 'open' } });
   if (existing) {
@@ -116,7 +116,7 @@ export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRe
     return { ok: false, reason: gate.reason === 'ci-running' ? 'ci-running' : (gate.reason === 'ci-stale' ? 'ci-stale' : 'ci-red') };
   }
 
-  const outcome = await mergeBranches(workspaceId, mr.targetBranch, mr.sourceBranch, mr.mergeStrategy);
+  const outcome = await mergeBranches(workspaceId, mr.projectId, mr.targetBranch, mr.sourceBranch, mr.mergeStrategy);
   if (!outcome.ok) {
     if (outcome.conflict) {
       await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'conflict' } });
@@ -138,7 +138,7 @@ export async function mergeMr(prisma: PrismaClient, workspaceId: string, mergeRe
 export async function rollbackMr(prisma: PrismaClient, workspaceId: string, mergeRequestId: string): Promise<MergeMrResult> {
   const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, id: mergeRequestId } });
   if (mr?.status !== 'merged' || !mr.mergedSha) return { ok: false, reason: 'not-open' };
-  const outcome = await revertMergeCommit(workspaceId, mr.targetBranch, mr.mergedSha);
+  const outcome = await revertMergeCommit(workspaceId, mr.projectId, mr.targetBranch, mr.mergedSha);
   if (!outcome.ok) return { ok: false, reason: outcome.error === 'not-linked' ? 'not-linked' : 'error', message: outcome.error };
   //? Reopen for re-review; drop the recorded merge sha (the revert is now the target tip).
   await prisma.mergeRequest.update({ where: { id: mr.id }, data: { status: 'open', mergedAt: null, mergedSha: null } });
@@ -155,7 +155,7 @@ export async function mrForTicket(prisma: PrismaClient, workspaceId: string, tic
   const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, ticketId: ticket.id }, orderBy: { createdAt: 'desc' } });
   if (!mr) return null;
 
-  const raw = await branchDiff(workspaceId, mr.targetBranch, mr.sourceBranch);
+  const raw = await branchDiff(workspaceId, mr.projectId, mr.targetBranch, mr.sourceBranch);
   const diff = parseUnifiedDiff(raw);
 
   const threadRows = await prisma.reviewThread.findMany({ where: { workspaceId, mergeRequestId: mr.id }, orderBy: { createdAt: 'asc' } });

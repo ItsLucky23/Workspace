@@ -1,6 +1,6 @@
 {
-  "hash": "ec79d58939f82fe0",
-  "chunkCount": 201,
+  "hash": "1898b61d3e71fbdd",
+  "chunkCount": 202,
   "chunks": [
     {
       "id": "cap-001",
@@ -1207,6 +1207,12 @@
       "kind": "decision",
       "title": "0266-security-hardening-sweep",
       "text": "ADR 0266: 0266-security-hardening-sweep. The completeness/universal-tool scans surfaced a cluster of security defects (Rule 19). They fall in five groups: RBAC privilege-escalation (a `manageMembers`-only member could mint/assign admin-tier roles; the `promoteAdmin`/`demoteAdmin` capabilities were dead code; role perms had no ceiling and built-in roles were only client-locked), owner-protection (crafted sync-requests could re-role or remove the owner → dangling `ownerId`), a secret leak (internal `__`-prefixed EnvVars — provider API keys, OAuth-token JSON — were shipped in the workspace snapshot + Env tab and over the delta channel), a redacted-push regression (`PushSubscription.fullBodyOptIn` was stored but never read, so the full notification body always hit the lock screen despite the D80-reversed posture), a webhook SSRF hole (the trigger `webhook` action POSTed to any URL incl. loopback/metadata), a prod-deploy bypass (the direct prod Deploy button/op skipped the promote ladder's approval + green-CI + security gates), a missing confirm on the destructive `env-teardown`, a caller-scoping bug on single-notification mark-read, and the git clone/push token travelling in argv/URL. Decision: Fix all of them at the authoritative layer (the Conductor / server read-path / helpers), not the UI: - **SEC1** `change-role`: owner membership is never re-roled through this op; promoting INTO an admin-tier role requires `promoteAdmin`; re-roling a member who currently HOLDS an admin-tier"
+    },
+    {
+      "id": "adr-0267",
+      "kind": "decision",
+      "title": "0267-multi-repo-per-project-storage",
+      "text": "ADR 0267: 0267-multi-repo-per-project-storage. `repoStore` keyed every on-disk git artifact by `workspaceId` alone: `data/workspaces/<ws>/repo.git` + `worktrees/` + `draft.Dockerfile`. A workspace can hold N `Project` rows (ADR 0035) and the metadata layer (project switcher, webhook routing by repo) supported them, but the physical storage did not — so **linking or greenfield-ing a 2nd project silently destroyed the 1st**: `cloneRepo` did `rmSync(bare)` before cloning, `initGreenfieldRepo` no-op'd when a bare repo already existed (2nd project got NO repo), worktrees were cut from the one shared clone, and `imageBuild`/`dockerfileGen` targeted `findFirst`-by-workspace (always the oldest project). This was the scan-flagged \"R3-b\" gap (\"2nd repo overwrites the 1st\"), deliberately deferred as too cross-cutting. Decision: Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/<ws>/projects/<proj>/{repo.git,worktrees/,draft.Dockerfile,merge-wt,revert-wt}`. - Every repo-touching `repoStore` function takes `projectId` (path helpers `projectDataDir`/ `bareRepoPath`/`worktreePath`; `cloneRepo`/`initGreenfieldRepo`/`addWorktree`/`repoStatus`/ `branchHead`/`branchDiff`/`mergeBranches`/`revertMergeCommit`/`listRepoFiles`/`repoHead`/ `showRepoFile`/`repoManifests`/`listRepoDocs`/`pushBranch`/`pushRef`/`isLinked`). - `cloneRepo` now `rmSync`-es only ITS OWN project slot; `initGreenfieldRepo` no-ops only when THAT project already has a repo — a sibling is never touch"
     }
   ]
 }

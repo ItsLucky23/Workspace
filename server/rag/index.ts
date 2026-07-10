@@ -10,6 +10,7 @@
 import type { PrismaClient } from '@prisma/client';
 
 import { listRepoFiles, repoHead } from '../git/repoStore';
+import { resolveProjectId } from '../orchestrator/projectResolve';
 import { embedTexts, embedOne, cosine, embedTag } from './embed';
 
 const CHUNK_MAX = 1200;
@@ -35,10 +36,13 @@ function chunkFile(content: string): string[] {
 export async function indexWorkspace(
   prisma: PrismaClient, workspaceId: string, opts: { projectId?: string; commitHash?: string } = {},
 ): Promise<IndexResult> {
-  const commitHash = opts.commitHash ?? (await repoHead(workspaceId));
+  //? R3-b — index the named project's repo (defaults to the active/first project).
+  const projectId = await resolveProjectId(prisma, workspaceId, opts.projectId);
+  if (!projectId) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: embedTag(), error: 'rag.noRepo' };
+  const commitHash = opts.commitHash ?? (await repoHead(workspaceId, projectId));
   if (commitHash.length === 0) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: embedTag(), error: 'rag.noRepo' };
 
-  const files = await listRepoFiles(workspaceId, commitHash);
+  const files = await listRepoFiles(workspaceId, projectId, commitHash);
   if (files.length === 0) return { ok: false, files: 0, chunks: 0, commitHash, embedder: embedTag(), error: 'rag.noFiles' };
 
   //? Build chunks + the text we embed (path-prefixed so path/identifier queries match).

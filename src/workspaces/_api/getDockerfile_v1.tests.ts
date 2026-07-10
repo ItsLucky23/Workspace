@@ -81,8 +81,12 @@ export const customTests: CustomTestCase[] = [
         const workspaceId = await seededWorkspaceId(ctx, userId);
         ctx.expect.ok(workspaceId !== undefined, 'the first-login seed created a workspace');
         if (workspaceId === undefined) return;
+        //? R3-b — the draft is per-project; seed + read the workspace's first project's slot.
+        const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
+        ctx.expect.ok(project !== null, 'the seed created a project');
+        if (!project) return;
         const draft = `FROM ${BASE_IMAGE}\nRUN echo persisted\n`;
-        const saved = saveDockerfileDraft(workspaceId, draft);
+        const saved = saveDockerfileDraft(workspaceId, project.id, draft);
         ctx.expect.ok(saved.ok, 'seeding the draft via saveDockerfileDraft succeeds');
         const res = await ctx.callApi<{ workspaceId: string }, GetResponse>({ workspaceId });
         ctx.expect.ok(res.status === 'success' && res.result.ok, 'result.ok is true once a draft exists');

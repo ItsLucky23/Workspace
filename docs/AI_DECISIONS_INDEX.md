@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (184)
+## Decisions (185)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -197,6 +197,7 @@
 | 0264 | Named design looks + references in the agent prompts | 🟢 accepted | design, agent-context, rag, grounding, ai-libraries-accounts | — | `docs/decisions/0264-named-looks-in-agent-prompt.md` |
 | 0265 | chat op catalog | 🟢 accepted | assistant, control-api, rbac, security | — | `docs/decisions/0265-chat-op-catalog.md` |
 | 0266 | security hardening sweep | 🟢 accepted | security, rbac, ssrf, push, git | — | `docs/decisions/0266-security-hardening-sweep.md` |
+| 0267 | multi repo per project storage | 🟢 accepted | git, multi-project, storage, r3b | — | `docs/decisions/0267-multi-repo-per-project-storage.md` |
 
 ## Summaries
 
@@ -1673,6 +1674,14 @@ A shared `useEscapeKey(onClose)` hook wired into the three new overlays (ImageRe
 Fix all of them at the authoritative layer (the Conductor / server read-path / helpers), not the UI:
 
 → `docs/decisions/0266-security-hardening-sweep.md`
+
+### 0267 — multi repo per project storage
+
+**0267** · accepted · tags: git, multi-project, storage, r3b · 2026-07-10
+
+Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/<ws>/projects/<proj>/{repo.git,worktrees/,draft.Dockerfile,merge-wt,revert-wt}`.
+
+→ `docs/decisions/0267-multi-repo-per-project-storage.md`
 
 ## Code governed by decisions
 

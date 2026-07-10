@@ -47,7 +47,9 @@ function safe(s: string): string {
 //? commit gets its OWN ephemeral container and never clobbers the ticket's tip worker container.
 export function containerName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `ws-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
 function volumeName(workspaceId: string, ticketKey: string, refSuffix?: string): string { return `wsvol-${safe(workspaceId)}-${safe(ticketKey)}${refSuffix ? `-ref-${refSuffix}` : ''}`; }
-function bareMirrorPath(workspaceId: string): string { return path.join(workspaceDataDir(workspaceId), 'repo.git'); }
+//? R3-b — the container clones from the owning PROJECT's bare mirror (was per-workspace → a 2nd
+//? project's ticket would clone the 1st project's repo).
+function bareMirrorPath(workspaceId: string, projectId: string): string { return path.join(workspaceDataDir(workspaceId), 'projects', projectId, 'repo.git'); }
 
 //? T1 — a git ref (SHA / branch / tag) is safe to interpolate into the clone shell ONLY if it's plain
 //? `[0-9a-zA-Z._/-]` and carries no `..` (range / path-traversal). Pure + exported for the caller to gate on.
@@ -82,11 +84,11 @@ export async function dockerAvailable(): Promise<boolean> {
 //? then clones the frozen `DEV-####` branch into `/work` AS the agent user (so the
 //? checkout is agent-owned). Rolls back the volume/container on a partial failure (§8.3).
 //? Returns null when no repo is linked (no mirror to clone).
-export async function launchTicketContainer(args: { workspaceId: string; ticketKey: string; branch: string; image?: string; ref?: string; env?: Record<string, string>; serviceNetwork?: string }): Promise<ContainerInfo | null> {
-  const { workspaceId, ticketKey, branch, ref } = args;
+export async function launchTicketContainer(args: { workspaceId: string; projectId: string; ticketKey: string; branch: string; image?: string; ref?: string; env?: Record<string, string>; serviceNetwork?: string }): Promise<ContainerInfo | null> {
+  const { workspaceId, projectId, ticketKey, branch, ref } = args;
   //? Prefer the project's L2 image (Q-CT-IMAGESEL) when the caller resolved one, else L1.
   const image = args.image ?? BASE_IMAGE;
-  const mirror = bareMirrorPath(workspaceId);
+  const mirror = bareMirrorPath(workspaceId, projectId);
   if (!existsSync(mirror)) return null;
   //? T1 — a ref-preview gets its OWN ephemeral container/volume (ref-scoped name), so it never disturbs the
   //? ticket's tip worker container and two refs of one branch can run side by side.

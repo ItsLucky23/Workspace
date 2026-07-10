@@ -194,6 +194,17 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? the default client is built with the unresolved DATABASE_URL pointer).
   const { startTicketWatchdog } = await import('./orchestrator/watchdog');
   startTicketWatchdog();
+  //? R3-b — one-time migration of any legacy per-WORKSPACE repo layout into the first project's slot.
+  //? Idempotent; dynamic import (secrets-order). Best-effort — never blocks boot.
+  void (async () => {
+    const [{ getPrismaClient }, { migrateLegacyRepoLayout }] = await Promise.all([import('@luckystack/core'), import('./git/repoStore')]);
+    const prisma = getPrismaClient();
+    const projects = await prisma.project.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true, workspaceId: true } });
+    const firstByWs = new Map<string, string>();
+    for (const p of projects) if (!firstByWs.has(p.workspaceId)) firstByWs.set(p.workspaceId, p.id);
+    const moved = migrateLegacyRepoLayout([...firstByWs].map(([workspaceId, projectId]) => ({ workspaceId, projectId })));
+    if (moved > 0) console.log(`[R3-b] migrated ${String(moved)} legacy workspace repo(s) into their first project's slot`);
+  })().catch((e: unknown) => { console.error('[R3-b] legacy repo migration error:', e); });
   //? O3: the leader-gated scheduled-post loop fires due PublishJobs at their scheduledAt.
   const { startScheduledPublisher } = await import('./content/publish');
   startScheduledPublisher();

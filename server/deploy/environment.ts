@@ -74,12 +74,12 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const image = opts.imageRef ?? service?.baseImageRef ?? project?.baseImageRef ?? undefined;
   const devCmd = ((service?.devCommand ?? project?.devCommand) ?? '').trim() || 'npm run dev';
 
-  const container = await launchTicketContainer({ workspaceId, ticketKey: envKey(envId), branch, ...(image ? { image } : {}) });
+  const container = await launchTicketContainer({ workspaceId, projectId: env.projectId, ticketKey: envKey(envId), branch, ...(image ? { image } : {}) });
   if (!container) return failEnv(prisma, envId, 'env.noContainer');
 
   //? D3 — record which commit this deploy runs (the watcher compares against the branch head). A demo pinned
   //? to a fixed commit checks that commit out in /work so it serves a FROZEN demo; otherwise it's the head.
-  const head = await branchHead(workspaceId, branch);
+  const head = await branchHead(workspaceId, env.projectId, branch);
   const pin = (env.pinnedCommit ?? '').trim();
   if (pin.length > 0) await docker(['exec', '-w', '/work', container.name, 'git', 'checkout', pin]);
   const deployedCommit = pin.length > 0 ? pin : head;

@@ -28,7 +28,7 @@ async function recordCiEvent(prisma: PrismaClient, workspaceId: string, ticketId
 //? Run the project's CI at `commitHash` (frozen). Creates Pipeline (upsert) + PipelineRun + PipelineJobs,
 //? executes the jobs, rolls up. Returns the terminal run status.
 export async function runPipeline(prisma: PrismaClient, workspaceId: string, projectId: string, input: { branch: string; commitHash: string; ticketId?: string | null; mergeRequestId?: string | null; trigger: string }): Promise<CiRunResult> {
-  const yamlBody = await showRepoFile(workspaceId, input.commitHash || 'HEAD', CI_PATH);
+  const yamlBody = await showRepoFile(workspaceId, projectId, input.commitHash || 'HEAD', CI_PATH);
   const parsed = parseCiYaml(yamlBody);
   if (!parsed.ok) return { status: 'none', error: parsed.error };
   const spec = parsed.spec;
@@ -63,7 +63,7 @@ export async function runPipeline(prisma: PrismaClient, workspaceId: string, pro
   }
 
   //? Launch a single job container off the frozen branch (all jobs share it — cache-friendly).
-  const container = await launchTicketContainer({ workspaceId, ticketKey: `ci-${run.id}`, branch: input.branch });
+  const container = await launchTicketContainer({ workspaceId, projectId, ticketKey: `ci-${run.id}`, branch: input.branch });
   if (!container) {
     await prisma.pipelineRun.update({ where: { id: run.id }, data: { status: 'failed', finishedAt: new Date() } });
     await recordCiEvent(prisma, workspaceId, ticketId, 'CI failed — no container', { pipelineRunId: run.id, status: 'failed' });

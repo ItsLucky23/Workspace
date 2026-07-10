@@ -360,7 +360,7 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
 //? repo is linked or the target stage is not AI-enabled. Best-effort per ticket: a git
 //? failure is logged, never fails the authoritative stage move.
 async function activateWorktreesForStage(workspaceId: string, keys: string[], stageId: string): Promise<void> {
-  if (keys.length === 0 || !isLinked(workspaceId)) return;
+  if (keys.length === 0) return;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
   //? Resolve the branch NAME from the per-workspace strategy (branchStrategy.ts). Loaded once
@@ -369,10 +369,12 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
   const gitCfg = normalizeGitConfig(ws?.gitConfig ?? null);
   const activated: { key: string; branch: string }[] = [];
   for (const key of keys) {
-    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true, title: true, labels: true, number: true } });
+    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true, title: true, labels: true, number: true, projectId: true } });
     if (t?.branch) continue;
-    const branchName = resolveBranchName(gitCfg, { key, title: t?.title, labels: t?.labels, number: t?.number });
-    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, key, branchName));
+    //? R3-b — cut the worktree from THIS ticket's project's repo (skip if that project isn't linked).
+    if (!t?.projectId || !isLinked(workspaceId, t.projectId)) continue;
+    const branchName = resolveBranchName(gitCfg, { key, title: t.title, labels: t.labels, number: t.number });
+    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, t.projectId, key, branchName));
     if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
     if (wt) { await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } }); activated.push({ key, branch: wt.branch }); }
   }
@@ -1046,12 +1048,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const gitUrl = str(payload, 'gitUrl');
       if (!gitUrl) return { linked: false, error: 'sync.invalidRequest' };
       const token = str(payload, 'token');
-      const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, gitUrl, ...(token ? { token } : {}) }));
-      if (error) return { linked: false, gitUrl, error: error.message };
-      //? Persist the CLEAN url on the TARGET project only (ADR 0035 — was updateMany
-      //? over every project, which corrupted siblings once N>1). token is never stored.
+      //? R3-b — resolve the TARGET project FIRST so the clone lands in its own per-project slot
+      //? (a 2nd linked repo never clobbers the 1st).
       const linkProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
-      if (linkProjectId) await prisma.project.update({ where: { id: linkProjectId }, data: { gitUrl } });
+      if (!linkProjectId) return { linked: false, gitUrl, error: 'project.notFound' };
+      const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, projectId: linkProjectId, gitUrl, ...(token ? { token } : {}) }));
+      if (error) return { linked: false, gitUrl, error: error.message };
+      //? Persist the CLEAN url on the TARGET project only (ADR 0035). token is never stored.
+      await prisma.project.update({ where: { id: linkProjectId }, data: { gitUrl } });
       return status;
     }
     case 'scan-docs': {
@@ -1059,7 +1063,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? register each as a context-doc InfoSource. `enabled` doubles as the per-file
       //? aiEditable gate — DEFAULT OFF (the AI may not edit a doc until the user allows).
       //? Re-scan updates existing docs' content without flipping their aiEditable state.
-      const found = await listRepoDocs(action.workspaceId);
+      const scanProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      const found = scanProjectId ? await listRepoDocs(action.workspaceId, scanProjectId) : [];
       for (const doc of found) {
         const summary = doc.content.split('\n').map((l) => l.trim()).find((l) => l.length > 0)?.slice(0, 140) ?? '';
         const existing = await prisma.infoSource.findFirst({ where: { workspaceId: action.workspaceId, mode: 'context-doc', name: doc.path } });
@@ -1951,7 +1956,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? G1 — actually make it a REPO: init the workspace bare repo from the template's seed file-tree so
       //? `isLinked` flips true → the runtime can cut a worktree + container from it (container → code). No-op
       //? if a repo already exists (never clobber). Best-effort — a git failure leaves the project unlinked.
-      const [gitErr, status] = await tryCatch(() => initGreenfieldRepo(action.workspaceId, template.files));
+      const [gitErr, status] = await tryCatch(() => initGreenfieldRepo(action.workspaceId, created.id, template.files));
       if (gitErr) console.error(`[greenfield] repo init for ${name} failed:`, gitErr.message);
       else if (status?.linked && !created.gitUrl) await prisma.project.updateMany({ where: { id: created.id, workspaceId: action.workspaceId }, data: { gitUrl: `greenfield://${action.workspaceId}` } });
       return created;
@@ -2023,7 +2028,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { id: true, projectId: true, branch: true } });
       if (!ticket?.branch) return { status: 'none', error: 'ci.notActivated' };
       const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId: action.workspaceId, ticketId: ticket.id }, orderBy: { createdAt: 'desc' }, select: { id: true, headSha: true } });
-      const commitHash = mr?.headSha ?? (await branchHead(action.workspaceId, ticket.branch));
+      const commitHash = mr?.headSha ?? (await branchHead(action.workspaceId, ticket.projectId, ticket.branch));
       return runPipeline(prisma, action.workspaceId, ticket.projectId, { branch: ticket.branch, commitHash, ticketId: ticket.id, mergeRequestId: mr?.id ?? null, trigger: str(payload, 'trigger') ?? 'manual' });
     }
     //? Admin override (ADR 0039): allow merge/promote while a required CI run is red (unwedge a broken runner).

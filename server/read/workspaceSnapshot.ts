@@ -402,10 +402,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     }));
 
     //? Register-flow step A: the ACTIVE project's linked-repo status (on-disk bare
-    //? clone), keyed off its stored (clean) gitUrl (ADR 0035 — was findFirst; the
-    //? on-disk clone stays workspace-keyed in A1, per-project physical repos land in A2).
+    //? clone), keyed off its stored (clean) gitUrl. R3-b — the physical repo is now per-project,
+    //? so the snapshot shows the ACTIVE project's repo status (empty when no project is selected).
     const projectRow = projectRows.find((p) => p.id === activeProjectId) ?? null;
-    const repo = await repoStatus(activeWorkspaceId, projectRow?.gitUrl ?? undefined);
+    const repo = activeProjectId ? await repoStatus(activeWorkspaceId, activeProjectId, projectRow?.gitUrl ?? undefined) : { linked: false };
     //? The active workspace's git strategy (normalized; DEFAULT when the field is unset).
     const activeWs = workspaceRows.find((w) => w.id === activeWorkspaceId);
     const gitConfig = normalizeGitConfig(activeWs?.gitConfig ?? null);

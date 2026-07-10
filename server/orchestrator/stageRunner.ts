@@ -229,12 +229,11 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const [ragErr, hits] = await tryCatch(() => retrieve(prisma, workspaceId, `${ticket.title}\n${ticket.description ?? ''}`, 6, ticket.commitHash ?? undefined));
   const retrieved = ragErr || !hits ? [] : hits.map((h) => ({ filePath: h.filePath, content: h.content }));
 
-  //? Prefer the project's built L2 image, else the L1 base for its stack (S1 — any-stack). (Multi-project
-  //? `findFirst`-by-workspace wart is pre-existing, ADR 0035 / fixed in R3.)
-  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true, stack: true } });
+  //? R3-b — prefer THIS ticket's project's built L2 image, else the L1 base for its stack (S1 — any-stack).
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true } });
   //? K3 — inject the workspace env + service network so the coding agent's build/test reaches the app's services.
   const ctx = await workspaceContainerContext(prisma, workspaceId);
-  const container = await launchTicketContainer({ workspaceId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project), ...ctx });
+  const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'container.launchFailed' };
 
   const sessionKey = `worker:${ticket.id}:${stageKey}`;

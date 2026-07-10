@@ -8,18 +8,20 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 
 import { assert, eq, report } from '../_helpers.mts';
-import { initGreenfieldRepo, workspaceDataDir } from '../../server/git/repoStore.ts';
+import { initGreenfieldRepo, workspaceDataDir, projectDataDir } from '../../server/git/repoStore.ts';
 import { getTemplate } from '../../server/scaffold/templates.ts';
 
 const wsId = `gf-${String(Date.now())}`;
+const projId = 'proj-gf-test';
 const dataDir = workspaceDataDir(wsId);
-const bare = path.join(dataDir, 'repo.git');
+//? R3-b — the repo lives under the project slot now.
+const bare = path.join(projectDataDir(wsId, projId), 'repo.git');
 
 try {
   const tpl = getTemplate('go-api');
   assert(tpl !== null, 'the go template resolves');
 
-  const status = await initGreenfieldRepo(wsId, tpl?.files ?? []);
+  const status = await initGreenfieldRepo(wsId, projId, tpl?.files ?? []);
   assert(status.linked === true, 'greenfield init produced a linked repo');
 
   //? The bare repo's HEAD tree = the committed seed.

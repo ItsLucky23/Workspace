@@ -7,14 +7,17 @@
 
 import { runAiCompletion } from './registry';
 import { repoManifests } from '../git/repoStore';
+import { resolveProjectId } from '../orchestrator/projectResolve';
 import type { PrismaClient } from '@prisma/client';
 
 export interface DocsGenResult { ok: boolean; name: string; content: string; error?: string }
 
 const DOC_NAME = 'project-summary';
 
-export async function generateProjectDoc(prisma: PrismaClient, workspaceId: string): Promise<DocsGenResult> {
-  const ctx = await repoManifests(workspaceId);
+export async function generateProjectDoc(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<DocsGenResult> {
+  const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
+  if (!resolvedId) return { ok: false, name: '', content: '', error: 'repo.notLinked' };
+  const ctx = await repoManifests(workspaceId, resolvedId);
   if (ctx.tree.length === 0) return { ok: false, name: '', content: '', error: 'repo.notLinked' };
   const system = [
     'You are a senior engineer writing a CONCISE project-summary doc for an AI coding agent that will work in this repo — the orientation it reads first.',

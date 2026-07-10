@@ -7,15 +7,17 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { workspaceDataDir } from '../git/repoStore';
+import { projectDataDir } from '../git/repoStore';
 
 import { extendsAllowedBase } from './baseImages';
 
 export interface DraftReadResult { ok: boolean; dockerfile: string; error?: string }
 export interface DraftSaveResult { ok: boolean; error?: string }
 
-function draftPath(workspaceId: string): string {
-  return path.join(workspaceDataDir(workspaceId), 'draft.Dockerfile');
+//? R3-b — the draft lives under the owning PROJECT so two projects in one workspace keep
+//? independent Dockerfiles (was keyed by workspaceId → the 2nd project overwrote the 1st).
+export function draftPath(workspaceId: string, projectId: string): string {
+  return path.join(projectDataDir(workspaceId, projectId), 'draft.Dockerfile');
 }
 
 //? The draft's FIRST `FROM` must be a `workspaces/base*` family image (a `# syntax=` directive before it is
@@ -25,19 +27,19 @@ export const extendsBase = extendsAllowedBase;
 
 //? Read the persisted draft so the review UI survives a reload without paying another
 //? (slow) AI turn. Returns a typed `dockerfile.noDraft` when none has been generated yet.
-export function readDockerfileDraft(workspaceId: string): DraftReadResult {
-  const file = draftPath(workspaceId);
+export function readDockerfileDraft(workspaceId: string, projectId: string): DraftReadResult {
+  const file = draftPath(workspaceId, projectId);
   if (!existsSync(file)) return { ok: false, dockerfile: '', error: 'dockerfile.noDraft' };
   return { ok: true, dockerfile: readFileSync(file, 'utf8') };
 }
 
 //? Persist the user's edited draft back to the file `buildProjectImage` reads. Rejects an
 //? empty draft or one whose first `FROM` is not the L1 base before writing.
-export function saveDockerfileDraft(workspaceId: string, dockerfile: string): DraftSaveResult {
+export function saveDockerfileDraft(workspaceId: string, projectId: string, dockerfile: string): DraftSaveResult {
   const content = dockerfile.trim();
   if (content.length === 0) return { ok: false, error: 'dockerfile.empty' };
   if (!extendsBase(content)) return { ok: false, error: 'dockerfile.invalidBase' };
-  const file = draftPath(workspaceId);
+  const file = draftPath(workspaceId, projectId);
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, content, 'utf8');
   return { ok: true };

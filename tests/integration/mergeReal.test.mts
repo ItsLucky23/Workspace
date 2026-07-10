@@ -11,7 +11,7 @@ import path from 'node:path';
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { mergeBranches, revertMergeCommit, workspaceDataDir } = await import('../../server/git/repoStore');
+const { mergeBranches, revertMergeCommit, workspaceDataDir, projectDataDir } = await import('../../server/git/repoStore');
 const { mergeMr, approveMr } = await import('../../server/mr/service');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 
@@ -26,10 +26,15 @@ try {
   const created = await createBlankWorkspace(prisma, owner.id, 'Merge WS');
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
+  //? R3-b — the merge functions read the per-PROJECT bare repo; seed it in the first project's slot.
+  const projRow = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
+  const projId = projRow?.id ?? 'proj-merge-test';
   dataDir = workspaceDataDir(wsId);
+  const projDir = projectDataDir(wsId, projId);
   const srcDir = path.join(dataDir, '_src');
-  const bareDir = path.join(dataDir, 'repo.git');
+  const bareDir = path.join(projDir, 'repo.git');
   mkdirSync(srcDir, { recursive: true });
+  mkdirSync(projDir, { recursive: true });
 
   //? Build a source repo: main(a=base) → feature adds b.txt (clean) ; conflictA edits a.txt from
   //? base ; main edits a.txt to a different value (so conflictA↔main conflict on a.txt).
@@ -59,7 +64,7 @@ try {
   const mainBefore = g(bareDir, 'rev-parse', 'main');
 
   //? 1) Clean merge feature → main (feature only adds b.txt; a.txt differs but on main only).
-  const merge = await mergeBranches(wsId, 'main', 'feature', 'merge');
+  const merge = await mergeBranches(wsId, projId, 'main', 'feature', 'merge');
   assert(merge.ok, 'clean merge of feature into main succeeds');
   const mainAfter = g(bareDir, 'rev-parse', 'main');
   assert(mainAfter !== mainBefore, 'main advanced after the merge');
@@ -68,14 +73,14 @@ try {
   const mergeSha = merge.ok ? merge.sha : '';
 
   //? 2) Rollback via git-revert — b.txt disappears again, history preserved (main advances further).
-  const revert = await revertMergeCommit(wsId, 'main', mergeSha);
+  const revert = await revertMergeCommit(wsId, projId, 'main', mergeSha);
   assert(revert.ok, 'revert of the merge commit succeeds');
   const treeAfterRevert = g(bareDir, 'ls-tree', '-r', '--name-only', 'main');
   assert(!treeAfterRevert.includes('b.txt'), 'the reverted merge removed b.txt from main again');
 
   //? 3) Real conflict: conflictA (a=AAA) vs main (a=BBB) — merge is aborted, main untouched.
   const mainPreConflict = g(bareDir, 'rev-parse', 'main');
-  const conflict = await mergeBranches(wsId, 'main', 'conflictA', 'merge');
+  const conflict = await mergeBranches(wsId, projId, 'main', 'conflictA', 'merge');
   assert(!conflict.ok && conflict.ok === false && 'conflict' in conflict && conflict.conflict, 'a real conflict is reported, not a silent bad merge');
   const files = !conflict.ok && 'files' in conflict ? conflict.files : [];
   assert(files.includes('a.txt'), 'the conflicting file (a.txt) is reported');

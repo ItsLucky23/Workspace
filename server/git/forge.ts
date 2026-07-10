@@ -33,7 +33,7 @@ export async function pushMergedTarget(prisma: PrismaClient, workspaceId: string
   const token = forge?.token;
   //? No remote configured → local-only workspace; the merge stands, nothing to push.
   if (!gitUrl || !token) return { pushed: false, skipped: true };
-  const [pushErr] = await tryCatch(() => pushRef({ workspaceId, gitUrl, token, ref: targetBranch }));
+  const [pushErr] = await tryCatch(() => pushRef({ workspaceId, projectId: ticket.projectId, gitUrl, token, ref: targetBranch }));
   if (pushErr) return { pushed: false, error: `forge.pushFailed: ${pushErr.message}` };
   return { pushed: true };
 }
@@ -61,7 +61,7 @@ export async function pushTicketWork(prisma: PrismaClient, workspaceId: string, 
   const token = forge.token;
   if (!token) return { ok: false, pushed: false, error: 'forge.noToken' };
 
-  const [pushErr] = await tryCatch(() => pushBranch({ workspaceId, ticketKey, gitUrl, token, branch }));
+  const [pushErr] = await tryCatch(() => pushBranch({ workspaceId, projectId: ticket.projectId, ticketKey, gitUrl, token, branch }));
   if (pushErr) return { ok: false, pushed: false, error: `forge.pushFailed: ${pushErr.message}` };
   if (cfg.pushPolicy === 'push') return { ok: true, pushed: true };
 

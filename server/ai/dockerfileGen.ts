@@ -8,7 +8,9 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { runAiCompletion } from './registry';
-import { repoManifests, workspaceDataDir } from '../git/repoStore';
+import { repoManifests } from '../git/repoStore';
+import { draftPath as projectDraftPath } from '../container/dockerfileDraft';
+import { resolveProjectId } from '../orchestrator/projectResolve';
 import { extendsAllowedBase } from '../container/baseImages';
 import type { PrismaClient } from '@prisma/client';
 
@@ -30,8 +32,11 @@ const extendsBase = extendsAllowedBase;
 //? Generate the draft `.workspaces/Dockerfile` from the linked repo's manifests. Persists
 //? it to the workspace data dir (the pre-commit draft) and points Project.dockerfilePath
 //? at its eventual repo location. Returns the content + a typed error on failure.
-export async function generateDockerfile(prisma: PrismaClient, workspaceId: string): Promise<DockerfileResult> {
-  const ctx = await repoManifests(workspaceId);
+export async function generateDockerfile(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<DockerfileResult> {
+  //? R3-b — generate for the ACTIVE/target project (its own repo + draft slot).
+  const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
+  if (!resolvedId) return { ok: false, dockerfile: '', error: 'repo.notLinked' };
+  const ctx = await repoManifests(workspaceId, resolvedId);
   if (ctx.tree.length === 0) return { ok: false, dockerfile: '', error: 'repo.notLinked' };
   const system = [
     'You author a .workspaces/Dockerfile so a project\'s per-ticket container has the right toolchain.',
@@ -47,11 +52,10 @@ export async function generateDockerfile(prisma: PrismaClient, workspaceId: stri
   if (!res.ok) return { ok: false, dockerfile: '', error: res.error ?? 'ai.turnFailed' };
   const dockerfile = extractDockerfile(res.text);
   if (dockerfile.length === 0 || !extendsBase(dockerfile)) return { ok: false, dockerfile, error: 'dockerfile.invalidBase' };
-  const draftPath = path.join(workspaceDataDir(workspaceId), 'draft.Dockerfile');
-  mkdirSync(path.dirname(draftPath), { recursive: true });
-  writeFileSync(draftPath, dockerfile, 'utf8');
+  const dfPath = projectDraftPath(workspaceId, resolvedId);
+  mkdirSync(path.dirname(dfPath), { recursive: true });
+  writeFileSync(dfPath, dockerfile, 'utf8');
   //? ADR 0035: write only the TARGET project (was updateMany over every project).
-  const proj = await prisma.project.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
-  if (proj) await prisma.project.update({ where: { id: proj.id }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
-  return { ok: true, dockerfile, path: draftPath };
+  await prisma.project.update({ where: { id: resolvedId }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
+  return { ok: true, dockerfile, path: dfPath };
 }

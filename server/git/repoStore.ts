@@ -11,7 +11,7 @@
 //? clean `gitUrl` is stored on `Project`.
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
@@ -25,20 +25,50 @@ export interface RepoStatus { linked: boolean; gitUrl?: string; branch?: string;
 //? on-disk checkout the container later mounts.
 export interface WorktreeInfo { branch: string; commitHash: string; path: string }
 
-//? Root for all linked clones. Under the project cwd, gitignored (`data/`).
+//? Root for a workspace's on-disk state (gitignored `data/`). Workspace-LEVEL artifacts (service
+//? compose files, the editor profile) live directly under here; the git REPO + per-ticket worktrees
+//? live one level deeper, under the owning PROJECT (R3-b) so a workspace can hold N independent repos.
 export function workspaceDataDir(workspaceId: string): string {
   return path.join(process.cwd(), 'data', 'workspaces', workspaceId);
 }
-function bareRepoPath(workspaceId: string): string {
-  return path.join(workspaceDataDir(workspaceId), 'repo.git');
+//? R3-b — per-PROJECT on-disk root: `data/workspaces/<ws>/projects/<proj>/…`. Every repo/worktree/
+//? build-context/draft-Dockerfile is keyed here so linking or greenfield-ing a 2nd project never
+//? clobbers the 1st (the pre-R3-b bug: everything was keyed by workspaceId only).
+export function projectDataDir(workspaceId: string, projectId: string): string {
+  return path.join(workspaceDataDir(workspaceId), 'projects', projectId);
 }
-function worktreePath(workspaceId: string, ticketKey: string): string {
-  return path.join(workspaceDataDir(workspaceId), 'worktrees', ticketKey);
+function bareRepoPath(workspaceId: string, projectId: string): string {
+  return path.join(projectDataDir(workspaceId, projectId), 'repo.git');
+}
+function worktreePath(workspaceId: string, projectId: string, ticketKey: string): string {
+  return path.join(projectDataDir(workspaceId, projectId), 'worktrees', ticketKey);
 }
 
-//? Is a bare clone present for this workspace? (worktrees require a linked repo.)
-export function isLinked(workspaceId: string): boolean {
-  return existsSync(bareRepoPath(workspaceId));
+//? R3-b one-time migration: move a legacy per-WORKSPACE repo (`data/workspaces/<ws>/repo.git` +
+//? `worktrees/` + `draft.Dockerfile`) into the workspace's FIRST project's slot. Idempotent — a
+//? no-op once the legacy layout is gone (or the target already exists). Called on boot with the
+//? (workspaceId → firstProjectId) map so repoStore stays DB-free.
+export function migrateLegacyRepoLayout(pairs: { workspaceId: string; projectId: string }[]): number {
+  let moved = 0;
+  for (const { workspaceId, projectId } of pairs) {
+    const legacyBare = path.join(workspaceDataDir(workspaceId), 'repo.git');
+    if (!existsSync(legacyBare)) continue;
+    const targetDir = projectDataDir(workspaceId, projectId);
+    const targetBare = bareRepoPath(workspaceId, projectId);
+    if (existsSync(targetBare)) continue; // already migrated / project already has its own repo
+    mkdirSync(targetDir, { recursive: true });
+    for (const name of ['repo.git', 'worktrees', 'draft.Dockerfile']) {
+      const from = path.join(workspaceDataDir(workspaceId), name);
+      if (existsSync(from)) renameSync(from, path.join(targetDir, name));
+    }
+    moved += 1;
+  }
+  return moved;
+}
+
+//? Is a bare clone present for this project? (worktrees require a linked repo.)
+export function isLinked(workspaceId: string, projectId: string): boolean {
+  return existsSync(bareRepoPath(workspaceId, projectId));
 }
 
 //? Run a git command, capturing stdout. Rejects with a token-scrubbed message on
@@ -112,8 +142,8 @@ function isDocPath(p: string): boolean {
 //? corpus the AI later reads/edits. Lists paths via `git ls-tree` and reads each body
 //? via `git show HEAD:<path>` (bounded: ≤200 files, ≤20k chars each). Returns [] if no
 //? repo is linked.
-export async function listRepoDocs(workspaceId: string): Promise<RepoDoc[]> {
-  const bare = bareRepoPath(workspaceId);
+export async function listRepoDocs(workspaceId: string, projectId: string): Promise<RepoDoc[]> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return [];
   const listing = await git(['--git-dir', bare, 'ls-tree', '-r', 'HEAD', '--name-only']).catch(() => '');
   const paths = listing.split('\n').map((p) => p.trim()).filter((p) => p.length > 0 && isDocPath(p)).slice(0, 200);
@@ -137,8 +167,8 @@ const SKIP_DIR = /(?:^|\/)(?:node_modules|\.git|dist|build|out|coverage|vendor|\
 //? List + read indexable code files at `ref` (default HEAD; pass a commitHash to pin to a ticket's
 //? frozen baseline) straight from the bare clone — no checkout. Bounded (≤600 files, ≤60k chars).
 //? Returns [] when no repo is linked.
-export async function listRepoFiles(workspaceId: string, ref = 'HEAD'): Promise<RepoFile[]> {
-  const bare = bareRepoPath(workspaceId);
+export async function listRepoFiles(workspaceId: string, projectId: string, ref = 'HEAD'): Promise<RepoFile[]> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return [];
   const listing = await git(['--git-dir', bare, 'ls-tree', '-r', ref, '--name-only']).catch(() => '');
   const paths = listing.split('\n').map((p) => p.trim())
@@ -153,16 +183,16 @@ export async function listRepoFiles(workspaceId: string, ref = 'HEAD'): Promise<
 }
 
 //? The current HEAD commit of the bare clone (stamps a RAG index). '' when unlinked.
-export async function repoHead(workspaceId: string): Promise<string> {
-  const bare = bareRepoPath(workspaceId);
+export async function repoHead(workspaceId: string, projectId: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return '';
   return git(['--git-dir', bare, 'rev-parse', 'HEAD']).catch(() => '');
 }
 
 //? Read a single file's contents at `ref` straight from the bare clone (e.g. `.workspaces/ci.yml`).
 //? '' when unlinked or the file is absent at that ref. Bounded to 60k chars.
-export async function showRepoFile(workspaceId: string, ref: string, filePath: string): Promise<string> {
-  const bare = bareRepoPath(workspaceId);
+export async function showRepoFile(workspaceId: string, projectId: string, ref: string, filePath: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return '';
   const out = await git(['--git-dir', bare, 'show', `${ref}:${filePath}`]).catch(() => '');
   return out.slice(0, 60_000);
@@ -170,15 +200,15 @@ export async function showRepoFile(workspaceId: string, ref: string, filePath: s
 
 //? Unified diff of `source` against `target` (three-dot = changes on source since it forked) from
 //? the bare clone — the MR review diff. '' when unlinked or a ref is missing.
-export async function branchDiff(workspaceId: string, target: string, source: string): Promise<string> {
-  const bare = bareRepoPath(workspaceId);
+export async function branchDiff(workspaceId: string, projectId: string, target: string, source: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return '';
   return git(['--git-dir', bare, 'diff', `${target}...${source}`]).catch(() => '');
 }
 
 //? The commit sha at the tip of `branch` (the MR head — approvals stale when it changes). '' if missing.
-export async function branchHead(workspaceId: string, branch: string): Promise<string> {
-  const bare = bareRepoPath(workspaceId);
+export async function branchHead(workspaceId: string, projectId: string, branch: string): Promise<string> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return '';
   return git(['--git-dir', bare, 'rev-parse', branch]).catch(() => '');
 }
@@ -196,8 +226,8 @@ export interface RepoManifests { tree: string[]; manifests: { path: string; cont
 //? Scan the linked repo for its toolchain manifests + a bounded file tree — the context
 //? an AI needs to author a project-appropriate `.workspaces/Dockerfile`. Reads via
 //? `git ls-tree`/`git show` (no checkout). Returns empty when no repo is linked.
-export async function repoManifests(workspaceId: string): Promise<RepoManifests> {
-  const bare = bareRepoPath(workspaceId);
+export async function repoManifests(workspaceId: string, projectId: string): Promise<RepoManifests> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return { tree: [], manifests: [] };
   const listing = await git(['--git-dir', bare, 'ls-tree', '-r', 'HEAD', '--name-only']).catch(() => '');
   const paths = listing.split('\n').map((p) => p.trim()).filter((p) => p.length > 0);
@@ -214,8 +244,8 @@ export async function repoManifests(workspaceId: string): Promise<RepoManifests>
 
 //? Read the current bare-repo status from disk (for the snapshot). `linked` reflects
 //? whether the bare clone exists; branch/head are the current default-branch pointer.
-export async function repoStatus(workspaceId: string, gitUrl?: string): Promise<RepoStatus> {
-  const bare = bareRepoPath(workspaceId);
+export async function repoStatus(workspaceId: string, projectId: string, gitUrl?: string): Promise<RepoStatus> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return { linked: false, ...(gitUrl ? { gitUrl } : {}) };
   const out: RepoStatus = { linked: true, ...(gitUrl ? { gitUrl } : {}) };
   const head = await git(['--git-dir', bare, 'rev-parse', 'HEAD']).catch(() => '');
@@ -227,18 +257,19 @@ export async function repoStatus(workspaceId: string, gitUrl?: string): Promise<
 
 //? Clone (or re-clone) the repo as a bare mirror. Returns the clean status. Throws a
 //? token-scrubbed error on failure (bad URL/token/network) so the caller can surface it.
-export async function cloneRepo(input: { workspaceId: string; gitUrl: string; token?: string }): Promise<RepoStatus> {
-  const { workspaceId, gitUrl, token } = input;
-  const dir = workspaceDataDir(workspaceId);
-  const bare = bareRepoPath(workspaceId);
+export async function cloneRepo(input: { workspaceId: string; projectId: string; gitUrl: string; token?: string }): Promise<RepoStatus> {
+  const { workspaceId, projectId, gitUrl, token } = input;
+  const dir = projectDataDir(workspaceId, projectId);
+  const bare = bareRepoPath(workspaceId, projectId);
   mkdirSync(dir, { recursive: true });
-  //? Fresh clone each link (idempotent re-link) — discard any prior bare repo.
+  //? Fresh clone each link (idempotent re-link) — discard any prior bare repo FOR THIS PROJECT only
+  //? (R3-b: a sibling project's repo, under its own projectId dir, is never touched).
   if (existsSync(bare)) rmSync(bare, { recursive: true, force: true });
   await git(['clone', '--bare', withAuth(gitUrl, token), bare], { env: authEnv(token) });
   //? Persist the origin WITHOUT the token so later fetches use the stored (clean) URL;
   //? the token is re-injected transiently per fetch (a later slice re-supplies it).
   await git(['--git-dir', bare, 'remote', 'set-url', 'origin', gitUrl]).catch(() => '');
-  return repoStatus(workspaceId, gitUrl);
+  return repoStatus(workspaceId, projectId, gitUrl);
 }
 
 //? G1 — greenfield: initialise the workspace's bare repo from a seed FILE-TREE (no external forge). Writes
@@ -246,10 +277,10 @@ export async function cloneRepo(input: { workspaceId: string; gitUrl: string; to
 //? per-workspace `repo.git` — so `isLinked` flips true and the runtime can cut worktrees + a container from
 //? it (container → code). No-op (returns the existing status) when a repo is already present, so a second
 //? greenfield project never clobbers an existing repo. Throws on git failure (caller surfaces it).
-export async function initGreenfieldRepo(workspaceId: string, files: { path: string; content: string }[]): Promise<RepoStatus> {
-  const bare = bareRepoPath(workspaceId);
-  if (existsSync(bare)) return repoStatus(workspaceId);
-  const dir = workspaceDataDir(workspaceId);
+export async function initGreenfieldRepo(workspaceId: string, projectId: string, files: { path: string; content: string }[]): Promise<RepoStatus> {
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (existsSync(bare)) return repoStatus(workspaceId, projectId);
+  const dir = projectDataDir(workspaceId, projectId);
   mkdirSync(dir, { recursive: true });
   const seed = path.join(dir, 'greenfield-seed');
   rmSync(seed, { recursive: true, force: true });
@@ -267,7 +298,7 @@ export async function initGreenfieldRepo(workspaceId: string, files: { path: str
   await git(['commit', '-m', 'chore: scaffold greenfield project'], { cwd: seed });
   await git(['clone', '--bare', seed, bare]);
   rmSync(seed, { recursive: true, force: true });
-  return repoStatus(workspaceId);
+  return repoStatus(workspaceId, projectId);
 }
 
 //? Add the ticket's worktree off the bare clone (07 §A step 5), freezing the default-branch
@@ -276,10 +307,10 @@ export async function initGreenfieldRepo(workspaceId: string, files: { path: str
 //? keyed by the (stable) ticket key, while the BRANCH name is `branchName` — the per-workspace
 //? branch-strategy result (server/git/branchStrategy.ts), defaulting to the ticket key for the
 //? legacy `ticket-prefix` behaviour. Returns null if no repo is linked.
-export async function addWorktree(workspaceId: string, ticketKey: string, branchName: string = ticketKey): Promise<WorktreeInfo | null> {
-  const bare = bareRepoPath(workspaceId);
+export async function addWorktree(workspaceId: string, projectId: string, ticketKey: string, branchName: string = ticketKey): Promise<WorktreeInfo | null> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return null;
-  const wt = worktreePath(workspaceId, ticketKey);
+  const wt = worktreePath(workspaceId, projectId, ticketKey);
   //? Already checked out → return its current branch + commit (idempotent re-activation).
   if (existsSync(wt)) {
     const commitHash = await git(['-C', wt, 'rev-parse', 'HEAD']).catch(() => '');
@@ -312,10 +343,10 @@ const gitIdentity = ['-c', 'user.email=workspaces-bot@luckystack.local', '-c', '
 //? race the same target. On conflict the merge is ABORTED (target ref untouched) and the conflicting
 //? files returned. Returns the resulting merge commit sha on success. Idempotent about a stale
 //? merge-worktree left by a crash (removed first). Returns not-linked error if no repo is linked.
-export async function mergeBranches(workspaceId: string, target: string, source: string, strategy: string): Promise<MergeOutcome> {
-  const bare = bareRepoPath(workspaceId);
+export async function mergeBranches(workspaceId: string, projectId: string, target: string, source: string, strategy: string): Promise<MergeOutcome> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return { ok: false, conflict: false, error: 'not-linked' };
-  const mergeWt = path.join(workspaceDataDir(workspaceId), 'merge-wt');
+  const mergeWt = path.join(projectDataDir(workspaceId, projectId), 'merge-wt');
   await cleanupWorktree(bare, mergeWt);
   const [error, result] = await tryCatch<MergeOutcome>(async () => {
     await git(['--git-dir', bare, 'worktree', 'add', '--force', mergeWt, target]);
@@ -347,10 +378,10 @@ export async function mergeBranches(workspaceId: string, target: string, source:
 //? the opposite of a destructive reset). Handles both a real merge commit (2 parents → revert the
 //? first-parent mainline with `-m 1`) and a squash/ff commit (1 parent → plain revert). Runs in a
 //? throwaway worktree under the caller's lease. Returns the revert commit sha.
-export async function revertMergeCommit(workspaceId: string, target: string, sha: string): Promise<{ ok: true; sha: string } | { ok: false; error: string }> {
-  const bare = bareRepoPath(workspaceId);
+export async function revertMergeCommit(workspaceId: string, projectId: string, target: string, sha: string): Promise<{ ok: true; sha: string } | { ok: false; error: string }> {
+  const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return { ok: false, error: 'not-linked' };
-  const revertWt = path.join(workspaceDataDir(workspaceId), 'revert-wt');
+  const revertWt = path.join(projectDataDir(workspaceId, projectId), 'revert-wt');
   await cleanupWorktree(bare, revertWt);
   type RevertResult = { ok: true; sha: string } | { ok: false; error: string };
   const [error, result] = await tryCatch<RevertResult>(async () => {
@@ -384,8 +415,8 @@ async function cleanupWorktree(bare: string, wt: string): Promise<void> {
 //? into this git process via `withAuth` — never stored on the remote (origin keeps the clean
 //? url, like `cloneRepo`) and never logged (git errors are token-scrubbed). Pushes from the
 //? ticket's worktree, where the AI's commits live. Throws a scrubbed error on failure.
-export async function pushBranch(input: { workspaceId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
-  const wt = worktreePath(input.workspaceId, input.ticketKey);
+export async function pushBranch(input: { workspaceId: string; projectId: string; ticketKey: string; gitUrl: string; token: string; branch: string }): Promise<void> {
+  const wt = worktreePath(input.workspaceId, input.projectId, input.ticketKey);
   //? Bounded retry/backoff so a transient network blip doesn't drop an approved push (C3).
   await withRetry(() => git(['-C', wt, 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`], { env: authEnv(input.token) }), { attempts: 3, baseMs: 200 });
 }
@@ -395,8 +426,8 @@ export async function pushBranch(input: { workspaceId: string; ticketKey: string
 //? actually receive the result (previously the merge landed only locally). Bounded retry/backoff
 //? so a transient blip doesn't drop an authoritative merge. Token injected only into this git
 //? process via `withAuth` (never stored on the remote, never logged — errors are scrubbed).
-export async function pushRef(input: { workspaceId: string; gitUrl: string; token: string; ref: string }): Promise<void> {
-  const bare = bareRepoPath(input.workspaceId);
+export async function pushRef(input: { workspaceId: string; projectId: string; gitUrl: string; token: string; ref: string }): Promise<void> {
+  const bare = bareRepoPath(input.workspaceId, input.projectId);
   if (!existsSync(bare)) throw new Error('not-linked');
   await withRetry(() => git(['--git-dir', bare, 'push', withAuth(input.gitUrl, input.token), `${input.ref}:${input.ref}`], { env: authEnv(input.token) }), { attempts: 3, baseMs: 200 });
 }

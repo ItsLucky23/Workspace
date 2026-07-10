@@ -26,8 +26,8 @@ export function shouldRedeployDemo(input: { autoRedeploy: boolean; pinnedCommit:
 }
 
 export interface DemoWatchDeps {
-  //? Resolve the current head commit of `branch` for a workspace (default: the real bare-repo rev-parse).
-  resolveHead?: (workspaceId: string, branch: string) => Promise<string>;
+  //? Resolve the current head commit of `branch` for a project (default: the real bare-repo rev-parse).
+  resolveHead?: (workspaceId: string, projectId: string, branch: string) => Promise<string>;
   //? Redeploy an env (default: the real deploy engine). Injected in tests to avoid a container.
   redeploy?: (prisma: PrismaClient, workspaceId: string, envId: string) => Promise<{ ok: boolean }>;
 }
@@ -47,7 +47,7 @@ export async function runDemoWatch(deps: DemoWatchDeps = {}): Promise<DemoWatchR
   for (const env of demos) {
     const ws = await prisma.workspace.findUnique({ where: { id: env.workspaceId }, select: { gitConfig: true } });
     const branch = normalizeGitConfig(ws?.gitConfig ?? null).targetBranch;
-    const head = await resolveHead(env.workspaceId, branch);
+    const head = await resolveHead(env.workspaceId, env.projectId, branch);
     if (!shouldRedeployDemo({ autoRedeploy: env.autoRedeploy, pinnedCommit: env.pinnedCommit, head, deployedCommit: env.deployedCommit })) continue;
     const res = await redeploy(prisma, env.workspaceId, env.id);
     if (res.ok) redeployed.push(env.id);
