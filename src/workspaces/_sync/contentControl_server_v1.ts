@@ -20,7 +20,7 @@ const CONTENT_OPS = new Set<string>([
   'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
   'content-gen-reference-image', 'content-gen-shortform', 'content-analyze-reference-video',
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
-  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-save-audio-mix', 'content-critique-image', 'content-video-restyle', 'channel-create', 'channel-edit', 'channel-delete', 'account-disconnect', 'reference-add', 'reference-delete', 'content-unarchive', 'content-unpublish',
+  'content-request-publish', 'content-from-brief', 'content-import-asset', 'content-regenerate', 'content-inpaint', 'content-reorder-beats', 'content-save-scenes', 'content-decompose-video', 'content-refine-range', 'content-run-pipeline', 'content-save-audio-mix', 'content-trim-audio', 'content-critique-image', 'content-video-restyle', 'channel-create', 'channel-edit', 'channel-delete', 'account-disconnect', 'reference-add', 'reference-delete', 'content-unarchive', 'content-unpublish',
 ]);
 //? Type-guard: a whitelisted content op IS a ControlOp (no cast needed downstream).
 const isContentOp = (op: string): op is ControlOp => CONTENT_OPS.has(op);
@@ -49,8 +49,10 @@ export interface SyncParams {
     referenceId?: string; description?: string; assetUrl?: string; tags?: string[];
     //? M3 — long-form target duration for content-run-pipeline (was missing from the contract).
     durationMs?: number;
-    //? F1 — render aspect ratio ('16:9' | '9:16' | '1:1') persisted on the piece + used by assemble.
-    aspectRatio?: string;
+    //? F1/F2 — render aspect ratio + caption delivery mode ('sidecar'|'burn'|'soft'), persisted on the piece.
+    aspectRatio?: string; captionMode?: string;
+    //? F9 — audio-editor-lite: linear gain for content-trim-audio (assetId/startMs/endMs are declared above).
+    gain?: number;
     //? G1 — per-platform publish composer: caption/hashtags/privacy persisted into publishVariants on publish.
     caption?: string; hashtags?: string[]; privacy?: string;
   };

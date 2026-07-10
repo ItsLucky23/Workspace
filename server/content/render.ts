@@ -386,6 +386,29 @@ export async function applyCaptions(inName: string, srtName: string, mode: 'burn
   return `/media/${outName}`;
 }
 
+//? F9 — the ffmpeg args to TRIM a standalone audio asset to [startMs,endMs] + apply a linear gain (the
+//? audio-editor-lite: cut a voice/music/sfx clip + adjust its level, locally, no provider cost). `atrim`
+//? is sample-accurate; `asetpts=PTS-STARTPTS` re-bases the cut to 0; `volume` is a linear multiplier. Pure +
+//? exported for tests.
+export function buildAudioTrimArgs(inName: string, outName: string, startMs: number, endMs: number, gain = 1): string[] {
+  const start = (Math.max(0, startMs) / 1000).toFixed(2);
+  const end = (Math.max(startMs + 100, endMs) / 1000).toFixed(2);
+  const g = Math.max(0, gain).toFixed(2);
+  return ['-y', '-i', `/media/${inName}`, '-af', `atrim=${start}:${end},asetpts=PTS-STARTPTS,volume=${g}`, `/media/${outName}`];
+}
+
+//? Trim + gain a standalone audio file → the new served `/media/<name>` url. Best-effort: any failure (no
+//? Docker, bad input) yields null so the caller reports a no-op instead of losing the source. Output keeps the
+//? source extension (voice/music are typically .mp3).
+export async function trimAudioFile(inName: string, startMs: number, endMs: number, gain: number, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const ext = /\.[a-z0-9]+$/i.exec(inName)?.[0] ?? '.mp3';
+  const outName = `${inName.replace(/\.[^.]+$/, '')}-trim-${randomUUID().slice(0, 8)}${ext}`;
+  const [err, res] = await tryCatch(() => run(buildAudioTrimArgs(inName, outName, startMs, endMs, gain)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {

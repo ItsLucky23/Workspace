@@ -136,7 +136,40 @@ function PublishComposer({ platform, onSubmit, translate }: { platform: string; 
   );
 }
 
-function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; translate: ReturnType<typeof useTranslator> }) {
+//? F9 — audio-editor-lite: trim a standalone audio asset (start/end over its REAL duration, read from the
+//? <audio> metadata) + a linear gain, then fire content-trim-audio (local ffmpeg, no provider cost). Props-
+//? injected (menuHandler renders ABOVE WorkspacesProvider — lesson 0011 — so it must not call useWorkspaces).
+function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: (f: { startMs: number; endMs: number; gain: number }) => void; translate: ReturnType<typeof useTranslator> }) {
+  const [dur, setDur] = useState(0);
+  const [start, setStart] = useState(0);
+  const [end, setEnd] = useState(0);
+  const [gain, setGain] = useState(1);
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.audioEditor.title' })}</div>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a user's own audio asset has no caption track to add; this is an editing preview */}
+      <audio controls src={src} onLoadedMetadata={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) { setDur(d); setEnd(d); } }} className="w-full" />
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-muted">{translate({ key: 'workspaces.audioEditor.start' })}: {start.toFixed(1)}s</span>
+        <input type="range" min={0} max={dur || 1} step={0.1} value={start} onChange={(e) => { setStart(Math.max(0, Math.min(Number(e.target.value), end - 0.1))); }} className="accent-primary" />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-muted">{translate({ key: 'workspaces.audioEditor.end' })}: {end.toFixed(1)}s</span>
+        <input type="range" min={0} max={dur || 1} step={0.1} value={end} onChange={(e) => { setEnd(Math.min(dur, Math.max(Number(e.target.value), start + 0.1))); }} className="accent-primary" />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-muted">{translate({ key: 'workspaces.audioEditor.gain' })}: {gain.toFixed(2)}×</span>
+        <input type="range" min={0} max={2} step={0.05} value={gain} onChange={(e) => { setGain(Number(e.target.value)); }} className="accent-primary" />
+      </label>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="scissors" disabled={dur <= 0 || end <= start} onClick={() => { onSubmit({ startMs: Math.round(start * 1000), endMs: Math.round(end * 1000), gain }); }}>{translate({ key: 'workspaces.audioEditor.apply' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
+function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   //? F4 — a render's url is an .mp4 (can't be an <img>); use its extracted poster frame as the thumbnail.
   //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
@@ -206,6 +239,14 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditR
       {asset.kind === 'video' && asset.status === 'ready' && !asset.stub && asset.url.length > 0 && (
         <div className="flex items-center gap-1 px-2 pb-2">
           <button type="button" onClick={() => { onRestyle(asset.id); }} title={translate({ key: 'workspaces.content.restyle' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="film" /> {translate({ key: 'workspaces.content.restyle' })}</button>
+        </div>
+      )}
+      {/* F9 — a standalone audio asset (voice/music/sfx): inline preview + a local trim/gain editor. */}
+      {(asset.kind === 'voice' || asset.kind === 'music' || asset.kind === 'sfx') && asset.status === 'ready' && href && (
+        <div className="flex flex-col gap-1 px-2 pb-2">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a user's own audio asset has no caption track to add; this is a preview */}
+          <audio controls src={href} className="w-full h-8" />
+          <button type="button" onClick={() => { onTrimAudio(asset); }} title={translate({ key: 'workspaces.audioEditor.edit' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 self-start motion-safe:active:scale-95"><Icon name="scissors" /> {translate({ key: 'workspaces.audioEditor.edit' })}</button>
         </div>
       )}
       {/* F5 — surface a stored critique under the image so the user sees the feedback. */}
@@ -338,6 +379,14 @@ export default function ContentPiece({ params }: { params: Record<string, string
       runContentOp('content-video-restyle', piece.id, { assetId, prompt: extra.trim() || 'cinematic, warm colour grade, shallow depth of field' });
     })();
   };
+  //? F9 — open the audio-editor-lite for a standalone audio asset → content-trim-audio (local, no cost).
+  const trimAudio = (asset: ContentAssetSummary) => {
+    const url = assetHref(asset.url);
+    if (!url) return;
+    void menuHandler.open(
+      <AudioTrimEditor src={url} translate={translate} onSubmit={(f) => { void menuHandler.close(); runContentOp('content-trim-audio', piece.id, { assetId: asset.id, startMs: f.startMs, endMs: f.endMs, gain: f.gain }); }} />,
+    );
+  };
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -446,7 +495,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onRestyle={restyle} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
                 </div>
               )}
             </div>

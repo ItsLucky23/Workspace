@@ -227,6 +227,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { pieceId: { kind: 'pieceId', required: true }, styleKey: { kind: 'string' }, durationMs: { kind: 'number' } },
   },
   'content-save-audio-mix': LATER,
+  'content-trim-audio': LATER,
   'channel-create': LATER, 'channel-edit': LATER, 'channel-delete': LATER_D,
   'account-disconnect': EXCLUDED, // auth/token surface
   'reference-add': LATER, 'reference-delete': LATER_D,

@@ -32,6 +32,7 @@ import { runContentPipeline } from '../content/runPipeline';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
+import { localizeAsset, trimAudioFile } from '../content/render';
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
 import { generateShortForm } from '../content/shortForm';
@@ -1444,6 +1445,26 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const musicVolume = clampVolume(num(payload, 'musicVolume'), 0.25, 1);
       await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { voiceVolume, musicVolume } });
       broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'content-trim-audio': {
+      //? F9 — audio-editor-lite: trim a standalone audio asset (voice/music/sfx) to [startMs,endMs] + apply a
+      //? linear gain, LOCALLY via ffmpeg (no provider cost). Produces a NEW audio asset chained to the source
+      //? (I2 lineage). Best-effort: a localize/ffmpeg failure is a no-op (the source is never lost).
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const assetId = str(payload, 'assetId');
+      if (!contentProjectId || !assetId) return;
+      const src = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId, id: assetId }, select: { id: true, url: true, kind: true, parentId: true } });
+      if (!src?.url) return;
+      const inName = await localizeAsset(src.url);
+      if (!inName) return;
+      const startMs = num(payload, 'startMs') ?? 0;
+      const endMs = num(payload, 'endMs') ?? startMs + 1000;
+      const gain = clampVolume(num(payload, 'gain'), 1, 4);
+      const url = await trimAudioFile(inName, startMs, endMs, gain);
+      if (!url) return;
+      const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind: src.kind, url, status: 'ready', parentId: src.parentId ?? src.id, metadata: jsonInput({ imported: true, trimmed: true, editedBy: userId }) } });
+      await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
     }
     case 'content-inpaint': {
