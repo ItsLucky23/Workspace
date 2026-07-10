@@ -33,6 +33,7 @@ import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
 import { generateReferenceImage } from '../content/referenceImage';
+import { critiqueImage } from '../content/imageCritique';
 import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
@@ -1458,6 +1459,23 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         if (parent) await prisma.contentAsset.update({ where: { id: r.assetId }, data: { parentId: parent.parentId ?? parent.id } });
       }
       if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
+      return;
+    }
+    case 'content-critique-image': {
+      //? F5 — AI critique of an existing IMAGE asset ("what should change about this photo"). A vision model
+      //? reads the pixels + returns concrete edit suggestions; the result is stored on the asset's metadata so
+      //? the UI shows it under the image. Advisory only — never edits the asset (the user runs an edit op next).
+      const contentProjectId = str(payload, 'contentProjectId');
+      const assetId = str(payload, 'assetId');
+      if (!contentProjectId || !assetId) return;
+      const asset = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: assetId, kind: 'image' }, select: { url: true, metadata: true } });
+      if (!asset?.url) return;
+      const critique = await critiqueImage(prisma, { workspaceId: action.workspaceId, imageUrl: asset.url, ...(str(payload, 'prompt') ? { userNote: str(payload, 'prompt') } : {}) });
+      const meta = (asset.metadata !== null && typeof asset.metadata === 'object' && !Array.isArray(asset.metadata)) ? { ...(asset.metadata as Record<string, unknown>) } : {};
+      meta.critique = critique.critique;
+      meta.critiqueStub = critique.stub;
+      await prisma.contentAsset.update({ where: { id: assetId }, data: { metadata: jsonInput(meta) } });
+      await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, assetId);
       return;
     }
     case 'content-regenerate': {

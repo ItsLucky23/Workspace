@@ -38,6 +38,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'script': 'gemini-api',
   //? E5 — user-defined custom AI tasks → always-available Claude CLI default, overridable per workspace (P1).
   'custom-generate': 'claude-cli',
+  //? F5 — image critique needs a VISION model → defaults to Gemini (multimodal). Degrades to a stub without a key.
+  'image-critique': 'gemini-api',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a

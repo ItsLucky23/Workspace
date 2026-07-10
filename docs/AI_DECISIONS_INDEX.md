@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (185)
+## Decisions (186)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -198,6 +198,7 @@
 | 0265 | chat op catalog | 🟢 accepted | assistant, control-api, rbac, security | — | `docs/decisions/0265-chat-op-catalog.md` |
 | 0266 | security hardening sweep | 🟢 accepted | security, rbac, ssrf, push, git | — | `docs/decisions/0266-security-hardening-sweep.md` |
 | 0267 | multi repo per project storage | 🟢 accepted | git, multi-project, storage, r3b | — | `docs/decisions/0267-multi-repo-per-project-storage.md` |
+| 0268 | multimodal image critique | 🟢 accepted | ai, media, vision, provider | — | `docs/decisions/0268-multimodal-image-critique.md` |
 
 ## Summaries
 
@@ -1682,6 +1683,14 @@ Fix all of them at the authoritative layer (the Conductor / server read-path / h
 Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/<ws>/projects/<proj>/{repo.git,worktrees/,draft.Dockerfile,merge-wt,revert-wt}`.
 
 → `docs/decisions/0267-multi-repo-per-project-storage.md`
+
+### 0268 — multimodal image critique
+
+**0268** · accepted · tags: ai, media, vision, provider · 2026-07-10
+
+**`AiCompletionRequest.imageUrls?: string[]`** — an optional multimodal input. The Gemini provider resolves each URL to bytes (local `/media/<file>` off the media store, or http fetch), base64-encodes it, and sends it as an `inline_data` part alongside the text prompt. Text-only providers (Claude CLI) ignore the field. Failed/oversized (>8MB) images are dropped so the turn still runs text-only. **New `image-critique` AiFeature**, defaulted to `gemini-api` (vision-capable) in the assignment map; degrades to an honest stub without a key (never a fake result). **`critiqueImage` service** + **`content-critique-image` control-op** (content family, RBAC `workTickets`): loads a ready IMAGE asset, runs the critique, stores the result on the asset's `metadata.critique` (+ `critiqueStub` honesty flag), and broadcasts a delta. **Advisory only** — it never edits the asset; the prompt maps each suggestion to an existing edit op (inpaint/adjust/crop/ regenerate) the user then runs. Reachable via the UI and (X1) proposable by the assistant. **Lazy env read (bug fix):** the Gemini provider captured `GEMINI_API_KEY` at MODULE LOAD, but the key is a `@luckystack/secret-manager` pointer that resolves into `process.env` only AFTER boot — freezing the unresolved pointer caused a latent "key present but unavailable/401". Now read at call time.
+
+→ `docs/decisions/0268-multimodal-image-critique.md`
 
 ## Code governed by decisions
 

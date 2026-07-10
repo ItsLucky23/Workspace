@@ -50,13 +50,19 @@ export type AiFeature =
   | 'script'
   //? E5 — user-defined custom AI tasks: a generic, re-runnable prompt-template the user authors + runs through
   //? the provider abstraction. Stays propose/generate (never a write verb). Defaults to Claude.
-  | 'custom-generate';
+  | 'custom-generate'
+  //? F5 — image critique ("what should change about this photo"): a MULTIMODAL model looks at the actual
+  //? pixels (not just a URL string) and returns concrete improvement suggestions. Defaults to Gemini (vision).
+  | 'image-critique';
 
 export interface AiCompletionRequest {
   prompt: string;
   system?: string;   //? optional system/context preamble
   cwd?: string;      //? working dir the AI runs in (e.g. a ticket worktree)
   timeoutMs?: number; //? hard cap for the turn (provider default when omitted)
+  //? F5 — image URLs (local `/media/...` or http) for a MULTIMODAL turn. A vision provider (Gemini) reads
+  //? the actual pixels; text-only providers (Claude CLI) ignore them. Empty/omitted = a normal text turn.
+  imageUrls?: string[];
   //? Optional tagging so the run shows up in the workspace's central AI-activity feed (the
   //? "Activity" tab of the Workspace-AI panel). No tenancy is enforced here — it's a display tag.
   workspaceId?: string;

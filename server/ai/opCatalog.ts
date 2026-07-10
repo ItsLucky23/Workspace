@@ -209,6 +209,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'regenerate a media asset (optionally tweaked, costs money — the user confirms). params: assetId, pieceId?, tweak?, count? (1-4)',
     params: { assetId: { kind: 'string', required: true }, pieceId: { kind: 'pieceId' }, tweak: { kind: 'string' }, count: { kind: 'number' } },
   },
+  'content-critique-image': {
+    mode: 'enabled',
+    hint: 'AI critique of an image asset ("what should change about this photo") — vision feedback + which edit fixes each point. params: pieceId, assetId, prompt? (a specific question)',
+    params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, prompt: { kind: 'string' } },
+  },
   'content-inpaint': LATER, 'content-reorder-beats': LATER, 'content-save-scenes': LATER,
   'content-decompose-video': LATER, 'content-refine-range': LATER,
   'content-run-pipeline': {

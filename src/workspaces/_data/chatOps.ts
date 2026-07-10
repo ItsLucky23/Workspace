@@ -23,6 +23,8 @@ export const CHAT_ENABLED_OPS = [
   'stage-create', 'stage-delete', 'stage-reorder',
   // content lifecycle + orchestration (paid per-asset gen ops follow once cost-confirms land, B4)
   'content-run-pipeline', 'content-advance', 'content-archive', 'content-unarchive', 'content-regenerate',
+  // F5 — AI image critique (advisory, no asset write)
+  'content-critique-image',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

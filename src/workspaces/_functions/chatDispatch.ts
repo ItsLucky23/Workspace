@@ -154,4 +154,10 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const pieceId = str(p, 'pieceId'); const tweak = str(p, 'tweak'); const count = num(p, 'count');
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-regenerate', assetId, ...(pieceId ? { contentProjectId: pieceId } : {}), ...(tweak ? { tweak } : {}), ...(typeof count === 'number' ? { count: String(count) } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  'content-critique-image': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId');
+    if (!pieceId || !assetId) return;
+    const prompt = str(p, 'prompt');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-critique-image', contentProjectId: pieceId, assetId, ...(prompt ? { prompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
 };
