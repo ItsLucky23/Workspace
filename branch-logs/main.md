@@ -3560,3 +3560,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** capture 14/14 (+coerceScenario-cases: drop-invalid, clamp-60s, null-fallback), opCatalogParity 53/53. tsc0·lint0·build✓. Live capture al bewezen (example.com→mp4).
 > **PUNT I (demo-recorder) VOLLEDIG:** I1 capture-container (live-bewezen) · I2 AI-scenario + deterministische fallback · I3 opname→asset→timeline.
 **Files:** `server/content/capture.ts`, `server/orchestrator/conductor.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_functions/chatDispatch.ts`, `tests/unit/capture.test.mts`.
+
+## 2026-07-11 — ✅ J1 onboarding first-steps + J2 (board empty-states aanwezig)
+**Wat:** een `OnboardingBanner` op het board wanneer een workspace nog geen tickets heeft: 3 genummerde eerste stappen (repo verbinden → eerste ticket maken → de AI vragen) met één-klik-CTA's (settings openen / quickAdd / AI openen) + dismiss. i18n×4 onder `firstSteps` (de `onboarding`-namespace was al bezet door het create-workspace-scherm). J2: het board heeft al per-stage empty-states + deze banner dekt de lege-workspace-staat.
+**Verify:** localeIntegrity 8/8, tsc0·lint0·build✓.
+**Files:** `src/workspaces/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

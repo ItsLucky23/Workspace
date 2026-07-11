@@ -16,7 +16,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
-import Icon from './_components/Icon';
+import Icon, { type IconName } from './_components/Icon';
 import { Popover } from './_components/motion';
 import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, WsButton, useClickAway, type PopMenuItem } from './_components/primitives';
 import { useWorkspaces } from './_shell/WorkspacesContext';
@@ -341,6 +341,37 @@ function BoardHeader({
   );
 }
 
+//? J1 — first-steps onboarding banner for a fresh workspace (no tickets yet). Names the 3 things a novice
+//? does first — connect a repo, create a ticket, ask the AI — with a one-click "create first ticket" CTA.
+function OnboardingBanner() {
+  const translate = useTranslator();
+  const { quickAdd, navigate, toggleAi } = useWorkspaces();
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  const steps: { icon: IconName; text: string; action: () => void; cta: string }[] = [
+    { icon: 'link', text: translate({ key: 'workspaces.firstSteps.step1' }), action: () => { navigate('settings'); }, cta: translate({ key: 'workspaces.firstSteps.step1Cta' }) },
+    { icon: 'plus', text: translate({ key: 'workspaces.firstSteps.step2' }), action: () => { quickAdd({ title: translate({ key: 'workspaces.firstSteps.firstTicket' }) }); }, cta: translate({ key: 'workspaces.firstSteps.step2Cta' }) },
+    { icon: 'robot', text: translate({ key: 'workspaces.firstSteps.step3' }), action: () => { toggleAi(); }, cta: translate({ key: 'workspaces.firstSteps.step3Cta' }) },
+  ];
+  return (
+    <div className="mx-4 md:mx-6 mb-3 rounded-2xl border border-primary-border bg-primary/8 p-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.firstSteps.title' })}</div>
+        <button type="button" onClick={() => { setDismissed(true); }} className="text-muted hover:text-title cursor-pointer text-xs">{translate({ key: 'workspaces.firstSteps.dismiss' })}</button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {steps.map((s, i) => (
+          <div key={s.cta} className="rounded-xl border border-container2-border bg-container1 p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-sm text-title"><span className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span><Icon name={s.icon} className="text-muted" /></div>
+            <div className="text-xs text-common">{s.text}</div>
+            <button type="button" onClick={s.action} className="self-start text-xs font-medium text-primary hover:underline cursor-pointer">{s.cta} →</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BoardMobile({ columns }: { columns: Columns }) {
   const translate = useTranslator();
   const { stages } = useWorkspaces();
@@ -408,6 +439,8 @@ export default function Board() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <BoardHeader isMobile={false} sprintFilter={sprintFilter} onSprintFilterChange={setSprintFilter} filters={filters} onFiltersChange={setFilters} />
+      {/* J1 — a fresh workspace (no tickets): a first-steps banner so a novice knows where to start. */}
+      {tickets.length === 0 && <OnboardingBanner />}
       <div className="flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6">
         <div className="flex gap-3 h-full">
           {stages.map((s) => <KanbanColumn key={s.id} stage={s} tickets={columns[s.id] ?? []} />)}
