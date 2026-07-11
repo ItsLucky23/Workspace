@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: channel-edit UI (was create+delete-only)
+**Wat:** de content/settings channel-sectie had create + delete maar geen **edit** (`channel-edit` bestond in de conductor + `CONTENT_OPS`-whitelist, maar UI-loos). De create-form doet nu dubbel dienst als edit-form: een pen-knop per kanaalrij laadt de rij in de velden (edit-modus, met annuleren), en submit dispatcht `channel-edit` (patch met `channelId`) ipv `channel-create`. Admin-gated paneel, dus geen clutter-conflict met de simplify-run. Via bestaande `runContentOp`.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 1 i18n-key ×4 (`content.channelEdit`).
+**Files:** `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: content-gen-avatar UI-knop (was UI-loos)
 **Prompt:** /goal "verwerk alle openstaande punten die je zonder feedback kan… alle gaps dichten die we kunnen dichten." Uit de coverage-map (16 ops zonder UI-knop).
 **Wat:** `content-gen-avatar` (bestond in de op-union + conductor + rbac, maar had geen knop) toegevoegd aan de ACTIONS-lijst op de content-piece-pagina. Server-contract geverifieerd (`server/content/mediaAsset.ts`: avatar = prompt + **optionele** ref + style → geen crash-risico zoals de 3D-bug), dispatcht via de bestaande `runContentOp` (staat in de `CONTENT_OPS`-whitelist). Één-klik, geen verplichte payload. **Bevinding:** de overige UI-loze ops (shortlink-create→targetUrl, content-unpublish→asset+platform, content-analyze-reference-video→video+story, capture-run→app-URL) vereisen formulieren/context, en `gitlab-verify`/budget/`root-cause`/`plan-critique`/`mr-review` zijn `later`-ops die dispatch-plumbing + een weergave-surface missen — die zijn niet clutter-vrij te sluiten zonder ontwerp-/plumbing-keuzes.

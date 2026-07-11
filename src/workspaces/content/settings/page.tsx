@@ -246,18 +246,26 @@ function ChannelManagerSection() {
   const translate = useTranslator();
   const { content, runContentOp } = useWorkspaces();
   const platformItems: DropdownItem[] = CHANNEL_PLATFORMS.map((p) => ({ id: p, value: p, item: p }));
+  //? channel-edit (was UI-less): the create form doubles as an edit form. Editing loads the row into the fields
+  //? and dispatches channel-edit (a patch) instead of channel-create.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState('youtube');
   const [handle, setHandle] = useState('');
   const [brandVoice, setBrandVoice] = useState('');
   const canSave = name.trim().length > 0;
+  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); };
+  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null }): void => {
+    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? '');
+  };
   const submit = () => {
     if (!canSave) return;
-    runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}) });
-    setName(''); setHandle(''); setBrandVoice('');
+    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim() });
+    else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}) });
+    reset();
   };
   const removeChannel = (id: string): void => {
-    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.channelDelete' }), content: translate({ key: 'workspaces.content.channelDeleteConfirm' }) }).then((ok) => { if (ok) runContentOp('channel-delete', '', { channelId: id }); });
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.channelDelete' }), content: translate({ key: 'workspaces.content.channelDeleteConfirm' }) }).then((ok) => { if (ok) { if (editingId === id) reset(); runContentOp('channel-delete', '', { channelId: id }); } });
   };
   return (
     <section className="rounded-2xl border border-container1-border bg-container1 p-5">
@@ -274,12 +282,16 @@ function ChannelManagerSection() {
                 <div className="text-sm font-medium text-title truncate">{c.name} <span className="text-xs text-disabled">· {c.platform}{c.handle ? ` · ${c.handle}` : ''}</span></div>
                 {c.brandVoice ? <div className="text-xs text-muted truncate">{c.brandVoice}</div> : null}
               </div>
+              <button type="button" onClick={() => { startEdit(c); }} title={translate({ key: 'workspaces.content.channelEdit' })} className={`w-7 h-7 rounded-md flex items-center justify-center cursor-pointer shrink-0 ${editingId === c.id ? 'text-primary bg-primary/10' : 'text-muted hover:text-title hover:bg-container2-hover'}`}><Icon name="pen-nib" /></button>
               <button type="button" onClick={() => { removeChannel(c.id); }} title={translate({ key: 'workspaces.content.channelDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
             </div>
           ))}
       </div>
       <div className="rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2">
-        <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.content.channelNew' })}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-medium text-title">{translate({ key: editingId ? 'workspaces.content.channelEdit' : 'workspaces.content.channelNew' })}</div>
+          {editingId && <button type="button" onClick={reset} className="text-xs text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.shell.cancel' })}</button>}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelNamePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
           <Dropdown size="md" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); }} />
