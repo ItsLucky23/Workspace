@@ -145,7 +145,7 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc } = useWorkspaces();
+  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
   const [reindexing, setReindexing] = useState(false);
@@ -186,12 +186,15 @@ export default function Sources() {
         </div>
         {tab === 'docs' && (
           <div className="flex items-center gap-2 shrink-0">
-            {repo.linked && (
-              <PopMenu items={[
+            {(() => {
+              const items: PopMenuItem[] = [];
+              if (repo.linked) items.push(
                 { label: translate({ key: 'workspaces.sources.scanRepo' }), icon: 'magnifying-glass', onClick: () => { scanDocs(); } },
                 { label: translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' }), icon: 'database', onClick: reindexing ? undefined : () => { setReindexing(true); scanIndex(); } },
-              ]} />
-            )}
+              );
+              items.push({ label: translate({ key: 'workspaces.sources.reindexMemory' }), icon: 'robot', onClick: () => { indexMemory(); } });
+              return <PopMenu items={items} />;
+            })()}
             <input ref={fileRef} type="file" accept=".md,.txt,.markdown,text/plain,text/markdown" onChange={onUploadDoc} className="hidden" />
             <WsButton icon="plus" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
           </div>

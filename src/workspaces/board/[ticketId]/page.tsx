@@ -250,6 +250,7 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   const agentMenu: PopMenuItem[] = [
     { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { ctx.pauseTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.ticket.resumeAgent' }), icon: 'play', onClick: () => { ctx.resumeTicket(ticket.id); } },
+    { label: translate({ key: 'workspaces.ticket.critiquePlan' }), icon: 'wand-magic-sparkles', onClick: () => { ctx.planCritique(ticket.id); } },
   ];
   if (showDevOps) {
     agentMenu.push(

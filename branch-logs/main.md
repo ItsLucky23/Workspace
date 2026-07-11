@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: index-memory + plan-critique UI (via bestaande projectAdmin-router)
+**Wat:** `projectAdmin_server_v1.ts` whitelist `index-memory`/`plan-critique`/`root-cause`/`ci-allow-red` al → geen nieuwe route/generateArtifacts nodig, alleen client-wiring. Toegevoegd: `ctx.indexMemory()` + `ctx.planCritique(ticketKey)`. UI: **"Reindex memory"** in het sources-"…"-menu (nu altijd zichtbaar, ook zonder repo); **"Plan bekritiseren (AI)"** in het ticket-agentmenu (output = WorkspaceSuggestion, rendert al in het AI-panel/Shell). Beide één-klik, mechanisch, geen ontwerpkeuze. `gitlab-verify` bewust NIET gewired — dat is een no-op-stub ("Fase 2 engine"), een knop eraan = nep-knop.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 2 i18n-keys ×4 (`sources.reindexMemory`, `ticket.critiquePlan`).
+**Files:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/sources/page.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: copy-workspace-assets UI-gewired (server-route bestond, client niet)
 **Wat:** `copy-workspace-assets` had een volledige server-`_sync`-route (`copyWorkspaceAssets_server_v1.ts`) maar geen client-wiring → UI-loos. Toegevoegd: `ctx.copyWorkspaceAssets(sourceWorkspaceId)` (dispatcht naar de bestaande route) + een picker in content/settings (admin-blok, waar styles+brand wonen): Dropdown van je andere workspaces + "Assets kopiëren"-knop (met empty-state als er geen andere workspaces zijn). Geen backend/verb-wijziging; sync-route-type bestond al (typecheck0 zonder generateArtifacts).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 4 i18n-keys ×4 (`content.copyAssets*`).

@@ -1073,6 +1073,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room && sourceWorkspaceId) void syncRequest({ name: 'workspaces/copyWorkspaceAssets', version: 'v1', data: { sourceWorkspaceId, clientRequestId: nextReqId() }, receiver: room });
       },
+      //? Reindex the workspace's institutional memory (RAG). One-click via the existing projectAdmin op-router.
+      indexMemory: () => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'index-memory', clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? AI plan-critique (ADR 0044): attack a ticket's plan before implement → a WorkspaceSuggestion the user
+      //? accepts. One-click via the projectAdmin op-router; the result surfaces in the suggestions feed.
+      planCritique: (ticketKey) => {
+        const room = snap.activeWorkspaceId;
+        if (room && ticketKey) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'plan-critique', ticketKey, clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;
