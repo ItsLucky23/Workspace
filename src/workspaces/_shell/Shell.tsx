@@ -291,6 +291,30 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
   );
 }
 
+/* ------------------------------------------------------------- paused banner */
+//? Emergency-stop banner. `workspacePaused` is workspace-wide state, so this lives in
+//? the persistent shell chrome above the routed page and is reachable on EVERY view on
+//? BOTH mobile + desktop. Resume-all is non-destructive → direct call (no confirm).
+//? Renders nothing when the workspace isn't paused.
+export function PausedBanner() {
+  const { workspacePaused, resumeAll } = useWorkspaces();
+  const translate = useTranslator();
+  if (!workspacePaused) return null;
+  return (
+    <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-warning/40 bg-warning/10 shrink-0">
+      <Icon name="pause" className="text-warning shrink-0" />
+      <span className="flex-1 min-w-0 text-sm text-title">{translate({ key: 'workspaces.board.pausedBanner' })}</span>
+      <button
+        type="button"
+        onClick={() => { resumeAll(); }}
+        className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer"
+      >
+        <Icon name="play" /> {translate({ key: 'workspaces.board.resumeAll' })}
+      </button>
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- tab bar */
 //? Open-ticket tabs only (no board/AI buttons — those live in the nav rail). Lives
 //? INSIDE the content column, so it spans only the content width and butts up against

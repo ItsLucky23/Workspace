@@ -1550,6 +1550,8 @@
       "pauseAll": "Pause all agents",
       "pauseAllConfirmTitle": "Pause all agents?",
       "pauseAllConfirmContent": "Every running agent in this workspace will pause. You can resume any time.",
+      "resumeAll": "Resume all agents",
+      "pausedBanner": "All agents are paused. The engine won't start new work until you resume.",
       "filter": "Filter",
       "ticket": "Ticket",
       "mobileEmptyTitle": "Nothing in {{stage}}",

@@ -1551,6 +1551,8 @@
       "pauseAll": "Alle Agents pausieren",
       "pauseAllConfirmTitle": "Alle Agents pausieren?",
       "pauseAllConfirmContent": "Jeder laufende Agent in diesem Workspace pausiert. Du kannst jederzeit fortsetzen.",
+      "resumeAll": "Alle Agents fortsetzen",
+      "pausedBanner": "Alle Agents sind pausiert. Die Engine startet keine neue Arbeit, bis du fortsetzt.",
       "filter": "Filter",
       "ticket": "Ticket",
       "mobileEmptyTitle": "Nichts in {{stage}}",

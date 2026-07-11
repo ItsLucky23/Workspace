@@ -1551,6 +1551,8 @@
       "pauseAll": "Mettre tous les agents en pause",
       "pauseAllConfirmTitle": "Mettre tous les agents en pause ?",
       "pauseAllConfirmContent": "Tous les agents en cours d’exécution dans ce workspace seront mis en pause. Vous pouvez reprendre à tout moment.",
+      "resumeAll": "Reprendre tous les agents",
+      "pausedBanner": "Tous les agents sont en pause. Le moteur ne démarrera aucun nouveau travail jusqu'à la reprise.",
       "filter": "Filtrer",
       "ticket": "Ticket",
       "mobileEmptyTitle": "Rien dans {{stage}}",

@@ -331,8 +331,15 @@ function BoardHeader({
             onSprintFilterChange(String(it.id));
           }}
         />
-        {!isMobile && (
-          <IconButton icon="pause" title={translate({ key: 'workspaces.board.pauseAll' })} onClick={() => void menuHandler.confirm({ title: translate({ key: 'workspaces.board.pauseAllConfirmTitle' }), content: translate({ key: 'workspaces.board.pauseAllConfirmContent' }) })} />
+        {!ctx.workspacePaused && (
+          <IconButton
+            icon="pause"
+            title={translate({ key: 'workspaces.board.pauseAll' })}
+            onClick={() => void menuHandler.confirm({
+              title: translate({ key: 'workspaces.board.pauseAllConfirmTitle' }),
+              content: translate({ key: 'workspaces.board.pauseAllConfirmContent' }),
+            }).then((ok) => { if (ok) ctx.pauseAll(); })}
+          />
         )}
         <FilterMenu isMobile={isMobile} filters={filters} onChange={onFiltersChange} />
         <WsButton icon="plus" onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>

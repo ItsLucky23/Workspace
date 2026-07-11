@@ -1550,6 +1550,8 @@
       "pauseAll": "Alle agents pauzeren",
       "pauseAllConfirmTitle": "Alle agents pauzeren?",
       "pauseAllConfirmContent": "Elke draaiende agent in deze workspace pauzeert. Je kunt altijd hervatten.",
+      "resumeAll": "Alle agents hervatten",
+      "pausedBanner": "Alle agents zijn gepauzeerd. De engine start geen nieuw werk tot je hervat.",
       "filter": "Filter",
       "ticket": "Ticket",
       "mobileEmptyTitle": "Niets in {{stage}}",
