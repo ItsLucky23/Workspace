@@ -910,6 +910,7 @@
       "actMusic": "Music",
       "actSfx": "Sound effect",
       "act3d": "3D model",
+      "actAvatar": "Avatar",
       "actAssemble": "Assemble video",
       "settingsTitle": "Content setup",
       "advancedSection": "Providers, budget & publishing",

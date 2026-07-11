@@ -51,6 +51,7 @@ const ACTIONS: GenAction[] = [
   { op: 'content-gen-music', labelKey: 'workspaces.content.actMusic', icon: 'wave-square', costFeature: 'music' },
   { op: 'content-gen-sfx', labelKey: 'workspaces.content.actSfx', icon: 'wave-square', costFeature: 'sfx' },
   { op: 'content-gen-3d', labelKey: 'workspaces.content.act3d', icon: 'box-archive', costFeature: 'model-3d' },
+  { op: 'content-gen-avatar', labelKey: 'workspaces.content.actAvatar', icon: 'user', costFeature: 'avatar' },
   { op: 'content-assemble', labelKey: 'workspaces.content.actAssemble', icon: 'diagram-project' },
 ];
 
