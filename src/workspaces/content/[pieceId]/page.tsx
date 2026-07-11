@@ -11,7 +11,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { EmptyState, WsButton } from '../../_components/primitives';
+import { EmptyState, PopMenu, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -407,6 +407,12 @@ export default function ContentPiece({ params }: { params: Record<string, string
     );
   };
 
+  //? Lifecycle ops that were previously only reachable via the AI chat — surfaced as a UI button + menu so a user
+  //? can drive them directly (mobile + desktop). All go through the existing runContentOp dispatch.
+  const pieceMenu: PopMenuItem[] = piece.status === 'archived'
+    ? [{ label: translate({ key: 'workspaces.content.restorePiece' }), icon: 'rotate-left', onClick: () => { runContentOp('content-unarchive', piece.id, {}); } }]
+    : [{ label: translate({ key: 'workspaces.content.archivePiece' }), icon: 'box-archive', danger: true, onClick: () => { void menuHandler.confirm({ title: translate({ key: 'workspaces.content.archivePiece' }), content: piece.title }).then((ok) => { if (ok) runContentOp('content-archive', piece.id, {}); }); } }];
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
@@ -426,6 +432,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <span className="tabular-nums" title={translate({ key: 'workspaces.content.spentTooltip' })}>{translate({ key: 'workspaces.content.spentLabel', params: [{ key: 'amount', value: euro(piece.spentCents) }] })}</span>
             </>}
           </div>
+        </div>
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <WsButton variant="secondary" icon="arrow-right" onClick={() => { runContentOp('content-advance', piece.id, {}); }}>{translate({ key: 'workspaces.content.advanceStage' })}</WsButton>
+          <PopMenu items={pieceMenu} />
         </div>
       </div>
 
