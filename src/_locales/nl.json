@@ -1164,7 +1164,7 @@
       "ragNotIndexed": "Code nog niet geïndexeerd"
     },
     "mr": {
-        "runCi": "CI draaien", "aiReview": "AI-review", "aiReviewQueued": "AI-review gestart — bevindingen verschijnen als suggestie.",
+        "runCi": "CI draaien", "aiReview": "AI-review", "aiReviewQueued": "AI-review gestart — bevindingen verschijnen als suggestie.", "allowRed": "Mergen bij rode CI toestaan", "allowRedHint": "Indien aan, kan een mens mergen ook als de CI faalt.",
         "aiReview": "AI-review",
       "loading": "Merge request laden…",
       "loadFailed": "Kon de merge request niet laden.",

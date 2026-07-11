@@ -72,7 +72,7 @@ export default function MrReviewPanel({ ticket }: { ticket: Ticket }) {
 
 function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
   const translate = useTranslator();
-  const { mrAction, currentUser, runCi } = useWorkspaces();
+  const { mrAction, currentUser, runCi, activeWorkspace, allowCiRed } = useWorkspaces();
   const [busy, setBusy] = useState<null | 'approve' | 'merge' | 'rollback'>(null);
 
   const isOpen = mr.status === 'open';
@@ -147,6 +147,11 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
               <WsButton variant="ghost" icon="wave-square" disabled={busy !== null} onClick={() => { runCi(ticketKey); }}>{translate({ key: 'workspaces.mr.runCi' })}</WsButton>
               {/* mr-review — AI review of the diff (was pipeline-only, no manual trigger). */}
               <WsButton variant="ghost" icon="robot" disabled={busy !== null} onClick={aiReview}>{translate({ key: 'workspaces.mr.aiReview' })}</WsButton>
+              {/* ci-allow-red — let a human merge while CI is red (was UI-less). */}
+              <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer" title={translate({ key: 'workspaces.mr.allowRedHint' })}>
+                <input type="checkbox" checked={activeWorkspace.allowMergeOnRedCI ?? false} onChange={(e) => { allowCiRed(e.target.checked); }} className="accent-primary" />
+                {translate({ key: 'workspaces.mr.allowRed' })}
+              </label>
               <WsButton variant="secondary" icon="circle-check" disabled={busy !== null || alreadyApproved} onClick={approve}>
                 {translate({ key: alreadyApproved ? 'workspaces.mr.approved' : 'workspaces.mr.approve' })}
               </WsButton>

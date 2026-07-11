@@ -1099,6 +1099,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: nextReqId() }, receiver: room });
       },
+      //? ci-allow-red: let a human merge while CI is red (workspace-level toggle).
+      allowCiRed: (enabled) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-allow-red', enabled, clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

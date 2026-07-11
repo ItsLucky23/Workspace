@@ -115,6 +115,7 @@ export interface WorkspacesCtx {
   editBudget: (cap: number, alertPct?: number) => void;
   resumeSpend: () => void;
   resyncForge: () => void;
+  allowCiRed: (enabled: boolean) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;

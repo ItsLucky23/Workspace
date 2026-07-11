@@ -1164,7 +1164,7 @@
       "ragNotIndexed": "Code pas encore indexé"
     },
     "mr": {
-        "runCi": "Lancer la CI", "aiReview": "Revue IA", "aiReviewQueued": "Revue IA lancée — les résultats apparaîtront comme suggestion.",
+        "runCi": "Lancer la CI", "aiReview": "Revue IA", "aiReviewQueued": "Revue IA lancée — les résultats apparaîtront comme suggestion.", "allowRed": "Autoriser la fusion si CI rouge", "allowRedHint": "Si activé, un humain peut fusionner même si la CI échoue.",
         "aiReview": "Revue IA",
       "loading": "Chargement de la merge request…",
       "loadFailed": "Impossible de charger la merge request.",

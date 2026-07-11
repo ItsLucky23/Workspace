@@ -1164,7 +1164,7 @@
       "ragNotIndexed": "Code noch nicht indiziert"
     },
     "mr": {
-        "runCi": "CI ausführen", "aiReview": "KI-Review", "aiReviewQueued": "KI-Review gestartet — Ergebnisse erscheinen als Vorschlag.",
+        "runCi": "CI ausführen", "aiReview": "KI-Review", "aiReviewQueued": "KI-Review gestartet — Ergebnisse erscheinen als Vorschlag.", "allowRed": "Merge bei roter CI erlauben", "allowRedHint": "Wenn an, kann ein Mensch mergen, auch wenn die CI fehlschlägt.",
         "aiReview": "KI-Review",
       "loading": "Merge-Request wird geladen…",
       "loadFailed": "Merge-Request konnte nicht geladen werden.",

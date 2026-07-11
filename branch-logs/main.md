@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: ci-allow-red toggle in het MR-panel
+**Wat:** `ci-allow-red` (zet `workspace.allowMergeOnRedCI` — een mens mag mergen bij rode CI) had een conductor-case + zat in de projectAdmin-whitelist, maar was UI-loos én de state stond niet in de snapshot. Toegevoegd: `allowMergeOnRedCI` aan de client-`Workspace`-type + de snapshot-map (full-row-query, geen select-wijziging) + `ctx.allowCiRed(enabled)` (via projectAdmin, `enabled?` bestond al → geen generateArtifacts) + een **checkbox-toggle** in de MR-actie-rij die de live-state toont.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 2 i18n-keys ×4 (`mr.allowRed`/`allowRedHint`).
+**Files:** `src/workspaces/_components/MrReviewPanel.tsx`, `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: mr-review AI-review-knop in het MR-panel
 **Wat:** `mr-review` (ADR 0041: AI leest de MR-diff → line-anchored findings als `WorkspaceSuggestion` die de mens accepteert) draaide alleen als pipeline-stap, geen handmatige trigger. Bevinding: `mrAction_server` mapt `review → mr-review` al + accepteert `action: string` → geen server-wijziging. Toegevoegd: `'review'` aan de `MrActionKind`-type + een **"AI-review"**-knop in de MrBody-actie-rij (naast Run CI) die `mrAction('review', {ticketKey, mrId})` vuurt + een toast. Findings verschijnen als suggestie (bestaande accept-flow, B-23 intact).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 2 i18n-keys ×4 (`mr.aiReview`/`aiReviewQueued`).

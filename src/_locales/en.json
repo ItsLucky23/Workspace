@@ -1164,7 +1164,7 @@
       "ragNotIndexed": "Code not indexed yet"
     },
     "mr": {
-        "runCi": "Run CI", "aiReview": "AI review", "aiReviewQueued": "AI review started — findings will appear as a suggestion.",
+        "runCi": "Run CI", "aiReview": "AI review", "aiReviewQueued": "AI review started — findings will appear as a suggestion.", "allowRed": "Allow merge on red CI", "allowRedHint": "When on, a human can merge even if CI is failing.",
         "aiReview": "AI review",
       "loading": "Loading merge request…",
       "loadFailed": "Could not load the merge request.",

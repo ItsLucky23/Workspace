@@ -76,6 +76,7 @@ export interface Workspace {
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
+  allowMergeOnRedCI?: boolean;    // ci-allow-red: let a human merge while CI is red
   enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
   productContext?: string;        // Q2 — brand/product context folded into every creative generation
   aiInstruction?: string;         // Q4 — workspace-wide "how the AI works here", prepended to every AI completion
