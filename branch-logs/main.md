@@ -3546,3 +3546,7 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 ## 2026-07-11 — 🔧 LIVE H1 CTA-overlay: 2 echte bugs gevonden+gefixt
 **Wat:** live-proof van de CTA-overlay via echte Docker ffmpeg legde twee bugs bloot die de unit-test (structureel correcte args) miste: (1) `drawtext` had geen font → "Fontconfig: Cannot load default config" → expliciete `fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` (env-overridable `WS_CTA_FONT`); (2) `ih` is GEEN geldige variabele in een drawtext-expressie (wel in drawbox) → `y=ih-...` faalde "Failed to parse expression" → `y=h-h/12-text_h/2`. Na de fix: **exit 0, 15KB mp4 met ingebrande CTA**. Unit-test aangescherpt op `fontfile=`.
 **Files:** `server/content/render.ts`, `tests/unit/ctaOverlay.test.mts`.
+
+## 2026-07-11 — ✅ LIVE I-capture: workspaces/capture-image gebouwd + live opname bewezen
+**Wat:** de `workspaces/capture`-image gebouwd (`docker build -f docker/base-capture.Dockerfile`). Bug gevonden: de mcr-playwright-base heeft de browsers (/ms-playwright) maar NIET de `playwright`-npm-package → `ERR_MODULE_NOT_FOUND`. Fix: `npm install playwright@1.48.0` in de Dockerfile + `NODE_PATH=/capture/node_modules`. Na rebuild: **live capture van example.com → 27KB mp4** (Playwright navigeert+neemt op, ffmpeg transcodeert). Punt I nu end-to-end live-bewezen.
+**Files:** `docker/base-capture.Dockerfile`.

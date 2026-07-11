@@ -8,7 +8,9 @@ FROM mcr.microsoft.com/playwright:v1.48.0-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /capture
+# The base image ships the browsers (/ms-playwright) but NOT the `playwright` npm package — install it
+# (pinned to the image's browser build) so the driver can `import { chromium } from 'playwright'`.
+RUN npm init -y >/dev/null 2>&1 && npm install playwright@1.48.0 >/dev/null 2>&1
 COPY server/container/capture/captureScript.mjs /capture/captureScript.mjs
-# Playwright is preinstalled in the base image; the script imports it from the global install.
-ENV NODE_PATH=/ms-playwright-agent/node_modules:/usr/lib/node_modules
+ENV NODE_PATH=/capture/node_modules
 ENTRYPOINT []
