@@ -238,7 +238,9 @@ export function InfoDot({ title, body, align = 'right' }: { title?: string; body
 
 /* ----------------------------------------------------------------- pop menu */
 export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean; divider?: boolean; onClick?: () => void }
-export function PopMenu({ items, align = 'right', icon = 'ellipsis', triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
+//? `label` renders a text + chevron trigger (e.g. "Advanced ▾") instead of the icon-only button, for a
+//? progressive-disclosure menu that reads as a labelled control. Omit it → the original icon-only trigger.
+export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const change = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
   const ref = useClickAway<HTMLDivElement>(open, () => { change(false); });
@@ -247,9 +249,11 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', triggerClas
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); change(!open); }}
-        className={triggerClass ?? 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer'}
+        className={triggerClass ?? (label
+          ? 'inline-flex items-center gap-1.5 h-8 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 transition-colors cursor-pointer'
+          : 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer')}
       >
-        <Icon name={icon} />
+        {label ? (<>{label} <Icon name="caret-down" className={`text-xs transition-transform ${open ? 'rotate-180' : ''}`} /></>) : <Icon name={icon} />}
       </button>
       <Popover open={open} className={`absolute z-30 mt-1 min-w-[190px] rounded-xl border border-container1-border bg-container1 p-1 shadow-lg ${align === 'right' ? 'right-0' : 'left-0'}`}>
         {items.map((it, i) =>
@@ -269,6 +273,27 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', triggerClas
           ),
         )}
       </Popover>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- disclosure */
+//? Progressive disclosure: a labelled summary row that expands/collapses its body. The go-to for keeping
+//? advanced/dev controls off the first paint without hiding them (they're one tap away, mobile + desktop).
+//? `defaultOpen` seeds the initial state; the chevron rotates and the body is only mounted while open.
+export function Disclosure({ summary, defaultOpen = false, children, className = '' }: { summary: ReactNode; defaultOpen?: boolean; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`rounded-xl border border-container1-border bg-container1 ${className}`}>
+      <button
+        type="button"
+        onClick={() => { setOpen((o) => !o); }}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-title cursor-pointer"
+      >
+        <span className="min-w-0 flex-1 text-left">{summary}</span>
+        <Icon name="caret-down" className={`shrink-0 text-muted transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-4 pb-4 pt-0">{children}</div>}
     </div>
   );
 }

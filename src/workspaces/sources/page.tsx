@@ -12,7 +12,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
 import { Sheet } from '../_components/motion';
-import { EmptyState, Tabs, Toggle, WsButton, type TabDef } from '../_components/primitives';
+import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import type { InfoDoc, SkillEntry } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 
@@ -88,6 +88,8 @@ const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBa
 
 function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: () => void; onToggleAiEditable: () => void }) {
   const translate = useTranslator();
+  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} />); } }];
+  if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: noop });
   return (
     <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
       <button type="button" onClick={onOpen} className="flex items-center justify-between gap-2 text-left cursor-pointer group">
@@ -107,12 +109,12 @@ function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: ()
         </div>
       )}
       <div className="flex items-center gap-3 mt-1">
-        <button type="button" onClick={onOpen} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="eye" /> {translate({ key: 'workspaces.sources.preview' })}</button>
-        {doc.source !== 'uploaded' && <button type="button" onClick={noop} className="text-xs text-common hover:text-title cursor-pointer inline-flex items-center gap-1"><Icon name="wave-square" /> {translate({ key: 'workspaces.sources.regenerate' })}</button>}
-        <button type="button" onClick={() => { openDetail(<DocDetail doc={doc} />); }} className="text-xs text-common hover:text-title cursor-pointer">{translate({ key: 'workspaces.sources.details' })}</button>
-        <div className="flex items-center gap-1.5 ml-auto" title={translate({ key: 'workspaces.sources.aiEditableHint' })}>
+        <div className="flex items-center gap-1.5" title={translate({ key: 'workspaces.sources.aiEditableHint' })}>
           <span className="text-[11px] text-muted">{translate({ key: 'workspaces.sources.aiEditable' })}</span>
           <Toggle on={doc.aiEditable} onChange={onToggleAiEditable} />
+        </div>
+        <div className="ml-auto">
+          <PopMenu items={menuItems} />
         </div>
       </div>
     </div>
@@ -121,6 +123,8 @@ function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: ()
 
 function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void }) {
   const translate = useTranslator();
+  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<SkillDetail skill={skill} />); } }];
+  if (skill.kind === 'frozen') menuItems.push({ label: translate({ key: 'workspaces.sources.reindex' }), icon: 'database', onClick: noop });
   return (
     <div className="flex items-center gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3">
       <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${skill.on ? 'bg-primary/12 text-primary' : 'bg-container2 text-muted'}`}><Icon name="robot" /></span>
@@ -131,9 +135,8 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
         </div>
         <div className="text-xs text-muted truncate">{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
-      <button type="button" onClick={() => { openDetail(<SkillDetail skill={skill} />); }} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.details' })}</button>
-      {skill.kind === 'frozen' && <button type="button" onClick={noop} className="text-xs text-common hover:text-title cursor-pointer hidden sm:inline">{translate({ key: 'workspaces.sources.reindex' })}</button>}
       <Toggle on={skill.on} onChange={onToggle} />
+      <PopMenu items={menuItems} />
     </div>
   );
 }
@@ -183,10 +186,14 @@ export default function Sources() {
         </div>
         {tab === 'docs' && (
           <div className="flex items-center gap-2 shrink-0">
-            {repo.linked && <WsButton variant="secondary" icon="magnifying-glass" onClick={() => { scanDocs(); }}>{translate({ key: 'workspaces.sources.scanRepo' })}</WsButton>}
-            {repo.linked && <WsButton variant="secondary" icon="database" disabled={reindexing} onClick={() => { setReindexing(true); scanIndex(); }}>{translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' })}</WsButton>}
+            {repo.linked && (
+              <PopMenu items={[
+                { label: translate({ key: 'workspaces.sources.scanRepo' }), icon: 'magnifying-glass', onClick: () => { scanDocs(); } },
+                { label: translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' }), icon: 'database', onClick: reindexing ? undefined : () => { setReindexing(true); scanIndex(); } },
+              ]} />
+            )}
             <input ref={fileRef} type="file" accept=".md,.txt,.markdown,text/plain,text/markdown" onChange={onUploadDoc} className="hidden" />
-            <WsButton variant="secondary" icon="plus" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
+            <WsButton icon="plus" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
           </div>
         )}
       </div>
