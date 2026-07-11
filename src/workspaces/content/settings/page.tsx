@@ -316,6 +316,12 @@ export default function ContentSettings() {
     setBudgetSaved(true);
   };
 
+  //? Simplify: a content editor's day-to-day is brand/styles/channels/references (kept on first paint). The
+  //? account-level knobs — raw model overrides, provider API keys, €-budget, publishing OAuth — are admin/owner
+  //? concerns, so they're gated on role (fail-open: unresolved ≠ 'member') and collapsed behind one toggle.
+  const showAdmin = activeWorkspace.role !== 'member';
+  const [adminOpen, setAdminOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
@@ -357,7 +363,14 @@ export default function ContentSettings() {
           {/* Inspiration/reference library — example ads/thumbnails/intros the AI emulates. */}
           <ReferenceLibrarySection />
 
-          {/* Media model overrides — advanced (P3). */}
+          {showAdmin && (
+            <>
+              <button type="button" onClick={() => { setAdminOpen((o) => !o); }} className="flex items-center justify-between gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3 text-sm font-medium text-title cursor-pointer">
+                <span className="flex items-center gap-2"><Icon name="sliders" className="text-muted" /> {translate({ key: 'workspaces.content.advancedSection' })}</span>
+                <Icon name="caret-down" className={`text-muted transition-transform motion-reduce:transition-none ${adminOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {adminOpen && (
+          <>{/* Media model overrides — advanced (P3). */}
           <MediaModelsSection />
 
           {/* Media provider API keys — stored ENCRYPTED, never shown back. */}
@@ -434,7 +447,10 @@ export default function ContentSettings() {
                 );
               })}
             </div>
-          </section>
+          </section></>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
