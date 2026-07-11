@@ -595,7 +595,7 @@
       "forgeGitlab": "GitLab",
       "forgeGithub": "GitHub",
       "accessToken": "Access token",
-      "verify": "Verify",
+      "verify": "Verify", "resyncIssues": "Resync issues",
       "transferOwnership": "Transfer ownership",
       "transferOwnershipDesc": "Hand this workspace to another member.",
       "transferConfirmTitle": "Transfer ownership?",

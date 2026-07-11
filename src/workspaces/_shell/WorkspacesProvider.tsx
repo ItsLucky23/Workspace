@@ -1094,6 +1094,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: nextReqId() }, receiver: room });
       },
+      //? Pull the active project's open forge issues (GitLab|GitHub) + upsert them as tickets (ADR 0036).
+      resyncForge: () => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

@@ -114,6 +114,7 @@ export interface WorkspacesCtx {
   planCritique: (ticketKey: string) => void;
   editBudget: (cap: number, alertPct?: number) => void;
   resumeSpend: () => void;
+  resyncForge: () => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;

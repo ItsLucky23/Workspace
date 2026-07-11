@@ -344,7 +344,7 @@ function IntegrationsTab() {
 
 function GitLabTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveGitlab } = useWorkspaces();
+  const { activeWorkspace, saveGitlab, resyncForge } = useWorkspaces();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
   const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.slug === 'youcomm-core' ? 'https://gitlab.youcomm.nl' : 'https://gitlab.com'));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
@@ -369,8 +369,10 @@ function GitLabTab() {
           className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
         <WsButton variant="secondary" icon="circle-check" onClick={() => { /* Fase 2: live GitLab token verification round-trip via the orchestrator */ }}>{translate({ key: 'workspaces.workspaceSettings.verify' })}</WsButton>
       </div>
-      <div>
+      <div className="flex items-center gap-2">
         <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+        {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
+        <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
       </div>
     </div>
   );
