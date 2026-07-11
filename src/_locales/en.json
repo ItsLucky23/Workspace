@@ -712,6 +712,7 @@
       "noSessions": "No other active sessions.",
       "sessionRevoked": "Session signed out.",
       "revokeAllDone": "Other sessions signed out.",
+      "devOpsSection": "Developer & operations",
       "notificationsTitle": "Notifications",
       "notificationsDesc": "Get pinged when an AI needs your input.",
       "webPush": "Web push",

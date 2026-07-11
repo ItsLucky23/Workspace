@@ -712,6 +712,7 @@
       "noSessions": "Keine anderen aktiven Sitzungen.",
       "sessionRevoked": "Sitzung abgemeldet.",
       "revokeAllDone": "Andere Sitzungen abgemeldet.",
+      "devOpsSection": "Entwickler & Betrieb",
       "notificationsTitle": "Benachrichtigungen",
       "notificationsDesc": "Werde benachrichtigt, wenn eine AI deine Eingabe braucht.",
       "webPush": "Web-Push",

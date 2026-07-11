@@ -712,6 +712,7 @@
       "noSessions": "Geen andere actieve sessies.",
       "sessionRevoked": "Sessie uitgelogd.",
       "revokeAllDone": "Andere sessies uitgelogd.",
+      "devOpsSection": "Ontwikkelaar & operations",
       "notificationsTitle": "Meldingen",
       "notificationsDesc": "Krijg een seintje wanneer een AI je input nodig heeft.",
       "webPush": "Web-push",

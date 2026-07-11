@@ -14,6 +14,7 @@ import { apiRequest } from 'src/_sockets/apiRequest';
 
 import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
+import { isModuleEnabled } from '../_data/modules';
 import { SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush } from '../_functions/pushSubscribe';
@@ -249,6 +250,12 @@ export default function AccountSettings() {
   };
   const [language, setSelectedLanguage] = useState<Language>(session?.language ?? 'en');
   const sshUser = sshUserId ? membersById[sshUserId] : null;
+  //? Simplify: dev/ops surfaces (forge, SSH, PATs, deploy, services, DB, raw SQL) are only shown when the
+  //? development module is on AND the current user is admin/owner (fail-open: an unresolved role is not 'member',
+  //? so it stays visible). A plain 'member' or a content/design-only workspace sees a clean account page.
+  //? Collapsed by default so even an admin's first paint stays light (progressive disclosure).
+  const showDevOps = isModuleEnabled(activeWorkspace.enabledSections, 'development') && activeWorkspace.role !== 'member';
+  const [devOpen, setDevOpen] = useState(false);
 
   //? Theme + language autosave: apply the change instantly (DOM class / active
   //? locale) and persist it to the account via the framework's `settings/updateUser`
@@ -330,7 +337,14 @@ export default function AccountSettings() {
             </div>
           </Card>
 
-          <Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
+          {showDevOps && (
+            <>
+              <button type="button" onClick={() => { setDevOpen((o) => !o); }} className="flex items-center justify-between gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3 text-sm font-medium text-title cursor-pointer">
+                <span className="flex items-center gap-2"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.devOpsSection' })}</span>
+                <Icon name="caret-down" className={`text-muted transition-transform motion-reduce:transition-none ${devOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {devOpen && (
+          <><Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
             <Row>
               <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.gitlab' })}</span>
               <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>
@@ -509,7 +523,10 @@ export default function AccountSettings() {
               {sshKeys.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noKeysLinked' })}</div>}
             </div>
             <div className="mt-3"><AddKeyForm onAdd={addSshKey} /></div>
-          </Card>
+          </Card></>
+              )}
+            </>
+          )}
 
           <Card
             title={translate({ key: 'workspaces.account.sessionsTitle' })}

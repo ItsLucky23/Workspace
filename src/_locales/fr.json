@@ -712,6 +712,7 @@
       "noSessions": "Aucune autre session active.",
       "sessionRevoked": "Session déconnectée.",
       "revokeAllDone": "Autres sessions déconnectées.",
+      "devOpsSection": "Développeur & opérations",
       "notificationsTitle": "Notifications",
       "notificationsDesc": "Soyez alerté lorsqu’une IA a besoin de votre input.",
       "webPush": "Push web",
