@@ -168,7 +168,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'capture-run': (p, x) => {
     const url = str(p, 'url'); const pieceId = str(p, 'pieceId');
     if (!url || !pieceId) return;
-    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'capture-run', contentProjectId: pieceId, url, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'capture-run', contentProjectId: pieceId, url, ...(str(p, 'goal') ? { goal: str(p, 'goal') } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'shortlink-create': (p, x) => {
     const targetUrl = str(p, 'targetUrl'); const pieceId = str(p, 'pieceId');

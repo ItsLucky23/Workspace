@@ -3554,3 +3554,9 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 ## 2026-07-11 — ✅ E1 base-images: php/dotnet/ruby Dockerfiles + base-php live gebouwd
 **Wat:** de ontbrekende stack-base-Dockerfiles gemaakt (`docker/base-{php,dotnet,ruby}.Dockerfile`) naar het bestaande patroon (extend `workspaces/base` + toolchain). **base-php live gebouwd + geverifieerd**: PHP 8.2.32 + Composer 2.10.2 draaien in het image → de E1-catalogus (die deze images resolvet) is nu daadwerkelijk bouwbaar. ruby/dotnet bouwen identiek via hetzelfde patroon.
 **Files:** `docker/base-php.Dockerfile`, `docker/base-ruby.Dockerfile`, `docker/base-dotnet.Dockerfile`.
+
+## 2026-07-11 — ✅ I2 AI-authored capture-scenario — PUNT I VOLLEDIG
+**Wat:** `generateCaptureScenario` — de AI (hergebruikt de `studio-marketer`-rol, geen nieuwe feature-ripple) schrijft uit een demo-`goal` + de app-routes een walkthrough-scenario (JSON: goto/wait/click). `coerceScenario` valideert AI/client-output (behoudt alleen well-formed steps, clampt waitMs≤60s), met de deterministische route-walk als fallback. capture-run: scenario-precedentie expliciet → AI (`goal`) → route-walk. Assistant kan het via `capture-run{goal}` (opCatalog-hint uitgebreid). i18n n.v.t.
+**Verify:** capture 14/14 (+coerceScenario-cases: drop-invalid, clamp-60s, null-fallback), opCatalogParity 53/53. tsc0·lint0·build✓. Live capture al bewezen (example.com→mp4).
+> **PUNT I (demo-recorder) VOLLEDIG:** I1 capture-container (live-bewezen) · I2 AI-scenario + deterministische fallback · I3 opname→asset→timeline.
+**Files:** `server/content/capture.ts`, `server/orchestrator/conductor.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_sync/contentControl_server_v1.ts`, `src/workspaces/_functions/chatDispatch.ts`, `tests/unit/capture.test.mts`.

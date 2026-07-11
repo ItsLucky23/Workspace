@@ -2,7 +2,7 @@
 //? app route (goto + hold) → a valid scenario; buildCaptureRunArgs mounts MEDIA_DIR as /out, joins the shared
 //? net, and passes the base url + scenario json + output name to the capture driver. The live container run is
 //? the infra step (workspaces/capture image); here only the deterministic plan is asserted.
-import { buildCaptureScenario, buildCaptureRunArgs } from '../../server/content/capture.ts';
+import { buildCaptureScenario, buildCaptureRunArgs, coerceScenario } from '../../server/content/capture.ts';
 import { assert, eq, report } from '../_helpers.mts';
 
 const sc = buildCaptureScenario([{ path: '/board' }, { path: 'content' }], { holdMs: 2000 });
@@ -18,4 +18,10 @@ assert(args.includes(':/out'), 'MEDIA_DIR is mounted at /out');
 assert(args.includes('--url http://preview.localhost'), 'the base url is passed');
 assert(args.includes('--out /out/demo.mp4'), 'the output name is passed');
 assert(args.includes('captureScript.mjs'), 'it runs the capture driver');
+// I2 — coerceScenario keeps only well-formed steps (AI/client output validation)
+eq(coerceScenario({ steps: [{ goto: '/a' }, { bad: 1 }, { waitMs: 999_999 }] })?.steps.length, 2, 'invalid steps are dropped');
+eq(coerceScenario({ steps: [{ waitMs: 999_999 }] })?.steps[0]?.waitMs, 60_000, 'waitMs is clamped to 60s');
+eq(coerceScenario({ steps: [] }), null, 'no valid steps → null (caller falls back)');
+eq(coerceScenario('nope'), null, 'non-object → null');
+
 report('tests/unit/capture.test.mts');

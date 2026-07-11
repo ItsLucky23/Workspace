@@ -222,8 +222,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'capture-run': {
     mode: 'enabled',
-    hint: 'record a demo video of a running app by capturing a preview/env URL (chromium walkthrough → mp4 video asset). params: url (the running app url to capture, http/https), contentProjectId? (the piece to attach the footage to)',
-    params: { url: { kind: 'string', required: true }, contentProjectId: { kind: 'string' } },
+    hint: 'record a demo video of a running app by capturing a preview/env URL (chromium walkthrough → mp4 video asset). params: url (the running app url to capture, http/https), contentProjectId? (the piece to attach the footage to), goal? (a plain-language demo goal — the AI then scripts which screens to walk)',
+    params: { url: { kind: 'string', required: true }, contentProjectId: { kind: 'string' }, goal: { kind: 'string' } },
   },
   'shortlink-create': {
     mode: 'enabled',

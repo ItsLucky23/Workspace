@@ -33,7 +33,7 @@ import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
 import { localizeAsset, trimAudioFile } from '../content/render';
-import { runCapture, buildCaptureScenario, type CaptureScenario } from '../content/capture';
+import { runCapture, buildCaptureScenario, generateCaptureScenario, coerceScenario } from '../content/capture';
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
 import { generateShortForm } from '../content/shortForm';
@@ -1534,8 +1534,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
       const url = str(payload, 'url');
       if (!contentProjectId || !url || !/^https?:\/\//.test(url)) return { ok: false, status: 'error', error: 'capture.badUrl' };
-      const raw = payload.scenario;
-      const scenario = raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as CaptureScenario) : buildCaptureScenario([{ path: '/' }]);
+      //? Scenario precedence: an explicit one (client-provided) → an AI-authored one (I2, when a `goal` is set) →
+      //? the deterministic route-walk. Routes come from the payload (the app's own routes) or default to '/'.
+      const routes = Array.isArray(payload.routes) ? payload.routes.filter((r): r is string => typeof r === 'string').map((p) => ({ path: p })) : [{ path: '/' }];
+      const explicit = coerceScenario(payload.scenario);
+      const goal = str(payload, 'goal');
+      const scenario = explicit ?? (goal ? await generateCaptureScenario(prisma, action.workspaceId, goal, routes) : buildCaptureScenario(routes));
       const cap = await runCapture(url, scenario);
       if (!cap.ok || !cap.url) return { ok: false, status: 'error', error: cap.error ?? 'capture.failed' };
       const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind: 'video', url: cap.url, status: 'ready', metadata: jsonInput({ imported: true, capture: true, editedBy: userId }) } });

@@ -57,6 +57,8 @@ export interface SyncParams {
     targetUrl?: string; slug?: string; variant?: string;
     //? I1 — demo capture (capture-run): the app url + an optional scenario (viewport + goto/wait/click steps).
     scenario?: { viewport: { width: number; height: number }; steps: { goto?: string; waitMs?: number; click?: string }[] };
+    //? I2 — AI-authored scenario from a goal + the app's routes.
+    goal?: string; routes?: string[];
     //? G1 — per-platform publish composer: caption/hashtags/privacy persisted into publishVariants on publish.
     caption?: string; hashtags?: string[]; privacy?: string;
   };
