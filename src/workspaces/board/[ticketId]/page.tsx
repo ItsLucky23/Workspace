@@ -23,9 +23,10 @@ const LazyCodeEditorPanel = lazy(() => import('src/_components/editor/CodeEditor
 const LazyVsCodeEmbed = lazy(() => import('src/_components/editor/VsCodeEmbed').then((m) => ({ default: m.VsCodeEmbed })));
 import Icon from '../../_components/Icon';
 import XtermTerminal from '../../_components/XtermTerminal';
-import { AvatarBubble, AvatarStack, EmptyState, LabelChip, StatusPill, Tabs, WsButton, type TabDef } from '../../_components/primitives';
+import { AvatarBubble, AvatarStack, EmptyState, LabelChip, PopMenu, StatusPill, Tabs, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { isModuleEnabled } from '../../_data/modules';
 import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketFile, TicketLink } from '../../_data/types';
 import { PRIORITY_DOT, PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
 import { parseStructuredQuestion } from '../../_functions/structuredQuestion';
@@ -241,17 +242,29 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
     void menuHandler.open(<TimeTravelForm translate={translate} onSubmit={(spec) => { void menuHandler.close(); timeTravel(spec); }} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
   };
 
+  //? Simplify: a ticket's primary action is "open preview" (what a non-technical approver actually needs). The
+  //? agent-lifecycle (pause/resume) + the destructive/dev tools (kill, time-travel) move into a "…" menu so the
+  //? ticket header isn't a wall of dev-verbs. Kill + time-travel are gated on the development module + admin/owner
+  //? (fail-open: an unresolved role is not 'member'); pause/resume stay for whoever manages the ticket.
+  const showDevOps = isModuleEnabled(ctx.activeWorkspace.enabledSections, 'development') && ctx.activeWorkspace.role !== 'member';
+  const agentMenu: PopMenuItem[] = [
+    { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { ctx.pauseTicket(ticket.id); } },
+    { label: translate({ key: 'workspaces.ticket.resumeAgent' }), icon: 'play', onClick: () => { ctx.resumeTicket(ticket.id); } },
+  ];
+  if (showDevOps) {
+    agentMenu.push(
+      { label: translate({ key: 'workspaces.timetravel.button' }), icon: 'clock-rotate-left', onClick: openTimeTravel },
+      { divider: true },
+      { label: translate({ key: 'workspaces.ticket.killAgent' }), icon: 'ban', danger: true, onClick: kill },
+    );
+  }
+
   return (
     <div className="px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
-      <WsButton variant="ghost" icon="pause" disabled={ctx.workspacePaused} onClick={() => { ctx.pauseTicket(ticket.id); }}>{translate({ key: 'workspaces.ticket.pauseAgent' })}</WsButton>
-      <WsButton variant="ghost" icon="play" onClick={() => { ctx.resumeTicket(ticket.id); }}>{translate({ key: 'workspaces.ticket.resumeAgent' })}</WsButton>
-      <WsButton variant="danger" icon="ban" onClick={kill}>{translate({ key: 'workspaces.ticket.killAgent' })}</WsButton>
-      <span className="w-px h-6 bg-divider mx-1" />
       <WsButton variant="secondary" icon="display" disabled={preview.loading} onClick={() => { void openPreview(); }}>
         {translate({ key: preview.loading ? 'workspaces.ticket.previewOpening' : 'workspaces.ticket.openPreview' })}
       </WsButton>
-      {/* T1/T3 — preview a PAST version (commit / main-minus-X / as-of). */}
-      <WsButton variant="ghost" icon="clock-rotate-left" disabled={preview.loading} onClick={openTimeTravel}>{translate({ key: 'workspaces.timetravel.button' })}</WsButton>
+      <PopMenu items={agentMenu} />
       {preview.url !== undefined && <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-xs">{preview.url}</a>}
       {preview.err === true && <span className="text-xs text-wrong">{translate({ key: 'workspaces.ticket.previewFailed' })}</span>}
     </div>
@@ -466,17 +479,20 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
       </Card>
       <LinkedArtifactsCard ticketKey={ticket.id} />
       <CommentsThread ticketId={ticket.id} />
-      <div className="flex items-center gap-2">
-        <WsButton
-          variant="danger" icon="box-archive"
-          onClick={() => {
-            /* Fase 2: no teardown-container control-op yet — confirm only, no follow-up write */
-            void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }), input: ticket.id });
-          }}
-        >
-          {translate({ key: 'workspaces.ticket.teardownContainer' })}
-        </WsButton>
-      </div>
+      {/* Teardown is a destructive dev-op → only for the development module + admin/owner (fail-open on unknown role). */}
+      {isModuleEnabled(ctx.activeWorkspace.enabledSections, 'development') && ctx.activeWorkspace.role !== 'member' && (
+        <div className="flex items-center gap-2">
+          <WsButton
+            variant="danger" icon="box-archive"
+            onClick={() => {
+              /* Fase 2: no teardown-container control-op yet — confirm only, no follow-up write */
+              void menuHandler.confirm({ title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }), content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }), input: ticket.id });
+            }}
+          >
+            {translate({ key: 'workspaces.ticket.teardownContainer' })}
+          </WsButton>
+        </div>
+      )}
     </div>
   );
 }
