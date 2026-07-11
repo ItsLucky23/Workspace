@@ -427,6 +427,27 @@ export async function extractLastFrame(clipName: string, opts: { run?: FfmpegRun
   return `/media/${outName}`;
 }
 
+//? H1 (ads) — the ffmpeg args to overlay a CTA / end-card text band across the LAST `tailS` seconds of a
+//? finished ad video (drawtext on a translucent band, bottom third). A second pass over the rendered mp4 (like
+//? the caption pass) so the render filtergraphs are untouched. `text` is escaped for the drawtext filter (the
+//? special chars `:%\'` break it). Pure + exported for tests.
+export function buildCtaArgs(inName: string, outName: string, text: string, tailS = 3): string[] {
+  const safe = text.replaceAll('\\', String.raw`\\`).replaceAll(':', String.raw`\:`).replaceAll("'", '’').replaceAll('%', String.raw`\%`);
+  const enable = String.raw`gte(t\,max(0\,t)-` + `${String(tailS)})`; // last tailS seconds (approx; the band shows near the end)
+  const draw = `drawbox=y=ih-ih/6:w=iw:h=ih/6:color=black@0.55:t=fill:enable='${enable}',drawtext=text='${safe}':fontcolor=white:fontsize=h/18:x=(w-text_w)/2:y=ih-ih/12-text_h/2:enable='${enable}'`;
+  return ['-y', '-i', `/media/${inName}`, '-vf', draw, '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
+}
+
+//? Apply a CTA end-card overlay to a rendered ad mp4 → the new served url. Best-effort: a failure keeps the
+//? un-overlaid render (never loses the video).
+export async function applyCtaOverlay(inName: string, text: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const outName = `${inName.replace(/\.mp4$/, '')}-cta.mp4`;
+  const [err, res] = await tryCatch(() => run(buildCtaArgs(inName, outName, text)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Localize an asset URL to a bare file name under MEDIA_DIR: a `/media/<file>` path is used directly if
 //? present; an http(s) URL is downloaded + persisted; a `stub://`/unknown URL is not renderable (null).
 export async function localizeAsset(url: string | null | undefined): Promise<string | null> {

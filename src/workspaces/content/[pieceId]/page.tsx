@@ -274,6 +274,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [durationKey, setDurationKey] = useState('auto');
   //? F2 — how captions are delivered on the rendered video (sidecar .srt only / burned-in / soft mov_text track).
   const [captionKey, setCaptionKey] = useState('sidecar');
+  //? H1 (ads) — an optional CTA / end-card line overlaid on the last seconds of the ad render.
+  const [ctaText, setCtaText] = useState('');
   const [extra, setExtra] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
@@ -336,6 +338,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
         if (durMs > 0) payload.durationMs = durMs;
         //? F2 — non-default caption delivery (sidecar is the server default, so only send when it differs).
         if (captionKey !== 'sidecar') payload.captionMode = captionKey;
+        if (ctaText.trim()) payload.ctaText = ctaText.trim();
       }
       runContentOp(action.op, piece.id, payload);
     })();
@@ -457,6 +460,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.captionLabel' })}</span>
               <Dropdown size="md" value={captionItems.find((i) => i.id === captionKey)} items={captionItems} onChange={(it) => { setCaptionKey(String(it.id)); }} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">{translate({ key: 'workspaces.content.ctaLabel' })}</span>
+              <input value={ctaText} onChange={(e) => { setCtaText(e.target.value); }} placeholder={translate({ key: 'workspaces.content.ctaPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>

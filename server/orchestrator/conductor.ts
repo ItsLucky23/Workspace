@@ -1401,6 +1401,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? F2 — persist the caption-delivery mode (sidecar/burn/soft) so assemble applies it + a re-render keeps it.
       const capMode = str(payload, 'captionMode');
       if (capMode === 'sidecar' || capMode === 'burn' || capMode === 'soft') await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { captionMode: capMode } });
+      //? H1 (ads) — persist a CTA/end-card line for the ad render (empty clears it).
+      if ('ctaText' in payload) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { ctaText: (str(payload, 'ctaText') ?? '').trim() || null } });
       await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}), ...(durationMs === undefined ? {} : { durationMs }), ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;

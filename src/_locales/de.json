@@ -839,7 +839,7 @@
       "backToBoard": "Zurück zu Content",
       "directionTitle": "Kreative Richtung",
       "directionDesc": "Ein Stil + freie Anweisungen, angewendet auf das, was du generierst.",
-      "styleLabel": "Stil", "durationLabel": "Länge", "dur_auto": "Auto", "dur_short": "Kurz (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Lang (~90s)", "captionLabel": "Untertitel", "cap_sidecar": "Separate Datei", "cap_burn": "Eingebrannt", "cap_soft": "Soft-Spur",
+      "styleLabel": "Stil", "durationLabel": "Länge", "dur_auto": "Auto", "dur_short": "Kurz (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Lang (~90s)", "ctaLabel": "CTA / Endkarte", "ctaPlaceholder": "z. B. Jetzt shoppen → meineseite.de", "captionLabel": "Untertitel", "cap_sidecar": "Separate Datei", "cap_burn": "Eingebrannt", "cap_soft": "Soft-Spur",
       "stylePlaceholder": "z. B. realistisch, cinematic, Anime…",
       "extraLabel": "Zusätzliche Anweisungen",
       "extraPlaceholder": "z. B. warmes Licht, energisch, im Regen…",

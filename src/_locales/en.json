@@ -839,7 +839,7 @@
       "backToBoard": "Back to content",
       "directionTitle": "Creative direction",
       "directionDesc": "A style + free-form instructions, applied to what you generate.",
-      "styleLabel": "Style", "durationLabel": "Length", "dur_auto": "Auto", "dur_short": "Short (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Long (~90s)", "captionLabel": "Captions", "cap_sidecar": "Sidecar file", "cap_burn": "Burned in", "cap_soft": "Soft track",
+      "styleLabel": "Style", "durationLabel": "Length", "dur_auto": "Auto", "dur_short": "Short (~20s)", "dur_normal": "Normal (~45s)", "dur_long": "Long (~90s)", "ctaLabel": "CTA / end-card", "ctaPlaceholder": "e.g. Shop now → mysite.com", "captionLabel": "Captions", "cap_sidecar": "Sidecar file", "cap_burn": "Burned in", "cap_soft": "Soft track",
       "stylePlaceholder": "e.g. realistic, cinematic, anime…",
       "extraLabel": "Extra instructions",
       "extraPlaceholder": "e.g. warm lighting, upbeat, in the rain…",

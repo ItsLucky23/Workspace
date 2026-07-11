@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { persistMediaBytes } from '../media/store';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
-import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
+import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, applyCtaOverlay, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
 
 export interface AssembleResult {
   ok: boolean;
@@ -34,7 +34,7 @@ export async function assembleContent(
   //? V5/F2 audio-track — the piece's background music + sfx + per-track gains (voice / ducked music) for the mix.
   const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
   const sfx = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'sfx' }, orderBy: { createdAt: 'desc' } });
-  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true, captionMode: true } });
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true, captionMode: true, ctaText: true } });
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
   const timeline = beats.map((b) => ({ order: b.order, text: b.text, imageAssetId: b.imageAssetId ?? null, durationMs: b.durationMs ?? 3000 }));
@@ -119,6 +119,12 @@ export async function assembleContent(
     const inName = render.url.replace(/^\/media\//, '');
     const ccUrl = await applyCaptions(inName, srtName, captionMode, opts);
     if (ccUrl) { finalUrl = ccUrl; captionsBurned = true; }
+  }
+  //? H1 (ads) — a CTA / end-card overlay on the last seconds (a second pass over the current finalUrl, best-effort).
+  const ctaText = (piece?.ctaText ?? '').trim();
+  if (render.ok && ctaText.length > 0 && finalUrl.startsWith('/media/')) {
+    const ctaUrl = await applyCtaOverlay(finalUrl.replace(/^\/media\//, ''), ctaText, opts);
+    if (ctaUrl) finalUrl = ctaUrl;
   }
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.

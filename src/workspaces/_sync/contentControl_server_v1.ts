@@ -50,7 +50,7 @@ export interface SyncParams {
     //? M3 — long-form target duration for content-run-pipeline (was missing from the contract).
     durationMs?: number;
     //? F1/F2 — render aspect ratio + caption delivery mode ('sidecar'|'burn'|'soft'), persisted on the piece.
-    aspectRatio?: string; captionMode?: string;
+    aspectRatio?: string; captionMode?: string; ctaText?: string;
     //? F9 — audio-editor-lite: linear gain for content-trim-audio (assetId/startMs/endMs are declared above).
     gain?: number;
     //? H3 — trackable short link (shortlink-create).
