@@ -1166,7 +1166,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (budget) {
         const data: { cap: number; alertPct?: number } = { cap };
         if (alertPct !== undefined) data.alertPct = alertPct;
-        await prisma.workspaceBudget.update({ where: { id: budget.id }, data });
+        await prisma.workspaceBudget.updateMany({ where: { id: budget.id, workspaceId: action.workspaceId }, data });
       } else {
         //? No create-op existed → the first edit creates the budget with sensible defaults (so the editor works
         //? on a fresh workspace without a separate "create budget" flow).
