@@ -210,7 +210,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: content setup & settings — connect your AI media provider keys (encrypted) and set a media |
 | `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
 | `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
-| `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer/designer roles turn a |
+| `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |
 | `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
 | `/workspaces/scheduled` | workspaces | — | `workspaces/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
 | `/workspaces/settings` | plain | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |

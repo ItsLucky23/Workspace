@@ -3618,3 +3618,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** workspace-settings had tot 11 platte tabs (dev-tabs waren al op module gegate). Nu consistent met de RBAC-keuze: een member ziet enkel **Members** (team bekijken); alle config/admin-tabs (permissions/modules/ai-behavior/env-secrets/integrations/invites/danger + de dev-tabs repo/gitlab/workflow) zijn gegate op `role !== 'member'` (fail-open). De bestaande `activeTab`-fallback vangt een gated-away geselecteerde tab al op → Members. Dev-tabs vereisen bovendien nog steeds de dev-module. Tab-inhoud ongewijzigd.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/workspace/page.tsx`.
+
+## 2026-07-11 — 🎨 UX-simplify Phase 11+12: marketing afgesplitst van studio
+**Wat:** `/marketing` was een kale re-export van `studio/page` (identieke pagina). Per user-keuze nu een **eigen pagina met eigen focus**: de studio-component is hernoemd naar een gedeelde `export function StudioSurface({ variant })` (default-export `Studio` = `variant="studio"`); `/marketing` is een eigen `Marketing`-component die `StudioSurface variant="marketing"` rendert. Marketing toont enkel de **marketer**-kinds (copy/strategy/email/ads/social/names/thumbnail/videoScript); Studio toont beide rol-groepen (designer + marketer). Gedeelde brief-workspace + generator, aparte routes/focus. Geen backend/verb-wijziging.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
+**Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.

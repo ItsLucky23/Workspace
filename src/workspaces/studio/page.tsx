@@ -35,9 +35,16 @@ function asRecord(v: unknown): Record<string, unknown> { return v !== null && ty
 function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
 function asStrArr(v: unknown): string[] { return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; }
 
-export default function Studio() {
+export default function Studio() { return <StudioSurface variant="studio" />; }
+
+//? The shared Studio surface. `variant` gives /studio (design + marketing kinds) and /marketing (marketing kinds
+//? only) their own page + focus while sharing the brief workspace + generator — the user chose a split marketing
+//? page over one shared Studio. `/marketing` re-uses this with variant="marketing".
+export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
   const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand } = useWorkspaces();
+  //? Marketing focuses on the marketer kinds; Studio shows both designer + marketer groups.
+  const roles: readonly ('designer' | 'marketer')[] = variant === 'marketing' ? ['marketer'] : ['designer', 'marketer'];
   const [selectedId, setSelectedId] = useState<string | null>(studioBriefs[0]?.id ?? null);
   const [editing, setEditing] = useState<boolean>(studioBriefs.length === 0);
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
@@ -110,7 +117,7 @@ export default function Studio() {
 
               {/* generate row — grouped by role (Designer / Marketer) */}
               <div className="flex flex-col gap-3">
-                {(['designer', 'marketer'] as const).map((role) => (
+                {roles.map((role) => (
                   <div key={role}>
                     <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                       <Icon name={role === 'designer' ? 'palette' : 'bullhorn'} className="text-disabled" />

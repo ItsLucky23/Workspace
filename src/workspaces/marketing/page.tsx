@@ -1,9 +1,13 @@
-//? intent: Marketing — take your product to market. The AI marketer/designer roles turn a
-//? short product brief into a landing page, marketing copy, a brand kit, email sequences,
-//? ad sets, a social calendar and naming — each live-previewed. (Video generation lands in a
-//? later phase behind the pluggable provider layer.) This currently renders the shared Studio
-//? generator; the Designer-only kinds migrate into the Designer skill-loop as that lands.
+//? intent: Marketing — take your product to market. The AI marketer role turns a short product
+//? brief into marketing copy, a go-to-market strategy, email sequences, ad sets, a social calendar,
+//? naming, thumbnails and video scripts — each live-previewed. Its own page (user-chosen split) that
+//? reuses the shared Studio surface with a marketing focus (marketer kinds only; the designer kinds
+//? live on /studio).
 
-export { default } from '../studio/page';
+import { StudioSurface } from '../studio/page';
 
 export const template = 'workspaces';
+
+export default function Marketing() {
+  return <StudioSurface variant="marketing" />;
+}
