@@ -123,7 +123,7 @@ function PreviewPlayer({ scenes, urlOf, translate }: { scenes: EditScene[]; urlO
   );
 }
 
-export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, voiceUrl, musicUrl, voiceVolume, musicVolume, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; assetUrls: Record<string, string>; voiceUrl: string | null; musicUrl: string | null; voiceVolume: number; musicVolume: number; onClose: () => void }) {
+export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, pickableAssets, voiceUrl, musicUrl, voiceVolume, musicVolume, onClose }: { pieceId: string; scenes: VideoSceneSummary[]; assetUrls: Record<string, string>; pickableAssets: { id: string; kind: string }[]; voiceUrl: string | null; musicUrl: string | null; voiceVolume: number; musicVolume: number; onClose: () => void }) {
   const translate = useTranslator();
   const { runContentOp } = useWorkspaces();
   useEscapeKey(onClose);
@@ -136,6 +136,8 @@ export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, voiceU
   const [instruction, setInstruction] = useState('');
   const [voiceVol, setVoiceVol] = useState(voiceVolume);
   const [musicVol, setMusicVol] = useState(musicVolume);
+  //? V-upload — the asset chosen in the "add scene from an asset" picker (an uploaded/generated video or image).
+  const [pickAssetId, setPickAssetId] = useState('');
 
   const totalMs = useMemo(() => local.reduce((sum, s) => sum + s.durationMs, 0), [local]);
   const transitionItems = TRANSITIONS.map((t) => ({ id: t, value: t, item: translate({ key: `workspaces.timeline.t_${t}` }) }));
@@ -151,6 +153,19 @@ export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, voiceU
     setSelected(j);
   };
   const del = (idx: number): void => { setLocal((prev) => resequence(prev.filter((_, i) => i !== idx))); setSelected((s) => Math.max(0, s > idx ? s - 1 : s)); };
+  //? Add a NEW scene from an existing asset (an uploaded/generated video or image) — appended at the end, id=''
+  //? so the server creates it on save (content-save-scenes, which already accepts videoAssetId/imageAssetId).
+  const addSceneFromAsset = (assetId: string): void => {
+    const kind = pickableAssets.find((a) => a.id === assetId)?.kind;
+    if (!assetId || kind === undefined) return;
+    const isVideo = kind === 'video';
+    setLocal((prev) => resequence([...prev, {
+      id: '', order: prev.length,
+      videoAssetId: isVideo ? assetId : null, imageAssetId: isVideo ? null : assetId,
+      startTrimMs: 0, endTrimMs: null, durationMs: 5000, transitionIn: prev.length === 0 ? 'cut' : 'xfade', prompt: null,
+    }]));
+    setSelected(local.length);
+  };
   const split = (idx: number): void => {
     setLocal((prev) => {
       const s = prev[idx];
@@ -214,6 +229,14 @@ export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, voiceU
             </div>
           )}
         <div className="text-xs text-muted">{totalLabel}</div>
+
+        {/* V-upload — add a scene from an existing asset (an uploaded or generated video/image). */}
+        {pickableAssets.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Dropdown size="sm" items={pickableAssets.map((a, i) => ({ id: a.id, value: a.id, item: `${a.kind} ${String(i + 1)}` }))} value={pickableAssets.map((a, i) => ({ id: a.id, value: a.id, item: `${a.kind} ${String(i + 1)}` })).find((it) => it.id === pickAssetId)} onChange={(it) => { setPickAssetId(String(it.value)); }} />
+            <WsButton variant="secondary" icon="plus" disabled={!pickAssetId} onClick={() => { addSceneFromAsset(pickAssetId); setPickAssetId(''); }}>{translate({ key: 'workspaces.timeline.addScene' })}</WsButton>
+          </div>
+        )}
 
         {/* F8 — free client-side preview of the cut before rendering. */}
         {local.length > 0 && <PreviewPlayer scenes={local} urlOf={urlOf} translate={translate} />}

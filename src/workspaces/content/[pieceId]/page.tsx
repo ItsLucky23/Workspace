@@ -285,6 +285,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
   //? F8 — a resolved assetId → playable-url map for the timeline preview (scenes carry only asset ids). Declared
   //? BEFORE the `!piece` early return so the hook order is stable (rules-of-hooks); empty when the piece is absent.
   const sceneAssetUrls = useMemo(() => Object.fromEntries((piece?.assets ?? []).map((a): [string, string] => [a.id, assetHref(a.url) ?? '']).filter(([, u]) => u.length > 0)), [piece?.assets]);
+  //? V-upload — ready video/image assets that can be dropped into the timeline as a new scene (content-save-scenes).
+  const pickableSceneAssets = useMemo(() => (piece?.assets ?? []).filter((a) => (a.kind === 'video' || a.kind === 'image') && a.status === 'ready').map((a) => ({ id: a.id, kind: a.kind })), [piece?.assets]);
 
   if (!piece) {
     return (
@@ -518,7 +520,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
       </div>
       {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}
       {editImageAsset && <ImageEditor pieceId={piece.id} asset={{ id: editImageAsset.id, url: editImageAsset.url }} onClose={() => { setEditImageAsset(null); }} />}
-      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} assetUrls={sceneAssetUrls} voiceUrl={piece.voiceUrl} musicUrl={piece.musicUrl} voiceVolume={piece.voiceVolume} musicVolume={piece.musicVolume} onClose={() => { setShowTimeline(false); }} />}
+      {showTimeline && <VideoTimelineEditor pieceId={piece.id} scenes={piece.scenes} assetUrls={sceneAssetUrls} pickableAssets={pickableSceneAssets} voiceUrl={piece.voiceUrl} musicUrl={piece.musicUrl} voiceVolume={piece.voiceVolume} musicVolume={piece.musicVolume} onClose={() => { setShowTimeline(false); }} />}
     </div>
   );
 }
