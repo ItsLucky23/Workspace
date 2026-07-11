@@ -3542,3 +3542,7 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** een `Glossary`-modal (9 kern-termen in gewone taal: workspace, module, ticket, pipeline, fase, MR, omgeving, content-stuk, trackbare link) geopend via een "?"-help-knop in de top-bar. Termen + definities zijn i18n-keys → vertalen mee (×4 talen). Zo raakt een leek niet vast op jargon.
 **Verify:** localeIntegrity 8/8, tsc0·lint0·build✓.
 **Files:** `src/workspaces/_components/Glossary.tsx`, `src/workspaces/_shell/Shell.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-11 — 🔧 LIVE H1 CTA-overlay: 2 echte bugs gevonden+gefixt
+**Wat:** live-proof van de CTA-overlay via echte Docker ffmpeg legde twee bugs bloot die de unit-test (structureel correcte args) miste: (1) `drawtext` had geen font → "Fontconfig: Cannot load default config" → expliciete `fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` (env-overridable `WS_CTA_FONT`); (2) `ih` is GEEN geldige variabele in een drawtext-expressie (wel in drawbox) → `y=ih-...` faalde "Failed to parse expression" → `y=h-h/12-text_h/2`. Na de fix: **exit 0, 15KB mp4 met ingebrande CTA**. Unit-test aangescherpt op `fontfile=`.
+**Files:** `server/content/render.ts`, `tests/unit/ctaOverlay.test.mts`.

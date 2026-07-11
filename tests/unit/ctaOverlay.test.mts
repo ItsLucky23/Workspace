@@ -5,7 +5,7 @@ import { buildCtaArgs } from '../../server/content/render.ts';
 import { assert, eq, report } from '../_helpers.mts';
 const a = buildCtaArgs('ad.mp4', 'ad-cta.mp4', 'Shop now: 50% off', 3);
 const j = a.join(' ');
-assert(j.includes('drawtext=text='), 'draws the CTA text');
+assert(j.includes('drawtext=fontfile=') && j.includes(":text='"), 'draws the CTA text with an explicit font');
 assert(j.includes('drawbox'), 'draws the band behind it');
 assert(j.includes("enable='gte"), 'the overlay is time-gated to the tail');
 assert(j.includes('-c:a copy'), 'audio is stream-copied (no re-encode)');

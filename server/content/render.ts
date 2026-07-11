@@ -434,7 +434,12 @@ export async function extractLastFrame(clipName: string, opts: { run?: FfmpegRun
 export function buildCtaArgs(inName: string, outName: string, text: string, tailS = 3): string[] {
   const safe = text.replaceAll('\\', String.raw`\\`).replaceAll(':', String.raw`\:`).replaceAll("'", '’').replaceAll('%', String.raw`\%`);
   const enable = String.raw`gte(t\,max(0\,t)-` + `${String(tailS)})`; // last tailS seconds (approx; the band shows near the end)
-  const draw = `drawbox=y=ih-ih/6:w=iw:h=ih/6:color=black@0.55:t=fill:enable='${enable}',drawtext=text='${safe}':fontcolor=white:fontsize=h/18:x=(w-text_w)/2:y=ih-ih/12-text_h/2:enable='${enable}'`;
+  //? The ffmpeg image has DejaVu fonts but no fontconfig default config, so `drawtext` MUST get an explicit
+  //? `fontfile=` (a `font=` name would fail with "Cannot load default config file"). Env-overridable.
+  const font = (process.env.WS_CTA_FONT ?? '').trim() || '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+  //? drawbox uses ih/iw (input dims); drawtext uses h/w — `ih` is INVALID in a drawtext expression (it errors
+  //? "Failed to parse expression"). So the band (drawbox) uses ih; the text (drawtext) position uses h/w.
+  const draw = `drawbox=y=ih-ih/6:w=iw:h=ih/6:color=black@0.55:t=fill:enable='${enable}',drawtext=fontfile=${font}:text='${safe}':fontcolor=white:fontsize=h/18:x=(w-text_w)/2:y=h-h/12-text_h/2:enable='${enable}'`;
   return ['-y', '-i', `/media/${inName}`, '-vf', draw, '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
 }
 
