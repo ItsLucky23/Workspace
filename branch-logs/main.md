@@ -3598,3 +3598,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** eerste batch van de "16 ops zonder UI-knop" uit de coverage-map. `content-advance` (HIGH — was alleen via AI-chat) en `content-archive`/`content-unarchive` (MEDIUM — idem) zijn nu directe UI-knoppen in de content-piece-header: primaire **"Volgende fase"**-knop + een "…"-menu met **Archiveren** (confirm) / **Herstellen** (afhankelijk van `piece.status`). Alles via de bestaande `runContentOp(op, pieceId, payload)`-dispatch → geen backend/verb-wijziging (B-23/frozen-surface intact), mobiel+desktop bereikbaar.
 **Verify:** typecheck0(icons geldig)·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 3 i18n-keys ×4 (`content.advanceStage/archivePiece/restorePiece`).
 **Files:** `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-11 — 🎨 UX-simplify: designer Components-sectie achter dev-module
+**Wat:** de designer-pagina was al netjes getabd (eerder opgeschoond) — dus surgical (Rule 27): enkel de **Components**-sectie (een DEV component-library-referentie, geen design-authoring) gegate op `isModuleEnabled('development')`. Een design-only workspace ziet nu een schonere 5-tab-strip (gallery/styles/animations/themes/typography) zonder de dev-referentie. Overige secties ongewijzigd.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
+**Files:** `src/workspaces/designer/page.tsx`.

@@ -13,6 +13,7 @@ import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdo
 import Icon, { type IconName } from '../_components/Icon';
 import { Segmented, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+import { isModuleEnabled } from '../_data/modules';
 import { DesignerProvider, useDesigner } from './state';
 import type { ThemeMode } from './themes';
 import Components from './sections/Components';
@@ -52,6 +53,11 @@ const AI_SECTIONS = new Set<SectionId>(['themes', 'styles', 'animations']);
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
+  const { activeWorkspace } = useWorkspaces();
+  //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
+  //? development module is on, so a design-focused workspace gets a cleaner section strip (the visual-authoring
+  //? sections only). The other five sections are always available.
+  const sections = SECTIONS.filter((s) => s.id !== 'components' || isModuleEnabled(activeWorkspace.enabledSections, 'development'));
   const [section, setSection] = useState<SectionId>('gallery');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
@@ -100,7 +106,7 @@ function DesignerShell() {
 
       {/* section tabs */}
       <div className="px-3 md:px-4 shrink-0 border-b border-divider flex items-center gap-1 overflow-x-auto">
-        {SECTIONS.map((s) => {
+        {sections.map((s) => {
           const on = section === s.id;
           return (
             <button key={s.id} type="button" onClick={() => { setSection(s.id); }}
