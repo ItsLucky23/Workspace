@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: shortlink-create UI op insights (was alleen tonen)
+**Wat:** de insights-pagina tóónde trackable links (H2/H3) maar had geen **maak**-knop, en bij 0 links verscheen de sectie niet eens. Nu: de links-sectie is altijd zichtbaar met een create-form (URL-input + "Link maken" → `shortlink-create` via `runContentOp`, gevalideerd op http(s)) + een empty-state. Natuurlijke plek (de analytics/links-pagina), dus geen clutter.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 3 i18n-keys ×4 (`content.linkUrlPlaceholder/linkCreate/linksEmpty`).
+**Files:** `src/workspaces/content/insights/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: channel-edit UI (was create+delete-only)
 **Wat:** de content/settings channel-sectie had create + delete maar geen **edit** (`channel-edit` bestond in de conductor + `CONTENT_OPS`-whitelist, maar UI-loos). De create-form doet nu dubbel dienst als edit-form: een pen-knop per kanaalrij laadt de rij in de velden (edit-modus, met annuleren), en submit dispatcht `channel-edit` (patch met `channelId`) ipv `channel-create`. Admin-gated paneel, dus geen clutter-conflict met de simplify-run. Via bestaande `runContentOp`.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 1 i18n-key ×4 (`content.channelEdit`).

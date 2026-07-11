@@ -940,7 +940,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Skript · Referenzanalyse",
       "insights": "Einblicke",
-      "linksTitle": "Trackbare Links", "linksTotalClicks": "{{n}} Klicks", "linksWinner": "Sieger", "insightsTitle": "Content-Einblicke",
+      "linksTitle": "Trackbare Links", "linkUrlPlaceholder": "URL einfügen, um einen trackbaren Link zu erstellen", "linkCreate": "Link erstellen", "linksEmpty": "Noch keine trackbaren Links — oben eine URL einfügen.", "linksTotalClicks": "{{n}} Klicks", "linksWinner": "Sieger", "insightsTitle": "Content-Einblicke",
       "insightsSubtitle": "Was du erstellt hast, was es kostete, und deine Marke.",
       "anTotalPieces": "Stücke",
       "anDone": "Fertig",

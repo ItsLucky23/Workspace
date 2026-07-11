@@ -940,7 +940,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Script · reference analysis",
       "insights": "Insights",
-      "linksTitle": "Trackable links", "linksTotalClicks": "{{n}} clicks", "linksWinner": "Winner", "insightsTitle": "Content insights",
+      "linksTitle": "Trackable links", "linkUrlPlaceholder": "Paste a URL to make a trackable link", "linkCreate": "Create link", "linksEmpty": "No trackable links yet — paste a URL above.", "linksTotalClicks": "{{n}} clicks", "linksWinner": "Winner", "insightsTitle": "Content insights",
       "insightsSubtitle": "What you've made, what it cost, and your brand.",
       "anTotalPieces": "Pieces",
       "anDone": "Done",

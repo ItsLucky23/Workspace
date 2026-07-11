@@ -940,7 +940,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Script · referentie-analyse",
       "insights": "Inzichten",
-      "linksTitle": "Trackbare links", "linksTotalClicks": "{{n}} kliks", "linksWinner": "Winnaar", "insightsTitle": "Content-inzichten",
+      "linksTitle": "Trackbare links", "linkUrlPlaceholder": "Plak een URL om een trackbare link te maken", "linkCreate": "Link maken", "linksEmpty": "Nog geen trackbare links — plak hierboven een URL.", "linksTotalClicks": "{{n}} kliks", "linksWinner": "Winnaar", "insightsTitle": "Content-inzichten",
       "insightsSubtitle": "Wat je hebt gemaakt, wat het kostte, en je merk.",
       "anTotalPieces": "Stukken",
       "anDone": "Klaar",

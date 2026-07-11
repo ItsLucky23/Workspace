@@ -47,8 +47,10 @@ function BrandCard({ channel, onSave }: { channel: ContentChannelSummary; onSave
 }
 
 export default function ContentInsights() {
-  const { content, editChannelBrand, navigate } = useWorkspaces();
+  const { content, editChannelBrand, navigate, runContentOp } = useWorkspaces();
   const translate = useTranslator();
+  //? shortlink-create (was UI-less): create a trackable /l/<slug> link from a target URL.
+  const [linkUrl, setLinkUrl] = useState('');
   const a = content.analytics;
   const maxStage = Math.max(1, ...a.byStage.map((s) => s.count));
 
@@ -74,18 +76,25 @@ export default function ContentInsights() {
             <Stat label={translate({ key: 'workspaces.content.anCost' })} value={euros(a.totalCostCents)} />
           </div>
 
-          {/* H2/H3 (ads) — trackable links + the A/B winner (the most-clicked link/variant). */}
-          {content.shortLinks.length > 0 && (() => {
+          {/* H2/H3 (ads) — create a trackable link + see clicks + the A/B winner (the most-clicked link/variant). */}
+          {(() => {
             //? The snapshot returns links clicks-desc, so [0] is the A/B winner. Sum without reduce (lint).
             const winnerId = content.shortLinks[0]?.id;
             let totalClicks = 0;
             for (const l of content.shortLinks) totalClicks += l.clicks;
+            const validUrl = /^https?:\/\//.test(linkUrl.trim());
             return (
               <section className="rounded-2xl border border-container1-border bg-container1 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.linksTitle' })}</div>
-                  <span className="text-xs text-muted">{translate({ key: 'workspaces.content.linksTotalClicks', params: [{ key: 'n', value: totalClicks }] })}</span>
+                  {content.shortLinks.length > 0 && <span className="text-xs text-muted">{translate({ key: 'workspaces.content.linksTotalClicks', params: [{ key: 'n', value: totalClicks }] })}</span>}
                 </div>
+                {/* create a trackable short link (shortlink-create) */}
+                <div className="flex items-center gap-2 mb-3">
+                  <input value={linkUrl} onChange={(e) => { setLinkUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.linkUrlPlaceholder' })} className="flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <button type="button" disabled={!validUrl} onClick={() => { runContentOp('shortlink-create', '', { targetUrl: linkUrl.trim() }); setLinkUrl(''); }} className="shrink-0 rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.linkCreate' })}</button>
+                </div>
+                {content.shortLinks.length === 0 && <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.linksEmpty' })}</div>}
                 <div className="flex flex-col gap-1">
                   {content.shortLinks.map((l) => (
                     <div key={l.id} className={`flex items-center gap-3 text-sm border-b border-divider last:border-0 py-1.5 ${l.id === winnerId && l.clicks > 0 ? 'text-title' : 'text-common'}`}>

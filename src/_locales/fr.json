@@ -940,7 +940,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Script · analyse de référence",
       "insights": "Analyses",
-      "linksTitle": "Liens traçables", "linksTotalClicks": "{{n}} clics", "linksWinner": "Gagnant", "insightsTitle": "Analyses de contenu",
+      "linksTitle": "Liens traçables", "linkUrlPlaceholder": "Collez une URL pour créer un lien traçable", "linkCreate": "Créer le lien", "linksEmpty": "Aucun lien traçable pour l'instant — collez une URL ci-dessus.", "linksTotalClicks": "{{n}} clics", "linksWinner": "Gagnant", "insightsTitle": "Analyses de contenu",
       "insightsSubtitle": "Ce que vous avez créé, son coût, et votre marque.",
       "anTotalPieces": "Pièces",
       "anDone": "Terminé",
