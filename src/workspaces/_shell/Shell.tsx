@@ -502,7 +502,7 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
   return { shown, typing: shown.length < text.length };
 }
 
-function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void }) {
+function ChatBubble({ m, onAccept, onAcceptPlan, onReject }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void; onReject: (id: string) => void }) {
   const translate = useTranslator();
   const mine = m.role === 'user';
   const animate = !mine && !typedMessages.has(m.id) && !m.pending;
@@ -527,7 +527,14 @@ function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (
           <span className="text-xs text-title flex-1 min-w-0">{p.summary}</span>
           {m.accepted
             ? <span className="text-xs text-correct inline-flex items-center gap-1 shrink-0"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
-            : <button type="button" onClick={() => { onAccept(m.id, p); }} className="shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiAccept' })}</button>}
+            : (m.declined
+              ? <span className="text-xs text-muted inline-flex items-center gap-1 shrink-0"><Icon name="xmark" /> {translate({ key: 'workspaces.shell.aiDeclined' })}</span>
+              : (
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <button type="button" onClick={() => { onReject(m.id); }} className="text-xs font-medium px-2 py-1 rounded-lg text-muted hover:text-title hover:bg-container2-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiReject' })}</button>
+                  <button type="button" onClick={() => { onAccept(m.id, p); }} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiAccept' })}</button>
+                </span>
+              ))}
         </div>
       )}
       {plan && (
@@ -546,7 +553,14 @@ function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (
           </div>
           {m.accepted
             ? <span className="text-xs text-correct inline-flex items-center gap-1 self-end"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
-            : <button type="button" onClick={() => { onAcceptPlan(m.id, plan); }} className="self-end text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiApprovePlan' })}</button>}
+            : (m.declined
+              ? <span className="text-xs text-muted inline-flex items-center gap-1 self-end"><Icon name="xmark" /> {translate({ key: 'workspaces.shell.aiDeclined' })}</span>
+              : (
+                <span className="flex items-center gap-1.5 self-end">
+                  <button type="button" onClick={() => { onReject(m.id); }} className="text-xs font-medium px-2 py-1 rounded-lg text-muted hover:text-title hover:bg-container2-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiReject' })}</button>
+                  <button type="button" onClick={() => { onAcceptPlan(m.id, plan); }} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiApprovePlan' })}</button>
+                </span>
+              ))}
         </div>
       )}
     </motion.div>
@@ -558,7 +572,7 @@ function ChatBubble({ m, onAccept, onAcceptPlan }: { m: ChatMessage; onAccept: (
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, aiRuns, isMobile } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, aiRuns, isMobile } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
@@ -622,7 +636,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         {tab === 'chat' ? (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} />)}
+              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} onReject={rejectChatProposal} />)}
               {/* Q4 — capability starter-questions: surface what the product can do, tappable to ask. Shown
                   while the conversation is empty (just the greeting). The AI answers from the product-knowledge. */}
               {chat.length <= 1 && (

@@ -62,6 +62,7 @@ export interface WorkspacesCtx {
   sendChat: (text: string) => void;
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
   acceptChatPlan: (messageId: string, plan: ChatPlan) => void;
+  rejectChatProposal: (messageId: string) => void;
   //? Workspaces: switch the active one or create a new workspace.
   workspaces: Workspace[];
   activeWorkspace: Workspace;

@@ -797,7 +797,7 @@
       "confirmDestructiveTitle": "Confirm destructive action",
       "confirmDestructiveContent": "This action is destructive or hard to reverse: {summary}. Continue?",
       "aiError": "The AI is unavailable right now. Please try again.",
-      "aiAccept": "Accept",
+      "aiReject": "Reject", "aiDeclined": "Declined", "aiAccept": "Accept",
       "aiApprovePlan": "Approve plan",
       "aiAccepted": "Done",
       "send": "Send",

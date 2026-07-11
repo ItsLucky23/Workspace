@@ -715,6 +715,7 @@ export interface ChatMessage {
   plan?: ChatPlan;         // O-A — a multi-step intake plan rendered with an Approve-plan button
   pending?: boolean;       // the AI turn is in flight (renders a thinking indicator)
   accepted?: boolean;      // the proposal/plan has been dispatched (Accept consumed)
+  declined?: boolean;      // J5 — the proposal/plan was rejected (dismissed without dispatch)
 }
 
 //? ---------------------------------------------------------------- carry-forward + questions

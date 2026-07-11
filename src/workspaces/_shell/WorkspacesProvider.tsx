@@ -927,6 +927,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     consume();
   }, [snap.activeWorkspaceId, dispatchProposal, translate]);
 
+  //? J5 — REJECT a proposal/plan: dismiss it (mark declined) WITHOUT dispatching anything. The AI proposes,
+  //? the user disposes — declining is a first-class outcome, not just "ignore the bubble". No server write.
+  const rejectChatProposal = useCallback((messageId: string) => {
+    setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, declined: true } : m)));
+  }, []);
+
   //? O-A — approve a whole intake plan: dispatch each step in order (single-writer intact; each step is an
   //? existing verb). One approval → the Conductor materializes every ticket/piece the plan proposed.
   const acceptChatPlan = useCallback((messageId: string, plan: ChatPlan) => {
@@ -1016,6 +1022,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       sendChat,
       acceptChatProposal,
       acceptChatPlan,
+      rejectChatProposal,
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => { setWantWorkspaceId(id); setWantProjectId(undefined); setLoading(true); },
@@ -1259,7 +1266,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

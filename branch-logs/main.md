@@ -3511,3 +3511,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** het "gemelde backend-gat" bleek er geen — `content-save-scenes` accepteert al `videoAssetId`/`imageAssetId` per scene. Puur UI: de VideoTimelineEditor krijgt een `pickableAssets`-prop (ready video/image-assets van de piece) + een "Scene toevoegen"-picker die een gekozen asset als NIEUWE scene (id='' → server maakt aan) achteraan toevoegt met de juiste videoAssetId/imageAssetId. Zo werk je geüploade video's (content-import-asset) in de montage. i18n×4.
 **Verify:** save-pad al gedekt door videoScenes-integratietest; gates tsc0·lint0·build✓·localeIntegrity 8/8.
 **Files:** `src/workspaces/_components/VideoTimelineEditor.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-11 — ✅ J5 reject-on-proposals (assistant-proposals afwijsbaar)
+**Wat:** chat-proposals/plans waren accept-only. Nu `rejectChatProposal(messageId)` → markeert `declined` zonder dispatch (geen server-write); de bubble toont een "Weigeren"-knop naast Accept, en na afwijzen een "Geweigerd"-status. De AI stelt voor, de user beschikt — afwijzen is nu een eersteklas uitkomst. i18n×4.
+**Verify:** gates tsc0·lint0·build✓·localeIntegrity 8/8.
+**Files:** `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx`, `src/_locales/{en,nl,de,fr}.json`.
