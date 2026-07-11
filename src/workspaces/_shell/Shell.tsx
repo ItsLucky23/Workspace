@@ -13,6 +13,7 @@ import { motion } from 'motion/react';
 
 import Icon, { type IconName } from '../_components/Icon';
 import { ModulePicker } from '../_components/ModulePicker';
+import { Glossary } from '../_components/Glossary';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
@@ -240,6 +241,10 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
 
       {/* right */}
       <div className="flex items-center gap-1.5">
+        {/* J3 — glossary: plain-language definitions of the app's terms for a novice. */}
+        <button type="button" onClick={() => void menuHandler.open(<Glossary />)} title={translate({ key: 'workspaces.glossary.title' })} className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
+          <Icon name="circle-question" />
+        </button>
         <div title={translate({ key: 'workspaces.shell.presenceViewing' })} className="mr-1"><AvatarStack users={presence} size={26} max={3} /></div>
         <div className="relative" ref={notifRef}>
           <button type="button" onClick={() => { setNotifOpen((o) => !o); }} title={translate({ key: 'workspaces.shell.notifications' })} className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">

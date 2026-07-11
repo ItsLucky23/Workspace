@@ -749,6 +749,7 @@
       "designer": "Designer",
       "interviewer": "Interviewer"
     },
+    "glossary": {"title": "Glossary", "intro": "Plain-language definitions of the terms used across the app.", "workspace": "Workspace", "workspaceDef": "Your project's home — holds its tickets, content, settings and team. You can have several.", "module": "Module", "moduleDef": "A feature lane you enable per workspace: Development (code), Content & Marketing (media), or Design.", "ticket": "Ticket", "ticketDef": "A unit of work (a task, bug or feature). An AI agent picks it up and moves it through the pipeline.", "pipeline": "Pipeline", "pipelineDef": "The ordered stages a ticket flows through — e.g. refine, plan, implement, test, review.", "stage": "Stage", "stageDef": "One column of the pipeline. Each stage has its own AI prompt, tools and definition-of-done.", "mr": "Merge request (MR)", "mrDef": "A proposed code change awaiting review and approval before it merges into your main branch.", "environment": "Environment", "environmentDef": "A running deployment of your app at a stable URL (dev, staging, prod or demo).", "piece": "Content piece", "pieceDef": "One media project — a script, voiceover, images and the rendered video, in the Content module.", "shortlink": "Trackable link", "shortlinkDef": "A /l/slug link that counts clicks — the conversion signal for an ad or campaign."},
     "shell": {
       "brand": "Workspaces",
       "brandInitial": "W",

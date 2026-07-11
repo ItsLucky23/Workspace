@@ -749,6 +749,7 @@
       "designer": "Designer",
       "interviewer": "Interviewer"
     },
+    "glossary": {"title": "Woordenlijst", "intro": "Begrijpelijke uitleg van de termen in de app.", "workspace": "Workspace", "workspaceDef": "Het thuis van je project — bevat de tickets, content, instellingen en het team. Je kunt er meerdere hebben.", "module": "Module", "moduleDef": "Een functie-baan die je per workspace aanzet: Development (code), Content & Marketing (media) of Design.", "ticket": "Ticket", "ticketDef": "Een eenheid werk (taak, bug of feature). Een AI-agent pakt 'm op en doorloopt de pipeline.", "pipeline": "Pipeline", "pipelineDef": "De geordende fasen die een ticket doorloopt — bijv. verfijnen, plannen, bouwen, testen, review.", "stage": "Fase", "stageDef": "Eén kolom van de pipeline. Elke fase heeft een eigen AI-prompt, tools en definition-of-done.", "mr": "Merge request (MR)", "mrDef": "Een voorgestelde code-wijziging die op review en goedkeuring wacht voordat 'ie in je hoofdbranch komt.", "environment": "Omgeving", "environmentDef": "Een draaiende deployment van je app op een vaste URL (dev, staging, prod of demo).", "piece": "Content-stuk", "pieceDef": "Eén mediaproject — script, voice-over, beelden en de gerenderde video, in de Content-module.", "shortlink": "Trackbare link", "shortlinkDef": "Een /l/slug-link die kliks telt — het conversiesignaal voor een advertentie of campagne."},
     "shell": {
       "brand": "Workspaces",
       "brandInitial": "W",

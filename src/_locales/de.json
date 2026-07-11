@@ -749,6 +749,7 @@
       "designer": "Designer",
       "interviewer": "Interviewer"
     },
+    "glossary": {"title": "Glossar", "intro": "Verständliche Definitionen der in der App verwendeten Begriffe.", "workspace": "Workspace", "workspaceDef": "Die Heimat deines Projekts — enthält Tickets, Inhalte, Einstellungen und das Team. Du kannst mehrere haben.", "module": "Modul", "moduleDef": "Eine Funktionsspur pro Workspace: Development (Code), Content & Marketing (Medien) oder Design.", "ticket": "Ticket", "ticketDef": "Eine Arbeitseinheit (Aufgabe, Bug oder Feature). Ein KI-Agent übernimmt sie durch die Pipeline.", "pipeline": "Pipeline", "pipelineDef": "Die geordneten Phasen eines Tickets — z. B. verfeinern, planen, umsetzen, testen, Review.", "stage": "Phase", "stageDef": "Eine Spalte der Pipeline. Jede Phase hat einen eigenen KI-Prompt, Tools und Definition-of-Done.", "mr": "Merge Request (MR)", "mrDef": "Eine vorgeschlagene Codeänderung, die auf Review und Freigabe wartet, bevor sie in den Hauptbranch kommt.", "environment": "Umgebung", "environmentDef": "Ein laufendes Deployment deiner App unter einer festen URL (dev, staging, prod oder demo).", "piece": "Content-Stück", "pieceDef": "Ein Medienprojekt — Skript, Voiceover, Bilder und das gerenderte Video, im Content-Modul.", "shortlink": "Trackbarer Link", "shortlinkDef": "Ein /l/slug-Link, der Klicks zählt — das Conversion-Signal für eine Anzeige oder Kampagne."},
     "shell": {
       "brand": "Workspaces",
       "brandInitial": "W",
