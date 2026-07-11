@@ -349,6 +349,18 @@ export interface ContentSnapshot {
   publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
   mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
+  shortLinks: ShortLinkSummary[];       // H2/H3 (ads): trackable links + clicks (the A/B comparison data)
+}
+
+//? H3 (ads) — a trackable short link surfaced to the UI. `clicks` is the conversion signal; `variant` groups
+//? A/B ad variants so the highest-click variant is the experiment winner (H2).
+export interface ShortLinkSummary {
+  id: string;
+  contentProjectId: string | null;
+  slug: string;
+  targetUrl: string;
+  variant: string | null;
+  clicks: number;
 }
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a

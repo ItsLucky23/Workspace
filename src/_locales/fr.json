@@ -932,7 +932,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Script · analyse de référence",
       "insights": "Analyses",
-      "insightsTitle": "Analyses de contenu",
+      "linksTitle": "Liens traçables", "linksTotalClicks": "{{n}} clics", "linksWinner": "Gagnant", "insightsTitle": "Analyses de contenu",
       "insightsSubtitle": "Ce que vous avez créé, son coût, et votre marque.",
       "anTotalPieces": "Pièces",
       "anDone": "Terminé",

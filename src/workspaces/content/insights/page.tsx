@@ -74,6 +74,33 @@ export default function ContentInsights() {
             <Stat label={translate({ key: 'workspaces.content.anCost' })} value={euros(a.totalCostCents)} />
           </div>
 
+          {/* H2/H3 (ads) — trackable links + the A/B winner (the most-clicked link/variant). */}
+          {content.shortLinks.length > 0 && (() => {
+            //? The snapshot returns links clicks-desc, so [0] is the A/B winner. Sum without reduce (lint).
+            const winnerId = content.shortLinks[0]?.id;
+            let totalClicks = 0;
+            for (const l of content.shortLinks) totalClicks += l.clicks;
+            return (
+              <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.linksTitle' })}</div>
+                  <span className="text-xs text-muted">{translate({ key: 'workspaces.content.linksTotalClicks', params: [{ key: 'n', value: totalClicks }] })}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {content.shortLinks.map((l) => (
+                    <div key={l.id} className={`flex items-center gap-3 text-sm border-b border-divider last:border-0 py-1.5 ${l.id === winnerId && l.clicks > 0 ? 'text-title' : 'text-common'}`}>
+                      <span className="font-mono text-xs text-primary shrink-0">/l/{l.slug}</span>
+                      {l.variant && <span className="rounded-md bg-container2 px-1.5 py-0.5 text-[10px] font-semibold text-muted shrink-0">{l.variant}</span>}
+                      {l.id === winnerId && l.clicks > 0 && <span className="rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[10px] font-semibold shrink-0"><Icon name="trophy" /> {translate({ key: 'workspaces.content.linksWinner' })}</span>}
+                      <span className="text-muted truncate flex-1 min-w-0">{l.targetUrl}</span>
+                      <span className="font-mono tabular-nums shrink-0">{l.clicks}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <section className="rounded-2xl border border-container1-border bg-container1 p-5">
               <div className="text-base font-semibold text-title mb-3">{translate({ key: 'workspaces.content.anByStage' })}</div>

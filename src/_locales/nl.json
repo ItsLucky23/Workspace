@@ -932,7 +932,7 @@
       "providerGemini": "Gemini",
       "providerGeminiDesc": "Script · referentie-analyse",
       "insights": "Inzichten",
-      "insightsTitle": "Content-inzichten",
+      "linksTitle": "Trackbare links", "linksTotalClicks": "{{n}} kliks", "linksWinner": "Winnaar", "insightsTitle": "Content-inzichten",
       "insightsSubtitle": "Wat je hebt gemaakt, wat het kostte, en je merk.",
       "anTotalPieces": "Stukken",
       "anDone": "Klaar",
