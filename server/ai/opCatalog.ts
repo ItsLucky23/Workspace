@@ -220,6 +220,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'restyle an existing VIDEO asset ("make this cinematic") — video-to-video (costs money, the user confirms). params: pieceId, assetId (a video asset), prompt (the style, e.g. "cinematic, warm grade")',
     params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, prompt: { kind: 'string', required: true } },
   },
+  'capture-run': {
+    mode: 'enabled',
+    hint: 'record a demo video of a running app by capturing a preview/env URL (chromium walkthrough → mp4 video asset). params: url (the running app url to capture, http/https), contentProjectId? (the piece to attach the footage to)',
+    params: { url: { kind: 'string', required: true }, contentProjectId: { kind: 'string' } },
+  },
   'shortlink-create': {
     mode: 'enabled',
     hint: 'create a trackable short link (/l/<slug>) that records clicks + redirects to a landing URL — the campaign conversion signal. params: targetUrl (the landing url), contentProjectId? (the ad piece), variant? (an A/B label)',

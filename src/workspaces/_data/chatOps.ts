@@ -29,6 +29,7 @@ export const CHAT_ENABLED_OPS = [
   'content-video-restyle',
   'content-edit-image',
   'shortlink-create',
+  'capture-run',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

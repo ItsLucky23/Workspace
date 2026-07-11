@@ -33,6 +33,7 @@ import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
 import { localizeAsset, trimAudioFile } from '../content/render';
+import { runCapture, buildCaptureScenario, type CaptureScenario } from '../content/capture';
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
 import { generateShortForm } from '../content/shortForm';
@@ -1525,6 +1526,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       }
       if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
       return;
+    }
+    case 'capture-run': {
+      //? I1 (demo-video) — capture a running app (a preview/env URL) into an mp4 via the workspaces/capture
+      //? container, following a scenario (I2 AI-authored, or a default screen-hold). The captured mp4 becomes a
+      //? video ContentAsset (I3 then drops it into the timeline via the upload→scene picker). B-23: Conductor writes.
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const url = str(payload, 'url');
+      if (!contentProjectId || !url || !/^https?:\/\//.test(url)) return { ok: false, status: 'error', error: 'capture.badUrl' };
+      const raw = payload.scenario;
+      const scenario = raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as CaptureScenario) : buildCaptureScenario([{ path: '/' }]);
+      const cap = await runCapture(url, scenario);
+      if (!cap.ok || !cap.url) return { ok: false, status: 'error', error: cap.error ?? 'capture.failed' };
+      const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind: 'video', url: cap.url, status: 'ready', metadata: jsonInput({ imported: true, capture: true, editedBy: userId }) } });
+      await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
+      return { ok: true, assetId: asset.id };
     }
     case 'shortlink-create': {
       //? H3 (ads) — create a trackable short link (`/l/<slug>` → click + redirect to targetUrl). A slug is
