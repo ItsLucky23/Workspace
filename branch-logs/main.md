@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: content-analyze-reference-video UI (script vanuit referentievideo)
+**Wat:** `content-analyze-reference-video` (ADR 0049: referentievideo + nieuw verhaal → beat/stijl-blueprint) was UI-loos. Toegevoegd als **ingeklapte** `Disclosure` op de content-piece (naast capture-run): video-URL + verhaal-textarea → `runContentOp`. Beide velden verplicht + gevalideerd. Ingeklapt = geen clutter.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 5 i18n-keys ×4 (`content.analyzeVideo*`/`analyzeStory*`).
+**Files:** `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: gitlab-resync UI-knop (forge-issues → tickets)
 **Wat:** `gitlab-resync` (echt: haalt open forge-issues op + upsert als tickets, ADR 0036) had een conductor-case maar geen client-route. Toegevoegd aan de `projectAdmin`-whitelist (runtime-Set, geen clientInput-wijziging → geen generateArtifacts) + `ctx.resyncForge()` + een **"Issues hersyncen"**-knop naast Save op de GitLab-tab. De bestaande "Verify"-knop bleef bewust een no-op (dat is de `gitlab-verify`-stub — Fase 2).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 1 i18n-key ×4 (`workspaceSettings.resyncIssues`).

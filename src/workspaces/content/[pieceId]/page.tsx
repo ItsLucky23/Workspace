@@ -282,6 +282,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
   //? capture-run (I1/I2 demo recorder) — was built (container + scenario) but had no UI trigger.
   const [captureUrl, setCaptureUrl] = useState('');
   const [captureGoal, setCaptureGoal] = useState('');
+  //? content-analyze-reference-video (ADR 0049) — a reference video + a new story → a script blueprint. Was UI-less.
+  const [analyzeVideoUrl, setAnalyzeVideoUrl] = useState('');
+  const [analyzeStory, setAnalyzeStory] = useState('');
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
   const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
   const [editImageAsset, setEditImageAsset] = useState<ContentAssetSummary | null>(null);
@@ -499,6 +502,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 <input value={captureUrl} onChange={(e) => { setCaptureUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureUrlPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
                 <input value={captureGoal} onChange={(e) => { setCaptureGoal(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureGoalPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
                 <button type="button" disabled={!/^https?:\/\//.test(captureUrl.trim())} onClick={() => { runContentOp('capture-run', piece.id, { url: captureUrl.trim(), ...(captureGoal.trim() ? { goal: captureGoal.trim() } : {}) }); setCaptureUrl(''); setCaptureGoal(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.captureBtn' })}</button>
+              </div>
+            </Disclosure>
+            {/* content-analyze-reference-video — seed a script from a reference video. Collapsed → no clutter. */}
+            <Disclosure summary={translate({ key: 'workspaces.content.analyzeVideoTitle' })}>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-muted">{translate({ key: 'workspaces.content.analyzeVideoDesc' })}</div>
+                <input value={analyzeVideoUrl} onChange={(e) => { setAnalyzeVideoUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.analyzeVideoUrlPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                <textarea value={analyzeStory} onChange={(e) => { setAnalyzeStory(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.analyzeStoryPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
+                <button type="button" disabled={!/^https?:\/\//.test(analyzeVideoUrl.trim()) || analyzeStory.trim().length === 0} onClick={() => { runContentOp('content-analyze-reference-video', piece.id, { referenceVideoUrl: analyzeVideoUrl.trim(), newStory: analyzeStory.trim() }); setAnalyzeVideoUrl(''); setAnalyzeStory(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.analyzeVideoBtn' })}</button>
               </div>
             </Disclosure>
           </section>
