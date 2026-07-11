@@ -47,6 +47,7 @@ import { startEditorReaper } from './proxy/editorReaper';
 import { startWorkerReaper } from './orchestrator/workerReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerTlsAsk } from './proxy/tlsAsk';
+import { registerShortLinkRedirect } from './content/shortlinkRoute';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
@@ -117,6 +118,8 @@ import { startLeaderElection } from './orchestrator/cluster';
   registerEditorAuthCheck();
   //? D3 — the Caddy on-demand-TLS ask endpoint (authorizes cert issuance only for known custom domains).
   registerTlsAsk();
+  //? H3 — the trackable short-link redirect (`/l/<slug>` → click + 302 to the target with UTM passthrough).
+  registerShortLinkRedirect();
   //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
   //? Pre-params custom routes so probes don't require a session.
   registerObservabilityEndpoints();

@@ -1581,6 +1581,23 @@ model MediaSpend {
   @@index([workspaceId, createdAt])
 }
 
+//? H3 (ads) — a trackable short link. `/l/<slug>` records a click + 302-redirects to `targetUrl` (UTM params
+//? on the short link are passed through). `variant` optionally ties a click to an A/B ad variant (H2) so the
+//? metrics loop can pick a winner. The click count is the campaign's own conversion signal (no external dep).
+model ShortLink {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  contentProjectId String?  @db.ObjectId               // the ad/content piece this link promotes (optional)
+  slug             String                              // the public /l/<slug> path segment (unique)
+  targetUrl        String                              // where the click lands (the landing page / product)
+  variant          String?                             // H2 — the A/B variant label this link represents
+  clicks           Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([slug])
+  @@index([workspaceId, contentProjectId])
+}
+
 //? A publish job (F3.1, ADR 0065) — a content asset posted to a platform behind the B-23 approval gate.
 //? The Conductor creates it ONLY after a publish suggestion is accepted. `externalUrl` is the posted url
 //? (a `stub://` fake in dummy mode / no key). `platform.notBuilt` = a future-ready platform not built yet.

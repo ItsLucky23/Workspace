@@ -1524,6 +1524,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
       return;
     }
+    case 'shortlink-create': {
+      //? H3 (ads) — create a trackable short link (`/l/<slug>` → click + redirect to targetUrl). A slug is
+      //? auto-derived from the target (or a provided one), made unique with a short random suffix. Optional
+      //? contentProjectId + A/B `variant`. The Conductor is the only writer (B-23).
+      const targetUrl = str(payload, 'targetUrl');
+      if (!targetUrl || !/^https?:\/\//.test(targetUrl)) return { ok: false, status: 'error', error: 'shortlink.badTarget' };
+      const base = (str(payload, 'slug') ?? targetUrl).toLowerCase().replaceAll(/^https?:\/\//g, '').replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, '').slice(0, 24) || 'link';
+      const slug = `${base}-${randomBytes(3).toString('hex')}`;
+      const link = await prisma.shortLink.create({ data: { workspaceId: action.workspaceId, slug, targetUrl, ...(str(payload, 'contentProjectId') ? { contentProjectId: str(payload, 'contentProjectId') } : {}), ...(str(payload, 'variant') ? { variant: str(payload, 'variant') } : {}) } });
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true, id: link.id, slug };
+    }
     case 'content-edit-image': {
       //? F6 — instruct-edit ("change the sky to sunset"): a WHOLE source image (an asset's url or a raw
       //? referenceUrl) + an instruction → a NEW edited image (fal flux-kontext, mask-less). Chains to the source

@@ -220,6 +220,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'restyle an existing VIDEO asset ("make this cinematic") — video-to-video (costs money, the user confirms). params: pieceId, assetId (a video asset), prompt (the style, e.g. "cinematic, warm grade")',
     params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, prompt: { kind: 'string', required: true } },
   },
+  'shortlink-create': {
+    mode: 'enabled',
+    hint: 'create a trackable short link (/l/<slug>) that records clicks + redirects to a landing URL — the campaign conversion signal. params: targetUrl (the landing url), contentProjectId? (the ad piece), variant? (an A/B label)',
+    params: { targetUrl: { kind: 'string', required: true }, contentProjectId: { kind: 'string' }, variant: { kind: 'string' } },
+  },
   'content-edit-image': {
     mode: 'enabled',
     hint: 'instruct-edit an existing IMAGE asset ("change the sky to sunset") — whole-image edit, no mask (costs money, the user confirms). params: pieceId, assetId (an image/render asset), prompt (the instruction)',

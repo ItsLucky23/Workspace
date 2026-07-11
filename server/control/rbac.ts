@@ -130,6 +130,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-critique-image': CAP.workTickets,
   'content-video-restyle': CAP.workTickets,
   'content-edit-image': CAP.workTickets,
+  'shortlink-create': CAP.workTickets,
   'channel-create': CAP.workTickets,
   'channel-edit': CAP.workTickets,
   'channel-delete': CAP.workTickets,
