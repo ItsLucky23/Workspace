@@ -3608,3 +3608,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de densste pagina (38 controls). Content-basics blijven op first paint (setup-banner, brand/product-context, styles, channels, references); het **admin-blok** — rauwe fal-ai model-overrides + media/AI provider-API-keys + €-budget + publishing-OAuth (aaneengesloten) — is gegate op `role !== 'member'` (fail-open) + ingeklapt achter één "Providers, budget & publishing"-toggle. Een content-editor ziet nu enkel de creatieve knoppen; een admin/owner klapt de account-knoppen uit. Sectie-componenten ongewijzigd (surgical).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity(volgt in suite). 1 i18n-key ×4 (`content.advancedSection`).
 **Files:** `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-11 — 🎨 UX-simplify Phase 7: pipeline stage-config 10 tabs → 3 basics voor members
+**Wat:** de stage-config-bar toonde 10 tabs (incl. network-egress, lifecycle-hooks, container-process, commands op first paint). Nu: basics **General / Context / Model** (model naar voren gehaald) blijven voor iedereen; de 7 dev/ops-tabs (commands, integrations, visibility, process, carryover, network, hooks) zijn gegate op `role !== 'member'` (fail-open) via een `.filter` op de `configTabs`-array. Een member ziet een 3-tab-config ipv 10; een admin/owner ziet alles. Default-tab = 'general' (basic) dus geen glitch. Tab-inhoud ongewijzigd (surgical).
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). (1 lint-error onderweg: `includes`→`Set.has`.) Geen nieuwe i18n.
+**Files:** `src/workspaces/pipeline/page.tsx`.

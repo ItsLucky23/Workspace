@@ -659,18 +659,23 @@ export default function Pipeline() {
     return m;
   }, [warnings]);
 
+  //? Simplify: the day-to-day stage knobs are General / Context / Model (kept for everyone). The dev/ops tabs
+  //? (commands, integrations, visibility, process, carryover, network egress, lifecycle hooks) are advanced and
+  //? only shown to admin/owner (fail-open: unresolved role ≠ 'member'), so a member sees a 3-tab config, not 10.
+  const BASIC_TABS = new Set(['general', 'context', 'model']);
+  const showAdvanced = activeWorkspace.role !== 'member';
   const configTabs: TabDef[] = [
     { id: 'general', label: translate({ key: 'workspaces.pipeline.tabGeneral' }), icon: 'sliders' },
     { id: 'context', label: translate({ key: 'workspaces.pipeline.tabContext' }), icon: 'book-open' },
+    { id: 'model', label: translate({ key: 'workspaces.pipeline.tabModel' }), icon: 'bolt' },
     { id: 'commands', label: translate({ key: 'workspaces.pipeline.tabCommands' }), icon: 'terminal' },
     { id: 'integrations', label: translate({ key: 'workspaces.pipeline.integrations' }), icon: 'database' },
     { id: 'visibility', label: translate({ key: 'workspaces.pipeline.tabVisibility' }), icon: 'eye' },
     { id: 'process', label: translate({ key: 'workspaces.pipeline.tabProcess' }), icon: 'play' },
     { id: 'carryover', label: translate({ key: 'workspaces.pipeline.tabCarryover' }), icon: 'code-merge' },
-    { id: 'model', label: translate({ key: 'workspaces.pipeline.tabModel' }), icon: 'bolt' },
     { id: 'network', label: translate({ key: 'workspaces.pipeline.tabNetwork' }), icon: 'shield-halved' },
     { id: 'hooks', label: translate({ key: 'workspaces.pipeline.tabHooks' }), icon: 'link' },
-  ];
+  ].filter((t) => showAdvanced || BASIC_TABS.has(t.id));
 
   if (!s) return null;
 
