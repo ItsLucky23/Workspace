@@ -1067,6 +1067,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
+      //? R2 — copy the user-authored styles + brand kit from another workspace INTO the active one (server route
+      //? existed; this wires the client dispatch). The Conductor authorizes source membership (B-23).
+      copyWorkspaceAssets: (sourceWorkspaceId) => {
+        const room = snap.activeWorkspaceId;
+        if (room && sourceWorkspaceId) void syncRequest({ name: 'workspaces/copyWorkspaceAssets', version: 'v1', data: { sourceWorkspaceId, clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

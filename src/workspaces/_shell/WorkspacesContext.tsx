@@ -109,6 +109,7 @@ export interface WorkspacesCtx {
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string, forgeType?: string) => void;
+  copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;

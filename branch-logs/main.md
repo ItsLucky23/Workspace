@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: copy-workspace-assets UI-gewired (server-route bestond, client niet)
+**Wat:** `copy-workspace-assets` had een volledige server-`_sync`-route (`copyWorkspaceAssets_server_v1.ts`) maar geen client-wiring → UI-loos. Toegevoegd: `ctx.copyWorkspaceAssets(sourceWorkspaceId)` (dispatcht naar de bestaande route) + een picker in content/settings (admin-blok, waar styles+brand wonen): Dropdown van je andere workspaces + "Assets kopiëren"-knop (met empty-state als er geen andere workspaces zijn). Geen backend/verb-wijziging; sync-route-type bestond al (typecheck0 zonder generateArtifacts).
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 4 i18n-keys ×4 (`content.copyAssets*`).
+**Files:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: shortlink-create UI op insights (was alleen tonen)
 **Wat:** de insights-pagina tóónde trackable links (H2/H3) maar had geen **maak**-knop, en bij 0 links verscheen de sectie niet eens. Nu: de links-sectie is altijd zichtbaar met een create-form (URL-input + "Link maken" → `shortlink-create` via `runContentOp`, gevalideerd op http(s)) + een empty-state. Natuurlijke plek (de analytics/links-pagina), dus geen clutter.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 3 i18n-keys ×4 (`content.linkUrlPlaceholder/linkCreate/linksEmpty`).

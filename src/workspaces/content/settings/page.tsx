@@ -305,7 +305,9 @@ function ChannelManagerSection() {
 }
 
 export default function ContentSettings() {
-  const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate, runContentOp } = useWorkspaces();
+  const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate, runContentOp, workspaces, copyWorkspaceAssets } = useWorkspaces();
+  //? R2 — copy styles + brand from another workspace into this one (source picker + one-click).
+  const [copySource, setCopySource] = useState('');
   //? A3 — disconnect a connected platform's default account (confirm first — removing a credential).
   const disconnectPlatform = (platform: string): void => {
     void menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishDisconnect' }), content: translate({ key: 'workspaces.content.publishDisconnectConfirm' }) }).then((ok) => { if (ok) runContentOp('account-disconnect', '', { platform }); });
@@ -459,6 +461,25 @@ export default function ContentSettings() {
                 );
               })}
             </div>
+          </section>
+
+          {/* R2 — copy the user-authored styles + brand kit from another workspace into this one. */}
+          <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+            <div className="mb-3">
+              <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.copyAssetsTitle' })}</div>
+              <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.copyAssetsDesc' })}</div>
+            </div>
+            {(() => {
+              const others = workspaces.filter((w) => w.id !== activeWorkspace.id);
+              if (others.length === 0) return <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.copyAssetsNone' })}</div>;
+              const items = others.map((w) => ({ id: w.id, value: w.id, item: w.name }));
+              return (
+                <div className="flex items-center gap-2">
+                  <Dropdown size="md" value={items.find((i) => i.id === copySource)} items={items} onChange={(it) => { setCopySource(String(it.id)); }} />
+                  <button type="button" disabled={!copySource} onClick={() => { copyWorkspaceAssets(copySource); setCopySource(''); }} className="shrink-0 rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.copyAssetsBtn' })}</button>
+                </div>
+              );
+            })()}
           </section></>
               )}
             </>
