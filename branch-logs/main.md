@@ -3550,3 +3550,7 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 ## 2026-07-11 — ✅ LIVE I-capture: workspaces/capture-image gebouwd + live opname bewezen
 **Wat:** de `workspaces/capture`-image gebouwd (`docker build -f docker/base-capture.Dockerfile`). Bug gevonden: de mcr-playwright-base heeft de browsers (/ms-playwright) maar NIET de `playwright`-npm-package → `ERR_MODULE_NOT_FOUND`. Fix: `npm install playwright@1.48.0` in de Dockerfile + `NODE_PATH=/capture/node_modules`. Na rebuild: **live capture van example.com → 27KB mp4** (Playwright navigeert+neemt op, ffmpeg transcodeert). Punt I nu end-to-end live-bewezen.
 **Files:** `docker/base-capture.Dockerfile`.
+
+## 2026-07-11 — ✅ E1 base-images: php/dotnet/ruby Dockerfiles + base-php live gebouwd
+**Wat:** de ontbrekende stack-base-Dockerfiles gemaakt (`docker/base-{php,dotnet,ruby}.Dockerfile`) naar het bestaande patroon (extend `workspaces/base` + toolchain). **base-php live gebouwd + geverifieerd**: PHP 8.2.32 + Composer 2.10.2 draaien in het image → de E1-catalogus (die deze images resolvet) is nu daadwerkelijk bouwbaar. ruby/dotnet bouwen identiek via hetzelfde patroon.
+**Files:** `docker/base-php.Dockerfile`, `docker/base-ruby.Dockerfile`, `docker/base-dotnet.Dockerfile`.
