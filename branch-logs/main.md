@@ -3613,3 +3613,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de stage-config-bar toonde 10 tabs (incl. network-egress, lifecycle-hooks, container-process, commands op first paint). Nu: basics **General / Context / Model** (model naar voren gehaald) blijven voor iedereen; de 7 dev/ops-tabs (commands, integrations, visibility, process, carryover, network, hooks) zijn gegate op `role !== 'member'` (fail-open) via een `.filter` op de `configTabs`-array. Een member ziet een 3-tab-config ipv 10; een admin/owner ziet alles. Default-tab = 'general' (basic) dus geen glitch. Tab-inhoud ongewijzigd (surgical).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). (1 lint-error onderweg: `includes`→`Set.has`.) Geen nieuwe i18n.
 **Files:** `src/workspaces/pipeline/page.tsx`.
+
+## 2026-07-11 — 🎨 UX-simplify Phase 9: workspace-settings tabs op admin/owner
+**Wat:** workspace-settings had tot 11 platte tabs (dev-tabs waren al op module gegate). Nu consistent met de RBAC-keuze: een member ziet enkel **Members** (team bekijken); alle config/admin-tabs (permissions/modules/ai-behavior/env-secrets/integrations/invites/danger + de dev-tabs repo/gitlab/workflow) zijn gegate op `role !== 'member'` (fail-open). De bestaande `activeTab`-fallback vangt een gated-away geselecteerde tab al op → Members. Dev-tabs vereisen bovendien nog steeds de dev-module. Tab-inhoud ongewijzigd.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
+**Files:** `src/workspaces/workspace/page.tsx`.

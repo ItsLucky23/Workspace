@@ -893,8 +893,11 @@ export default function WorkspaceSettings() {
   //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
   //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
-  const tabs: TabDef[] = [
-    { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
+  //? Simplify: workspace settings is an admin surface. A plain member sees only Members (view the team); every
+  //? config/admin tab (permissions, modules, AI behaviour, env secrets, integrations, invites, dev setup, danger)
+  //? is gated on role (fail-open: unresolved role ≠ 'member'). Dev tabs additionally require the dev module.
+  const isAdmin = activeWorkspace.role !== 'member';
+  const adminTabs: TabDef[] = [
     { id: 'permissions', label: translate({ key: 'workspaces.workspaceSettings.tabPermissions' }), icon: 'circle-check' },
     { id: 'modules', label: translate({ key: 'workspaces.workspaceSettings.tabModules' }), icon: 'table-cells-large' },
     { id: 'aibehavior', label: translate({ key: 'workspaces.workspaceSettings.tabAi' }), icon: 'robot' },
@@ -907,6 +910,10 @@ export default function WorkspaceSettings() {
       { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' as const },
     ] : []),
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
+  ];
+  const tabs: TabDef[] = [
+    { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
+    ...(isAdmin ? adminTabs : []),
   ];
 
   //? If the selected tab was gated away (dev tabs hidden after disabling the module),
