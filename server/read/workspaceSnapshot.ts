@@ -219,7 +219,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null,
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
-  usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
+  usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
@@ -294,7 +294,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.workspaceNote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
       //? Cost/usage tracking (#16): recent SpendRecord rows → the Usage read (per-ticket tokens +
       //? 7-day activity), replacing the seed dummies. Bounded newest-first window.
-      tenantDb.spendRecord.findMany({ orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true } }),
+      tenantDb.spendRecord.findMany({ orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true, providerId: true, feature: true, costEstimate: true } }),
       //? Automation (#2): the workspace's WorkspaceTriggers (for the automation panel).
       tenantDb.workspaceTrigger.findMany({ orderBy: { createdAt: 'desc' } }),
       //? Studio module: briefs + their generated artifacts + the central brand library.

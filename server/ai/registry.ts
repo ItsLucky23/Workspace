@@ -12,6 +12,7 @@ import { getPrismaClient, tryCatch, tryCatchSync } from '@luckystack/core';
 import { resolveAssignment, defaultAssignments } from './assignments';
 import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
+import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
@@ -80,6 +81,19 @@ export async function runAiCompletion(
   const result = await provider.complete(groundedReq);
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
   recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
+  //? Durable per-AI spend (the missing half): one-shot completions only touched the in-memory activity ring,
+  //? so metered providers (Gemini) never accrued into SpendRecord/WorkspaceBudget. Record here, best-effort +
+  //? only on success, with the provider's real usage when it reports it (else char-estimate). The PTY coding
+  //? agent (pipeline-agent) is recorded by the stage-runner, not here. Never fails the turn.
+  const wsId = req.workspaceId;
+  if (wsId && result.ok) {
+    await tryCatch(() => recordTurnSpend(getPrismaClient(), {
+      workspaceId: wsId, sessionKey: `oneshot:${feature}`, model: result.model ?? result.providerId,
+      providerId: result.providerId, feature, inputChars: (req.system?.length ?? 0) + req.prompt.length, outputChars: result.text.length,
+      ...(typeof result.tokensIn === 'number' ? { tokensIn: result.tokensIn } : {}),
+      ...(typeof result.tokensOut === 'number' ? { tokensOut: result.tokensOut } : {}),
+    }));
+  }
   return result;
 }
 

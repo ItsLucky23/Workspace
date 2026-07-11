@@ -986,6 +986,11 @@
       "colTime": "Time",
       "ticketSingular": "ticket",
       "ticketPlural": "tickets",
+      "byAiTitle": "By AI",
+      "byAiDesc": "Tokens and cost per AI — provider and role.",
+      "subscriptionBadge": "subscription",
+      "byAiEmptyTitle": "No AI usage yet",
+      "byAiEmptySub": "Once an AI runs a task, its token use and cost show up here.",
       "runawayNote": "Runaway control (stuck/idle detection) escalates a session to “needs input” — independent of any spend cap."
     },
       "timetravel": {

@@ -182,6 +182,37 @@ export default function Usage() {
             </Card>
           </div>
 
+          {/* Per-AI usage breakdown (tokens + cost per provider/role). Claude PTY = subscription (token
+              volume only); metered API providers (Gemini) show a real € cost. Card-list → reflows mobile+desktop. */}
+          <Card title={translate({ key: 'workspaces.usage.byAiTitle' })} desc={translate({ key: 'workspaces.usage.byAiDesc' })}>
+            {usage.byAi.length === 0 ? (
+              <EmptyState icon="chart-simple" title={translate({ key: 'workspaces.usage.byAiEmptyTitle' })} sub={translate({ key: 'workspaces.usage.byAiEmptySub' })} />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {usage.byAi.map((a) => {
+                  const tokLabel = `${String(a.tokensIn + a.tokensOut)} tok`;
+                  const costLabel = `€${a.costEstimate.toFixed(2)}`;
+                  return (
+                    <div key={`${a.providerId}-${a.feature}`} className="flex items-center gap-3 py-2 border-b border-divider last:border-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-title">{a.providerLabel}</span>
+                          <span className="rounded-full bg-container2 px-2 text-xs text-muted">{a.feature}</span>
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-mono text-xs text-muted tabular-nums">{tokLabel}</span>
+                      {a.subscription ? (
+                        <span className="shrink-0 rounded-md bg-container2 px-2 py-0.5 text-xs text-muted">{translate({ key: 'workspaces.usage.subscriptionBadge' })}</span>
+                      ) : (
+                        <span className="shrink-0 text-sm font-medium text-title tabular-nums">{costLabel}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
           <div className="flex items-center gap-2 text-xs text-muted">
             <Icon name="circle-question" /> {translate({ key: 'workspaces.usage.runawayNote' })}
           </div>

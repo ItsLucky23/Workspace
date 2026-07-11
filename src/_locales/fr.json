@@ -986,6 +986,11 @@
       "colTime": "Temps",
       "ticketSingular": "ticket",
       "ticketPlural": "tickets",
+      "byAiTitle": "Par IA",
+      "byAiDesc": "Tokens et coût par IA — fournisseur et rôle.",
+      "subscriptionBadge": "abonnement",
+      "byAiEmptyTitle": "Aucune utilisation d’IA pour l’instant",
+      "byAiEmptySub": "Dès qu’une IA exécute une tâche, son utilisation de tokens et son coût s’affichent ici.",
       "runawayNote": "Le contrôle d’emballement (détection de blocage/inactivité) fait passer une session en « besoin d’input » — indépendamment de tout plafond de dépense."
     },
       "timetravel": {

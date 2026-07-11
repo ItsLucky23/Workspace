@@ -100,7 +100,7 @@ const EMPTY_SNAP: Snap = {
   notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
-  usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0 },
+  usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],

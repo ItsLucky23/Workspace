@@ -5,22 +5,44 @@
 //? field — tokens are ESTIMATED from the char count (the P0.5 spike's finding), and the monetary
 //? cost is 0 unless a per-model price is set. The value shown to the user is token VOLUME + time.
 
+import { tryCatchSync } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import type { UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
+import type { AiUsage, UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
 
 //? Rough chars→tokens (~4 chars/token for English+code). Advisory, not billing-grade.
 const CHARS_PER_TOKEN = 4;
 export const estTokens = (chars: number): number => Math.max(0, Math.ceil(chars / CHARS_PER_TOKEN));
 
-//? Editable per-model price per 1k tokens (D31). 0 = the Max subscription (no metered cost); a
-//? self-host operator paying per-token API can set real prices here (env-overridable later).
-const MODEL_PRICE_PER_1K: Record<string, number> = {};
-const priceFor = (model: string): number => MODEL_PRICE_PER_1K[model] ?? 0;
+//? Per-model price per 1k tokens (D31), blended in+out. Claude models are intentionally ABSENT →
+//? priceFor()=0: the coding agent runs on the Max SUBSCRIPTION (CLAUDE.md invariant 6), so it has no
+//? metered € cost — only token volume. Metered API providers (Gemini) DO bill per token → advisory
+//? blended defaults. A self-host operator paying per-token can override any model via the
+//? WS_MODEL_PRICE_PER_1K_JSON env (a JSON object model→number/1k), merged over these defaults.
+const DEFAULT_MODEL_PRICE_PER_1K: Record<string, number> = {
+  'gemini-2.5-flash': 0.0015,
+  'gemini-2.5-pro': 0.012,
+  'gemini-1.5-flash': 0.0005,
+  'gemini-1.5-pro': 0.006,
+};
+function priceMap(): Record<string, number> {
+  const merged: Record<string, number> = { ...DEFAULT_MODEL_PRICE_PER_1K };
+  const [, override] = tryCatchSync(() => JSON.parse(process.env.WS_MODEL_PRICE_PER_1K_JSON ?? '{}') as unknown);
+  if (override !== null && typeof override === 'object' && !Array.isArray(override)) {
+    for (const [k, v] of Object.entries(override as Record<string, unknown>)) {
+      if (typeof v === 'number' && Number.isFinite(v)) merged[k] = v;
+    }
+  }
+  return merged;
+}
+export const priceFor = (model: string): number => priceMap()[model] ?? 0;
 
 export interface TurnSpendInput {
   workspaceId: string; userId?: string | null; ticketId?: string | null; stageId?: string | null;
   sessionKey: string; model: string; inputChars: number; outputChars: number;
+  providerId?: string | null; feature?: string | null;
+  //? Real usage from a metered provider (Gemini usageMetadata) — preferred over the char-estimate when present.
+  tokensIn?: number; tokensOut?: number;
 }
 
 //? Record one turn's usage. Best-effort — a failed spend write must NEVER fail the turn (it's
@@ -28,13 +50,14 @@ export interface TurnSpendInput {
 //? estimate (feeds the #4 self-handoff) and the enabled budgets' rolling `spent` (display only —
 //? no enforcement/pause here, #16 is show-only).
 export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInput): Promise<{ tokensIn: number; tokensOut: number; costEstimate: number }> {
-  const tokensIn = estTokens(input.inputChars);
-  const tokensOut = estTokens(input.outputChars);
+  const tokensIn = input.tokensIn ?? estTokens(input.inputChars);
+  const tokensOut = input.tokensOut ?? estTokens(input.outputChars);
   const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(input.model);
   await prisma.spendRecord.create({
     data: {
       workspaceId: input.workspaceId, userId: input.userId ?? null, ticketId: input.ticketId ?? null, stageId: input.stageId ?? null,
       sessionKey: input.sessionKey, tokensIn, tokensOut, model: input.model, costEstimate,
+      providerId: input.providerId ?? null, feature: input.feature ?? null,
     },
   });
   await prisma.agentSession.updateMany({ where: { workspaceId: input.workspaceId, sessionKey: input.sessionKey }, data: { tokenEstimate: { increment: tokensIn + tokensOut } } });
@@ -44,13 +67,33 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
 }
 
 //? Usage shapes live in the client `_data/types` (the snapshot emits them); re-exported for callers.
-export type { UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
+export type { AiUsage, UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 //? A SpendRecord row (the fields the aggregate reads) — decoupled from Prisma's model type so
 //? `aggregateUsage` is a PURE, unit-testable function the snapshot feeds tenant-scoped rows into.
-export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date }
+//? providerId/feature/costEstimate feed the per-AI breakdown; optional so pre-per-AI callers still compile.
+export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date; providerId?: string | null; feature?: string | null; costEstimate?: number }
+
+//? Human labels for the known AI providers (the raw id is the fallback for anything new/unknown).
+const PROVIDER_LABELS: Record<string, string> = { 'claude-cli': 'Claude (CLI)', 'gemini-api': 'Gemini API' };
+
+//? Aggregate spend PER AI (provider + feature/role) — the per-AI usage breakdown. Rows with no provider
+//? land in an 'unknown' bucket; `subscription` marks the Claude PTY coding agent (Max subscription — token
+//? volume only, no metered €). Sorted by total tokens desc. Pure + exported for tests.
+export function aggregateByAi(rows: SpendRow[]): AiUsage[] {
+  const per = new Map<string, AiUsage>();
+  for (const r of rows) {
+    const providerId = r.providerId ?? 'unknown';
+    const feature = r.feature ?? 'unknown';
+    const key = `${providerId}::${feature}`;
+    const cur = per.get(key) ?? { providerId, providerLabel: PROVIDER_LABELS[providerId] ?? providerId, feature, tokensIn: 0, tokensOut: 0, turns: 0, costEstimate: 0, subscription: providerId === 'claude-cli' };
+    cur.tokensIn += r.tokensIn; cur.tokensOut += r.tokensOut; cur.turns += 1; cur.costEstimate += r.costEstimate ?? 0;
+    per.set(key, cur);
+  }
+  return [...per.values()].toSorted((a, b) => (b.tokensIn + b.tokensOut) - (a.tokensIn + a.tokensOut));
+}
 
 //? H2 — per-user spend rows (attribution). Pure over rows carrying a userId + tokens + cost.
 export interface UserSpendRow { userId: string | null; tokensIn: number; tokensOut: number; costEstimate: number }
@@ -107,12 +150,12 @@ export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, stri
   }
 
   const byTicket = [...perTicket.values()].toSorted((a, b) => (b.tokensIn + b.tokensOut) - (a.tokensIn + a.tokensOut)).slice(0, 50);
-  return { byTicket, activity, totalTokens, totalTurns };
+  return { byTicket, activity, totalTokens, totalTurns, byAi: aggregateByAi(rows) };
 }
 
 //? Convenience: query a workspace's recent SpendRecord rows + aggregate them. Used outside the
 //? tenant-scoped snapshot (which feeds `aggregateUsage` its own tenant rows).
 export async function usageForWorkspace(prisma: PrismaClient, workspaceId: string, ticketKeyById: Map<string, string>, now: number): Promise<WorkspaceUsage> {
-  const rows = await prisma.spendRecord.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true } });
+  const rows = await prisma.spendRecord.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true, providerId: true, feature: true, costEstimate: true } });
   return aggregateUsage(rows, ticketKeyById, now);
 }

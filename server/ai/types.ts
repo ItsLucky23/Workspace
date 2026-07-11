@@ -74,6 +74,11 @@ export interface AiCompletionResult {
   text: string;         //? the assistant's final message (empty on error)
   providerId: AiProviderId;
   error?: string;       //? errorCode when ok=false
+  //? Honest usage: a metered API provider reports its resolved model + real token counts (for per-AI
+  //? cost); a subscription/estimate provider (Claude CLI) omits them and the caller char-estimates.
+  model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
 }
 
 //? A standalone handler for one AI backend. `available` gates dispatch (claude installed

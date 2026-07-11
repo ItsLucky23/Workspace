@@ -70,7 +70,8 @@ async function resolveGeminiConfig(workspaceId?: string): Promise<GeminiConfig> 
 export const geminiEndpoint = (baseUrl: string, model: string): string => `${baseUrl.replace(/\/+$/, '')}/models/${model}:generateContent`;
 
 interface GeminiPart { text?: string }
-interface GeminiResponse { candidates?: { content?: { parts?: GeminiPart[] } }[] }
+interface GeminiUsage { promptTokenCount?: number; candidatesTokenCount?: number }
+interface GeminiResponse { candidates?: { content?: { parts?: GeminiPart[] } }[]; usageMetadata?: GeminiUsage }
 
 function firstText(body: unknown): string {
   const parts = (body as GeminiResponse | null)?.candidates?.[0]?.content?.parts;
@@ -97,16 +98,22 @@ export const geminiApiProvider: AiProvider = {
     };
     const controller = new AbortController();
     const timer = setTimeout(() => { controller.abort(); }, req.timeoutMs ?? 60_000);
-    const [error, text] = await tryCatch(async () => {
+    const [error, body] = await tryCatch(async () => {
       const res = await fetch(`${geminiEndpoint(baseUrl, model)}?key=${apiKey}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload), signal: controller.signal,
       });
       if (!res.ok) throw new Error(`gemini ${String(res.status)}`);
-      return firstText(await res.json());
+      return await res.json() as unknown;
     });
     clearTimeout(timer);
     if (error) return { ok: false, text: '', providerId: 'gemini-api', error: error.message };
-    return { ok: true, text: text ?? '', providerId: 'gemini-api' };
+    //? Metered provider: report the resolved model + real usageMetadata token counts so per-AI cost is accurate.
+    const usage = (body as GeminiResponse | null)?.usageMetadata;
+    return {
+      ok: true, text: firstText(body), providerId: 'gemini-api', model,
+      ...(typeof usage?.promptTokenCount === 'number' ? { tokensIn: usage.promptTokenCount } : {}),
+      ...(typeof usage?.candidatesTokenCount === 'number' ? { tokensOut: usage.candidatesTokenCount } : {}),
+    };
   },
 };

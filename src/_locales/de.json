@@ -986,6 +986,11 @@
       "colTime": "Zeit",
       "ticketSingular": "Ticket",
       "ticketPlural": "Tickets",
+      "byAiTitle": "Nach KI",
+      "byAiDesc": "Tokens und Kosten pro KI — Anbieter und Rolle.",
+      "subscriptionBadge": "Abo",
+      "byAiEmptyTitle": "Noch keine KI-Nutzung",
+      "byAiEmptySub": "Sobald eine KI eine Aufgabe ausführt, erscheinen hier Tokenverbrauch und Kosten.",
       "runawayNote": "Die Runaway-Kontrolle (Stuck-/Idle-Erkennung) eskaliert eine Session zu „Eingabe nötig“ — unabhängig von jedem Ausgabenlimit."
     },
       "timetravel": {

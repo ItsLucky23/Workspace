@@ -286,7 +286,8 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
   await tryCatch(() => recordTurnSpend(prisma, {
     workspaceId, userId: ticket.assigneeId ?? null, ticketId: ticket.id, stageId: stageKey, sessionKey,
-    model: cfg.modelCfg.base.model, inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
+    model: cfg.modelCfg.base.model, providerId: 'claude-cli', feature: 'pipeline-agent',
+    inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
   }));
 
   const result = await parseTurnResult(drive.message);

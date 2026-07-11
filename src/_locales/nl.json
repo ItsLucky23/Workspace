@@ -986,6 +986,11 @@
       "colTime": "Tijd",
       "ticketSingular": "ticket",
       "ticketPlural": "tickets",
+      "byAiTitle": "Per AI",
+      "byAiDesc": "Tokens en kosten per AI — provider en rol.",
+      "subscriptionBadge": "abonnement",
+      "byAiEmptyTitle": "Nog geen AI-gebruik",
+      "byAiEmptySub": "Zodra een AI een taak uitvoert, verschijnt hier het tokengebruik en de kosten.",
       "runawayNote": "Runaway-beheersing (vastloop-/idle-detectie) schaalt een sessie op naar “input nodig” — los van welke uitgavenlimiet dan ook."
     },
       "timetravel": {

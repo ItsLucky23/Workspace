@@ -1135,10 +1135,13 @@ model SpendRecord {
   tokensOut    Int      @default(0)
   model        String                              // resolved model literal (pricing key)
   costEstimate Float    @default(0)                // tokens × editable per-model price (D31); 0 when pricing zeroed-out
+  providerId   String?                             // AiProviderId that ran this turn (per-AI usage breakdown)
+  feature      String?                             // AiFeature/role key (per-AI usage breakdown)
   createdAt    DateTime @default(now())
 
   @@index([workspaceId, ticketId, createdAt])      // per-ticket cost chip
   @@index([workspaceId, stageId, createdAt])       // rolling per-stage average → the D4 estimate blend
+  @@index([workspaceId, providerId, createdAt])    // per-AI usage breakdown
 }
 
 //? Multi-row / multi-cap budget (04b §9, D81/D82). MULTIPLE rows per workspace.
