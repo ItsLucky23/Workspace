@@ -11,7 +11,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { EmptyState, PopMenu, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, PopMenu, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -279,6 +279,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [ctaText, setCtaText] = useState('');
   const [extra, setExtra] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
+  //? capture-run (I1/I2 demo recorder) — was built (container + scenario) but had no UI trigger.
+  const [captureUrl, setCaptureUrl] = useState('');
+  const [captureGoal, setCaptureGoal] = useState('');
   //? E1/E2 — the asset currently open in the region editor / image editor (null = closed).
   const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
   const [editImageAsset, setEditImageAsset] = useState<ContentAssetSummary | null>(null);
@@ -489,6 +492,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
             <div className="flex items-start gap-2 text-xs text-muted mt-1">
               <Icon name="triangle-exclamation" className="text-warning mt-0.5" /> {translate({ key: 'workspaces.content.costWarning' })}
             </div>
+            {/* capture-run (I1/I2 demo recorder) — collapsed so it never clutters the default view. */}
+            <Disclosure summary={translate({ key: 'workspaces.content.captureTitle' })}>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-muted">{translate({ key: 'workspaces.content.captureDesc' })}</div>
+                <input value={captureUrl} onChange={(e) => { setCaptureUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureUrlPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                <input value={captureGoal} onChange={(e) => { setCaptureGoal(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureGoalPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                <button type="button" disabled={!/^https?:\/\//.test(captureUrl.trim())} onClick={() => { runContentOp('capture-run', piece.id, { url: captureUrl.trim(), ...(captureGoal.trim() ? { goal: captureGoal.trim() } : {}) }); setCaptureUrl(''); setCaptureGoal(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.captureBtn' })}</button>
+              </div>
+            </Disclosure>
           </section>
 
           {/* Generation actions — each fires its control-op behind a confirm. */}
