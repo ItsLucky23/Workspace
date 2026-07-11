@@ -37,8 +37,10 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 export default function Usage() {
-  const { openTicket, tickets, membersById, usage, insights, analytics, budget, editBudget, resumeSpend } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage, insights, analytics, budget, editBudget, resumeSpend, diagnoseRootCause } = useWorkspaces();
   const translate = useTranslator();
+  //? root-cause (ADR 0042) — a symptom → the likely-culprit merge as a rollback suggestion (AI panel).
+  const [symptom, setSymptom] = useState('');
   //? AI/token €-budget editor (D81) — the first save creates the budget if none exists (conductor upsert).
   const [capInput, setCapInput] = useState(budget ? String(budget.cap) : '');
   const [alertInput, setAlertInput] = useState(budget ? String(budget.alertPct) : '80');
@@ -113,6 +115,14 @@ export default function Usage() {
               </label>
               <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget(Number(capInput), alertInput.trim() ? Number(alertInput) : undefined); }} className="h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.budgetSave' })}</button>
               {budget && <button type="button" onClick={() => { resumeSpend(); }} className="h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 cursor-pointer">{translate({ key: 'workspaces.usage.budgetResume' })}</button>}
+            </div>
+          </Card>
+
+          {/* root-cause (ADR 0042): diagnose what broke → the likely-culprit merge as a rollback suggestion. */}
+          <Card title={translate({ key: 'workspaces.usage.diagnoseTitle' })} desc={translate({ key: 'workspaces.usage.diagnoseDesc' })}>
+            <div className="flex items-center gap-2">
+              <input value={symptom} onChange={(e) => { setSymptom(e.target.value); }} placeholder={translate({ key: 'workspaces.usage.diagnosePlaceholder' })} className="flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              <button type="button" disabled={symptom.trim().length === 0} onClick={() => { diagnoseRootCause(symptom); setSymptom(''); }} className="shrink-0 rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.diagnoseBtn' })}</button>
             </div>
           </Card>
 

@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: root-cause diagnose-UI op de Usage-pagina
+**Wat:** `root-cause` (ADR 0042: symptoom + recente merges → waarschijnlijke schuldige merge als rollback-suggestie) was UI-loos + had "geen thuis". Geplaatst op de **Usage-pagina** (het ops-overzicht = plausibele thuis): een "Diagnose wat stuk is"-card met symptoom-input + knop → `ctx.diagnoseRootCause(symptom)` via projectAdmin (`symptom?` bestond al → geen generateArtifacts). Output = rollback-suggestie in het AI-panel (bestaande accept-flow, B-23).
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 4 i18n-keys ×4 (`usage.diagnose*`).
+**Files:** `src/workspaces/usage/page.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: ci-allow-red toggle in het MR-panel
 **Wat:** `ci-allow-red` (zet `workspace.allowMergeOnRedCI` — een mens mag mergen bij rode CI) had een conductor-case + zat in de projectAdmin-whitelist, maar was UI-loos én de state stond niet in de snapshot. Toegevoegd: `allowMergeOnRedCI` aan de client-`Workspace`-type + de snapshot-map (full-row-query, geen select-wijziging) + `ctx.allowCiRed(enabled)` (via projectAdmin, `enabled?` bestond al → geen generateArtifacts) + een **checkbox-toggle** in de MR-actie-rij die de live-state toont.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 2 i18n-keys ×4 (`mr.allowRed`/`allowRedHint`).

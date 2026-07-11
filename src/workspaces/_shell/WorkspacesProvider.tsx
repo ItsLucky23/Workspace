@@ -1104,6 +1104,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-allow-red', enabled, clientRequestId: nextReqId() }, receiver: room });
       },
+      //? root-cause (ADR 0042): given a symptom + recent merges, rank the likely-culprit merge → a rollback
+      //? WorkspaceSuggestion (shown in the AI panel; never reverts directly — B-23).
+      diagnoseRootCause: (symptom) => {
+        const room = snap.activeWorkspaceId;
+        if (room && symptom.trim()) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'root-cause', symptom: symptom.trim(), clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

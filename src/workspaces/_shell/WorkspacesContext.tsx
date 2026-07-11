@@ -116,6 +116,7 @@ export interface WorkspacesCtx {
   resumeSpend: () => void;
   resyncForge: () => void;
   allowCiRed: (enabled: boolean) => void;
+  diagnoseRootCause: (symptom: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
