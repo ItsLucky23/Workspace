@@ -1161,12 +1161,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'edit-budget': {
       const cap = num(payload, 'cap') ?? num(payload, 'newCap');
       if (cap === undefined) return;
-      const budget = await prisma.workspaceBudget.findFirst({ where: { workspaceId: action.workspaceId } });
-      if (!budget) return;
-      const data: { cap: number; alertPct?: number } = { cap };
       const alertPct = num(payload, 'alertPct');
-      if (alertPct !== undefined) data.alertPct = alertPct;
-      await prisma.workspaceBudget.update({ where: { id: budget.id }, data });
+      const budget = await prisma.workspaceBudget.findFirst({ where: { workspaceId: action.workspaceId } });
+      if (budget) {
+        const data: { cap: number; alertPct?: number } = { cap };
+        if (alertPct !== undefined) data.alertPct = alertPct;
+        await prisma.workspaceBudget.update({ where: { id: budget.id }, data });
+      } else {
+        //? No create-op existed → the first edit creates the budget with sensible defaults (so the editor works
+        //? on a fresh workspace without a separate "create budget" flow).
+        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: 'Budget', cap, alertPct: alertPct ?? 80, enforcement: 'pauseNew' } });
+      }
       return;
     }
     case 'resume-spend': {

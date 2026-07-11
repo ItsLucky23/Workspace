@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🟢 Gap-close (backend+UI): AI-token budget-editor (audit-kritieke "geen budget-UI")
+**Wat:** de AI/token-`WorkspaceBudget` had ops (`edit-budget`/`raise-cap`/`resume-spend`) + accrual (mijn Phase-2 per-AI-cost) maar **geen UI én geen create-flow** (`edit-budget` deed `if(!budget) return`). Nu volledig gewired: (1) conductor `edit-budget` → **upsert** (eerste save maakt het budget aan met verstandige defaults — lost de ontbrekende create-op op); (2) `edit-budget`/`raise-cap`/`resume-spend` toegevoegd aan de `projectAdmin`-whitelist + `cap`/`alertPct` aan clientInput (+ `generateArtifacts`); (3) ctx-methodes `editBudget(cap, alertPct?)` + `resumeSpend()`; (4) **budget-card op de Usage-pagina**: spent/cap-balk + cap/alert-editor (save maakt/wijzigt) + "Uitgaven hervatten". Sluit de per-AI-cost-cirkel (accrual → zichtbaar → begrensbaar).
+**Verify:** typecheck0·build✓·lint0(mijn `€`-literal → const)·localeIntegrity 8/8. `apiTypes.generated.ts` geregenereerd. 8 i18n-keys ×4 (`usage.budget*`).
+**Files:** `server/orchestrator/conductor.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/workspaces/usage/page.tsx`, `src/_sockets/apiTypes.generated.ts`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: capture-run (demo-recorder) UI-trigger
 **Wat:** de I1/I2 demo-capture (container + scenario) was eerder gebouwd maar had géén UI-trigger. Toegevoegd: een **ingeklapte** `Disclosure` "Neem een demovideo op" in de content-piece direction-sectie — URL-input (verplicht http(s)) + optioneel doel → `runContentOp('capture-run', ...)`. Ingeklapt, dus geen clutter (lost de simplify-spanning op). De opgenomen mp4 wordt een video-asset (bestaande I3-flow).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 5 i18n-keys ×4 (`content.capture*`).

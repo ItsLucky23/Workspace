@@ -3,7 +3,7 @@
 //? time + who handled what. Activity chart, per-ticket breakdown (tokens +
 //? time, no cost), and a per-member breakdown with counters. Dummy data.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -37,8 +37,12 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 export default function Usage() {
-  const { openTicket, tickets, membersById, usage, insights, analytics } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage, insights, analytics, budget, editBudget, resumeSpend } = useWorkspaces();
   const translate = useTranslator();
+  //? AI/token €-budget editor (D81) — the first save creates the budget if none exists (conductor upsert).
+  const [capInput, setCapInput] = useState(budget ? String(budget.cap) : '');
+  const [alertInput, setAlertInput] = useState(budget ? String(budget.alertPct) : '80');
+  const budgetSpentLabel = budget ? `€${budget.spent.toFixed(2)} / €${budget.cap.toFixed(2)}` : '';
   //? Real 7-day token activity (#16); guard the divisor so an all-zero week doesn't divide by 0.
   const maxDay = Math.max(1, ...usage.activity.map((d) => d.tokens));
 
@@ -84,6 +88,33 @@ export default function Usage() {
               hint={translate({ key: 'workspaces.usage.insightCostHint' })}
             />
           </div>
+
+          {/* AI/token €-budget (D81): current spend vs cap + an editor (first save creates it) + resume. */}
+          <Card title={translate({ key: 'workspaces.usage.budgetTitle' })} desc={translate({ key: 'workspaces.usage.budgetDesc' })}>
+            {budget
+              ? (
+                <div className="flex flex-col gap-2 mb-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted">{translate({ key: 'workspaces.usage.budgetSpent' })}</span>
+                    <span className="font-mono tabular-nums text-title">{budgetSpentLabel}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-container2 overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${String(Math.min(100, budget.cap > 0 ? (budget.spent / budget.cap) * 100 : 0))}%` }} />
+                  </div>
+                </div>
+              )
+              : <div className="text-sm text-muted mb-3">{translate({ key: 'workspaces.usage.budgetNone' })}</div>}
+            <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col gap-1 text-xs text-muted">{translate({ key: 'workspaces.usage.budgetCapLabel' })}
+                <input type="number" min="0" step="1" value={capInput} onChange={(e) => { setCapInput(e.target.value); }} className="h-9 w-28 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-muted">{translate({ key: 'workspaces.usage.budgetAlertLabel' })}
+                <input type="number" min="0" max="100" step="5" value={alertInput} onChange={(e) => { setAlertInput(e.target.value); }} className="h-9 w-24 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              </label>
+              <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget(Number(capInput), alertInput.trim() ? Number(alertInput) : undefined); }} className="h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.budgetSave' })}</button>
+              {budget && <button type="button" onClick={() => { resumeSpend(); }} className="h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 cursor-pointer">{translate({ key: 'workspaces.usage.budgetResume' })}</button>}
+            </div>
+          </Card>
 
           {/* Delivery analytics (ADR 0047): cycle p50/p85 · weekly throughput · stuck · tokens by type */}
           <Card title={translate({ key: 'workspaces.usage.analyticsTitle' })} desc={translate({ key: 'workspaces.usage.analyticsDesc' })}>

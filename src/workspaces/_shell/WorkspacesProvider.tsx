@@ -1084,6 +1084,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room && ticketKey) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'plan-critique', ticketKey, clientRequestId: nextReqId() }, receiver: room });
       },
+      //? AI/token budget editor (D81): set the cap (+ alert %). The first edit creates the budget (no create-op).
+      editBudget: (cap, alertPct) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', cap, ...(alertPct === undefined ? {} : { alertPct }), clientRequestId: nextReqId() }, receiver: room });
+      },
+      //? Resume spending after a budget freeze (resets the window's spent to 0).
+      resumeSpend: () => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: nextReqId() }, receiver: room });
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

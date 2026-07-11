@@ -112,6 +112,8 @@ export interface WorkspacesCtx {
   copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   indexMemory: () => void;
   planCritique: (ticketKey: string) => void;
+  editBudget: (cap: number, alertPct?: number) => void;
+  resumeSpend: () => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
