@@ -113,6 +113,9 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
   const approve = () => { setBusy('approve'); void mrAction('approve', { ticketKey, mrId: mr.id }).then(() => { setBusy(null); }); };
   const merge = () => { setBusy('merge'); void mrAction('merge', { ticketKey, mrId: mr.id }).then((r) => { setBusy(null); reportOutcome(r, 'workspaces.mr.mergedToast'); }); };
   const rollback = () => { setBusy('rollback'); void mrAction('rollback', { ticketKey, mrId: mr.id }).then((r) => { setBusy(null); reportOutcome(r, 'workspaces.mr.revertedToast'); }); };
+  //? mr-review (ADR 0041) — kick off an AI review of this MR's diff; the findings land as a WorkspaceSuggestion
+  //? the human accepts to post as review comments. Fire-and-notify (runs async, never writes directly — B-23).
+  const aiReview = () => { void mrAction('review', { ticketKey, mrId: mr.id }); notify.success({ key: 'workspaces.mr.aiReviewQueued' }); };
 
   const mrLevelThreads = mr.threads.filter((t) => t.filePath === null);
 
@@ -142,6 +145,8 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
             <div className="flex items-center gap-2">
               {/* I1 — run the built-in CI at this MR's head (ci-run op, previously no button). */}
               <WsButton variant="ghost" icon="wave-square" disabled={busy !== null} onClick={() => { runCi(ticketKey); }}>{translate({ key: 'workspaces.mr.runCi' })}</WsButton>
+              {/* mr-review — AI review of the diff (was pipeline-only, no manual trigger). */}
+              <WsButton variant="ghost" icon="robot" disabled={busy !== null} onClick={aiReview}>{translate({ key: 'workspaces.mr.aiReview' })}</WsButton>
               <WsButton variant="secondary" icon="circle-check" disabled={busy !== null || alreadyApproved} onClick={approve}>
                 {translate({ key: alreadyApproved ? 'workspaces.mr.approved' : 'workspaces.mr.approve' })}
               </WsButton>

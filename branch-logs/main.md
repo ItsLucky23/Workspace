@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-11 — 🔘 Gap-close: mr-review AI-review-knop in het MR-panel
+**Wat:** `mr-review` (ADR 0041: AI leest de MR-diff → line-anchored findings als `WorkspaceSuggestion` die de mens accepteert) draaide alleen als pipeline-stap, geen handmatige trigger. Bevinding: `mrAction_server` mapt `review → mr-review` al + accepteert `action: string` → geen server-wijziging. Toegevoegd: `'review'` aan de `MrActionKind`-type + een **"AI-review"**-knop in de MrBody-actie-rij (naast Run CI) die `mrAction('review', {ticketKey, mrId})` vuurt + een toast. Findings verschijnen als suggestie (bestaande accept-flow, B-23 intact).
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 2 i18n-keys ×4 (`mr.aiReview`/`aiReviewQueued`).
+**Files:** `src/workspaces/_components/MrReviewPanel.tsx`, `src/workspaces/_data/types.ts`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: content-analyze-reference-video UI (script vanuit referentievideo)
 **Wat:** `content-analyze-reference-video` (ADR 0049: referentievideo + nieuw verhaal → beat/stijl-blueprint) was UI-loos. Toegevoegd als **ingeklapte** `Disclosure` op de content-piece (naast capture-run): video-URL + verhaal-textarea → `runContentOp`. Beide velden verplicht + gevalideerd. Ingeklapt = geen clutter.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 5 i18n-keys ×4 (`content.analyzeVideo*`/`analyzeStory*`).

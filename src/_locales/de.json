@@ -1164,7 +1164,7 @@
       "ragNotIndexed": "Code noch nicht indiziert"
     },
     "mr": {
-        "runCi": "CI ausführen",
+        "runCi": "CI ausführen", "aiReview": "KI-Review", "aiReviewQueued": "KI-Review gestartet — Ergebnisse erscheinen als Vorschlag.",
         "aiReview": "KI-Review",
       "loading": "Merge-Request wird geladen…",
       "loadFailed": "Merge-Request konnte nicht geladen werden.",

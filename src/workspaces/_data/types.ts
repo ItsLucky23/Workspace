@@ -255,7 +255,7 @@ export interface MrView {
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
   diff: MrDiff; threads: MrThread[]; approvals: MrApproval[]; actionResult?: MrActionOutcome;
 }
-export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'rollback' | 'resolve';
+export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'rollback' | 'resolve' | 'review';
 export interface MrActionFields {
   ticketKey: string; mrId?: string; body?: string; filePath?: string; line?: number; threadId?: string; side?: string; resolved?: boolean;
 }
