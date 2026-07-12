@@ -1113,6 +1113,8 @@
       "openPreview": "Vorschau öffnen",
       "previewOpening": "Vorschau wird gestartet…",
       "previewFailed": "Vorschau konnte nicht gestartet werden (ist ein Dev-Befehl gesetzt?).",
+      "stopPreview": "Vorschau stoppen",
+      "previewSetDevCommand": "Dev-Befehl festlegen",
       "tabActivity": "Aktivität",
       "tabLinks": "Verknüpfungen",
       "tabHistory": "Stage-Verlauf",

@@ -1113,6 +1113,8 @@
       "openPreview": "Ouvrir l'aperçu",
       "previewOpening": "Démarrage de l'aperçu…",
       "previewFailed": "Impossible de démarrer l'aperçu (une commande dev est-elle définie ?).",
+      "stopPreview": "Arrêter l'aperçu",
+      "previewSetDevCommand": "Définir la commande dev",
       "tabActivity": "Activité",
       "tabLinks": "Liens",
       "tabHistory": "Historique des étapes",

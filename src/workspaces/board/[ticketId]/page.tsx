@@ -267,7 +267,17 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
       </WsButton>
       <PopMenu items={agentMenu} />
       {preview.url !== undefined && <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-xs">{preview.url}</a>}
-      {preview.err === true && <span className="text-xs text-wrong">{translate({ key: 'workspaces.ticket.previewFailed' })}</span>}
+      {/* #37 — stop a running preview (closePreview existed but had no UI trigger). */}
+      {preview.url !== undefined && (
+        <WsButton variant="ghost" icon="circle-stop" onClick={() => { ctx.closePreview(ticket.id); setPreview({ loading: false }); }}>{translate({ key: 'workspaces.ticket.stopPreview' })}</WsButton>
+      )}
+      {preview.err === true && (
+        <div className="flex items-center gap-1.5 text-xs text-wrong">
+          <span>{translate({ key: 'workspaces.ticket.previewFailed' })}</span>
+          {/* #39 — actionable pointer: a failed preview usually means the dev command isn't set. */}
+          <button type="button" onClick={() => { ctx.navigate('workspace'); }} className="text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.ticket.previewSetDevCommand' })}</button>
+        </div>
+      )}
     </div>
   );
 }

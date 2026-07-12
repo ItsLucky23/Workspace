@@ -1113,6 +1113,8 @@
       "openPreview": "Open preview",
       "previewOpening": "Starting preview…",
       "previewFailed": "Could not start the preview (is a dev command set?).",
+      "stopPreview": "Stop preview",
+      "previewSetDevCommand": "Set the dev command",
       "tabActivity": "Activity",
       "tabLinks": "Links",
       "tabHistory": "Stage history",

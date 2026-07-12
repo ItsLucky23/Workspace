@@ -3783,3 +3783,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de kanban had geen per-kaart handmatige stage-verplaatsing (alleen via backlog-select-mode of de ticket-detail-advance-knop) — laag ontdekbaar voor een board-first gebruiker. Nu een "Verplaats naar fase…"-actie in het kaart-⋯-menu die een `StageMovePicker` (menuHandler-overlay met stage-dropdown) opent → `moveTicket(id, stageId)`. Bewuste keuze om het picker-component te scheiden zodat het hooks kan gebruiken (cardMenuItems is een gewone functie).
 **Verify:** typecheck0·build✓·lint0(pre-existing #36-warning)·localeIntegrity 8/8. Nieuwe i18n: board.{moveToStage,moveToStageTitle,moveToStageConfirm} ×4.
 **Files:** `src/workspaces/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 17 (Code-editor & preview): #37 #39
+**Wat:** **#37** `closePreview` bestond (route + ctx-method) maar had geen UI-trigger — nu een "Preview stoppen"-knop op de ticket-header zodra er een preview-URL is (→ `ctx.closePreview` + state gewist). **#39** bij een preview-fout (`preview.notReady`/`notActivated`) krijgt de gebruiker nu een actionable verwijzing: een "Stel het dev-commando in"-link die naar de workspace-settings navigeert (waar de DevCommandCard staat) i.p.v. alleen een dode foutmelding.
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: ticket.{stopPreview,previewSetDevCommand} ×4.
+**Files:** `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

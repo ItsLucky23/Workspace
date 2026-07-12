@@ -1113,6 +1113,8 @@
       "openPreview": "Preview openen",
       "previewOpening": "Preview starten…",
       "previewFailed": "Kon de preview niet starten (is er een dev-commando ingesteld?).",
+      "stopPreview": "Preview stoppen",
+      "previewSetDevCommand": "Stel het dev-commando in",
       "tabActivity": "Activiteit",
       "tabLinks": "Links",
       "tabHistory": "Stage-historie",
