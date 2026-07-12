@@ -3997,3 +3997,9 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **⚠️ OPEN VRAAG / bewust advisory:** `enforcement` wordt nu opgeslagen + bewerkbaar, maar de PAUSE-op-overschrijding-wiring is NIET gedaan — dat is de gekoppelde #99 product-beslissing (visibility-first #16 blijft). Default gekozen per Rule 3a (user afwezig).
 **Verify:** typecheck0·build✓·lint0·ai:lint0·opCatalogParity 53/53·rbac 119/119·localeIntegrity 8/8. generateArtifacts gedraaid (route-veld + snapshot).
 **Files:** `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/usage/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 58 (forge): #27 (webhook-URL-kaart, veilige slice)
+**Wat:** er was GEEN UI die de inkomende forge-webhook-URL toonde (`/webhooks/forge/<workspaceId>`, continue GitLab/GitHub-issue-ingest) — een gebruiker kon niet ontdekken waar/hoe te wiren. Nu een webhook-kaart in de GitLab/forge-settings-tab (`workspace/page.tsx` `GitLabTab`): de URL wordt CLIENT-SIDE afgeleid (`location.origin` + `activeWorkspace.id`) met een copy-knop + paste-instructie. **Pure client-UI — GEEN backend/verificatie/schema-change** (bewust veilige slice: de auth-boundary blijft onaangeroerd). i18n `workspaceSettings.{webhookTitle,webhookDesc,webhookCopy}` ×4.
+**⚠️ Bewust NIET gedaan (resterend #27, needs security-pass):** de per-workspace roteerbare secret + de verificatie-herwiring (env-global → per-connection OF env, non-empty-guarded) + last-event-indicator — dat raakt de webhook-HMAC-verificatie + is multi-project-ambigu (welk `ForgeConnection.webhookSecret`), dus verse security-bewuste context.
+**Verify:** typecheck0·build✓·lint0·ai:lint0·localeIntegrity 8/8.
+**Files:** `src/workspaces/workspace/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

@@ -354,6 +354,10 @@ function GitLabTab() {
     { id: 'gitlab', value: 'gitlab', item: translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) },
     { id: 'github', value: 'github', item: translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) },
   ];
+  //? #27 — the inbound forge-webhook endpoint for this workspace (continuous GitLab/GitHub issue ingest).
+  //? Derived client-side from the origin + workspace id; paste it (+ the configured shared secret) into the
+  //? forge's Webhooks settings so new issues stream in as tickets.
+  const webhookUrl = `${globalThis.location.origin}/webhooks/forge/${activeWorkspace.id}`;
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabGitlab' })}</div>
@@ -372,6 +376,15 @@ function GitLabTab() {
         <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
         {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
         <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
+      </div>
+      {/* #27 — inbound webhook URL card: continuous issue ingest. Copyable URL + paste instructions. */}
+      <div className="mt-2 pt-3 border-t border-divider flex flex-col gap-2">
+        <span className="text-xs font-semibold text-muted uppercase tracking-wide">{translate({ key: 'workspaces.workspaceSettings.webhookTitle' })}</span>
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.webhookDesc' })}</span>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookUrl}</code>
+          <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookUrl); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>
+        </div>
       </div>
     </div>
   );
