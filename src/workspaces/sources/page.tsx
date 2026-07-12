@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -16,9 +16,6 @@ import { Sheet } from '../_components/motion';
 import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import type { InfoDoc, SkillEntry } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-
-//? Fase 2: no upload/reindex/regenerate ops exist yet (frozen 7+6 control-API surface).
-const noop = (): void => { /* Fase 2 */ };
 
 const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   generated: 'bg-primary/12 text-primary',
@@ -89,8 +86,10 @@ const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBa
 
 function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: () => void; onToggleAiEditable: () => void }) {
   const translate = useTranslator();
+  const { scanDocs } = useWorkspaces();
   const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} />); } }];
-  if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: noop });
+  //? #66 — 'Regenerate' re-runs the doc scan (the available action in the frozen surface; no per-doc op).
+  if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: () => { scanDocs(); notify.success({ key: 'workspaces.sources.regenerateQueued' }); } });
   return (
     <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
       <button type="button" onClick={onOpen} className="flex items-center justify-between gap-2 text-left cursor-pointer group">
@@ -124,8 +123,10 @@ function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: ()
 
 function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void }) {
   const translate = useTranslator();
+  const { scanIndex } = useWorkspaces();
   const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<SkillDetail skill={skill} />); } }];
-  if (skill.kind === 'frozen') menuItems.push({ label: translate({ key: 'workspaces.sources.reindex' }), icon: 'database', onClick: noop });
+  //? #66 — 'Reindex' rebuilds the RAG code index (workspace-level scan-index; no per-skill op).
+  if (skill.kind === 'frozen') menuItems.push({ label: translate({ key: 'workspaces.sources.reindex' }), icon: 'database', onClick: () => { scanIndex(); notify.success({ key: 'workspaces.sources.reindexQueued' }); } });
   return (
     <div className="flex items-center gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3">
       <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${skill.on ? 'bg-primary/12 text-primary' : 'bg-container2 text-muted'}`}><Icon name="robot" /></span>

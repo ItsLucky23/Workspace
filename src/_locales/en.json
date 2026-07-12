@@ -1207,6 +1207,8 @@
       "ragBehind": "RAG index is behind main by 3 commits.",
       "ragBehindHint": "Open tickets stay frozen on their own commit; reindex to refresh the live snapshot.",
       "reindex": "Reindex",
+      "regenerateQueued": "Rescanning docs…",
+      "reindexQueued": "Rebuilding the code index…",
       "updatedAt": "updated {{date}}",
       "notProcessedInFile": "{{branches}} not yet processed in this file",
       "preview": "Preview",

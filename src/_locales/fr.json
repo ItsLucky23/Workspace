@@ -1207,6 +1207,8 @@
       "ragBehind": "L’index RAG est en retard de 3 commits sur main.",
       "ragBehindHint": "Les tickets ouverts restent figés sur leur propre commit ; réindexez pour rafraîchir l’instantané en direct.",
       "reindex": "Réindexer",
+      "regenerateQueued": "Analyse des docs…",
+      "reindexQueued": "Reconstruction de l'index du code…",
       "updatedAt": "mis à jour {{date}}",
       "notProcessedInFile": "{{branches}} pas encore traité(es) dans ce fichier",
       "preview": "Aperçu",

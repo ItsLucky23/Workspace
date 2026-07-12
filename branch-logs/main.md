@@ -3773,3 +3773,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** twee schone `later`→`enabled`-catalog-flips. **#7** `ticket-edit` — de AI kan nu een ticket's title/description/priority VOORSTELLEN ("hernoem DEV-3", "verhoog de prioriteit"); params ticketKey (ctx-gevalideerd) + title/description/priority(low|normal|high|urgent), dispatch via de `ticketEdit`-route (key reist als `ticketId`). **#150 (brand-context-deel)** `content-edit-product` — "zet de merk/product-context op X" via de contentSettings-route; completeert samen met golf-13 (style+reference+channel) grotendeels #150. Server-catalog + client-twin + dispatchers bijgewerkt; parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
 **Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-12 — 🟢 v3-build golf 15 (Sources): #66
+**Wat:** de 'Regenerate' (op doc-cards) + 'Reindex' (op frozen skills) knoppen waren `noop`-stubs ("Fase 2"). Nu gekoppeld aan de bestaande ctx-methods: Regenerate → `scanDocs()` (her-scant de docs — de beschikbare actie in de frozen 7+6-surface, geen per-doc-op), Reindex → `scanIndex()` (herbouwt de RAG-code-index), elk met een bevestigings-toast. De stale "Fase 2: no ops exist"-comment + de orphaned `noop`-const verwijderd.
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: sources.{regenerateQueued,reindexQueued} ×4.
+**Files:** `src/workspaces/sources/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

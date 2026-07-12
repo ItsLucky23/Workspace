@@ -1207,6 +1207,8 @@
       "ragBehind": "RAG-index loopt 3 commits achter op main.",
       "ragBehindHint": "Open tickets blijven bevroren op hun eigen commit; herindexeer om de live snapshot te verversen.",
       "reindex": "Herindexeren",
+      "regenerateQueued": "Docs opnieuw scannen…",
+      "reindexQueued": "Code-index herbouwen…",
       "updatedAt": "bijgewerkt {{date}}",
       "notProcessedInFile": "{{branches}} nog niet verwerkt in dit bestand",
       "preview": "Preview",
