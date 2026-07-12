@@ -97,6 +97,50 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
   );
 }
 
+//? #75 — profile edit (name + avatar) via the framework's settings/updateUser route. Rendered in the
+//? menuHandler overlay from the Profile card's Edit button. On success we reload so the session
+//? re-fetches (useSession exposes no imperative refresh) and the new name/avatar show everywhere.
+function ProfileEditForm({ currentName }: { currentName: string }) {
+  const translate = useTranslator();
+  const [name, setName] = useState(currentName);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => { setAvatar(typeof reader.result === 'string' ? reader.result : null); });
+    reader.readAsDataURL(file);
+  };
+  const save = () => {
+    if (busy || name.trim().length === 0) return;
+    setBusy(true);
+    void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { name: name.trim(), ...(avatar ? { avatar } : {}) } }).then((r) => {
+      setBusy(false);
+      if (r.status === 'success') { void menuHandler.close(); globalThis.location.reload(); }
+      else notify.error({ key: 'settings.failedUpdateUser' });
+    });
+  };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.account.editProfileTitle' })}</div>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.account.nameLabel' })}</span>
+        <input value={name} onChange={(e) => { setName(e.target.value); }} className={fieldCls} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.account.avatarLabel' })}</span>
+        <input type="file" accept="image/*" onChange={onPick} className="text-sm text-common" />
+      </label>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="check" disabled={busy || name.trim().length === 0} onClick={save}>{translate({ key: 'workspaces.account.save' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 //? X3 — API tokens (Personal Access Tokens) panel: issue (raw token shown ONCE), list (prefix + scopes), revoke.
 //? Talks to the issuePat/listPats/revokePat `_api` routes directly (not a [control-API] op — it's account state).
 interface PatRow { id: string; name: string; prefix: string; scopes: string[] }
@@ -328,8 +372,8 @@ export default function AccountSettings() {
                 <div className="text-sm font-semibold text-title">{currentUser.name}</div>
                 <div className="text-sm text-muted">{currentUser.email}</div>
               </div>
-              {/* Fase 2: profile editing (name/avatar) has no update route wired yet */}
-              <WsButton variant="secondary" onClick={() => { /* Fase 2: profile editing */ }}>{translate({ key: 'workspaces.account.edit' })}</WsButton>
+              {/* #75 — profile editing (name/avatar) via settings/updateUser. */}
+              <WsButton variant="secondary" onClick={() => { void menuHandler.open(<ProfileEditForm currentName={currentUser.name} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.edit' })}</WsButton>
             </div>
             <div className="mt-4 flex flex-col gap-1">
               <Row>

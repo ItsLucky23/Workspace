@@ -190,7 +190,7 @@ function isDbInvite(v: unknown): v is DbInvite {
 //? Narrow the invite op result to the frontend `InviteEntry` delta (client upserts
 //? by id). Mirrors the invite mapping in the snapshot (only pending invites show).
 export function inviteDelta(result: unknown): InviteEntry | null {
-  return isDbInvite(result) ? { id: result.id, email: result.email, role: asRole(result.roleKey), sent: 'pending' } : null;
+  return isDbInvite(result) ? { id: result.id, email: result.email, role: asRole(result.roleKey), sentAt: result.createdAt.toISOString(), expiresAt: result.expiresAt ? result.expiresAt.toISOString() : null } : null;
 }
 
 //? Narrow the link-repo op result (a plain RepoStatus/error object, not a Prisma row)

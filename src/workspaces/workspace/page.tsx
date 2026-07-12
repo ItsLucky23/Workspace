@@ -188,7 +188,7 @@ function InvitesTab() {
             <span className="w-9 h-9 rounded-full bg-container2 text-muted flex items-center justify-center"><Icon name="plus" /></span>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-title truncate">{i.email}</div>
-              <div className="text-xs text-muted">{ROLE_DISPLAY[i.role]} · {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: i.sent }] })}</div>
+              <div className="text-xs text-muted">{ROLE_DISPLAY[i.role]} · {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: new Date(i.sentAt).toLocaleDateString() }] })}{i.expiresAt !== null && ` · ${translate({ key: 'workspaces.workspaceSettings.expiresIn', params: [{ key: 'days', value: Math.max(0, Math.ceil((new Date(i.expiresAt).getTime() - Date.now()) / 86_400_000)) }] })}`}</div>
             </div>
             <button type="button" onClick={() => { revokeInvite(i.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.workspaceSettings.revoke' })}</button>
           </div>
@@ -930,6 +930,40 @@ function AiBehaviorTab() {
   );
 }
 
+//? #70 — the admin/security audit trail: who changed roles/members/secrets/ownership, newest-first.
+//? Reads the workspaces/auditLog `_api` route (workspaceSettings-gated server-side).
+interface AuditRow { id: string; action: string; target: string | null; actorName: string; createdAt: string }
+function AuditTab() {
+  const translate = useTranslator();
+  const { activeWorkspace } = useWorkspaces();
+  const [entries, setEntries] = useState<AuditRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    void apiRequest({ name: 'workspaces/auditLog', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
+      if (r.status === 'success') setEntries(r.result.entries);
+      setLoaded(true);
+    });
+  }, [activeWorkspace.id]);
+  return (
+    <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.auditTitle' })}</div>
+      <div className="text-sm text-muted -mt-1 mb-1">{translate({ key: 'workspaces.workspaceSettings.auditDesc' })}</div>
+      {loaded && entries.length === 0 && <div className="px-4 py-8 text-sm text-muted text-center rounded-2xl border border-dashed border-container1-border">{translate({ key: 'workspaces.workspaceSettings.auditEmpty' })}</div>}
+      <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
+        {entries.map((e) => (
+          <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+            <span className="w-8 h-8 rounded-lg bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="clock-rotate-left" /></span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-title truncate"><span className="font-medium">{e.actorName}</span> · <span className="font-mono text-xs">{e.action}</span>{e.target !== null && e.target.length > 0 ? ` · ${e.target}` : ''}</div>
+              <div className="text-xs text-muted">{new Date(e.createdAt).toLocaleString()}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
@@ -953,6 +987,7 @@ export default function WorkspaceSettings() {
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
     { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
+    { id: 'audit', label: translate({ key: 'workspaces.workspaceSettings.tabAudit' }), icon: 'clock-rotate-left' },
     ...(devEnabled ? [
       { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' as const },
       { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' as const },
@@ -1010,6 +1045,7 @@ export default function WorkspaceSettings() {
         {activeTab === 'env' && <EnvTab />}
         {activeTab === 'integrations' && <IntegrationsTab />}
         {activeTab === 'invites' && <InvitesTab />}
+        {activeTab === 'audit' && <AuditTab />}
         {activeTab === 'repository' && <RepositoryTab />}
         {activeTab === 'gitlab' && <GitLabTab key={activeWorkspace.id} />}
         {activeTab === 'workflow' && <WorkflowTab key={activeWorkspace.id} />}

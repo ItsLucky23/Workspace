@@ -377,7 +377,7 @@ export const SESSIONS: SessionEntry[] = [
 ];
 
 export const INVITES: InviteEntry[] = [
-  { id: 'i1', email: 'joost@youcomm.nl', role: 'member', sent: '2d ago' },
+  { id: 'i1', email: 'joost@youcomm.nl', role: 'member', sentAt: '2026-07-10T09:00:00.000Z', expiresAt: '2026-07-17T09:00:00.000Z' },
 ];
 
 //? Dummy SSH login: which member a pasted public-key value authenticates as.

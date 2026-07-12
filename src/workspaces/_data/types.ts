@@ -640,7 +640,8 @@ export interface InviteEntry {
   id: string;
   email: string;
   role: Role;
-  sent: string;
+  sentAt: string;             // #77 — ISO timestamp the invite was created (was a literal 'pending')
+  expiresAt: string | null;   // #77 — ISO expiry (7-day), or null if it never expires
 }
 
 //? A pending invitation addressed to the LOGGED-IN user's email, resolved across

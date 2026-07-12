@@ -520,7 +520,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? The derived aiOverrides/mediaModels projections above expose only feature→id mappings.
       envVars: envRows.filter((e) => !e.key.startsWith('__')).map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),
       integrations: integrationRows.map((it): IntegrationTool => ({ id: it.id, name: it.name, type: it.type, fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })), mcp: it.mcp })),
-      invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sent: 'pending' })),
+      invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null })),
       //? Events store ticket ObjectIds, but the frontend keys tickets by their
       //? DEV-#### `key` — map ObjectId → key so open-ticket / activity-tab filters
       //? resolve (unknown ids pass through).
