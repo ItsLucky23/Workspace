@@ -378,6 +378,54 @@ function ChannelManagerSection() {
   );
 }
 
+//? #84 — output-template manager (O5): reusable render specs (format + watermark position) a piece can
+//? export with. Fully backend-wired but had ZERO frontend consumer; this is the management surface.
+const OUTPUT_FORMATS = ['mp4', 'webm', 'gif'];
+const WATERMARK_POSITIONS = ['none', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
+function OutputTemplateSection() {
+  const translate = useTranslator();
+  const { outputTemplates, saveOutputTemplate, deleteOutputTemplate } = useWorkspaces();
+  const [name, setName] = useState('');
+  const [format, setFormat] = useState(OUTPUT_FORMATS[0] ?? 'mp4');
+  const [watermark, setWatermark] = useState(WATERMARK_POSITIONS[0] ?? 'none');
+  const formatItems: DropdownItem[] = OUTPUT_FORMATS.map((f) => ({ id: f, value: f, item: f }));
+  const wmItems: DropdownItem[] = WATERMARK_POSITIONS.map((w) => ({ id: w, value: w, item: translate({ key: `workspaces.content.wm_${w.replace('-', '_')}` }) }));
+  const submit = () => {
+    if (name.trim().length === 0) return;
+    saveOutputTemplate({ name: name.trim(), format, watermarkPosition: watermark });
+    setName('');
+  };
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.outputTemplatesTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.outputTemplatesDesc' })}</div>
+      </div>
+      <div className="flex flex-col gap-1.5 mb-4">
+        {outputTemplates.length === 0
+          ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.outputTemplatesEmpty' })}</div>
+          : outputTemplates.map((t) => (
+            <div key={t.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-title truncate">{t.name}</div>
+                <div className="text-xs text-muted truncate">{t.format}{t.watermarkPosition === 'none' ? '' : ` · ${t.watermarkPosition}`}</div>
+              </div>
+              <button type="button" onClick={() => { deleteOutputTemplate(t.id); }} title={translate({ key: 'workspaces.content.styleDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
+            </div>
+          ))}
+      </div>
+      <div className="rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2">
+        <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.content.outputTemplateNamePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        <div className="grid grid-cols-2 gap-2">
+          <Dropdown size="md" value={formatItems.find((i) => i.id === format)} items={formatItems} onChange={(it) => { setFormat(String(it.id)); }} />
+          <Dropdown size="md" value={wmItems.find((i) => i.id === watermark)} items={wmItems} onChange={(it) => { setWatermark(String(it.id)); }} />
+        </div>
+        <button type="button" disabled={name.trim().length === 0} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.outputTemplateSave' })}</button>
+      </div>
+    </section>
+  );
+}
+
 export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate, runContentOp, workspaces, copyWorkspaceAssets } = useWorkspaces();
   //? R2 — copy styles + brand from another workspace into this one (source picker + one-click).
@@ -450,6 +498,9 @@ export default function ContentSettings() {
 
           {/* Inspiration/reference library — example ads/thumbnails/intros the AI emulates. */}
           <ReferenceLibrarySection />
+
+          {/* #84 — output-template manager (reusable render specs). */}
+          <OutputTemplateSection />
 
           {showAdmin && (
             <>
