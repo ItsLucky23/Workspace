@@ -1824,11 +1824,28 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const featureByOp: Record<string, MediaFeature> = { 'content-gen-avatar': 'avatar', 'content-gen-music': 'music', 'content-gen-sfx': 'sfx', 'content-gen-3d': 'model-3d' };
       const feature = featureByOp[action.op];
       if (!feature) return;
+      const genPrompt = str(payload, 'prompt');
+      const genStyleKey = str(payload, 'styleKey');
+      const genExtra = str(payload, 'extraInstructions');
+      let referenceUrl = str(payload, 'referenceUrl');
+      //? #133 — model-3d (image-to-3D, e.g. triposr) takes a SOURCE IMAGE, not a prompt. If none was
+      //? supplied, generate an image from the prompt FIRST, then convert it → the described chain.
+      if (feature === 'model-3d' && !referenceUrl && genPrompt) {
+        const img = await generateMediaAsset(prisma, {
+          workspaceId: action.workspaceId, contentProjectId, feature: 'image-gen', prompt: genPrompt,
+          ...(genStyleKey ? { styleKey: genStyleKey } : {}), ...(genExtra ? { extraInstructions: genExtra } : {}),
+        });
+        if (img.ok && img.assetId) {
+          const asset = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: img.assetId }, select: { url: true } });
+          referenceUrl = asset?.url ?? undefined;
+        }
+      }
       await generateMediaAsset(prisma, {
         workspaceId: action.workspaceId, contentProjectId, feature,
-        ...(str(payload, 'prompt') ? { prompt: str(payload, 'prompt') } : {}),
-        ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}),
-        ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}),
+        ...(genPrompt ? { prompt: genPrompt } : {}),
+        ...(referenceUrl ? { referenceUrl } : {}),
+        ...(genStyleKey ? { styleKey: genStyleKey } : {}),
+        ...(genExtra ? { extraInstructions: genExtra } : {}),
       });
       return;
     }

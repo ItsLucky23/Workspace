@@ -3878,3 +3878,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** short-form hooks + captions werden ALTIJD via een naïeve word-slice-stub afgeleid, ook mét keys — dus live short-form-clips shipten placeholder-hook-tekst. Nu genereert `generateShortForm` de hook+captions via de `script`-AiFeature (`runAiCompletion`, provider-pluggable) met STRICT-JSON-parsing, en valt netjes terug op `stubHook` bij geen-key/fout/malformed output. Buildbaar + getest voor het fallback-pad; het live-AI-pad vereist keys (jouw "media/erbij zijn").
 **Verify:** typecheck0·build✓·lint0. Server-only (geen i18n/UI).
 **Files:** `server/content/shortForm.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 36 (Content generation): #133
+**Wat:** 3D-generatie was live kapot: `content-gen-3d` stuurde alleen een prompt, maar fal triposr (model-3d) is image-to-3D en vereist `image_url` → met echte keys faalde de job altijd (alleen de keyless-stub gaf een asset). Nu chaint de conductor-case: als `feature==='model-3d'` en er is geen referenceUrl, genereert 'ie EERST een image (image-gen) uit de prompt, haalt de asset-url op, en draait dan model-3d met die image als bron — de beschreven "genereer een image, dan converteren"-keten. De client-3D-knop hoeft niks te wijzigen (auto-chain). Buildbaar; live-3D vereist keys (jouw "media/erbij zijn").
+**Verify:** typecheck0·build✓·lint0. Server-only (conductor).
+**Files:** `server/orchestrator/conductor.ts`.
