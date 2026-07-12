@@ -64,6 +64,9 @@ export default function Usage() {
       .toSorted((a, b) => b.tickets.length - a.tickets.length);
   }, [tickets, membersById]);
 
+  //? #100 — real per-user token/cost attribution (from the SpendRecord aggregate), keyed by userId.
+  const usageByUser = useMemo(() => new Map(usage.byUser.map((u) => [u.userId, u])), [usage.byUser]);
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4">
@@ -208,9 +211,13 @@ export default function Usage() {
                   <div key={member.id} className="flex items-start gap-3 py-2 border-b border-divider last:border-0">
                     <div className="w-8 h-8 shrink-0"><AvatarBubble user={member} size={32} /></div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-title">{member.name}</span>
                         <span className="rounded-full bg-container2 px-2 text-xs text-muted">{tickets.length} {tickets.length === 1 ? translate({ key: 'workspaces.usage.ticketSingular' }) : translate({ key: 'workspaces.usage.ticketPlural' })}</span>
+                        {/* #100 — real token (+ metered cost) attribution per member from SpendRecord. */}
+                        {(() => { const u = usageByUser.get(member.id); if (!u) return null; return (
+                          <span className="rounded-full bg-primary/10 text-primary px-2 text-xs tabular-nums">{translate({ key: 'workspaces.usage.tokensLabel', params: [{ key: 'tokens', value: (u.tokensIn + u.tokensOut).toLocaleString() }] })}{u.costEstimate > 0 ? ` · €${u.costEstimate.toFixed(2)}` : ''}</span>
+                        ); })()}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {tickets.map((t) => (

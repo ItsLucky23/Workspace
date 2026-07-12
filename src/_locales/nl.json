@@ -1061,6 +1061,7 @@
       "colTime": "Tijd",
       "ticketSingular": "ticket",
       "ticketPlural": "tickets",
+      "tokensLabel": "{{tokens}} tokens",
       "byAiTitle": "Per AI",
       "budgetTitle": "AI-uitgavenbudget",
       "diagnoseTitle": "Diagnose wat stuk is",

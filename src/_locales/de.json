@@ -1061,6 +1061,7 @@
       "colTime": "Zeit",
       "ticketSingular": "Ticket",
       "ticketPlural": "Tickets",
+      "tokensLabel": "{{tokens}} tokens",
       "byAiTitle": "Nach KI",
       "budgetTitle": "KI-Ausgabenbudget",
       "diagnoseTitle": "Diagnostizieren, was kaputt ist",

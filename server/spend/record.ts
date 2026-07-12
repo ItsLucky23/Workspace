@@ -74,7 +74,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 //? A SpendRecord row (the fields the aggregate reads) — decoupled from Prisma's model type so
 //? `aggregateUsage` is a PURE, unit-testable function the snapshot feeds tenant-scoped rows into.
 //? providerId/feature/costEstimate feed the per-AI breakdown; optional so pre-per-AI callers still compile.
-export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date; providerId?: string | null; feature?: string | null; costEstimate?: number }
+export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date; providerId?: string | null; feature?: string | null; costEstimate?: number; userId?: string | null }
 
 //? Human labels for the known AI providers (the raw id is the fallback for anything new/unknown).
 const PROVIDER_LABELS: Record<string, string> = { 'claude-cli': 'Claude (CLI)', 'gemini-api': 'Gemini API' };
@@ -150,12 +150,14 @@ export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, stri
   }
 
   const byTicket = [...perTicket.values()].toSorted((a, b) => (b.tokensIn + b.tokensOut) - (a.tokensIn + a.tokensOut)).slice(0, 50);
-  return { byTicket, activity, totalTokens, totalTurns, byAi: aggregateByAi(rows) };
+  //? #100 — per-user attribution folded in (tokens/cost per member) for the Usage 'by person' card.
+  const byUser = aggregateByUser(rows.map((r) => ({ userId: r.userId ?? null, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costEstimate: r.costEstimate ?? 0 })));
+  return { byTicket, activity, totalTokens, totalTurns, byAi: aggregateByAi(rows), byUser };
 }
 
 //? Convenience: query a workspace's recent SpendRecord rows + aggregate them. Used outside the
 //? tenant-scoped snapshot (which feeds `aggregateUsage` its own tenant rows).
 export async function usageForWorkspace(prisma: PrismaClient, workspaceId: string, ticketKeyById: Map<string, string>, now: number): Promise<WorkspaceUsage> {
-  const rows = await prisma.spendRecord.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true, providerId: true, feature: true, costEstimate: true } });
+  const rows = await prisma.spendRecord.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true, providerId: true, feature: true, costEstimate: true, userId: true } });
   return aggregateUsage(rows, ticketKeyById, now);
 }

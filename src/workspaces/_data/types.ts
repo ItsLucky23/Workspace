@@ -277,7 +277,9 @@ export interface UsageDay { day: string; tokens: number }
 //? `subscription` = the Claude PTY coding agent (Max subscription — no metered €, shown as token volume),
 //? everything else is a metered API provider with a real cost estimate.
 export interface AiUsage { providerId: string; providerLabel: string; feature: string; tokensIn: number; tokensOut: number; turns: number; costEstimate: number; subscription: boolean }
-export interface WorkspaceUsage { byTicket: UsageByTicket[]; activity: UsageDay[]; totalTokens: number; totalTurns: number; byAi: AiUsage[] }
+//? #100 — per-user token/cost attribution (the Usage 'by person' card renders tokens/cost per member).
+export interface UserUsage { userId: string; tokensIn: number; tokensOut: number; turns: number; costEstimate: number }
+export interface WorkspaceUsage { byTicket: UsageByTicket[]; activity: UsageDay[]; totalTokens: number; totalTurns: number; byAi: AiUsage[]; byUser: UserUsage[] }
 
 //? Workspace flow insights (#5): cycle time, throughput, cost-per-ticket — the snapshot aggregates
 //? these from tickets + usage. Advisory; shown on the Usage page.

@@ -364,11 +364,10 @@ function GitLabTab() {
       <input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
       <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.accessToken' })}</span>
-      <div className="flex items-center gap-2">
-        <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
-          className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-        <WsButton variant="secondary" icon="circle-check" onClick={() => { /* Fase 2: live GitLab token verification round-trip via the orchestrator */ }}>{translate({ key: 'workspaces.workspaceSettings.verify' })}</WsButton>
-      </div>
+      {/* #22 — the live-verify round-trip is a deliberate no-op (owner decision); the dead Verify button
+          was removed so the token field doesn't render a click with zero feedback. */}
+      <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
+        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
       <div className="flex items-center gap-2">
         <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
         {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}

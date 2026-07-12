@@ -1061,6 +1061,7 @@
       "colTime": "Temps",
       "ticketSingular": "ticket",
       "ticketPlural": "tickets",
+      "tokensLabel": "{{tokens}} tokens",
       "byAiTitle": "Par IA",
       "budgetTitle": "Budget de dépenses IA",
       "diagnoseTitle": "Diagnostiquer la panne",
