@@ -3873,3 +3873,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** chat-ctx uitgebreid met de workspace's publicatie-kanalen (id+naam); `content-edit-brand` `later`→`enabled` geflipt met param-kind `channelId` (gevalideerd tegen `ctx.channels`) + `brandVoice`, dispatch via de contentSettings-route. De Workspace-AI kan nu "zet de merkstem voor kanaal X op Y" voorstellen. Samen met golf-13/14 (style·reference·channel-create·product-context) is #150 ("alle vier inschakelen": brand/style/reference/channel) hiermee VOLLEDIG gesloten. Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
 **Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 35 (Content generation): #137
+**Wat:** short-form hooks + captions werden ALTIJD via een naïeve word-slice-stub afgeleid, ook mét keys — dus live short-form-clips shipten placeholder-hook-tekst. Nu genereert `generateShortForm` de hook+captions via de `script`-AiFeature (`runAiCompletion`, provider-pluggable) met STRICT-JSON-parsing, en valt netjes terug op `stubHook` bij geen-key/fout/malformed output. Buildbaar + getest voor het fallback-pad; het live-AI-pad vereist keys (jouw "media/erbij zijn").
+**Verify:** typecheck0·build✓·lint0. Server-only (geen i18n/UI).
+**Files:** `server/content/shortForm.ts`.
