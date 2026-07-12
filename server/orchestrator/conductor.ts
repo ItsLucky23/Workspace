@@ -2044,7 +2044,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId }, data: { status: 'accepted' } });
       //? Automation (#2): accepting an 'automation' suggestion EXECUTES the gated action it carries
       //? (the human consent the ActionExecutor's approval gate deferred to — B-23 single-writer).
-      if (suggestion?.type === 'automation') await executeGatedAction(prisma, action.workspaceId, suggestion.patch);
+      if (suggestion?.type === 'automation') {
+        await executeGatedAction(prisma, action.workspaceId, suggestion.patch);
+        //? #83 — emit `stage.on_approval` when a gated automation action is approved+executed. Cycle-free:
+        //? this runs in the Conductor's accept path, NOT the self-contained executor (which can't import
+        //? fireEvent). Carries the patch's ticket/stage context when present so a trigger can match on it.
+        const params = asRec(asRec(suggestion.patch).params);
+        const apTicketKey = str(params, 'ticketKey');
+        const apStageId = str(params, 'targetStageId') ?? str(params, 'stageId');
+        void fireEvent(prisma, action.workspaceId, { on: 'stage.on_approval', ...(apTicketKey ? { ticketKey: apTicketKey } : {}), ...(apStageId ? { stageId: apStageId } : {}) });
+      }
       //? AI MR-review (ADR 0041): accepting posts each proposed finding as a ReviewComment(authorKind:'ai').
       //? The AI never wrote it — the Conductor does, on human consent (B-23).
       if (suggestion?.type === 'mr-review') await postAiReviewFindings(prisma, action.workspaceId, suggestion.patch);
