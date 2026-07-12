@@ -3888,3 +3888,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** geen enkele content-generatie-op was AI-bereikbaar (de Assistant kon alleen create-content = leeg stuk). Nu 8 per-asset content-gen-ops `later`→`enabled` geflipt: script·voice·images·assemble (pieceId) + avatar·music·sfx·3d (pieceId + optionele prompt), allemaal via een gedeelde `contentGen`-dispatcher-factory (contentControl-route). Het zijn PAID gen-ops → de accept-stap ís de cost-confirm (in de hint vermeld). De Workspace-AI kan nu "genereer de voiceover voor <stuk>" voorstellen. reference-image/shortform/analyze-video blijven `later`. Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
 **Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 38 (Workspace-AI-catalog: channel-ops): #142 (channels-helft)
+**Wat:** `channel-edit` + `channel-delete` `later`→`enabled` geflipt (channelId nu in de chat-ctx uit golf-34): de Workspace-AI kan nu een kanaal bewerken ("zet het platform van <kanaal> op tiktok") of verwijderen (destructive → extra confirm). Samen met golf-13 (channel-create) is de channel-management-helft van #142 dicht. `content-request-publish` blijft geblokkeerd (vereist assetId dat niet in de chat-ctx zit + is sowieso een keys/publish-item, jouw "erbij zijn"). Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
+**Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

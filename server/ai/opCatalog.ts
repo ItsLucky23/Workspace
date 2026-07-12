@@ -294,7 +294,16 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'create a publishing CHANNEL (a platform + brand identity a content piece binds to). params: name, platform? (youtube|tiktok|none), handle?',
     params: { name: { kind: 'string', required: true }, platform: { kind: 'string' }, handle: { kind: 'string' } },
   },
-  'channel-edit': LATER, 'channel-delete': LATER_D,
+  'channel-edit': {
+    mode: 'enabled',
+    hint: "edit a channel's name/platform/handle/brand voice. params: channelId (from the channel list), name?, platform? (youtube|tiktok|none), handle?, brandVoice?",
+    params: { channelId: { kind: 'channelId', required: true }, name: { kind: 'string' }, platform: { kind: 'string' }, handle: { kind: 'string' }, brandVoice: { kind: 'string' } },
+  },
+  'channel-delete': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a publishing channel. params: channelId (from the channel list)',
+    params: { channelId: { kind: 'channelId', required: true } },
+  },
   'account-disconnect': EXCLUDED, // auth/token surface
   'reference-add': {
     mode: 'enabled',

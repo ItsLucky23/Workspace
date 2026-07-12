@@ -261,4 +261,15 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'content-gen-music': contentGen('content-gen-music'),
   'content-gen-sfx': contentGen('content-gen-sfx'),
   'content-gen-3d': contentGen('content-gen-3d'),
+
+  //? #142 — channel management (contentControl route).
+  'channel-edit': (p, x) => {
+    const channelId = str(p, 'channelId'); if (!channelId) return;
+    const name = str(p, 'name'); const platform = str(p, 'platform'); const handle = str(p, 'handle'); const brandVoice = str(p, 'brandVoice');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-edit', channelId, ...(name ? { name } : {}), ...(platform ? { platform } : {}), ...(handle ? { handle } : {}), ...(brandVoice ? { brandVoice } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'channel-delete': (p, x) => {
+    const channelId = str(p, 'channelId'); if (!channelId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-delete', channelId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
 };

@@ -45,6 +45,8 @@ export const CHAT_ENABLED_OPS = [
   // per-asset content generation (#134) — paid gen ops, accept = cost-confirm
   'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
+  // channel management (#142) — edit/delete an existing channel by id
+  'channel-edit', 'channel-delete',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];
