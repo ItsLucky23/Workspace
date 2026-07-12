@@ -6,14 +6,16 @@
 //? Params were already server-validated against the workspace context; the local `str/num/…`
 //? readers only re-narrow the JSON types (never invent values, no casts).
 
+import { apiRequest } from 'src/_sockets/apiRequest';
 import { syncRequest } from 'src/_sockets/syncRequest';
 
 import type { ChatEnabledOp } from '../_data/chatOps';
-import type { ChatProposal } from '../_data/types';
+import type { ChatProposal, GitConfig } from '../_data/types';
 
 export interface ChatDispatchExtras {
   room: string;                    // workspaceId (the sync receiver)
   activeProjectId: string | null;  // projectAdmin ops target the active project
+  gitConfig: GitConfig;            // #29 — current git strategy, so save-git-config merges (never clobbers)
   nextReqId: () => string;         // idempotency key factory
   refetch: () => void;             // snapshot refresh for slow/rare structural writes
 }
@@ -223,6 +225,20 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'gitlab-resync': (_p, x) => {
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #29 — change git strategy / push policy. Only the proposed fields were validated; MERGE them over
+  //? the current gitConfig so the untouched fields survive the Conductor's normalize (saveGitConfig route).
+  'save-git-config': (p, x) => {
+    const branchStrategy = str(p, 'branchStrategy'); const pushPolicy = str(p, 'pushPolicy');
+    const defaultBranchType = str(p, 'defaultBranchType'); const targetBranch = str(p, 'targetBranch');
+    const gitConfig: GitConfig = {
+      ...x.gitConfig,
+      ...(branchStrategy === 'ticket-prefix' || branchStrategy === 'typed' || branchStrategy === 'custom' ? { branchStrategy } : {}),
+      ...(pushPolicy === 'local-only' || pushPolicy === 'push' || pushPolicy === 'merge-request' ? { pushPolicy } : {}),
+      ...(defaultBranchType ? { defaultBranchType } : {}),
+      ...(targetBranch ? { targetBranch } : {}),
+    };
+    void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #86 — run a saved custom AI task by id (customTask route).
   'run-custom-task': (p, x) => {
     const taskId = str(p, 'taskId'); if (!taskId) return;
@@ -282,4 +298,15 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   //? knowledge refresh (no params) — rescan docs / rebuild the code RAG index.
   'scan-docs': (_p, x) => { void syncRequest({ name: 'workspaces/scanDocs', version: 'v1', data: { clientRequestId: x.nextReqId() }, receiver: x.room }); },
   'scan-index': (_p, x) => { void syncRequest({ name: 'workspaces/scanIndex', version: 'v1', data: { clientRequestId: x.nextReqId() }, receiver: x.room }); },
+
+  //? #17/#113 — preview launch/stop route through the openPreview/closePreview `_api` (ephemeral container
+  //? state, NOT the Conductor). `x.room` is the workspaceId; ticketKey was validated against the ctx.
+  'preview-up': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
+    void apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: x.room, ticketKey } });
+  },
+  'preview-down': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
+    void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: x.room, ticketKey } });
+  },
 };

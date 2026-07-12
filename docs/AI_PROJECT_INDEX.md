@@ -190,7 +190,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/addComment/v1`
 - … +55 more
 
-## Pages (29)
+## Pages (30)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -217,6 +217,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |
 | `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
 | `/workspaces/scheduled` | workspaces | — | `workspaces/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
+| `/workspaces/scheduled-posts` | workspaces | — | `workspaces/scheduled-posts/page.tsx` | intent: Scheduled posts — a content-lane calendar/list of every publish that's queued for a future |
 | `/workspaces/settings` | plain | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
 | `/workspaces/sources` | workspaces | — | `workspaces/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
 | `/workspaces/studio` | workspaces | — | `workspaces/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |

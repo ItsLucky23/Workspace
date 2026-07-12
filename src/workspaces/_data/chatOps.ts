@@ -36,6 +36,8 @@ export const CHAT_ENABLED_OPS = [
   'ticket-edit',
   // forge issue resync (#29) — pull issues/state from the connected forge on demand
   'gitlab-resync',
+  // git strategy / push policy change (#29) — merged over the current gitConfig on accept
+  'save-git-config',
   // run a saved custom AI task by id (#86)
   'run-custom-task',
   'save-custom-task',
@@ -52,6 +54,8 @@ export const CHAT_ENABLED_OPS = [
   'content-gen-shortform',
   // knowledge refresh — rescan docs / rebuild the code index (no params)
   'scan-docs', 'scan-index',
+  // preview launch/stop (#17/#113) — dispatched via the openPreview/closePreview _api, not the Conductor
+  'preview-up', 'preview-down',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

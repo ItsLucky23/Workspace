@@ -790,6 +790,7 @@
       "sources": "Quellen",
       "pipeline": "Pipeline",
       "scheduled": "Geplant",
+      "scheduled-posts": "Geplante Beiträge",
       "content": "Content",
       "marketing": "Marketing",
       "designer": "Designer",
@@ -1648,6 +1649,11 @@
       "linkedTicket": "Ticket erstellt",
       "makeTicket": "Ticket erstellen",
       "dismiss": "Verwerfen"
+    },
+    "scheduledPosts": {
+      "title": "Geplante Beiträge",
+      "tagline": "Veröffentlichungen, die für einen bestimmten Zeitpunkt eingeplant sind.",
+      "empty": "Noch keine geplanten Beiträge. Plane eine Veröffentlichung aus einem Content-Stück, um sie hier zu sehen."
     },
     "scheduled": {
       "title": "Scheduled tasks",

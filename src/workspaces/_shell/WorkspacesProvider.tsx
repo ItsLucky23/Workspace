@@ -141,7 +141,7 @@ const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',
   sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
-  knowledge: 'Knowledge', content: 'Content', settings: 'Account', workspace: 'Workspace',
+  knowledge: 'Knowledge', content: 'Content', 'scheduled-posts': 'Scheduled posts', settings: 'Account', workspace: 'Workspace',
 };
 function viewLabel(view: WsView): string {
   return isTicketView(view) ? view : (VIEW_LABELS[view] ?? 'Board');
@@ -984,8 +984,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     else if (p.op === 'create-content' && p.title && p.brief) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
     //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
     //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
-    else if (isChatEnabledOp(p.op)) CHAT_DISPATCH[p.op](p, { room, activeProjectId: snap.activeProjectId, nextReqId, refetch });
-  }, [refetch, snap.activeProjectId]);
+    else if (isChatEnabledOp(p.op)) CHAT_DISPATCH[p.op](p, { room, activeProjectId: snap.activeProjectId, gitConfig: snap.gitConfig, nextReqId, refetch });
+  }, [refetch, snap.activeProjectId, snap.gitConfig]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
     const room = snap.activeWorkspaceId;

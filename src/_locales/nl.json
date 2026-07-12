@@ -790,6 +790,7 @@
       "sources": "Bronnen",
       "pipeline": "Pipeline",
       "scheduled": "Gepland",
+      "scheduled-posts": "Geplande posts",
       "content": "Content",
       "marketing": "Marketing",
       "designer": "Designer",
@@ -1648,6 +1649,11 @@
       "linkedTicket": "Ticket gemaakt",
       "makeTicket": "Maak ticket",
       "dismiss": "Negeren"
+    },
+    "scheduledPosts": {
+      "title": "Geplande posts",
+      "tagline": "Publicaties die klaarstaan om op een ingesteld moment te verschijnen.",
+      "empty": "Nog geen geplande posts. Plan een publicatie vanuit een contentstuk om het hier te zien."
     },
     "scheduled": {
       "title": "Geplande taken",

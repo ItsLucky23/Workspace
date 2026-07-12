@@ -23,7 +23,7 @@ _(The main features/areas of the app and what each is for. The AI keeps this in 
 
 _(Domain terms used in this project, so the AI + the team use the same vocabulary.)_
 
-## Pages by area (29)
+## Pages by area (30)
 
 ### (root)
 
@@ -92,6 +92,7 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 | `/workspaces/marketing` | Marketing — take your product to market. The AI marketer role turns a short product brief into marketing copy, a go-to-market strategy, email sequences, ad sets, a social calendar, naming, thumbnails and video scripts — each live-previewed. Its own page (user-chosen split) that reuses the shared Studio surface with a marketing focus (marketer kinds only; the designer kinds live on /studio). | `workspaces/marketing/page.tsx` |
 | `/workspaces/pipeline` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/pipeline/page.tsx` |
 | `/workspaces/scheduled` | Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a cadence, then either run an AI agent role (e.g. the Interviewer proposing improvements) or send a notification. Built on the existing automation engine (ADR 0027): each row is a cron-scheduled WorkspaceTrigger written through the Conductor (single-writer, B-23). Reusable — the same surface later drives Marketing scraping or any recurring role. | `workspaces/scheduled/page.tsx` |
+| `/workspaces/scheduled-posts` | Scheduled posts — a content-lane calendar/list of every publish that's queued for a future time. Reads the publish jobs the content pieces already carry (status 'scheduled' + scheduledAt, #143) and lists them soonest-first, grouped by day, so a content user sees what will go out and when (distinct from the Development 'Scheduled' cron page, #149). Read-only — clicking a row opens the piece. | `workspaces/scheduled-posts/page.tsx` |
 | `/workspaces/settings` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/settings/page.tsx` |
 | `/workspaces/sources` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/sources/page.tsx` |
 | `/workspaces/studio` | Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ marketer roles generate a landing page, marketing copy, a brand kit, and a go-to-market strategy, each live-previewed. Built on the pluggable AI-provider layer (ADR 0007) + the AgentRole registry. | `workspaces/studio/page.tsx` |

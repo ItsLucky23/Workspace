@@ -1,5 +1,20 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 resterende items — batch 1+2 (#29, #17/#113, #149/#138)
+
+**User prompt:** implementeer ALLE resterende punten uit completion-gaps-v3.json en e2e-test ze (owner koos "bouwen" voor elk open design-item; conflictResolutions: preview=implement).
+
+**What I did:**
+- **#29** `save-git-config` `LATER`→`enabled` (AI-proposeerbare git-strategie/push-policy). Kritiek: de Conductor `normalizeGitConfig` vult defaults, dus een partiële proposal zou de andere velden clobberen → `ChatDispatchExtras.gitConfig` toegevoegd + de dispatcher MERGET de voorgestelde velden over `snap.gitConfig`. Params: branchStrategy/pushPolicy(enum)/defaultBranchType/targetBranch.
+- **#17/#113** `preview-up`/`preview-down` HER-toegevoegd aan de ControlOp-union (owner conflict-resolutie 2026-07-12 "preview=implement", overriden de eerdere remove-answer) als AI-proposeerbare ops. Ze bereiken de Conductor NIET — accept dispatcht via de `openPreview`/`closePreview` `_api` (efemere container-state, single-writer intact). OP_CAPABILITY=workTickets, opCatalog enabled, chatOps+chatDispatch (apiRequest).
+- **#149/#138** nieuwe **Scheduled-posts**-view voor content-workspaces (`src/workspaces/scheduled-posts/page.tsx`): leest de bestaande `pieces[].assets[].publishJobs[]` (status 'scheduled' + scheduledAt, #143), lijst soonest-first gegroepeerd per dag, klik opent het stuk. Nav-wiring: modules.ts content-sectie `scheduled-posts`, Shell NAV_ITEMS (studio), WsView + VIEW_LABELS. i18n ×4 (sections + scheduledPosts.title/tagline/empty).
+
+**Files touched:** `server/ai/opCatalog.ts`, `server/control/rbac.ts`, `src/workspaces/_functions/controlApi.ts`, `_data/chatOps.ts`, `_functions/chatDispatch.ts`, `_data/modules.ts`, `_shell/{Shell,WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/scheduled-posts/page.tsx` (nieuw), `src/_locales/{en,nl,de,fr}.json`.
+
+**Verify:** `tsc --noEmit` 0, `vite build` ✓, eslint 0-errors (pre-existing warnings elders), `ai:lint` 0, opCatalogParity 53/53, rbac 119/119, localeIntegrity 8/8.
+
+**Notes:** preview-ops route bewust via `_api` (niet Conductor) — B-23 single-writer geldt alleen voor authoritative board/git/status, niet efemere container-state (zoals openEditor). Runtime-activatie van de nieuwe route vereist geen server-herstart (pure client route).
+
 ## 2026-07-01 14:00 — Workspaces bootstrap (stap 0.1, deels)
 
 **User prompt:** Ga over de `workspace-handoff` folder; check of de repo-bootstrap gedaan is; leg belangrijke system-design-choices vast in de main repo; complete alle stappen van 0.1.

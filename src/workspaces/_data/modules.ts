@@ -31,7 +31,7 @@ export const WORKSPACE_MODULES: WorkspaceModule[] = [
   //? scheduled posts + event automation, not just the Development lane. #165 — Design also unlocks
   //? 'marketing' (the Studio brand/landing generator) so a Design-only workspace can do visual/brand
   //? generation. (OPEN VRAAG: defaults per Rule 3a — user away; revisit if the nav feels too broad.)
-  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled'] },
+  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'scheduled-posts'] },
   { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled'] },
 ];
 

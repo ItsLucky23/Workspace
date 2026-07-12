@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 229,
-    "edges": 347,
+    "nodes": 230,
+    "edges": 350,
     "symbols": 289,
     "callEdges": 42
   },
@@ -1119,6 +1119,11 @@
       "route": null
     },
     {
+      "id": "workspaces/scheduled-posts/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
       "id": "workspaces/scheduled/page.tsx",
       "kind": "page",
       "route": null
@@ -1562,6 +1567,10 @@
     {
       "from": "workspaces/_data/types.ts",
       "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
+      "from": "workspaces/_functions/chatDispatch.ts",
+      "to": "_sockets/apiRequest.ts"
     },
     {
       "from": "workspaces/_functions/chatDispatch.ts",
@@ -2356,6 +2365,14 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/scheduled-posts/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/scheduled-posts/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/scheduled/page.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
     },
@@ -2819,12 +2836,16 @@
       "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
     "_sockets/apiRequest.ts": [
+      "_components/templates/TemplateProvider.tsx",
       "_providers/SessionProvider.tsx",
       "docs/page.tsx",
       "main.tsx",
       "reset-password/page.tsx",
       "settings/confirm-email/page.tsx",
       "settings/page.tsx",
+      "workspaces/_functions/chatDispatch.ts",
+      "workspaces/_shell/WorkspacesProvider.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/settings/page.tsx"
     ],
     "_sockets/offlineQueue.ts": [
@@ -2908,6 +2929,7 @@
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
+      "workspaces/scheduled-posts/page.tsx",
       "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/sources/page.tsx",
@@ -3269,6 +3291,7 @@
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
+      "workspaces/scheduled-posts/page.tsx",
       "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/sources/page.tsx",
@@ -3412,14 +3435,14 @@
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 46,
-      "directDependents": 41
+      "dependents": 47,
+      "directDependents": 42
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 42,
-      "directDependents": 33
+      "dependents": 43,
+      "directDependents": 34
     },
     {
       "id": "_components/Avatar.tsx",
@@ -3470,6 +3493,12 @@
       "directDependents": 10
     },
     {
+      "id": "_sockets/apiRequest.ts",
+      "kind": "other",
+      "dependents": 11,
+      "directDependents": 7
+    },
+    {
       "id": "workspaces/designer/styles.ts",
       "kind": "other",
       "dependents": 11,
@@ -3516,12 +3545,6 @@
       "kind": "other",
       "dependents": 7,
       "directDependents": 4
-    },
-    {
-      "id": "_sockets/apiRequest.ts",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 6
     },
     {
       "id": "_sockets/offlineQueue.ts",

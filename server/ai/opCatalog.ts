@@ -95,7 +95,21 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'gitlab-verify': LATER,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
-  'save-git-config': LATER,
+  //? #29 — the Assistant may PROPOSE a git-strategy/push-policy change ("push feature branches as
+  //? merge requests", "switch to typed branches"). Only the named fields travel; the client dispatcher
+  //? MERGES them over the workspace's current gitConfig (the Conductor normalize would otherwise reset
+  //? the untouched fields to defaults). Non-secret, non-destructive config; accept dispatches through the
+  //? normal saveGitConfig `_sync` → RBAC(workspaceSettings) → Conductor.
+  'save-git-config': {
+    mode: 'enabled',
+    hint: "change the workspace's git strategy / push policy. params: branchStrategy? (ticket-prefix|typed|custom), pushPolicy? (local-only|push|merge-request), defaultBranchType? (e.g. feature), targetBranch? (the branch MRs target, e.g. main)",
+    params: {
+      branchStrategy: { kind: 'enum', values: ['ticket-prefix', 'typed', 'custom'] },
+      pushPolicy: { kind: 'enum', values: ['local-only', 'push', 'merge-request'] },
+      defaultBranchType: { kind: 'string' },
+      targetBranch: { kind: 'string' },
+    },
+  },
   'save-sections': LATER,
   'save-ai-instruction': LATER,
   'save-ai-provider': LATER,
@@ -337,6 +351,19 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'copy-workspace-assets': LATER,
   'copilot-propose': EXCLUDED, // meta (the propose channel itself)
   'run-agent-role': EXCLUDED, // #167 — direct UI button (interviewer "generate now"), not a chat proposal
+  //? #17/#113 — the Assistant may PROPOSE launching/stopping a ticket's live preview ("open a preview of
+  //? DEV-3"). Accept dispatches through the openPreview/closePreview `_api` (ephemeral container, no
+  //? Conductor write). Non-destructive; validated against a real ticketKey.
+  'preview-up': {
+    mode: 'enabled',
+    hint: "launch a live preview of a ticket's app (starts its dev server, returns a URL). params: ticketKey",
+    params: { ticketKey: { kind: 'ticketKey', required: true } },
+  },
+  'preview-down': {
+    mode: 'enabled',
+    hint: "stop a ticket's running live preview. params: ticketKey",
+    params: { ticketKey: { kind: 'ticketKey', required: true } },
+  },
   'mark-read': EXCLUDED, // notification plumbing
   // ---- agent-session controls
   pause: { mode: 'enabled', hint: 'pause a ticket’s autonomous agent turn. params: ticketKey', params: { ticketKey: { kind: 'ticketKey', required: true } } },

@@ -790,6 +790,7 @@
       "sources": "Sources",
       "pipeline": "Pipeline",
       "scheduled": "Scheduled",
+      "scheduled-posts": "Scheduled posts",
       "content": "Content",
       "marketing": "Marketing",
       "designer": "Designer",
@@ -1648,6 +1649,11 @@
       "linkedTicket": "Ticket created",
       "makeTicket": "Make ticket",
       "dismiss": "Dismiss"
+    },
+    "scheduledPosts": {
+      "title": "Scheduled posts",
+      "tagline": "Publishes queued to go out at a set time.",
+      "empty": "No scheduled posts yet. Schedule a publish from a content piece to see it here."
     },
     "scheduled": {
       "title": "Scheduled tasks",
