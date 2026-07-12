@@ -31,7 +31,9 @@ export const CHAT_ENABLED_OPS = [
   'shortlink-create',
   'capture-run',
   // brand/style/reference/channel config (#150/#142) — text/config proposals, no paid gen
-  'save-style', 'channel-create', 'reference-add',
+  'save-style', 'channel-create', 'reference-add', 'content-edit-product',
+  // ticket edit (#7) — rename / re-describe / re-prioritise a ticket
+  'ticket-edit',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

@@ -201,4 +201,15 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const kind = str(p, 'kind');
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'reference-add', title, description, ...(kind ? { kind } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #150 — set the workspace brand/product context (contentSettings route).
+  'content-edit-product': (p, x) => {
+    const productContext = str(p, 'productContext'); if (!productContext) return;
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-product', productContext, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? #7 — edit a ticket's title/description/priority (ticketEdit route; the key travels as `ticketId`).
+  'ticket-edit': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
+    const title = str(p, 'title'); const description = str(p, 'description'); const priority = str(p, 'priority');
+    void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: ticketKey, ...(title ? { title } : {}), ...(description ? { description } : {}), ...(priority ? { priority } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
 };

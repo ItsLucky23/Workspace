@@ -44,7 +44,11 @@ const EXCLUDED: OpSpec = { mode: 'excluded' };
 export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   // ---- tickets / board — the legacy rich chat path handles these (bulk-move/assign/add-comment/create-*)
   'quick-add': EXCLUDED, // legacy `create-ticket`
-  'ticket-edit': LATER,
+  'ticket-edit': {
+    mode: 'enabled',
+    hint: "edit a ticket's title/description/priority ('rename DEV-3', 'bump its priority'). params: ticketKey, title?, description?, priority? (low|normal|high|urgent)",
+    params: { ticketKey: { kind: 'ticketKey', required: true }, title: { kind: 'string' }, description: { kind: 'string' }, priority: { kind: 'enum', values: ['low', 'normal', 'high', 'urgent'] } },
+  },
   'add-comment': EXCLUDED, // legacy rich path
   archive: LATER_D,
   'bulk-move': EXCLUDED, // legacy rich path
@@ -192,7 +196,12 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'delete-style': LATER_D,
   'save-media-provider': EXCLUDED, // provider API keys
-  'content-edit-brand': LATER, 'content-edit-product': LATER,
+  'content-edit-brand': LATER,
+  'content-edit-product': {
+    mode: 'enabled',
+    hint: "set the workspace's brand/product CONTEXT that every creative generation folds in ('set the brand voice/product to X'). params: productContext (the brand + product description)",
+    params: { productContext: { kind: 'string', required: true } },
+  },
   // ---- content pipeline (per-asset PAID gen ops stay `later` until cost-confirms land — B4)
   'content-create': LATER,
   'content-advance': {
