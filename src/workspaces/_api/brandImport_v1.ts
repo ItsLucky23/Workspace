@@ -25,5 +25,8 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const [parseErr, parsed] = await functions.tryCatch.tryCatch(() => JSON.parse(kit) as unknown);
   if (parseErr) return { status: 'error', errorCode: 'brand.invalidJson' };
   const ok = await importBrandKit(functions.db.prisma, workspaceId, parsed);
-  return ok ? { status: 'success', result: { imported: true } } : { status: 'error', errorCode: 'brand.invalidKit' };
+  //? Direct returns (not a ternary) so the type generator extracts the success variant (extraction
+  //? degrades on a ternary return — the caller needs the `status:'success'` branch typed).
+  if (!ok) return { status: 'error', errorCode: 'brand.invalidKit' };
+  return { status: 'success', result: { imported: true } };
 };

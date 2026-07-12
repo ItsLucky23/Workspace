@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
@@ -430,9 +430,44 @@ function renderMdLine(line: string, key: number): React.ReactNode {
 function stripInline(s: string): string { return s.replaceAll(/\*\*(.+?)\*\*/g, '$1').replaceAll(/`(.+?)`/g, '$1'); }
 
 //? ---- Central brand library panel (ADR 0013 G-MKT-2) ----
+//? #164 — paste a portable brand-kit JSON (from another workspace's Export) to import it. Rendered in
+//? the menuHandler overlay; on success it refetches so the imported palette/voice/taglines show.
+function BrandImportForm({ workspaceId, onImported }: { workspaceId: string; onImported: () => void }) {
+  const translate = useTranslator();
+  const [kit, setKit] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = () => {
+    if (busy || kit.trim().length === 0) return;
+    setBusy(true);
+    void apiRequest({ name: 'workspaces/brandImport', version: 'v1', data: { workspaceId, kit: kit.trim() } }).then((r) => {
+      setBusy(false);
+      if (r.status === 'success') { notify.success({ key: 'workspaces.studio.brandImported' }); void menuHandler.close(); onImported(); }
+      else notify.error({ key: 'workspaces.studio.brandImportFailed' });
+    });
+  };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.studio.brandImportTitle' })}</div>
+      <textarea value={kit} onChange={(e) => { setKit(e.target.value); }} rows={8} placeholder={translate({ key: 'workspaces.studio.brandImportPlaceholder' })} className={`${inputCls} h-auto py-2 font-mono resize-y`} />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="file-import" disabled={busy || kit.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.studio.brandImportAction' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function BrandPanel() {
   const translate = useTranslator();
-  const { studioBrand, saveBrand } = useWorkspaces();
+  const { studioBrand, saveBrand, activeWorkspace, refetch } = useWorkspaces();
+  //? #164 — portable brand-kit export (copy JSON to clipboard) + import (paste JSON).
+  const exportBrand = () => {
+    void apiRequest({ name: 'workspaces/brandExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
+      if (r.status !== 'success' || r.result.kit.length === 0) { notify.error({ key: 'workspaces.studio.brandExportEmpty' }); return; }
+      void navigator.clipboard.writeText(r.result.kit).then(() => { notify.success({ key: 'workspaces.studio.brandExported' }); }, () => { notify.error({ key: 'workspaces.studio.brandExportFailed' }); });
+    });
+  };
+  const importBrand = () => { void menuHandler.open(<BrandImportForm workspaceId={activeWorkspace.id} onImported={refetch} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
   const [palette, setPalette] = useState<{ name: string; hex: string }[]>(studioBrand?.palette ?? []);
   const [heading, setHeading] = useState(studioBrand?.typography.heading ?? '');
   const [body, setBody] = useState(studioBrand?.typography.body ?? '');
@@ -490,7 +525,12 @@ function BrandPanel() {
 
       <div className="flex items-center justify-between gap-2 pt-1">
         <div className="text-xs text-muted flex items-center gap-1.5"><Icon name="wand-magic-sparkles" className="text-primary" />{translate({ key: 'workspaces.studio.brandTip' })}</div>
-        <WsButton icon="check" onClick={() => { void save(); }} disabled={saving}>{translate({ key: 'workspaces.studio.saveBrand' })}</WsButton>
+        <div className="flex items-center gap-2">
+          {/* #164 — portable brand-kit export (copy JSON) + import (paste JSON). */}
+          <WsButton variant="ghost" icon="file-export" onClick={exportBrand}>{translate({ key: 'workspaces.studio.brandExport' })}</WsButton>
+          <WsButton variant="ghost" icon="file-import" onClick={importBrand}>{translate({ key: 'workspaces.studio.brandImport' })}</WsButton>
+          <WsButton icon="check" onClick={() => { void save(); }} disabled={saving}>{translate({ key: 'workspaces.studio.saveBrand' })}</WsButton>
+        </div>
       </div>
     </div>
   );

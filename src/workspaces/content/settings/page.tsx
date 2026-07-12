@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 
-import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
+import { apiRequest, useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -94,9 +94,36 @@ function ProductContextSection() {
 //? and author new named styles. A style is a reusable system-prompt per feature; the piece page picks one by
 //? name instead of guessing a magic string. Saved via the save-style / delete-style control-ops.
 const STYLE_FEATURES = ['script', 'image-gen', 'reference-image', 'video-gen', 'tts'];
+//? #152 — paste a portable style-set JSON (from another workspace's Export) to import it (upsert-by-key).
+function StyleImportForm({ workspaceId, onImported }: { workspaceId: string; onImported: () => void }) {
+  const translate = useTranslator();
+  const [styles, setStyles] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = () => {
+    if (busy || styles.trim().length === 0) return;
+    setBusy(true);
+    void apiRequest({ name: 'workspaces/styleImport', version: 'v1', data: { workspaceId, styles: styles.trim() } }).then((r) => {
+      setBusy(false);
+      if (r.status === 'success') { notify.success({ key: 'workspaces.content.styleImported' }); void menuHandler.close(); onImported(); }
+      else notify.error({ key: 'workspaces.content.styleImportFailed' });
+    });
+  };
+  const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.styleImportTitle' })}</div>
+      <textarea value={styles} onChange={(e) => { setStyles(e.target.value); }} rows={8} placeholder={translate({ key: 'workspaces.content.styleImportPlaceholder' })} className={`${fieldCls} font-mono resize-y`} />
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={() => void menuHandler.close()} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.shell.cancel' })}</button>
+        <button type="button" disabled={busy || styles.trim().length === 0} onClick={submit} className="rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.styleImportAction' })}</button>
+      </div>
+    </div>
+  );
+}
+
 function StyleManagerSection() {
   const translate = useTranslator();
-  const { content, saveStyle, deleteStyle } = useWorkspaces();
+  const { content, saveStyle, deleteStyle, activeWorkspace, refetch } = useWorkspaces();
   const featureItems: DropdownItem[] = STYLE_FEATURES.map((f) => ({ id: f, value: f, item: f }));
   const [feature, setFeature] = useState<string>(STYLE_FEATURES[0] ?? 'image-gen');
   const [key, setKey] = useState('');
@@ -108,11 +135,30 @@ function StyleManagerSection() {
     saveStyle(feature, key.trim(), label.trim() || key.trim(), prompt.trim());
     setKey(''); setLabel(''); setPrompt('');
   };
+  //? #157 — edit a non-builtin style: pre-fill the create form (upsert-by-key overwrites it on save).
+  const editStyle = (s: { feature: string; key: string; label: string; systemPrompt: string }) => {
+    setFeature(s.feature); setKey(s.key); setLabel(s.label); setPrompt(s.systemPrompt);
+  };
+  //? #152 — portable style-set export (copy JSON) + import (paste JSON, upsert-by-key).
+  const exportStyles = () => {
+    void apiRequest({ name: 'workspaces/styleExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
+      if (r.status !== 'success' || r.result.styles.length === 0) { notify.error({ key: 'workspaces.content.styleExportEmpty' }); return; }
+      void navigator.clipboard.writeText(r.result.styles).then(() => { notify.success({ key: 'workspaces.content.styleExported' }); }, () => { notify.error({ key: 'workspaces.content.styleExportFailed' }); });
+    });
+  };
+  const importStyles = () => { void menuHandler.open(<StyleImportForm workspaceId={activeWorkspace.id} onImported={refetch} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
   return (
     <section className="rounded-2xl border border-container1-border bg-container1 p-5">
-      <div className="mb-3">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.stylesTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.stylesDesc' })}</div>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.stylesTitle' })}</div>
+          <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.stylesDesc' })}</div>
+        </div>
+        {/* #152 — export/import the portable style set. */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button type="button" onClick={exportStyles} title={translate({ key: 'workspaces.content.styleExport' })} className="w-8 h-8 rounded-md text-muted hover:text-title hover:bg-container2 flex items-center justify-center cursor-pointer"><Icon name="file-export" /></button>
+          <button type="button" onClick={importStyles} title={translate({ key: 'workspaces.content.styleImport' })} className="w-8 h-8 rounded-md text-muted hover:text-title hover:bg-container2 flex items-center justify-center cursor-pointer"><Icon name="file-import" /></button>
+        </div>
       </div>
       <div className="flex flex-col gap-1.5 mb-4">
         {content.styles.length === 0
@@ -125,7 +171,13 @@ function StyleManagerSection() {
               </div>
               {s.builtin
                 ? <span className="text-[10px] font-semibold text-muted rounded-md bg-container1 px-1.5 py-0.5 shrink-0">{translate({ key: 'workspaces.content.styleBuiltin' })}</span>
-                : <button type="button" onClick={() => { deleteStyle(s.feature, s.key); }} title={translate({ key: 'workspaces.content.styleDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>}
+                : (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* #157 — edit pre-fills the create form (upsert-by-key). */}
+                    <button type="button" onClick={() => { editStyle(s); }} title={translate({ key: 'workspaces.content.styleEdit' })} className="w-7 h-7 rounded-md text-muted hover:text-title hover:bg-container2 flex items-center justify-center cursor-pointer"><Icon name="pen" /></button>
+                    <button type="button" onClick={() => { deleteStyle(s.feature, s.key); }} title={translate({ key: 'workspaces.content.styleDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer"><Icon name="trash" /></button>
+                  </div>
+                )}
             </div>
           ))}
       </div>
