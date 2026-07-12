@@ -26,6 +26,16 @@ const FILE_STATUS_KEY: Record<MrDiffFile['status'], string> = {
   modified: 'workspaces.mr.fileModified', renamed: 'workspaces.mr.fileRenamed',
 };
 
+//? #51/#52 — CI status/severity tints for the Checks section.
+const CI_TINT: Record<string, string> = { success: 'bg-correct/15 text-correct', failed: 'bg-wrong/12 text-wrong', running: 'bg-warning/15 text-warning' };
+const CI_ICON: Record<string, string> = { success: 'circle-check', failed: 'circle-xmark', running: 'spinner' };
+const SEV_TINT: Record<string, string> = { critical: 'bg-wrong/12 text-wrong', high: 'bg-wrong/12 text-wrong', moderate: 'bg-warning/15 text-warning' };
+const ciTint = (s: string): string => CI_TINT[s] ?? 'bg-container2 text-muted';
+const ciIcon = (s: string): string => CI_ICON[s] ?? 'circle-minus';
+const sevTint = (s: string): string => SEV_TINT[s] ?? 'bg-container2 text-muted';
+//? #55 — merge-gate reason → i18n key (conflict is handled separately as it carries params).
+const MR_REASON_KEY: Record<string, string> = { 'no-approval': 'needsApproval', 'ci-red': 'ciRed', 'ci-running': 'ciRunning', 'ci-stale': 'ciStale' };
+
 //? A line's review anchor: which number + side a comment on it targets. Deletions anchor to
 //? the old file/line; additions + context anchor to the new one.
 function anchorOf(line: MrDiffLine): { no: number; side: 'old' | 'new' } | null {
@@ -102,9 +112,9 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
     const outcome = r.ok ? r.outcome : undefined;
     if (!r.ok) { notify.error({ key: 'workspaces.mr.actionFailed' }); return; }
     if (outcome && !outcome.ok) {
+      //? conflict carries the conflicting file list; the other reasons (#55) map to a plain key.
       if (outcome.reason === 'conflict') notify.error({ key: 'workspaces.mr.conflict', params: [{ key: 'files', value: (outcome.files ?? []).join(', ') || '—' }] });
-      else if (outcome.reason === 'no-approval') notify.error({ key: 'workspaces.mr.needsApproval' });
-      else notify.error({ key: 'workspaces.mr.mergeFailed' });
+      else notify.error({ key: `workspaces.mr.${MR_REASON_KEY[outcome.reason ?? ''] ?? 'mergeFailed'}` });
       return;
     }
     notify.success({ key: successKey });
@@ -181,6 +191,37 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
         </div>
         <Approvals mr={mr} />
       </div>
+
+      {/* #51/#52 — CI Checks: rolled-up run status, per-job state, and parsed security findings. */}
+      {mr.checks && (
+        <div className="rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold text-title">{translate({ key: 'workspaces.mr.checksTitle' })}</span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ciTint(mr.checks.status)}`}>
+              <Icon name={ciIcon(mr.checks.status)} />{translate({ key: `workspaces.mr.ciStatus.${mr.checks.status}` })}
+            </span>
+          </div>
+          {mr.checks.jobs.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {mr.checks.jobs.map((j) => (
+                <span key={j.name} className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${ciTint(j.status)}`}>
+                  <Icon name={ciIcon(j.status)} />{j.name}
+                </span>
+              ))}
+            </div>
+          )}
+          {mr.checks.findings.length > 0 && (
+            <div className="flex flex-col gap-1 border-t border-divider pt-2">
+              {mr.checks.findings.map((f, i) => (
+                <div key={`${f.severity}:${f.title}:${String(i)}`} className="flex items-center gap-2 text-xs">
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${sevTint(f.severity)}`}>{f.severity}</span>
+                  <span className="text-common truncate">{f.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* general discussion */}
       <Discussion mr={mr} threads={mrLevelThreads} ticketKey={ticketKey} />

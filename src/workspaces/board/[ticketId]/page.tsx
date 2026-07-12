@@ -676,6 +676,7 @@ const EVENT_TINT: Record<ActivityEvent['type'], string> = {
   'status-change': 'bg-warning/15 text-warning',
   mr: 'bg-correct/15 text-correct',
   comment: 'bg-container2 text-muted',
+  ci: 'bg-secondary/15 text-secondary',
 };
 
 function ActivityTab({ events }: { events: ActivityEvent[] }) {

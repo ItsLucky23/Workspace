@@ -26,11 +26,27 @@ export interface MrApprovalView { userId: string; stale: boolean; createdAt: str
 //? The transient outcome of a merge/rollback attached to the returned view so the client can toast
 //? success or the reason it was blocked (no-approval / conflict + files). Not persisted.
 export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[] }
+export interface MrCheckJob { name: string; status: string; severity: string | null }
+export interface MrCheckFinding { severity: string; title: string }
+export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
   diff: MrDiff; threads: MrThreadView[]; approvals: MrApprovalView[];
-  actionResult?: MrActionOutcome;
+  actionResult?: MrActionOutcome; checks?: MrChecks;
+}
+
+//? #52 — parse a PipelineJob.findings Json (SecurityFinding[] = {id,severity,title}) defensively.
+function parseFindings(raw: unknown): MrCheckFinding[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MrCheckFinding[] = [];
+  for (const f of raw) {
+    if (f !== null && typeof f === 'object') {
+      const rec = f as Record<string, unknown>;
+      if (typeof rec.severity === 'string' && typeof rec.title === 'string') out.push({ severity: rec.severity, title: rec.title });
+    }
+  }
+  return out.slice(0, 50);
 }
 
 //? Open (or refresh) the MR for a ticket's branch → the workspace's target branch. Idempotent per
@@ -168,8 +184,21 @@ export async function mrForTicket(prisma: PrismaClient, workspaceId: string, tic
   const approvalRows = await prisma.approval.findMany({ where: { workspaceId, mergeRequestId: mr.id } });
   const approvals: MrApprovalView[] = approvalRows.map((a) => ({ userId: a.userId, stale: (a.headSha ?? '') !== (mr.headSha ?? ''), createdAt: a.createdAt.toISOString() }));
 
+  //? #51/#52 — the latest CI run for this MR + its jobs + parsed findings, for the panel's Checks section.
+  const latestRun = await prisma.pipelineRun.findFirst({ where: { workspaceId, mergeRequestId: mr.id }, orderBy: { startedAt: 'desc' } });
+  let checks: MrChecks | undefined;
+  if (latestRun) {
+    const jobRows = await prisma.pipelineJob.findMany({ where: { workspaceId, pipelineRunId: latestRun.id } });
+    checks = {
+      status: latestRun.status, maxSeverity: latestRun.maxSeverity,
+      jobs: jobRows.map((j) => ({ name: j.name, status: j.status, severity: j.severity })),
+      findings: jobRows.flatMap((j) => parseFindings(j.findings)),
+    };
+  }
+
   return {
     id: mr.id, number: mr.number, title: mr.title, status: mr.status, sourceBranch: mr.sourceBranch, targetBranch: mr.targetBranch,
     headSha: mr.headSha, externalUrl: mr.externalUrl, mergeStrategy: mr.mergeStrategy, diff, threads, approvals,
+    ...(checks ? { checks } : {}),
   };
 }

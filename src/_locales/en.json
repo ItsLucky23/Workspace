@@ -1214,6 +1214,11 @@
       "needsApproval": "Needs at least one approval to merge",
       "conflict": "Merge conflict in: {{files}}",
       "mergeFailed": "Merge failed",
+      "ciRed": "CI checks are failing — fix them before merging.",
+      "ciRunning": "CI checks are still running — wait for them to finish.",
+      "ciStale": "CI results are out of date — re-run the checks before merging.",
+      "checksTitle": "Checks",
+      "ciStatus": { "running": "Running", "success": "Passed", "failed": "Failed", "canceled": "Canceled" },
       "actionFailed": "Action failed — please retry",
       "mergedToast": "Branch merged",
       "revertedToast": "Merge reverted",
@@ -1671,7 +1676,8 @@
       "labelAi": "ai",
       "labelStatus": "status",
       "labelMerge": "merge",
-      "labelComment": "comment"
+      "labelComment": "comment",
+      "labelCi": "CI"
     },
     "backlog": {
       "title": "Backlog",

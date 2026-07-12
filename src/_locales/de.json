@@ -1214,6 +1214,11 @@
       "needsApproval": "Benötigt mindestens eine Freigabe zum Mergen",
       "conflict": "Merge-Konflikt in: {{files}}",
       "mergeFailed": "Merge fehlgeschlagen",
+      "ciRed": "CI-Prüfungen schlagen fehl — behebe sie vor dem Mergen.",
+      "ciRunning": "CI-Prüfungen laufen noch — warte, bis sie fertig sind.",
+      "ciStale": "CI-Ergebnisse sind veraltet — führe die Prüfungen vor dem Mergen erneut aus.",
+      "checksTitle": "Prüfungen",
+      "ciStatus": { "running": "Läuft", "success": "Bestanden", "failed": "Fehlgeschlagen", "canceled": "Abgebrochen" },
       "actionFailed": "Aktion fehlgeschlagen — bitte erneut versuchen",
       "mergedToast": "Branch gemergt",
       "revertedToast": "Merge zurückgenommen",
@@ -1671,7 +1676,8 @@
       "labelAi": "ai",
       "labelStatus": "Status",
       "labelMerge": "Merge",
-      "labelComment": "Kommentar"
+      "labelComment": "Kommentar",
+      "labelCi": "CI"
     },
     "backlog": {
       "title": "Backlog",

@@ -1214,6 +1214,11 @@
       "needsApproval": "Nécessite au moins une approbation pour fusionner",
       "conflict": "Conflit de fusion dans : {{files}}",
       "mergeFailed": "Échec de la fusion",
+      "ciRed": "Les vérifications CI échouent — corrigez-les avant de fusionner.",
+      "ciRunning": "Les vérifications CI sont en cours — attendez qu'elles se terminent.",
+      "ciStale": "Les résultats CI sont obsolètes — relancez les vérifications avant de fusionner.",
+      "checksTitle": "Vérifications",
+      "ciStatus": { "running": "En cours", "success": "Réussi", "failed": "Échoué", "canceled": "Annulé" },
       "actionFailed": "Action échouée — veuillez réessayer",
       "mergedToast": "Branche fusionnée",
       "revertedToast": "Fusion annulée",
@@ -1671,7 +1676,8 @@
       "labelAi": "ia",
       "labelStatus": "statut",
       "labelMerge": "merge",
-      "labelComment": "commentaire"
+      "labelComment": "commentaire",
+      "labelCi": "CI"
     },
     "backlog": {
       "title": "Backlog",

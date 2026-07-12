@@ -21,9 +21,10 @@ const EVENT_TINT: Record<ActivityEvent['type'], string> = {
   'status-change': 'bg-warning/15 text-warning',
   mr: 'bg-correct/15 text-correct',
   comment: 'bg-container2 text-muted',
+  ci: 'bg-secondary/15 text-secondary',
 };
 const EVENT_LABEL: Record<ActivityEvent['type'], string> = {
-  command: 'workspaces.activity.labelCommand', 'file-change': 'workspaces.activity.labelFile', 'ai-message': 'workspaces.activity.labelAi', 'status-change': 'workspaces.activity.labelStatus', mr: 'workspaces.activity.labelMerge', comment: 'workspaces.activity.labelComment',
+  command: 'workspaces.activity.labelCommand', 'file-change': 'workspaces.activity.labelFile', 'ai-message': 'workspaces.activity.labelAi', 'status-change': 'workspaces.activity.labelStatus', mr: 'workspaces.activity.labelMerge', comment: 'workspaces.activity.labelComment', ci: 'workspaces.activity.labelCi',
 };
 
 function matches(e: ActivityEvent, f: Filter): boolean {

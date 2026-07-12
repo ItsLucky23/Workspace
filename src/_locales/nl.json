@@ -1214,6 +1214,11 @@
       "needsApproval": "Vereist minstens één goedkeuring om te mergen",
       "conflict": "Merge-conflict in: {{files}}",
       "mergeFailed": "Merge mislukt",
+      "ciRed": "CI-checks falen — los ze op vóór het mergen.",
+      "ciRunning": "CI-checks draaien nog — wacht tot ze klaar zijn.",
+      "ciStale": "CI-resultaten zijn verouderd — draai de checks opnieuw vóór het mergen.",
+      "checksTitle": "Checks",
+      "ciStatus": { "running": "Bezig", "success": "Geslaagd", "failed": "Mislukt", "canceled": "Geannuleerd" },
       "actionFailed": "Actie mislukt — probeer opnieuw",
       "mergedToast": "Branch gemerged",
       "revertedToast": "Merge teruggedraaid",
@@ -1671,7 +1676,8 @@
       "labelAi": "ai",
       "labelStatus": "status",
       "labelMerge": "merge",
-      "labelComment": "opmerking"
+      "labelComment": "opmerking",
+      "labelCi": "CI"
     },
     "backlog": {
       "title": "Backlog",

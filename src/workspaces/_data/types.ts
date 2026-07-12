@@ -253,10 +253,15 @@ export interface MrApproval { userId: string; stale: boolean; createdAt: string 
 //? Transient outcome of a merge/rollback (not persisted) — the client toasts it. `reason` is one of
 //? no-approval | conflict | not-linked | nothing-to-merge | error; `files` lists conflicting paths.
 export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[] }
+//? #51/#52 — the latest CI run's rolled-up status + per-job state + parsed security findings, so the
+//? MR panel can render a Checks section (was invisible; the merge gate felt arbitrary).
+export interface MrCheckJob { name: string; status: string; severity: string | null }
+export interface MrCheckFinding { severity: string; title: string }
+export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
-  diff: MrDiff; threads: MrThread[]; approvals: MrApproval[]; actionResult?: MrActionOutcome;
+  diff: MrDiff; threads: MrThread[]; approvals: MrApproval[]; actionResult?: MrActionOutcome; checks?: MrChecks;
 }
 export type MrActionKind = 'create' | 'comment' | 'approve' | 'merge' | 'rollback' | 'resolve' | 'review';
 export interface MrActionFields {
@@ -506,7 +511,7 @@ export interface ActivityEvent {
   time: string;
   actor: string; // member id | 'ai' | 'mr'
   ticketId: string;
-  type: 'command' | 'file-change' | 'ai-message' | 'status-change' | 'mr' | 'comment';
+  type: 'command' | 'file-change' | 'ai-message' | 'status-change' | 'mr' | 'comment' | 'ci';
   text: string;
 }
 
@@ -519,7 +524,7 @@ export interface TicketEvent {
   workspaceId: string;
   ticketId: string;
   seq: number;           // MONOTONIC per ticket; the merge/dedupe key
-  type: 'command' | 'file-change' | 'ai-message' | 'status-change' | 'mr' | 'comment';
+  type: 'command' | 'file-change' | 'ai-message' | 'status-change' | 'mr' | 'comment' | 'ci';
   actor: string;         // member userId | 'ai' | 'conductor' | 'mr' | 'gitlab'
   sessionKey?: string;   // provenance of an AI-sourced event
   stageId?: string;      // the StageKind key the event occurred in, if stage-scoped
