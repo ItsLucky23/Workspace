@@ -5,8 +5,10 @@
 //? when the server isn't reachable, and lets you point at a custom URL. The iframe brings
 //? VS Code's own file explorer + native git source control + open-vsx extensions.
 
-/* eslint-disable react/jsx-no-literals -- editor-chrome labels + the copy-paste start command */
+/* eslint-disable react/jsx-no-literals -- remaining literals are technical (VS Code brand, ↗ glyph, the docker start command) */
 import { useEffect, useState } from 'react';
+
+import { useTranslator } from '@luckystack/core/client';
 
 import { getPalette, type EditorThemeId } from './editorThemes';
 
@@ -19,6 +21,7 @@ export interface VsCodeEmbedProps {
 }
 
 export function VsCodeEmbed({ theme, initialUrl }: VsCodeEmbedProps) {
+  const translate = useTranslator();
   const palette = getPalette(theme);
   const [url, setUrl] = useState<string>('');
   const [draft, setDraft] = useState<string>('');
@@ -45,19 +48,19 @@ export function VsCodeEmbed({ theme, initialUrl }: VsCodeEmbedProps) {
         <span className="font-medium">Real VS Code · openvscode-server</span>
         <span className="truncate hidden sm:inline" style={{ color: palette.comment }}>{url}</span>
         <div className="flex-1" />
-        <a href={url} target="_blank" rel="noreferrer" className="px-2 py-1 rounded cursor-pointer" style={{ color: palette.accent }}>Open ↗</a>
-        <button type="button" className="px-2 py-1 rounded cursor-pointer" style={{ color: palette.fg }} onClick={() => { setShowConfig((s) => !s); }}>URL</button>
+        <a href={url} target="_blank" rel="noreferrer" className="px-2 py-1 rounded cursor-pointer" style={{ color: palette.accent }}>{translate({ key: 'workspaces.editor.open' })} ↗</a>
+        <button type="button" className="px-2 py-1 rounded cursor-pointer" style={{ color: palette.fg }} onClick={() => { setShowConfig((s) => !s); }}>{translate({ key: 'workspaces.editor.urlBtn' })}</button>
       </div>
 
       {showConfig && (
         <div className="p-3 border-b flex flex-col gap-2 text-[12px]" style={{ borderColor: palette.border, background: palette.bgAlt, color: palette.fg }}>
-          <div style={{ color: palette.comment }}>Point at your openvscode-server (per-ticket route or the standalone container):</div>
+          <div style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.pointAt' })}</div>
           <div className="flex gap-2">
             <input value={draft} onChange={(e) => { setDraft(e.target.value); }} className="flex-1 px-2 py-1 rounded outline-none border font-mono" style={{ background: palette.bg, color: palette.fg, borderColor: palette.border }} />
-            <button type="button" onClick={apply} className="px-3 py-1 rounded cursor-pointer" style={{ background: palette.accent, color: '#fff' }}>Load</button>
+            <button type="button" onClick={apply} className="px-3 py-1 rounded cursor-pointer" style={{ background: palette.accent, color: '#fff' }}>{translate({ key: 'workspaces.editor.load' })}</button>
           </div>
           <div style={{ color: palette.comment }}>
-            Start the standalone container:&nbsp;
+            {translate({ key: 'workspaces.editor.startContainer' })}&nbsp;
             <code className="font-mono" style={{ color: palette.string }}>docker run -d --name ls-vscode-demo --restart unless-stopped -p 3100:3000 gitpod/openvscode-server --host 0.0.0.0 --connection-token luckystack</code>
           </div>
         </div>
@@ -67,7 +70,7 @@ export function VsCodeEmbed({ theme, initialUrl }: VsCodeEmbedProps) {
         {url ? (
           <iframe title="VS Code" src={url} className="absolute inset-0 w-full h-full border-0" allow="clipboard-read; clipboard-write" />
         ) : (
-          <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>No editor URL</div>
+          <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.noUrl' })}</div>
         )}
       </div>
     </div>

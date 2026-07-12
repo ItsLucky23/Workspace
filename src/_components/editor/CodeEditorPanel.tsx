@@ -13,6 +13,8 @@
 /* eslint-disable luckystack/prefer-luckystack-dropdown -- intentional native select on the standalone editor surface */
 import { useMemo, useState } from 'react';
 
+import { useTranslator } from '@luckystack/core/client';
+
 import { MonacoEditor, MonacoDiff } from './MonacoEditor';
 import { FileExplorer, type GitStatus } from './FileExplorer';
 import { buildTree, allDirPaths, type EditorFile } from './fileTree';
@@ -47,6 +49,7 @@ function scmColor(status: GitStatus, palette: ThemePalette): string {
 }
 
 export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeChange, readOnly, showThemeSwitcher = true, title }: CodeEditorPanelProps) {
+  const translate = useTranslator();
   const palette = getPalette(theme);
   const [contents, setContents] = useState<Record<string, string>>(() => Object.fromEntries(files.map((f) => [f.path, f.content])));
   const paths = useMemo(() => Object.keys(contents), [contents]);
@@ -114,8 +117,8 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
       <div className="flex flex-1 min-h-0">
         {/* Activity bar */}
         <div className="flex flex-col items-center gap-1 py-2 w-11 shrink-0 border-r" style={{ borderColor: palette.border, background: palette.bgAlt }}>
-          <ActivityIcon glyph="📄" label="Explorer" active={view === 'files'} palette={palette} onClick={() => { setView('files'); setDrawerOpen(true); }} />
-          <ActivityIcon glyph="⑂" label="Source Control" active={view === 'scm'} palette={palette} badge={changes.length} onClick={() => { setView('scm'); setDrawerOpen(true); }} />
+          <ActivityIcon glyph="📄" label={translate({ key: 'workspaces.editor.explorer' })} active={view === 'files'} palette={palette} onClick={() => { setView('files'); setDrawerOpen(true); }} />
+          <ActivityIcon glyph="⑂" label={translate({ key: 'workspaces.editor.scm' })} active={view === 'scm'} palette={palette} badge={changes.length} onClick={() => { setView('scm'); setDrawerOpen(true); }} />
         </div>
 
         {/* Sidebar — inline on md+, overlay drawer on mobile */}
@@ -166,20 +169,20 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
                     onMount={(editor) => { editor.onDidChangeCursorPosition((e) => { setPos({ line: e.position.lineNumber, col: e.position.column }); }); }}
                   />
                 ) : (
-                  <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>Open a file from the explorer</div>
+                  <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.openFileHint' })}</div>
                 )}
               </div>
             </>
           ) : (
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="px-3 py-2 text-[12px] border-b shrink-0" style={{ borderColor: palette.border, color: palette.comment }}>
-                {activeChange ? `${activeChange.path} — ${activeChange.status}` : 'No change selected'}
+                {activeChange ? `${activeChange.path} — ${activeChange.status}` : translate({ key: 'workspaces.editor.noChangeSelected' })}
               </div>
               <div className="flex-1 min-h-0">
                 {activeChange ? (
                   <MonacoDiff original={activeChange.original} modified={activeChange.modified} language={languageForPath(activeChange.path)} theme={theme} />
                 ) : (
-                  <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>No changes</div>
+                  <div className="h-full flex items-center justify-center text-sm" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.noChanges' })}</div>
                 )}
               </div>
             </div>
@@ -187,11 +190,11 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
 
           {/* Status bar */}
           <div className="flex items-center gap-3 px-3 h-6 shrink-0 text-[11px] border-t" style={{ borderColor: palette.border, background: palette.accent, color: palette.type === 'dark' ? '#0b0d12' : '#ffffff' }}>
-            <span>{view === 'files' ? langDefForPath(activePath ?? '').label : 'Source Control'}</span>
+            <span>{view === 'files' ? langDefForPath(activePath ?? '').label : translate({ key: 'workspaces.editor.scm' })}</span>
             {view === 'files' && <span>Ln {pos.line}, Col {pos.col}</span>}
             <div className="flex-1" />
             <span>{getPalette(theme).label}</span>
-            {dirty.size > 0 && <span>● {dirty.size} unsaved</span>}
+            {dirty.size > 0 && <span>● {translate({ key: 'workspaces.editor.unsavedCount', params: [{ key: 'n', value: String(dirty.size) }] })}</span>}
           </div>
         </div>
       </div>
@@ -211,11 +214,12 @@ function ActivityIcon({ glyph, label, active, palette, onClick, badge }: { glyph
 }
 
 function ScmPanel({ changes, activePath, onSelect, palette }: { changes: EditorChange[]; activePath: string | null; onSelect: (p: string) => void; palette: ThemePalette }) {
+  const translate = useTranslator();
   const glyph: Record<GitStatus, string> = { modified: 'M', added: 'A', deleted: 'D' };
   return (
     <div className="h-full overflow-y-auto py-1 text-[13px]" style={{ background: palette.bgAlt, color: palette.fg }}>
-      <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide" style={{ color: palette.comment }}>Source Control · {changes.length}</div>
-      {changes.length === 0 && <div className="px-3 py-2 text-[12px]" style={{ color: palette.comment }}>No changes</div>}
+      <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.scm' })} · {changes.length}</div>
+      {changes.length === 0 && <div className="px-3 py-2 text-[12px]" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.noChanges' })}</div>}
       {changes.map((c) => {
         const color = scmColor(c.status, palette);
         return (
