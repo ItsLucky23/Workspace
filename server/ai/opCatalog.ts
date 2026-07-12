@@ -319,7 +319,15 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { pieceId: { kind: 'pieceId', required: true } },
   },
   'content-unpublish': LATER_D,
-  'save-custom-task': LATER, 'delete-custom-task': LATER_D,
+  //? #86 — the Assistant may PROPOSE a new/updated custom AI task (a named prompt-template). Low-risk
+  //? (creation the user confirms); `trigger-save` stays LATER (its nested on/action/params shape needs a
+  //? richer proposal contract). delete stays a destructive LATER_D.
+  'save-custom-task': {
+    mode: 'enabled',
+    hint: 'save (create/update) a custom AI task — a named, reusable prompt-template the user can run later. params: name (short label), promptTemplate (the prompt, may contain {{vars}})',
+    params: { name: { kind: 'string', required: true }, promptTemplate: { kind: 'string', required: true } },
+  },
+  'delete-custom-task': LATER_D,
   'run-custom-task': {
     mode: 'enabled',
     hint: 'run a saved custom AI task by id (a named prompt-template the user defined). params: taskId (a task id from the list below)',

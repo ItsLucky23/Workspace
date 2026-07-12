@@ -38,6 +38,7 @@ export const CHAT_ENABLED_OPS = [
   'gitlab-resync',
   // run a saved custom AI task by id (#86)
   'run-custom-task',
+  'save-custom-task',
   // run an automation trigger on demand by id (#86)
   'trigger-run',
   // MR review / rollback (#54) — the mrId+ticketKey pair comes from the ctx MR list

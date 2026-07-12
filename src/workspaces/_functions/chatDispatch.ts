@@ -228,6 +228,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const taskId = str(p, 'taskId'); if (!taskId) return;
     void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #86 — the Assistant proposes a new custom AI task (name + prompt-template); accept saves it.
+  'save-custom-task': (p, x) => {
+    const name = str(p, 'name'); const promptTemplate = str(p, 'promptTemplate'); if (!name || !promptTemplate) return;
+    void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'save-custom-task', name, promptTemplate, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #86 — run an automation trigger on demand by id (triggerAction route).
   'trigger-run': (p, x) => {
     const triggerId = str(p, 'triggerId'); if (!triggerId) return;
