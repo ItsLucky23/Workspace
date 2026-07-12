@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 224,
-    "edges": 339,
+    "edges": 341,
     "symbols": 283,
     "callEdges": 42
   },
@@ -1340,6 +1340,10 @@
     },
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2308,6 +2312,10 @@
     },
     {
       "from": "workspaces/scheduled/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/scheduled/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2535,6 +2543,7 @@
       "_functions/menuHandler.ts",
       "main.tsx",
       "settings/page.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/Glossary.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
@@ -2552,6 +2561,7 @@
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
+      "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/sources/page.tsx",
       "workspaces/studio/page.tsx",
@@ -2715,6 +2725,7 @@
       "_functions/menuHandler.ts",
       "main.tsx",
       "settings/page.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/Glossary.tsx",
       "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
@@ -2732,6 +2743,7 @@
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
+      "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/sources/page.tsx",
       "workspaces/studio/page.tsx",
@@ -3365,14 +3377,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 27,
+      "dependents": 29,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 27,
-      "directDependents": 19
+      "dependents": 29,
+      "directDependents": 21
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",

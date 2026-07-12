@@ -786,6 +786,34 @@ const OUTPUT_LANGUAGES: { id: string; label: string }[] = [
 //? creative; the coding + chat features stay on the subscription-billed Claude PTY by design).
 const PROVIDER_FEATURES = ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'];
 const PROVIDER_OPTIONS = [{ id: 'default', item: 'Default' }, { id: 'claude-cli', item: 'Claude' }, { id: 'gemini-api', item: 'Gemini' }];
+
+//? #92 — a custom task's prompt template can carry {{var}} placeholders; extract the distinct names so we
+//? can ask the user to fill them before running (else the task renders its placeholders empty).
+const extractTaskVars = (tpl: string): string[] => [...new Set([...tpl.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map((m) => m[1]).filter((v): v is string => v !== undefined))];
+
+//? A small form that collects a value per {{var}} of a custom task, then runs it. Rendered in the
+//? menuHandler overlay; resolves by calling onRun with the collected vars and closing itself.
+function CustomTaskVarsForm({ vars, onRun }: { vars: string[]; onRun: (values: Record<string, string>) => void }) {
+  const translate = useTranslator();
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(vars.map((v) => [v, ''])));
+  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.customTaskVarsTitle' })}</div>
+      {vars.map((v) => (
+        <label key={v} className="flex flex-col gap-1">
+          <span className="text-xs text-muted font-mono">{v}</span>
+          <input value={values[v] ?? ''} onChange={(e) => { setValues((prev) => ({ ...prev, [v]: e.target.value })); }} className={fieldCls} />
+        </label>
+      ))}
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="play" onClick={() => { onRun(values); void menuHandler.close(); }}>{translate({ key: 'workspaces.workspaceSettings.customTaskRun' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function AiBehaviorTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask } = useWorkspaces();
@@ -858,7 +886,7 @@ function AiBehaviorTab() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-title truncate">{t.name}</span>
                 <div className="flex items-center gap-1 shrink-0">
-                  <WsButton icon="play" onClick={() => { runCustomTask(t.id); }}>{translate({ key: 'workspaces.workspaceSettings.customTaskRun' })}</WsButton>
+                  <WsButton icon="play" onClick={() => { const vars = extractTaskVars(t.promptTemplate); if (vars.length === 0) { runCustomTask(t.id); return; } void menuHandler.open(<CustomTaskVarsForm vars={vars} onRun={(values) => { runCustomTask(t.id, values); }} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.workspaceSettings.customTaskRun' })}</WsButton>
                   <button type="button" onClick={() => { deleteCustomTask(t.id); }} className="text-xs text-muted hover:text-wrong px-1.5 py-1 cursor-pointer"><Icon name="trash" /></button>
                 </div>
               </div>

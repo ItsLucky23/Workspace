@@ -10,13 +10,15 @@ import { useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+import { menuHandler } from 'src/_functions/menuHandler';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { WsButton } from './primitives';
 import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
 const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'ticket.merged', 'suggestion.accepted', 'cron'];
-const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage', 'webhook'];
+//? #50/#88 — 'invoke-agent-role' is now event-attachable (was cron-only on the Scheduled page).
+const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage', 'invoke-agent-role', 'webhook'];
 //? Flat i18n keys (the event kinds contain dots, which would break the translator's dot-nesting).
 const EVENT_KEY: Record<string, string> = {
   'ticket.created': 'workspaces.automation.evTicketCreated', 'ticket.merged': 'workspaces.automation.evTicketMerged',
@@ -33,7 +35,7 @@ const acKey = (a: string): string => ACTION_KEY[a] ?? 'workspaces.automation.acN
 
 export default function AutomationPanel() {
   const translate = useTranslator();
-  const { triggers, saveTrigger, toggleTrigger, deleteTrigger, stages } = useWorkspaces();
+  const { triggers, saveTrigger, toggleTrigger, deleteTrigger, runTrigger, agentRoles, stages } = useWorkspaces();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [on, setOn] = useState<TriggerEventKind>('ticket.created');
@@ -41,24 +43,46 @@ export default function AutomationPanel() {
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [signalKind, setSignalKind] = useState('');
+  const [roleKey, setRoleKey] = useState('');
   const [targetStage, setTargetStage] = useState('');
+  const [matchStage, setMatchStage] = useState('');   // #91 — '' = any stage
+  const [debounce, setDebounce] = useState('');        // #91 — seconds; '' = no debounce
   const [cron, setCron] = useState('0 9 * * *');
   const [webhookUrl, setWebhookUrl] = useState('');
 
   const eventItems: DropdownItem[] = EVENTS.map((e) => ({ id: e, value: e, item: translate({ key: evKey(e) }) }));
   const actionItems: DropdownItem[] = ACTIONS.map((a) => ({ id: a, value: a, item: translate({ key: acKey(a) }) }));
   const stageItems: DropdownItem[] = stages.map((st) => ({ id: st.id, value: st.id, item: st.name }));
+  const roleItems: DropdownItem[] = agentRoles.map((r) => ({ id: r.key, value: r.key, item: r.label, searchText: r.label }));
+  const matchStageItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.automation.matchAnyStage' }) }, ...stageItems];
 
-  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setTargetStage(''); setWebhookUrl(''); setRequiresApproval(false); };
+  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setSignalKind(''); setRoleKey(''); setTargetStage(''); setMatchStage(''); setDebounce(''); setWebhookUrl(''); setRequiresApproval(false); };
   const create = () => {
     if (!name.trim()) return;
     const params: Record<string, unknown> = {};
     if (action === 'notify') { params.title = title || name; params.body = body; }
-    if (action === 'emit-signal') { params.kind = title || 'custom'; }
+    if (action === 'emit-signal') { params.kind = signalKind.trim() || 'custom'; }
     if (action === 'start-stage') { params.targetStageId = targetStage; }
+    if (action === 'invoke-agent-role') { params.role = roleKey; }
     if (action === 'webhook') { params.url = webhookUrl.trim(); }
-    saveTrigger({ name: name.trim(), on, action, requiresApproval, params, ...(on === 'cron' ? { cron } : {}) });
+    //? #91 — optional match facet (stage) + debounce, only meaningful for event triggers (not cron).
+    const match = on !== 'cron' && matchStage ? { stageIds: [matchStage] } : undefined;
+    const debounceSec = Number(debounce);
+    const debounceMs = on !== 'cron' && debounce.trim() && Number.isFinite(debounceSec) && debounceSec > 0 ? Math.round(debounceSec * 1000) : undefined;
+    saveTrigger({
+      name: name.trim(), on, action, requiresApproval, params,
+      ...(on === 'cron' ? { cron } : {}),
+      ...(match ? { match } : {}),
+      ...(debounceMs === undefined ? {} : { debounceMs }),
+    });
     reset();
+  };
+
+  //? #93 — a mis-tap should not destroy a trigger silently; confirm first.
+  const confirmDelete = async (id: string, triggerName: string): Promise<void> => {
+    const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.automation.deleteConfirmTitle' }), content: translate({ key: 'workspaces.automation.deleteConfirmBody', params: [{ key: 'name', value: triggerName }] }) });
+    if (ok) deleteTrigger(id);
   };
 
   return (
@@ -94,7 +118,10 @@ export default function AutomationPanel() {
                 {t.requiresApproval && <span className="rounded bg-warning/15 text-warning px-1.5 py-0.5">{translate({ key: 'workspaces.automation.needsApproval' })}</span>}
               </div>
             </div>
-            <button type="button" onClick={() => { deleteTrigger(t.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0" title={translate({ key: 'workspaces.automation.delete' })}>
+            <button type="button" onClick={() => { runTrigger(t.id); }} className="text-muted hover:text-primary cursor-pointer shrink-0" title={translate({ key: 'workspaces.automation.runNow' })}>
+              <Icon name="play" />
+            </button>
+            <button type="button" onClick={() => { void confirmDelete(t.id, t.name); }} className="text-muted hover:text-wrong cursor-pointer shrink-0" title={translate({ key: 'workspaces.automation.delete' })}>
               <Icon name="trash-can" />
             </button>
           </div>
@@ -127,16 +154,42 @@ export default function AutomationPanel() {
               <input value={body} onChange={(e) => { setBody(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.notifyBodyPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
             </>
           )}
+          {action === 'emit-signal' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.signalKindLabel' })}</span>
+              <input value={signalKind} onChange={(e) => { setSignalKind(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.signalKindPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
+              <span className="text-xs text-disabled">{translate({ key: 'workspaces.automation.signalKindHelp' })}</span>
+            </div>
+          )}
           {action === 'start-stage' && (
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.targetStage' })}</span>
               <Dropdown size="sm" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />
             </div>
           )}
+          {action === 'invoke-agent-role' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.roleLabel' })}</span>
+              <Dropdown size="sm" items={roleItems} value={roleItems.find((i) => i.id === roleKey)} onChange={(it) => { setRoleKey(String(it.id)); }} />
+            </div>
+          )}
           {action === 'webhook' && (
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.webhookUrl' })}</span>
               <input value={webhookUrl} onChange={(e) => { setWebhookUrl(e.target.value); }} placeholder="https://example.com/hook" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary font-mono" />
+            </div>
+          )}
+          {/* #91 — optional match facet (stage) + debounce for event triggers (hidden for cron). */}
+          {on !== 'cron' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.matchStageLabel' })}</span>
+                <Dropdown size="sm" items={matchStageItems} value={matchStageItems.find((i) => i.id === matchStage)} onChange={(it) => { setMatchStage(String(it.id)); }} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.debounceLabel' })}</span>
+                <input type="number" min="0" value={debounce} onChange={(e) => { setDebounce(e.target.value); }} placeholder="0" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
+              </div>
             </div>
           )}
           <label className="flex items-center gap-2 text-sm text-common cursor-pointer">

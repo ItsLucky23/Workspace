@@ -499,6 +499,7 @@
       "customTasksTitle": "Meine KI-Aufgaben",
       "customTasksDesc": "Erstelle einen wiederverwendbaren Prompt (mit {{Variablen}}) und führe ihn bei Bedarf aus - die KI generiert Output, ändert nie deinen Workspace.",
       "customTaskRun": "Ausführen",
+      "customTaskVarsTitle": "Aufgabenvariablen ausfüllen",
       "customTaskNamePlaceholder": "Aufgabenname",
       "customTaskTemplatePlaceholder": "Prompt-Vorlage, z. B. Fasse {{Thema}} in 5 Punkten zusammen",
       "customTaskAdd": "Aufgabe hinzufügen",
@@ -1602,7 +1603,17 @@
       "webhookUrl": "Webhook-URL",
       "acInvokeAi": "Workspace-KI fragen",
       "acInvokeRole": "Agent-Rolle ausführen",
-      "acRunCommand": "Befehl ausführen"
+      "acRunCommand": "Befehl ausführen",
+      "roleLabel": "Agent-Rolle",
+      "signalKindLabel": "Signalart",
+      "signalKindPlaceholder": "z. B. build-ready",
+      "signalKindHelp": "Ein Signal ist ein benanntes Ereignis, auf das andere Trigger oder Phasen warten können.",
+      "matchStageLabel": "Nur für Phase",
+      "matchAnyStage": "Jede Phase",
+      "debounceLabel": "Entprellung (Sekunden)",
+      "runNow": "Jetzt ausführen",
+      "deleteConfirmTitle": "Automatisierung löschen?",
+      "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden."
     },
     "board": {
       "startWithAi": "Sofort mit KI starten",

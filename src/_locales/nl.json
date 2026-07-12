@@ -499,6 +499,7 @@
       "customTasksTitle": "Mijn AI-taken",
       "customTasksDesc": "Schrijf een herbruikbare prompt (met {{variabelen}}) en draai 'm op aanvraag - de AI genereert output, wijzigt nooit je workspace.",
       "customTaskRun": "Draai",
+      "customTaskVarsTitle": "Vul de taakvariabelen in",
       "customTaskNamePlaceholder": "Taaknaam",
       "customTaskTemplatePlaceholder": "Prompt-template, bijv. Vat {{onderwerp}} samen in 5 bullets",
       "customTaskAdd": "Taak toevoegen",
@@ -1602,7 +1603,17 @@
       "webhookUrl": "Webhook-URL",
       "acInvokeAi": "Workspace-AI vragen",
       "acInvokeRole": "Agent-rol draaien",
-      "acRunCommand": "Commando draaien"
+      "acRunCommand": "Commando draaien",
+      "roleLabel": "Agent-rol",
+      "signalKindLabel": "Signaal-soort",
+      "signalKindPlaceholder": "bijv. build-ready",
+      "signalKindHelp": "Een signaal is een benoemde gebeurtenis waar andere triggers of fasen op kunnen wachten.",
+      "matchStageLabel": "Alleen voor fase",
+      "matchAnyStage": "Elke fase",
+      "debounceLabel": "Debounce (seconden)",
+      "runNow": "Nu draaien",
+      "deleteConfirmTitle": "Automatisering verwijderen?",
+      "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt."
     },
     "board": {
       "openTicket": "Ticket openen",

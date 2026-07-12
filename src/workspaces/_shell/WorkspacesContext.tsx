@@ -268,7 +268,7 @@ export interface WorkspacesCtx {
   saveBrand: (b: Partial<Omit<StudioBrandLibrary, 'workspaceId'>>) => Promise<void>;
   promoteBrand: (artifactId: string) => Promise<void>;
   //? #2 automation writes — create/update, enable/disable, delete a trigger (control-ops).
-  saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string }) => void;
+  saveTrigger: (t: { id?: string; name: string; on: string; action: string; params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string; debounceMs?: number }) => void;
   toggleTrigger: (id: string, enabled: boolean) => void;
   deleteTrigger: (id: string) => void;
   runTrigger: (id: string) => void;   // run a trigger's action now (on-demand)

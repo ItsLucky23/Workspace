@@ -499,6 +499,7 @@
       "customTasksTitle": "My AI tasks",
       "customTasksDesc": "Author a reusable prompt (with {{variables}}) and run it on demand - the AI generates output, it never changes your workspace.",
       "customTaskRun": "Run",
+      "customTaskVarsTitle": "Fill in the task variables",
       "customTaskNamePlaceholder": "Task name",
       "customTaskTemplatePlaceholder": "Prompt template, e.g. Summarize {{topic}} in 5 bullets",
       "customTaskAdd": "Add task",
@@ -1602,7 +1603,17 @@
       "webhookUrl": "Webhook URL",
       "acInvokeAi": "Ask Workspace-AI",
       "acInvokeRole": "Run agent role",
-      "acRunCommand": "Run command"
+      "acRunCommand": "Run command",
+      "roleLabel": "Agent role",
+      "signalKindLabel": "Signal kind",
+      "signalKindPlaceholder": "e.g. build-ready",
+      "signalKindHelp": "A signal is a named event other triggers or stages can wait for.",
+      "matchStageLabel": "Only for stage",
+      "matchAnyStage": "Any stage",
+      "debounceLabel": "Debounce (seconds)",
+      "runNow": "Run now",
+      "deleteConfirmTitle": "Delete automation?",
+      "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone."
     },
     "board": {
       "openTicket": "Open ticket",

@@ -499,6 +499,7 @@
       "customTasksTitle": "Mes tâches IA",
       "customTasksDesc": "Rédigez un prompt réutilisable (avec {{variables}}) et exécutez-le à la demande - l'IA génère un résultat, ne modifie jamais votre espace.",
       "customTaskRun": "Lancer",
+      "customTaskVarsTitle": "Remplir les variables de la tâche",
       "customTaskNamePlaceholder": "Nom de la tâche",
       "customTaskTemplatePlaceholder": "Modèle de prompt, ex. Résumez {{sujet}} en 5 points",
       "customTaskAdd": "Ajouter",
@@ -1602,7 +1603,17 @@
       "webhookUrl": "URL du webhook",
       "acInvokeAi": "Demander à Workspace-AI",
       "acInvokeRole": "Exécuter un rôle d'agent",
-      "acRunCommand": "Exécuter une commande"
+      "acRunCommand": "Exécuter une commande",
+      "roleLabel": "Rôle d'agent",
+      "signalKindLabel": "Type de signal",
+      "signalKindPlaceholder": "ex. build-ready",
+      "signalKindHelp": "Un signal est un événement nommé que d'autres déclencheurs ou étapes peuvent attendre.",
+      "matchStageLabel": "Uniquement pour l'étape",
+      "matchAnyStage": "Toute étape",
+      "debounceLabel": "Anti-rebond (secondes)",
+      "runNow": "Exécuter maintenant",
+      "deleteConfirmTitle": "Supprimer l'automatisation ?",
+      "deleteConfirmBody": "Supprimer « {{name}} » ? Cette action est irréversible."
     },
     "board": {
       "startWithAi": "Démarrer avec l'IA tout de suite",

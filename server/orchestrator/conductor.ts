@@ -696,12 +696,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'bulk-move': {
       const keys = strArr(target, 'ticketIds'); const stageId = str(payload, 'stageId');
       if (keys.length === 0 || !stageId) return [];
+      //? #83 — capture each ticket's PRIOR stage before the move so we can fire stage.on_complete for it.
+      const priorStages = await prisma.ticket.findMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, select: { key: true, stageId: true, projectId: true } });
+      const projectByKey = new Map(priorStages.map((p) => [p.key, p.projectId]));
       await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
       for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `moved to ${stageId}`);
       //? Entering an aiEnabled stage → cut each ticket's DEV-#### worktree (07 §A step 5).
       await activateWorktreesForStage(action.workspaceId, keys, stageId);
-      //? Automation (#2): each ticket entering the stage may fire `stage.on_enter` triggers.
-      for (const key of keys) void fireEvent(prisma, action.workspaceId, { on: 'stage.on_enter', ticketKey: key, stageId });
+      //? Automation (#2, #83): each ticket LEAVING its prior stage may fire `stage.on_complete`, and
+      //? ENTERING the new stage may fire `stage.on_enter` triggers (projectId carried for match facets).
+      for (const p of priorStages) if (p.stageId && p.stageId !== stageId) void fireEvent(prisma, action.workspaceId, { on: 'stage.on_complete', ticketKey: p.key, stageId: p.stageId, ...(p.projectId ? { projectId: p.projectId } : {}) });
+      for (const key of keys) { const projectId = projectByKey.get(key); void fireEvent(prisma, action.workspaceId, { on: 'stage.on_enter', ticketKey: key, stageId, ...(projectId ? { projectId } : {}) }); }
       return ticketRowsForKeys(action.workspaceId, keys);
     }
     case 'bulk-status': {
@@ -1143,6 +1148,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         await indexWorkspace(prisma, action.workspaceId, reindexProjectId ? { projectId: reindexProjectId } : {}).catch(() => null);
         await indexInstitutionalMemory(prisma, action.workspaceId).catch(() => null);
       })();
+      //? Automation (#83): a successful merge fires `ticket.merged` (stage/project carried for match facets).
+      if (merge.ok) {
+        const mergedTicket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { stageId: true, projectId: true } });
+        void fireEvent(prisma, action.workspaceId, { on: 'ticket.merged', ticketKey, ...(mergedTicket?.stageId ? { stageId: mergedTicket.stageId } : {}), ...(mergedTicket?.projectId ? { projectId: mergedTicket.projectId } : {}) });
+      }
       const view = await mrForTicket(prisma, action.workspaceId, ticketKey);
       return view ? { ...view, actionResult: { ok: merge.ok, ...(merge.ok ? {} : { reason: merge.reason, ...(merge.files ? { files: merge.files } : {}) }) } } : null;
     }
@@ -1995,6 +2005,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         const scheduledAt = Number.isFinite(schedMs) ? new Date(schedMs) : null;
         if (contentProjectId && assetId && isPublishPlatform(platform)) await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}), scheduledAt });
       }
+      //? Automation (#83): accepting any suggestion fires `suggestion.accepted` so a trigger can chain off it.
+      void fireEvent(prisma, action.workspaceId, { on: 'suggestion.accepted' });
       return;
     }
     // ---- automation triggers (#2) ----
