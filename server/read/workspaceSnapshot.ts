@@ -62,7 +62,7 @@ const asTriggerAction = (s: string): TriggerActionKind => ((TRIGGER_ACTIONS as r
 //? branch of the `===` chain TS narrows the string to the compared literals.
 const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key : 'member');
 const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s === 'test' || s === 'review' || s === 'final' ? s : 'code');
-const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' ? s : 'maintenance');
+const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' || s === 'copilot' ? s : 'maintenance');
 const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' || s === 'ci' ? s : 'ai-message');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
 const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' ? s : 'container-failure');
@@ -533,7 +533,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         return { id: l.id, ticketId: ticketKeyById.get(l.ticketId) ?? l.ticketId, artifactId: l.artifactId, artifactKind: l.artifactKind, name, label: l.label ?? null };
       }),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: sp.startAt ? sp.startAt.toISOString().slice(0, 10) : null, end: sp.endAt ? sp.endAt.toISOString().slice(0, 10) : null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: sp.endAt ? Math.max(0, Math.ceil((sp.endAt.getTime() - Date.now()) / 86_400_000)) : null })),
-      suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
+      suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id), ...(s.patch === null ? {} : { patch: s.patch }) })),
       //? RS-B1 (SECURITY) — internal `__`-rows (provider keys, OAuth-token JSON, per-feature
       //? overrides) NEVER reach the client env list (mirrors serviceEnv.ts's container filter).
       //? The derived aiOverrides/mediaModels projections above expose only feature→id mappings.

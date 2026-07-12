@@ -426,11 +426,11 @@ export interface StageHistoryEntry {
 //? 'automation' (proposes a WorkspaceTrigger).
 export interface AiSuggestion {
   id: string;
-  type: 'link-tickets' | 'create-epic' | 'config-review' | 'maintenance' | 'automation';
+  type: 'link-tickets' | 'create-epic' | 'config-review' | 'maintenance' | 'automation' | 'copilot';
   title: string;
   body: string;
   ticketIds: string[];
-  patch?: unknown; // appliable config/automation patch { path, before, after } (config-review/automation only)
+  patch?: unknown; // appliable config/automation patch { path, before, after }; #109 copilot: { navigate, prefill, op }
 }
 
 //? The canonical Assistant propose-only output (04b §8, B-23). `AiSuggestion` above

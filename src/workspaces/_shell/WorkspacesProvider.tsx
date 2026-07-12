@@ -1024,6 +1024,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       acceptSuggestion: (id) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, clientRequestId: nextReqId() }, receiver: room });
+        //? #109 — a COPILOT suggestion ("AI drives the UI") carries a { navigate } directive in its patch:
+        //? on accept, drive the client there (the accept-suggestion op above flips its status server-side).
+        const sug = snap.suggestions.find((s) => s.id === id);
+        if (sug?.type === 'copilot' && sug.patch !== null && typeof sug.patch === 'object') {
+          const target = (sug.patch as Record<string, unknown>).navigate;
+          if (typeof target === 'string' && target.length > 0) void navigate(pathForView(target));
+        }
         setLocalSuggestionsDismissed((prev) => [...prev, id]);
       },
       notifications: snap.notifications,
