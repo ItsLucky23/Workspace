@@ -3959,3 +3959,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **⚠️ OPEN VRAAG (defaults per Rule 3a, user afwezig):** #87/#165 verbreden de nav bewust; herzien als het te breed voelt.
 **Verify:** typecheck0·build✓·lint0·ai:lint0.
 **Files:** `src/workspaces/_data/modules.ts`, `src/_components/editor/{FileExplorer,CodeEditorPanel}.tsx`.
+
+## 2026-07-13 — 🟢 v3-build golf 51 (preview): #38 (inline iframe-preview)
+**Wat:** de ticket-preview opende ALLEEN in een nieuw tabblad (`globalThis.open`), geen inline weergave. Nu (decision A = beide opties): de auto-`globalThis.open` verwijderd uit `openPreview` én de time-travel-`settle`, en een inline `<iframe>` (60vh) onder de actie-balk gerenderd zodra `preview.url` gezet is — voor zowel gewone preview als time-travel/ref-preview. De bestaande URL-link (`target=_blank`) blijft als "in nieuw tabblad", dus beide opties zonder dubbele preview. Return in fragment gewrapt.
+**Verify:** typecheck0·build✓·lint0·ai:lint0.
+**Files:** `src/workspaces/board/[ticketId]/page.tsx`.

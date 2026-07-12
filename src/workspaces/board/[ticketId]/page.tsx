@@ -230,7 +230,7 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   const openPreview = async (): Promise<void> => {
     setPreview({ loading: true });
     const res = await ctx.openPreview(ticket.id);
-    if (res.ok && res.url) { setPreview({ loading: false, url: res.url }); globalThis.open(res.url, '_blank'); }
+    if (res.ok && res.url) { setPreview({ loading: false, url: res.url }); }
     else setPreview({ loading: false, err: true });
   };
 
@@ -240,7 +240,7 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   const timeTravel = (spec: TravelSpec): void => {
     setPreview({ loading: true });
     const settle = (r: { status: string; result?: { ok?: boolean; url?: string } }): void => {
-      if (r.status === 'success' && r.result?.ok && r.result.url) { setPreview({ loading: false, url: r.result.url }); globalThis.open(r.result.url, '_blank'); }
+      if (r.status === 'success' && r.result?.ok && r.result.url) { setPreview({ loading: false, url: r.result.url }); }
       else setPreview({ loading: false, err: true });
     };
     //? #25 — a raw ref goes through open-ref-preview; commit/revert/asof through timeTravelPreview.
@@ -273,6 +273,7 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   }
 
   return (
+    <>
     <div className="px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
       <WsButton variant="secondary" icon="display" disabled={preview.loading} onClick={() => { void openPreview(); }}>
         {translate({ key: preview.loading ? 'workspaces.ticket.previewOpening' : 'workspaces.ticket.openPreview' })}
@@ -291,6 +292,13 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
         </div>
       )}
     </div>
+    {/* #38 — inline preview (decision A: inline is primary; the URL link above opens it in a new tab). */}
+    {preview.url !== undefined && (
+      <div className="px-4 md:px-6 pb-3">
+        <iframe title={translate({ key: 'workspaces.ticket.openPreview' })} src={preview.url} className="w-full h-[60vh] rounded-xl border border-container1-border bg-container1" />
+      </div>
+    )}
+    </>
   );
 }
 
