@@ -3778,3 +3778,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de 'Regenerate' (op doc-cards) + 'Reindex' (op frozen skills) knoppen waren `noop`-stubs ("Fase 2"). Nu gekoppeld aan de bestaande ctx-methods: Regenerate → `scanDocs()` (her-scant de docs — de beschikbare actie in de frozen 7+6-surface, geen per-doc-op), Reindex → `scanIndex()` (herbouwt de RAG-code-index), elk met een bevestigings-toast. De stale "Fase 2: no ops exist"-comment + de orphaned `noop`-const verwijderd.
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: sources.{regenerateQueued,reindexQueued} ×4.
 **Files:** `src/workspaces/sources/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 16 (Board): #9
+**Wat:** de kanban had geen per-kaart handmatige stage-verplaatsing (alleen via backlog-select-mode of de ticket-detail-advance-knop) — laag ontdekbaar voor een board-first gebruiker. Nu een "Verplaats naar fase…"-actie in het kaart-⋯-menu die een `StageMovePicker` (menuHandler-overlay met stage-dropdown) opent → `moveTicket(id, stageId)`. Bewuste keuze om het picker-component te scheiden zodat het hooks kan gebruiken (cardMenuItems is een gewone functie).
+**Verify:** typecheck0·build✓·lint0(pre-existing #36-warning)·localeIntegrity 8/8. Nieuwe i18n: board.{moveToStage,moveToStageTitle,moveToStageConfirm} ×4.
+**Files:** `src/workspaces/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

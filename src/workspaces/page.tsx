@@ -55,11 +55,32 @@ function buildColumns(tickets: Ticket[], stages: PipelineStage[], overrides: Rec
   return cols;
 }
 
+//? #9 — a manual per-card stage move (discoverability for board-first users; the board is otherwise
+//? AI-driven). A small stage picker opened from the card menu → moveTicket. Kept as its own component
+//? so it can use hooks (cardMenuItems is a plain function).
+function StageMovePicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<typeof useWorkspaces> }) {
+  const translate = useTranslator();
+  const [stageId, setStageId] = useState(ticket.stageId);
+  const items: DropdownItem[] = ctx.stages.map((s) => ({ id: s.id, value: s.id, item: s.name }));
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.moveToStageTitle', params: [{ key: 'id', value: ticket.id }] })}</div>
+      <Dropdown size="sm" items={items} value={items.find((i) => i.id === stageId)} onChange={(it) => { setStageId(String(it.id)); }} />
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="arrow-right" disabled={stageId === ticket.stageId} onClick={() => { ctx.moveTicket(ticket.id, stageId); void menuHandler.close(); }}>{translate({ key: 'workspaces.board.moveToStageConfirm' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, translate: ReturnType<typeof useTranslator>): PopMenuItem[] {
   const paused = ticket.status === 'paused';
   return [
     { label: translate({ key: 'workspaces.board.openTicket' }), icon: 'up-right-from-square', onClick: () => { ctx.openTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
+    //? #9 — manual stage move (opens a stage picker).
+    { label: translate({ key: 'workspaces.board.moveToStage' }), icon: 'arrow-right-arrow-left', onClick: () => { void menuHandler.open(<StageMovePicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { /* Fase 2: attach a TicketReference */ } },
     { divider: true },
     { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { if (paused) ctx.resumeTicket(ticket.id); else ctx.pauseTicket(ticket.id); } },
