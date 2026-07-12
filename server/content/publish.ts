@@ -9,7 +9,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { isLeader } from '../orchestrator/cluster';
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
-import { extractExternalId } from './publishMetrics';
+import { extractExternalId, ingestPublishMetrics, buildMetricsRequest, type MetricsFetch } from './publishMetrics';
 
 //? O2 — pull a validated per-platform variant out of a piece's `publishVariants` JSON. Unknown/garbage → null
 //? (the upload falls back to title-only, its prior behaviour). Pure + exported for tests.
@@ -136,4 +136,72 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
 //? O3 — start the leader-gated scheduled-post loop (mirrors the watchdog interval). Returns the timer.
 export function startScheduledPublisher(): ReturnType<typeof setInterval> {
   return setInterval(() => { if (isLeader()) void runScheduledPublish(getPrismaClient(), Date.now()).catch((error: unknown) => { console.error('[publish] scheduler error:', error); }); }, PUBLISH_INTERVAL_MS);
+}
+
+//? #131 — the pure per-platform DELETE request builder. YouTube supports `videos.delete`; TikTok has NO
+//? public post-delete endpoint (retract-only), so it returns null and the caller falls back to marking the
+//? job 'unpublished' without a live delete. Unknown platform / empty id ⇒ null. Caller supplies the token.
+export function buildDeleteRequest(platform: string, externalId: string, accessToken: string): { url: string; method: string; headers: Record<string, string> } | null {
+  if (!externalId) return null;
+  if (platform === 'youtube') {
+    return { url: `https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(externalId)}`, method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } };
+  }
+  return null; // tiktok + others: no public delete API → retract-only
+}
+
+//? #131 — best-effort platform delete for a retracted post. Uses the platform's valid OAuth connection.
+//? Returns `{ deleted, reason? }` — never throws (a failed/absent delete still lets the local retract proceed).
+export async function deletePlatformPost(prisma: PrismaClient, workspaceId: string, platform: string, externalId: string): Promise<{ deleted: boolean; reason?: string }> {
+  if (platform !== 'youtube' && platform !== 'tiktok') return { deleted: false, reason: 'unsupported-platform' };
+  const conn = await getValidConnection(prisma, workspaceId, platform);
+  if (!conn) return { deleted: false, reason: 'no-connection' };
+  const req = buildDeleteRequest(platform, externalId, conn.accessToken);
+  if (!req) return { deleted: false, reason: 'no-delete-adapter' };
+  const [err, ok] = await tryCatch(async () => {
+    //? External platform delete API — not a framework `/api/*` route.
+    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+    const r = await fetch(req.url, { method: req.method, headers: req.headers });
+    return r.ok;
+  });
+  return err || ok !== true ? { deleted: false, reason: 'delete-failed' } : { deleted: true };
+}
+
+//? #141 — how often the leader refreshes audience metrics for posted content (default hourly; APIs are slow-moving).
+const METRICS_INTERVAL_MS = Number(process.env.WS_METRICS_INGEST_INTERVAL_MIN ?? '60') * 60_000;
+
+//? #141 — the LIVE metrics-fetch transport for one workspace: use the platform's valid OAuth connection to
+//? call its stats endpoint. No connection / no keys ⇒ `undefined` (ingest skips that job — never blocks).
+export function buildLiveMetricsFetch(prisma: PrismaClient, workspaceId: string): MetricsFetch {
+  return async (platform, externalId) => {
+    if (platform !== 'youtube' && platform !== 'tiktok') return;
+    const conn = await getValidConnection(prisma, workspaceId, platform);
+    if (!conn) return;
+    const req = buildMetricsRequest(platform, externalId, conn.accessToken);
+    if (!req) return;
+    const [err, json] = await tryCatch(async () => {
+      //? External platform stats API — not a framework `/api/*` route.
+      // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+      const r = await fetch(req.url, { method: req.method, headers: req.headers, ...(req.body === undefined ? {} : { body: req.body }) });
+      if (!r.ok) throw new Error(`metrics ${String(r.status)}`);
+      return r.json() as Promise<unknown>;
+    });
+    return err ? undefined : json;
+  };
+}
+
+//? #141 — refresh metrics for every workspace that has posted content, using the live per-workspace transport.
+//? Best-effort per workspace (one failing workspace never blocks the rest). Returns the total jobs updated.
+export async function runMetricsIngest(prisma: PrismaClient): Promise<{ updated: number }> {
+  const rows = await prisma.publishJob.findMany({ where: { status: 'done', externalId: { not: null } }, select: { workspaceId: true }, distinct: ['workspaceId'] });
+  let updated = 0;
+  for (const { workspaceId } of rows) {
+    const [, res] = await tryCatch(() => ingestPublishMetrics(prisma, workspaceId, buildLiveMetricsFetch(prisma, workspaceId)));
+    updated += res?.updated ?? 0;
+  }
+  return { updated };
+}
+
+//? #141 — start the leader-gated metrics-ingest loop (mirrors the scheduled-publisher). Returns the timer.
+export function startMetricsIngest(): ReturnType<typeof setInterval> {
+  return setInterval(() => { if (isLeader()) void runMetricsIngest(getPrismaClient()).catch((error: unknown) => { console.error('[metrics] ingest error:', error); }); }, METRICS_INTERVAL_MS);
 }

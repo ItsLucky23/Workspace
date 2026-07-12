@@ -212,8 +212,10 @@ import { startLeaderElection } from './orchestrator/cluster';
     if (moved > 0) console.log(`[R3-b] migrated ${String(moved)} legacy workspace repo(s) into their first project's slot`);
   })().catch((e: unknown) => { console.error('[R3-b] legacy repo migration error:', e); });
   //? O3: the leader-gated scheduled-post loop fires due PublishJobs at their scheduledAt.
-  const { startScheduledPublisher } = await import('./content/publish');
+  //? #141: the leader-gated metrics-ingest loop refreshes audience metrics for posted content.
+  const { startScheduledPublisher, startMetricsIngest } = await import('./content/publish');
   startScheduledPublisher();
+  startMetricsIngest();
   //? Automation (#2): the leased per-minute cron scheduler fires `on:'cron'` WorkspaceTriggers.
   //? Dynamic import (keeps the automation graph out of the pre-secret-resolution static graph).
   const { startCronScheduler } = await import('./automation/cron');

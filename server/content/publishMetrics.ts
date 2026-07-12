@@ -45,6 +45,21 @@ export function extractExternalId(platform: string, externalUrl: string): string
 
 export type MetricsFetch = (platform: string, externalId: string) => Promise<unknown>;
 
+//? #141 — the pure per-platform stats REQUEST builder (transport-free, unit-testable). YouTube reads
+//? `videos.list?part=statistics&id=<id>`; TikTok POSTs the video-query with the id filter. Returns null
+//? for an unknown platform / empty id (the live transport then skips). The caller supplies the OAuth token.
+export interface MetricsHttpRequest { url: string; method: string; headers: Record<string, string>; body?: string }
+export function buildMetricsRequest(platform: string, externalId: string, accessToken: string): MetricsHttpRequest | null {
+  if (!externalId) return null;
+  if (platform === 'youtube') {
+    return { url: `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${encodeURIComponent(externalId)}`, method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } };
+  }
+  if (platform === 'tiktok') {
+    return { url: 'https://open.tiktokapis.com/v2/video/query/?fields=view_count,like_count,comment_count,share_count', method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ filters: { video_ids: [externalId] } }) };
+  }
+  return null;
+}
+
 //? Ingest metrics for every posted job with an external id. Injectable fetch (fixture/live). Best-effort per
 //? job; a fetch failure leaves the prior metrics untouched. Returns the count updated.
 export async function ingestPublishMetrics(prisma: PrismaClient, workspaceId: string, fetchMetrics: MetricsFetch): Promise<{ updated: number }> {

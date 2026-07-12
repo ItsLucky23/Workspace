@@ -5,8 +5,22 @@
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { ingestPublishMetrics } = await import('../../server/content/publishMetrics');
+const { ingestPublishMetrics, buildMetricsRequest } = await import('../../server/content/publishMetrics');
+const { buildDeleteRequest } = await import('../../server/content/publish');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+
+//? #141/#131 — the pure per-platform stats + delete request builders (no DB/transport).
+{
+  const ytStats = buildMetricsRequest('youtube', 'YT1', 'tok');
+  assert(ytStats !== null && ytStats.method === 'GET' && ytStats.url.includes('part=statistics') && ytStats.url.includes('YT1'), 'youtube stats request built with the id + statistics part');
+  assert(ytStats?.headers.Authorization === 'Bearer tok', 'stats request carries the bearer token');
+  const ttStats = buildMetricsRequest('tiktok', 'TT1', 'tok');
+  assert(ttStats !== null && ttStats.method === 'POST' && (ttStats.body ?? '').includes('TT1'), 'tiktok stats request POSTs the video-id filter');
+  eq(buildMetricsRequest('youtube', '', 'tok'), null, 'an empty external id yields no stats request');
+  const ytDel = buildDeleteRequest('youtube', 'YT1', 'tok');
+  assert(ytDel !== null && ytDel.method === 'DELETE' && ytDel.url.includes('YT1'), 'youtube delete request built (videos.delete)');
+  eq(buildDeleteRequest('tiktok', 'TT1', 'tok'), null, 'tiktok has no public delete adapter (retract-only)');
+}
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `pm-${String(stamp)}@youcomm.nl`, name: 'Pm' } });

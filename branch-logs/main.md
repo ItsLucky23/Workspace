@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 5 (#141 metrics-ingest leader-loop, #131 delete-adapters)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did:**
+- **#141** (owner A: schedule ingestPublishMetrics op leader-loop + live transport). `publishMetrics.ts` kreeg een pure `buildMetricsRequest(platform,id,token)` (YouTube videos.list?statistics · TikTok video/query POST). `publish.ts`: `buildLiveMetricsFetch(prisma,ws)` (getValidConnection → stats-endpoint; geen keys ⇒ undefined = skip), `runMetricsIngest` (per-workspace distinct, best-effort), `startMetricsIngest()` leader-gated interval (default 60min). Gewired in `server.ts` naast startScheduledPublisher.
+- **#131** (owner A: per-platform delete-adapters). `publish.ts`: pure `buildDeleteRequest` (YouTube videos.delete; TikTok=null=géén publieke delete-API → retract-only) + `deletePlatformPost(prisma,ws,platform,id)` (best-effort, throwt nooit). Conductor `content-unpublish` roept nu de delete-adapter aan (leest job.externalId) vóór het 'unpublished'-markeren.
+
+**Files touched:** `server/content/publishMetrics.ts`, `server/content/publish.ts`, `server/server.ts`, `server/orchestrator/conductor.ts`, `tests/integration/publishMetricsIngest.test.mts` (+builder-assertions).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, publishMetricsIngest 11/11 (pure builders + ingest E2E vs DB). Live metrics-fetch/delete vereisen OAuth-keys (user erbij) — de transport no-opt zonder keys; de scheduling + builders zijn bewezen.
+
+**Notes:** TikTok kent geen publieke post-delete → retract-only (bewust; gedocumenteerd). Metrics-loop is leader-gated (multi-instance-safe, ADR 0015).
+
 ## 2026-07-13 — completion-gaps-v3 batch 4 (#90 run-command / invoke-workspace-ai executors)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

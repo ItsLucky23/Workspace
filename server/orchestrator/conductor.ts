@@ -40,7 +40,7 @@ import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
 import type { MediaFeature } from '../media/types';
-import { publishAsset, isPublishPlatform } from '../content/publish';
+import { publishAsset, isPublishPlatform, deletePlatformPost } from '../content/publish';
 import { indexChannelBrand } from '../content/brandMemory';
 import { jsonInput } from '../util/json';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo } from '../git/repoStore';
@@ -1783,11 +1783,14 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return;
     }
     case 'content-unpublish': {
-      //? S2 — retract a published post: mark the done PublishJob 'unpublished' (best-effort platform delete is
-      //? a follow-up — no platform delete adapter yet). Spend is monotonic; refunds are out of scope (flagged).
+      //? S2/#131 — retract a published post: best-effort PLATFORM DELETE (YouTube deletes via the API; TikTok
+      //? has no public delete endpoint → retract-only) THEN mark the done PublishJob 'unpublished'. The delete
+      //? never blocks the local status change. Spend is monotonic; refunds are out of scope (flagged).
       const assetId = str(payload, 'assetId');
       const platform = str(payload, 'platform');
       if (!assetId || !platform) return;
+      const job = await prisma.publishJob.findFirst({ where: { workspaceId: action.workspaceId, assetId, platform, status: 'done' }, select: { externalId: true } });
+      if (job?.externalId) await deletePlatformPost(prisma, action.workspaceId, platform, job.externalId);
       await prisma.publishJob.updateMany({ where: { workspaceId: action.workspaceId, assetId, platform, status: 'done' }, data: { status: 'unpublished' } });
       broadcastContentDirty(action.workspaceId);
       return;
