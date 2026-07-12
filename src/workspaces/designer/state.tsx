@@ -77,6 +77,9 @@ export interface DesignerCtx {
   activeThemeName: string | null;
   activeStyleName: string | null;
   useInProject: (kind: 'theme' | 'style') => Promise<boolean>;
+  //? #161 — persist the active animation to the designer library (save-only; NOT coupled to activation,
+  //? unlike useInProject) so a generated/edited animation survives a reload.
+  saveAnimation: () => Promise<boolean>;
 }
 
 const Ctx = createContext<DesignerCtx | null>(null);
@@ -185,6 +188,17 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         if (!id) return false;
         const [e2, act] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'setActive', artifactId: id } }));
         if (e2 || act?.status !== 'success') return false;
+        refetch();
+        return true;
+      },
+      //? #161 — save the active animation to the library (op 'save' only; no setActive).
+      saveAnimation: async () => {
+        const workspaceId = activeWorkspace.id;
+        const a = anims.find((x) => x.id === activeAnimId);
+        if (!workspaceId || !a) return false;
+        const artifact = { kind: 'animation', name: a.name, description: a.description, content: a, source: a.source };
+        const [err, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
+        if (err || saved?.status !== 'success') return false;
         refetch();
         return true;
       },

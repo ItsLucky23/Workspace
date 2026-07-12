@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 import { motion } from 'motion/react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { WsButton } from '../../_components/primitives';
@@ -50,7 +50,7 @@ export default function Animations() {
       {/* playground + editor */}
       <div className="flex-1 min-h-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-5 max-w-4xl">
         <SectionHead icon="wave-square" title={a.name} sub={a.description || translate({ key: 'workspaces.designer.animationsSub' })}
-          right={<div className="flex items-center gap-2"><SourceBadge source={a.source} /><WsButton icon="rotate" onClick={() => { setReplay((r) => r + 1); }}>{translate({ key: 'workspaces.designer.replay' })}</WsButton></div>} />
+          right={<div className="flex items-center gap-2"><SourceBadge source={a.source} /><WsButton icon="rotate" onClick={() => { setReplay((r) => r + 1); }}>{translate({ key: 'workspaces.designer.replay' })}</WsButton>{/* #161 — save the animation to the library (survives reload). */}<WsButton variant="secondary" icon="check" onClick={() => { void d.saveAnimation().then((ok) => { if (ok) notify.success({ key: 'workspaces.designer.animSaved' }); else notify.error({ key: 'workspaces.designer.animSaveFailed' }); }); }}>{translate({ key: 'workspaces.designer.saveAnim' })}</WsButton></div>} />
 
         {/* stage */}
         <div className="rounded-2xl border border-container1-border bg-container1 p-8 flex items-center justify-center min-h-52 overflow-hidden">
