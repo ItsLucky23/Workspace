@@ -10,7 +10,7 @@ import { generateArtifact, KIND_META, type ArtifactKind, type StudioRole } from 
 
 const KINDS_FOR: Record<StudioRole, ArtifactKind[]> = {
   designer: ['landing', 'component', 'brand'],
-  marketer: ['copy', 'strategy', 'email', 'ads', 'social', 'names'],
+  marketer: ['copy', 'strategy', 'email', 'ads', 'social', 'names', 'thumbnail', 'videoScript'],
 };
 
 function makeRole(role: StudioRole, label: string, description: string): void {

@@ -53,7 +53,7 @@ const asArtifactStatus = (s: string): StudioArtifact['status'] => (s === 'genera
 
 //? DB-string → the trigger unions (fallback to a safe default so a stale row can't crash the snapshot).
 const TRIGGER_ONS: readonly TriggerEventKind[] = ['stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.created', 'ticket.merged', 'suggestion.accepted', 'cron'];
-const TRIGGER_ACTIONS: readonly TriggerActionKind[] = ['start-stage', 'invoke-workspace-ai', 'invoke-agent-role', 'run-command', 'emit-signal', 'notify'];
+const TRIGGER_ACTIONS: readonly TriggerActionKind[] = ['start-stage', 'invoke-workspace-ai', 'invoke-agent-role', 'run-command', 'emit-signal', 'webhook', 'notify'];
 const asTriggerOn = (s: string): TriggerEventKind => ((TRIGGER_ONS as readonly string[]).includes(s) ? s : 'ticket.created') as TriggerEventKind;
 const asTriggerAction = (s: string): TriggerActionKind => ((TRIGGER_ACTIONS as readonly string[]).includes(s) ? s : 'notify') as TriggerActionKind;
 
@@ -435,7 +435,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     return {
       workspaces, activeWorkspaceId,
-      projects: projectRows.map((p): ProjectSummary => ({ id: p.id, name: p.name, ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}) })),
+      projects: projectRows.map((p): ProjectSummary => ({ id: p.id, name: p.name, ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}), ...(p.baseImageRef ? { baseImageRef: p.baseImageRef } : {}), ...(p.stack ? { stack: p.stack } : {}) })),
       activeProjectId,
       services: serviceRows.map((s): ServiceSummary => ({ id: s.id, projectId: s.projectId, name: s.name, path: s.path })),
       serviceStacks: serviceStackRows.map((s): ServiceStackSummary => ({ id: s.id, name: s.name, status: s.status, services: s.services })),

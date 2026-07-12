@@ -16,7 +16,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string };
+  data: { workspaceId: string; projectId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -26,6 +26,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workspaceSettings);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const result = await buildProjectImage(functions.db.prisma, workspaceId);
+  //? #44 — build the ACTIVE project (falls back to first when omitted), not always project #1.
+  const result = await buildProjectImage(functions.db.prisma, workspaceId, data.projectId);
   return { status: 'success', result };
 };

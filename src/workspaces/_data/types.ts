@@ -144,6 +144,8 @@ export interface ProjectSummary {
   id: string;
   name: string;
   gitUrl?: string;
+  baseImageRef?: string;   // #45 — the built/selected image tag, so a reload shows what image is built
+  stack?: string;          // #45 — resolved stack (node/python/…) when no explicit image
 }
 
 //? A persistent environment (ADR 0037): a dev/staging/prod deployment at a stable route.

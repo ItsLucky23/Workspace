@@ -241,7 +241,9 @@ function ReferenceLibrarySection() {
 
 //? Channel manager — a channel = a platform + brand identity a piece binds to (A2). Create/delete via the
 //? generic runContentOp (channel-create/channel-delete are content-* control-ops).
-const CHANNEL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'linkedin', 'none'];
+//? Only YouTube + TikTok have publish builders (IG/LinkedIn record a 'platform.notBuilt' job), so they
+//? are hidden from the channel platform picker until their builders land (#147 — consistent roadmap signal).
+const CHANNEL_PLATFORMS = ['youtube', 'tiktok', 'none'];
 function ChannelManagerSection() {
   const translate = useTranslator();
   const { content, runContentOp } = useWorkspaces();

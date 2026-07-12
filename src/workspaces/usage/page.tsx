@@ -1,7 +1,8 @@
 //? Workspaces — Usage. No monetary budget/cap/alert (we run Claude via the Pro
 //? Max CLI subscription, not a metered API), so this is about token volume +
 //? time + who handled what. Activity chart, per-ticket breakdown (tokens +
-//? time, no cost), and a per-member breakdown with counters. Dummy data.
+//? time, no cost), and a per-member breakdown with counters. Data comes from
+//? the real SpendRecord aggregate (server aggregateUsage), not dummy rows.
 
 import { useMemo, useState } from 'react';
 

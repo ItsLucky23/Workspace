@@ -516,6 +516,10 @@ function DevCommandCard({ workspaceId }: { workspaceId: string }) {
 
 function DockerfileReview({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
+  //? #44 — target the ACTIVE project so a multi-project workspace builds the right image (not project #1).
+  const { activeProject } = useWorkspaces();
+  const projectId = activeProject?.id;
+  const projectData = () => ({ workspaceId, ...(projectId ? { projectId } : {}) });
   const [draft, setDraft] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<'generate' | 'save' | 'build' | null>(null);
@@ -540,15 +544,15 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
   //? no cancel guard is needed (the effect runs once per mounted workspace).
   useEffect(() => {
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/getDockerfile', version: 'v1', data: { workspaceId } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/getDockerfile', version: 'v1', data: { workspaceId, ...(projectId ? { projectId } : {}) } }));
       if (!error && res?.status === 'success' && res.result.ok) setDraft(res.result.dockerfile);
       setLoaded(true);
     })();
-  }, [workspaceId]);
+  }, [workspaceId, projectId]);
 
   const generate = async (): Promise<void> => {
     setBusy('generate'); setStatus(null);
-    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/generateDockerfile', version: 'v1', data: { workspaceId } }));
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/generateDockerfile', version: 'v1', data: projectData() }));
     setBusy(null);
     if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
     if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
@@ -557,7 +561,7 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
 
   const save = async (): Promise<void> => {
     setBusy('save'); setStatus(null);
-    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { workspaceId, dockerfile: draft } }));
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { ...projectData(), dockerfile: draft } }));
     setBusy(null);
     if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
     if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
@@ -567,14 +571,14 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
   const build = async (): Promise<void> => {
     setBusy('build'); setStatus(null);
     //? Save the on-screen edits first so the build reads exactly what the user sees.
-    const [saveErr, saveRes] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { workspaceId, dockerfile: draft } }));
+    const [saveErr, saveRes] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDockerfile', version: 'v1', data: { ...projectData(), dockerfile: draft } }));
     if (saveErr || saveRes?.status !== 'success' || !saveRes.result.ok) {
       setBusy(null);
       const code = saveErr || saveRes?.status !== 'success' ? (saveRes?.status === 'error' ? saveRes.errorCode : undefined) : saveRes.result.error;
       setStatus({ kind: 'err', text: errText(code) });
       return;
     }
-    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/buildProjectImage', version: 'v1', data: { workspaceId } }));
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/buildProjectImage', version: 'v1', data: projectData() }));
     setBusy(null);
     if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
     if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
@@ -589,6 +593,13 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
     <div className="w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.dockerfileTitle' })}</div>
       <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileDescription' })}</div>
+      {/* #45 — persisted image identity so a reload shows what image is built (was a transient toast). */}
+      {(activeProject?.baseImageRef ?? activeProject?.stack) && (
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <Icon name="cube" className="text-muted" />
+          <span className="font-mono">{activeProject.baseImageRef ?? translate({ key: 'workspaces.workspaceSettings.dockerfileStackImage', params: [{ key: 'stack', value: activeProject.stack ?? '—' }] })}</span>
+        </div>
+      )}
       {status !== null && (
         <div className={`rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ${status.kind === 'ok' ? 'border-correct-border bg-correct/10 text-common' : 'border-wrong-border bg-wrong/10 text-wrong'}`}>
           <Icon name={status.kind === 'ok' ? 'circle-check' : 'triangle-exclamation'} className={status.kind === 'ok' ? 'text-correct' : ''} />
@@ -869,14 +880,22 @@ function AiBehaviorTab() {
         <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}</div>
         <div className="text-sm text-muted mt-0.5 mb-3">{translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}</div>
         <div className="flex flex-col gap-2">
-          {PROVIDER_FEATURES.map((f) => (
-            <div key={f} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-common">{f}</span>
-              <div className="w-40">
-                <Dropdown size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />
+          {PROVIDER_FEATURES.map((f) => {
+            //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
+            //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
+            const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+            return (
+              <div key={f} className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-sm text-common">{translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}</span>
+                  <span className="text-xs text-muted">{translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}</span>
+                </div>
+                <div className="w-40">
+                  <Dropdown size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

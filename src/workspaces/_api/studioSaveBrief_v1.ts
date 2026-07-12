@@ -13,7 +13,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 export interface ApiParams {
   //? Fields are optional at the type level because the route is `validation: 'relaxed'` (the handler
   //? validates below) — so the `?? ''` guards are genuine, not dead conditionals.
-  data: { workspaceId: string; id?: string; name?: string; productName?: string; audience?: string; tone?: string; goals?: string; notes?: string };
+  data: { workspaceId: string; id?: string; projectId?: string; name?: string; productName?: string; audience?: string; tone?: string; goals?: string; notes?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -27,12 +27,15 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const name = (data.name ?? '').trim();
   const productName = (data.productName ?? '').trim();
   if (name.length === 0 || productName.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
+  const projectId = (data.projectId ?? '').trim();
   const fields = {
     name, productName,
     audience: (data.audience ?? '').trim(),
     tone: (data.tone ?? '').trim(),
     goals: (data.goals ?? '').trim(),
     notes: (data.notes ?? '').trim() || null,
+    //? Optional per-project scope (#169): only set when provided, so an unscoped brief stays unscoped.
+    ...(projectId ? { projectId } : {}),
   };
 
   const id = data.id;
