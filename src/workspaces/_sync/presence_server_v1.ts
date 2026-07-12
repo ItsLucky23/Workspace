@@ -15,14 +15,17 @@ export interface SyncParams {
   //? `claiming` (ADR 0048): a soft-claim — this user is ANSWERING the ticket's question. Ephemeral, like
   //? viewing; the client renders "X is answering" + disables the answer input for others (idempotent —
   //? re-announcing the same claim is a no-op).
-  clientInput: { ticketKey: string; viewing: boolean; claiming?: boolean; clientRequestId: string };
+  //? #119 — `view` (the top-level nav view a user is on, e.g. 'board'/'usage') powers the per-view
+  //? presence badges in the nav. A ping carries EITHER a `ticketKey` (viewing a ticket) OR a `view`
+  //? (on a page) — the client stores them in separate maps, so this stays additive to ticket presence.
+  clientInput: { ticketKey?: string; viewing: boolean; claiming?: boolean; view?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = ({ clientInput, user }: SyncParams): SyncServerResponse => {
-  const { ticketKey, viewing, claiming } = clientInput;
-  if (!ticketKey) return { status: 'error', errorCode: 'sync.invalidRequest' };
-  return { status: 'success', presence: { userId: user.id, ticketKey, viewing, claiming: claiming === true } };
+  const { ticketKey, viewing, claiming, view } = clientInput;
+  if (!ticketKey && !view) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  return { status: 'success', presence: { userId: user.id, ticketKey: ticketKey ?? '', viewing, claiming: claiming === true, view: view ?? '' } };
 };

@@ -82,7 +82,7 @@ const roleChip = (role: string) => (
 
 /* ----------------------------------------------------------------- nav rail */
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
-  const { view, navigate, suggestions, currentUser, activeWorkspace, aiOpen, toggleAi, theme, setTheme, signOut } = useWorkspaces();
+  const { view, navigate, suggestions, currentUser, activeWorkspace, aiOpen, toggleAi, theme, setTheme, signOut, viewCounts } = useWorkspaces();
   const translate = useTranslator();
   const updateLanguage = useUpdateLanguage();
   const activeLang = getActiveLanguage();
@@ -92,6 +92,8 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
   const renderItem = (it: NavDef) => {
     const isAi = it.id === 'ai';
     const badge = isAi ? suggestions.length : 0;
+    //? #119 — how many OTHER members are on this view now (live presence) → a small activity count.
+    const present = isAi ? 0 : (viewCounts[it.id] ?? 0);
     const active = isAi ? aiOpen : view === it.id;
     return (
       <button
@@ -102,6 +104,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
         <span className="relative w-5 text-center text-base">
           <Icon name={it.icon} />
           {badge > 0 && <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-title-primary text-[10px] font-semibold flex items-center justify-center">{badge}</span>}
+          {badge === 0 && present > 0 && <span title={translate({ key: 'workspaces.shell.viewPresence', params: [{ key: 'n', value: String(present) }] })} className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-secondary text-common-secondary text-[10px] font-semibold flex items-center justify-center">{present}</span>}
         </span>
         {expanded && <span className="text-sm font-medium whitespace-nowrap">{it.label}</span>}
       </button>

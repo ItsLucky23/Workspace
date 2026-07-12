@@ -810,6 +810,7 @@
       "search": "Zoeken",
       "searchShortcut": "⌘K",
       "presenceViewing": "Sanne, Tom kijken mee",
+      "viewPresence": "{{n}} nu hier",
       "notifications": "Meldingen",
       "markAllRead": "Alles als gelezen markeren",
       "noNotifications": "Geen meldingen",

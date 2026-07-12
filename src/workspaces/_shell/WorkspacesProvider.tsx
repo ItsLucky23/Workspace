@@ -185,6 +185,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? Realtime presence (#17): userId → who they're viewing + when last seen. Fed by the
   //? `workspaces/presence` relay; a `tick` state prunes stale entries so a crashed viewer drops.
   const [presence, setPresence] = useState<Record<string, { ticketKey: string; lastSeen: number; claiming?: boolean }>>({});
+  //? #119 — per-VIEW presence (who is on which nav page now), kept SEPARATE from ticket presence above
+  //? so the two never clobber each other's fields. Pruned by the same 25s ticker.
+  const [viewPresence, setViewPresence] = useState<Record<string, { view: string; lastSeen: number }>>({});
   const [, setPresenceTick] = useState(0);
 
   const refetch = useCallback(() => {
@@ -290,6 +293,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
       const p = serverOutput.presence;
+      //? #119 — a view-ping (carries `view`, no ticketKey) updates the per-view map only; it never
+      //? touches the ticket-presence map, so viewer avatars + question-claims stay exactly as before.
+      if (p.view.length > 0 && p.ticketKey.length === 0) {
+        setViewPresence((prev) => ({ ...prev, [p.userId]: { view: p.view, lastSeen: Date.now() } }));
+        return;
+      }
       setPresence((prev) => {
         if (p.viewing) return { ...prev, [p.userId]: { ticketKey: p.ticketKey, lastSeen: Date.now(), claiming: p.claiming } };
         //? Clean leave → drop this user's entry (only if it was on this ticket). Rebuild without
@@ -309,10 +318,28 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         for (const [uid, v] of Object.entries(prev)) { if (v.lastSeen >= cutoff) next[uid] = v; else changed = true; }
         return changed ? next : prev;
       });
+      //? #119 — prune stale per-view presence on the same cadence.
+      setViewPresence((prev) => {
+        const next: typeof prev = {};
+        let changed = false;
+        for (const [uid, v] of Object.entries(prev)) { if (v.lastSeen >= cutoff) next[uid] = v; else changed = true; }
+        return changed ? next : prev;
+      });
       setPresenceTick((n) => n + 1);
     }, 8000);
     return () => { clearInterval(t); };
   }, []);
+  //? #119 — announce which nav VIEW this user is on (ticket views fold into 'board') on view-change +
+  //? a 15s heartbeat, so other clients render per-view presence badges. Ephemeral via the same relay.
+  useEffect(() => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    const topView = isTicketView(view) ? 'board' : view;
+    const ping = () => { void syncRequest({ name: 'workspaces/presence', version: 'v1', data: { view: topView, viewing: true, clientRequestId: nextReqId() }, receiver: room }); };
+    ping();
+    const t = setInterval(ping, 15_000);
+    return () => { clearInterval(t); };
+  }, [view, snap.activeWorkspaceId]);
 
   //? bulk-* deltas → upsert the affected tickets (each its own event; shared reducer).
   useEffect(() => upsertSyncEventCallback({
@@ -900,6 +927,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   const membersById = useMemo(() => Object.fromEntries(snap.members.map((m) => [m.id, m])), [snap.members]);
 
+  //? #119 — per-view presence counts (OTHER members currently on each nav view), for the nav badges.
+  //? Self is excluded so your own view doesn't always show a "1".
+  const viewCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const [uid, v] of Object.entries(viewPresence)) { if (uid === currentUser.id) continue; counts[v.view] = (counts[v.view] ?? 0) + 1; }
+    return counts;
+  }, [viewPresence, currentUser.id]);
+
   const translate = useTranslator();
 
   //? Send a chat message to the live Workspace-AI: echo the user turn + a pending AI
@@ -1219,6 +1254,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).
       presentUserIds: Object.keys(presence),
+      viewCounts,
       //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
       answerQueue: snap.answerQueue,
       content: snap.content,
@@ -1366,7 +1402,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

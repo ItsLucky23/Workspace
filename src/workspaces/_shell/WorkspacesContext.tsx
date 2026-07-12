@@ -176,6 +176,9 @@ export interface WorkspacesCtx {
   //? #117 — the userIds currently present in the workspace (live, from the presence relay) — the header
   //? 'who's viewing' stack renders these instead of a static member slice.
   presentUserIds: string[];
+  //? #119 — per-view presence: how many OTHER members are on each nav view now (view id → count),
+  //? for the nav-rail activity badges. Ephemeral (from the presence relay), self excluded.
+  viewCounts: Record<string, number>;
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim (who's answering).
   answerQueue: AnswerQueueItem[];
   claimTicket: (ticketKey: string, claiming: boolean) => void;
