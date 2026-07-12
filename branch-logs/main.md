@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-12 — 🟢 Gap-close (feature): ui-review-create multi-part-formulier
+**Wat:** `ui-review-create` (U1: "unfuck the UI"-verzoek → redesign-ticket) had een server-`_sync`-route maar geen UI. Gebouwd: `ctx.createUiReview({screenshots, problems, page?, notes?})` + een `UiReviewForm`-component (screenshots via `MediaUploadButton` → URL-lijst met verwijderen · een vaste probleem-**taxonomie** van 6 chips (clutter/confusing/spacing/alignment/contrast/inconsistent) · pagina-input · notities · verzenden). Geplaatst als **ingeklapte** Disclosure bovenaan de **designer-pagina** (thematisch = UI-kwaliteit; inline in de provider → geen menuHandler-portal-gotcha, lesson 0011). Nieuw `uiReview`-i18n-blok ×4 (14 keys).
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8.
+**Files:** `src/workspaces/designer/page.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx` + `WorkspacesContext.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-12 — 🟢 Gap-close (feature): content-unpublish + publish-status-display
 **Wat:** `content-unpublish` had een conductor-case maar de piece toonde niet welke assets gepubliceerd waren. Nieuw display-oppervlak: de snapshot (die `publishJobRows` al las) hangt nu per asset `publishedOn: string[]` (platforms met een `done` PublishJob); `ContentAssetSummary` kreeg dat veld; de asset-kaart toont een "Gepubliceerd op ✓" + een rode per-platform **intrek-knop** → `runContentOp('content-unpublish', {assetId, platform})` achter een confirm. Alleen zichtbaar voor platforms waarop de asset live staat.
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 3 i18n-keys ×4 (`content.publishedOn/unpublish/unpublishConfirm`).

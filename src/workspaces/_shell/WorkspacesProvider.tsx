@@ -1110,6 +1110,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room && symptom.trim()) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'root-cause', symptom: symptom.trim(), clientRequestId: nextReqId() }, receiver: room });
       },
+      //? ui-review-create (U1): file a "unfuck the UI" request — screenshots + ticked problems + notes → the
+      //? Conductor persists it (B-23), leading to a redesign ticket.
+      createUiReview: (input) => {
+        const room = snap.activeWorkspaceId;
+        if (room && (input.screenshots.length > 0 || input.problems.length > 0 || (input.notes ?? '').trim().length > 0)) {
+          void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { screenshots: input.screenshots, problems: input.problems, ...(input.page ? { page: input.page } : {}), ...(input.notes ? { notes: input.notes } : {}), clientRequestId: nextReqId() }, receiver: room });
+        }
+      },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;

@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 224,
-    "edges": 338,
+    "edges": 339,
     "symbols": 283,
     "callEdges": 42
   },
@@ -1960,6 +1960,10 @@
     },
     {
       "from": "workspaces/designer/page.tsx",
+      "to": "workspaces/_components/MediaUploadButton.tsx"
+    },
+    {
+      "from": "workspaces/designer/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
     },
     {
@@ -2851,7 +2855,8 @@
     ],
     "workspaces/_components/MediaUploadButton.tsx": [
       "workspaces/content/[pieceId]/page.tsx",
-      "workspaces/content/settings/page.tsx"
+      "workspaces/content/settings/page.tsx",
+      "workspaces/designer/page.tsx"
     ],
     "workspaces/_components/ModulePicker.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -3122,7 +3127,8 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/content/[pieceId]/page.tsx",
-      "workspaces/content/settings/page.tsx"
+      "workspaces/content/settings/page.tsx",
+      "workspaces/designer/page.tsx"
     ],
     "workspaces/_functions/useEscapeKey.ts": [
       "workspaces/_components/ImageEditor.tsx",

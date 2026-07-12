@@ -1298,6 +1298,22 @@
       "vsCta": "CTA",
       "vsNote": "Skript + Storyboard generiert — vollständiges Video-Rendering braucht einen Media-/Video-API-Key."
     },
+    "uiReview": {
+      "title": "UI-Review anfordern",
+      "desc": "Melde, was sich falsch anfühlt — Screenshots hochladen, Probleme ankreuzen, Notizen hinzufügen. Es wird ein Redesign-Ticket.",
+      "addShot": "Screenshot hinzufügen",
+      "shotN": "Screenshot {{n}}",
+      "problem_clutter": "Zu überladen",
+      "problem_confusing": "Verwirrend",
+      "problem_spacing": "Abstände",
+      "problem_alignment": "Ausrichtung",
+      "problem_contrast": "Kontrast",
+      "problem_inconsistent": "Inkonsistent",
+      "pagePlaceholder": "Welche Seite/Ansicht? (optional)",
+      "notesPlaceholder": "Was sollte sich ändern und warum?",
+      "submit": "Review-Anfrage senden",
+      "sent": "Gesendet"
+    },
     "designer": {
       "title": "Designer",
       "intro": "Ein Ort, um deine gesamte Produkt-UI konsistent zu halten. Sieh dir jede Komponente an, wechsle zwischen Design-Themes und beobachte, wie alles sofort neu rendert, damit du wählen kannst, was passt.",

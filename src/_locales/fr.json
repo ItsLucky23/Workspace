@@ -1298,6 +1298,22 @@
       "vsCta": "CTA",
       "vsNote": "Script + storyboard générés — le rendu vidéo complet nécessite une clé d'API média/vidéo."
     },
+    "uiReview": {
+      "title": "Demander une revue d'UI",
+      "desc": "Signalez ce qui cloche — téléversez des captures, cochez les problèmes, ajoutez des notes. Cela devient un ticket de refonte.",
+      "addShot": "Ajouter une capture",
+      "shotN": "Capture {{n}}",
+      "problem_clutter": "Trop chargé",
+      "problem_confusing": "Confus",
+      "problem_spacing": "Espacement",
+      "problem_alignment": "Alignement",
+      "problem_contrast": "Contraste",
+      "problem_inconsistent": "Incohérent",
+      "pagePlaceholder": "Quelle page/écran ? (facultatif)",
+      "notesPlaceholder": "Qu'est-ce qui doit changer et pourquoi ?",
+      "submit": "Envoyer la demande",
+      "sent": "Envoyé"
+    },
     "designer": {
       "title": "Designer",
       "intro": "Un seul endroit pour garder toute l'UI de votre produit cohérente. Parcourez chaque composant, changez de thème et voyez tout se redessiner instantanément pour choisir ce qui convient.",

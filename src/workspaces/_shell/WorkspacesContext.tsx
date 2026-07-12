@@ -117,6 +117,7 @@ export interface WorkspacesCtx {
   resyncForge: () => void;
   allowCiRed: (enabled: boolean) => void;
   diagnoseRootCause: (symptom: string) => void;
+  createUiReview: (input: { screenshots: string[]; problems: string[]; page?: string; notes?: string }) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;

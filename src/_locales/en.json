@@ -1298,6 +1298,22 @@
       "vsCta": "CTA",
       "vsNote": "Script + storyboard generated — full video rendering needs a media/video API key."
     },
+    "uiReview": {
+      "title": "Request a UI review",
+      "desc": "Flag what feels off — upload screenshots, tick the problems, add notes. It becomes a redesign ticket.",
+      "addShot": "Add screenshot",
+      "shotN": "Shot {{n}}",
+      "problem_clutter": "Too cluttered",
+      "problem_confusing": "Confusing",
+      "problem_spacing": "Spacing",
+      "problem_alignment": "Alignment",
+      "problem_contrast": "Contrast",
+      "problem_inconsistent": "Inconsistent",
+      "pagePlaceholder": "Which page/screen? (optional)",
+      "notesPlaceholder": "What should change and why?",
+      "submit": "Send review request",
+      "sent": "Sent"
+    },
     "designer": {
       "title": "Designer",
       "intro": "One place to keep your whole product UI consistent. Browse every component we ship, switch between design themes, and see everything re-render instantly so you can pick what fits.",

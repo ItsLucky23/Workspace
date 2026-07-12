@@ -11,7 +11,8 @@ import { useTranslator } from '@luckystack/core/client';
 import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../_components/Icon';
-import { Segmented, WsButton } from '../_components/primitives';
+import { Disclosure, Segmented, WsButton } from '../_components/primitives';
+import { MediaUploadButton } from '../_components/MediaUploadButton';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { isModuleEnabled } from '../_data/modules';
 import { DesignerProvider, useDesigner } from './state';
@@ -49,6 +50,53 @@ export default function DesignerPage() {
 
 //? The sections the unified "AI generates it" bar can target (each has an AI generator).
 const AI_SECTIONS = new Set<SectionId>(['themes', 'styles', 'animations']);
+
+//? U1 — "unfuck the UI" review request: the fixed problem taxonomy the user ticks (kept small + concrete).
+const UI_PROBLEMS = ['clutter', 'confusing', 'spacing', 'alignment', 'contrast', 'inconsistent'] as const;
+
+//? U1 — a self-contained UI-review form (ui-review-create). Inline (rendered inside WorkspacesProvider), so it
+//? may use useWorkspaces directly (no menuHandler-portal gotcha, lesson 0011). Screenshots upload to media; the
+//? ticked problems + notes + page describe what's wrong. Submitting files the request → a redesign ticket.
+function UiReviewForm() {
+  const translate = useTranslator();
+  const { activeWorkspace, createUiReview } = useWorkspaces();
+  const [shots, setShots] = useState<string[]>([]);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [page, setPage] = useState('');
+  const [notes, setNotes] = useState('');
+  const [sent, setSent] = useState(false);
+  const canSend = shots.length > 0 || problems.length > 0 || notes.trim().length > 0;
+  const submit = () => {
+    if (!canSend) return;
+    createUiReview({ screenshots: shots, problems, ...(page.trim() ? { page: page.trim() } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}) });
+    setShots([]); setProblems([]); setPage(''); setNotes(''); setSent(true);
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-xs text-muted">{translate({ key: 'workspaces.uiReview.desc' })}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.uiReview.addShot" icon="up-right-from-square" onUploaded={(url) => { setShots((cur) => [...cur, url]); setSent(false); }} />
+        {shots.map((url, i) => (
+          <span key={url} className="inline-flex items-center gap-1 rounded-md bg-container2 px-2 py-1 text-xs text-common">
+            {translate({ key: 'workspaces.uiReview.shotN', params: [{ key: 'n', value: String(i + 1) }] })}
+            <button type="button" onClick={() => { setShots((cur) => cur.filter((u) => u !== url)); }} className="text-muted hover:text-wrong cursor-pointer"><Icon name="xmark" className="text-[10px]" /></button>
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {UI_PROBLEMS.map((p) => (
+          <button key={p} type="button" onClick={() => { setProblems((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]); setSent(false); }} className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${problems.includes(p) ? 'bg-primary/15 text-primary' : 'bg-container2 text-muted hover:text-common'}`}>{translate({ key: `workspaces.uiReview.problem_${p}` })}</button>
+        ))}
+      </div>
+      <input value={page} onChange={(e) => { setPage(e.target.value); setSent(false); }} placeholder={translate({ key: 'workspaces.uiReview.pagePlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <textarea value={notes} onChange={(e) => { setNotes(e.target.value); setSent(false); }} rows={2} placeholder={translate({ key: 'workspaces.uiReview.notesPlaceholder' })} className="px-3 py-2 rounded-lg border border-container1-border bg-container2/40 text-sm text-title resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <div className="flex items-center gap-2">
+        <WsButton icon="paper-plane" disabled={!canSend} onClick={submit}>{translate({ key: 'workspaces.uiReview.submit' })}</WsButton>
+        {sent && <span className="text-xs text-correct inline-flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.uiReview.sent' })}</span>}
+      </div>
+    </div>
+  );
+}
 
 function DesignerShell() {
   const translate = useTranslator();
@@ -102,6 +150,13 @@ function DesignerShell() {
           <BaseDropdown items={themeItems} {...(activeItem ? { value: activeItem } : {})} onChange={(i) => { d.setActiveThemeId(String(i.id)); }} size="md" />
           <Segmented<ThemeMode> options={[{ id: 'light', label: <Icon name="sun" /> }, { id: 'dark', label: <Icon name="moon" /> }]} value={d.mode} onChange={d.setMode} />
         </div>
+      </div>
+
+      {/* U1 — request a UI review ("unfuck the UI"): collapsed so it never clutters the design surface. */}
+      <div className="px-3 md:px-4 pt-2 shrink-0">
+        <Disclosure summary={translate({ key: 'workspaces.uiReview.title' })}>
+          <UiReviewForm />
+        </Disclosure>
       </div>
 
       {/* section tabs */}

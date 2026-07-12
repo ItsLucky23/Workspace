@@ -1298,6 +1298,22 @@
       "vsCta": "CTA",
       "vsNote": "Script + storyboard gegenereerd — volledige video-rendering vereist een media/video-API-key."
     },
+    "uiReview": {
+      "title": "Vraag een UI-review aan",
+      "desc": "Meld wat niet klopt — upload screenshots, vink de problemen aan, voeg notities toe. Het wordt een redesign-ticket.",
+      "addShot": "Screenshot toevoegen",
+      "shotN": "Screenshot {{n}}",
+      "problem_clutter": "Te druk",
+      "problem_confusing": "Verwarrend",
+      "problem_spacing": "Witruimte",
+      "problem_alignment": "Uitlijning",
+      "problem_contrast": "Contrast",
+      "problem_inconsistent": "Inconsistent",
+      "pagePlaceholder": "Welke pagina/scherm? (optioneel)",
+      "notesPlaceholder": "Wat moet er veranderen en waarom?",
+      "submit": "Reviewverzoek versturen",
+      "sent": "Verzonden"
+    },
     "designer": {
       "title": "Designer",
       "intro": "Eén plek om je hele product-UI consistent te houden. Bekijk elk component dat we hebben, wissel tussen design-thema's, en zie alles direct hertekenen zodat je kunt kiezen wat past.",
