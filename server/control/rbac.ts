@@ -185,7 +185,5 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   kill: CAP.demoteAdmin,
   'pause-all': CAP.demoteAdmin,
   'resume-all': CAP.demoteAdmin,
-  'preview-up': CAP.workTickets,
-  'preview-down': CAP.workTickets,
   'accept-suggestion': null,
 };

@@ -29,7 +29,6 @@ const ALL_OPS: ControlOp[] = [
   'mark-read',
   // AI-session controls
   'pause', 'resume', 'kill', 'pause-all', 'resume-all',
-  'preview-up', 'preview-down',
   'accept-suggestion',
 ];
 

@@ -3923,3 +3923,9 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** elke `content-from-brief` spinde een BRAND-NIEUW Project-rij op → project-sprawl, geen twee pieces konden een board/project delen. Nu hergebruikt de conductor-case ÉÉN gedeeld content-Project per workspace (`findFirst` op projectType:'content', lazy-created bij eerste gebruik); alle content-pieces binden nu aan dat gedeelde project.
 **Verify:** typecheck0·build✓·lint0. Server-only (conductor).
 **Files:** `server/orchestrator/conductor.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 45 (Agent runtime / Code editor): #17 #33
+**Wat:** `preview-up`/`preview-down` waren vestigiale DODE ops in de frozen ControlOp-surface (in de union + OP_CAPABILITY + PROPOSE_CATALOG, maar ZONDER conductor-case → vielen door naar de default-no-op; preview loopt via de openPreview/closePreview `_api`-routes). Beide verwijderd uit de union (`controlApi.ts`), `OP_CAPABILITY` (`rbac.ts`), de `PROPOSE_CATALOG` (`opCatalog.ts`) + de rbac-test-lijst. tsc bewaakt de exhaustiviteit (union==catalog==rbac). 
+**⚠️ Pre-existing test-bevinding (NIET door deze change, geflagd per Report-Without-Auto-Fixing):** `tests/unit/rbac.test.mts` "CONFIRM_REQUIRED contains exactly the destructive ops — got 6, want 5" faalt óók op de pristine (pre-change) staat — CONFIRM_REQUIRED heeft een 6e destructive-op die de test-verwachting (5) mist; test-maintenance-drift buiten deze scope, door mij onaangeraakt.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·rbac (preview-assertions correct weg; de 1 CONFIRM_REQUIRED-failure is pre-existing).
+**Files:** `src/workspaces/_functions/controlApi.ts`, `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `tests/unit/rbac.test.mts`.

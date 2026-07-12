@@ -336,8 +336,6 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   kill: { mode: 'enabled', destructive: true, hint: 'hard-kill a ticket’s agent turn. params: ticketKey', params: { ticketKey: { kind: 'ticketKey', required: true } } },
   'pause-all': { mode: 'enabled', destructive: true, hint: 'emergency-stop ALL agent work in the workspace. no params', params: {} },
   'resume-all': { mode: 'enabled', hint: 'resume the workspace after a pause-all. no params', params: {} },
-  'preview-up': EXCLUDED, // dead op (preview runs via openPreview _api) — COMPLETION A5 decides its fate
-  'preview-down': EXCLUDED,
   'accept-suggestion': EXCLUDED, // plumbing
 };
 

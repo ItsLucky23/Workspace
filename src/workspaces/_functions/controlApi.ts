@@ -71,7 +71,8 @@ export type ControlOp =
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)
   | 'pause' | 'resume' | 'answer-input' | 'kill' | 'pause-all' | 'resume-all'
-  | 'preview-up' | 'preview-down'
+  //? #17/#33 — preview-up/preview-down removed: dead ops (preview runs via the openPreview/closePreview
+  //? _api routes), no Conductor case ever existed. Removed from the frozen surface.
   | 'accept-suggestion';
 
 //? The op-specific target (CONTROL_API §6.1). A union of the shapes the ops use.
