@@ -185,7 +185,12 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'db-introspect': { mode: 'enabled', hint: 'introspect the connected user-app database (tables/columns). params: connectionId?', params: { connectionId: { kind: 'string' } } },
   // ---- content settings / brand / styles
   'edit-media-budget': LATER_D,
-  'save-style': LATER, 'delete-style': LATER_D,
+  'save-style': {
+    mode: 'enabled',
+    hint: 'save a reusable generation STYLE (a named prompt preset the AI reuses). params: feature (image-gen|video-gen|script|…), key (short slug), systemPrompt (the style prompt), label? (display name)',
+    params: { feature: { kind: 'string', required: true }, key: { kind: 'string', required: true }, systemPrompt: { kind: 'string', required: true }, label: { kind: 'string' } },
+  },
+  'delete-style': LATER_D,
   'save-media-provider': EXCLUDED, // provider API keys
   'content-edit-brand': LATER, 'content-edit-product': LATER,
   // ---- content pipeline (per-asset PAID gen ops stay `later` until cost-confirms land — B4)
@@ -244,9 +249,19 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'content-save-audio-mix': LATER,
   'content-trim-audio': LATER,
-  'channel-create': LATER, 'channel-edit': LATER, 'channel-delete': LATER_D,
+  'channel-create': {
+    mode: 'enabled',
+    hint: 'create a publishing CHANNEL (a platform + brand identity a content piece binds to). params: name, platform? (youtube|tiktok|none), handle?',
+    params: { name: { kind: 'string', required: true }, platform: { kind: 'string' }, handle: { kind: 'string' } },
+  },
+  'channel-edit': LATER, 'channel-delete': LATER_D,
   'account-disconnect': EXCLUDED, // auth/token surface
-  'reference-add': LATER, 'reference-delete': LATER_D,
+  'reference-add': {
+    mode: 'enabled',
+    hint: 'save a brand/style REFERENCE (an inspiration example the AI should remember, e.g. "remember this ad"). params: title, description, kind? (ad|post|logo|other)',
+    params: { title: { kind: 'string', required: true }, description: { kind: 'string', required: true }, kind: { kind: 'string' } },
+  },
+  'reference-delete': LATER_D,
   'content-unarchive': {
     mode: 'enabled',
     hint: 'restore an archived content piece. params: pieceId',

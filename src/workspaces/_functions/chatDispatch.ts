@@ -180,4 +180,25 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     if (!pieceId || !assetId || !prompt) return;
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-edit-image', contentProjectId: pieceId, assetId, prompt, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+
+  //? #150 — save a reusable generation style (contentSettings route, upsert-by-key).
+  'save-style': (p, x) => {
+    const feature = str(p, 'feature'); const key = str(p, 'key'); const systemPrompt = str(p, 'systemPrompt');
+    if (!feature || !key || !systemPrompt) return;
+    const label = str(p, 'label');
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-style', feature, key, systemPrompt, ...(label ? { label } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? #142 — create a publishing channel (contentControl route; projectId resolves server-side).
+  'channel-create': (p, x) => {
+    const name = str(p, 'name'); if (!name) return;
+    const platform = str(p, 'platform'); const handle = str(p, 'handle');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-create', name, ...(platform ? { platform } : {}), ...(handle ? { handle } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? #150 — save a brand/style reference (contentControl route, workspace-level inspiration library).
+  'reference-add': (p, x) => {
+    const title = str(p, 'title'); const description = str(p, 'description');
+    if (!title || !description) return;
+    const kind = str(p, 'kind');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'reference-add', title, description, ...(kind ? { kind } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
 };
