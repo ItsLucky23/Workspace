@@ -10,6 +10,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import { tryCatchSync } from '@luckystack/core';
 import { runAiCompletion } from '../ai/registry';
 import type { AiFeature } from '../ai/types';
+import { broadcastContentDirty } from '../read/broadcast';
 
 //? Bridge a genuinely-JSON value to Prisma's Json WRITE type (read JsonValue vs write InputJsonValue).
 const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
@@ -177,30 +178,59 @@ export function applyRefine(prompt: string, tweak?: string): string {
   return t.length > 0 ? `${prompt}\n\nRefine with this specific direction: ${t}` : prompt;
 }
 
-export async function generateArtifact(prisma: PrismaClient, input: { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }): Promise<GenerateResult> {
-  const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
+export interface GenerateInput { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }
+
+//? #168 — create the 'generating' placeholder row IMMEDIATELY (the completion can take ~240s), so the
+//? UI shows an in-progress artifact instead of a frozen button. `finishArtifact` does the slow work +
+//? flips the row to ready/error. Returns the new row id (or an error if the brief is gone).
+export async function beginArtifact(prisma: PrismaClient, input: GenerateInput): Promise<GenerateResult> {
+  const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId }, select: { id: true } });
   if (!brief) return { ok: false, error: 'studio.briefNotFound' };
+  const meta = KIND_META[input.kind];
+  const art = await prisma.studioArtifact.create({
+    data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
+  });
+  return { ok: true, artifactId: art.id };
+}
+
+//? #168 — run the (slow) AI completion for an already-created 'generating' row and flip it to
+//? ready/error, then broadcast so every client refetches the snapshot. Call DETACHED (fire-and-forget)
+//? from the route for an async return, or awaited via `generateArtifact` for the synchronous callers.
+export async function finishArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput): Promise<GenerateResult> {
+  const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
+  if (!brief) {
+    await prisma.studioArtifact.update({ where: { id: artifactId }, data: { status: 'error', error: 'studio.briefNotFound' } });
+    broadcastContentDirty(input.workspaceId);
+    return { ok: false, artifactId, error: 'studio.briefNotFound' };
+  }
   const meta = KIND_META[input.kind];
   //? Seed the prompt with the workspace's central brand library so the artifact stays on-brand (G-MKT-2).
   const brand = await readBrandContext(prisma, input.workspaceId);
   const built = buildPrompt(input.kind, brief, brand);
-  const system = built.system;
   //? I4 — a free-text refine instruction appended to the prompt (was a blind re-roll from the unchanged brief).
   const prompt = applyRefine(built.prompt, input.tweak);
 
   //? Generous timeout — the interactive claude-cli PTY can be slow on longer (brand-seeded) prompts.
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
-  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
+  const completion = await runAiCompletion(meta.feature, { prompt, system: built.system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
   if (!completion.ok || completion.text.trim().length === 0) {
-    const failed = await prisma.studioArtifact.create({
-      data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' },
-    });
-    return { ok: false, artifactId: failed.id, error: completion.error ?? 'studio.emptyResponse' };
+    await prisma.studioArtifact.update({ where: { id: artifactId }, data: { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' } });
+    broadcastContentDirty(input.workspaceId);
+    return { ok: false, artifactId, error: completion.error ?? 'studio.emptyResponse' };
   }
 
   const { content, title } = parseArtifact(input.kind, completion.text);
-  const artifact = await prisma.studioArtifact.create({
-    data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: `${title} — ${brief.productName}`, content: asJson(content), providerId: completion.providerId, status: 'ready' },
+  await prisma.studioArtifact.update({
+    where: { id: artifactId },
+    data: { title: `${title} — ${brief.productName}`, content: asJson(content), providerId: completion.providerId, status: 'ready', error: null },
   });
-  return { ok: true, artifactId: artifact.id };
+  broadcastContentDirty(input.workspaceId);
+  return { ok: true, artifactId };
+}
+
+//? Synchronous convenience (the marketer role + tests): begin the row + await the completion.
+export async function generateArtifact(prisma: PrismaClient, input: GenerateInput): Promise<GenerateResult> {
+  const begun = await beginArtifact(prisma, input);
+  if (!begun.ok || begun.artifactId === undefined) return begun;
+  return finishArtifact(prisma, begun.artifactId, input);
 }

@@ -210,15 +210,17 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote }: { a
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-divider">
         <Icon name={KINDS.find((k) => k.kind === artifact.kind)?.icon ?? 'file'} className="text-primary" />
         <div className="text-sm font-medium text-title flex-1 truncate">{artifact.title}</div>
+        {/* #168 — a 'generating' artifact shows an in-progress spinner until the detached completion flips it. */}
+        {artifact.status === 'generating' && <span className="text-xs text-muted flex items-center gap-1.5"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</span>}
         {artifact.status === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.studio.failed' })}</span>}
         {onPromote && <button type="button" onClick={onPromote} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.useAsBrandHint' })}><Icon name="swatchbook" className="text-xs" />{translate({ key: 'workspaces.studio.useAsBrand' })}</button>}
         <button type="button" disabled={busy} onClick={onRegenerate} className={`text-muted hover:text-primary ${busy ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`} title={translate({ key: 'workspaces.studio.regenerate' })}><Icon name="rotate" className="text-xs" /></button>
         <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer" title={translate({ key: 'workspaces.studio.deleteArtifact' })}><Icon name="trash-can" className="text-xs" /></button>
       </div>
       <div className="p-4">
-        {artifact.status === 'error'
-          ? <div className="text-sm text-muted">{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>
-          : <ArtifactBody kind={artifact.kind} c={c} />}
+        {artifact.status === 'generating' && <div className="text-sm text-muted flex items-center gap-2"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</div>}
+        {artifact.status === 'error' && <div className="text-sm text-muted">{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>}
+        {artifact.status === 'ready' && <ArtifactBody kind={artifact.kind} c={c} />}
       </div>
       <div className="px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2">
         <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
