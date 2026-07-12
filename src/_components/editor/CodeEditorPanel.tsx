@@ -99,7 +99,7 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
       {/* Top bar */}
       <div className="flex items-center gap-2 px-2 h-9 shrink-0 border-b" style={{ borderColor: palette.border, background: palette.bgAlt }}>
         <button type="button" className="md:hidden px-2 py-1 rounded text-sm cursor-pointer" style={{ color: palette.fg }} onClick={() => { setDrawerOpen((o) => !o); }} aria-label="Toggle explorer">☰</button>
-        <span className="text-[13px] font-medium truncate" style={{ color: palette.fg }}>{title ?? 'Editor'}</span>
+        <span className="text-[13px] font-medium truncate" style={{ color: palette.fg }}>{title ?? translate({ key: 'workspaces.editor.title' })}</span>
         <div className="flex-1" />
         {showThemeSwitcher && (
           <select

@@ -27,8 +27,12 @@ export interface WorkspaceModule {
 //? settings, workspace) is ALWAYS shown regardless of the enabled set.
 export const WORKSPACE_MODULES: WorkspaceModule[] = [
   { id: 'development', labelKey: 'workspaces.modules.developmentLabel', descKey: 'workspaces.modules.developmentDesc', icon: 'code-branch', sections: ['board', 'backlog', 'terminals', 'activity', 'sources', 'pipeline', 'scheduled'] },
-  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing'] },
-  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer'] },
+  //? #87 — Content/Design also unlock 'scheduled' (automation/triggers) so those lanes can reach
+  //? scheduled posts + event automation, not just the Development lane. #165 — Design also unlocks
+  //? 'marketing' (the Studio brand/landing generator) so a Design-only workspace can do visual/brand
+  //? generation. (OPEN VRAAG: defaults per Rule 3a — user away; revisit if the nav feels too broad.)
+  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled'] },
+  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled'] },
 ];
 
 //? Per-section metadata for the settings toggle grid (individual sections can be

@@ -4,10 +4,12 @@
 //? consistent with the real VS Code. Keyboard + click; mobile-friendly (parent controls
 //? show/hide as a drawer).
 //?
-//? eslint jsx-no-literals is disabled: this is editor chrome using standard VS Code labels
-//? ("Explorer") + single glyphs, not translatable product copy (flagged for i18n review).
+//? #36 — the "Explorer" heading is translated (workspaces.editor.explorer); the disable below
+//? remains only for the single technical git-status glyphs (M/A/D), not product copy.
 
-/* eslint-disable react/jsx-no-literals -- editor-chrome labels/glyphs */
+/* eslint-disable react/jsx-no-literals -- git-status glyphs (M/A/D) only */
+import { useTranslator } from '@luckystack/core/client';
+
 import type { FileTreeNode } from './fileTree';
 import { iconForPath } from './languages';
 import type { ThemePalette } from './editorThemes';
@@ -28,9 +30,10 @@ interface FileExplorerProps {
 }
 
 export function FileExplorer({ tree, activePath, onOpen, palette, expanded, onToggleDir, status = EMPTY_STATUS }: FileExplorerProps) {
+  const translate = useTranslator();
   return (
     <div className="h-full overflow-y-auto py-1 text-[13px] select-none" style={{ background: palette.bgAlt, color: palette.fg }}>
-      <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide" style={{ color: palette.comment }}>Explorer</div>
+      <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide" style={{ color: palette.comment }}>{translate({ key: 'workspaces.editor.explorer' })}</div>
       {tree.map((node) => (
         <TreeRow key={node.path} node={node} depth={0} activePath={activePath} onOpen={onOpen} palette={palette} expanded={expanded} onToggleDir={onToggleDir} status={status} />
       ))}
