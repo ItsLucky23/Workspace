@@ -1920,7 +1920,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'content-from-brief': {
       const brief = str(payload, 'brief');
       if (!brief) return;
-      const project = await prisma.project.create({ data: { workspaceId: action.workspaceId, name: str(payload, 'channelName') ?? 'Content', projectType: 'content', gitlabPath: '' } });
+      //? #126 — reuse ONE shared content Project per workspace (was a new Project per piece → project
+      //? sprawl; pieces can now share a board/project). Create the shared project lazily on first use.
+      let project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId, projectType: 'content' }, orderBy: { createdAt: 'asc' } });
+      project ??= await prisma.project.create({ data: { workspaceId: action.workspaceId, name: str(payload, 'channelName') ?? 'Content', projectType: 'content', gitlabPath: '' } });
       //? A4 — bind the piece to a channel when given ("make a video for channel Z"), so generation grounds on
       //? that channel's brand voice (brandContext + brand-RAG).
       const channelId = str(payload, 'channelId');

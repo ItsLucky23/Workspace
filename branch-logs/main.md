@@ -3918,3 +3918,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** sprint-edit was backend-half-af (conductor-case + RBAC + op-declaratie bestonden, maar GEEN sprintEdit-sync-route, GEEN provider-method, GEEN UI — én de conductor schreef alleen name+active, geen datums). Nu volledig (activeren+hernoemen+datums): (1) conductor-case uitgebreid met start/end-datum-parsing (ISO-string zet, lege string wist) + retourneert de bijgewerkte sprint; (2) nieuwe `sprintEdit_server_v1`-sync-route (mirror van sprintCreate); (3) `editSprint`-ctx-method + provider-dispatch; (4) een `SprintEditForm` (menuHandler) + pen-knop per sprint-header in de backlog (naam · start/eind-datum-pickers · actief-checkbox). generateArtifacts gedraaid voor de nieuwe route.
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: backlog.{editSprint,sprintStart,sprintEnd,sprintSetActive,sprintSaveEdit} ×4.
 **Files:** `server/orchestrator/conductor.ts`, `src/workspaces/_sync/sprintEdit_server_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/backlog/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 44 (Content pipeline core): #126
+**Wat:** elke `content-from-brief` spinde een BRAND-NIEUW Project-rij op → project-sprawl, geen twee pieces konden een board/project delen. Nu hergebruikt de conductor-case ÉÉN gedeeld content-Project per workspace (`findFirst` op projectType:'content', lazy-created bij eerste gebruik); alle content-pieces binden nu aan dat gedeelde project.
+**Verify:** typecheck0·build✓·lint0. Server-only (conductor).
+**Files:** `server/orchestrator/conductor.ts`.
