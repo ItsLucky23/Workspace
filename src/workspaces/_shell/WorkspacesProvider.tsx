@@ -1256,6 +1256,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveCustomTask: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'save-custom-task', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteCustomTask: (taskId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'delete-custom-task', taskId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runCustomTask: (taskId, vars) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, vars, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? #167 — invoke an agent-role now (interviewer "Generate ideas now"); refetch to surface new findings.
+      runAgentRole: (role) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'run-agent-role', role, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? O5 — reusable output specs (save/delete).
       outputTemplates: snap.outputTemplates,
       saveOutputTemplate: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

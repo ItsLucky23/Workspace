@@ -1614,6 +1614,8 @@
     },
     "interviewer": {
       "title": "Interviewer",
+      "generateNow": "Genereer nu ideeën",
+      "generateStarted": "Verbeterideeën worden gegenereerd — ze verschijnen hier zodra ze klaar zijn.",
       "intro": "Vraag alles over deze codebase en werk samen nieuwe plannen uit. Hij heeft repo-context, dus vraag hoe iets werkt, wat beter kan, of om een plan uit te werken.",
       "startersTitle": "Begin met een van deze:",
       "starter": {

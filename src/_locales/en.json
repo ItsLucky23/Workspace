@@ -1614,6 +1614,8 @@
     },
     "interviewer": {
       "title": "Interviewer",
+      "generateNow": "Generate ideas now",
+      "generateStarted": "Generating improvement ideas — they'll appear here when ready.",
       "intro": "Ask anything about this codebase and think through new plans together. It has repo context, so ask how something works, what's worth improving, or to work out a plan.",
       "startersTitle": "Try one of these to start:",
       "starter": {

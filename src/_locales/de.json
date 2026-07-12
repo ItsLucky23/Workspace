@@ -1614,6 +1614,8 @@
     },
     "interviewer": {
       "title": "Interviewer",
+      "generateNow": "Jetzt Ideen generieren",
+      "generateStarted": "Verbesserungsideen werden generiert — sie erscheinen hier, sobald sie fertig sind.",
       "intro": "Frag alles über diese Codebase und entwickelt gemeinsam neue Pläne. Er hat Repo-Kontext — frag, wie etwas funktioniert, was sich verbessern lässt, oder lass einen Plan ausarbeiten.",
       "startersTitle": "Starte mit einem davon:",
       "starter": {

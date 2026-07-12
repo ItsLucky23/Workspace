@@ -1614,6 +1614,8 @@
     },
     "interviewer": {
       "title": "Interviewer",
+      "generateNow": "Générer des idées",
+      "generateStarted": "Génération d'idées d'amélioration — elles apparaîtront ici une fois prêtes.",
       "intro": "Posez n'importe quelle question sur cette base de code et élaborez de nouveaux plans ensemble. Il a le contexte du dépôt : demandez comment ça marche, ce qui peut être amélioré, ou d'élaborer un plan.",
       "startersTitle": "Commencez par l'une de celles-ci :",
       "starter": {

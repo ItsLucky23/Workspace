@@ -143,6 +143,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'save-custom-task': CAP.workTickets,
   'delete-custom-task': CAP.workTickets,
   'run-custom-task': CAP.workTickets,
+  'run-agent-role': CAP.workTickets,   // #167 — on-demand invoke of a registered agent-role (e.g. interviewer)
   'save-output-template': CAP.workTickets,
   'delete-output-template': CAP.workTickets,
   'copy-workspace-assets': CAP.workspaceSettings,

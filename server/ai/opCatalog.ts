@@ -328,6 +328,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'save-output-template': LATER, 'delete-output-template': LATER_D,
   'copy-workspace-assets': LATER,
   'copilot-propose': EXCLUDED, // meta (the propose channel itself)
+  'run-agent-role': EXCLUDED, // #167 — direct UI button (interviewer "generate now"), not a chat proposal
   'mark-read': EXCLUDED, // notification plumbing
   // ---- agent-session controls
   pause: { mode: 'enabled', hint: 'pause a ticket’s autonomous agent turn. params: ticketKey', params: { ticketKey: { kind: 'ticketKey', required: true } } },

@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon, { type IconName } from '../_components/Icon';
 import { WsButton } from '../_components/primitives';
@@ -40,7 +40,7 @@ const STARTERS: { icon: string; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding } = useWorkspaces();
+  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -74,9 +74,13 @@ export default function Interviewer() {
     <div className="flex flex-col h-full min-h-0">
       {/* intro header — always visible so the page's purpose is obvious */}
       <div className="px-5 md:px-6 pt-5 pb-3 border-b border-divider shrink-0">
-        <div className="flex items-center gap-2 text-title">
-          <span className="w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center"><Icon name="comments" /></span>
-          <span className="text-xl font-semibold">{translate({ key: 'workspaces.interviewer.title' })}</span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 text-title">
+            <span className="w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center"><Icon name="comments" /></span>
+            <span className="text-xl font-semibold">{translate({ key: 'workspaces.interviewer.title' })}</span>
+          </div>
+          {/* #167 — invoke the interviewer agent-role on demand; the findings surface via the snapshot when ready. */}
+          <WsButton variant="secondary" icon="lightbulb" onClick={() => { runAgentRole('interviewer'); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }}>{translate({ key: 'workspaces.interviewer.generateNow' })}</WsButton>
         </div>
         <p className="text-sm text-muted mt-1.5 max-w-2xl">{translate({ key: 'workspaces.interviewer.intro' })}</p>
       </div>

@@ -75,7 +75,7 @@ import { runCustomTask } from '../ai/customTask';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
-import { executeGatedAction, runTriggerAction } from '../automation/executor';
+import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
 
@@ -2353,6 +2353,16 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const t = await prisma.workspaceTrigger.findFirst({ where: { workspaceId: action.workspaceId, id } });
       if (!t) return;
       await runTriggerAction(prisma, action.workspaceId, { action: t.action, params: asRec(t.params), triggerName: t.name }, t.requiresApproval);
+      return;
+    }
+    case 'run-agent-role': {
+      //? #167 — invoke a registered agent-role NOW, on the user's explicit request (e.g. the interviewer
+      //? "Generate ideas now" button). Unlike the scheduler's `trigger-run`, a user-initiated run is NOT
+      //? gated on the role's `mutates` flag — the click IS the approval, and OP_CAPABILITY (workTickets)
+      //? already gates who may do it — so we call the raw ungated executor directly.
+      const role = str(payload, 'role');
+      if (!role) return;
+      await executeTriggerAction(prisma, action.workspaceId, { action: 'invoke-agent-role', params: { role } });
       return;
     }
     // ---- notifications ----

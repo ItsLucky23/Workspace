@@ -209,6 +209,8 @@ export interface WorkspacesCtx {
   saveCustomTask: (input: { taskId?: string; name: string; promptTemplate: string }) => void;
   deleteCustomTask: (taskId: string) => void;
   runCustomTask: (taskId: string, vars?: Record<string, string>) => void;
+  //? #167 — invoke a registered agent-role now (e.g. the interviewer "Generate ideas now" button).
+  runAgentRole: (role: string) => void;
   //? O5 — reusable output specs (a named render format + watermark), applied across pieces.
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   saveOutputTemplate: (input: { templateId?: string; name: string; format: string; watermarkPosition?: string }) => void;

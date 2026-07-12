@@ -13,7 +13,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 export interface SyncParams {
   clientInput: {
     op: string; clientRequestId: string;
-    id?: string; triggerId?: string; name?: string; on?: string; action?: string;
+    id?: string; triggerId?: string; name?: string; on?: string; action?: string; role?: string;
     params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string; enabled?: boolean; dedupeKey?: string; debounceMs?: number;
   };
   user: SessionLayout;
@@ -23,7 +23,7 @@ export interface SyncParams {
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
   const { op, clientRequestId, triggerId, ...payload } = clientInput;
-  if (op !== 'trigger-save' && op !== 'trigger-toggle' && op !== 'trigger-delete' && op !== 'trigger-run') {
+  if (op !== 'trigger-save' && op !== 'trigger-toggle' && op !== 'trigger-delete' && op !== 'trigger-run' && op !== 'run-agent-role') {
     return { status: 'error', errorCode: 'sync.invalidRequest' };
   }
   const res = await dispatchControlSync({
