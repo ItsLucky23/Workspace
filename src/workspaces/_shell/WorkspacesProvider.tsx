@@ -1189,6 +1189,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       answerInput: (ticketId, answer) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, clientRequestId: nextReqId() }, receiver: room }); },
       setTicketPresence,
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
+      //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).
+      presentUserIds: Object.keys(presence),
       //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
       answerQueue: snap.answerQueue,
       content: snap.content,

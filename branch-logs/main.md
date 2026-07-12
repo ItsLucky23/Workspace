@@ -3828,3 +3828,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** chat-ctx uitgebreid met de workspace's open merge-requests (mrId + de ticket-key waar 'ie bij hoort + title; `loadCtx` lost de ticketId→key-map op). Daarmee `mr-review` + `mr-rollback` `later`→`enabled` geflipt: de Workspace-AI kan nu een MR-review ("review de MR van DEV-3") of een rollback voorstellen. Nieuw param-kind `mrId` (gevalideerd tegen `ctx.mrs`); de ops nemen `mrId`+`ticketKey` (het paar uit de MR-lijst); dispatch via de mrAction-route (ControlOp→`action`-mapping: review/rollback). rollback is `destructive` (extra confirm). Hiermee is #54 gesloten. Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
 **Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-12 — 🟢 v3-build golf 26 (Presence): #117
+**Wat:** de desktop-Shell "wie kijkt mee"-AvatarStack was FAKE (`members.slice(0,3)` — een statische roster, geen live presence). Nu gekoppeld aan de bestaande per-ticket presence-relay: de provider exposeert `presentUserIds` (de tick-geprunede `presence`-state) → de Shell rendert de members die daadwerkelijk NU aanwezig zijn (leeg = niemand, stack verborgen). #119 (per-view activeCount-badges via `aggregatePresence`) vereist dat de relay de huidige VIEW trackt i.p.v. alleen tickets — dat is een grotere relay-uitbreiding, apart.
+**Verify:** typecheck0·build✓·lint0(pre-existing activeProjectId-warning).
+**Files:** `src/workspaces/_shell/{Shell,WorkspacesProvider,WorkspacesContext}.tsx`.

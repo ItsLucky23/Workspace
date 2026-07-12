@@ -171,6 +171,9 @@ export interface WorkspacesCtx {
   //? + close), and read the OTHER users currently viewing a ticket (self excluded).
   setTicketPresence: (ticketKey: string, viewing: boolean) => void;
   viewersOf: (ticketKey: string) => string[];
+  //? #117 — the userIds currently present in the workspace (live, from the presence relay) — the header
+  //? 'who's viewing' stack renders these instead of a static member slice.
+  presentUserIds: string[];
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim (who's answering).
   answerQueue: AnswerQueueItem[];
   claimTicket: (ticketKey: string, claiming: boolean) => void;

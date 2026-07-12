@@ -190,7 +190,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 /* ----------------------------------------------------------------- top bar */
 export function TopBar({ onCmdK }: { onCmdK: () => void }) {
   const {
-    navigate, openTicket, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members,
+    navigate, openTicket, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members, presentUserIds,
     notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead,
   } = useWorkspaces();
   //? #120 — a notification's deep-link is a real destination: open its ticket (or navigate to its view),
@@ -207,7 +207,9 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const wsRef = useClickAway<HTMLDivElement>(wsOpen, () => { setWsOpen(false); });
   const notifRef = useClickAway<HTMLDivElement>(notifOpen, () => { setNotifOpen(false); });
-  const presence = members.slice(0, 3);
+  //? #117 — live presence: the members actually present now (from the relay), not a static slice.
+  const presentSet = new Set(presentUserIds);
+  const presence = members.filter((m) => presentSet.has(m.id));
   const openCreate = () => { setWsOpen(false); void menuHandler.open(<CreateWorkspaceForm onCreate={createWorkspace} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   return (
@@ -254,7 +256,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
         <button type="button" onClick={() => void menuHandler.open(<Glossary />)} title={translate({ key: 'workspaces.glossary.title' })} className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
           <Icon name="circle-question" />
         </button>
-        <div title={translate({ key: 'workspaces.shell.presenceViewing' })} className="mr-1"><AvatarStack users={presence} size={26} max={3} /></div>
+        {presence.length > 0 && <div title={translate({ key: 'workspaces.shell.presenceViewing' })} className="mr-1"><AvatarStack users={presence} size={26} max={3} /></div>}
         <div className="relative" ref={notifRef}>
           <button type="button" onClick={() => { setNotifOpen((o) => !o); }} title={translate({ key: 'workspaces.shell.notifications' })} className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
             <Icon name="bell" />
