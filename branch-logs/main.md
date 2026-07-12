@@ -3893,3 +3893,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** `channel-edit` + `channel-delete` `later`→`enabled` geflipt (channelId nu in de chat-ctx uit golf-34): de Workspace-AI kan nu een kanaal bewerken ("zet het platform van <kanaal> op tiktok") of verwijderen (destructive → extra confirm). Samen met golf-13 (channel-create) is de channel-management-helft van #142 dicht. `content-request-publish` blijft geblokkeerd (vereist assetId dat niet in de chat-ctx zit + is sowieso een keys/publish-item, jouw "erbij zijn"). Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
 **Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 39 (Workspace-AI-catalog: short-form): #134 (shortform)
+**Wat:** `content-gen-shortform` `later`→`enabled` geflipt (pieceId + prompt, beide required) via de gedeelde `contentGen`-dispatcher — de AI kan nu een hook-gedreven short-form-clip voorstellen. `content-gen-reference-image` blijft `later` (vereist een referenceUrl die niet in de chat-ctx zit); `content-analyze-reference-video` idem (video-url). Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
+**Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

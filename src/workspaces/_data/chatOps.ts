@@ -47,6 +47,8 @@ export const CHAT_ENABLED_OPS = [
   'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
   // channel management (#142) — edit/delete an existing channel by id
   'channel-edit', 'channel-delete',
+  // short-form clip generation (#134) — hook-driven vertical clip
+  'content-gen-shortform',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

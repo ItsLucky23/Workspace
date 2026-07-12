@@ -261,6 +261,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'content-gen-music': contentGen('content-gen-music'),
   'content-gen-sfx': contentGen('content-gen-sfx'),
   'content-gen-3d': contentGen('content-gen-3d'),
+  'content-gen-shortform': contentGen('content-gen-shortform'),
 
   //? #142 — channel management (contentControl route).
   'channel-edit': (p, x) => {
