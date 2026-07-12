@@ -188,7 +188,7 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
 }
 
 //? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
-export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string): Promise<ChatResult> {
+export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[]): Promise<ChatResult> {
   const ctx = await loadCtx(prisma, workspaceId);
   //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
   //? so "how does X work?" answers from real code instead of flying blind. Best-effort — empty when
@@ -203,7 +203,11 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   //? "what the user's repo contains". Best-effort — empty when the corpus isn't indexed.
   const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, message, 4));
   const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 4000);
-  const res = await runAiCompletion('workspace-chat', { prompt: message, system: systemPrompt(ctx, codeContext, productContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
+  //? #112 — thread the last N prior turns into the prompt so the AI can follow up ("do that for the
+  //? other ticket too"). Bounded to the last 8 turns; the current message is the final line.
+  const historyText = (history ?? []).slice(-8).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n');
+  const fullPrompt = historyText.length > 0 ? `Conversation so far:\n${historyText}\n\nUser: ${message}` : message;
+  const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];

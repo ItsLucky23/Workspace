@@ -1,9 +1,11 @@
 {
   "permissions": {
-    "ask": [
+    "allow": [
       "Bash(agent-browser:*)",
       "mcp__playwright",
-      "mcp__chrome-devtools"
+      "mcp__chrome-devtools",
+      "Bash(npx prisma:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

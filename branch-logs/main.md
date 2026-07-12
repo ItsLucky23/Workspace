@@ -3935,3 +3935,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Bewust apart (het 4e stuk):** de production-EMITTER (wat de AI ertoe beweegt een copilot-directive te PRODUCEREN) is een echte ontwerpkeuze — de andere suggestie-types worden geseeded (geen live-analyzer, en #76 wil geen seeding meer), en copilot-propose via de catalog zou een dubbele-accept-UX geven. Dat verdient een dedicated ontwerp-sessie i.p.v. forceren.
 **Verify:** typecheck0·build✓·lint0(pre-existing activeProjectId-warning).
 **Files:** `src/workspaces/_data/types.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`.
+
+## 2026-07-13 — 🟢 v3-build golf 47 (Workspace-AI): #112 (chat-history-threading)
+**Wat:** de Workspace-AI-chat was geheugenloos — elke `aiChat`-turn zag alleen het losse bericht, dus een follow-up ("doe dat ook voor het andere ticket") had geen context. Nu de recente conversatie meegestuurd + verwerkt: (1) client `sendChat` bouwt `history` uit de lokale `chat`-state (laatste 8 niet-pending, niet-lege turns, `{role,text}`) en stuurt 'm mee in de apiRequest; (2) `aiChat_v1` accepteert `history?: {role,text}[]` (validation relaxed, Array.isArray-guard) en threadt 'm door; (3) `interpretChat` prependt de laatste 8 turns als `Conversation so far:\n…\n\nUser: <message>` vóór de provider-call. generateArtifacts gedraaid (route-data-interface gewijzigd).
+**Verify:** typecheck0·build✓·lint0.
+**Files:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_api/aiChat_v1.ts`, `server/ai/workspaceChat.ts`.

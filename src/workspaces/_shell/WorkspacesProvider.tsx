@@ -898,9 +898,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     if (!trimmed || !workspaceId) return;
     const stamp = String(reqCounter + 1); reqCounter += 1;
     const aiId = `a${stamp}`;
+    //? #112 — send the recent conversation so the AI can follow up ("do that for the other ticket too").
+    const history = chat.filter((m) => !m.pending && m.text.length > 0).slice(-8).map((m) => ({ role: m.role, text: m.text }));
     setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}) } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}), ...(history.length > 0 ? { history } : {}) } }));
       setChat((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) {
@@ -910,7 +912,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}), ...(plan ? { plan } : {}) };
       }));
     })();
-  }, [snap.activeWorkspaceId, translate]);
+  }, [snap.activeWorkspaceId, snap.activeProjectId, chat, translate]);
 
   //? Accept an AI proposal → dispatch the matching control-op via the same `_sync` routes
   //? the manual UI uses (so execution stays under the Conductor + OP_CAPABILITY RBAC) and
