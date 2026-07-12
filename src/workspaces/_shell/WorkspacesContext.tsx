@@ -276,6 +276,8 @@ export interface WorkspacesCtx {
   //? V5 — payload is Record<string, unknown> so the timeline editor can pass the scene array + numeric
   //? start/end (not just strings). The contentControl route validates each op's real shape server-side.
   runContentOp: (op: string, contentProjectId: string, payload?: Record<string, unknown>) => void;
+  //? #125 — create a content piece from a brief (title + brief + format) via content-from-brief.
+  createContentPiece: (input: { title: string; brief: string; format?: string }) => void;
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string }) => void;

@@ -301,6 +301,7 @@ export interface ContentAssetSummary {
   critique?: string;     // F5: a stored AI critique of an image asset (content-critique-image)
   posterUrl?: string;    // F4: a poster frame extracted from a rendered mp4 (the gallery/publish thumbnail)
   publishedOn?: string[]; // S2: platforms this asset is currently published on (drives the unpublish control)
+  publishJobs?: { platform: string; status: string; externalUrl?: string; scheduledAt?: string }[]; // #143: honest per-job status (done/stub/error/scheduled/unpublished) + external link
 }
 
 //? V1 — a timeline VIDEO SCENE surfaced to the editor: a real clip (or a still) with trim + a transition.

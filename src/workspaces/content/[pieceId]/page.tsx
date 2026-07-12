@@ -60,6 +60,8 @@ const euro = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
 
 //? A publishable asset is a finished, reachable video/render (the thing you post to a platform).
 const isPublishable = (asset: ContentAssetSummary): boolean => (asset.kind === 'render' || asset.kind === 'video') && asset.status === 'ready';
+//? #143 — per-job publish-status tint (done=correct · scheduled=warning · error=wrong · queued=muted).
+const PUBLISH_STATUS_TINT: Record<string, string> = { done: 'bg-correct/10 text-correct', scheduled: 'bg-warning/15 text-warning', error: 'bg-wrong/10 text-wrong' };
 
 //? mm:ss elapsed since the job LEFT the queue (startedAt), for the live generation timer.
 function elapsedLabel(startedAt: number, now: number): string {
@@ -236,6 +238,20 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegene
               <Icon name="xmark" /> {platform}
             </button>
           ))}
+        </div>
+      )}
+      {/* #143 — honest per-job publish status (done/scheduled/error/queued) + external link per platform. */}
+      {asset.publishJobs && asset.publishJobs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+          <span className="text-[10px] text-muted">{translate({ key: 'workspaces.content.publishStatus' })}</span>
+          {asset.publishJobs.map((j, i) => {
+            const tint = PUBLISH_STATUS_TINT[j.status] ?? 'bg-container2 text-muted';
+            const chipCls = `rounded-md px-1.5 py-1 text-[10px] font-semibold capitalize inline-flex items-center gap-1 ${tint}`;
+            const label = `${j.platform} · ${translate({ key: `workspaces.content.pubStatus_${j.status}` })}`;
+            return j.externalUrl !== undefined && j.externalUrl.length > 0
+              ? <a key={`${j.platform}-${String(i)}`} href={j.externalUrl} target="_blank" rel="noreferrer" className={`${chipCls} hover:underline`}>{label} <Icon name="up-right-from-square" /></a>
+              : <span key={`${j.platform}-${String(i)}`} className={chipCls}>{label}</span>;
+          })}
         </div>
       )}
       {/* E1 — region-edit an image asset (draw a mask → inpaint). */}

@@ -374,11 +374,21 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       if (!list.includes(j.platform)) list.push(j.platform);
       publishedByAsset.set(j.assetId, list);
     }
+    //? #143 — the honest per-job status per asset (all statuses, not just done) so the piece page can
+    //? render done/scheduled/error/stub chips with the external link (was only aggregate counts).
+    const publishJobsByAsset = new Map<string, { platform: string; status: string; externalUrl?: string; scheduledAt?: string }[]>();
+    for (const j of publishJobRows) {
+      const list = publishJobsByAsset.get(j.assetId) ?? [];
+      list.push({ platform: j.platform, status: j.status, ...(j.externalUrl ? { externalUrl: j.externalUrl } : {}), ...(j.scheduledAt ? { scheduledAt: j.scheduledAt.toISOString() } : {}) });
+      publishJobsByAsset.set(j.assetId, list);
+    }
     const assetsByPiece = new Map<string, ContentAssetSummary[]>();
     for (const a of contentAssetRows) {
       const summary = toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null);
       const pub = publishedByAsset.get(a.id);
       if (pub && pub.length > 0) summary.publishedOn = pub;
+      const jobs = publishJobsByAsset.get(a.id);
+      if (jobs && jobs.length > 0) summary.publishJobs = jobs;
       const list = assetsByPiece.get(a.contentProjectId) ?? [];
       list.push(summary);
       assetsByPiece.set(a.contentProjectId, list);

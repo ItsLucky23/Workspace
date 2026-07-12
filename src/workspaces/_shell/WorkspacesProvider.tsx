@@ -1315,6 +1315,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       runTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Fire a content-generation control-op (U2) — Conductor executes (B-23); the snapshot refetch brings the new asset/state back.
       runContentOp: (op, contentProjectId, payload) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? #125 — create a content piece from a brief (mirrors the chat-proposal create-content path).
+      createContentPiece: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: input.title, brief: input.brief, format: input.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Media €-budget settings (U3) — cap/alert/enabled via edit-media-budget (B-23).
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).

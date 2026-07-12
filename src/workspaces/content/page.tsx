@@ -1,14 +1,49 @@
 //? intent: the Content studio — a board of your AI content pieces (script → media → assemble →
 //? review → publish) with the media €-budget, so a non-technical user sees everything they've made.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import { menuHandler } from 'src/_functions/menuHandler';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
-import { EmptyState } from '../_components/primitives';
+import { EmptyState, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ContentPieceSummary } from '../_data/types';
+
+//? #125 — create a content piece from a brief (title + brief + format), the first UI create path (the
+//? board previously had no create affordance at all — only the AI's create-content proposal).
+const PIECE_FORMATS = ['faceless', 'talking-head'];
+function NewPieceForm({ onCreate }: { onCreate: (input: { title: string; brief: string; format: string }) => void }) {
+  const translate = useTranslator();
+  const [title, setTitle] = useState('');
+  const [brief, setBrief] = useState('');
+  const [format, setFormat] = useState(PIECE_FORMATS[0] ?? 'faceless');
+  const formatItems: DropdownItem[] = PIECE_FORMATS.map((f) => ({ id: f, value: f, item: translate({ key: `workspaces.content.format_${f.replace('-', '_')}` }) }));
+  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  const canCreate = title.trim().length > 0 && brief.trim().length > 0;
+  const submit = () => {
+    if (!canCreate) return;
+    onCreate({ title: title.trim(), brief: brief.trim(), format });
+    void menuHandler.close();
+  };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.newPieceTitle' })}</div>
+      <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.newPieceTitlePlaceholder' })} className={fieldCls} />
+      <textarea value={brief} onChange={(e) => { setBrief(e.target.value); }} rows={4} placeholder={translate({ key: 'workspaces.content.newPieceBriefPlaceholder' })} className={`${fieldCls} h-auto py-2 resize-y`} />
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted">{translate({ key: 'workspaces.content.newPieceFormat' })}</span>
+        <Dropdown size="sm" items={formatItems} value={formatItems.find((i) => i.id === format)} onChange={(it) => { setFormat(String(it.id)); }} />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="plus" disabled={!canCreate} onClick={submit}>{translate({ key: 'workspaces.content.newPieceCreate' })}</WsButton>
+      </div>
+    </div>
+  );
+}
 
 export const template = 'workspaces';
 
@@ -47,8 +82,9 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
 }
 
 export default function Content() {
-  const { content, navigate } = useWorkspaces();
+  const { content, navigate, createContentPiece } = useWorkspaces();
   const translate = useTranslator();
+  const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const byStage = useMemo(() => {
     const map = new Map<string, ContentPieceSummary[]>();
@@ -78,6 +114,8 @@ export default function Content() {
         <button type="button" onClick={() => { navigate('content/settings'); }} title={translate({ key: 'workspaces.content.settings' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common text-sm flex items-center gap-2 cursor-pointer">
           <Icon name="gear" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.settings' })}</span>
         </button>
+        {/* #125 — the primary create affordance (was entirely absent — only the AI could create pieces). */}
+        <WsButton icon="plus" onClick={openNewPiece}>{translate({ key: 'workspaces.content.newPiece' })}</WsButton>
         {/* Media €-budget summary (F0.2) — always visible so a cost-sensitive user sees spend at a glance. */}
         <div className="hidden sm:block rounded-xl border border-container1-border bg-container1 px-3 py-2 min-w-52">
           <div className="flex items-center justify-between gap-3 text-xs">
@@ -97,7 +135,11 @@ export default function Content() {
 
       <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-8">
         {content.pieces.length === 0 ? (
-          <EmptyState icon="wand-magic-sparkles" title={translate({ key: 'workspaces.content.empty' })} sub={translate({ key: 'workspaces.content.emptySub' })} />
+          <div className="flex flex-col items-center gap-4">
+            <EmptyState icon="wand-magic-sparkles" title={translate({ key: 'workspaces.content.empty' })} sub={translate({ key: 'workspaces.content.emptySub' })} />
+            {/* #125 — empty-state CTA so a first-time user has an obvious way to create. */}
+            <WsButton icon="plus" onClick={openNewPiece}>{translate({ key: 'workspaces.content.newPiece' })}</WsButton>
+          </div>
         ) : (
           <div className="flex gap-4 min-w-max">
             {STAGES.map((s) => {
