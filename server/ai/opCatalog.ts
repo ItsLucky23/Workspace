@@ -101,9 +101,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'save-ai-provider': LATER,
   'save-autonomy': LATER,
   'link-repo': LATER,
-  'scan-docs': LATER,
+  'scan-docs': { mode: 'enabled', hint: 'rescan the linked repo for context docs (README/docs/…). no params', params: {} },
   'create-info-source': LATER,
-  'scan-index': LATER,
+  'scan-index': { mode: 'enabled', hint: 'rebuild the code RAG index of the linked repo (so answers ground on the latest code). no params', params: {} },
   'mr-create': LATER, 'mr-comment': LATER, 'mr-approve': LATER_D, 'mr-merge': LATER_D, 'mr-resolve': LATER,
   'mr-review': {
     mode: 'enabled',

@@ -49,6 +49,8 @@ export const CHAT_ENABLED_OPS = [
   'channel-edit', 'channel-delete',
   // short-form clip generation (#134) — hook-driven vertical clip
   'content-gen-shortform',
+  // knowledge refresh — rescan docs / rebuild the code index (no params)
+  'scan-docs', 'scan-index',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

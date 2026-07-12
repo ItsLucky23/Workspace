@@ -3898,3 +3898,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** `content-gen-shortform` `later`→`enabled` geflipt (pieceId + prompt, beide required) via de gedeelde `contentGen`-dispatcher — de AI kan nu een hook-gedreven short-form-clip voorstellen. `content-gen-reference-image` blijft `later` (vereist een referenceUrl die niet in de chat-ctx zit); `content-analyze-reference-video` idem (video-url). Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
 **Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 40 (Workspace-AI-catalog: knowledge-refresh): scan-docs + scan-index
+**Wat:** `scan-docs` + `scan-index` `later`→`enabled` geflipt (no-param workspace-ops, net als het al-enabled index-memory): de Workspace-AI kan nu voorstellen de context-docs te herscannen of de code-RAG-index te herbouwen ("herbouw de code-index"). Dispatch via de bestaande scanDocs/scanIndex-routes. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
+**Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

@@ -273,4 +273,8 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const channelId = str(p, 'channelId'); if (!channelId) return;
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-delete', channelId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+
+  //? knowledge refresh (no params) — rescan docs / rebuild the code RAG index.
+  'scan-docs': (_p, x) => { void syncRequest({ name: 'workspaces/scanDocs', version: 'v1', data: { clientRequestId: x.nextReqId() }, receiver: x.room }); },
+  'scan-index': (_p, x) => { void syncRequest({ name: 'workspaces/scanIndex', version: 'v1', data: { clientRequestId: x.nextReqId() }, receiver: x.room }); },
 };
