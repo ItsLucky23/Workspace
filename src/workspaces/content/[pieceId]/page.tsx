@@ -170,7 +170,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
   );
 }
 
-function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditRegion, onEditImage, onCritique, onInstructEdit, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onInstructEdit: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegenerate, onEditRegion, onEditImage, onCritique, onInstructEdit, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onUnpublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onInstructEdit: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   //? F4 — a render's url is an .mp4 (can't be an <img>); use its extracted poster frame as the thumbnail.
   //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
@@ -223,6 +223,17 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onRegenerate, onEditR
           {connectedPlatforms.map((platform) => (
             <button key={platform} type="button" onClick={() => { onPublish(asset.id, platform); }} className="rounded-md bg-primary/10 text-primary px-1.5 py-1 text-[10px] font-semibold capitalize hover:bg-primary/20 cursor-pointer flex items-center gap-1">
               <Icon name="paper-plane" /> {platform}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* S2 — content-unpublish: retract a published post. Only shown for platforms this asset is live on. */}
+      {asset.publishedOn && asset.publishedOn.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+          <span className="text-[10px] text-muted inline-flex items-center gap-1"><Icon name="circle-check" className="text-correct" /> {translate({ key: 'workspaces.content.publishedOn' })}</span>
+          {asset.publishedOn.map((platform) => (
+            <button key={platform} type="button" onClick={() => { onUnpublish(asset.id, platform); }} title={translate({ key: 'workspaces.content.unpublish' })} className="rounded-md bg-wrong/10 text-wrong px-1.5 py-1 text-[10px] font-semibold capitalize hover:bg-wrong/20 cursor-pointer flex items-center gap-1">
+              <Icon name="xmark" /> {platform}
             </button>
           ))}
         </div>
@@ -356,6 +367,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const connectedPlatforms = content.publishTargets.filter((t) => t.connected).map((t) => t.platform);
   //? G1/CP1 — open the publish COMPOSER: per-platform caption + hashtags + privacy + optional schedule, then
   //? fire content-request-publish (which persists the variant + proposes the post; B-23 gated on accept).
+  //? S2 — content-unpublish: retract a published post (confirmed; the platform delete is best-effort server-side).
+  const unpublish = (assetId: string, platform: string) => {
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.unpublish' }), content: translate({ key: 'workspaces.content.unpublishConfirm', params: [{ key: 'platform', value: platform }] }) }).then((ok) => { if (ok) runContentOp('content-unpublish', piece.id, { assetId, platform }); });
+  };
   const requestPublish = (assetId: string, platform: string) => {
     void menuHandler.open(
       <PublishComposer platform={platform} translate={translate} onSubmit={(fields) => {
@@ -553,7 +568,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onUnpublish={unpublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
                 </div>
               )}
             </div>

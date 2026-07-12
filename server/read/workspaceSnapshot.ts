@@ -366,10 +366,21 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const publishTargets = ['youtube', 'tiktok'].map((platform) => ({ platform, connected: connectedPlatforms.has(platform) }));
     //? U-fix B: group the produced media assets per piece so the detail page can show + download them.
     //? `stub` = the asset was produced in dummy mode (no key) — the registry marks it in `metadata.stub`.
+    //? S2: which platforms each asset is currently published on (status 'done') — drives the unpublish control.
+    const publishedByAsset = new Map<string, string[]>();
+    for (const j of publishJobRows) {
+      if (j.status !== 'done') continue;
+      const list = publishedByAsset.get(j.assetId) ?? [];
+      if (!list.includes(j.platform)) list.push(j.platform);
+      publishedByAsset.set(j.assetId, list);
+    }
     const assetsByPiece = new Map<string, ContentAssetSummary[]>();
     for (const a of contentAssetRows) {
+      const summary = toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null);
+      const pub = publishedByAsset.get(a.id);
+      if (pub && pub.length > 0) summary.publishedOn = pub;
       const list = assetsByPiece.get(a.contentProjectId) ?? [];
-      list.push(toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null));
+      list.push(summary);
       assetsByPiece.set(a.contentProjectId, list);
     }
     //? Q1: per-piece media spend (from MediaSpend rows) so the detail page shows what THIS piece has cost.

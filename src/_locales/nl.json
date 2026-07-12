@@ -889,7 +889,7 @@
       "modelsDesc": "Overschrijf het AI-model per functie (bijv. een low-poly 3D-model of een sneller/goedkoper beeld-model). Leeg = de standaard.",
       "instructEdit": "AI-edit", "instructEditNeedsPrompt": "Typ eerst een instructie in het richting-veld (bv. \"verander de lucht in zonsondergang\").",
       "critique": "Beoordeel",
-      "restyle": "Herstijl",
+      "restyle": "Herstijl", "publishedOn": "Gepubliceerd op", "unpublish": "Intrekken", "unpublishConfirm": "Deze post intrekken van {{platform}}? De platform-verwijdering is best-effort.",
       "regenerate": "Opnieuw",
       "variations": "3 varianten",
       "variant": "Variant",

@@ -889,7 +889,7 @@
       "modelsDesc": "Remplacez le modèle IA par fonction (ex. un modèle 3D low-poly, ou un modèle d'image plus rapide/économique). Vide = la valeur par défaut.",
       "instructEdit": "Édition IA", "instructEditNeedsPrompt": "Saisis d'abord une instruction dans le champ de direction (ex. \"change le ciel en coucher de soleil\").",
       "critique": "Critiquer",
-      "restyle": "Restyler",
+      "restyle": "Restyler", "publishedOn": "Publié sur", "unpublish": "Retirer", "unpublishConfirm": "Retirer cette publication de {{platform}} ? La suppression sur la plateforme est au mieux.",
       "regenerate": "Régénérer",
       "variations": "3 variantes",
       "variant": "Variante",

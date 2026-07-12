@@ -3624,6 +3624,11 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings). Geen nieuwe i18n.
 **Files:** `src/workspaces/studio/page.tsx`, `src/workspaces/marketing/page.tsx`.
 
+## 2026-07-12 — 🟢 Gap-close (feature): content-unpublish + publish-status-display
+**Wat:** `content-unpublish` had een conductor-case maar de piece toonde niet welke assets gepubliceerd waren. Nieuw display-oppervlak: de snapshot (die `publishJobRows` al las) hangt nu per asset `publishedOn: string[]` (platforms met een `done` PublishJob); `ContentAssetSummary` kreeg dat veld; de asset-kaart toont een "Gepubliceerd op ✓" + een rode per-platform **intrek-knop** → `runContentOp('content-unpublish', {assetId, platform})` achter een confirm. Alleen zichtbaar voor platforms waarop de asset live staat.
+**Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 3 i18n-keys ×4 (`content.publishedOn/unpublish/unpublishConfirm`).
+**Files:** `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
 ## 2026-07-11 — 🔘 Gap-close: root-cause diagnose-UI op de Usage-pagina
 **Wat:** `root-cause` (ADR 0042: symptoom + recente merges → waarschijnlijke schuldige merge als rollback-suggestie) was UI-loos + had "geen thuis". Geplaatst op de **Usage-pagina** (het ops-overzicht = plausibele thuis): een "Diagnose wat stuk is"-card met symptoom-input + knop → `ctx.diagnoseRootCause(symptom)` via projectAdmin (`symptom?` bestond al → geen generateArtifacts). Output = rollback-suggestie in het AI-panel (bestaande accept-flow, B-23).
 **Verify:** typecheck0·build✓·lint0(8 pre-existing warnings)·localeIntegrity 8/8. 4 i18n-keys ×4 (`usage.diagnose*`).
