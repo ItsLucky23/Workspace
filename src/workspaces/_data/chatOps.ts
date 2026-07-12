@@ -40,6 +40,8 @@ export const CHAT_ENABLED_OPS = [
   'run-custom-task',
   // run an automation trigger on demand by id (#86)
   'trigger-run',
+  // MR review / rollback (#54) — the mrId+ticketKey pair comes from the ctx MR list
+  'mr-review', 'mr-rollback',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

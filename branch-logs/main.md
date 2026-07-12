@@ -3823,3 +3823,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** chat-ctx verder uitgebreid met de workspace's automation-triggers (id+naam); `trigger-run` `later`→`enabled` geflipt met param-kind `triggerId` (gevalideerd tegen `ctx.triggers`), dispatch via de triggerAction-route. De Workspace-AI kan nu voorstellen een trigger on-demand te draaien ("draai de scraper-trigger nu"). Samen met golf-23 (run-custom-task) is #86 (trigger/custom-task-ops voorstelbaar) hiermee gesloten. Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
 **Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-12 — 🟢 v3-build golf 25 (Workspace-AI-catalog: MR-review/rollback): #54
+**Wat:** chat-ctx uitgebreid met de workspace's open merge-requests (mrId + de ticket-key waar 'ie bij hoort + title; `loadCtx` lost de ticketId→key-map op). Daarmee `mr-review` + `mr-rollback` `later`→`enabled` geflipt: de Workspace-AI kan nu een MR-review ("review de MR van DEV-3") of een rollback voorstellen. Nieuw param-kind `mrId` (gevalideerd tegen `ctx.mrs`); de ops nemen `mrId`+`ticketKey` (het paar uit de MR-lijst); dispatch via de mrAction-route (ControlOp→`action`-mapping: review/rollback). rollback is `destructive` (extra confirm). Hiermee is #54 gesloten. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
+**Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

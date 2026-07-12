@@ -220,6 +220,18 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const triggerId = str(p, 'triggerId'); if (!triggerId) return;
     void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #54 — AI review of an MR (mrAction route; the ControlOp maps to the route's `action` field).
+  'mr-review': (p, x) => {
+    const mrId = str(p, 'mrId'); const ticketKey = str(p, 'ticketKey');
+    if (!mrId || !ticketKey) return;
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'review', ticketKey, mrId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? #54 — roll back a merged MR (mrAction route).
+  'mr-rollback': (p, x) => {
+    const mrId = str(p, 'mrId'); const ticketKey = str(p, 'ticketKey');
+    if (!mrId || !ticketKey) return;
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'rollback', ticketKey, mrId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #7 — edit a ticket's title/description/priority (ticketEdit route; the key travels as `ticketId`).
   'ticket-edit': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;

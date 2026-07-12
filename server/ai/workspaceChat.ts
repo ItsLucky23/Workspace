@@ -39,10 +39,13 @@ export interface Ctx {
   customTasks: { id: string; name: string }[];
   //? #86 — the workspace's automation triggers, so the AI can propose running one on demand by id.
   triggers: { id: string; name: string }[];
+  //? #54 — the workspace's open merge requests (id + the ticket key they belong to) so the AI can
+  //? propose an MR review or rollback.
+  mrs: { id: string; ticketKey: string; title: string }[];
 }
 
 async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> {
-  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers] = await Promise.all([
+  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows] = await Promise.all([
     prisma.ticket.findMany({ where: { workspaceId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
@@ -51,9 +54,13 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
     prisma.customAiTask.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
+    prisma.mergeRequest.findMany({ where: { workspaceId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
+  //? #54 — resolve each open MR's ticket KEY (the chat + mrAction reference the DEV-#### key, not the id).
+  const mrTicketKeys = await prisma.ticket.findMany({ where: { workspaceId, id: { in: mrRows.map((m) => m.ticketId) } }, select: { id: true, key: true } });
+  const keyByTicketId = new Map(mrTicketKeys.map((t) => [t.id, t.key]));
   return {
     tickets: tickets.map((t) => ({ key: t.key, title: t.title, stageId: t.stageId })),
     stages: stages.map((s) => ({ id: s.key, name: s.name })),
@@ -63,6 +70,7 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     services: services.map((s) => ({ name: s.name, status: s.status })),
     customTasks: customTasks.map((t) => ({ id: t.id, name: t.name })),
     triggers: triggers.map((t) => ({ id: t.id, name: t.name })),
+    mrs: mrRows.map((m) => ({ id: m.id, ticketKey: keyByTicketId.get(m.ticketId) ?? '', title: m.title })).filter((m) => m.ticketKey.length > 0),
   };
 }
 
@@ -92,6 +100,7 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
     `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
+    `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
   ].join('\n');

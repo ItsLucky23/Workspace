@@ -24,12 +24,13 @@ export interface CatalogCtx {
   pieces: { id: string; title: string }[];
   environments: { id: string; kind: string }[];
   services: { name: string }[];
-  //? #86 — custom AI tasks + automation triggers (taskId/triggerId validation for run proposals).
+  //? #86/#54 — custom tasks + triggers + open MRs (taskId/triggerId/mrId validation for proposals).
   customTasks: { id: string; name: string }[];
   triggers: { id: string; name: string }[];
+  mrs: { id: string; ticketKey: string }[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -102,7 +103,17 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'scan-docs': LATER,
   'create-info-source': LATER,
   'scan-index': LATER,
-  'mr-create': LATER, 'mr-comment': LATER, 'mr-approve': LATER_D, 'mr-merge': LATER_D, 'mr-rollback': LATER_D, 'mr-resolve': LATER, 'mr-review': LATER,
+  'mr-create': LATER, 'mr-comment': LATER, 'mr-approve': LATER_D, 'mr-merge': LATER_D, 'mr-resolve': LATER,
+  'mr-review': {
+    mode: 'enabled',
+    hint: 'run an AI review of a merge request (findings land as a suggestion the user accepts). params: mrId, ticketKey (the pair from the MR list below)',
+    params: { mrId: { kind: 'mrId', required: true }, ticketKey: { kind: 'ticketKey', required: true } },
+  },
+  'mr-rollback': {
+    mode: 'enabled', destructive: true,
+    hint: 'roll back (revert) a merged merge request. params: mrId, ticketKey (the pair from the MR list below)',
+    params: { mrId: { kind: 'mrId', required: true }, ticketKey: { kind: 'ticketKey', required: true } },
+  },
   'raise-cap': LATER_D, 'edit-budget': LATER_D, 'resume-spend': LATER_D,
   'skill-toggle': LATER,
   'save-stage-config': LATER,
@@ -339,6 +350,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'serviceName') return typeof value === 'string' && ctx.services.some((s) => s.name === value) ? value : undefined;
   if (kind === 'taskId') return typeof value === 'string' && ctx.customTasks.some((t) => t.id === value) ? value : undefined;
   if (kind === 'triggerId') return typeof value === 'string' && ctx.triggers.some((t) => t.id === value) ? value : undefined;
+  if (kind === 'mrId') return typeof value === 'string' && ctx.mrs.some((m) => m.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }
