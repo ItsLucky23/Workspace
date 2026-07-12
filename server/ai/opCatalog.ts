@@ -88,7 +88,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'ui-review-create': LATER,
   'gitlab-settings': EXCLUDED, // carries the forge token
   'gitlab-verify': LATER,
-  'gitlab-resync': LATER,
+  'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
   'save-git-config': LATER,
   'save-sections': LATER,

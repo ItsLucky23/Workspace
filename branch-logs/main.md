@@ -3808,3 +3808,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de `open-ref-preview`-endpoint (start de app op een ARBITRAIRE git-ref: SHA/tag/branch in een ephemeral container) had geen UI-entry. Nu een vierde 'ref'-modus in de TimeTravelForm: kies "Ruwe ref", vul een SHA/tag/branch → de handler routeert naar `workspaces/openRefPreview` (commit/revert/asof blijven via `timeTravelPreview`). `asTravelMode`-guard naar module-scope voor de lint.
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: timetravel.{mode_ref,refPh} ×4.
 **Files:** `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 22 (Workspace-AI-catalog: forge-resync): #29 (resync-helft)
+**Wat:** `gitlab-resync` `later`→`enabled` geflipt — de Workspace-AI kan nu een on-demand forge-issue-resync VOORSTELLEN ("haal de laatste issues op van GitLab"); geen params, dispatch via de projectAdmin-route (`resyncForge` bestond al). Dit dekt de resync-helft van #29; de branch-strategy/push-policy-helft (save-git-config) vereist config-params + blijft `later`. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
+**Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

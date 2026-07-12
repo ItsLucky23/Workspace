@@ -206,6 +206,10 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const productContext = str(p, 'productContext'); if (!productContext) return;
     void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-product', productContext, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #29 — on-demand forge issue resync (projectAdmin route; no params).
+  'gitlab-resync': (_p, x) => {
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #7 — edit a ticket's title/description/priority (ticketEdit route; the key travels as `ticketId`).
   'ticket-edit': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;

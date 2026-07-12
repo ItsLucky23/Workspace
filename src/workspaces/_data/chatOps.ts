@@ -34,6 +34,8 @@ export const CHAT_ENABLED_OPS = [
   'save-style', 'channel-create', 'reference-add', 'content-edit-product',
   // ticket edit (#7) — rename / re-describe / re-prioritise a ticket
   'ticket-edit',
+  // forge issue resync (#29) — pull issues/state from the connected forge on demand
+  'gitlab-resync',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];
