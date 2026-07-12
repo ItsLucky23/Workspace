@@ -215,6 +215,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const taskId = str(p, 'taskId'); if (!taskId) return;
     void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #86 — run an automation trigger on demand by id (triggerAction route).
+  'trigger-run': (p, x) => {
+    const triggerId = str(p, 'triggerId'); if (!triggerId) return;
+    void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #7 — edit a ticket's title/description/priority (ticketEdit route; the key travels as `ticketId`).
   'ticket-edit': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;

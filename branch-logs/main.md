@@ -3818,3 +3818,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de chat-context (`Ctx`/`CatalogCtx`) uitgebreid met de workspace's custom-AI-tasks (id+naam) — de eerste stap van de "chat-ctx mist ids"-blocker. Daarmee `run-custom-task` `later`→`enabled` geflipt: de Workspace-AI kan nu voorstellen een opgeslagen custom-taak bij id te draaien ("draai mijn wekelijkse-rapport-taak"). Nieuw param-kind `taskId` (gevalideerd tegen `ctx.customTasks`); `loadCtx` laadt `customAiTask`-rijen; systemPrompt kreeg de custom-tasks-lijst; client-twin + dispatcher (customTask-route). Dit is het patroon om #54 (mr-ids) + de rest van #86 (trigger-ids) in volgende commits te sluiten.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
 **Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-12 — 🟢 v3-build golf 24 (Workspace-AI-catalog: trigger-run): #86 (compleet)
+**Wat:** chat-ctx verder uitgebreid met de workspace's automation-triggers (id+naam); `trigger-run` `later`→`enabled` geflipt met param-kind `triggerId` (gevalideerd tegen `ctx.triggers`), dispatch via de triggerAction-route. De Workspace-AI kan nu voorstellen een trigger on-demand te draaien ("draai de scraper-trigger nu"). Samen met golf-23 (run-custom-task) is #86 (trigger/custom-task-ops voorstelbaar) hiermee gesloten. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
+**Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

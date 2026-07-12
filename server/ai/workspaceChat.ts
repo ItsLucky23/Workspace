@@ -37,10 +37,12 @@ export interface Ctx {
   services: { name: string; status: string }[];
   //? #86 — the workspace's user-defined custom AI tasks, so the AI can propose running one by id.
   customTasks: { id: string; name: string }[];
+  //? #86 — the workspace's automation triggers, so the AI can propose running one on demand by id.
+  triggers: { id: string; name: string }[];
 }
 
 async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> {
-  const [tickets, stages, memberRows, pieces, environments, services, customTasks] = await Promise.all([
+  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers] = await Promise.all([
     prisma.ticket.findMany({ where: { workspaceId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
@@ -48,6 +50,7 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     prisma.environment.findMany({ where: { workspaceId }, select: { id: true, kind: true, status: true }, take: 12 }),
     prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
     prisma.customAiTask.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
+    prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
@@ -59,6 +62,7 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     environments: environments.map((e) => ({ id: e.id, kind: e.kind, status: e.status })),
     services: services.map((s) => ({ name: s.name, status: s.status })),
     customTasks: customTasks.map((t) => ({ id: t.id, name: t.name })),
+    triggers: triggers.map((t) => ({ id: t.id, name: t.name })),
   };
 }
 
@@ -87,6 +91,7 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     `Environments (envId — kind [status]): ${ctx.environments.map((e) => `${e.id} — ${e.kind} [${e.status}]`).join('; ') || '(none)'}`,
     `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
     `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
+    `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
   ].join('\n');

@@ -24,11 +24,12 @@ export interface CatalogCtx {
   pieces: { id: string; title: string }[];
   environments: { id: string; kind: string }[];
   services: { name: string }[];
-  //? #86 — custom AI tasks (taskId validation for the run-custom-task proposal).
+  //? #86 — custom AI tasks + automation triggers (taskId/triggerId validation for run proposals).
   customTasks: { id: string; name: string }[];
+  triggers: { id: string; name: string }[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -120,7 +121,12 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'reorder the pipeline stages. params: order (ALL stage ids in their new order)',
     params: { order: { kind: 'stageKeys', required: true } },
   },
-  'trigger-save': LATER, 'trigger-toggle': LATER, 'trigger-delete': LATER_D, 'trigger-run': LATER,
+  'trigger-save': LATER, 'trigger-toggle': LATER, 'trigger-delete': LATER_D,
+  'trigger-run': {
+    mode: 'enabled',
+    hint: 'run an automation trigger NOW by id (fire its action on demand). params: triggerId (a trigger id from the list below)',
+    params: { triggerId: { kind: 'triggerId', required: true } },
+  },
   'finding-to-ticket': LATER, 'finding-dismiss': LATER,
   'ticket-link-artifact': LATER, 'ticket-unlink-artifact': LATER,
   // ---- projects / services / greenfield
@@ -332,6 +338,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'envId') return typeof value === 'string' && ctx.environments.some((e) => e.id === value) ? value : undefined;
   if (kind === 'serviceName') return typeof value === 'string' && ctx.services.some((s) => s.name === value) ? value : undefined;
   if (kind === 'taskId') return typeof value === 'string' && ctx.customTasks.some((t) => t.id === value) ? value : undefined;
+  if (kind === 'triggerId') return typeof value === 'string' && ctx.triggers.some((t) => t.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }

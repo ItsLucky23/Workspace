@@ -38,6 +38,8 @@ export const CHAT_ENABLED_OPS = [
   'gitlab-resync',
   // run a saved custom AI task by id (#86)
   'run-custom-task',
+  // run an automation trigger on demand by id (#86)
+  'trigger-run',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];
