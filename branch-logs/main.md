@@ -3858,3 +3858,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** persistentie van AI-gegenereerde/bewerkte thema's & stijlen was GEKOPPELD aan activatie (`useInProject` = save + setActive) — je kon geen paar gegenereerde thema's bewaren zonder er één te activeren. Nu een aparte save-only `saveToLibrary(kind)`-ctx-method (via `designerLibrary` op 'save', GEEN setActive) + een "Opslaan in bibliotheek"-knop naast de Use-in-project-knop op de designer-bar. Zelfde ontkoppelings-patroon als #161 (animaties).
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: designer.saveToLibrary ×4.
 **Files:** `src/workspaces/designer/state.tsx`, `src/workspaces/designer/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 32 (Content settings): #153
+**Wat:** `channel-edit` was deels orphaned voor `defaultStyleId` — de channels-snapshot-fold liet 'm helemaal weg (dus onbereikbaar voor de client), en er was geen UI om een channel's house-style te zetten. Nu: `defaultStyleId` toegevoegd aan de channels-fold + `ContentChannelSummary`; `id` toegevoegd aan de styles-fold + `ContentStyleSummary` (de dropdown bindt op StylePreset.id); en een "Standaardstijl"-Dropdown in de channel-edit-form die `defaultStyleId` via `channel-edit` schrijft (conductor + model steunden het al). Alleen zichtbaar bij bewerken van een bestaand kanaal.
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: content.{channelDefaultStyle,channelNoStyle} ×4.
+**Files:** `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

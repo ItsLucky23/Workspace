@@ -300,6 +300,8 @@ function ChannelManagerSection() {
   const translate = useTranslator();
   const { content, runContentOp } = useWorkspaces();
   const platformItems: DropdownItem[] = CHANNEL_PLATFORMS.map((p) => ({ id: p, value: p, item: p }));
+  //? #153 — the channel's default house style options (empty = no default).
+  const styleItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.channelNoStyle' }) }, ...content.styles.map((s) => ({ id: s.id, value: s.id, item: `${s.label} · ${s.feature}` }))];
   //? channel-edit (was UI-less): the create form doubles as an edit form. Editing loads the row into the fields
   //? and dispatches channel-edit (a patch) instead of channel-create.
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -307,14 +309,15 @@ function ChannelManagerSection() {
   const [platform, setPlatform] = useState('youtube');
   const [handle, setHandle] = useState('');
   const [brandVoice, setBrandVoice] = useState('');
+  const [defaultStyleId, setDefaultStyleId] = useState('');   // #153 — the channel's house style
   const canSave = name.trim().length > 0;
-  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); };
-  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null }): void => {
-    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? '');
+  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); setDefaultStyleId(''); };
+  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null; defaultStyleId?: string | null }): void => {
+    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? ''); setDefaultStyleId(c.defaultStyleId ?? '');
   };
   const submit = () => {
     if (!canSave) return;
-    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim() });
+    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim(), defaultStyleId });
     else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}) });
     reset();
   };
@@ -352,6 +355,13 @@ function ChannelManagerSection() {
         </div>
         <input value={handle} onChange={(e) => { setHandle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelHandlePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
         <input value={brandVoice} onChange={(e) => { setBrandVoice(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelVoicePlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+        {/* #153 — the channel's house style (defaultStyleId), only meaningful when editing an existing channel. */}
+        {editingId && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{translate({ key: 'workspaces.content.channelDefaultStyle' })}</span>
+            <Dropdown size="md" value={styleItems.find((i) => i.id === defaultStyleId) ?? styleItems[0]} items={styleItems} onChange={(it) => { setDefaultStyleId(String(it.id)); }} />
+          </div>
+        )}
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.channelSave' })}</button>
       </div>
     </section>
