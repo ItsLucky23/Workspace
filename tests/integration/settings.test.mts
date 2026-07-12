@@ -70,6 +70,20 @@ try {
   });
   assert(gitCfg !== null, 'save-git-config persisted Workspace.gitConfig.branchStrategy');
 
+  //? #27 forge-webhook-rotate → mints Workspace.webhookSecret. Assert a non-empty secret lands + rotates.
+  await enqueueControlAction({ workspaceId: wsId, op: 'forge-webhook-rotate', target: {}, payload: {}, userId: owner.id, clientRequestId: `whs-1-${String(stamp)}` });
+  const firstSecret = await poll(async () => {
+    const ws = await prisma.workspace.findUnique({ where: { id: wsId }, select: { webhookSecret: true } });
+    return ws?.webhookSecret && ws.webhookSecret.length > 0 ? ws.webhookSecret : null;
+  });
+  assert(firstSecret !== null, 'forge-webhook-rotate minted a Workspace.webhookSecret');
+  await enqueueControlAction({ workspaceId: wsId, op: 'forge-webhook-rotate', target: {}, payload: {}, userId: owner.id, clientRequestId: `whs-2-${String(stamp)}` });
+  const rotated = await poll(async () => {
+    const ws = await prisma.workspace.findUnique({ where: { id: wsId }, select: { webhookSecret: true } });
+    return ws?.webhookSecret && ws.webhookSecret !== firstSecret ? ws.webhookSecret : null;
+  });
+  assert(rotated !== null, 'a second forge-webhook-rotate produced a DIFFERENT secret (real rotation)');
+
   //? skill-toggle → target.sourceId flips InfoSource.enabled. Seed a disabled skill row,
   //? then toggle it on.
   const skill = await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'skill', name: `Test skill ${String(stamp)}`, kind: 'live', enabled: false, usedByStages: [] } });

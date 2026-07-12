@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 3 (#27 webhook-card, #64 deploy-hook config)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did:**
+- **#27** volledige inbound-webhook-kaart. KERN-keuze: de secret hoort **per-workspace** (de `/webhooks/forge/<id>`-URL is per-workspace) → `Workspace.webhookSecret` + `Workspace.webhookLastEventAt` (i.p.v. de ongebruikte per-connection `ForgeConnection.webhookSecret`; lost multi-project-ambiguïteit op). `webhookRoute.ts` verifieert nu tegen de per-workspace secret met env-`WS_WEBHOOK_SECRET`-fallback + stempelt `webhookLastEventAt` bij elk geaccepteerd event. Nieuwe control-op `forge-webhook-rotate` (rbac workspaceSettings, opCatalog EXCLUDED — mint een secret, direct-UI) → conductor genereert 24-byte base64url secret → `rotateWebhookSecret` `_sync`-route. Snapshot exposet secret+lastEventAt op workspaces[]; GitLabTab toont secret (copy) + rotate/generate-knop + last-event-chip. i18n ×4.
+- **#64-rest** deploy-hook config-bron env-global → **per-workspace env-var**: `postDeployWebhook` leest nu `WS_DEPLOY_WEBHOOK_URL`/`_TOKEN` uit `prisma.envVar` (save-env, gedecrypt indien secret) met `process.env`-fallback; discoverability-hint in de EnvTab. De artifact-row-chip (#64-slice) bestond al.
+
+**Files touched:** `prisma/schema.prisma` (Workspace +webhookSecret/+webhookLastEventAt), `server/git/webhookRoute.ts`, `server/orchestrator/conductor.ts` (+forge-webhook-rotate case), `server/deploy/buildExport.ts` (resolveDeployConfig), `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_functions/controlApi.ts`, `_sync/rotateWebhookSecret_server_v1.ts` (nieuw), `_data/types.ts`, `_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `workspace/page.tsx`, `src/_locales/×4`, `tests/integration/settings.test.mts` (+rotate-assertie).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, settings.test 11/11 (rotate LIVE tegen DB: mint + echte rotatie), buildExportD4 15/15, parity 53/53, rbac 119/119, locale 8/8.
+
+**Notes:** dev-server-herstart nodig om het nieuwe `Workspace.webhookSecret`-veld + de rotate-route runtime te activeren (Prisma-model + server-code). Webhook-verificatie draait buiten tenant-context (server-to-server ingest, plain client keyed by URL-workspaceId — verificatie IS de auth).
+
 ## 2026-07-13 — completion-gaps-v3 resterende items — batch 1+2 (#29, #17/#113, #149/#138)
 
 **User prompt:** implementeer ALLE resterende punten uit completion-gaps-v3.json en e2e-test ze (owner koos "bouwen" voor elk open design-item; conflictResolutions: preview=implement).

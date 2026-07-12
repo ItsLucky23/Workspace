@@ -71,6 +71,9 @@ export type ControlOp =
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)
   | 'pause' | 'resume' | 'answer-input' | 'kill' | 'pause-all' | 'resume-all'
+  //? #27 — generate/rotate the per-workspace inbound-webhook secret (workspaceSettings; direct UI button,
+  //? never a chat proposal since it mints a secret). The Conductor is the single writer of the secret.
+  | 'forge-webhook-rotate'
   //? #17/#113 — preview-up/preview-down: AI-proposable preview launch/stop (owner conflict-resolution
   //? 2026-07-12 "preview=implement", overrides the earlier remove-answer). They do NOT reach the Conductor —
   //? their accept dispatches through the openPreview/closePreview `_api` routes (ephemeral container state,

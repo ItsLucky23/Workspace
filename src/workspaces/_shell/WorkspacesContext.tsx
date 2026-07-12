@@ -112,6 +112,8 @@ export interface WorkspacesCtx {
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string, forgeType?: string) => void;
+  //? #27 — mint/rotate the per-workspace inbound-webhook secret (settings card); refetches to bring it back.
+  rotateWebhookSecret: () => void;
   copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   indexMemory: () => void;
   planCritique: (ticketKey: string) => void;

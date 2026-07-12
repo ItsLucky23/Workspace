@@ -186,6 +186,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   kill: CAP.demoteAdmin,
   'pause-all': CAP.demoteAdmin,
   'resume-all': CAP.demoteAdmin,
+  //? #27 — rotate the inbound-webhook secret (settings-level).
+  'forge-webhook-rotate': CAP.workspaceSettings,
   //? #17/#113 — preview launch/stop (same gate as the openPreview/closePreview _api routes: workTickets).
   'preview-up': CAP.workTickets,
   'preview-down': CAP.workTickets,

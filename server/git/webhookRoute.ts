@@ -1,7 +1,8 @@
 //? Forge webhook endpoint (#10). Registers `POST /webhooks/forge/<workspaceId>` as a pre-params
 //? custom route (origin-exempt, like the observability probes) so a forge can POST issue events for
-//? continuous ingest. SECURITY: the request MUST present the shared secret (`WS_WEBHOOK_SECRET`) in
-//? `X-Webhook-Secret` (or GitLab's `X-Gitlab-Token`) — if the secret is not configured the endpoint
+//? continuous ingest. SECURITY: the request MUST present the shared secret — the per-workspace
+//? `Workspace.webhookSecret` (#27, rotatable) with an env `WS_WEBHOOK_SECRET` fallback — in
+//? `X-Webhook-Secret` (or GitLab's `X-Gitlab-Token`) — if no secret is configured the endpoint
 //? is DISABLED (503), a secure default (no unauthenticated write path). Provider is auto-detected
 //? (GitHub via `X-GitHub-Event`, else GitLab). Best-effort: a bad body is a 400, never a crash.
 
@@ -49,10 +50,14 @@ export function registerForgeWebhook(): void {
     const workspaceId = rawUrl.slice(WEBHOOK_PREFIX.length).replace(/\/+$/, '');
     if ((req.method ?? '').toUpperCase() !== 'POST') { send(res, 405, 'method not allowed'); return true; }
 
-    //? Secure default: no configured secret ⇒ endpoint disabled.
-    const secret = process.env.WS_WEBHOOK_SECRET ?? '';
-    if (secret.length === 0) { send(res, 503, 'webhook not configured'); return true; }
     if (workspaceId.length === 0) { send(res, 400, 'missing workspace'); return true; }
+    //? #27 — per-workspace secret (the /webhooks/forge/<id> URL is per-workspace) with an env fallback for
+    //? single-tenant hosts that never rotate. Plain client: this is a server-to-server ingest keyed by the
+    //? URL workspaceId — no session/tenant context exists on a webhook (verification IS the auth below).
+    const [, wsRow] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { webhookSecret: true } }));
+    const secret = (wsRow?.webhookSecret ?? '') || (process.env.WS_WEBHOOK_SECRET ?? '');
+    //? Secure default: no configured secret ⇒ endpoint disabled.
+    if (secret.length === 0) { send(res, 503, 'webhook not configured'); return true; }
     const headers = req.headers as Record<string, string | string[] | undefined>;
     const hdr = (k: string): string => { const v = headers[k]; return (Array.isArray(v) ? v[0] : v) ?? ''; };
 
@@ -65,6 +70,8 @@ export function registerForgeWebhook(): void {
     const ghSig = hdr('x-hub-signature-256');
     const authed = ghSig.length > 0 ? verifyGithubHmac(secret, rawBody, ghSig) : (hdr('x-webhook-secret') || hdr('x-gitlab-token')) === secret;
     if (!authed) { send(res, 401, 'bad secret'); return true; }
+    //? #27 — record the last ACCEPTED (authenticated) event for the settings-card "last event" indicator.
+    void tryCatch(() => getPrismaClient().workspace.update({ where: { id: workspaceId }, data: { webhookLastEventAt: new Date() } }));
 
     const ghEvent = hdr('x-github-event') || undefined;
     const [parseErr, body] = tryCatchSync(() => JSON.parse(rawBody) as unknown);

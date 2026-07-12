@@ -147,6 +147,8 @@ model Workspace {
   forgeType             String   @default("gitlab")      // #10 'gitlab' | 'github' — which forge provider
   gitlabUrl             String?                          // forge API base url (GitLab instance, or GitHub api base)
   gitlabTokenEnc        String?                          // ENCRYPTED per-workspace forge token (app-owned encryption v1)
+  webhookSecret         String?                          // #27 — per-workspace inbound-webhook secret (the /webhooks/forge/<id> URL is per-workspace, so the secret is too). Verified by webhookRoute; rotatable via forge-webhook-rotate. null ⇒ falls back to env WS_WEBHOOK_SECRET
+  webhookLastEventAt    DateTime?                        // #27 — timestamp of the last accepted inbound webhook (the settings-card "last event received" indicator)
 
   // --- settings / field sweep (04b §13) ---
   timezone              String   @default("UTC")         // D55 — IANA tz; anchors cron + budget window reset + sprint dates

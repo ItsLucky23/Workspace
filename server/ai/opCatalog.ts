@@ -95,6 +95,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'gitlab-verify': LATER,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
+  'forge-webhook-rotate': EXCLUDED, // #27 — mints a secret; direct settings-UI button, never a chat proposal
   //? #29 — the Assistant may PROPOSE a git-strategy/push-policy change ("push feature branches as
   //? merge requests", "switch to typed branches"). Only the named fields travel; the client dispatcher
   //? MERGES them over the workspace's current gitConfig (the Conductor normalize would otherwise reset

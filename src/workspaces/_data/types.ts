@@ -76,6 +76,8 @@ export interface Workspace {
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
+  webhookSecret?: string;         // #27 — per-workspace inbound-webhook secret (paste into the forge); empty ⇒ env fallback / not yet minted
+  webhookLastEventAt?: string;    // #27 — ISO timestamp of the last accepted inbound webhook (settings-card "last event" chip)
   allowMergeOnRedCI?: boolean;    // ci-allow-red: let a human merge while CI is red
   enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
   productContext?: string;        // Q2 — brand/product context folded into every creative generation

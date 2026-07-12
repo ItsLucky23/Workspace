@@ -15,6 +15,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { docker, dockerAvailable } from '../container/runtime';
 import { workspaceDataDir } from '../git/repoStore';
+import { decryptSecret } from '../crypto/secretBox';
 
 //? Download links live for this long (hours) before the artifact is considered expired + prunable.
 const EXPORT_TTL_MS = Number(process.env.WS_BUILD_EXPORT_TTL_H ?? '24') * 3_600_000;
@@ -50,7 +51,7 @@ export async function buildExport(prisma: PrismaClient, workspaceId: string, pro
   if (!result.ok) return result;
 
   //? D4 — a ready artifact is the deploy input: fire the external deploy-hook (webhook) if configured.
-  const deployHook = await postDeployWebhook({ event: 'build-export', workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', artifactId: artifact.id, imageRef, downloadToken: token });
+  const deployHook = await postDeployWebhook({ event: 'build-export', workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', artifactId: artifact.id, imageRef, downloadToken: token }, undefined, prisma);
   //? #64 — persist the hook result on the artifact row so the settings UI can surface fired/ok/status.
   await prisma.buildArtifact.update({ where: { id: artifact.id }, data: { deployHookFired: deployHook.fired, ...(deployHook.ok === undefined ? {} : { deployHookOk: deployHook.ok }), ...(deployHook.status === undefined ? {} : { deployHookStatus: deployHook.status }) } });
   return { ...result, deployHook };
@@ -106,14 +107,26 @@ export interface DeployDescriptor {
 //? Injectable so the webhook is unit/e2e-tested without the global fetch (a local receiver in the test).
 export type DeployFetch = (url: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{ ok: boolean; status: number }>;
 
+//? #64 — resolve a deploy-hook config value: the PER-WORKSPACE env var (save-env, decrypted if secret)
+//? takes precedence over the host-global `process.env`, so each workspace points at its own deploy target
+//? without a host restart. A missing prisma or row falls back to the env-global default.
+async function resolveDeployConfig(prisma: PrismaClient | undefined, workspaceId: string, key: string): Promise<string> {
+  if (prisma) {
+    const row = await prisma.envVar.findFirst({ where: { workspaceId, key }, select: { value: true, secret: true } });
+    if (row) { const v = row.secret ? (decryptSecret(row.value) ?? '') : row.value; if (v.trim().length > 0) return v.trim(); }
+  }
+  return (process.env[key] ?? '').trim();
+}
+
 //? D4 deploy-hook — POST the artifact descriptor to the configured external endpoint (webhook/CI trigger).
-//? No-op (`fired:false`) when `WS_DEPLOY_WEBHOOK_URL` is unset, so export works with or without a target.
-//? Best-effort: a network failure is reported on the result, never thrown (a failed hook must not fail the
-//? export that already produced a good artifact).
-export async function postDeployWebhook(descriptor: DeployDescriptor, fetchImpl?: DeployFetch): Promise<DeployHookResult> {
-  const url = (process.env.WS_DEPLOY_WEBHOOK_URL ?? '').trim();
+//? Config source (#64): the per-workspace `WS_DEPLOY_WEBHOOK_URL`/`WS_DEPLOY_WEBHOOK_TOKEN` env vars
+//? (save-env, settings UI) with a host-global `process.env` fallback. No-op (`fired:false`) when no URL is
+//? configured, so export works with or without a target. Best-effort: a network failure is reported on the
+//? result, never thrown (a failed hook must not fail the export that already produced a good artifact).
+export async function postDeployWebhook(descriptor: DeployDescriptor, fetchImpl?: DeployFetch, prisma?: PrismaClient): Promise<DeployHookResult> {
+  const url = await resolveDeployConfig(prisma, descriptor.workspaceId, 'WS_DEPLOY_WEBHOOK_URL');
   if (url.length === 0) return { fired: false };
-  const bearer = (process.env.WS_DEPLOY_WEBHOOK_TOKEN ?? '').trim();
+  const bearer = await resolveDeployConfig(prisma, descriptor.workspaceId, 'WS_DEPLOY_WEBHOOK_TOKEN');
   const doFetch: DeployFetch = fetchImpl ?? ((u, init) => fetch(u, init).then((r) => ({ ok: r.ok, status: r.status })));
   const [err, res] = await tryCatch(() => doFetch(url, {
     method: 'POST',

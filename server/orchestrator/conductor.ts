@@ -947,6 +947,13 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         : prisma.forgeConnection.create({ data: { workspaceId: action.workspaceId, projectId: forgeProjectId, ...data } }));
       return;
     }
+    //? #27 — mint/rotate the per-workspace inbound-webhook secret. The Conductor is the single writer
+    //? (B-23); returns the new secret so the settings card can show it once for pasting into the forge.
+    case 'forge-webhook-rotate': {
+      const webhookSecret = randomBytes(24).toString('base64url');
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { webhookSecret } });
+      return { webhookSecret };
+    }
     case 'save-git-config': {
       //? Persist the per-workspace git strategy + push policy (branchStrategy.ts). Normalize
       //? the payload (fill any missing field with the default) before storing. Written as a

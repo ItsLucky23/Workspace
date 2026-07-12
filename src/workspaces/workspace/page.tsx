@@ -236,6 +236,8 @@ function EnvTab() {
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.environmentVariables' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.envSubtitle' })}</span></div>
+      {/* #64 — discoverability: the deploy-hook target is just two env vars, set here (save-env), used on export. */}
+      <div className="text-xs text-muted rounded-xl border border-container1-border bg-container2/30 px-3 py-2">{translate({ key: 'workspaces.workspaceSettings.deployHookHint' })}</div>
       <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
         {envVars.map((v) => (
           <EnvRow
@@ -344,7 +346,7 @@ function IntegrationsTab() {
 
 function GitLabTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveGitlab, resyncForge } = useWorkspaces();
+  const { activeWorkspace, saveGitlab, resyncForge, rotateWebhookSecret } = useWorkspaces();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
   const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.forgeType === 'github' ? 'https://api.github.com' : 'https://gitlab.com'));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
@@ -358,6 +360,9 @@ function GitLabTab() {
   //? Derived client-side from the origin + workspace id; paste it (+ the configured shared secret) into the
   //? forge's Webhooks settings so new issues stream in as tickets.
   const webhookUrl = `${globalThis.location.origin}/webhooks/forge/${activeWorkspace.id}`;
+  //? #27 — the per-workspace secret (paste into the forge) + last-event timestamp, from the snapshot.
+  const webhookSecret = activeWorkspace.webhookSecret ?? '';
+  const webhookLastEventAt = activeWorkspace.webhookLastEventAt ?? '';
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabGitlab' })}</div>
@@ -377,7 +382,7 @@ function GitLabTab() {
         {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
         <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
       </div>
-      {/* #27 — inbound webhook URL card: continuous issue ingest. Copyable URL + paste instructions. */}
+      {/* #27 — inbound webhook card: URL + rotatable secret + last-event indicator. Continuous issue ingest. */}
       <div className="mt-2 pt-3 border-t border-divider flex flex-col gap-2">
         <span className="text-xs font-semibold text-muted uppercase tracking-wide">{translate({ key: 'workspaces.workspaceSettings.webhookTitle' })}</span>
         <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.webhookDesc' })}</span>
@@ -385,6 +390,15 @@ function GitLabTab() {
           <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookUrl}</code>
           <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookUrl); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>
         </div>
+        <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.webhookSecretLabel' })}</span>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret || translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' })}</code>
+          {webhookSecret !== '' && <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookSecret); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>}
+          <WsButton variant="secondary" icon="rotate" onClick={() => { rotateWebhookSecret(); }}>{translate({ key: webhookSecret === '' ? 'workspaces.workspaceSettings.webhookGenerate' : 'workspaces.workspaceSettings.webhookRotate' })}</WsButton>
+        </div>
+        <span className="text-xs text-muted">
+          {webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString() }] })}
+        </span>
       </div>
     </div>
   );

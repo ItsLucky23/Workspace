@@ -63,7 +63,7 @@
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 
-## Sync routes (57)
+## Sync routes (58)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -101,6 +101,7 @@
 | `sync/workspaces/revokeInvite/v1` | yes | — | login | — | **no** | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
 | `sync/workspaces/roleCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
 | `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
+| `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | — | **no** | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
 | `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | **no** | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
@@ -132,9 +133,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 106 |
+| _(unowned)_ | 107 |
 
-**Test coverage**: 3/108 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/109 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -188,7 +189,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/workspaceExport/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
-- … +55 more
+- … +56 more
 
 ## Pages (30)
 

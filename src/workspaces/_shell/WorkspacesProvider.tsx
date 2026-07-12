@@ -1152,6 +1152,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
+      //? #27 — rotate the inbound-webhook secret; the fresh secret comes back in the refetched snapshot.
+      rotateWebhookSecret: () => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/rotateWebhookSecret', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+      },
       //? R2 — copy the user-authored styles + brand kit from another workspace INTO the active one (server route
       //? existed; this wires the client dispatch). The Conductor authorizes source membership (B-23).
       copyWorkspaceAssets: (sourceWorkspaceId) => {
