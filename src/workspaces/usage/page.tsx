@@ -8,6 +8,8 @@ import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+
 import Icon from '../_components/Icon';
 import { AvatarBubble, EmptyState } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
@@ -38,13 +40,15 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 export default function Usage() {
-  const { openTicket, tickets, membersById, usage, insights, analytics, budget, editBudget, resumeSpend, diagnoseRootCause } = useWorkspaces();
+  const { openTicket, tickets, membersById, usage, insights, analytics, budget, budgets, editBudget, resumeSpend, diagnoseRootCause } = useWorkspaces();
   const translate = useTranslator();
   //? root-cause (ADR 0042) — a symptom → the likely-culprit merge as a rollback suggestion (AI panel).
   const [symptom, setSymptom] = useState('');
   //? AI/token €-budget editor (D81) — the first save creates the budget if none exists (conductor upsert).
   const [capInput, setCapInput] = useState(budget ? String(budget.cap) : '');
   const [alertInput, setAlertInput] = useState(budget ? String(budget.alertPct) : '80');
+  //? #103 — a label for the "add another cap" form (multi-cap).
+  const [labelInput, setLabelInput] = useState('');
   const budgetSpentLabel = budget ? `€${budget.spent.toFixed(2)} / €${budget.cap.toFixed(2)}` : '';
   //? Real 7-day token activity (#16); guard the divisor so an all-zero week doesn't divide by 0.
   const maxDay = Math.max(1, ...usage.activity.map((d) => d.tokens));
@@ -110,14 +114,37 @@ export default function Usage() {
                 </div>
               )
               : <div className="text-sm text-muted mb-3">{translate({ key: 'workspaces.usage.budgetNone' })}</div>}
+            {/* #103 — the multi-cap list: every configured cap with its enforcement + an enable/disable toggle. */}
+            {budgets.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-3">
+                <div className="text-xs font-semibold text-muted uppercase tracking-wide">{translate({ key: 'workspaces.usage.budgetCaps' })}</div>
+                {budgets.map((b) => {
+                  const capLabel = `€${b.spent.toFixed(0)} / €${b.cap.toFixed(0)}`;
+                  const enfItems: DropdownItem[] = [{ id: 'pauseNew', value: translate({ key: 'workspaces.usage.enfPauseNew' }) }, { id: 'pauseAll', value: translate({ key: 'workspaces.usage.enfPauseAll' }) }];
+                  return (
+                    <div key={b.id} className={`flex items-center gap-2 flex-wrap rounded-lg border border-container1-border bg-container1 px-3 py-2 ${b.enabled === false ? 'opacity-50' : ''}`}>
+                      <span className="text-sm font-medium text-title flex-1 min-w-0 truncate">{b.label ?? '—'}</span>
+                      <span className="font-mono tabular-nums text-xs text-muted">{capLabel}</span>
+                      <Dropdown size="sm" value={enfItems.find((i) => i.id === (b.enforcement ?? 'pauseNew'))} items={enfItems} onChange={(it) => { editBudget({ budgetId: b.id, enforcement: it.id === 'pauseAll' ? 'pauseAll' : 'pauseNew' }); }} />
+                      <button type="button" onClick={() => { editBudget({ budgetId: b.id, enabled: b.enabled === false }); }} className="h-8 rounded-lg border border-container1-border bg-container1 px-2.5 text-xs text-common hover:bg-container2 cursor-pointer">{translate({ key: b.enabled === false ? 'workspaces.usage.budgetEnable' : 'workspaces.usage.budgetDisable' })}</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col gap-1 text-xs text-muted">{translate({ key: 'workspaces.usage.budgetLabelLabel' })}
+                <input value={labelInput} onChange={(e) => { setLabelInput(e.target.value); }} placeholder={translate({ key: 'workspaces.usage.budgetLabelPlaceholder' })} className="h-9 w-36 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+              </label>
               <label className="flex flex-col gap-1 text-xs text-muted">{translate({ key: 'workspaces.usage.budgetCapLabel' })}
                 <input type="number" min="0" step="1" value={capInput} onChange={(e) => { setCapInput(e.target.value); }} className="h-9 w-28 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring" />
               </label>
               <label className="flex flex-col gap-1 text-xs text-muted">{translate({ key: 'workspaces.usage.budgetAlertLabel' })}
                 <input type="number" min="0" max="100" step="5" value={alertInput} onChange={(e) => { setAlertInput(e.target.value); }} className="h-9 w-24 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring" />
               </label>
-              <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget(Number(capInput), alertInput.trim() ? Number(alertInput) : undefined); }} className="h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.budgetSave' })}</button>
+              <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget({ cap: Number(capInput), ...(labelInput.trim() ? { label: labelInput.trim() } : {}), ...(alertInput.trim() ? { alertPct: Number(alertInput) } : {}) }); }} className="h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.budgetSave' })}</button>
+              {/* #103 — add a SEPARATE additional cap (create) rather than editing the primary one. */}
+              <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget({ create: true, cap: Number(capInput), ...(labelInput.trim() ? { label: labelInput.trim() } : {}), ...(alertInput.trim() ? { alertPct: Number(alertInput) } : {}) }); setLabelInput(''); }} className="h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.usage.budgetAddCap' })}</button>
               {budget && <button type="button" onClick={() => { resumeSpend(); }} className="h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 cursor-pointer">{translate({ key: 'workspaces.usage.budgetResume' })}</button>}
             </div>
           </Card>

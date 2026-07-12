@@ -115,7 +115,9 @@ export interface WorkspacesCtx {
   copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   indexMemory: () => void;
   planCritique: (ticketKey: string) => void;
-  editBudget: (cap: number, alertPct?: number) => void;
+  //? #103 — multi-cap budget editor: edit a specific cap by id (label/cap/alertPct/enforcement, or
+  //? enabled:false to retire), create a new cap, or (no id/create) edit the first/legacy cap.
+  editBudget: (input: { cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: 'pauseNew' | 'pauseAll'; enabled?: boolean; create?: boolean }) => void;
   resumeSpend: () => void;
   resyncForge: () => void;
   allowCiRed: (enabled: boolean) => void;
@@ -254,6 +256,7 @@ export interface WorkspacesCtx {
   stages: PipelineStage[];             // was STAGES (board meta; full editor config still on seed)
   sprints: Sprint[];                   // was SPRINTS
   budget: WorkspaceBudget | null;      // was BUDGET
+  budgets: WorkspaceBudget[];          // #103 — all spend caps (multi-cap editor)
   capacity?: { active: number; queued: number; limit: number }; // #105/#19 — engine busy/queued chip
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket

@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 229,
-    "edges": 346,
+    "edges": 347,
     "symbols": 289,
     "callEdges": 42
   },
@@ -2481,6 +2481,10 @@
     },
     {
       "from": "workspaces/usage/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/usage/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2636,6 +2640,7 @@
       "workspaces/pipeline/page.tsx",
       "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/dropdown/dropdownInternals.tsx": [
@@ -2661,6 +2666,7 @@
       "workspaces/pipeline/page.tsx",
       "workspaces/scheduled/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/dropdown/MultiSelectDropdown.tsx": [
@@ -3448,14 +3454,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 23,
+      "dependents": 24,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 21,
-      "directDependents": 17
+      "dependents": 22,
+      "directDependents": 18
     },
     {
       "id": "workspaces/_data/modules.ts",

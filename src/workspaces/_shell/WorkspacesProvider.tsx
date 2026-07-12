@@ -58,6 +58,8 @@ interface Snap {
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
+  //? #103 — all spend caps (multi-cap editor).
+  budgets: WorkspaceBudget[];
   capacity?: { active: number; queued: number; limit: number }; // #105/#19
   docs: InfoDoc[];
   skills: SkillEntry[];
@@ -101,7 +103,7 @@ const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [],
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
-  suggestions: [], budget: null, docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
+  suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
@@ -1168,9 +1170,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (room && ticketKey) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'plan-critique', ticketKey, clientRequestId: nextReqId() }, receiver: room });
       },
       //? AI/token budget editor (D81): set the cap (+ alert %). The first edit creates the budget (no create-op).
-      editBudget: (cap, alertPct) => {
+      //? #103 — multi-cap: `budgetId` edits a specific cap (or enabled:false retires it), `create` adds a new
+      //? cap; no id/create = the legacy first-cap edit/create. Only the provided fields are sent.
+      editBudget: (input) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', cap, ...(alertPct === undefined ? {} : { alertPct }), clientRequestId: nextReqId() }, receiver: room });
+        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...input, clientRequestId: nextReqId() }, receiver: room });
       },
       //? Resume spending after a budget freeze (resets the window's spent to 0).
       resumeSpend: () => {
@@ -1353,6 +1357,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       stages: snap.stages,
       sprints: snap.sprints,
       budget: snap.budget,
+      budgets: snap.budgets,
       capacity: snap.capacity,
       usage: snap.usage,
       insights: snap.insights,

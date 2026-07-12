@@ -1188,17 +1188,43 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'raise-cap':
     case 'edit-budget': {
       const cap = num(payload, 'cap') ?? num(payload, 'newCap');
-      if (cap === undefined) return;
       const alertPct = num(payload, 'alertPct');
+      const label = str(payload, 'label');
+      const enforcementRaw = str(payload, 'enforcement');
+      const enforcement = enforcementRaw === 'pauseAll' ? 'pauseAll' : (enforcementRaw === 'pauseNew' ? 'pauseNew' : undefined);
+      const budgetId = str(payload, 'budgetId');
+      const enabled = 'enabled' in payload ? bool(payload, 'enabled') : undefined;
+      //? #103 — multi-cap: a `budgetId` edits THAT specific cap (cap/alertPct/label/enforcement, or
+      //? enabled:false to retire it); a `create` flag always adds a NEW cap; otherwise the legacy path
+      //? edits the first cap or creates the first one (single-cap back-compat). Enforcement stays ADVISORY
+      //? here (visibility-first #16) — pausing on it is the coupled #99 product decision, not wired yet.
+      if (budgetId) {
+        const data: { cap?: number; alertPct?: number; label?: string; enforcement?: string; enabled?: boolean } = {};
+        if (cap !== undefined) data.cap = cap;
+        if (alertPct !== undefined) data.alertPct = alertPct;
+        if (label !== undefined && label.length > 0) data.label = label;
+        if (enforcement !== undefined) data.enforcement = enforcement;
+        if (enabled !== undefined) data.enabled = enabled;
+        await prisma.workspaceBudget.updateMany({ where: { id: budgetId, workspaceId: action.workspaceId }, data });
+        return;
+      }
+      if (bool(payload, 'create')) {
+        if (cap === undefined) return;
+        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80, enforcement: enforcement ?? 'pauseNew' } });
+        return;
+      }
+      if (cap === undefined) return;
       const budget = await prisma.workspaceBudget.findFirst({ where: { workspaceId: action.workspaceId } });
       if (budget) {
-        const data: { cap: number; alertPct?: number } = { cap };
+        const data: { cap: number; alertPct?: number; label?: string; enforcement?: string } = { cap };
         if (alertPct !== undefined) data.alertPct = alertPct;
+        if (label !== undefined && label.length > 0) data.label = label;
+        if (enforcement !== undefined) data.enforcement = enforcement;
         await prisma.workspaceBudget.updateMany({ where: { id: budget.id, workspaceId: action.workspaceId }, data });
       } else {
         //? No create-op existed → the first edit creates the budget with sensible defaults (so the editor works
         //? on a fresh workspace without a separate "create budget" flow).
-        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: 'Budget', cap, alertPct: alertPct ?? 80, enforcement: 'pauseNew' } });
+        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80, enforcement: enforcement ?? 'pauseNew' } });
       }
       return;
     }

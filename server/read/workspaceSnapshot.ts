@@ -170,6 +170,8 @@ export interface WorkspaceSnapshot {
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
+  //? #103 — ALL spend caps (multi-cap editor); `budget` above stays the primary for the compact display.
+  budgets: WorkspaceBudget[];
   //? #105/#19 — engine occupancy for the board busy/queued chip (global across instances; optional so
   //? the empty/loading snapshot can omit it).
   capacity?: { active: number; queued: number; limit: number };
@@ -228,7 +230,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null,
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -292,7 +294,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.ticket.findMany({ where: projectScope }),
       tenantDb.sprint.findMany({ where: projectScope }),
       tenantDb.workspaceSuggestion.findMany({ where: { status: 'open' } }),
-      tenantDb.workspaceBudget.findMany({ where: { enabled: true } }),
+      tenantDb.workspaceBudget.findMany({ orderBy: { createdAt: 'asc' } }),
       tenantDb.infoSource.findMany(),
       tenantDb.envVar.findMany(),
       tenantDb.integrationTool.findMany(),
@@ -357,7 +359,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? Delivery analytics (ADR 0047): the fuller fold (cycle p50/p85, weekly throughput, stuck, tokens-by-label).
     const analytics = computeAnalytics(ticketRows.map((t) => ({ key: t.key, status: t.status, archived: t.archived, labels: t.labels, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
 
-    const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
+    //? #16 — the primary (first enabled) cap for the compact spend display (back-compat single-cap field).
+    const primaryBudget = budgetRows.find((b) => b.enabled) ?? budgetRows[0];
+    const budget = primaryBudget ? { spent: primaryBudget.spent, cap: primaryBudget.cap, alertPct: primaryBudget.alertPct, currency: '€' } : null;
+    //? #103 — ALL caps (multi-cap editor): id/label/enforcement/enabled per row. Enforcement is ADVISORY
+    //? (visibility-first) — the pause-on-exceeded wiring is the coupled #99 product decision.
+    const budgets = budgetRows.map((b): WorkspaceBudget => ({ spent: b.spent, cap: b.cap, alertPct: b.alertPct, currency: '€', id: b.id, label: b.label, enforcement: b.enforcement === 'pauseAll' ? 'pauseAll' : 'pauseNew', enabled: b.enabled, windowStartAt: b.windowStartAt.toISOString() }));
     //? #105/#19 — engine occupancy (global Redis-backed) for the board busy/queued chip.
     const [activeNow, queuedNow] = await Promise.all([activeCount(Date.now()), queueLength()]);
     const capacity = { active: activeNow, queued: queuedNow, limit: capacityLimit() };
@@ -485,7 +492,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.error ? { error: b.error } : {}), createdAt: b.createdAt.toISOString(),
       })),
       templates: listTemplates(),
-      members, budget, capacity, docs, skills,
+      members, budget, budgets, capacity, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
