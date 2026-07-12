@@ -1089,6 +1089,8 @@
         "title": "Bekijk een oude versie",
         "mode": "Versie",
         "mode_commit": "Specifieke commit",
+        "mode_ref": "Ruwe ref (SHA/tag/branch)",
+        "refPh": "bijv. v1.2.0 / main / a1b2c3d",
         "mode_revert": "Main min een commit",
         "mode_asof": "Op een datum",
         "commitPh": "commit-sha",

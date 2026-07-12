@@ -1089,6 +1089,8 @@
         "title": "Aperçu d’une version passée",
         "mode": "Version",
         "mode_commit": "Commit spécifique",
+        "mode_ref": "Réf brute (SHA/tag/branche)",
+        "refPh": "ex. v1.2.0 / main / a1b2c3d",
         "mode_revert": "Main moins un commit",
         "mode_asof": "À une date",
         "commitPh": "sha du commit",

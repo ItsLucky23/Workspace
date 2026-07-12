@@ -3803,3 +3803,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de "Add reference"-actie in het kaart-⋯-menu was een dode no-op. Nu opent 'ie een `ArtifactLinkPicker` (menuHandler-overlay) die de workspace's studio- + design-library-artifacts lijst → klik koppelt het artifact aan het ticket via `linkArtifact(ticketKey, artifactId, kind, label)`. Lege-staat-melding als er nog geen artifacts zijn.
 **Verify:** typecheck0·build✓·lint0(pre-existing #36)·localeIntegrity 8/8. Nieuwe i18n: board.{addReferenceTitle,noArtifacts} ×4.
 **Files:** `src/workspaces/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 21 (Repo/forge/time-travel): #25
+**Wat:** de `open-ref-preview`-endpoint (start de app op een ARBITRAIRE git-ref: SHA/tag/branch in een ephemeral container) had geen UI-entry. Nu een vierde 'ref'-modus in de TimeTravelForm: kies "Ruwe ref", vul een SHA/tag/branch → de handler routeert naar `workspaces/openRefPreview` (commit/revert/asof blijven via `timeTravelPreview`). `asTravelMode`-guard naar module-scope voor de lint.
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: timetravel.{mode_ref,refPh} ×4.
+**Files:** `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

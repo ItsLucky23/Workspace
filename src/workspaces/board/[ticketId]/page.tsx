@@ -181,23 +181,27 @@ function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; works
 //? Open preview starts the ticket's dev server (Project.devCommand) and surfaces the URL.
 //? T1/T3 — the time-travel form: pick a raw commit, "main minus commit X", or "as of a date" → a past-version
 //? preview. Submits a RefSpec to timeTravelPreview (git-only resolve → ephemeral ref-preview container).
-type TravelSpec = { kind: 'commit'; value: string } | { kind: 'revert'; value: string } | { kind: 'asof'; whenMs: number };
+//? #25 — the 'ref' kind previews an ARBITRARY git ref (SHA/tag/branch) via open-ref-preview (was an
+//? endpoint with no UI entry); commit/revert/asof go through timeTravelPreview.
+type TravelSpec = { kind: 'commit'; value: string } | { kind: 'revert'; value: string } | { kind: 'asof'; whenMs: number } | { kind: 'ref'; value: string };
+const asTravelMode = (v: string): 'commit' | 'revert' | 'asof' | 'ref' => (v === 'revert' || v === 'asof' || v === 'ref' ? v : 'commit');
 function TimeTravelForm({ onSubmit, translate }: { onSubmit: (spec: TravelSpec) => void; translate: ReturnType<typeof useTranslator> }) {
-  const [mode, setMode] = useState<'commit' | 'revert' | 'asof'>('commit');
+  const [mode, setMode] = useState<'commit' | 'revert' | 'asof' | 'ref'>('commit');
   const [value, setValue] = useState('');
   const [when, setWhen] = useState('');
-  const modeItems: DropdownItem[] = (['commit', 'revert', 'asof'] as const).map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.timetravel.mode_${m}` }) }));
+  const modeItems: DropdownItem[] = (['commit', 'revert', 'asof', 'ref'] as const).map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.timetravel.mode_${m}` }) }));
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
+  const valuePh = mode === 'revert' ? 'workspaces.timetravel.revertPh' : (mode === 'ref' ? 'workspaces.timetravel.refPh' : 'workspaces.timetravel.commitPh');
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.timetravel.title' })}</div>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-common">{translate({ key: 'workspaces.timetravel.mode' })}</span>
-        <Dropdown size="sm" items={modeItems} value={modeItems.find((it) => it.id === mode)} onChange={(it) => { setMode(it.value === 'revert' ? 'revert' : (it.value === 'asof' ? 'asof' : 'commit')); }} />
+        <Dropdown size="sm" items={modeItems} value={modeItems.find((it) => it.id === mode)} onChange={(it) => { setMode(asTravelMode(String(it.value))); }} />
       </div>
       {mode === 'asof'
         ? <input type="datetime-local" value={when} onChange={(e) => { setWhen(e.target.value); }} className={inputCls} />
-        : <input value={value} onChange={(e) => { setValue(e.target.value); }} placeholder={translate({ key: mode === 'revert' ? 'workspaces.timetravel.revertPh' : 'workspaces.timetravel.commitPh' })} className={inputCls} />}
+        : <input value={value} onChange={(e) => { setValue(e.target.value); }} placeholder={translate({ key: valuePh })} className={inputCls} />}
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="clock-rotate-left" onClick={() => {
@@ -231,12 +235,18 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   //? T1/T3 — time-travel preview: open the ticket's app at a PAST version (a raw commit, "main minus commit X",
   //? or "as of a date"). Resolves the spec (git-only) → an ephemeral ref-preview container. The timeTravelPreview
   //? routes existed but had NO caller; this wires them.
-  const timeTravel = (spec: { kind: 'commit'; value: string } | { kind: 'revert'; value: string } | { kind: 'asof'; whenMs: number }): void => {
+  const timeTravel = (spec: TravelSpec): void => {
     setPreview({ loading: true });
-    void apiRequest({ name: 'workspaces/timeTravelPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, branch: ticket.branch ?? 'main', spec } }).then((r) => {
-      if (r.status === 'success' && r.result.ok && r.result.url) { setPreview({ loading: false, url: r.result.url }); globalThis.open(r.result.url, '_blank'); }
+    const settle = (r: { status: string; result?: { ok?: boolean; url?: string } }): void => {
+      if (r.status === 'success' && r.result?.ok && r.result.url) { setPreview({ loading: false, url: r.result.url }); globalThis.open(r.result.url, '_blank'); }
       else setPreview({ loading: false, err: true });
-    });
+    };
+    //? #25 — a raw ref goes through open-ref-preview; commit/revert/asof through timeTravelPreview.
+    if (spec.kind === 'ref') {
+      void apiRequest({ name: 'workspaces/openRefPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, ref: spec.value } }).then(settle);
+      return;
+    }
+    void apiRequest({ name: 'workspaces/timeTravelPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, branch: ticket.branch ?? 'main', spec } }).then(settle);
   };
   const openTimeTravel = (): void => {
     void menuHandler.open(<TimeTravelForm translate={translate} onSubmit={(spec) => { void menuHandler.close(); timeTravel(spec); }} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });

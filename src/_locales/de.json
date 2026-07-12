@@ -1089,6 +1089,8 @@
         "title": "Alte Version ansehen",
         "mode": "Version",
         "mode_commit": "Bestimmter Commit",
+        "mode_ref": "Rohe Ref (SHA/Tag/Branch)",
+        "refPh": "z. B. v1.2.0 / main / a1b2c3d",
         "mode_revert": "Main minus einen Commit",
         "mode_asof": "Zu einem Datum",
         "commitPh": "Commit-SHA",

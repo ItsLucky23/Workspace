@@ -1089,6 +1089,8 @@
         "title": "Preview a past version",
         "mode": "Version",
         "mode_commit": "Specific commit",
+        "mode_ref": "Raw ref (SHA/tag/branch)",
+        "refPh": "e.g. v1.2.0 / main / a1b2c3d",
         "mode_revert": "Main minus a commit",
         "mode_asof": "As of a date",
         "commitPh": "commit sha",
