@@ -5,8 +5,8 @@
 //? shared `layoutId` for AI-move glides, but that shared-layout projection crashes
 //? React 19's reconciler on route unmount — "removeChild is not a child" — so it
 //? was removed; a future AI-move animation must use a non-layout technique.)
-//? Columns are derived from dummy data for now. Desktop-first; mobile shows
-//? read-only stage-segments.
+//? Columns are derived from the live workspace snapshot (real ticket rows per
+//? stage); mobile shows read-only stage-segments.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -62,7 +62,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
     { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { /* Fase 2: attach a TicketReference */ } },
     { divider: true },
-    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { /* Fase 2: pause/resume the ticket's AI session */ } },
+    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { if (paused) ctx.resumeTicket(ticket.id); else ctx.pauseTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.board.copyDevId' }), icon: 'copy', onClick: () => void navigator.clipboard.writeText(ticket.id) },
     { divider: true },
     {

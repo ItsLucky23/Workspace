@@ -2,7 +2,7 @@
 //? (one big collection you can open/close per sprint). Search + quick-filter
 //? segments + a per-person filter (creator OR assignee). The first linked
 //? avatar is the creator, the second the assignee. Checkboxes are hidden until
-//? you enter Select mode (bulk action bar). Dummy data; desktop-first.
+//? you enter Select mode (bulk action bar). Renders live snapshot rows.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 

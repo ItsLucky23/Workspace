@@ -513,7 +513,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           : (studioArtifactRows.find((s) => s.id === l.artifactId)?.title ?? '—');
         return { id: l.id, ticketId: ticketKeyById.get(l.ticketId) ?? l.ticketId, artifactId: l.artifactId, artifactKind: l.artifactKind, name, label: l.label ?? null };
       }),
-      sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: null, end: null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: null })),
+      sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: sp.startAt ? sp.startAt.toISOString().slice(0, 10) : null, end: sp.endAt ? sp.endAt.toISOString().slice(0, 10) : null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: sp.endAt ? Math.max(0, Math.ceil((sp.endAt.getTime() - Date.now()) / 86_400_000)) : null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id) })),
       //? RS-B1 (SECURITY) — internal `__`-rows (provider keys, OAuth-token JSON, per-feature
       //? overrides) NEVER reach the client env list (mirrors serviceEnv.ts's container filter).
