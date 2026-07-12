@@ -90,6 +90,8 @@ interface Snap {
   designArtifacts: DesignArtifact[];
   interviewFindings: InterviewFinding[];
   ticketArtifactLinks: TicketArtifactLink[];
+  //? #111 — the user's persisted Workspace-AI chat history (per-user), chronological.
+  chat: ChatMessage[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -115,6 +117,7 @@ const EMPTY_SNAP: Snap = {
   designArtifacts: [],
   interviewFindings: [],
   ticketArtifactLinks: [],
+  chat: [],
 };
 
 function pathForView(view: WsView): string {
@@ -869,6 +872,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [navStack, setNavStack] = useState<WsView[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>(INITIAL_CHAT);
+  //? #111 — hydrate the chat pane from the persisted per-user history on workspace switch
+  //? (and initial load). The ref holds the latest snapshot chat so that board-write refetches
+  //? don't clobber in-session turns (proposals/plans aren't persisted server-side); only an
+  //? actual workspace switch re-seeds. Empty history falls back to the client welcome greeting.
+  const snapChatRef = useRef<ChatMessage[]>(snap.chat);
+  snapChatRef.current = snap.chat;
+  useEffect(() => {
+    const persisted = snapChatRef.current;
+    setChat(persisted.length > 0 ? persisted : INITIAL_CHAT);
+  }, [snap.activeWorkspaceId]);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   const [localSuggestionsDismissed, setLocalSuggestionsDismissed] = useState<string[]>([]);
 

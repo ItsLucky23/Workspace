@@ -1117,6 +1117,22 @@ model WorkspaceNote {
   @@index([workspaceId, ticketId, createdAt])
 }
 
+//? #111 — persisted Workspace-AI chat turns, scoped PER-USER per-workspace (the Assistant
+//? chat is per-user, mirroring `WorkspaceSnapshot.notifications`). Only `role` + `text` are
+//? persisted: a turn's `proposal`/`plan` are TRANSIENT offers (accept dispatches a live op) —
+//? resurrecting a stale Accept button on reload would be wrong, so history rehydrates as plain
+//? text only. Bounded read window in the snapshot (newest 100, chronological).
+model WorkspaceChatMessage {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  userId      String   @db.ObjectId               // whose chat (per-user Assistant scope)
+  role        String                              // 'user' | 'ai'
+  text        String
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, userId, createdAt])
+}
+
 // ============================================================================
 // Spend / budget (tenant-scoped)
 // ============================================================================

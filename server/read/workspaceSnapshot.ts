@@ -37,6 +37,7 @@ import type {
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
+  ChatMessage,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
@@ -214,6 +215,9 @@ export interface WorkspaceSnapshot {
   interviewFindings: { id: string; area: string; severity: string; title: string; summary: string; status: string; ticketId: string | null; createdAt: string }[];
   //? Ticket ↔ artifact links (ADR 0034): design/Studio artifacts a ticket implements (keyed by DEV-#### key).
   ticketArtifactLinks: { id: string; ticketId: string; artifactId: string; artifactKind: string; name: string; label: string | null }[];
+  //? #111 — the requesting user's persisted Workspace-AI chat history (per-user), chronological,
+  //? so the conversation survives reload / is phone-desktop consistent.
+  chat: ChatMessage[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -237,6 +241,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   designArtifacts: [],
   interviewFindings: [],
   ticketArtifactLinks: [],
+  chat: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string, wantProjectId?: string): Promise<WorkspaceSnapshot> {
@@ -276,7 +281,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const dbConnectionRows = activeProjectId ? await tenantDb.dbConnection.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const migrationRows = activeProjectId ? await tenantDb.migration.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
 
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, chatRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ where: projectScope, orderBy: { order: 'asc' } }),
@@ -293,6 +298,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? the @@index([workspaceId, createdAt]) exists for exactly this feed.
       tenantDb.ticketEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
       tenantDb.notification.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 }),
+      //? #111 — this user's persisted Workspace-AI chat turns (per-user), newest-first bounded
+      //? window; reversed to chronological below for the client's chat pane.
+      tenantDb.workspaceChatMessage.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100 }),
       //? Ticket comments (WorkspaceNote) — the ticket-detail comment thread filters
       //? this by ticketId. Bounded recent window, newest first.
       tenantDb.workspaceNote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
@@ -555,6 +563,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       repo,
       gitConfig,
       workspacePaused,
+      //? #111 — reverse the newest-first read window to chronological for the chat pane.
+      chat: chatRows.toReversed().map((c): ChatMessage => ({ id: c.id, role: c.role === 'user' ? 'user' : 'ai', text: c.text })),
       myInvites,
     };
   });

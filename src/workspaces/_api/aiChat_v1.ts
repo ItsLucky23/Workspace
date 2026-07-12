@@ -32,5 +32,11 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? #112 — pass the client's recent conversation history so follow-ups keep context.
   const history = Array.isArray(data.history) ? data.history : undefined;
   const result = await interpretChat(functions.db.prisma, workspaceId, message, data.projectId, history);
+  //? #111 — persist the turn (user message + AI reply text) so the chat survives reload / is
+  //? cross-device. Proposals/plans are transient offers → not persisted (see the model doc).
+  await functions.db.prisma.workspaceChatMessage.createMany({ data: [
+    { workspaceId, userId: user.id, role: 'user', text: message },
+    { workspaceId, userId: user.id, role: 'ai', text: result.reply },
+  ] });
   return { status: 'success', result };
 };
