@@ -17,7 +17,7 @@ import type {
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled'
+  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'knowledge'
   | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 

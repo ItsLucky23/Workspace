@@ -136,7 +136,7 @@ const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',
   sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
-  content: 'Content', settings: 'Account', workspace: 'Workspace',
+  knowledge: 'Knowledge', content: 'Content', settings: 'Account', workspace: 'Workspace',
 };
 function viewLabel(view: WsView): string {
   return isTicketView(view) ? view : (VIEW_LABELS[view] ?? 'Board');

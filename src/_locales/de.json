@@ -1043,6 +1043,21 @@
       "brandSave": "Marke speichern",
       "brandSaved": "Gespeichert"
     },
+    "knowledge": {
+      "title": "Wissensgraph",
+      "subtitle": "Wie deine Quellen, Tickets und Inhalte zusammenhängen.",
+      "refresh": "Aktualisieren",
+      "loadingTitle": "Graph wird erstellt…",
+      "loadingSub": "Quellen, Tickets und Inhalte werden eingebettet, um Verbindungen zu finden.",
+      "emptyTitle": "Noch nichts zu zeigen",
+      "emptySub": "Füge Kontextquellen, Tickets oder Inhalte hinzu – sie erscheinen hier, verknüpft nach Ähnlichkeit.",
+      "nodeCount": "{{count}} Knoten",
+      "edgeCount": "{{count}} Verbindungen",
+      "legendSources": "Quellen",
+      "legendTickets": "Tickets",
+      "legendPieces": "Inhalte",
+      "hint": "Klicke auf einen Knoten, um ihn und seine Verbindungen zu fokussieren."
+    },
     "usage": {
       "title": "Nutzung",
       "subtitle": "Token-Volumen & Zeit · läuft über die Claude Pro Max CLI (keine metered API)",

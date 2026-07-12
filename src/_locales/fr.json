@@ -1043,6 +1043,21 @@
       "brandSave": "Enregistrer la marque",
       "brandSaved": "Enregistré"
     },
+    "knowledge": {
+      "title": "Graphe de connaissances",
+      "subtitle": "Comment vos sources, tickets et contenus sont liés.",
+      "refresh": "Actualiser",
+      "loadingTitle": "Construction du graphe…",
+      "loadingSub": "Intégration des sources, tickets et contenus pour trouver les liens.",
+      "emptyTitle": "Rien à afficher pour l'instant",
+      "emptySub": "Ajoutez des sources de contexte, des tickets ou des contenus : ils apparaîtront ici, reliés par similarité.",
+      "nodeCount": "{{count}} nœuds",
+      "edgeCount": "{{count}} liens",
+      "legendSources": "Sources",
+      "legendTickets": "Tickets",
+      "legendPieces": "Contenus",
+      "hint": "Cliquez sur un nœud pour le mettre en avant avec ses connexions."
+    },
     "usage": {
       "title": "Utilisation",
       "subtitle": "Volume de tokens et temps · exécuté sur le CLI Claude Pro Max (pas d’API facturée)",

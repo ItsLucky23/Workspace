@@ -8,7 +8,7 @@
 
 import {
   FontAwesomeIcon,
-  faAngleLeft, faAngleRight, faAngleDown, faArrowLeft, faBan, faBars, faBell, faBolt, faBookOpen, faBoxArchive,
+  faAngleLeft, faAngleRight, faAngleDown, faArrowLeft, faArrowsRotate, faBan, faBars, faBell, faBolt, faBookOpen, faBoxArchive,
   faCalendarDay, faCaretDown, faChartColumn, faCheck, faCircleCheck, faCircleQuestion, faCrop,
   faClock, faCodeBranch, faCodeMerge, faComment, faCopy, faDatabase, faDiagramProject, faDisplay, faEllipsis,
   faEye, faFileLines, faFilter, faGear, faGripVertical, faLanguage, faLink, faListCheck,
@@ -24,6 +24,7 @@ const ICONS: Record<string, FaIcon> = {
   'angle-right': faAngleRight,
   'angle-down': faAngleDown,
   'arrow-left': faArrowLeft,
+  'arrows-rotate': faArrowsRotate,
   ban: faBan,
   bars: faBars,
   bell: faBell,

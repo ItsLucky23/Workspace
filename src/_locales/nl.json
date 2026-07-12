@@ -1043,6 +1043,21 @@
       "brandSave": "Merk opslaan",
       "brandSaved": "Opgeslagen"
     },
+    "knowledge": {
+      "title": "Kennisgraaf",
+      "subtitle": "Hoe je bronnen, tickets en content-stukken samenhangen.",
+      "refresh": "Vernieuwen",
+      "loadingTitle": "Graaf wordt opgebouwd…",
+      "loadingSub": "Bronnen, tickets en content worden geëmbed om verbanden te vinden.",
+      "emptyTitle": "Nog niets om te tonen",
+      "emptySub": "Voeg contextbronnen, tickets of content-stukken toe en ze verschijnen hier, gekoppeld op gelijkenis.",
+      "nodeCount": "{{count}} knopen",
+      "edgeCount": "{{count}} verbindingen",
+      "legendSources": "Bronnen",
+      "legendTickets": "Tickets",
+      "legendPieces": "Content",
+      "hint": "Klik op een knoop om die en zijn verbindingen te focussen."
+    },
     "usage": {
       "title": "Verbruik",
       "subtitle": "Tokenvolume & tijd · draait op de Claude Pro Max CLI (geen gemeterde API)",

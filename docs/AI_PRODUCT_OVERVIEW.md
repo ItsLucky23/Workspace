@@ -23,7 +23,7 @@ _(The main features/areas of the app and what each is for. The AI keeps this in 
 
 _(Domain terms used in this project, so the AI + the team use the same vocabulary.)_
 
-## Pages by area (28)
+## Pages by area (29)
 
 ### (root)
 
@@ -88,6 +88,7 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 | `/workspaces/content/settings` | content setup & settings — connect your AI media provider keys (encrypted) and set a media €-budget cap + alert, with a guided first-run flow, so a non-technical user can safely turn on real generation. Keys never leave the server; every save is a control-op (the Conductor writes, B-23). | `workspaces/content/settings/page.tsx` |
 | `/workspaces/designer` | Designer — a broad visual editor for the whole product UI, not just a component list. Sections (Components / Styles / Animations / Themes / Typography) all preview under one active theme + style, so you can see, compare and edit every part of the visual language — by hand for the simple knobs, and (theme) by AI. Built on the pluggable AI-provider layer + our real component library, so anything the coding-agent ships shows up here automatically. | `workspaces/designer/page.tsx` |
 | `/workspaces/interviewer` | Interviewer — ask the AI anything about THIS codebase and think through new plans together. It has repo context (via the Workspace-AI), so you can ask "how does the auth flow work?", "what's worth improving?", or "work out a plan for feature X" and get a worked-out answer. Deeper RAG search + structured question/idea cards land in a following phase; this is the free-form planning chat on top of the existing repo-aware `workspaces/aiChat` backend. | `workspaces/interviewer/page.tsx` |
+| `/workspaces/knowledge` | the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as nodes (context sources, tickets, content pieces) linked by similarity + link edges, so a user can see how their work relates. N2: the render of the N1 knowledgeGraph_v1 data op. | `workspaces/knowledge/page.tsx` |
 | `/workspaces/marketing` | Marketing — take your product to market. The AI marketer role turns a short product brief into marketing copy, a go-to-market strategy, email sequences, ad sets, a social calendar, naming, thumbnails and video scripts — each live-previewed. Its own page (user-chosen split) that reuses the shared Studio surface with a marketing focus (marketer kinds only; the designer kinds live on /studio). | `workspaces/marketing/page.tsx` |
 | `/workspaces/pipeline` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/pipeline/page.tsx` |
 | `/workspaces/scheduled` | Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a cadence, then either run an AI agent role (e.g. the Interviewer proposing improvements) or send a notification. Built on the existing automation engine (ADR 0027): each row is a cron-scheduled WorkspaceTrigger written through the Conductor (single-writer, B-23). Reusable — the same surface later drives Marketing scraping or any recurring role. | `workspaces/scheduled/page.tsx` |

@@ -1043,6 +1043,21 @@
       "brandSave": "Save brand",
       "brandSaved": "Saved"
     },
+    "knowledge": {
+      "title": "Knowledge graph",
+      "subtitle": "How your sources, tickets and content pieces relate.",
+      "refresh": "Refresh",
+      "loadingTitle": "Building the graph…",
+      "loadingSub": "Embedding sources, tickets and content to find connections.",
+      "emptyTitle": "Nothing to graph yet",
+      "emptySub": "Add context sources, tickets or content pieces and they'll appear here, linked by similarity.",
+      "nodeCount": "{{count}} nodes",
+      "edgeCount": "{{count}} links",
+      "legendSources": "Sources",
+      "legendTickets": "Tickets",
+      "legendPieces": "Content",
+      "hint": "Click a node to focus it and its connections."
+    },
     "usage": {
       "title": "Usage",
       "subtitle": "Token volume & time · running on the Claude Pro Max CLI (no metered API)",

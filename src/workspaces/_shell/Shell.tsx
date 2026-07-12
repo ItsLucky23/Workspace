@@ -69,6 +69,7 @@ export const NAV_ITEMS: NavDef[] = [
   { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'studio' },
   { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'studio' },
   { id: 'usage', icon: 'chart-column', label: 'Usage', group: 'insights' },
+  { id: 'knowledge', icon: 'diagram-project', label: 'Knowledge', group: 'insights' },
 ];
 export const NAV_BOTTOM: NavDef[] = [
   { id: 'ai', icon: 'robot', label: 'Workspace-AI' },
