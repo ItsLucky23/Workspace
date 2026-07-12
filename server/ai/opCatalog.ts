@@ -24,13 +24,14 @@ export interface CatalogCtx {
   pieces: { id: string; title: string }[];
   environments: { id: string; kind: string }[];
   services: { name: string }[];
-  //? #86/#54 — custom tasks + triggers + open MRs (taskId/triggerId/mrId validation for proposals).
+  //? #86/#54/#150 — custom tasks + triggers + open MRs + channels (id validation for proposals).
   customTasks: { id: string; name: string }[];
   triggers: { id: string; name: string }[];
   mrs: { id: string; ticketKey: string }[];
+  channels: { id: string; name: string }[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -215,7 +216,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'delete-style': LATER_D,
   'save-media-provider': EXCLUDED, // provider API keys
-  'content-edit-brand': LATER,
+  'content-edit-brand': {
+    mode: 'enabled',
+    hint: "set a CHANNEL's brand voice ('set the brand voice for <channel> to X'). params: channelId (from the channel list below), brandVoice (the voice, e.g. 'bold, playful')",
+    params: { channelId: { kind: 'channelId', required: true }, brandVoice: { kind: 'string', required: true } },
+  },
   'content-edit-product': {
     mode: 'enabled',
     hint: "set the workspace's brand/product CONTEXT that every creative generation folds in ('set the brand voice/product to X'). params: productContext (the brand + product description)",
@@ -351,6 +356,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'taskId') return typeof value === 'string' && ctx.customTasks.some((t) => t.id === value) ? value : undefined;
   if (kind === 'triggerId') return typeof value === 'string' && ctx.triggers.some((t) => t.id === value) ? value : undefined;
   if (kind === 'mrId') return typeof value === 'string' && ctx.mrs.some((m) => m.id === value) ? value : undefined;
+  if (kind === 'channelId') return typeof value === 'string' && ctx.channels.some((c) => c.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }

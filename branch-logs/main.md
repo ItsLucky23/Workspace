@@ -3868,3 +3868,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** style preview-asset (M1) werd door schema/persistence/snapshot/export gedragen maar had GEEN UI om er een te koppelen + geen thumbnail-render (de M4 style-gallery was onaf). Nu: een `MediaUploadButton` in de create-style-form (upload → `previewAssetUrl`/`previewKind`, met live preview + verwijderen), doorgegeven via de uitgebreide `saveStyle`-ctx + contentSettings-route; en een thumbnail-render per style-rij (M4-gallery). #157's edit pre-filt nu ook de preview.
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: content.{stylePreviewUpload,stylePreviewRemove} ×4.
 **Files:** `src/workspaces/_sync/contentSettings_server_v1.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/content/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 34 (Workspace-AI-catalog: brand-voice): #150 (compleet)
+**Wat:** chat-ctx uitgebreid met de workspace's publicatie-kanalen (id+naam); `content-edit-brand` `later`→`enabled` geflipt met param-kind `channelId` (gevalideerd tegen `ctx.channels`) + `brandVoice`, dispatch via de contentSettings-route. De Workspace-AI kan nu "zet de merkstem voor kanaal X op Y" voorstellen. Samen met golf-13/14 (style·reference·channel-create·product-context) is #150 ("alle vier inschakelen": brand/style/reference/channel) hiermee VOLLEDIG gesloten. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
+**Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

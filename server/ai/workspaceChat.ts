@@ -42,10 +42,12 @@ export interface Ctx {
   //? #54 — the workspace's open merge requests (id + the ticket key they belong to) so the AI can
   //? propose an MR review or rollback.
   mrs: { id: string; ticketKey: string; title: string }[];
+  //? #150 — the workspace's publishing channels so the AI can propose setting a channel's brand voice.
+  channels: { id: string; name: string }[];
 }
 
 async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> {
-  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows] = await Promise.all([
+  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows, channels] = await Promise.all([
     prisma.ticket.findMany({ where: { workspaceId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
@@ -55,6 +57,7 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     prisma.customAiTask.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.mergeRequest.findMany({ where: { workspaceId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
+    prisma.channel.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
@@ -71,6 +74,7 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
     customTasks: customTasks.map((t) => ({ id: t.id, name: t.name })),
     triggers: triggers.map((t) => ({ id: t.id, name: t.name })),
     mrs: mrRows.map((m) => ({ id: m.id, ticketKey: keyByTicketId.get(m.ticketId) ?? '', title: m.title })).filter((m) => m.ticketKey.length > 0),
+    channels: channels.map((c) => ({ id: c.id, name: c.name })),
   };
 }
 
@@ -101,6 +105,7 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
+    `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
   ].join('\n');

@@ -31,7 +31,7 @@ export const CHAT_ENABLED_OPS = [
   'shortlink-create',
   'capture-run',
   // brand/style/reference/channel config (#150/#142) — text/config proposals, no paid gen
-  'save-style', 'channel-create', 'reference-add', 'content-edit-product',
+  'save-style', 'channel-create', 'reference-add', 'content-edit-product', 'content-edit-brand',
   // ticket edit (#7) — rename / re-describe / re-prioritise a ticket
   'ticket-edit',
   // forge issue resync (#29) — pull issues/state from the connected forge on demand
