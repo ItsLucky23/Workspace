@@ -65,6 +65,8 @@ export default function TicketPage({ params }: { params: Record<string, string |
       <TicketControls ticket={ticket} />
 
       {status === 'needs-input' && ticket.needsInput && <NeedsInputBanner question={ticket.needsInput} ticketKey={ticket.id} />}
+      {/* #16 (W2) — non-blocking advisory questions: confirm the agent's assumption or correct it. */}
+      {ticket.advisoryQuestions && ticket.advisoryQuestions.length > 0 && <AdvisoryList ticketKey={ticket.id} advisories={ticket.advisoryQuestions} />}
       {status === 'done' && (
         <Banner
           tone="correct" icon="circle-check"
@@ -393,6 +395,39 @@ function Banner({ tone, icon, title, action, children }: { tone: 'warning' | 'co
         </div>
         {action}
       </div>
+    </div>
+  );
+}
+
+//? #16 (W2) — the advisory list: NON-blocking questions the agent already proceeded past with an
+//? assumption. Confirm the assumption (marks it resolved) or Correct it (a divergent answer schedules a
+//? revision turn). Routes through the SAME `answerInput` op with the advisory's index.
+function AdvisoryList({ ticketKey, advisories }: { ticketKey: string; advisories: { index: number; q: string; assumption: string }[] }) {
+  const translate = useTranslator();
+  const { answerInput } = useWorkspaces();
+  const [correcting, setCorrecting] = useState<number | null>(null);
+  const [text, setText] = useState('');
+  return (
+    <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
+      <div className="text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5"><Icon name="lightbulb" className="text-warning" /> {translate({ key: 'workspaces.ticket.advisoryTitle' })}</div>
+      {advisories.map((a) => (
+        <div key={a.index} className="rounded-lg border border-container2-border bg-container2/40 p-2.5 flex flex-col gap-1.5">
+          <div className="text-sm text-title">{a.q}</div>
+          {a.assumption.length > 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.ticket.advisoryAssumption', params: [{ key: 'assumption', value: a.assumption }] })}</div>}
+          {correcting === a.index ? (
+            <div className="flex items-center gap-2">
+              <input value={text} onChange={(e) => { setText(e.target.value); }} placeholder={translate({ key: 'workspaces.ticket.advisoryCorrectPh' })} className="flex-1 h-8 px-2 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
+              <WsButton icon="check" disabled={text.trim().length === 0} onClick={() => { answerInput(ticketKey, text.trim(), a.index); setCorrecting(null); setText(''); }}>{translate({ key: 'workspaces.ticket.advisorySubmit' })}</WsButton>
+              <WsButton variant="ghost" onClick={() => { setCorrecting(null); setText(''); }}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <WsButton variant="secondary" icon="check" onClick={() => { answerInput(ticketKey, a.assumption || 'ok', a.index); }}>{translate({ key: 'workspaces.ticket.advisoryConfirm' })}</WsButton>
+              <WsButton variant="ghost" icon="pen" onClick={() => { setCorrecting(a.index); setText(''); }}>{translate({ key: 'workspaces.ticket.advisoryCorrect' })}</WsButton>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -1186,7 +1186,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Realtime writes — per-action `_sync` event → delta broadcast → client merge.
       editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
       addComment: (ticketId, body) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId, body, clientRequestId: nextReqId() }, receiver: room }); },
-      answerInput: (ticketId, answer) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, clientRequestId: nextReqId() }, receiver: room }); },
+      answerInput: (ticketId, answer, advisoryIndex) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: nextReqId() }, receiver: room }); },
       setTicketPresence,
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).

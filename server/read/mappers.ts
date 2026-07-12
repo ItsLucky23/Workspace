@@ -62,14 +62,30 @@ export function ticketDelta(result: unknown): Ticket | null {
   return isDbTicket(result) ? toTicket(result) : null;
 }
 
+//? #16 (W2) — parse the stored advisory-questions Json into the UNRESOLVED client list, keeping each
+//? one's original index (the conductor's answer-input resolves an advisory by that index).
+function parseAdvisoryForClient(raw: unknown): { index: number; q: string; assumption: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { index: number; q: string; assumption: string }[] = [];
+  for (const [i, a] of raw.entries()) {
+    if (a !== null && typeof a === 'object') {
+      const rec = a as Record<string, unknown>;
+      if (rec.resolved !== true && typeof rec.q === 'string') out.push({ index: i, q: rec.q, assumption: typeof rec.assumption === 'string' ? rec.assumption : '' });
+    }
+  }
+  return out;
+}
+
 //? Map a Prisma Ticket row → the frontend `Ticket` (the board/backlog key is the
 //? DEV-#### `key`, not the ObjectId). Mirrors the mapping in `buildSnapshot`.
 export function toTicket(t: DbTicket): Ticket {
+  const advisory = parseAdvisoryForClient(t.advisoryQuestions);
   return {
     id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
     viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
+    ...(advisory.length > 0 ? { advisoryQuestions: advisory } : {}),
     priority: asPriority(t.priority),
     //? Real recency for the backlog/board time column (was a hardcoded mock array).
     //? `lastActivityAt` is denormalized from the latest TicketEvent; fall back to createdAt.

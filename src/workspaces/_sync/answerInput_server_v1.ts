@@ -12,18 +12,19 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { ticketKey: string; answer: string; clientRequestId: string };
+  clientInput: { ticketKey: string; answer: string; advisoryIndex?: number; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { ticketKey, answer, clientRequestId } = clientInput;
+  const { ticketKey, answer, advisoryIndex, clientRequestId } = clientInput;
   if (answer.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'answer-input', roomCode, userId: user.id, prisma: functions.db.prisma,
-    target: { ticketKey }, payload: { answer }, clientRequestId,
+    //? #16 — thread advisoryIndex through so the conductor's advisory-resolve path is reachable (W2).
+    target: { ticketKey }, payload: { answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', tickets: ticketListDelta(res.result) };

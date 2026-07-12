@@ -213,6 +213,10 @@ export interface Ticket {
   sprintId?: string;
   carryOver?: string;
   needsInput?: string;
+  //? #16 (W2) — NON-blocking advisory questions the agent proceeded past with an assumption. The user
+  //? can confirm the assumption or correct it (a divergent answer schedules a revision turn). `index` is
+  //? the position in the stored list (the conductor resolves by that index). Only UNRESOLVED ones.
+  advisoryQuestions?: { index: number; q: string; assumption: string }[];
   priority?: TicketPriority; // low|normal|high|urgent — `urgent` = hotfix/security tier (force-passes the capacity cap, #12)
   files?: TicketFile[];
   links?: TicketLink[];

@@ -166,7 +166,7 @@ export interface WorkspacesCtx {
   addComment: (ticketId: string, body: string) => void;
   //? Answer the AI's open question on a ticket (#17): records the answer + re-fires the parked
   //? turn with it. Clears the needs-input banner. `ticketId` is the DEV-#### key.
-  answerInput: (ticketId: string, answer: string) => void;
+  answerInput: (ticketId: string, answer: string, advisoryIndex?: number) => void;
   //? Realtime presence (#17): announce/retract that this user is viewing a ticket (open + heartbeat
   //? + close), and read the OTHER users currently viewing a ticket (self excluded).
   setTicketPresence: (ticketKey: string, viewing: boolean) => void;
