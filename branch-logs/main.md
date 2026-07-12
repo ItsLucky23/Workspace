@@ -3793,3 +3793,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de 'bundle'-export-kind (de échte prod-build: `npm run build`→dist-tarball) was volledig gebouwd maar UI-loos — de export-knop hardcodede `exportBuild('image')`. Nu twee knoppen: "Image exporteren" + "Bundle exporteren", elk met de juiste kind naar `exportBuild`.
 **Verify:** typecheck0·build✓·lint0(pre-existing #36)·localeIntegrity 8/8. Nieuwe i18n: account.{exportImage,exportBundle} ×4.
 **Files:** `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 19 (Deploy): #63
+**Wat:** per-service environments werden door de hele keten ondersteund (serviceId op env-deploy/ensureEnvironment) maar de UI las alleen envs met `serviceId===undefined` — multi-service (monorepo) projecten konden individuele services niet deployen. Nu een "Omgevingen per service"-sublijst in de environments-Card (alleen als het actieve project services declareert): per service dev+staging-rijen met deploy (serviceId-scoped) + teardown. Promote blijft project-level (de `promoteEnv`-ctx-method draagt geen serviceId — bewust niet uitgebreid).
+**Verify:** typecheck0·build✓·lint0(pre-existing #36)·localeIntegrity 8/8. Nieuwe i18n: account.perServiceEnvs ×4.
+**Files:** `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

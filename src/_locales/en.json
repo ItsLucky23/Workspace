@@ -716,6 +716,7 @@
       "forgeBaseUrlPh": "API base URL (optional)",
       "forgeConnectFor": "Forge for the active project",
       "environmentsTitle": "Environments",
+      "perServiceEnvs": "Per-service environments",
       "environmentsDesc": "Deploy this project to a persistent dev / staging / prod server at a stable URL.",
       "deploy": "Deploy",
       "teardown": "Tear down",

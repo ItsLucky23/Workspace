@@ -246,7 +246,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -322,6 +322,8 @@ export default function AccountSettings() {
   const selectedLanguage = languageItems.find((it) => it.id === language);
   //? Real forge-connection state for the active project: a linked repo path/url means connected.
   const forgeConnected = Boolean(activeProject?.gitUrl?.trim());
+  //? #63 — the active project's declared services (monorepo units) that deploy per-service.
+  const projectServices = activeProject ? services.filter((s) => s.projectId === activeProject.id) : [];
 
   const [sessions, setSessions] = useState<AccountSession[]>([]);
   const refreshSessions = useCallback(() => {
@@ -457,6 +459,35 @@ export default function AccountSettings() {
             </div>
             {demoCustomDomain.trim().length > 0 && (
               <div className="px-1 text-[11px] text-muted">{translate({ key: 'workspaces.account.dnsInstruction', params: [{ key: 'domain', value: demoCustomDomain.trim() }] })}</div>
+            )}
+            {/* #63 — per-service environments: a monorepo project's services deploy/teardown INDIVIDUALLY
+                (serviceId-scoped). Only shown when the active project declares services. */}
+            {projectServices.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-divider flex flex-col gap-1.5">
+                <div className="text-xs font-semibold text-muted px-1">{translate({ key: 'workspaces.account.perServiceEnvs' })}</div>
+                {projectServices.map((svc) => (
+                  <div key={svc.id} className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-title px-1">{svc.name}</span>
+                    {['dev', 'staging'].map((kind) => {
+                      const env = environments.find((e) => e.kind === kind && e.serviceId === svc.id);
+                      return (
+                        <Row key={`${svc.id}-${kind}`}>
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-medium text-muted uppercase w-16 pl-2">{kind}</span>
+                            {env
+                              ? <span className={`inline-flex items-center gap-1 text-xs ${env.status === 'live' ? 'text-correct' : (env.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${env.status === 'live' ? 'bg-correct' : (env.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} />{env.status}{env.status === 'live' && env.url ? <a href={env.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-1 truncate">{env.route}</a> : null}</span>
+                              : <span className="text-xs text-disabled">—</span>}
+                          </span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <WsButton variant="secondary" disabled={env?.status === 'deploying'} onClick={() => { deployEnv({ kind, serviceId: svc.id }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>
+                            {env && <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.account.teardown' }), content: `${svc.name}/${kind} — ${env.route}` }).then((ok) => { if (ok) teardownEnv(env.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
+                          </span>
+                        </Row>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             )}
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.buildExports' })}</span>
