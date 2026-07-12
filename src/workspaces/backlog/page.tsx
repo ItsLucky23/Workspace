@@ -42,6 +42,40 @@ function relativeTime(iso: string | undefined): string {
 
 export const template = 'workspaces';
 
+//? #1 — edit a sprint: activate/deactivate, rename, set/clear the start+end dates. Opened via
+//? menuHandler → `sprint-edit` op. Only changed fields are sent.
+function SprintEditForm({ sprint, onSave }: { sprint: { id: string; name: string; active: boolean; start?: string | null; end?: string | null }; onSave: (input: { sprintId: string; name?: string; active?: boolean; startAt?: string; endAt?: string }) => void }) {
+  const translate = useTranslator();
+  const [name, setName] = useState(sprint.name);
+  const [active, setActive] = useState(sprint.active);
+  const [startAt, setStartAt] = useState(sprint.start ?? '');
+  const [endAt, setEndAt] = useState(sprint.end ?? '');
+  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  const submit = () => {
+    if (name.trim().length === 0) return;
+    onSave({ sprintId: sprint.id, name: name.trim(), active, startAt, endAt });
+    void menuHandler.close();
+  };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.editSprint' })}</div>
+      <input value={name} onChange={(e) => { setName(e.target.value); }} className={fieldCls} />
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.sprintStart' })}</span><input type="date" value={startAt} onChange={(e) => { setStartAt(e.target.value); }} className={fieldCls} /></label>
+        <label className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.sprintEnd' })}</span><input type="date" value={endAt} onChange={(e) => { setEndAt(e.target.value); }} className={fieldCls} /></label>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
+        <input type="checkbox" checked={active} onChange={(e) => { setActive(e.target.checked); }} className="accent-primary" />
+        {translate({ key: 'workspaces.backlog.sprintSetActive' })}
+      </label>
+      <div className="flex items-center justify-end gap-2">
+        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
+        <WsButton icon="check" disabled={name.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.backlog.sprintSaveEdit' })}</WsButton>
+      </div>
+    </div>
+  );
+}
+
 //? Minimal create-sprint menu (opened via menuHandler → `sprint-create` op). Name
 //? input auto-focuses; the new sprint starts inactive (the user activates it later).
 function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
@@ -141,7 +175,7 @@ function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprintId }: {
 
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, quickAdd } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, editSprint, quickAdd } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
@@ -239,16 +273,20 @@ export default function Backlog() {
             const open = openSprints[sprint.id] ?? true;
             return (
               <div key={sprint.id} className="rounded-2xl border border-container1-border bg-container1 overflow-hidden">
-                <button type="button" onClick={() => { setOpenSprints((p) => ({ ...p, [sprint.id]: !open })); }}
-                  className="w-full flex items-center justify-between gap-3 px-4 h-12 hover:bg-container1-hover cursor-pointer transition-colors">
-                  <span className="flex items-center gap-2 min-w-0">
-                    <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className="inline-flex w-4 justify-center text-muted shrink-0"><Icon name="angle-down" /></motion.span>
-                    <span className="text-sm font-semibold text-title whitespace-nowrap">{sprint.name}</span>
-                    {sprint.start && <span className="text-xs text-muted whitespace-nowrap">{sprint.start}–{sprint.end}</span>}
-                    {sprint.active && <span className="shrink-0 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-medium">{translate({ key: 'workspaces.backlog.sprintActive' })}</span>}
-                  </span>
-                  <span className="shrink-0 rounded-full bg-container2 px-2 text-xs text-muted">{rows.length}</span>
-                </button>
+                <div className="w-full flex items-center hover:bg-container1-hover transition-colors">
+                  <button type="button" onClick={() => { setOpenSprints((p) => ({ ...p, [sprint.id]: !open })); }}
+                    className="flex-1 min-w-0 flex items-center justify-between gap-3 px-4 h-12 cursor-pointer">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className="inline-flex w-4 justify-center text-muted shrink-0"><Icon name="angle-down" /></motion.span>
+                      <span className="text-sm font-semibold text-title whitespace-nowrap">{sprint.name}</span>
+                      {sprint.start && <span className="text-xs text-muted whitespace-nowrap">{sprint.start}–{sprint.end}</span>}
+                      {sprint.active && <span className="shrink-0 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-medium">{translate({ key: 'workspaces.backlog.sprintActive' })}</span>}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-container2 px-2 text-xs text-muted">{rows.length}</span>
+                  </button>
+                  {/* #1 — edit a sprint (activate / rename / dates). Not on the synthetic Backlog group. */}
+                  {sprint.id !== 'backlog' && <button type="button" onClick={() => { void menuHandler.open(<SprintEditForm sprint={sprint} onSave={editSprint} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }} title={translate({ key: 'workspaces.backlog.editSprint' })} className="px-3 h-12 flex items-center text-muted hover:text-title cursor-pointer shrink-0"><Icon name="pen" /></button>}
+                </div>
                 <AnimatePresence initial={false}>
                   {open && (
                     <motion.div

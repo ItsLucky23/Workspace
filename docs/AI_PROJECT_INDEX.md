@@ -61,7 +61,7 @@
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 
-## Sync routes (56)
+## Sync routes (57)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -113,6 +113,7 @@
 | `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | **no** | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/sprintEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-edit] REALTIME write via `_sync`. Activates / renames / (re)dates a sprint, |
 | `sync/workspaces/stageCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
 | `sync/workspaces/stageDelete/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-delete] (R1) durably REMOVE a pipeline stage. The client refetches the pipeline after. |
 | `sync/workspaces/stageReorder/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-reorder] (R1) persist a new pipeline stage ORDER (drag-reorder survives a refresh). |
@@ -129,9 +130,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 103 |
+| _(unowned)_ | 104 |
 
-**Test coverage**: 3/105 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/106 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -185,7 +186,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/addComment/v1`
 - `sync/workspaces/addInfoDoc/v1`
 - `sync/workspaces/agentControl/v1`
-- … +52 more
+- … +53 more
 
 ## Pages (28)
 

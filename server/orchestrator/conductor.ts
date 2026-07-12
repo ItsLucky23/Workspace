@@ -746,10 +746,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return prisma.sprint.create({ data: { workspaceId: action.workspaceId, projectId: sprintProjectId, name, active: bool(payload, 'active') } });
     }
     case 'sprint-edit': {
-      const sprintId = str(target, 'sprintId'); const name = str(payload, 'name');
+      const sprintId = str(target, 'sprintId') ?? str(payload, 'sprintId'); const name = str(payload, 'name');
       if (!sprintId) return;
-      await prisma.sprint.updateMany({ where: { workspaceId: action.workspaceId, id: sprintId }, data: { ...(name ? { name } : {}), active: bool(payload, 'active') } });
-      return;
+      //? #1 — activate + rename + DATES. A date string ('YYYY-MM-DD') sets it; an empty string clears it.
+      const parseDate = (key: string): Date | null | undefined => {
+        if (!(key in payload)) return undefined;
+        const raw = str(payload, key);
+        if (!raw || raw.trim().length === 0) return null;
+        const ms = Date.parse(raw);
+        return Number.isFinite(ms) ? new Date(ms) : undefined;
+      };
+      const startAt = parseDate('startAt'); const endAt = parseDate('endAt');
+      await prisma.sprint.updateMany({ where: { workspaceId: action.workspaceId, id: sprintId }, data: {
+        ...(name ? { name } : {}),
+        ...('active' in payload ? { active: bool(payload, 'active') } : {}),
+        ...(startAt === undefined ? {} : { startAt }),
+        ...(endAt === undefined ? {} : { endAt }),
+      } });
+      return prisma.sprint.findFirst({ where: { workspaceId: action.workspaceId, id: sprintId } });
     }
     // ---- members / RBAC / workspace lifecycle ----
     case 'remove-member': {

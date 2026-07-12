@@ -103,6 +103,8 @@ export interface WorkspacesCtx {
   buildArtifacts: BuildArtifactSummary[];
   exportBuild: (kind: string) => void;
   sprintCreate: (name: string) => void;
+  //? #1 — activate / rename / (re)date a sprint. Only the provided fields are written.
+  editSprint: (input: { sprintId: string; name?: string; active?: boolean; startAt?: string; endAt?: string }) => void;
   //? Onboarding (zero-workspace): the invitations addressed to this user + accept.
   myInvites: MyInvite[];
   acceptInvite: (token: string) => void;
