@@ -721,6 +721,8 @@
       "teardown": "Abbauen",
       "promote": "Hochstufen",
       "exportBuild": "Build exportieren",
+      "exportImage": "Image exportieren",
+      "exportBundle": "Bundle exportieren",
       "download": "Herunterladen",
       "subdomainPh": "Subdomain (optional)", "customDomainPh": "eigene Domain, z. B. app.meinedomain.de (optional)", "dnsInstruction": "Verweise {{domain}} per CNAME auf deinen Workspaces-Host (oder ein A-Record auf die IP). HTTPS wird beim ersten Besuch automatisch ausgestellt.",
       "pinCommitPh": "Commit-SHA (optional)",

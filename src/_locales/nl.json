@@ -721,6 +721,8 @@
       "teardown": "Afbreken",
       "promote": "Promoveren",
       "exportBuild": "Build exporteren",
+      "exportImage": "Image exporteren",
+      "exportBundle": "Bundle exporteren",
       "download": "Downloaden",
       "subdomainPh": "subdomein (optioneel)", "customDomainPh": "eigen domein, bijv. app.mijndomein.nl (optioneel)", "dnsInstruction": "Wijs {{domain}} via CNAME naar je Workspaces-host (of een A-record naar het IP). HTTPS wordt automatisch uitgegeven bij het eerste bezoek.",
       "pinCommitPh": "commit-sha (optioneel)",

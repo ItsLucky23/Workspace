@@ -460,7 +460,11 @@ export default function AccountSettings() {
             )}
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.buildExports' })}</span>
-              <WsButton variant="secondary" disabled={!activeProject} onClick={() => { exportBuild('image'); }}>{translate({ key: 'workspaces.account.exportBuild' })}</WsButton>
+              {/* #62 — offer BOTH export kinds (the real prod bundle was UI-less; the button hardcoded 'image'). */}
+              <div className="flex items-center gap-2">
+                <WsButton variant="secondary" disabled={!activeProject} onClick={() => { exportBuild('image'); }}>{translate({ key: 'workspaces.account.exportImage' })}</WsButton>
+                <WsButton variant="secondary" disabled={!activeProject} onClick={() => { exportBuild('bundle'); }}>{translate({ key: 'workspaces.account.exportBundle' })}</WsButton>
+              </div>
             </Row>
             {buildArtifacts.map((b) => (
               <Row key={b.id}>
