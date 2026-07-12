@@ -492,7 +492,11 @@ export default function AccountSettings() {
             {buildArtifacts.map((b) => (
               <Row key={b.id}>
                 <span className="flex items-center gap-2 text-sm text-title min-w-0"><Icon name="diagram-project" className="text-muted" /> {b.kind} <span className="text-xs text-muted">{b.status}{b.sizeBytes > 0 ? ` · ${String(Math.round(b.sizeBytes / 1_048_576))} MB` : ''}</span></span>
-                {b.status === 'ready' && b.downloadUrl ? <a href={b.downloadUrl} className="text-xs text-primary hover:underline shrink-0">{translate({ key: 'workspaces.account.download' })}</a> : <span className="text-xs text-disabled shrink-0">{b.error ?? '—'}</span>}
+                <span className="flex items-center gap-2 shrink-0">
+                  {/* #64 — the D4 deploy-hook outcome for this export (only shown when a hook actually fired). */}
+                  {b.deployHookFired === true && <span className={`text-[11px] rounded-md px-1.5 py-0.5 ${b.deployHookOk ? 'bg-correct/10 text-correct' : 'bg-wrong/10 text-wrong'}`}>{translate({ key: b.deployHookOk ? 'workspaces.account.deployHookOk' : 'workspaces.account.deployHookFail' })}{b.deployHookStatus === undefined ? '' : ` ${String(b.deployHookStatus)}`}</span>}
+                  {b.status === 'ready' && b.downloadUrl ? <a href={b.downloadUrl} className="text-xs text-primary hover:underline">{translate({ key: 'workspaces.account.download' })}</a> : <span className="text-xs text-disabled">{b.error ?? '—'}</span>}
+                </span>
               </Row>
             ))}
           </Card>

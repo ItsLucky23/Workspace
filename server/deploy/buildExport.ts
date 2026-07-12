@@ -51,6 +51,8 @@ export async function buildExport(prisma: PrismaClient, workspaceId: string, pro
 
   //? D4 — a ready artifact is the deploy input: fire the external deploy-hook (webhook) if configured.
   const deployHook = await postDeployWebhook({ event: 'build-export', workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', artifactId: artifact.id, imageRef, downloadToken: token });
+  //? #64 — persist the hook result on the artifact row so the settings UI can surface fired/ok/status.
+  await prisma.buildArtifact.update({ where: { id: artifact.id }, data: { deployHookFired: deployHook.fired, ...(deployHook.ok === undefined ? {} : { deployHookOk: deployHook.ok }), ...(deployHook.status === undefined ? {} : { deployHookStatus: deployHook.status }) } });
   return { ...result, deployHook };
 }
 

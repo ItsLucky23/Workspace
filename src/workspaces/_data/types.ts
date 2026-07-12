@@ -171,6 +171,10 @@ export interface BuildArtifactSummary {
   sizeBytes: number;
   error?: string;
   createdAt: string;
+  //? #64 — the D4 deploy-hook result for this export (fired=a hook URL was configured; ok/httpStatus = response).
+  deployHookFired?: boolean;
+  deployHookOk?: boolean;
+  deployHookStatus?: number;
 }
 
 export interface PipelineStage {

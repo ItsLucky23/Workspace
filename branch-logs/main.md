@@ -4009,3 +4009,9 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **⚠️ Bewust NIET gedaan (`stage.on_signal`):** een signal wordt aangemaakt door de emit-signal-executor-case; `on_signal` daar firen zou de executor→triggers-cyclus veroorzaken, en er is GEEN aparte signal-consumer/drain-site in de conductor om 'm cyclus-vrij te firen. Vereist een architectuur-hook (signal-drain-loop) — apart.
 **Verify:** typecheck0·build✓·lint0·rbac 119/119.
 **Files:** `server/orchestrator/conductor.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 60 (deploy): #64 (deploy-hook-status op de build-artifact-rij, surface-slice)
+**Wat:** de D4 deploy-hook (`postDeployWebhook`, vuurt na een build-export als `WS_DEPLOY_WEBHOOK_URL` gezet is) gaf zijn resultaat alleen in-memory terug — nooit opgeslagen/getoond. Nu de veilige surface-slice: (1) `BuildArtifact` += `deployHookFired/deployHookOk/deployHookStatus` (Boolean?/Int?); (2) `buildExport` update de artifact-rij met het hook-resultaat na het vuren; (3) `BuildArtifactSummary` + snapshot-map dragen het mee; (4) settings-artifact-rij toont een `correct/wrong`-chip (alleen als er écht een hook vuurde) met de HTTP-status. i18n `account.{deployHookOk,deployHookFail}` ×4.
+**⚠️ Bewust NIET gedaan (rest #64):** de "save-env-style settings-field" voor de hook-URL zelf — dat vergt `postDeployWebhook` naar een workspace-env-var-bron te herwiren (nu env-global `WS_DEPLOY_WEBHOOK_URL`) = signatuur- + behavioral-change van het deploy-pad. Apart.
+**Verify:** typecheck0·build✓·lint(0 errors, 4 pre-existing jsx-warnings)·localeIntegrity 8/8. generateArtifacts + prisma generate gedraaid.
+**Files:** `prisma/schema.prisma`, `server/deploy/buildExport.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

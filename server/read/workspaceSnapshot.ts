@@ -490,6 +490,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: b.id, projectId: b.projectId, kind: b.kind, status: b.status, sizeBytes: b.sizeBytes,
         ...(b.status === 'ready' ? { downloadUrl: `/downloads/build/${b.downloadToken}` } : {}),
         ...(b.error ? { error: b.error } : {}), createdAt: b.createdAt.toISOString(),
+        //? #64 — the deploy-hook result (null until the export attempts it).
+        ...(b.deployHookFired === null ? {} : { deployHookFired: b.deployHookFired }),
+        ...(b.deployHookOk === null ? {} : { deployHookOk: b.deployHookOk }),
+        ...(b.deployHookStatus === null ? {} : { deployHookStatus: b.deployHookStatus }),
       })),
       templates: listTemplates(),
       members, budget, budgets, capacity, docs, skills,

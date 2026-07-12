@@ -416,6 +416,11 @@ model BuildArtifact {
   error         String?
   expiresAt     DateTime?
   createdAt     DateTime  @default(now())
+  //? #64 — the D4 deploy-hook result for THIS export (fired=whether a hook URL was configured; ok/httpStatus
+  //? = its response). Null until the export completes + the hook is attempted; surfaced on the artifact row.
+  deployHookFired  Boolean?
+  deployHookOk     Boolean?
+  deployHookStatus Int?
 
   @@index([workspaceId])
   @@index([projectId])
