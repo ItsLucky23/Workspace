@@ -28,12 +28,10 @@ let registered = false;
 export const registerWorkspacesTerminalHooks = (): void => {
   if (registered) return;
   registered = true;
-  //? A browser→shell bridge is an RCE surface, so it's OFF in production by
-  //? default. The real product attaches terminals to the per-ticket *container*
-  //? (isolated) via the pty-agent — this host-shell bridge is a local-dev
-  //? convenience. Set WORKSPACES_TERMINAL_ENABLED=1 to opt in beyond dev anyway.
-  const enabled = process.env.NODE_ENV !== 'production' || process.env.WORKSPACES_TERMINAL_ENABLED === '1';
-  if (!enabled) return;
+  //? #15 — SPLIT the relay: the per-ticket *container* terminal (isolated, `isWorkspacesContainer`-guarded
+  //? docker exec / pty-agent) is ALWAYS registered so a self-hosted PROD deploy can attach panels. Only the
+  //? HOST-shell bridge (a browser→host-shell RCE surface) stays dev-gated (or WORKSPACES_TERMINAL_ENABLED=1).
+  const hostShellEnabled = process.env.NODE_ENV !== 'production' || process.env.WORKSPACES_TERMINAL_ENABLED === '1';
 
   const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL ?? 'bash');
   const baseEnv = Object.fromEntries(
@@ -76,6 +74,9 @@ export const registerWorkspacesTerminalHooks = (): void => {
         })();
         return;
       }
+      //? #15 — the host-shell path is the RCE surface: refuse it in prod (a clean exit) while the
+      //? container path above stays available. The client shows the exit line.
+      if (!hostShellEnabled) { socket.emit('ws-term:exit', { id, exitCode: 1 }); return; }
       attachPty(id, pty.spawn(shell, [], opts));
     });
 

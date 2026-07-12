@@ -3838,3 +3838,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** unarchive was onbereikbaar EN gearchiveerde pieces werden uit de snapshot gefilterd (geen restore-pad). Nu: de snapshot-query relaxt (`archived:false`-filter weg → alle pieces, met een `archived`-flag; analytics/insights filteren archived al intern zodat metrics niet wijzigen). De content-board toont alleen live pieces; een "Gearchiveerd (N)"-toggle in de header opent een Archived-view met per piece een Herstellen-knop (→ `content-unarchive` via runContentOp).
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: content.{archivedTab,restore} ×4.
 **Files:** `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 28 (Agent runtime): #15
+**Wat:** de hele ws-term-middleware returnde vroeg tenzij `NODE_ENV!=production` of `WORKSPACES_TERMINAL_ENABLED=1` — dus op een self-hosted PROD-deploy werd géén `ws-term:start`-handler geregistreerd en attachten de container-panels nooit. Nu gesplitst: de socket-relay wordt ALTIJD geregistreerd; de per-ticket CONTAINER-terminal (geïsoleerd, `isWorkspacesContainer`-guarded docker-exec/pty-agent) werkt overal; alleen de HOST-shell-bridge (de browser→host-shell RCE-surface) blijft dev-gated en weigert schoon (`ws-term:exit code 1`) in prod.
+**Verify:** typecheck0·build✓·lint0. Server-only (geen i18n/UI).
+**Files:** `server/hooks/workspacesTerminal.ts`.
