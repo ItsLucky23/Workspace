@@ -1683,6 +1683,8 @@
       "noTickets": "Geen tickets",
       "title": "Board",
       "daysLeft": "{{n}}d over",
+      "capacityTitle": "Engine-bezetting — beurten nu bezig / in wachtrij",
+      "capacityChip": "{{active}}/{{limit}} bezig · {{queued}} in wachtrij",
       "manageSprints": "⚙ Sprints beheren…",
       "pauseAll": "Alle agents pauzeren",
       "pauseAllConfirmTitle": "Alle agents pauzeren?",

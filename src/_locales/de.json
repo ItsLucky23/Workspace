@@ -1684,6 +1684,8 @@
       "noTickets": "Keine Tickets",
       "title": "Board",
       "daysLeft": "noch {{n}}T",
+      "capacityTitle": "Engine-Auslastung — Turns laufen jetzt / in Warteschlange",
+      "capacityChip": "{{active}}/{{limit}} laufen · {{queued}} in Warteschlange",
       "manageSprints": "⚙ Sprints verwalten…",
       "pauseAll": "Alle Agents pausieren",
       "pauseAllConfirmTitle": "Alle Agents pausieren?",

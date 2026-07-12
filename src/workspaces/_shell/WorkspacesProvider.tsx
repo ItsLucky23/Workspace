@@ -58,6 +58,7 @@ interface Snap {
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
+  capacity?: { active: number; queued: number; limit: number }; // #105/#19
   docs: InfoDoc[];
   skills: SkillEntry[];
   roles: PermRole[];
@@ -1278,6 +1279,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       stages: snap.stages,
       sprints: snap.sprints,
       budget: snap.budget,
+      capacity: snap.capacity,
       usage: snap.usage,
       insights: snap.insights,
       analytics: snap.analytics,

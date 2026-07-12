@@ -1683,6 +1683,8 @@
       "noTickets": "No tickets",
       "title": "Board",
       "daysLeft": "{{n}}d left",
+      "capacityTitle": "Engine occupancy — turns running now / queued",
+      "capacityChip": "{{active}}/{{limit}} running · {{queued}} queued",
       "manageSprints": "⚙ Manage sprints…",
       "pauseAll": "Pause all agents",
       "pauseAllConfirmTitle": "Pause all agents?",

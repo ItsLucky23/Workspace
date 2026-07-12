@@ -243,6 +243,7 @@ export interface WorkspacesCtx {
   stages: PipelineStage[];             // was STAGES (board meta; full editor config still on seed)
   sprints: Sprint[];                   // was SPRINTS
   budget: WorkspaceBudget | null;      // was BUDGET
+  capacity?: { active: number; queued: number; limit: number }; // #105/#19 — engine busy/queued chip
   usage: WorkspaceUsage;               // #16: real token usage (per-ticket + 7-day activity)
   insights: WorkspaceInsights;         // #5: cycle time / throughput / cost-per-ticket
   analytics: WorkspaceAnalytics;       // ADR 0047: the fuller delivery-analytics fold

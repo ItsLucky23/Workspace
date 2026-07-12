@@ -320,6 +320,13 @@ function BoardHeader({
       <div className="flex items-baseline gap-2 min-w-0">
         <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.board.title' })}</h1>
         {!isMobile && <span className="text-sm text-muted">{ctx.activeWorkspace.name}</span>}
+        {/* #105/#19 — engine occupancy chip (only when something is running or queued). */}
+        {ctx.capacity && (ctx.capacity.active > 0 || ctx.capacity.queued > 0) && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-container2 px-2 py-0.5 text-xs text-muted tabular-nums" title={translate({ key: 'workspaces.board.capacityTitle' })}>
+            <Icon name="bolt" className="text-primary" />
+            {translate({ key: 'workspaces.board.capacityChip', params: [{ key: 'active', value: String(ctx.capacity.active) }, { key: 'limit', value: String(ctx.capacity.limit) }, { key: 'queued', value: String(ctx.capacity.queued) }] })}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Dropdown

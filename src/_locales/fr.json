@@ -1684,6 +1684,8 @@
       "noTickets": "Aucun ticket",
       "title": "Board",
       "daysLeft": "{{n}} j restants",
+      "capacityTitle": "Occupation du moteur — tours en cours / en file",
+      "capacityChip": "{{active}}/{{limit}} en cours · {{queued}} en file",
       "manageSprints": "⚙ Gérer les sprints…",
       "pauseAll": "Mettre tous les agents en pause",
       "pauseAllConfirmTitle": "Mettre tous les agents en pause ?",

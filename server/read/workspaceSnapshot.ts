@@ -13,6 +13,7 @@
 
 import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
 
+import { activeCount, queueLength, capacityLimit } from '../orchestrator/capacity';
 import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
@@ -168,6 +169,9 @@ export interface WorkspaceSnapshot {
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
+  //? #105/#19 — engine occupancy for the board busy/queued chip (global across instances; optional so
+  //? the empty/loading snapshot can omit it).
+  capacity?: { active: number; queued: number; limit: number };
   docs: InfoDoc[];
   skills: SkillEntry[];
   roles: PermRole[];
@@ -340,6 +344,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const analytics = computeAnalytics(ticketRows.map((t) => ({ key: t.key, status: t.status, archived: t.archived, labels: t.labels, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
 
     const budget = budgetRows[0] ? { spent: budgetRows[0].spent, cap: budgetRows[0].cap, alertPct: budgetRows[0].alertPct, currency: '€' } : null;
+    //? #105/#19 — engine occupancy (global Redis-backed) for the board busy/queued chip.
+    const [activeNow, queuedNow] = await Promise.all([activeCount(Date.now()), queueLength()]);
+    const capacity = { active: activeNow, queued: queuedNow, limit: capacityLimit() };
 
     //? Content platform (ADR 0069): the in-flight content pieces + the media €-budget status. Content
     //? models scope by explicit `workspaceId` (not tenantDb — feature-model pattern, ADR 0050).
@@ -462,7 +469,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.error ? { error: b.error } : {}), createdAt: b.createdAt.toISOString(),
       })),
       templates: listTemplates(),
-      members, budget, docs, skills,
+      members, budget, capacity, docs, skills,
       roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
