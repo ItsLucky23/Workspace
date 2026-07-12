@@ -12,6 +12,7 @@
 //? populated at runtime), so we treat the awaited value as `unknown` and narrow
 //? to a small `LiveSocket` shape covering just the events this terminal uses.
 
+/* eslint-disable react-refresh/only-export-components -- the panel-menu action helpers (clear/copy/kill/restart) operate on this module's live xterm session registry, so they co-export with the component by design (#14) */
 import { useEffect, useRef } from 'react';
 
 import { waitForSocket } from '@luckystack/core/client';
@@ -33,8 +34,30 @@ const THEME = {
   brightBlack: '#6B7688', brightRed: '#F85149', brightGreen: '#3FB950', brightYellow: '#D29922', brightBlue: '#58A6FF', brightMagenta: '#BC8CFF', brightCyan: '#39C5CF', brightWhite: '#FFFFFF',
 };
 
-interface Session { term: Terminal; fit: FitAddon; el: HTMLDivElement; started: boolean }
+interface Session { term: Terminal; fit: FitAddon; el: HTMLDivElement; started: boolean; container?: string }
 const sessions = new Map<string, Session>();
+
+//? #14 — panel-menu actions operate on the live session registry. clear/copyBuffer are client-side
+//? (xterm buffer); kill/restart emit to the ws-term relay (workspacesTerminal.ts) — the only writer.
+export function clearSession(sessionId: string): void { sessions.get(sessionId)?.term.clear(); }
+export function copySessionBuffer(sessionId: string): string {
+  const e = sessions.get(sessionId);
+  if (!e) return '';
+  const buf = e.term.buffer.active;
+  const lines: string[] = [];
+  for (let i = 0; i < buf.length; i++) { const line = buf.getLine(i); if (line) lines.push(line.translateToString(true)); }
+  return lines.join('\n').replace(/\s+$/, '');
+}
+export function killSession(sessionId: string): void { void getSocket().then((s) => s?.emit('ws-term:kill', { id: sessionId })); }
+export function restartSession(sessionId: string): void {
+  const e = sessions.get(sessionId);
+  if (!e) return;
+  void getSocket().then((s) => {
+    if (!s) return;
+    s.emit('ws-term:kill', { id: sessionId });
+    s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, ...(e.container ? { container: e.container } : {}) });
+  });
+}
 
 let socketPromise: Promise<LiveSocket | null> | null = null;
 const getSocket = (): Promise<LiveSocket | null> => {
@@ -78,7 +101,7 @@ export default function XtermTerminal({ sessionId, className, container }: { ses
       term.loadAddon(fit);
       term.open(el);
       term.onData((d) => { void getSocket().then((s) => s?.emit('ws-term:input', { id: sessionId, data: d })); });
-      entry = { term, fit, el, started: false };
+      entry = { term, fit, el, started: false, ...(container ? { container } : {}) };
       sessions.set(sessionId, entry);
     }
     const e = entry;

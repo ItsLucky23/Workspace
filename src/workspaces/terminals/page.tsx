@@ -7,12 +7,12 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
-import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
-import XtermTerminal from '../_components/XtermTerminal';
+import XtermTerminal, { clearSession, copySessionBuffer, killSession, restartSession } from '../_components/XtermTerminal';
 import { EmptyState, PopMenu, Segmented, StatusPill } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { Terminal, TicketStatus } from '../_data/types';
@@ -59,13 +59,20 @@ function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, o
   };
   const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
+  //? #14 — the panel-menu actions now operate on the live xterm session (were `Fase 2` no-ops):
+  //? restart/kill emit to the ws-term relay; clear/copyBuffer are client-side. Rename was dropped (no
+  //? persistence path — the session name mirrors the snapshot process name).
+  const copyBuffer = () => {
+    const text = copySessionBuffer(sessionId);
+    if (text.length === 0) { notify.error({ key: 'workspaces.terminals.copyEmpty' }); return; }
+    void navigator.clipboard.writeText(text).then(() => { notify.success({ key: 'workspaces.terminals.copied' }); }, () => { notify.error({ key: 'workspaces.terminals.copyFailed' }); });
+  };
   const menuItems = [
-    { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => { /* Fase 2: restart the pty process */ } },
-    { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => { /* Fase 2: clear the terminal buffer */ } },
-    { label: translate({ key: 'workspaces.terminals.rename' }), icon: 'file-lines' as const, onClick: () => { /* Fase 2: rename the session */ } },
-    { label: translate({ key: 'workspaces.terminals.copyBuffer' }), icon: 'copy' as const, onClick: () => { /* Fase 2: copy the terminal buffer */ } },
+    { label: translate({ key: 'workspaces.terminals.restart' }), icon: 'play' as const, onClick: () => { restartSession(sessionId); } },
+    { label: translate({ key: 'workspaces.terminals.clear' }), icon: 'xmark' as const, onClick: () => { clearSession(sessionId); } },
+    { label: translate({ key: 'workspaces.terminals.copyBuffer' }), icon: 'copy' as const, onClick: copyBuffer },
     { divider: true },
-    { label: translate({ key: 'workspaces.terminals.kill' }), icon: 'triangle-exclamation' as const, danger: true, onClick: () => void menuHandler.confirm({ title: translate({ key: 'workspaces.terminals.killConfirmTitle', params: [{ key: 'ticket', value: terminal.ticketId }, { key: 'proc', value: proc.name }] }), content: translate({ key: 'workspaces.terminals.killConfirmContent' }) }) },
+    { label: translate({ key: 'workspaces.terminals.kill' }), icon: 'triangle-exclamation' as const, danger: true, onClick: () => { void menuHandler.confirm({ title: translate({ key: 'workspaces.terminals.killConfirmTitle', params: [{ key: 'ticket', value: terminal.ticketId }, { key: 'proc', value: proc.name }] }), content: translate({ key: 'workspaces.terminals.killConfirmContent' }) }).then((ok) => { if (ok) killSession(sessionId); }); } },
   ];
   return (
     <div style={fill ? undefined : { height }} className={`relative flex flex-col rounded-xl overflow-hidden border border-container1-border bg-terminal-bg ${fill ? 'flex-1 min-h-0' : ''}`}>
