@@ -1,5 +1,22 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 4 (#90 run-command / invoke-workspace-ai executors)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did (#90, owner: implement gated executors):**
+- `executor.ts` kreeg twee echte cases i.p.v. de default-noop:
+  - **run-command** — draait het shell-commando IN de container van het event-ticket (`docker exec -w /work ws-<ws>-<ticket>`), NOOIT op de host (invariant #4: workspace-scoped, nooit host/system-level). ALTIJD operator-gated: `runTriggerAction` force-gate't `run-command` (naast requiresApproval/mutating-role) → suggestion → mens accepteert → `executeGatedAction` draait 'm. Gebonden output (2000 chars) → notificatie met exit-code. Geen ticket/container/docker ⇒ schone noop.
+  - **invoke-workspace-ai** — één-shot non-coding completion via `runAiCompletion('custom-generate')` (NIET de PTY-coding-agent, invariant #6) → antwoord als ai-suggestion-notificatie + web-push.
+- `triggers.ts:59` blijft `run-command` uit event-driven firing weren (operator-only) — het draait alleen via de manuele `trigger-run` (→ gated).
+- AutomationPanel: `run-command` + `invoke-workspace-ai` toegevoegd aan de create-form `ACTIONS` + param-inputs (command met safety-help / prompt) + create-wiring + reset. i18n ×4.
+
+**Files touched:** `server/automation/executor.ts` (+2 cases, force-gate, +imports docker/runtime/runAiCompletion), `src/workspaces/_components/AutomationPanel.tsx`, `src/_locales/×4`, `src/workspaces/_sync/rotateWebhookSecret_server_v1.ts` (+@docs owner, batch-3-nazorg).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, locale 8/8. run-command/invoke-workspace-ai vereisen container+docker resp. AI-provider voor live E2E (dev-server + Docker draaiend); de gate-logica + wiring is statisch geverifieerd.
+
+**Notes:** run-command is bewust dubbel-veilig — force-gate (mens keurt elk commando goed) + container-scoped (nooit host). Dev-server-herstart nodig om de nieuwe executor-code runtime te activeren.
+
 ## 2026-07-13 — completion-gaps-v3 batch 3 (#27 webhook-card, #64 deploy-hook config)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

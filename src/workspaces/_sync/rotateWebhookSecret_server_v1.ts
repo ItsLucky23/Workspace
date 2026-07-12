@@ -1,6 +1,8 @@
 //? Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace
 //? inbound-webhook secret through the Conductor (single-writer, B-23) and returns it so the settings card
 //? can show it once for pasting into the forge's webhook config. Requires workspaceSettings (OP_CAPABILITY).
+//?
+//? @docs owner ItsLucky23
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';

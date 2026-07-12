@@ -14,6 +14,8 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import { broadcastTicketDelta } from '../read/broadcast';
 import { sendWebPushMany } from '../hooks/webPush';
 import { getAgentRole } from './agentRoles';
+import { docker, dockerAvailable, containerName } from '../container/runtime';
+import { runAiCompletion } from '../ai/registry';
 
 //? X2 — outbound webhook poster. Injectable so tests capture the POST without a network. Default = a real
 //? fetch (best-effort; the caller treats a non-2xx / throw as an error outcome, never a pipeline wedge).
@@ -33,7 +35,7 @@ const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
 
 //? The action a trigger runs, extracted so it round-trips through a suggestion's `patch` unchanged.
 export interface TriggerAction {
-  action: string;               // notify | emit-signal | start-stage | invoke-agent-role
+  action: string;               // notify | webhook | emit-signal | start-stage | invoke-agent-role | run-command | invoke-workspace-ai
   params: Record<string, unknown>;
   ticketKey?: string;           // the ticket the event concerned (if any)
   triggerName?: string;         // for the suggestion title / audit
@@ -122,6 +124,36 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       await sendWebPushMany(prisma, members.map((m) => m.userId), { title: `${role.label}: ${artifact.title}`, body: artifact.body, url: a.ticketKey ? `/?ticket=${a.ticketKey}` : '/', ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'aiSuggestion');
       return { status: 'executed', detail: role.key };
     }
+    case 'run-command': {
+      //? #90 — run a shell command INSIDE the event ticket's workspace container (never on the host —
+      //? invariant #4: the Assistant/automation is scoped to a workspace, never host/system-level). ALWAYS
+      //? operator-gated (runTriggerAction force-gates it), so a human approved this exact run. Bounded
+      //? output is posted back as a notification. No ticket/container/docker ⇒ a clean noop, never a throw.
+      const command = str(a.params, 'command');
+      if (!command || !a.ticketKey) return { status: 'noop', detail: 'run-command-needs-ticket-and-command' };
+      if (!(await dockerAvailable())) return { status: 'noop', detail: 'docker-unavailable' };
+      const container = containerName(workspaceId, a.ticketKey);
+      const res = await docker(['exec', '-w', '/work', container, 'sh', '-lc', command]);
+      const combined = [res.out, res.err].filter((s) => s.length > 0).join('\n').slice(0, 2000);
+      const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
+      const title = `${a.triggerName ?? 'Command'} · exit ${String(res.code)}`;
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'automation', title, body: combined || '(no output)', ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
+      return res.code === 0 ? { status: 'executed', detail: `exit 0` } : { status: 'error', detail: `exit ${String(res.code)}` };
+    }
+    case 'invoke-workspace-ai': {
+      //? #90 — dispatch the (non-coding) Workspace-AI with a prompt and post its answer as a notification.
+      //? Runs on the pluggable provider layer (feature 'custom-generate') — a Q&A/summarise task, NOT the
+      //? PTY coding agent's job (invariant #6). Empty prompt ⇒ noop.
+      const prompt = str(a.params, 'prompt');
+      if (!prompt) return { status: 'noop', detail: 'invoke-workspace-ai-needs-prompt' };
+      const completion = await runAiCompletion('custom-generate', { prompt, workspaceId, label: `Automation · ${a.triggerName ?? 'invoke-workspace-ai'}` });
+      if (!completion.ok) return { status: 'error', detail: completion.error ?? 'ai-failed' };
+      const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
+      const body = completion.text.slice(0, 2000);
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'ai-suggestion', title: a.triggerName ?? 'Workspace-AI', body, ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
+      await sendWebPushMany(prisma, members.map((m) => m.userId), { title: a.triggerName ?? 'Workspace-AI', body, url: a.ticketKey ? `/?ticket=${a.ticketKey}` : '/' }, 'aiSuggestion');
+      return { status: 'executed', detail: 'answered' };
+    }
     default: {
       return { status: 'noop', detail: 'unknown-action' };
     }
@@ -132,7 +164,9 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
 //? open an 'automation' suggestion carrying the action; else execute now.
 export async function runTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction, requiresApproval: boolean): Promise<ExecOutcome> {
   const role = a.action === 'invoke-agent-role' ? getAgentRole(str(a.params, 'role') ?? '') : undefined;
-  const mustGate = requiresApproval || (role?.mutates ?? false);
+  //? #90 — run-command is ALWAYS operator-gated regardless of the trigger's flag (a human must approve
+  //? every arbitrary in-container command run) — invariant #4 safety.
+  const mustGate = requiresApproval || (role?.mutates ?? false) || a.action === 'run-command';
   if (mustGate) {
     await prisma.workspaceSuggestion.create({
       data: {

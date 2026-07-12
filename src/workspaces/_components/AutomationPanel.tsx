@@ -18,7 +18,9 @@ import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
 const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'ticket.merged', 'suggestion.accepted', 'cron'];
 //? #50/#88 — 'invoke-agent-role' is now event-attachable (was cron-only on the Scheduled page).
-const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage', 'invoke-agent-role', 'webhook'];
+//? #90 — run-command (operator-gated in-container shell) + invoke-workspace-ai (a non-coding AI Q&A) are
+//? now real executors, so they're offered here. run-command always opens an approval before it runs.
+const ACTIONS: TriggerActionKind[] = ['notify', 'emit-signal', 'start-stage', 'invoke-agent-role', 'invoke-workspace-ai', 'run-command', 'webhook'];
 //? Flat i18n keys (the event kinds contain dots, which would break the translator's dot-nesting).
 const EVENT_KEY: Record<string, string> = {
   'ticket.created': 'workspaces.automation.evTicketCreated', 'ticket.merged': 'workspaces.automation.evTicketMerged',
@@ -50,6 +52,8 @@ export default function AutomationPanel() {
   const [debounce, setDebounce] = useState('');        // #91 — seconds; '' = no debounce
   const [cron, setCron] = useState('0 9 * * *');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [command, setCommand] = useState('');       // #90 — run-command shell (runs in the ticket container)
+  const [aiPrompt, setAiPrompt] = useState('');      // #90 — invoke-workspace-ai prompt
 
   const eventItems: DropdownItem[] = EVENTS.map((e) => ({ id: e, value: e, item: translate({ key: evKey(e) }) }));
   const actionItems: DropdownItem[] = ACTIONS.map((a) => ({ id: a, value: a, item: translate({ key: acKey(a) }) }));
@@ -57,7 +61,7 @@ export default function AutomationPanel() {
   const roleItems: DropdownItem[] = agentRoles.map((r) => ({ id: r.key, value: r.key, item: r.label, searchText: r.label }));
   const matchStageItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.automation.matchAnyStage' }) }, ...stageItems];
 
-  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setSignalKind(''); setRoleKey(''); setTargetStage(''); setMatchStage(''); setDebounce(''); setWebhookUrl(''); setRequiresApproval(false); };
+  const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setSignalKind(''); setRoleKey(''); setTargetStage(''); setMatchStage(''); setDebounce(''); setWebhookUrl(''); setCommand(''); setAiPrompt(''); setRequiresApproval(false); };
   const create = () => {
     if (!name.trim()) return;
     const params: Record<string, unknown> = {};
@@ -66,6 +70,8 @@ export default function AutomationPanel() {
     if (action === 'start-stage') { params.targetStageId = targetStage; }
     if (action === 'invoke-agent-role') { params.role = roleKey; }
     if (action === 'webhook') { params.url = webhookUrl.trim(); }
+    if (action === 'run-command') { params.command = command.trim(); }
+    if (action === 'invoke-workspace-ai') { params.prompt = aiPrompt.trim(); }
     //? #91 — optional match facet (stage) + debounce, only meaningful for event triggers (not cron).
     const match = on !== 'cron' && matchStage ? { stageIds: [matchStage] } : undefined;
     const debounceSec = Number(debounce);
@@ -177,6 +183,19 @@ export default function AutomationPanel() {
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.webhookUrl' })}</span>
               <input value={webhookUrl} onChange={(e) => { setWebhookUrl(e.target.value); }} placeholder="https://example.com/hook" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary font-mono" />
+            </div>
+          )}
+          {action === 'run-command' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.commandLabel' })}</span>
+              <input value={command} onChange={(e) => { setCommand(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.commandPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
+              <span className="text-xs text-disabled">{translate({ key: 'workspaces.automation.commandHelp' })}</span>
+            </div>
+          )}
+          {action === 'invoke-workspace-ai' && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.aiPromptLabel' })}</span>
+              <input value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.aiPromptPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
             </div>
           )}
           {/* #91 — optional match facet (stage) + debounce for event triggers (hidden for cron). */}
