@@ -210,6 +210,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'gitlab-resync': (_p, x) => {
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? #86 — run a saved custom AI task by id (customTask route).
+  'run-custom-task': (p, x) => {
+    const taskId = str(p, 'taskId'); if (!taskId) return;
+    void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? #7 — edit a ticket's title/description/priority (ticketEdit route; the key travels as `ticketId`).
   'ticket-edit': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;

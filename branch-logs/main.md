@@ -3813,3 +3813,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** `gitlab-resync` `later`→`enabled` geflipt — de Workspace-AI kan nu een on-demand forge-issue-resync VOORSTELLEN ("haal de laatste issues op van GitLab"); geen params, dispatch via de projectAdmin-route (`resyncForge` bestond al). Dit dekt de resync-helft van #29; de branch-strategy/push-policy-helft (save-git-config) vereist config-params + blijft `later`. Parity 53/53.
 **Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53.
 **Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
+
+## 2026-07-12 — 🟢 v3-build golf 23 (Workspace-AI-catalog: chat-ctx-uitbreiding + custom-task): #86 (deel)
+**Wat:** de chat-context (`Ctx`/`CatalogCtx`) uitgebreid met de workspace's custom-AI-tasks (id+naam) — de eerste stap van de "chat-ctx mist ids"-blocker. Daarmee `run-custom-task` `later`→`enabled` geflipt: de Workspace-AI kan nu voorstellen een opgeslagen custom-taak bij id te draaien ("draai mijn wekelijkse-rapport-taak"). Nieuw param-kind `taskId` (gevalideerd tegen `ctx.customTasks`); `loadCtx` laadt `customAiTask`-rijen; systemPrompt kreeg de custom-tasks-lijst; client-twin + dispatcher (customTask-route). Dit is het patroon om #54 (mr-ids) + de rest van #86 (trigger-ids) in volgende commits te sluiten.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
+**Files:** `server/ai/workspaceChat.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.

@@ -24,9 +24,11 @@ export interface CatalogCtx {
   pieces: { id: string; title: string }[];
   environments: { id: string; kind: string }[];
   services: { name: string }[];
+  //? #86 — custom AI tasks (taskId validation for the run-custom-task proposal).
+  customTasks: { id: string; name: string }[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -277,7 +279,12 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { pieceId: { kind: 'pieceId', required: true } },
   },
   'content-unpublish': LATER_D,
-  'save-custom-task': LATER, 'delete-custom-task': LATER_D, 'run-custom-task': LATER,
+  'save-custom-task': LATER, 'delete-custom-task': LATER_D,
+  'run-custom-task': {
+    mode: 'enabled',
+    hint: 'run a saved custom AI task by id (a named prompt-template the user defined). params: taskId (a task id from the list below)',
+    params: { taskId: { kind: 'taskId', required: true } },
+  },
   'save-output-template': LATER, 'delete-output-template': LATER_D,
   'copy-workspace-assets': LATER,
   'copilot-propose': EXCLUDED, // meta (the propose channel itself)
@@ -324,6 +331,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'pieceId') return typeof value === 'string' && ctx.pieces.some((p) => p.id === value) ? value : undefined;
   if (kind === 'envId') return typeof value === 'string' && ctx.environments.some((e) => e.id === value) ? value : undefined;
   if (kind === 'serviceName') return typeof value === 'string' && ctx.services.some((s) => s.name === value) ? value : undefined;
+  if (kind === 'taskId') return typeof value === 'string' && ctx.customTasks.some((t) => t.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }

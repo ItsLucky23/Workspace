@@ -36,6 +36,8 @@ export const CHAT_ENABLED_OPS = [
   'ticket-edit',
   // forge issue resync (#29) — pull issues/state from the connected forge on demand
   'gitlab-resync',
+  // run a saved custom AI task by id (#86)
+  'run-custom-task',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];
