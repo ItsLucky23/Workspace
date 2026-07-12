@@ -22,7 +22,7 @@ import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
 import { CHAT_DISPATCH } from '../_functions/chatDispatch';
-import { INITIAL_CHAT, SSH_KEYS } from '../_data/seed';
+import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
@@ -92,6 +92,8 @@ interface Snap {
   ticketArtifactLinks: TicketArtifactLink[];
   //? #111 — the user's persisted Workspace-AI chat history (per-user), chronological.
   chat: ChatMessage[];
+  //? #76 — the user's persisted SSH keys (account-global).
+  sshKeys: SshKeyEntry[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -118,6 +120,7 @@ const EMPTY_SNAP: Snap = {
   interviewFindings: [],
   ticketArtifactLinks: [],
   chat: [],
+  sshKeys: [],
 };
 
 function pathForView(view: WsView): string {
@@ -895,7 +898,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   // UI-only state (not yet server-backed).
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [aiOpen, setAiOpen] = useState(true);
-  const [sshKeys, setSshKeys] = useState<SshKeyEntry[]>(SSH_KEYS);
+  //? #76 — SSH keys now come from the snapshot (persisted per-account), not client seed state.
+  const sshKeys = snap.sshKeys;
   const [navStack, setNavStack] = useState<WsView[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>(INITIAL_CHAT);
@@ -912,8 +916,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   const [localSuggestionsDismissed, setLocalSuggestionsDismissed] = useState<string[]>([]);
 
-  const addSshKey = useCallback((key: SshKeyEntry) => { setSshKeys((prev) => [...prev, key]); }, []);
-  const removeSshKey = useCallback((id: string) => { setSshKeys((prev) => prev.filter((k) => k.id !== id)); }, []);
+  //? #76 — persist to the account via the ssh-key routes, then refetch. The key authenticates as the
+  //? logged-in user (the server sets userId from the session), so there is no client-side user resolution.
+  const addSshKey = useCallback((input: { name: string; type: string; fingerprint: string; publicKey: string }) => { void apiRequest({ name: 'workspaces/sshKeyAdd', version: 'v1', data: input }).then(() => { refetch(); }); }, [refetch]);
+  const removeSshKey = useCallback((id: string) => { void apiRequest({ name: 'workspaces/sshKeyRemove', version: 'v1', data: { id } }).then(() => { refetch(); }); }, [refetch]);
   const sshUserId = sshKeys.at(-1)?.userId ?? null;
 
   //? currentUser = the logged-in session user (falls back to the owner member).

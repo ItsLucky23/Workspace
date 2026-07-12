@@ -15,11 +15,9 @@ import { apiRequest } from 'src/_sockets/apiRequest';
 import Icon from '../_components/Icon';
 import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
 import { isModuleEnabled } from '../_data/modules';
-import { SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
 import { canInstall, promptInstall, subscribeInstall } from '../_functions/installPrompt';
-import type { SshKeyEntry } from '../_data/types';
 import type { SessionLayout } from '../../../config';
 
 //? Real session shape from `settings/listSessions` (framework auth session, not
@@ -55,13 +53,6 @@ function Card({ title, desc, right, children }: { title: string; desc?: string; 
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="flex items-center justify-between gap-3 py-3 border-b border-divider last:border-0">{children}</div>;
-}
-
-function resolveUser(text: string): string | null {
-  const trimmed = text.trim();
-  if (SSH_KEY_TO_USER[trimmed]) return SSH_KEY_TO_USER[trimmed];
-  for (const [value, userId] of Object.entries(SSH_KEY_TO_USER)) if (text.includes(value)) return userId;
-  return null;
 }
 
 //? Per-project forge connect form (ADR 0036) — pick GitLab/GitHub, enter repo + token (+ optional
@@ -189,9 +180,8 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
+function AddKeyForm({ onAdd }: { onAdd: (input: { name: string; type: string; fingerprint: string; publicKey: string }) => void }) {
   const translate = useTranslator();
-  const { membersById } = useWorkspaces();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
@@ -199,10 +189,12 @@ function AddKeyForm({ onAdd }: { onAdd: (key: SshKeyEntry) => void }) {
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  //? #76 — the pasted key authenticates as the LOGGED-IN user (the server sets userId from the session),
+  //? so there is no demo user-resolution; we just persist the key's name + fingerprint.
   const submit = (raw: string, keyName: string) => {
-    const userId = resolveUser(raw);
-    if (!userId) { setError(translate({ key: 'workspaces.account.keyNotFound' })); return; }
-    onAdd({ id: `k-${raw.trim()}-${userId}`, name: keyName || translate({ key: 'workspaces.account.defaultKeyName', params: [{ key: 'name', value: membersById[userId]?.name ?? userId }] }), type: 'ed25519', fingerprint: `SHA256:${raw.trim().slice(0, 6)}…`, added: 'just now', lastUsed: '—', userId });
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) { setError(translate({ key: 'workspaces.account.keyRequired' })); return; }
+    onAdd({ name: keyName.trim() || translate({ key: 'workspaces.account.defaultKeyNameSelf' }), type: 'ed25519', fingerprint: `SHA256:${trimmed.slice(0, 12)}…`, publicKey: trimmed });
     setOpen(false); setName(''); setValue(''); setError('');
   };
 

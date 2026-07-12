@@ -32,7 +32,7 @@ import { computeContentAnalytics } from '../content/contentAnalytics';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
-  SkillEntry, Sprint, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
+  SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
@@ -218,6 +218,9 @@ export interface WorkspaceSnapshot {
   //? #111 — the requesting user's persisted Workspace-AI chat history (per-user), chronological,
   //? so the conversation survives reload / is phone-desktop consistent.
   chat: ChatMessage[];
+  //? #76 — the requesting user's persisted SSH keys (account-global), for the Account settings +
+  //? terminal-unlock. Replaces the client-only SSH_KEYS seed.
+  sshKeys: SshKeyEntry[];
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
@@ -242,6 +245,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   interviewFindings: [],
   ticketArtifactLinks: [],
   chat: [],
+  sshKeys: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string, wantProjectId?: string): Promise<WorkspaceSnapshot> {
@@ -322,6 +326,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
+    //? #76 — the caller's account-global SSH keys (NOT tenant-scoped → plain prisma, no workspaceId).
+    const sshKeyRows = await prisma.sshKey.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
     //? E5 — the workspace's user-defined AI tasks (name + template + last output).
     const customTaskRows = await tenantDb.customAiTask.findMany({ orderBy: { createdAt: 'desc' } });
     //? O5 — the workspace's reusable output specs.
@@ -565,6 +571,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       workspacePaused,
       //? #111 — reverse the newest-first read window to chronological for the chat pane.
       chat: chatRows.toReversed().map((c): ChatMessage => ({ id: c.id, role: c.role === 'user' ? 'user' : 'ai', text: c.text })),
+      //? #76 — the caller's persisted SSH keys (account-global).
+      sshKeys: sshKeyRows.map((k): SshKeyEntry => ({ id: k.id, name: k.name, type: k.type, fingerprint: k.fingerprint, added: formatTime(k.createdAt), lastUsed: k.lastUsedAt ? formatTime(k.lastUsedAt) : '—', userId: k.userId })),
       myInvites,
     };
   });

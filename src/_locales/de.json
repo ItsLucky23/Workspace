@@ -683,6 +683,8 @@
       },
     "account": {
       "keyNotFound": "Wir konnten keinen privaten Schlüssel für den angegebenen öffentlichen Schlüssel finden.",
+      "keyRequired": "Füge zuerst einen öffentlichen Schlüssel ein.",
+      "defaultKeyNameSelf": "Mein SSH-Schlüssel",
       "defaultKeyName": "Schlüssel von {{name}}",
       "addSshKey": "SSH-Key hinzufügen",
       "keyNamePlaceholder": "Schlüsselname (z. B. MacBook Pro)",

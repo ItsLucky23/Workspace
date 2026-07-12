@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (49)
+## API routes (51)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -52,6 +52,8 @@
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
+| `api/workspaces/sshKeyAdd/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-add] (#76) persist a new SSH key on the CALLER'S account (real product, |
+| `api/workspaces/sshKeyRemove/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-remove] (#76) delete an SSH key from the CALLER'S account. Account-level |
 | `api/workspaces/studioBrand/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — the central brand library (ADR 0013 G-MKT-2). `op:'save'` upserts the |
 | `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
 | `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
@@ -130,9 +132,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 104 |
+| _(unowned)_ | 106 |
 
-**Test coverage**: 3/106 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/108 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -174,6 +176,8 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/revokePat/v1`
 - `api/workspaces/saveDevCommand/v1`
 - `api/workspaces/savePushSubscription/v1`
+- `api/workspaces/sshKeyAdd/v1`
+- `api/workspaces/sshKeyRemove/v1`
 - `api/workspaces/studioBrand/v1`
 - `api/workspaces/studioDelete/v1`
 - `api/workspaces/studioGenerate/v1`
@@ -184,9 +188,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/workspaceExport/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
-- `sync/workspaces/addInfoDoc/v1`
-- `sync/workspaces/agentControl/v1`
-- … +53 more
+- … +55 more
 
 ## Pages (29)
 

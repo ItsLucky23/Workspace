@@ -683,6 +683,8 @@
       },
     "account": {
       "keyNotFound": "We couldn’t find a private key for the given public key.",
+      "keyRequired": "Paste a public key first.",
+      "defaultKeyNameSelf": "My SSH key",
       "defaultKeyName": "{{name}}'s key",
       "addSshKey": "Add SSH key",
       "keyNamePlaceholder": "Key name (e.g. MacBook Pro)",

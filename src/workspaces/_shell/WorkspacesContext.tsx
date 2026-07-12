@@ -52,7 +52,8 @@ export interface WorkspacesCtx {
   //? (123 → test, 456 → mathijs). No app-level login gate.
   sshKeys: SshKeyEntry[];
   sshUserId: string | null;
-  addSshKey: (key: SshKeyEntry) => void;
+  //? #76 — add persists to the account (server sets userId from the session); remove deletes by id.
+  addSshKey: (input: { name: string; type: string; fingerprint: string; publicKey: string }) => void;
   removeSshKey: (id: string) => void;
   //? Workspace-AI panel — available on every screen; the nav/bottom-bar entry
   //? toggles it rather than routing.

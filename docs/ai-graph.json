@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 227,
-    "edges": 348,
-    "symbols": 285,
+    "nodes": 229,
+    "edges": 346,
+    "symbols": 289,
     "callEdges": 42
   },
   "nodes": [
@@ -467,6 +467,16 @@
       "id": "workspaces/_api/snapshot_v1.ts",
       "kind": "api",
       "route": "api/workspaces/snapshot/v1"
+    },
+    {
+      "id": "workspaces/_api/sshKeyAdd_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/sshKeyAdd/v1"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/sshKeyRemove/v1"
     },
     {
       "id": "workspaces/_api/studioBrand_v1.ts",
@@ -2391,14 +2401,6 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
-      "to": "workspaces/_data/seed.ts"
-    },
-    {
-      "from": "workspaces/settings/page.tsx",
-      "to": "workspaces/_data/types.ts"
-    },
-    {
-      "from": "workspaces/settings/page.tsx",
       "to": "workspaces/_functions/installPrompt.ts"
     },
     {
@@ -3057,7 +3059,6 @@
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/pipeline/page.tsx",
-      "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/types.ts": [
@@ -3400,7 +3401,7 @@
       "id": "workspaces/_data/types.ts",
       "kind": "other",
       "dependents": 49,
-      "directDependents": 30
+      "directDependents": 29
     },
     {
       "id": "workspaces/_components/Icon.tsx",
@@ -3529,16 +3530,16 @@
       "directDependents": 2
     },
     {
-      "id": "workspaces/_data/seed.ts",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 4
-    },
-    {
       "id": "workspaces/designer/state.tsx",
       "kind": "other",
       "dependents": 7,
       "directDependents": 7
+    },
+    {
+      "id": "_sockets/socketInitializer.ts",
+      "kind": "other",
+      "dependents": 6,
+      "directDependents": 3
     }
   ],
   "symbols": [
@@ -4313,6 +4314,30 @@
     {
       "id": "workspaces/_api/snapshot_v1.ts::main",
       "file": "workspaces/_api/snapshot_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/sshKeyAdd_v1.ts::<module>",
+      "file": "workspaces/_api/sshKeyAdd_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/sshKeyAdd_v1.ts::main",
+      "file": "workspaces/_api/sshKeyAdd_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.ts::<module>",
+      "file": "workspaces/_api/sshKeyRemove_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.ts::main",
+      "file": "workspaces/_api/sshKeyRemove_v1.ts",
       "name": "main",
       "kind": "function"
     },

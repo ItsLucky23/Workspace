@@ -683,6 +683,8 @@
       },
     "account": {
       "keyNotFound": "We konden geen private key vinden bij de opgegeven public key.",
+      "keyRequired": "Plak eerst een public key.",
+      "defaultKeyNameSelf": "Mijn SSH-sleutel",
       "defaultKeyName": "Key van {{name}}",
       "addSshKey": "SSH-key toevoegen",
       "keyNamePlaceholder": "Keynaam (bijv. MacBook Pro)",
