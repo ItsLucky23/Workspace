@@ -1,0 +1,2410 @@
+{
+ "generatedAt": "2026-07-12",
+ "basedOn": "completion-gaps-v2 + owner answers (54)",
+ "totals": {
+  "verified": 170,
+  "closed": 53,
+  "partial": 30,
+  "open": 87,
+  "other": 0,
+  "openOrPartial": 117,
+  "needQuestion": 54,
+  "mechanical": 60,
+  "answered": 54,
+  "answeredSkip": 0,
+  "mechanicalAuto": 60,
+  "toBuild": 114
+ },
+ "gaps": [
+  {
+   "gid": 99,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "critical",
+   "status": "open",
+   "evidence": "Still dead-wired for the subscription: server/spend/record.ts:65 only increments budget.spent when costEstimate>0, and priceFor()=0 for Claude on Max (line 38) → spent stays 0. The 'enforcement' field (pauseNew/pauseAll) is written at seed + edit-budget (conductor.ts:1173, seedWorkspace.ts:73) but is NEVER read anywhere in server/ (no capacity/provision gate), so nothing pauses on token spend. The new editor UI + per-AI cost close gid 101/100-visibility but not the enforcement/increment wiring.",
+   "needsQuestion": true,
+   "question": "Token WorkspaceBudget can't enforce or accrue on the Max subscription (price=0). Drop it, or reframe as a token-VOLUME cap that pauses-new?",
+   "options": [
+    "Reframe as token-volume cap (increment spent by tokensIn+tokensOut, read enforcement to pause-new when exceeded)",
+    "Drop the token budget + raise-cap/edit-budget/resume-spend ops entirely — keep visibility-only",
+    "Keep €-budget but only meaningful for metered providers (Gemini); leave Claude at 0"
+   ],
+   "mechanical": false,
+   "fix": "Decide the product truth: EITHER drop the token WorkspaceBudget + raise-cap/edit-budget/resume-spend entirely on the subscription, OR reframe as a TOKEN-VOLUME cap (increment spent by tokensIn+tokensOut regardless of price) and actually read enforcement in the capacity/provision path to pause-new when exceeded.",
+   "what": "Token budget is dead-wired: the enforcement field ('pauseNew'/'pauseAll') is only written at seed and never read in server/, so nothing ever pauses on token spend; and spent never increments because costEstimate needs a per-model price that is empty on the Max subscription. resume-spend resets a spent that is always 0.",
+   "where": "server/spend/record.ts:42 + server/bootstrap/seedWorkspace.ts:73",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Het token-budget + de raise-cap/edit-budget/resume-spend-ops volledig laten vallen — alleen visibility overhouden",
+    "note": null
+   }
+  },
+  {
+   "gid": 1,
+   "cluster": "Board & tickets",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "conductor.ts:742-747 sprint-edit case exists (writes name+active ONLY, not startAt/endAt) + controlApi.ts:29 op declared; but _sync/ has only sprintCreate+bulkSprint (no sprintEdit route), WorkspacesProvider has no editSprint method, backlog/page.tsx has no activate/rename/date UI (only sprintCreate).",
+   "needsQuestion": true,
+   "question": "Build the sprint-edit surface (activate toggle + rename + set start/end dates) so created sprints can be activated and dated?",
+   "options": [
+    "Yes, full (activate+rename+dates)",
+    "Activate toggle only",
+    "Skip for now"
+   ],
+   "mechanical": false,
+   "fix": "Add sprintEdit_server_v1.ts (mirror sprintCreate), a provider editSprint(id,{name?,active?,start?,end?}), and a per-sprint menu (activate/rename/set dates) in backlog/page.tsx; extend the conductor case to persist start/end; thread start/end through workspaceSnapshot.ts:491 instead of hardcoding null.",
+   "what": "sprint-edit is fully backend-wired but unreachable: conductor case exists (conductor.ts:707-712) + RBAC (rbac.ts:57) + op declared (controlApi.ts:29), but there is NO sprintEdit_server sync route (only sprintCreate in _sync), NO provider method (editSprint/activateSprint/sprintEdit = 0 hits in provider/UI), and NO UI. A created sprint can never be activated, renamed, or dated. Additionally the conductor case itself only writes name+active — it does NOT handle start/end dates.",
+   "where": "server/orchestrator/conductor.ts:707-712 (orphaned) + missing src/workspaces/_sync/sprintEdit_server_v1.ts + provider method + backlog UI",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Ja, volledig (activeren+hernoemen+datums)",
+    "note": null
+   }
+  },
+  {
+   "gid": 2,
+   "cluster": "Board & tickets",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "conductor sprint-create hardcodes active via bool(payload,'active') defaulting false; workspaceSnapshot.ts:516 still maps sprints with start:null,end:null,daysLeft:null though schema.prisma:746-747 now HAS startAt/endAt columns.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "In workspaceSnapshot.ts:516 source start/end from sp.startAt/sp.endAt (ISO/formatted) + compute daysLeft; the 'Active' badge becomes reachable once gap 1's activate UI ships.",
+   "what": "A created sprint is ALWAYS inactive with no way to change it: sprintCreateApi hardcodes active:false and no edit/activate path exists; snapshot additionally hardcodes sprint.start/end/daysLeft = null, so the backlog 'Active' badge and date ranges can never populate.",
+   "where": "src/workspaces/_shell/WorkspacesProvider.tsx:734 + server/read/workspaceSnapshot.ts:491",
+   "decision": {
+    "type": "mechanical",
+    "fix": "In workspaceSnapshot.ts:516 source start/end from sp.startAt/sp.endAt (ISO/formatted) + compute daysLeft; the 'Active' badge becomes reachable once gap 1's activate UI ships."
+   }
+  },
+  {
+   "gid": 14,
+   "cluster": "Agent runtime & live control",
+   "severity": "high",
+   "status": "open",
+   "evidence": "terminals/page.tsx:63-68 restart/clear/rename/copyBuffer still `/* Fase 2 */` no-ops; kill (line 68) opens menuHandler.confirm with no .then/action",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Wire kill's .then to a ws-term:kill emit (relay handles it, workspacesTerminal.ts:91) and implement/remove the other 4 items.",
+   "what": "Every terminal panel-menu action is a no-op: restart/clear/rename/copyBuffer are `/* Fase 2 */` empty handlers and the danger 'kill' item opens menuHandler.confirm(...) with no .then/action, so confirming kills nothing.",
+   "where": "src/workspaces/terminals/page.tsx:63-68",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Wire kill's .then to a ws-term:kill emit (relay handles it, workspacesTerminal.ts:91) and implement/remove the other 4 items."
+   }
+  },
+  {
+   "gid": 22,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "high",
+   "status": "open",
+   "evidence": "UI Verify onClick still empty at src/workspaces/workspace/page.tsx:370 (/* Fase 2: live GitLab token verification */); conductor gitlab-verify remains a no-op. Owner confirmed leaving gitlab-verify as a deliberate stub.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": false,
+   "fix": "Owner decision: leave gitlab-verify no-op. Optional cleanup: remove the dead Verify button so it doesn't render a click with zero feedback.",
+   "what": "GitLab token 'Verify' is a double no-op: the UI onClick body is empty and the conductor's gitlab-verify case returns without doing anything. User clicks Verify and gets zero feedback; cannot tell if the token works.",
+   "where": "src/workspaces/workspace/page.tsx:370 (empty onClick) + server/orchestrator/conductor.ts:837-839 (no-op case)",
+   "decision": null
+  },
+  {
+   "gid": 23,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "server/ai/workspaceChat.ts:78 still instructs action=null and points to 'the ticket's preview control' — that control now EXISTS (openTimeTravel), so the instruction is accurate, but the AI still only DESCRIBES time-travel; no proposable time-travel op exists (opCatalog has none).",
+   "needsQuestion": true,
+   "question": "Should the Workspace-AI be able to PROPOSE a time-travel preview as an accept-to-run action, or keep it description-only pointing at the ticket control?",
+   "options": [
+    "Add proposable time-travel action",
+    "Keep description-only (control exists)"
+   ],
+   "mechanical": false,
+   "fix": "Once a UI/preview control exists, let the AI propose a time-travel RefSpec action the user accepts (keeping single-writer intact) instead of only describing it.",
+   "what": "The Workspace-AI is explicitly instructed to NOT trigger time-travel even when the user's phrasing ('show yesterday's version', 'start main without commit X') is exactly the intended trigger — it must set action=null and point at a 'ticket preview control' that does not exist.",
+   "where": "server/ai/workspaceChat.ts:57",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Voorstelbare time-travel-actie toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 50,
+   "cluster": "CI & merge-request review",
+   "severity": "high",
+   "status": "open",
+   "evidence": "AutomationPanel.tsx:19 ACTIONS = ['notify','emit-signal','start-stage','webhook'] still omits 'invoke-agent-role' (ACTION_KEY:29 has the label but the array + create() params-builder lack it), so event-driven roles are unreachable from the panel.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add 'invoke-agent-role' to ACTIONS and, when selected, render a role picker (agentRoles) writing params.role in create().",
+   "what": "The AutomationPanel's ACTIONS list omits invoke-agent-role, so you cannot wire an EVENT-driven role (e.g. 'on ticket.merged -> mr-review' or 'on stage.on_complete of Plan -> plan-critique'). Only the Scheduled page (cron-only) exposes invoke-agent-role.",
+   "where": "src/workspaces/_components/AutomationPanel.tsx:19 (ACTIONS = notify|emit-signal|start-stage|webhook)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add 'invoke-agent-role' to ACTIONS and, when selected, render a role picker (agentRoles) writing params.role in create()."
+   }
+  },
+  {
+   "gid": 51,
+   "cluster": "CI & merge-request review",
+   "severity": "high",
+   "status": "open",
+   "evidence": "server/read/workspaceSnapshot.ts reads no pipelineRun/pipelineJob (WorkspaceSnapshot interface 140-216 has no CI field); MrReviewPanel.tsx has no checks section (full file read). A ci gate exists server-side (mr/service.ts:114).",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Read the latest PipelineRun + jobs (status/maxSeverity/findings) into the snapshot and render a 'Checks' section in MrReviewPanel.",
+   "what": "No CI checks/status UI anywhere: the latest PipelineRun/jobs are never read into the realtime snapshot and the MR panel renders no checks section, so the CI merge gate feels arbitrary.",
+   "where": "server/read/workspaceSnapshot.ts (no pipelineRun read); src/workspaces/_components/MrReviewPanel.tsx (no checks section)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Read the latest PipelineRun + jobs (status/maxSeverity/findings) into the snapshot and render a 'Checks' section in MrReviewPanel."
+   }
+  },
+  {
+   "gid": 52,
+   "cluster": "CI & merge-request review",
+   "severity": "high",
+   "status": "open",
+   "evidence": "Grep for pipelineJob/maxSeverity/findings across src/workspaces returns only unrelated interviewer/pipeline-validation hits; nothing reads PipelineJob.findings/maxSeverity from server/ci.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Surface scanner findings (severity + title) in the MR checks section and on the deploy/promote screen with the block reason.",
+   "what": "Security scan findings (leaked secrets, vulnerable deps) are computed and gate prod-promote but are invisible — nothing in src/workspaces reads PipelineJob.findings/maxSeverity.",
+   "where": "server/ci/runner.ts (writes findings) + server/ci/security.ts; no consumer in src/workspaces",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Surface scanner findings (severity + title) in the MR checks section and on the deploy/promote screen with the block reason."
+   }
+  },
+  {
+   "gid": 54,
+   "cluster": "CI & merge-request review",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "chatOps.ts CHAT_ENABLED_OPS (9-33) now includes ci-run, ci-allow-red, root-cause (rollback-diagnosis) and plan-critique, so the old 'only bulk-move/assign/...' claim is stale — but there is no 'mr-review'/'review-mr' op and no direct 'rollback' op (rollback is only mrAction('rollback') with mrId).",
+   "needsQuestion": true,
+   "question": "Expose MR-review and MR-rollback as Workspace-AI chat proposals? Rollback is destructive and needs an mrId the chat has no context for.",
+   "options": [
+    "Add both (review-mr + rollback) to the chat catalog",
+    "Only add review-mr (leave rollback UI-only)",
+    "Leave as-is (root-cause already proposes rollbacks)"
+   ],
+   "mechanical": false,
+   "fix": "Add proposable 'review-mr' / 'rollback' actions to the chat interpreter that map to the mr-review / root-cause path on accept.",
+   "what": "The Workspace-AI chat cannot request an MR review or a rollback — its proposable op vocabulary is only bulk-move / assign / add-comment / create-ticket / create-content.",
+   "where": "server/ai/workspaceChat.ts:48 (op union) + validateChatAction:83-125",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Beide (review-mr + rollback) toevoegen aan de chat-catalogus",
+    "note": "workspace AI mag bij de volledige git context"
+   }
+  },
+  {
+   "gid": 65,
+   "cluster": "RAG, sources & knowledge graph",
+   "severity": "high",
+   "status": "open",
+   "evidence": "knowledgeGraph only appears in src/workspaces/_api/knowledgeGraph_v1.ts + generated apiTypes; grep for knowledgeGraph across all .tsx = no matches; no graph page.tsx nor nav entry exists",
+   "needsQuestion": true,
+   "question": "Knowledge-graph API has no UI consumer. Build the N2 force-directed graph page + nav entry, or de-scope N2 and hide the intent from PRODUCT docs?",
+   "options": [
+    "Build N2 graph page + nav item",
+    "De-scope N2, hide intent from docs"
+   ],
+   "mechanical": false,
+   "fix": "Build the N2 graph page (a route + nav item under the work group) that calls apiRequest name:'knowledgeGraph' v1 and renders nodes/edges as a force-directed/Obsidian-style view, or explicitly de-scope N2 and hide the intent from PRODUCT docs.",
+   "what": "Knowledge graph (Obsidian view) has no UI. The N1 data op (buildKnowledgeGraph, similarityEdges, knowledgeGraph_v1 API) is complete and unit-tested, but NO frontend consumer calls the knowledgeGraph API and there is no nav entry or page - the N2 renderer was never built.",
+   "where": "src/workspaces/_api/knowledgeGraph_v1.ts (API exists) + server/rag/graph.ts; no consumer in src/workspaces/**; Shell.tsx nav has no graph entry",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "N2 graph-pagina + nav-item bouwen",
+    "note": null
+   }
+  },
+  {
+   "gid": 70,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "high",
+   "status": "open",
+   "evidence": "workspace/page.tsx:905-919 tab list has no 'audit'; zero .tsx callers of workspaces/auditLog (grep). Route auditLog_v1.ts exists but is UI-orphaned.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add an isAdmin-gated 'audit' tab in workspace/page.tsx that apiRequests workspaces/auditLog and renders the AuditEntry[] feed.",
+   "what": "The audit trail is fully invisible: no Settings tab and zero UI callers of workspaces/auditLog anywhere in src/. A self-hosted admin cannot see who changed roles/members/secrets/ownership despite recordAudit being wired.",
+   "where": "src/workspaces/workspace/page.tsx:882-896 (tabs list has no 'audit'); route src/workspaces/_api/auditLog_v1.ts has no caller",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add an isAdmin-gated 'audit' tab in workspace/page.tsx that apiRequests workspaces/auditLog and renders the AuditEntry[] feed."
+   }
+  },
+  {
+   "gid": 83,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "high",
+   "status": "open",
+   "evidence": "conductor.ts fireEvent call-sites only ticket.created (315,637,2290) + stage.on_enter (703); stage.on_complete/ticket.merged/suggestion.accepted/stage.on_signal/stage.on_approval never emitted, yet AutomationPanel.tsx:18 EVENTS still offers stage.on_complete/ticket.merged/suggestion.accepted",
+   "needsQuestion": true,
+   "question": "Wire fireEvent from MR-merge/stage-complete/accept-suggestion paths, or just remove the non-firing event kinds from the AutomationPanel picker?",
+   "options": [
+    "Emit the missing events",
+    "Remove dead kinds from UI"
+   ],
+   "mechanical": false,
+   "fix": "Emit fireEvent from the MR-merge, stage-completion, signal-append and accept-suggestion Conductor paths; until wired, remove the non-firing kinds from the AutomationPanel EVENTS list",
+   "what": "5 of 8 trigger event kinds are never emitted by the engine — stage.on_complete, stage.on_signal, stage.on_approval, ticket.merged, suggestion.accepted. fireEvent is only ever called for ticket.created and stage.on_enter. Three of the dead events (stage.on_complete, ticket.merged, suggestion.accepted) are selectable in the UI, so users can build triggers that silently never fire.",
+   "where": "AutomationPanel.tsx:18 (offers dead events) vs the only fireEvent call-sites conductor.ts:312,602,668,2064 (ticket.created + stage.on_enter only); matcher triggers.ts:34-77 supports all",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "De ontbrekende events emitten",
+    "note": null
+   }
+  },
+  {
+   "gid": 84,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "WorkspacesProvider.tsx:1216-1218 now exposes outputTemplates/saveOutputTemplate/deleteOutputTemplate + outputTemplate_server_v1.ts sync exists, but grep shows no .tsx page/component calls saveOutputTemplate and nothing consumes format/watermarkPosition at render/export",
+   "needsQuestion": true,
+   "question": "Build an Output Templates manager UI (content settings) and wire the selected template into the media render/export path now?",
+   "options": [
+    "Build manager + wire render",
+    "Drop the feature"
+   ],
+   "mechanical": false,
+   "fix": "Build an Output Templates manager in workspace/content settings and wire the selected template into the media render/export path",
+   "what": "Output Templates are fully built backend→sync→conductor→snapshot→provider but have ZERO frontend consumer — no page/component creates, lists, picks or applies one, and nothing consumes format/watermarkPosition at render/export time. Completely dead-wired.",
+   "where": "backend conductor.ts:1505/1532; only shell defs in WorkspacesProvider.tsx:1057-1059 + WorkspacesContext.tsx (unused). No .tsx consumer per grep.",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Beheer bouwen + render koppelen",
+    "note": null
+   }
+  },
+  {
+   "gid": 100,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "high",
+   "status": "open",
+   "evidence": "server/spend/record.ts:104-119 aggregateByUser + userBudgetExceeded are still referenced only by tests (tests/unit/userSpend.test.mts, tests/integration/userSpendAttribution.test.mts) — not imported by workspaceSnapshot.ts (only aggregateUsage is, line 27/335) nor any component. Usage 'by person' card (usage/page.tsx:51-64,204-223) is still ticket-count based (byMember from tickets), not token/cost.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Fold aggregateByUser(spendRows) into aggregateUsage's result as usage.byUser and render it (tokens/cost per member) in the Usage 'by person' card instead of the ticket-count list.",
+   "what": "Per-user token/cost attribution is dead code: aggregateByUser/userBudgetExceeded are referenced only by tests, never by the snapshot or any component; the Usage 'by person' card is ticket-count based instead.",
+   "where": "server/spend/record.ts:61-76",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Fold aggregateByUser(spendRows) into aggregateUsage's result as usage.byUser and render it (tokens/cost per member) in the Usage 'by person' card instead of the ticket-count list."
+   }
+  },
+  {
+   "gid": 109,
+   "cluster": "Workspace-AI (chat, copilot, AI-drives-UI)",
+   "severity": "high",
+   "status": "open",
+   "evidence": "conductor.ts:1861 copilot-propose handler + accept-suggestion (conductor.ts:1966) has NO copilot branch (only automation/mr-review/rollback/publish); asSugType (workspaceSnapshot.ts:64) still lacks 'copilot' → 'maintenance'; projection (workspaceSnapshot.ts:517) omits patch; AiSuggestion type union (types.ts:414) has no 'copilot'; SuggestionCard (Shell.tsx:749) renders title/body/ticketIds only, no navigate/prefill applier; opCatalog.ts:259 marks copilot-propose EXCLUDED so no emitter — only caller is tests/integration/copilot.test.mts. End-to-end still dead-wired.",
+   "needsQuestion": true,
+   "question": "AI-drives-UI copilot is fully dead-wired. Build it end-to-end (emit+directive-applier+snapshot+accept branch) or abandon and delete the op?",
+   "options": [
+    "Build full path (emitter, asSugType+patch, client applier, accept branch)",
+    "Abandon: delete copilot-propose from union/rbac/conductor",
+    "Leave as-is for now"
+   ],
+   "mechanical": false,
+   "fix": "Either (a) make the chat emit copilot-propose + add a client directive-applier (navigate + prefill target form, then confirm the embedded op), add 'copilot' to asSugType, carry patch in the snapshot suggestion projection, and add a copilot accept branch/renderer; or (b) if abandoned, delete the op from the union/rbac/conductor so it stops advertising a capability that cannot run.",
+   "what": "The entire 'AI drives the UI' copilot feature is dead-wired end to end: nothing produces a copilot-propose op (the only caller repo-wide is tests/integration/copilot.test.mts), the directive payload never reaches the client (asSugType drops 'copilot' → 'maintenance', and the suggestion projection omits the patch), and accepting a copilot suggestion does nothing but flip status. The op handler + RBAC row exist but are unreachable.",
+   "where": "server/orchestrator/conductor.ts:1657 (handler, no emitter) + server/read/workspaceSnapshot.ts:64 (asSugType has no 'copilot') + server/read/workspaceSnapshot.ts:492 (projection omits patch) + server/orchestrator/conductor.ts:1762-1790 (accept-suggestion has no copilot branch) + src/workspaces/_shell/Shell.tsx:706-725 (SuggestionCard has no navigate/prefill applier)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Volledig pad bouwen (emitter, asSugType+patch, client-applier, accept-branch)",
+    "note": null
+   }
+  },
+  {
+   "gid": 116,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "high",
+   "status": "open",
+   "evidence": "src/workspaces/_shell/MobileChrome.tsx:36-37 MobileHeader still renders only a search button + AvatarBubble; no bell / notification surface anywhere in the mobile chrome.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add a bell (with unreadNotifications badge) to MobileHeader that opens a slide-in sheet listing `notifications`, reusing the same notifications / markNotificationRead / markAllNotificationsRead context TopBar uses.",
+   "what": "Phone-first product but the notification bell/list exists only in the desktop-only Shell TopBar (header is `hidden md:flex`). MobileChrome's MobileHeader renders only a search button + AvatarBubble — a mobile user cannot see or clear in-app notifications; only OS push reaches them.",
+   "where": "src/workspaces/_shell/MobileChrome.tsx:23-38 (no notif surface); src/workspaces/_shell/Shell.tsx:204,244",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a bell (with unreadNotifications badge) to MobileHeader that opens a slide-in sheet listing `notifications`, reusing the same notifications / markNotificationRead / markAllNotificationsRead context TopBar uses."
+   }
+  },
+  {
+   "gid": 125,
+   "cluster": "Content pipeline core",
+   "severity": "high",
+   "status": "open",
+   "evidence": "content/page.tsx:69-96 header still only has insights+settings buttons; EmptyState (line 100) has no create action; i18n key workspaces.content.newPiece exists (en.json:833) but no .tsx renders it.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add a primary 'New content piece' button (+ empty-state CTA) opening a brief form that syncRequests content-from-brief, mirroring the ticket quick-add.",
+   "what": "No 'New content piece' button anywhere on the board — a user cannot create content from the UI at all. The only creation path is the AI's create-content proposal (WorkspacesProvider.tsx:850 → content-from-brief). A low-knowledge user lands on an empty board with no create affordance.",
+   "where": "src/workspaces/content/page.tsx:69-96",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a primary 'New content piece' button (+ empty-state CTA) opening a brief form that syncRequests content-from-brief, mirroring the ticket quick-add."
+   }
+  },
+  {
+   "gid": 126,
+   "cluster": "Content pipeline core",
+   "severity": "high",
+   "status": "open",
+   "evidence": "conductor.ts:1875-1882 content-from-brief unconditionally prisma.project.create() per piece; content-create (conductor.ts:1625-1637) targets an existing projectId but no client sends it (grep: only content-from-brief dispatched, WorkspacesProvider.tsx:907).",
+   "needsQuestion": true,
+   "question": "Should content pieces reuse one shared Project (per workspace, or per channel), or keep the current one-Project-per-piece behaviour?",
+   "options": [
+    "One shared content Project per workspace",
+    "One Project per channel",
+    "Keep per-piece (status quo)"
+   ],
+   "mechanical": false,
+   "fix": "Reuse the active content Project when one exists (or accept projectId), and surface content-create as the in-project 'add piece' path.",
+   "what": "Every content-from-brief spins up a BRAND-NEW Project row — there is no way to add a second piece to an existing content project/channel, so pieces can never share a board/project (project sprawl by design). content-create (which targets an existing projectId) would fill this gap but is dead-wired.",
+   "where": "server/orchestrator/conductor.ts:1671-1678",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Eén gedeelde content-Project per workspace",
+    "note": null
+   }
+  },
+  {
+   "gid": 133,
+   "cluster": "Content generation (script/voice/image/video/3d/audio)",
+   "severity": "high",
+   "status": "open",
+   "evidence": "conductor.ts:1807-1818 content-gen-3d case passes prompt/styleKey/extraInstructions to generateMediaAsset but NOT referenceUrl; page.tsx:53 content-gen-3d GEN_ACTION has no needsRef; fal.ts:86-87 model-3d input is {} when req.referenceUrl absent → no image_url with real keys.",
+   "needsQuestion": true,
+   "question": "3D still gets no source image (breaks with real keys). Fix by requiring a picked source image, or auto-chaining image-gen→model-3d?",
+   "options": [
+    "Add needsRef (pick/upload a source image)",
+    "Auto-chain image-gen then model-3d",
+    "Leave as keyless stub only"
+   ],
+   "mechanical": false,
+   "fix": "Make the 3D action require a source image: add needsRef (or a 'pick an existing image asset') to the content-gen-3d GEN_ACTION, thread referenceUrl through the conductor case into generateMediaAsset, or auto-chain image-gen→model-3d before the triposr call.",
+   "what": "3D generation live path is broken: content-gen-3d sends only a prompt but fal triposr (model-3d) requires image_url, so with real keys the job always errors — only the keyless stub returns an asset. The described 'generate an image then convert' chain is not implemented.",
+   "where": "server/orchestrator/conductor.ts:1621-1633 (no referenceUrl passed) + server/media/providers/fal.ts:82-84 (model-3d takes only image_url) + src/workspaces/content/[pieceId]/page.tsx:53 (button has no needsRef)",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "image-gen en dan model-3d automatisch chainen",
+    "note": "user moet ook zelf images kunnen opgeven of misschien andere 3d model als reference"
+   }
+  },
+  {
+   "gid": 134,
+   "cluster": "Content generation (script/voice/image/video/3d/audio)",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "workspaceChat.ts:150 now falls through to validateGenericAction (X1 generic catalog); opCatalog.ts:240-244 content-run-pipeline mode:'enabled' so 'make a video about X' IS AI-reachable; but opCatalog.ts:203-206 all per-asset content-gen-* are LATER (disabled) and copilot-propose is EXCLUDED (259). Conductor case for copilot-propose exists (1861) but no chat producer.",
+   "needsQuestion": true,
+   "question": "Full-pipeline is now AI-proposable; per-asset content-gen-* stay LATER 'until cost-confirms land'. Cost-confirms now exist — enable per-asset gen ops for the assistant?",
+   "options": [
+    "Enable per-asset content-gen-* in catalog",
+    "Keep only content-run-pipeline enabled",
+    "Also wire copilot-propose producer"
+   ],
+   "mechanical": false,
+   "fix": "Wire copilot-propose from the chat turn (or extend validateChatAction) so the Assistant can propose content-run-pipeline / content-gen-* behind the normal B-23 accept, fulfilling 'make me a video about X'.",
+   "what": "No content-generation op is AI-reachable. The Workspace Assistant can only propose create-content (empty piece); it cannot trigger script/voice/image/video/3d/audio or run-pipeline. The copilot-propose op that was built to let the AI propose arbitrary ops has no producer and is dead.",
+   "where": "server/ai/workspaceChat.ts:83-125 (validateChatAction whitelist) + copilot-propose has no emitter in src/server (only conductor.ts:1657, rbac.ts:143, controlApi.ts)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Per-asset content-gen-* inschakelen in de catalogus",
+    "note": null
+   }
+  },
+  {
+   "gid": 138,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "src/workspaces/content/[pieceId]/page.tsx:109-134 PublishComposer now has a datetime-local schedule picker sending scheduledAt (line 133/378); conductor.ts:1830-1856 parks it as a scheduled suggestion; publish.ts:117/138 runScheduledPublish leader loop fires due jobs. Reachability CLOSED. But contentControl_server_v1.ts clientInput (29-64) still omits scheduledAt (travels via untyped payload passthrough), and there is still no dedicated scheduled-posts list/calendar — a scheduled post only surfaces as a pending 'publish' WorkspaceSuggestion.",
+   "needsQuestion": true,
+   "question": "Scheduling now works end-to-end. Do you want a dedicated scheduled-posts list/calendar view, or is the pending-suggestion inbox enough?",
+   "options": [
+    "Add a scheduled-posts calendar/list",
+    "Rely on the suggestions inbox",
+    "Add scheduledAt to the typed contract only"
+   ],
+   "mechanical": false,
+   "fix": "Add scheduledAt to the contentControl clientInput contract + a 'Schedule for later' date-time picker in the publish flow, and a scheduled-posts list/calendar.",
+   "what": "Scheduled publishing is code-complete end-to-end on the server (conductor reads scheduledAt from both payload and accept-patch; runScheduledPublish leader loop fires due jobs) but 100% unreachable: the sync clientInput has no scheduledAt field and the piece UI never sends one, and there is no scheduled-posts list/calendar. Doc drift: ADOPTION_PROGRAM.md:63 marks C1 '✅' while :140 admits nothing sets scheduledAt.",
+   "where": "src/workspaces/_sync/contentControl_server_v1.ts:29-52 (no scheduledAt); src/workspaces/content/[pieceId]/page.tsx:242-247; conductor.ts:1646-1652,1784-1788",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Een scheduled-posts-kalender/lijst toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 140,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "high",
+   "status": "open",
+   "evidence": "OAuth start still carries only ws (settings/page.tsx:320 `start?ws=`, no accountId); no accounts[] on ContentSnapshot (workspaceSnapshot.ts:397-419); the mis-parse persists — workspaceSnapshot.ts:365 connectedPlatforms=new Set(r.key.slice('__publish_'.length)) turns __publish_youtube_<id> into 'youtube_<id>' while publishTargets only checks 'youtube'/'tiktok' (line 366), so a per-account key never registers as connected.",
+   "needsQuestion": true,
+   "question": "Server threads accountId everywhere but no UI/snapshot exposes it. Ship true multi-account (picker + accountId through OAuth), or keep single-account-per-platform for V1?",
+   "options": [
+    "Ship multi-account (accounts[] + picker + accountId in OAuth)",
+    "Keep one account per platform",
+    "Fix only the snapshot mis-parse for now"
+   ],
+   "mechanical": false,
+   "fix": "Pass an accountId through the OAuth start URL, surface an accounts[] array in the snapshot (group per platform), and add an account picker at publish time (or bind account to channel).",
+   "what": "Multi-account routing is fully coded server-side (tokenKey/getValidConnection/publishAsset/conductor all thread accountId) but dead: the OAuth start URL carries only ws (no accountId), there's no account listing or picker, and the snapshot mis-parses per-account keys — connectedPlatforms = new Set(key.slice('__publish_'.length)) turns __publish_youtube_<id> into 'youtube_<id>' while publishTargets only checks 'youtube'/'tiktok', so a per-account connection never registers as connected.",
+   "where": "server/read/workspaceSnapshot.ts:356-357; src/workspaces/content/settings/page.tsx:305-306",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Multi-account uitrollen (accounts[] + picker + accountId in OAuth)",
+    "note": null
+   }
+  },
+  {
+   "gid": 141,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "topPerformers IS now consumed: ideatorRole.ts:24 recentWinnersLine folds top posts into the ideator prompt (line 38-39). BUT ingestPublishMetrics still has ZERO production callers (grep server/**/*.ts finds only its definition, publishMetrics.ts:50) — no leader loop/op/trigger — so PublishJob.metrics is never populated, recentWinnersLine's `metrics:{not:null}` query returns none (winners always empty), and no views/CTR reach the UI.",
+   "needsQuestion": true,
+   "question": "topPerformers now feeds the ideator but nothing calls ingestPublishMetrics. Wire a leader loop to fetch live YT/TikTok metrics (needs API scopes), or leave it manual?",
+   "options": [
+    "Schedule ingestPublishMetrics on the leader loop (live transport)",
+    "Add a manual 'refresh metrics' op",
+    "Leave dormant"
+   ],
+   "mechanical": false,
+   "fix": "Schedule ingestPublishMetrics on the existing leader loop (or a trigger/op), surface metrics in insights, and inject topPerformers into the ideator prompt.",
+   "what": "The audience-analytics + 'this worked, make more' feedback loop (C3) is dead-wired: ingestPublishMetrics and topPerformers are fully implemented + unit-tested but have ZERO callers anywhere (no leader loop, no op, no trigger). PublishJob.metrics is never populated, topPerformers is never fed to the ideator, and no views/CTR ever reach the UI (insights shows only publishedCount).",
+   "where": "server/content/publishMetrics.ts:50 (ingestPublishMetrics), :66 (topPerformers) — no callers",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "ingestPublishMetrics inplannen op de leader loop (live transport)",
+    "note": null
+   }
+  },
+  {
+   "gid": 142,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "The 5-op whitelist is gone — workspaceChat.ts:76/150 now uses the generic op-catalog (opCatalog.ts). But every publish/channel/account op is still non-proposable: content-request-publish/channel-create/channel-edit/reference-add = LATER, channel-delete/content-unpublish = LATER_D, account-disconnect = EXCLUDED, copilot-propose = EXCLUDED (opCatalog.ts:206,247-249,255,259). So the assistant still cannot propose any publishing/scheduling action.",
+   "needsQuestion": true,
+   "question": "Should the Workspace-AI be able to propose publish/schedule ops (flip content-request-publish etc. from 'later' to 'enabled'), given publishing is money/public-facing?",
+   "options": [
+    "Enable content-request-publish + channel ops as proposable",
+    "Keep publishing human-only in the UI",
+    "Enable channel ops only, not publish"
+   ],
+   "mechanical": false,
+   "fix": "Add a publish/schedule proposal path (map an action or emit copilot-propose) so the user can say 'publish this' / 'schedule the 3 videos' and tap Accept.",
+   "what": "The Workspace-AI cannot propose any publishing/channel/account op — its action grammar is only bulk-move/assign/add-comment/create-ticket/create-content. And copilot-propose (the generic AI-drives-UI directive, a real Conductor op) is never emitted from workspaceChat or any src caller (only exercised by an integration test via enqueueControlAction). So the phone-first assistant is blind to the entire publishing surface.",
+   "where": "server/ai/workspaceChat.ts:48,83-125; server/orchestrator/conductor.ts:1657 (copilot-propose executor — no emitter)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "content-request-publish + channel-ops voorstelbaar maken",
+    "note": null
+   }
+  },
+  {
+   "gid": 150,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "workspaceChat.ts:150 validateChatAction now falls through to validateGenericAction (opCatalog.ts:310), a full ControlOp catalog. BUT save-style/content-edit-brand/reference-add/channel-create are all classified LATER in opCatalog.ts:188,190,247,249 → NOT in ENABLED_OPS/CHAT_ENABLED_OPS, so still un-proposable via chat.",
+   "needsQuestion": true,
+   "question": "Enable the Workspace-AI to propose content-config ops (save-style, content-edit-brand, reference-add, channel-create) as Accept cards? They're built + dispatchable but deliberately classified 'later'.",
+   "options": [
+    "Enable all four now",
+    "Enable only reference-add + content-edit-brand",
+    "Keep them 'later' (no AI proposals)"
+   ],
+   "mechanical": false,
+   "fix": "Extend validateChatAction to propose non-secret/non-destructive content-config ops (reference-add, content-edit-brand, save-style, channel-create) as confirmable proposals routed through the existing runContentOp/Conductor path; keep save-media-provider/edit-media-budget/account-disconnect AI-excluded.",
+   "what": "For a phone-first 'human only approves' product, the Workspace-AI cannot propose ANY brand/style/reference/channel change — validateChatAction only allows 5 board ops and the automation executor only 4 non-content actions. A user cannot say 'remember this ad as a reference' or 'set the brand voice to X' and get an Accept card. Verified in code, not just the scan.",
+   "where": "server/ai/workspaceChat.ts:83-124 (+ server/automation/executor.ts:36)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Alle vier nu inschakelen",
+    "note": null
+   }
+  },
+  {
+   "gid": 151,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "high",
+   "status": "open",
+   "evidence": "brandExport_v1.ts / brandImport_v1.ts still exist as _api routes; Grep for brandExport|brandImport across **/*.tsx = no matches → no UI caller, no label keys.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add Export/Import controls to the settings brand section (copy JSON on export; textarea/file paste on import) wired to brandExport_v1/brandImport_v1, with en/nl/de/fr keys.",
+   "what": "Portable brand-kit export/import is fully built + server-validated but has no button anywhere and no i18n label keys — a user can never trigger it.",
+   "where": "src/workspaces/_api/brandExport_v1.ts / brandImport_v1.ts (no *.tsx caller)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add Export/Import controls to the settings brand section (copy JSON on export; textarea/file paste on import) wired to brandExport_v1/brandImport_v1, with en/nl/de/fr keys."
+   }
+  },
+  {
+   "gid": 152,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "high",
+   "status": "open",
+   "evidence": "styleExport_v1.ts / styleImport_v1.ts exist; Grep for styleExport|styleImport across **/*.tsx = no matches → StyleManagerSection (settings/page.tsx:97-144) has no export/import entry, no label keys.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add Export/Import controls to StyleManagerSection wired to styleExport_v1/styleImport_v1 with i18n keys.",
+   "what": "Portable style-set export/import is fully built + validated (parseStyleSet drops malformed) but unreachable — no UI entry, no label keys.",
+   "where": "src/workspaces/_api/styleExport_v1.ts / styleImport_v1.ts (no *.tsx caller)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add Export/Import controls to StyleManagerSection wired to styleExport_v1/styleImport_v1 with i18n keys."
+   }
+  },
+  {
+   "gid": 153,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "high",
+   "status": "partial",
+   "evidence": "channel-edit UI now exists (settings/page.tsx:258-266 startEdit/submit dispatches channel-edit name/platform/handle/brandVoice) + conductor case channel-edit at conductor.ts:1279-1292 (handles defaultStyleId). BUT defaultStyleId is NOT in the channels snapshot fold (workspaceSnapshot.ts:412 folds only id/name/platform/handle/brandVoice) and the edit form has no style Dropdown, so defaultStyleId still can't be set/round-tripped.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add defaultStyleId to the channels fold at workspaceSnapshot.ts:412 and add a style Dropdown (bound to defaultStyleId) to the channel edit form in settings/page.tsx.",
+   "what": "channel-edit is orphaned: a created channel's name/platform/handle can never be changed from any UI, and defaultStyleId can never be set. Worse than the scan noted — the channels snapshot fold omits defaultStyleId entirely, so it isn't even exposed to the client.",
+   "where": "src/workspaces/content/settings/page.tsx:245-292 (no channel-edit dispatch) + server/read/workspaceSnapshot.ts:392 (defaultStyleId not in fold)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add defaultStyleId to the channels fold at workspaceSnapshot.ts:412 and add a style Dropdown (bound to defaultStyleId) to the channel edit form in settings/page.tsx."
+   }
+  },
+  {
+   "gid": 161,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "high",
+   "status": "open",
+   "evidence": "state.tsx:79 useInProject signature is (kind:'theme'|'style'); page.tsx:190 persist bar renders only for section==='themes'||'styles'; Animations section has no save. Backend IS ready: designerLibrary_v1.ts:24 KINDS includes 'animation', persisted.ts:58 artifactToAnim, state.tsx:115 merges anims — so generated anims are dropped on reload.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Extend useInProject to accept 'animation' (save via designerLibrary op 'save') and render a save affordance on the Animations section.",
+   "what": "Designer Animations have no save/persist path: useInProject only handles 'theme'|'style' (src/workspaces/designer/state.tsx:79,174-180) and the use-in-project bar renders only for themes/styles (designer/page.tsx:129); Animations.tsx offers add/rename/edit/duplicate but no save. Generated & edited animations are lost on reload even though the designerLibrary route, persisted.ts artifactToAnim, and the snapshot merge (state.tsx:115) all support kind 'animation'.",
+   "where": "src/workspaces/designer/state.tsx:79,174-190; designer/page.tsx:129; designer/sections/Animations.tsx",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Extend useInProject to accept 'animation' (save via designerLibrary op 'save') and render a save affordance on the Animations section."
+   }
+  },
+  {
+   "gid": 3,
+   "cluster": "Board & tickets",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "page.tsx:65 Pause/Resume onClick is still `/* Fase 2: pause/resume the ticket's AI session */` no-op, while WorkspacesProvider.tsx:1241-1242 already expose working pauseTicket/resumeTicket.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Wire page.tsx:65 onClick to (paused ? ctx.resumeTicket : ctx.pauseTicket)(ticket.id).",
+   "what": "Board card '⋯' menu 'Pause/Resume agent' is a dead no-op despite the provider already exposing working pauseTicket/resumeTicket (used live on the ticket detail page).",
+   "where": "src/workspaces/page.tsx:65",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Wire page.tsx:65 onClick to (paused ? ctx.resumeTicket : ctx.pauseTicket)(ticket.id)."
+   }
+  },
+  {
+   "gid": 15,
+   "cluster": "Agent runtime & live control",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "workspacesTerminal.ts:35-36 still early-returns the WHOLE middleware (incl the container-exec relay) unless dev or WORKSPACES_TERMINAL_ENABLED=1",
+   "needsQuestion": true,
+   "question": "Enable container terminals on prod by splitting the container-PTY relay from the host-shell RCE gate, or keep the whole thing prod-gated?",
+   "options": [
+    "Split: always register container relay",
+    "Keep prod-gated"
+   ],
+   "mechanical": false,
+   "fix": "Split the host-shell RCE gate from the container-PTY path: always register the container-exec relay (it already validates isWorkspacesContainer), keep only the bare host-shell behind the prod flag.",
+   "what": "The whole ws-term middleware returns early unless NODE_ENV!=production or WORKSPACES_TERMINAL_ENABLED=1 — so on a self-hosted PROD deploy the Terminals page lists containers but no ws-term:start handler is registered, so panels never attach.",
+   "where": "server/hooks/workspacesTerminal.ts:35-36",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Splitsen: container-relay altijd registreren",
+    "note": null
+   }
+  },
+  {
+   "gid": 16,
+   "cluster": "Agent runtime & live control",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "conductor.ts:1000-1007 advisory resolve path exists+tested (advisoryQuestion.test.mts), but answerInput_server_v1.ts:26 forwards only {answer} (no advisoryIndex) and no .tsx renders advisoryQuestions; ADR 0163 flags UI as follow-up",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Thread advisoryIndex through the answerInput _sync payload and render advisoryQuestions as a low-priority confirm/correct list on the ticket per ADR 0163.",
+   "what": "Advisory questions are generated + stored + resolvable server-side but are dead-wired end-to-end: never rendered (0 .tsx references) and the answerInput _sync route only forwards `answer`, never advisoryIndex, so the conductor's advisory resolve path (conductor.ts:940-953) is unreachable.",
+   "where": "src/workspaces/_sync/answerInput_server_v1.ts:15 + src/workspaces/board/[ticketId]/page.tsx (no advisory rendering)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Thread advisoryIndex through the answerInput _sync payload and render advisoryQuestions as a low-priority confirm/correct list on the ticket per ADR 0163."
+   }
+  },
+  {
+   "gid": 17,
+   "cluster": "Agent runtime & live control",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "controlApi.ts:74 still lists preview-up/preview-down in ControlOp union; grep of conductor.ts finds no case (still a default no-op), no client caller",
+   "needsQuestion": true,
+   "question": "preview-up/preview-down are vestigial ops with no Conductor case (preview runs via openPreview/closePreview _api) — remove or implement?",
+   "options": [
+    "Remove from union",
+    "Implement Conductor cases",
+    "Leave + document"
+   ],
+   "mechanical": false,
+   "fix": "Either remove them from the union (they duplicate the openPreview/closePreview _api path) or implement real Conductor cases; document the decision.",
+   "what": "preview-up/preview-down are vestigial dead ops in the frozen structured surface — they sit in the ControlOp union + OP_CAPABILITY but have no Conductor case (fall through to the default logged no-op) and no client caller; preview is done via the openPreview/closePreview _api routes instead.",
+   "where": "src/workspaces/_functions/controlApi.ts:74 (no case at conductor.ts:2092-2096)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Uit de union verwijderen",
+    "note": null
+   }
+  },
+  {
+   "gid": 25,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "Time-travel form covers commit/revert/asof via timeTravelPreview (which calls the openRefPreview server fn), so a raw SHA is reachable via commit mode. But the openRefPreview_v1 API route itself still has no UI caller (grep: only *.generated + the two _api files) — no raw tag/branch field for power users.",
+   "needsQuestion": true,
+   "question": "Expose a raw-ref (tag/branch/SHA) power-user field wired to openRefPreview, or leave that route API-only since time-travel already covers commit/revert/asof?",
+   "options": [
+    "Add raw-ref field",
+    "Leave openRefPreview API-only"
+   ],
+   "mechanical": false,
+   "fix": "Reuse the same time-travel launcher; expose a raw-ref field for power users.",
+   "what": "open-ref-preview endpoint (arbitrary SHA/tag/branch preview) has no UI entry point.",
+   "where": "src/workspaces/_api/openRefPreview_v1.ts (no callers in src)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "raw-ref-veld toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 26,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "src/workspaces/settings/page.tsx:350 still renders a STATIC green 'connected' badge (Icon circle-check + account.connected) for the GitLab row, regardless of real forge state; the GitHub row below it uses a real Connect button.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Drive the GitLab row badge from real state (activeWorkspace.forgeType / active project forge config) instead of the static 'connected' label — or drop the legacy row in favour of the per-project Connect row.",
+   "what": "Settings 'Connections' card shows a HARDCODED 'GitLab — Connected' green badge (static text-correct label) regardless of real forge state.",
+   "where": "src/workspaces/settings/page.tsx:266-269 (badge at :268)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Drive the GitLab row badge from real state (activeWorkspace.forgeType / active project forge config) instead of the static 'connected' label — or drop the legacy row in favour of the per-project Connect row."
+   }
+  },
+  {
+   "gid": 27,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "No UI exposes the inbound forge webhook. grep webhook in src only hits AutomationPanel.tsx (an OUTBOUND automation action posting to an external URL) + types — never /webhooks/forge/<workspaceId>; WS_WEBHOOK_SECRET stays env-only.",
+   "needsQuestion": true,
+   "question": "Build a forge-webhook setup card (copyable /webhooks/forge/<id> URL + generated/rotatable secret + last-event indicator)? It needs new backend for secret storage/rotation.",
+   "options": [
+    "Full card (URL+secret+last-event)",
+    "URL only, secret stays env",
+    "Skip for now"
+   ],
+   "mechanical": false,
+   "fix": "On the GitLab/forge settings tab, show the copy-able /webhooks/forge/<workspaceId> URL + a generated/rotatable secret with paste-into-GitLab/GitHub instructions and a 'last event received' indicator.",
+   "what": "No in-app way to discover the per-workspace webhook URL or set the shared secret (WS_WEBHOOK_SECRET is env-only); a non-expert cannot set up continuous forge ingestion.",
+   "where": "server webhook route (secret env-only); no UI in src references /webhooks/forge",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Volledige kaart (URL+secret+last-event)",
+    "note": null
+   }
+  },
+  {
+   "gid": 33,
+   "cluster": "Code editor & preview",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "preview-up/preview-down still in op union (controlApi.ts:74) + RBAC (rbac.ts:188-189), no conductor case (grep conductor.ts = none), and AI-excluded (opCatalog.ts:268 'dead op … COMPLETION A5 decides its fate').",
+   "needsQuestion": true,
+   "question": "Wire preview-up/preview-down conductor cases (calling open/closePreviewForTicket), or remove both dead ops from the union + RBAC?",
+   "options": [
+    "Remove both ops (preview runs via openPreview _api)",
+    "Wire conductor cases to open/closePreviewForTicket",
+    "Leave excluded/deferred"
+   ],
+   "mechanical": false,
+   "fix": "Add conductor cases calling openPreviewForTicket/closePreviewForTicket, or remove preview-up/preview-down from the op union + OP_CAPABILITY so the surface reflects reality.",
+   "what": "Control ops 'preview-up'/'preview-down' are declared in the op union and RBAC-gated but have NO conductor case and no enqueue path — dead-wired. If ever accepted they silently no-op via the default console.warn 'not yet implemented in Fase 1'.",
+   "where": "src/workspaces/_functions/controlApi.ts:74; server/control/rbac.ts:182-183; server/orchestrator/conductor.ts:2092-2096 (default)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Beide ops verwijderen (preview loopt via openPreview _api)",
+    "note": null
+   }
+  },
+  {
+   "gid": 34,
+   "cluster": "Code editor & preview",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "workspaceChat.ts:78 forces action=null for time-travel ('runs via the ticket's preview control, not a board op'); copilot-propose op exists (controlApi.ts:69) but no time-travel RefSpec payload wired, so AI can only describe.",
+   "needsQuestion": true,
+   "question": "Should the AI propose time-travel as a tappable copilot-propose action carrying the RefSpec, or keep describe-only pointing to the ticket control?",
+   "options": [
+    "Add AI-proposable time-travel action (copilot-propose + RefSpec)",
+    "Keep describe-only (user uses ticket control)"
+   ],
+   "mechanical": false,
+   "fix": "Add a proposable action / copilot-propose op payload carrying the resolved RefSpec so the user taps Accept and the flow runs.",
+   "what": "Time-travel preview cannot be proposed by the AI even though its whole point is the natural-language ask ('start yesterday's version'); the AI action vocab is only bulk-move|assign|add-comment|create-ticket|create-content and it can only describe time-travel, never trigger it.",
+   "where": "server/ai/workspaceChat.ts:48,57",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "AI-voorstelbare time-travel-actie toevoegen (copilot-propose + RefSpec)",
+    "note": null
+   }
+  },
+  {
+   "gid": 35,
+   "cluster": "Code editor & preview",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "CodeEditorPanel has readOnly prop (:34,:164) but page.tsx:164 mounts LazyCodeEditorPanel without readOnly/onSave; editing stays enabled and status bar shows '● N unsaved' (CodeEditorPanel.tsx:194) with no persist path.",
+   "needsQuestion": true,
+   "question": "Make the ticket Changes tab a read-only diff viewer now (pass readOnly), or build the real worktree save path (Track D)?",
+   "options": [
+    "Pass readOnly now (honest read-only diff viewer)",
+    "Build Track D worktree content + save op"
+   ],
+   "mechanical": false,
+   "fix": "Either wire the Monaco panel to real worktree content + a save op (Track D), or pass readOnly and label it a read-only diff viewer so the 'unsaved' affordance disappears.",
+   "what": "The Monaco 'Changes' tab shows content reconstructed from stored diff lines, not real worktree files, and has no save-to-repo path. Worse: the panel renders a '● N unsaved' indicator and local edit state, so it invites edits that can never persist.",
+   "where": "src/workspaces/board/[ticketId]/page.tsx:110-121 (ticketFilesToEditor); src/_components/editor/CodeEditorPanel.tsx:165,194 (edit()/unsaved indicator, no onSave passed by the page)",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Track D worktree-content + save-op bouwen",
+    "note": null
+   }
+  },
+  {
+   "gid": 36,
+   "cluster": "Code editor & preview",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "react/jsx-no-literals still disabled in all three: CodeEditorPanel.tsx:12, VsCodeEmbed.tsx:8, FileExplorer.tsx:10; hardcoded English labels remain (e.g. page CodeEditorPanel.tsx:169 'Open a file…', :190 'Source Control').",
+   "needsQuestion": true,
+   "question": "Translate editor-chrome labels into en+nl+de+fr via useTranslator, or keep them English as standard VS Code convention (author's documented rationale)?",
+   "options": [
+    "Translate all editor-chrome labels (4 locales)",
+    "Keep English (VS Code convention)"
+   ],
+   "mechanical": false,
+   "fix": "Move the editor-chrome labels to useTranslator (add keys to all four locales).",
+   "what": "Editor chrome in VsCodeEmbed, CodeEditorPanel and FileExplorer disables react/jsx-no-literals and hardcodes English labels — a Dutch/German/French user drops into English mid-flow, violating the en+nl+de+fr i18n requirement.",
+   "where": "src/_components/editor/VsCodeEmbed.tsx:8; src/_components/editor/CodeEditorPanel.tsx:12; src/_components/editor/FileExplorer.tsx:10",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Alle editor-chrome-labels vertalen (4 locales)",
+    "note": "no literal strings in de hele codebase"
+   }
+  },
+  {
+   "gid": 44,
+   "cluster": "Docker images, services & databases",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "Backend fixed: dockerfileGen.ts:35-37 + imageBuild.ts:29-32 now take projectId and call resolveProjectId (projectResolve.ts) instead of findFirst. But the _api route generateDockerfile_v1.ts:19,29 still has data:{workspaceId} only and calls generateDockerfile(prisma, workspaceId) with no projectId; UI page.tsx:551,560,570,577 passes only workspaceId — so a multi-project workspace still falls back to the oldest project.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add projectId to the data interface of generateDockerfile/saveDockerfile/buildProjectImage _api routes, forward it to the server fns, and pass snapshot.activeProjectId from DockerfileReview's apiRequest calls.",
+   "what": "Dockerfile generate AND image build target the FIRST project in the workspace, not the active one. Both use prisma.project.findFirst({ where:{ workspaceId }, orderBy:{ createdAt:'asc' } }); the UI passes only workspaceId — wrong Dockerfile/image in a multi-project workspace (ADR 0035).",
+   "where": "server/ai/dockerfileGen.ts:54; server/container/imageBuild.ts:29; UI passes only workspaceId at src/workspaces/workspace/page.tsx:535,561",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add projectId to the data interface of generateDockerfile/saveDockerfile/buildProjectImage _api routes, forward it to the server fns, and pass snapshot.activeProjectId from DockerfileReview's apiRequest calls."
+   }
+  },
+  {
+   "gid": 55,
+   "cluster": "CI & merge-request review",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "MrReviewPanel.tsx:104-108 reportOutcome only branches on 'conflict' and 'no-approval', else generic 'mergeFailed'; mr/service.ts:116 returns 'ci-running'|'ci-stale'|'ci-red' which fall through to the generic toast.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add ci-red/ci-running/ci-stale branches to reportOutcome with dedicated i18n keys.",
+   "what": "CI-red / ci-running / ci-stale merge blocks collapse to a generic 'merge failed' toast; the server distinguishes these reasons but the UI mapper does not.",
+   "where": "src/workspaces/_components/MrReviewPanel.tsx:104-108 (only handles 'conflict' + 'no-approval') vs server/mr/service.ts:116 (returns 'ci-red'|'ci-running'|'ci-stale')",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add ci-red/ci-running/ci-stale branches to reportOutcome with dedicated i18n keys."
+   }
+  },
+  {
+   "gid": 56,
+   "cluster": "CI & merge-request review",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "workspaceSnapshot.ts:65 asEvType has no 'ci' case (falls back to 'ai-message'); types.ts:507,520 ActivityEvent/TicketEvent unions lack 'ci'; EVENT_TINT/EVENT_LABEL keyed by ActivityEvent['type'] at activity/page.tsx:17,25 and board/[ticketId]/page.tsx:672 lack 'ci'.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add 'ci' to the ActivityEvent (+TicketEvent) type union, to asEvType, and to both EVENT_TINT + EVENT_LABEL maps with a pass/fail tint.",
+   "what": "CI TicketEvents (type:'ci') are mislabeled as 'ai-message' (blue) because the event normalizer has no 'ci' case and the ActivityEvent type union + EVENT_TINT lack 'ci'.",
+   "where": "server/read/workspaceSnapshot.ts:65 (asEvType fallback -> 'ai-message'); src/workspaces/_data/types.ts:454,467 (ActivityEvent type union); EVENT_TINT at board/[ticketId]/page.tsx:609 + activity/page.tsx:17",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add 'ci' to the ActivityEvent (+TicketEvent) type union, to asEvType, and to both EVENT_TINT + EVENT_LABEL maps with a pass/fail tint."
+   }
+  },
+  {
+   "gid": 62,
+   "cluster": "Deploy & environments (LIVE-deferred)",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "buildExport.ts:53 supports kind 'bundle' and opCatalog.ts:153 exposes it to the AI, but settings/page.tsx:411 still hardcodes exportBuild('image') — no direct UI entry for bundle.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Offer both kinds in the export UI (two buttons or a Dropdown), passing 'image' or 'bundle' to exportBuild at settings/page.tsx:411.",
+   "what": "The 'bundle' export kind (the REAL prod build: npm run build -> dist tarball, buildExport.ts:68-78) is fully implemented but has NO UI entry point — the button hardcodes exportBuild('image').",
+   "where": "src/workspaces/settings/page.tsx:301",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Offer both kinds in the export UI (two buttons or a Dropdown), passing 'image' or 'bundle' to exportBuild at settings/page.tsx:411."
+   }
+  },
+  {
+   "gid": 66,
+   "cluster": "RAG, sources & knowledge graph",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "src/workspaces/sources/page.tsx:20 `const noop = () => {}`; :92 Regenerate onClick=noop; :127 Reindex onClick=noop (now inside PopMenu items but still do nothing on click)",
+   "needsQuestion": true,
+   "question": "Regenerate (doc cards) and Reindex (frozen skills) still call a noop stub. Implement the ops via existing control-API verbs, or remove/disable them with a Fase-2 tooltip?",
+   "options": [
+    "Implement regenerate/reindex ops",
+    "Remove/disable with Fase-2 tooltip"
+   ],
+   "mechanical": false,
+   "fix": "Either implement the regenerate/skill-reindex ops (a control-API op re-expressed via existing verbs) or remove/disable the buttons with a tooltip until Fase 2, so users aren't misled.",
+   "what": "Dead buttons on the Sources page: 'Regenerate' on doc cards and 'Reindex' on frozen skills both wire to a noop stub ('Fase 2'). They look actionable (cursor-pointer, real labels) but do nothing on click - no toast, no disabled state.",
+   "where": "src/workspaces/sources/page.tsx:20 (noop), :111 (Regenerate onClick=noop), :135 (Reindex onClick=noop)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "regenerate/reindex-ops implementeren",
+    "note": null
+   }
+  },
+  {
+   "gid": 75,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "settings/page.tsx:324-325 name/avatar Edit button still a 'Fase 2' no-op onClick; settings/updateUser route exists (used for theme/language at :265) so wiring is possible.",
+   "needsQuestion": true,
+   "question": "Profile name/avatar Edit is still a no-op: wire it to settings/updateUser now, or hide the button until built?",
+   "options": [
+    "Wire name/avatar edit via updateUser",
+    "Hide Edit button until built"
+   ],
+   "mechanical": false,
+   "fix": "Wire an updateUser name/avatar path or hide the Edit button until built.",
+   "what": "Account profile name/avatar 'Edit' button is a no-op stub ('Fase 2') — no update route wired.",
+   "where": "src/workspaces/settings/page.tsx:249-250",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "naam/avatar-edit koppelen via updateUser",
+    "note": null
+   }
+  },
+  {
+   "gid": 76,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "settings/page.tsx:18 imports SSH_KEY_TO_USER from _data/seed; :61-62 resolves SSH keys against that hardcoded demo map, no per-account persistence.",
+   "needsQuestion": true,
+   "question": "Build a real per-account server-persisted SSH key store now, or keep the demo seed map for this release?",
+   "options": [
+    "Build persisted per-account SSH keys",
+    "Keep demo seed map for now"
+   ],
+   "mechanical": false,
+   "fix": "Persist SSH keys server-side per account; drop the demo seed mapping.",
+   "what": "SSH keys are resolved against a hardcoded seed map (SSH_KEY_TO_USER) and kept in local context only — not a real per-account persisted SSH key store.",
+   "where": "src/workspaces/settings/page.tsx:17,58-63,109",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Persistente per-account SSH-keys bouwen",
+    "note": "we willen niks meer seeden wat we wel deden voor de demo, nu zijn we het echte product aan het bouwen voor gebruik"
+   }
+  },
+  {
+   "gid": 85,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "workspaceSnapshot.ts:56 TRIGGER_ACTIONS = ['start-stage','invoke-workspace-ai','invoke-agent-role','run-command','emit-signal','notify'] — still omits 'webhook'; :58 asTriggerAction falls back to 'notify'",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add 'webhook' to the TRIGGER_ACTIONS array at workspaceSnapshot.ts:56",
+   "what": "'webhook' is omitted from the snapshot TRIGGER_ACTIONS narrowing array, so asTriggerAction('webhook') coerces to 'notify' — every saved webhook trigger is read back and DISPLAYED as a notify action, mislabeling it in the list.",
+   "where": "workspaceSnapshot.ts:56 (array omits 'webhook') + :58 (fallback 'notify'); the action still executes correctly off the raw DB row (executor.ts:64)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add 'webhook' to the TRIGGER_ACTIONS array at workspaceSnapshot.ts:56"
+   }
+  },
+  {
+   "gid": 86,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "opCatalog.ts:117 'trigger-save'/'trigger-toggle'/'trigger-run' = LATER and :256 'save-custom-task'/'run-custom-task' = LATER (not enabled/proposable); workspaceChat catalog uses catalogPromptLines so only 'enabled' ops surface",
+   "needsQuestion": true,
+   "question": "Enable trigger-save/save-custom-task ops for the Workspace-AI (respecting invariant #2 propose-only), or keep them LATER?",
+   "options": [
+    "Enable trigger/custom-task ops",
+    "Keep disabled (LATER)"
+   ],
+   "mechanical": false,
+   "fix": "Add a validated trigger-save / custom-task proposal shape (or a copilot-propose deep-link) so a chat like 'every morning have the interviewer suggest improvements and ping me' becomes an acceptable cron trigger",
+   "what": "The Workspace-AI cannot set up or run any automation/trigger/custom-task despite invariant #2 intending it to express via WorkspaceTrigger + existing verbs. The chat op-union is only bulk-move/assign/add-comment/create-ticket/create-content.",
+   "where": "workspaceChat.ts:48 (op-union) + validateChatAction 83-125",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "trigger/custom-task-ops inschakelen",
+    "note": null
+   }
+  },
+  {
+   "gid": 87,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "modules.ts:29-31 development.sections includes 'pipeline'+'scheduled'; content=['content','marketing'], design=['designer','interviewer'] — automation still unreachable for Content/Design",
+   "needsQuestion": true,
+   "question": "Give Content and Design modules an automation nav section (pipeline/scheduled), or keep automation Development-only by design?",
+   "options": [
+    "Add Automations to content/design",
+    "Keep Development-only"
+   ],
+   "mechanical": false,
+   "fix": "Add an 'Automations' nav section to the content/design module presets",
+   "what": "Triggers (pipeline) and Scheduled are gated to the Development module only, so Content and Design workspaces cannot reach automation at all — even though the scraper, content-ideator and studio agent-roles were built specifically for those users.",
+   "where": "modules.ts:29 (development.sections includes 'pipeline'+'scheduled'; content/design sections do not)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Automations toevoegen aan content/design",
+    "note": null
+   }
+  },
+  {
+   "gid": 88,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "AutomationPanel.tsx:19 ACTIONS = ['notify','emit-signal','start-stage','webhook'] — invoke-agent-role absent, so event triggers cannot invoke a role (only cron via scheduled)",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add 'invoke-agent-role' (with a role picker + params.role) to AutomationPanel's ACTIONS + create() form",
+   "what": "invoke-agent-role can only be attached to a CRON schedule (Scheduled page); it cannot be triggered by an event because AutomationPanel's action list excludes it.",
+   "where": "AutomationPanel.tsx:19 (ACTIONS = notify/emit-signal/start-stage/webhook)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add 'invoke-agent-role' (with a role picker + params.role) to AutomationPanel's ACTIONS + create() form"
+   }
+  },
+  {
+   "gid": 103,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "Multi-cap (label/periodWindow/enforcement, D81/D82) is still schema-only: conductor.ts:1161-1175 edit-budget updates a single findFirst row's cap+alertPct only (ignores label/enforcement/periodWindow); workspaceSnapshot.ts:342 reads only budgetRows[0] (spent/cap/alertPct). No multi-cap list/editor.",
+   "needsQuestion": true,
+   "question": "The WorkspaceBudget schema supports multiple caps (label/periodWindow/enforcement) but code uses one row. Implement multi-cap, or trim the schema to a single cap?",
+   "options": [
+    "Trim to the single cap actually used (drop label/periodWindow/multi-row)",
+    "Implement a multi-cap list + editor reading/writing all rows",
+    "Leave as-is (schema over-provisioned, single cap in practice)"
+   ],
+   "mechanical": false,
+   "fix": "Either implement the multi-cap editor + list, or trim the schema to the single cap actually used.",
+   "what": "Multi-cap design (label/periodWindow/enforcement, D81/D82) is schema-only: edit-budget writes a single findFirst row's cap+alertPct and ignores label/enforcement/periodWindow; snapshot reads only budgetRows[0].",
+   "where": "server/orchestrator/conductor.ts:1103-1108",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Een multi-cap-lijst + editor implementeren die alle rijen leest/schrijft",
+    "note": null
+   }
+  },
+  {
+   "gid": 111,
+   "cluster": "Workspace-AI (chat, copilot, AI-drives-UI)",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "WorkspacesProvider.tsx:852 chat is still useState<ChatMessage[]>(INITIAL_CHAT) — client-only; no WorkspaceChatMessage Prisma model exists (grep over *.prisma = no match) and chat is not read into workspaceSnapshot. History lost on reload, not cross-device.",
+   "needsQuestion": true,
+   "question": "Persist chat history? Requires a new chat-message model + snapshot read (adds a persisted entity). Worth building now or keep ephemeral?",
+   "options": [
+    "Add chat-message model + read into snapshot",
+    "Keep ephemeral client-only"
+   ],
+   "mechanical": false,
+   "fix": "Persist chat turns (a chat-message model + read into snapshot) so the conversation survives reload and is phone/desktop consistent.",
+   "what": "Chat is ephemeral client-only state — history is lost on reload/navigation and is not shared across the user's devices (no WorkspaceChatMessage model, not read into the snapshot).",
+   "where": "src/workspaces/_shell/WorkspacesProvider.tsx:795 (useState(INITIAL_CHAT))",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "chat-message-model toevoegen + inlezen in de snapshot",
+    "note": null
+   }
+  },
+  {
+   "gid": 112,
+   "cluster": "Workspace-AI (chat, copilot, AI-drives-UI)",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "interpretChat(prisma, workspaceId, message, projectId) (workspaceChat.ts:167) never receives prior turns; aiChat_v1.ts:19 data is only {workspaceId, message, projectId}. Still stateless per message.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add optional `history: {role,text}[]` to aiChat_v1 data (client sends last N of its chat array), thread it through interpretChat into systemPrompt as conversation history.",
+   "what": "interpretChat is stateless per message — it receives only `message`, never prior turns, so the AI cannot follow up ('do that for the other ticket too').",
+   "where": "server/ai/workspaceChat.ts:141 (interpretChat(prisma, workspaceId, message)) + aiChat_v1.ts:19 (data only {workspaceId, message})",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add optional `history: {role,text}[]` to aiChat_v1 data (client sends last N of its chat array), thread it through interpretChat into systemPrompt as conversation history."
+   }
+  },
+  {
+   "gid": 117,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "src/workspaces/_shell/Shell.tsx:201 `const presence = members.slice(0,3)` rendered at :248 under title `workspaces.shell.presenceViewing` — static first-3 roster, not live presence (real presence sync exists in WorkspacesProvider.tsx:797/803).",
+   "needsQuestion": true,
+   "question": "The 'who's viewing' header stack is a fake first-3-members roster. Wire it to the real presence sync, or drop the stack?",
+   "options": [
+    "Wire it to live presence (WorkspacesProvider presence sync)",
+    "Drop the header AvatarStack entirely"
+   ],
+   "mechanical": false,
+   "fix": "Feed the AvatarStack from the real presence context (presence userIds → members) or drop the header stack.",
+   "what": "Desktop Shell header 'who's viewing' AvatarStack is FAKE — it renders `members.slice(0,3)` (first three workspace members), not live presence, yet is labeled workspaces.shell.presenceViewing. Looks realtime but is a static roster.",
+   "where": "src/workspaces/_shell/Shell.tsx:200,243",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Koppelen aan live presence (WorkspacesProvider presence-sync)",
+    "note": null
+   }
+  },
+  {
+   "gid": 119,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "server/ultrasync/presence.ts — grep for aggregatePresence/resolvePresenceStatus/ViewPresence returns only the module itself + tests/unit/presence.test.mts; zero product callers, no relay wiring, no UI.",
+   "needsQuestion": true,
+   "question": "The active/idle/away presence engine (presence.ts) is written+tested but has zero callers. Wire it into the relay+nav badges, or delete it?",
+   "options": [
+    "Wire aggregatePresence into the presence relay + render per-view activeCount badges in the nav",
+    "Delete the module and its doc claim until built"
+   ],
+   "mechanical": false,
+   "fix": "Either wire aggregatePresence into the presence relay + render per-view activeCount badges in the nav, or delete the module and its doc claim until built.",
+   "what": "An entire documented presence feature (active/idle/away status + per-view active counts) is dead code — resolvePresenceStatus/aggregatePresence/ViewPresence are written+unit-tested but have zero product callers, no relay wiring, no UI, despite the header comment describing them as shipped.",
+   "where": "server/ultrasync/presence.ts (only importer is tests/unit/presence.test.mts)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "aggregatePresence koppelen aan de presence-relay + per-view activeCount-badges in de nav renderen",
+    "note": null
+   }
+  },
+  {
+   "gid": 120,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "src/workspaces/_shell/Shell.tsx:270 notification onClick is `() => { markNotificationRead(n.id); }` only; NotificationItem carries `deepLink` (types.ts:464) but it is never used to navigate.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "In the notification onClick, if `n.deepLink?.ticketId` call `openTicket(n.deepLink.ticketId)` (or `navigate(n.deepLink.view)`) then `markNotificationRead(n.id)` and close the popover.",
+   "what": "Clicking an in-app notification only marks it read; it never navigates to its deepLink even though deepLink { view:'board', ticketId:<key> } is produced by every producer and carried through the snapshot onto NotificationItem. The deep-link is a dead-end on the primary surface.",
+   "where": "src/workspaces/_shell/Shell.tsx:265",
+   "decision": {
+    "type": "mechanical",
+    "fix": "In the notification onClick, if `n.deepLink?.ticketId` call `openTicket(n.deepLink.ticketId)` (or `navigate(n.deepLink.view)`) then `markNotificationRead(n.id)` and close the popover."
+   }
+  },
+  {
+   "gid": 129,
+   "cluster": "Content pipeline core",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "workspaceSnapshot.ts:347 still queries contentProject with archived:false, so archived pieces never enter content.pieces; the Restore item ([pieceId]/page.tsx:435) is gated on piece.status==='archived' (a piece you can't navigate to), and archive sets the `archived` flag not status — no 'Archived' view exists.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add an 'Archived' filter/tab that fetches archived pieces (relax the snapshot archived:false filter or a dedicated read) with a Restore button firing content-unarchive; align the restore gate with the archived flag.",
+   "what": "Unarchive is unreachable AND archived pieces are filtered out of the snapshot, so there is no archived view to restore from even if a piece were archived.",
+   "where": "server/read/workspaceSnapshot.ts:339",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add an 'Archived' filter/tab that fetches archived pieces (relax the snapshot archived:false filter or a dedicated read) with a Restore button firing content-unarchive; align the restore gate with the archived flag."
+   }
+  },
+  {
+   "gid": 131,
+   "cluster": "Content pipeline core",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "UI half done: [pieceId]/page.tsx:231-240 publishedOn buttons + unpublish() handler (line 371-373) dispatch content-unpublish. Server half incomplete: conductor.ts:1724-1732 only flips PublishJob status to 'unpublished'; comment lines 1725-1726 confirm 'no platform delete adapter yet' — the live post is not removed.",
+   "needsQuestion": true,
+   "question": "content-unpublish only flips the DB flag and cannot delete the live post — build per-platform delete adapters, or ship it labelled 'mark as retracted'?",
+   "options": [
+    "Implement per-platform delete adapters",
+    "Label it 'mark as retracted' only",
+    "Leave server-side as-is"
+   ],
+   "mechanical": false,
+   "fix": "Add an Unpublish/Retract button on published assets dispatching content-unpublish, and implement per-platform delete adapters (or clearly label it 'mark as retracted').",
+   "what": "Users can publish from the asset card but cannot retract from the UI; and content-unpublish only flips the DB row — there is no per-platform delete adapter (flagged in-code conductor.ts:1539-1540), so 'unpublish' does not remove the live post.",
+   "where": "server/orchestrator/conductor.ts:1538-1547",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Per-platform delete-adapters implementeren",
+    "note": null
+   }
+  },
+  {
+   "gid": 143,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "Per-asset 'done' publishing IS now surfaced: workspaceSnapshot.ts:370-381 builds publishedByAsset (status 'done') → summary.publishedOn, which drives the unpublish control. But there is still no publishJobs[] on ContentSnapshot (397-419) and the honest stub/error/scheduled/unpublished statuses are never exposed — only the 'done' platforms show.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add publishJobs[] (status + platform + externalUrl + scheduledAt) to ContentSnapshot in workspaceSnapshot.ts and render status chips (done/stub/error/scheduled/unpublished) with an external link per asset.",
+   "what": "After publishing, the user cannot see whether a post succeeded (done), was a dummy (stub, no key), failed (error), is scheduled, or was unpublished — the honest per-job status the server records is fetched only to compute aggregate counts and never exposed as a list on ContentSnapshot.",
+   "where": "server/read/workspaceSnapshot.ts:344,388 (counts only); no publishJobs[] on ContentSnapshot",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add publishJobs[] (status + platform + externalUrl + scheduledAt) to ContentSnapshot in workspaceSnapshot.ts and render status chips (done/stub/error/scheduled/unpublished) with an external link per asset."
+   }
+  },
+  {
+   "gid": 146,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "settings/page.tsx:313 disconnectPlatform still sends {platform} with no accountId, and connectPlatform (319-321) sends only ws — so per-account tokens (__publish_<platform>_<accountId>) can be neither connected nor disconnected from the UI. Blocked on gap 140.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "After multi-account (gap 140) lands, render one row per connected account and pass its accountId to account-disconnect / the OAuth start URL.",
+   "what": "Disconnect only ever targets the DEFAULT account: the UI sends {platform} with no accountId, so per-account tokens (__publish_<platform>_<accountId>) can never be disconnected — they also can never be connected — from the UI.",
+   "where": "src/workspaces/content/settings/page.tsx:298-300",
+   "decision": {
+    "type": "mechanical",
+    "fix": "After multi-account (gap 140) lands, render one row per connected account and pass its accountId to account-disconnect / the OAuth start URL."
+   }
+  },
+  {
+   "gid": 155,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "Grep previewAssetUrl|previewKind|preview in settings/page.tsx = no matches; StyleManagerSection create form (settings/page.tsx:132-141) has no MediaUploadButton and style rows render no thumbnail. Schema/persistence carry it (ADR 0257) but no UI.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add a MediaUploadButton to the create-style form writing previewAssetUrl/previewKind, and render the thumbnail in the style rows.",
+   "what": "Style preview-asset (M1) is carried through schema/persistence/snapshot/export but has NO UI to attach one (zero preview* references in settings/page.tsx) and no thumbnail render — the intended visual style gallery (M4) is unfinished.",
+   "where": "src/workspaces/content/settings/page.tsx:96-143",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a MediaUploadButton to the create-style form writing previewAssetUrl/previewKind, and render the thumbnail in the style rows."
+   }
+  },
+  {
+   "gid": 156,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "retrieveChannelBrand (brandMemory.ts:27) still has NO server caller (only tests/docs). indexChannelBrand is still called on brand-voice save (conductor.ts:1266). ADR 0101 explicitly REJECTED wiring the RAG (direct buildBrandContext field-read is the path), but notes larger-doc RAG is a future item K3.",
+   "needsQuestion": true,
+   "question": "The indexChannelBrand write is still dead (retrieveChannelBrand unused; ADR 0101 rejected wiring it). Drop the wasted index call, or keep it for the planned K3 doc-RAG?",
+   "options": [
+    "Drop the indexChannelBrand call (conductor.ts:1266)",
+    "Keep it for future K3 RAG"
+   ],
+   "mechanical": false,
+   "fix": "Either wire retrieveChannelBrand into generation grounding (script.ts/image gen) for long brand corpora, or drop the indexChannelBrand call from content-edit-brand.",
+   "what": "indexChannelBrand writes per-channel brand-RAG rows on every brand-voice save, but retrieveChannelBrand has NO caller anywhere in server/** (only defined + referenced in tests/docs) — dead-wired wasted work. Output is unaffected because brandVoice reaches generation via the DIRECT field read in buildBrandContext.",
+   "where": "server/content/brandMemory.ts:16-29 (indexed) vs :27 (never retrieved)",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Behouden voor de toekomstige K3-RAG",
+    "note": "link maken zodat de RAG gebruikt kan worden dus simpel weg het werkend maken"
+   }
+  },
+  {
+   "gid": 157,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "StyleManagerSection (settings/page.tsx:120-130) still renders only a delete (trash) button per non-builtin style row; no edit/pencil affordance, create form is not pre-fillable — changing a style means retyping key+prompt (upsert-by-key).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add an edit (pencil) button per non-builtin style row that pre-fills the create form with the style's feature/key/label/prompt (mirror the channel-edit pattern already added).",
+   "what": "No dedicated EDIT affordance for a style — to change one you must retype the same key+prompt in the create form (upsert-by-key); list rows are text-only with no pre-fill.",
+   "where": "src/workspaces/content/settings/page.tsx:120-130",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add an edit (pencil) button per non-builtin style row that pre-fills the create form with the style's feature/key/label/prompt (mirror the channel-edit pattern already added)."
+   }
+  },
+  {
+   "gid": 162,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "partial",
+   "evidence": "The 5-op freeze is GONE: workspaceChat.ts:76 catalogPromptLines() + validateGenericAction expose the whole opCatalog.ts PROPOSE_CATALOG (~40 enabled ops). BUT studio/designer/interviewer GENERATION is still not proposable — no such ControlOp exists in opCatalog.ts (only content-* ops), so 'make me a brand + landing' via chat is impossible.",
+   "needsQuestion": true,
+   "question": "Expose studio/designer/interviewer generation to chat? It would need new verbs, conflicting with the FROZEN-verb invariant (#2).",
+   "options": [
+    "Keep frozen; use automation triggers only",
+    "Add propose-only generate verbs (amend invariant)"
+   ],
+   "mechanical": false,
+   "fix": "Add propose-only studio-generate / designer-generate-theme / run-interviewer chat actions (validated, still Conductor-executed to keep single-writer).",
+   "what": "Workspace-AI chat cannot propose ANY Studio/Designer/Brand/Interviewer generation — the op union is frozen to bulk-move|assign|add-comment|create-ticket|create-content. A phone user cannot say 'make me a brand + landing' and tap Accept; only user-configured automation triggers reach studio/designer roles.",
+   "where": "server/ai/workspaceChat.ts:48,111-123",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Propose-only generate-verbs toevoegen (invariant aanpassen)",
+    "note": null
+   }
+  },
+  {
+   "gid": 163,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "roles.ts:11-14 KINDS_FOR = {designer:[landing,component,brand], marketer:[copy,strategy,email,ads,social,names]} — thumbnail and videoScript are in neither, yet both are valid kinds (studio/page.tsx:234-235 renders them). No AI/automation path can generate them.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add 'thumbnail' and 'videoScript' to KINDS_FOR.marketer in server/studio/roles.ts.",
+   "what": "thumbnail and videoScript are omitted from the agent-role KINDS_FOR map, so no AI/automation path can generate them — they exist only as manual Studio buttons.",
+   "where": "server/studio/roles.ts:11-14",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add 'thumbnail' and 'videoScript' to KINDS_FOR.marketer in server/studio/roles.ts."
+   }
+  },
+  {
+   "gid": 164,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "brandExport_v1.ts + brandImport_v1.ts exist but grep for the route names finds ZERO client apiRequest callers (only route files + generated maps). exportBrandKit/importBrandKit are only called by conductor.ts:1713-1714 (copy-workspace-assets op) — the portable-JSON export/import is user-unreachable.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add Export + Import buttons to BrandPanel in studio/page.tsx calling workspaces/brandExport + workspaces/brandImport.",
+   "what": "brandExport_v1 and brandImport_v1 _api routes have ZERO callers — no UI button, not a control-op. (The underlying services exportBrandKit/importBrandKit are NOT dead — they are used by the cross-workspace-copy conductor op — but the portable-JSON export/import feature is unreachable to a user.)",
+   "where": "src/workspaces/_api/brandExport_v1.ts; brandImport_v1.ts; studio/page.tsx BrandPanel:452-489",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add Export + Import buttons to BrandPanel in studio/page.tsx calling workspaces/brandExport + workspaces/brandImport."
+   }
+  },
+  {
+   "gid": 165,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "modules.ts:30-31 content module = ['content','marketing'] (Studio lives under the marketing section), design module = ['designer','interviewer']. A Design-only workspace gets no brand-kit/landing generator (Studio) at all.",
+   "needsQuestion": true,
+   "question": "A Design-only workspace has no Studio (brand-kit/landing generator). Should visual/brand generation move under the Design module?",
+   "options": [
+    "Add 'marketing' to design module sections",
+    "Add a Studio section under design",
+    "Leave taxonomy as-is"
+   ],
+   "mechanical": false,
+   "fix": "Reconcile module membership so all visual/brand generation is reachable from the Design module (or expose a 'studio'/'marketing' section under design).",
+   "what": "Taxonomy split: Studio (landing/component/brand-kit generation + Brand Library) is reachable ONLY via the Marketing nav gated by the CONTENT module, while Designer/themes sits under the DESIGN module. A Design-only workspace has no brand-kit or landing generator at all.",
+   "where": "src/workspaces/_data/modules.ts:30-31",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Een Studio-sectie onder design toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 166,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "state.tsx:182-187 useInProject calls designerLibrary op 'save' THEN op 'setActive' in one action — persistence is coupled to activation. There is no save-only path, so you cannot keep several generated themes without activating one. Backend op 'save' exists independently (designerLibrary_v1.ts:33).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add a 'Save to library' affordance calling designerLibrary op 'save' only (no setActive), separate from the Use-in-project button.",
+   "what": "AI-generated & manually-edited non-seed themes/styles live in client state only; they persist only when the user clicks Use-in-project, which also ACTIVATES the artifact — persistence is coupled to activation, so you cannot keep several generated themes without activating one.",
+   "where": "src/workspaces/designer/state.tsx:134-144,152-161,170-190",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a 'Save to library' affordance calling designerLibrary op 'save' only (no setActive), separate from the Use-in-project button."
+   }
+  },
+  {
+   "gid": 167,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "medium",
+   "status": "open",
+   "evidence": "interviewer/page.tsx:51-69 ask() only calls workspaces/aiChat (returns a reply, never a finding); interviewFindings (page.tsx:85) are snapshot-fed from the scheduled agent-role. No on-demand 'generate findings' control exists on the page.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add a 'Generate ideas now' button that invokes the interviewer agent-role (via a trigger-run/invoke path) and refetches findings.",
+   "what": "Interviewer page shows a findings panel but no way to GENERATE findings — findings only appear via the separate Scheduled agent-role; the chat (ask → workspaces/aiChat) never creates findings.",
+   "where": "src/workspaces/interviewer/page.tsx:84-96,51-69",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a 'Generate ideas now' button that invokes the interviewer agent-role (via a trigger-run/invoke path) and refetches findings."
+   }
+  },
+  {
+   "gid": 6,
+   "cluster": "Board & tickets",
+   "severity": "low",
+   "status": "open",
+   "evidence": "page.tsx:63 'Add reference' onClick is still `/* Fase 2: attach a TicketReference */` dead no-op.",
+   "needsQuestion": true,
+   "question": "The board card 'Add reference' item is a dead no-op — remove it, or wire it to the ticket-detail artifact-link flow?",
+   "options": [
+    "Remove until built",
+    "Wire to artifact-link flow",
+    "Leave as-is"
+   ],
+   "mechanical": false,
+   "fix": "Either remove the item until built, or point it at the existing artifact-link flow used on the ticket detail page.",
+   "what": "Board card '⋯' menu 'Add reference' is a dead no-op button — no TicketReference-attach flow exists behind it.",
+   "where": "src/workspaces/page.tsx:63",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Koppelen aan de artifact-link-flow",
+    "note": null
+   }
+  },
+  {
+   "gid": 7,
+   "cluster": "Board & tickets",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "ticket-edit op fully wired (conductor.ts:654 case + controlApi.ts:25 op), and workspaceChat.ts:150 now falls through to validateGenericAction (X1 catalog); but opCatalog.ts:47 classifies 'ticket-edit' as LATER (mode:'later'), so it is NOT proposable until a client dispatcher lands.",
+   "needsQuestion": true,
+   "question": "Enable the AI to propose ticket-edit (title/description/priority/labels) now by flipping it from 'later' to 'enabled' + adding its client dispatcher?",
+   "options": [
+    "Yes, enable now",
+    "Keep deferred (later)"
+   ],
+   "mechanical": false,
+   "fix": "Add an 'edit-ticket' proposable action validated against existing ticket keys, routed to workspaces/ticketEdit (still Conductor-executed).",
+   "what": "Workspace-AI cannot propose editing a ticket's title/description/priority/labels — the chat action union is bulk-move/assign/add-comment/create-ticket/create-content only, so 'rename DEV-3 / bump its priority' is not AI-reachable.",
+   "where": "server/ai/workspaceChat.ts:48-56 (validateChatAction 83-125)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Ja, nu inschakelen",
+    "note": null
+   }
+  },
+  {
+   "gid": 8,
+   "cluster": "Board & tickets",
+   "severity": "low",
+   "status": "open",
+   "evidence": "page.tsx:8 still says 'Columns are derived from dummy data for now'; backlog/page.tsx:5 still says 'Dummy data; desktop-first.' though both render live snapshot rows.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Update the two header comments (page.tsx:8, backlog/page.tsx:5) to say the board/backlog render live snapshot rows.",
+   "what": "Stale header comments claim the board/backlog run on 'dummy data' though they render live snapshot rows — misleads future readers/AI.",
+   "where": "src/workspaces/page.tsx:8 (and backlog/page.tsx:5)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Update the two header comments (page.tsx:8, backlog/page.tsx:5) to say the board/backlog render live snapshot rows."
+   }
+  },
+  {
+   "gid": 9,
+   "cluster": "Board & tickets",
+   "severity": "low",
+   "status": "open",
+   "evidence": "page.tsx cardMenuItems (58-78) has no stage dropdown/DnD; manual stage move only via backlog select-mode or ticket-detail advance.",
+   "needsQuestion": true,
+   "question": "Add a per-card stage dropdown to the board '⋯' menu (reusing bulkMove) for a discoverable manual stage move, or keep stages AI-driven only?",
+   "options": [
+    "Add per-card stage move",
+    "Keep AI-driven only"
+   ],
+   "mechanical": false,
+   "fix": "Add a per-card stage dropdown in the ⋯ menu (reusing bulkMove) so a manual move is discoverable from the board.",
+   "what": "No drag-and-drop or per-card manual stage move on the kanban; manual override is only reachable via backlog select-mode or the ticket-detail advance button. Intentional (AI-driven stages) but low discoverability for a board-first user.",
+   "where": "src/workspaces/page.tsx (KanbanCard cardMenuItems 58-78)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Per-kaart stage-verplaatsing toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 19,
+   "cluster": "Agent runtime & live control",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "capacity.ts:148/157 activeCount/queueLength now consumed by obs/metrics.ts:26 (Prometheus), but no in-app meter — usage/page.tsx only shows historical per-provider turns",
+   "needsQuestion": true,
+   "question": "Surface a live '3/4 turns running · N queued' capacity meter in-app, and where?",
+   "options": [
+    "Shell header",
+    "Terminals header",
+    "Skip (metrics endpoint is enough)"
+   ],
+   "mechanical": false,
+   "fix": "Expose a small capacity/queue meter in the shell or Terminals header from the snapshot.",
+   "what": "activeCount()/queueLength() are computed for observability but never surfaced — the user can't see '3/4 turns running, 2 queued', only a per-ticket wait banner.",
+   "where": "server/orchestrator/capacity.ts (activeCount/queueLength, no consumer)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Shell-header",
+    "note": "ook op de tickets zelf is info zoals dit handig en misshcien nog andere info"
+   }
+  },
+  {
+   "gid": 20,
+   "cluster": "Agent runtime & live control",
+   "severity": "low",
+   "status": "open",
+   "evidence": "stageRunner.ts:116 still buf.text=(buf.text+d).slice(-8000) for handshake detection only; no tee to a ws-term:out channel keyed by ticket",
+   "needsQuestion": true,
+   "question": "Build a 'Live agent' transcript view by teeing the container turn's PTY stream to a ws-term channel keyed by ticket?",
+   "options": [
+    "Yes, build live tail",
+    "Skip"
+   ],
+   "mechanical": false,
+   "fix": "Optionally tee the buffered PTY stream to a ws-term:out channel keyed by ticket so a 'Live agent' view can tail the turn.",
+   "what": "The container turn's live PTY output is drained and discarded (only the last ~8KB kept for handshake detection), so there is no way to watch an autonomous turn stream — the Terminals page only offers a bare shell, not the agent's live transcript.",
+   "where": "server/orchestrator/stageRunner.ts:116",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Ja, live tail bouwen",
+    "note": null
+   }
+  },
+  {
+   "gid": 28,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/workspaces/workspace/page.tsx:349 baseUrl default still hardcoded off the slug: activeWorkspace.slug==='youcomm-core' ? 'https://gitlab.youcomm.nl' : 'https://gitlab.com'.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Default the baseUrl from the stored forge/gitlab URL, or leave it blank with a placeholder, instead of branching on the workspace slug.",
+   "what": "GitLab baseUrl default is hardcoded off the workspace slug ('youcomm-core' -> gitlab.youcomm.nl, else gitlab.com).",
+   "where": "src/workspaces/workspace/page.tsx:349",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Default the baseUrl from the stored forge/gitlab URL, or leave it blank with a placeholder, instead of branching on the workspace slug."
+   }
+  },
+  {
+   "gid": 29,
+   "cluster": "Repo & git / GitLab / forge / time-travel",
+   "severity": "low",
+   "status": "open",
+   "evidence": "server/ai/opCatalog.ts:87,89 mark both 'gitlab-resync' and 'save-git-config' as LATER (not catalog-enabled), so neither is AI-proposable; only bulk-move/assign/add-comment/create-ticket/create-content + the 'enabled' catalog ops are.",
+   "needsQuestion": true,
+   "question": "Enable gitlab-resync and/or save-git-config as AI-proposable accept-to-run ops (flip LATER→enabled in opCatalog), or keep them UI-only?",
+   "options": [
+    "Enable both",
+    "Enable gitlab-resync only",
+    "Keep UI-only"
+   ],
+   "mechanical": false,
+   "fix": "Optional: add save-git-config and gitlab-resync to the proposable-op set as accept-to-run cards (single-writer preserved).",
+   "what": "AI cannot propose branch-strategy/push-policy changes or an on-demand issue resync — the propose-whitelist is bulk-move/assign/add-comment/create-ticket/create-content only.",
+   "where": "server/ai/workspaceChat.ts:48",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Beide inschakelen",
+    "note": null
+   }
+  },
+  {
+   "gid": 37,
+   "cluster": "Code editor & preview",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "closePreview defined in WorkspacesProvider.tsx:1253 + Context type :226, but grep '.closePreview(' finds no UI caller and conductor.ts has no closePreview case; only implicit teardown.",
+   "needsQuestion": true,
+   "question": "Add a 'Stop preview' button in TicketControls calling ctx.closePreview, or drop the unused closePreview route/method + preview-down op?",
+   "options": [
+    "Add Stop-preview button",
+    "Drop unused route/method"
+   ],
+   "mechanical": false,
+   "fix": "Add a 'Stop preview' button in TicketControls that calls ctx.closePreview, or drop the unused route/method + preview-down op.",
+   "what": "closePreview is fully coded (closePreview_v1 route + context method) but has zero UI trigger and no conductor case — unreachable. Route cleanup only happens implicitly on container teardown.",
+   "where": "src/workspaces/_shell/WorkspacesProvider.tsx:1094 (only definition; grep '.closePreview(' has no caller)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Stop-preview-knop toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 38,
+   "cluster": "Code editor & preview",
+   "severity": "low",
+   "status": "open",
+   "evidence": "Preview still opens a new browser tab: board/[ticketId]/page.tsx:227 and :237 both call globalThis.open(res.url, '_blank'); no in-app iframe or Start/Stop lifecycle control.",
+   "needsQuestion": true,
+   "question": "Build an inline responsive preview iframe with Start/Stop/Reload controls, or keep opening the preview in a new browser tab?",
+   "options": [
+    "Inline iframe with lifecycle controls",
+    "Keep new-tab open"
+   ],
+   "mechanical": false,
+   "fix": "Offer an inline responsive preview iframe (reuse the VsCodeEmbed shell) with visible Start/Stop/Reload controls wired to openPreview/closePreview.",
+   "what": "Preview opens in a new browser tab (globalThis.open) rather than an in-app iframe/split view; combined with no in-app close there is no preview lifecycle affordance for a phone-first user.",
+   "where": "src/workspaces/board/[ticketId]/page.tsx:196",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Inline iframe met lifecycle-controls",
+    "note": "bijde opties als het kan dus dat de user kan kiezen"
+   }
+  },
+  {
+   "gid": 39,
+   "cluster": "Code editor & preview",
+   "severity": "low",
+   "status": "open",
+   "evidence": "On preview failure page.tsx:270 shows only generic 'workspaces.ticket.previewFailed' text; dev-command setting lives in workspace settings (repo-gated) with no inline pointer from the failure.",
+   "needsQuestion": true,
+   "question": "On a preview.notReady/notActivated failure, surface an inline card linking to the dev-command setting (and let the AI offer to set devCommand)?",
+   "options": [
+    "Add actionable dev-command pointer on failure",
+    "Leave generic error text"
+   ],
+   "mechanical": false,
+   "fix": "On a preview failure surface an actionable inline card linking to the dev-command setting (and let the AI offer to set devCommand).",
+   "what": "DevCommandCard only renders when a repo is linked (repo.linked) and is buried in workspace settings; a user whose preview fails with preview.notReady/notActivated gets no pointer to set the dev command.",
+   "where": "src/workspaces/workspace/page.tsx:651",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Bij fout een actionable dev-command-verwijzing toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 45,
+   "cluster": "Docker images, services & databases",
+   "severity": "low",
+   "status": "open",
+   "evidence": "types.ts:143-147 ProjectSummary is still { id; name; gitUrl? } only — no baseImageRef/dockerfilePath/last-build; workspaceSnapshot.ts has no baseImageRef in the ProjectSummary map. Build result stays a transient toast (page.tsx:581).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add baseImageRef + last-build status to ProjectSummary (types.ts) and populate from Project.baseImageRef in workspaceSnapshot.ts, then render it in the Dockerfile card.",
+   "what": "Built image tag / baseImageRef and build status survive nowhere the user can see: ProjectSummary exposes only id/name/gitUrl, so after reload the user cannot tell whether/what image is built (build result is a transient toast).",
+   "where": "server/read/workspaceSnapshot.ts:416 (ProjectSummary omits baseImageRef/dockerfilePath/stack)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add baseImageRef + last-build status to ProjectSummary (types.ts) and populate from Project.baseImageRef in workspaceSnapshot.ts, then render it in the Dockerfile card."
+   }
+  },
+  {
+   "gid": 46,
+   "cluster": "Docker images, services & databases",
+   "severity": "low",
+   "status": "open",
+   "evidence": "server/db/migrate.ts:13 still `process.env.WS_BASE_IMAGE ?? 'workspaces/base:latest'` while dockerfileGen.ts:17 and imageBuild use the 0.1.0 fallback.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Change the migrate.ts BASE_IMAGE fallback from 'workspaces/base:latest' to 'workspaces/base:0.1.0' to match the rest of the system.",
+   "what": "Migration-runner base image defaults to workspaces/base:latest while the rest of the system (dockerfileGen.ts:15, imageBuild) uses workspaces/base:0.1.0; the 'latest' tag may not exist on the host.",
+   "where": "server/db/migrate.ts:13",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Change the migrate.ts BASE_IMAGE fallback from 'workspaces/base:latest' to 'workspaces/base:0.1.0' to match the rest of the system."
+   }
+  },
+  {
+   "gid": 63,
+   "cluster": "Deploy & environments (LIVE-deferred)",
+   "severity": "low",
+   "status": "open",
+   "evidence": "settings/page.tsx:362 & :385 filter environments on e.serviceId === undefined only; no per-service env sub-list, though deployEnv/env-deploy accept serviceId (opCatalog.ts:138).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "When the active project has services, render a per-service environments sub-list passing serviceId through deployEnv/promoteEnv.",
+   "what": "Per-service environments are supported through the whole chain (serviceId on env-deploy/ensureEnvironment/promote) but the UI only reads envs where serviceId===undefined, so multi-service projects can't deploy individual services.",
+   "where": "src/workspaces/settings/page.tsx:280",
+   "decision": {
+    "type": "mechanical",
+    "fix": "When the active project has services, render a per-service environments sub-list passing serviceId through deployEnv/promoteEnv."
+   }
+  },
+  {
+   "gid": 64,
+   "cluster": "Deploy & environments (LIVE-deferred)",
+   "severity": "low",
+   "status": "open",
+   "evidence": "buildExport.ts:112-114 reads deploy-hook target/token only from WS_DEPLOY_WEBHOOK_URL/TOKEN; settings/page.tsx:413-417 renders build-artifact status/error but never surfaces the returned deployHook (buildExport.ts:27-28,54).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add a Deploy-hook settings field (save-env style) + surface deployHook.fired/ok/status on the build-artifact row.",
+   "what": "The deploy-hook target/token are settable only via env vars (WS_DEPLOY_WEBHOOK_URL/WS_DEPLOY_WEBHOOK_TOKEN); there is no UI to configure or test it, and the export UI gives no feedback on whether a hook fired/succeeded (deployHook result is returned from buildExport but never surfaced).",
+   "where": "server/deploy/buildExport.ts:112-114; src/workspaces/settings/page.tsx (no deploy-hook field, no deployHook display)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a Deploy-hook settings field (save-env style) + surface deployHook.fired/ok/status on the build-artifact row."
+   }
+  },
+  {
+   "gid": 67,
+   "cluster": "RAG, sources & knowledge graph",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/workspaces/sources/page.tsx:5 header comment still reads 'Dummy data; desktop-first.' while docs/skills come from useWorkspaces() snapshot (InfoSource rows), e.g. line 148",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Edit the page.tsx:5 header comment: replace 'Dummy data; desktop-first.' with a note that docs/skills come from InfoSource rows via the workspace realtime snapshot (desktop-first).",
+   "what": "Stale header comment claims the Sources page uses 'Dummy data; desktop-first', but docs/skills are actually DB-backed via the realtime snapshot. Misleads any future reader into thinking the page is a prototype.",
+   "where": "src/workspaces/sources/page.tsx:5",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Edit the page.tsx:5 header comment: replace 'Dummy data; desktop-first.' with a note that docs/skills come from InfoSource rows via the workspace realtime snapshot (desktop-first)."
+   }
+  },
+  {
+   "gid": 77,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "low",
+   "status": "open",
+   "evidence": "workspaceSnapshot.ts:523 invites still map to sent:'pending' literal; inv.createdAt/expiresAt not surfaced in InviteEntry.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Map inv.createdAt/expiresAt into InviteEntry and render a real sent time + 'expires in Nd' in the invites tab.",
+   "what": "Pending invites render a literal 'pending' instead of a real sent time, and the 7-day expiry is never shown.",
+   "where": "server/read/workspaceSnapshot.ts:495 (sent:'pending') + src/workspaces/workspace/page.tsx invites tab",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Map inv.createdAt/expiresAt into InviteEntry and render a real sent time + 'expires in Nd' in the invites tab."
+   }
+  },
+  {
+   "gid": 78,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "low",
+   "status": "open",
+   "evidence": "conductor.ts:603-608 rename-workspace does prisma.workspace.update but never calls recordAudit.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Add recordAudit(prisma, action.workspaceId, userId, 'rename-workspace', name) after the update.",
+   "what": "rename-workspace does not call recordAudit, so name changes are invisible in the audit trail.",
+   "where": "server/orchestrator/conductor.ts:568-573",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add recordAudit(prisma, action.workspaceId, userId, 'rename-workspace', name) after the update."
+   }
+  },
+  {
+   "gid": 80,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "conductor.ts:770-775 delete-workspace records the audit into the tenant right before cascadeDeleteWorkspace; comment still notes the row is wiped with the workspace (no out-of-tenant sink).",
+   "needsQuestion": true,
+   "question": "Persist the delete-workspace audit to a global/out-of-tenant sink so it survives the cascade — introduce one, or accept the loss?",
+   "options": [
+    "Add a global audit sink for lifecycle events",
+    "Accept that the delete record is wiped"
+   ],
+   "mechanical": false,
+   "fix": "Write the delete-workspace audit to a global/out-of-tenant sink so it persists.",
+   "what": "delete-workspace audit row is written into the tenant that is immediately cascade-deleted (self-noted), so the deletion record does not survive.",
+   "where": "server/orchestrator/conductor.ts:731-736",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Een globale audit-sink voor lifecycle-events toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 81,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "Read path is now safe: geminiApi.ts:64-65 parses geminiTemperature and clamps Math.min(2,Math.max(0,...)). But conductor.ts:948 still stores it as a raw str() with no validation and the UI uses a text input.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Clamp/validate geminiTemperature to numeric 0.0-2.0 at conductor.ts:948 before persist and use a number input in the temp field.",
+   "what": "geminiTemperature is stored via str() with no numeric validation/clamp; a non-numeric or out-of-range value is persisted as a string.",
+   "where": "src/workspaces/workspace/page.tsx (temp input) + server/orchestrator/conductor.ts:884-893",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Clamp/validate geminiTemperature to numeric 0.0-2.0 at conductor.ts:948 before persist and use a number input in the temp field."
+   }
+  },
+  {
+   "gid": 82,
+   "cluster": "Settings, RBAC, members, audit & export",
+   "severity": "low",
+   "status": "open",
+   "evidence": "workspace/page.tsx:774/872-874 AiBehaviorTab renders each PROVIDER_FEATURES id via <span>{f}</span> — raw slugs (docs-generate, studio-marketer, plan-critique), no i18n label/description.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Map each PROVIDER_FEATURES id to an i18n translate() label + one-line description instead of rendering the raw slug.",
+   "what": "save-ai-provider feature rows render raw internal slugs (docs-generate, studio-marketer, plan-critique) instead of translated human labels, so a non-expert cannot tell what each toggle controls.",
+   "where": "src/workspaces/workspace/page.tsx (AiBehaviorTab provider rows, ~856-864)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Map each PROVIDER_FEATURES id to an i18n translate() label + one-line description instead of rendering the raw slug."
+   }
+  },
+  {
+   "gid": 90,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "executor.ts switch (72-128) has no case for 'run-command' or 'invoke-workspace-ai' → default noop 'unknown-action'; triggers.ts:59 also skips run-command; both still listed in workspaceSnapshot.ts:56 TRIGGER_ACTIONS",
+   "needsQuestion": true,
+   "question": "Implement operator-gated executors for run-command/invoke-workspace-ai, or drop them from the type union + snapshot list?",
+   "options": [
+    "Implement gated executors",
+    "Drop from union/list"
+   ],
+   "mechanical": false,
+   "fix": "Implement operator-gated executors or drop the dead 'run-command'/'invoke-workspace-ai' from the type union + snapshot list",
+   "what": "Two declared trigger actions have no implementation: run-command (executor default noop, triggers.ts:59 skips it) AND invoke-workspace-ai (also no executor case) — the latter was missed by the first-pass scan. Both are surfaced in the snapshot action-narrowing list.",
+   "where": "executor.ts:51-107 (no case for either); workspaceSnapshot.ts:56 lists both; types.ts:849/851",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Gated executors implementeren",
+    "note": null
+   }
+  },
+  {
+   "gid": 91,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "AutomationPanel.tsx:53-62 create() sets only params (title/body/kind/targetStageId/url); no UI for match stageIds/statusKeys/projectIds, debounceMs or dedupeKey — matcher triggers.ts:34-49 supports them all",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add optional 'only for stages X / status Y' + debounce fields to AutomationPanel's create form, saved into trigger.match/debounceMs",
+   "what": "No UI to set a trigger's match facets (stageIds/statusKeys/projectIds), debounceMs or dedupeKey — all implemented in the engine but every UI-created trigger matches ANY event of its kind.",
+   "where": "AutomationPanel.tsx:53-62 sets only params; matcher triggers.ts:34-49 supports the facets",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add optional 'only for stages X / status Y' + debounce fields to AutomationPanel's create form, saved into trigger.match/debounceMs"
+   }
+  },
+  {
+   "gid": 92,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "workspace/page.tsx:850 runCustomTask(t.id) called with no vars; provider runCustomTask(taskId, vars?) (WorkspacesProvider.tsx:1214) accepts vars; customTask.ts renders {{var}} placeholders → they render empty",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Prompt for the task's {{vars}} (e.g. menuHandler.confirm input) before calling runCustomTask(t.id, vars) at workspace/page.tsx:850",
+   "what": "Custom tasks support {{var}} placeholders (customTask.ts:12), and the run op accepts a vars map (conductor.ts:1498), but the UI runs tasks with no vars, so any templated task renders its placeholders empty.",
+   "where": "workspace/page.tsx:834 (runCustomTask(t.id) with no vars)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Prompt for the task's {{vars}} (e.g. menuHandler.confirm input) before calling runCustomTask(t.id, vars) at workspace/page.tsx:850"
+   }
+  },
+  {
+   "gid": 93,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "AutomationPanel.tsx:97 onClick deleteTrigger(t.id) with no confirm; scheduled/page.tsx:78 deleteTrigger(t.id) also no confirm — menuHandler.confirm is used elsewhere (backlog/page.tsx:289)",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Wrap both deleteTrigger calls in menuHandler.confirm({ title, content }) before deleting",
+   "what": "Trigger delete has no confirmation dialog on either surface (menuHandler.confirm exists in the design system) — one mis-tap destroys a trigger.",
+   "where": "AutomationPanel.tsx:97 + scheduled/page.tsx:78",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Wrap both deleteTrigger calls in menuHandler.confirm({ title, content }) before deleting"
+   }
+  },
+  {
+   "gid": 94,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "scheduled/page.tsx:76 exposes runTrigger(t.id) 'Run now'; AutomationPanel.tsx has no runTrigger call — event trigger cannot be test-fired from its editor",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add a 'Run now' button calling runTrigger(t.id) to AutomationPanel rows",
+   "what": "Run-now is exposed only on the Scheduled page, not on AutomationPanel — an event trigger cannot be test-fired from its own editor.",
+   "where": "scheduled/page.tsx:76 (runTrigger) vs AutomationPanel.tsx (no runTrigger call)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a 'Run now' button calling runTrigger(t.id) to AutomationPanel rows"
+   }
+  },
+  {
+   "gid": 95,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "AutomationPanel.tsx:57 params.kind = title||'custom', but the title input (line 126) only renders when action==='notify' — for emit-signal there is no labeled field/help at all",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add a labeled 'signal kind' input + one-line explanation shown when action==='emit-signal'",
+   "what": "emit-signal reuses the notify 'title' input as the signal 'kind' with no dedicated label/help — a non-expert cannot tell what a signal is or does.",
+   "where": "AutomationPanel.tsx:57 (params.kind = title)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a labeled 'signal kind' input + one-line explanation shown when action==='emit-signal'"
+   }
+  },
+  {
+   "gid": 96,
+   "cluster": "Triggers, automation & custom tasks",
+   "severity": "low",
+   "status": "open",
+   "evidence": "de.json:1520 and fr.json:1520 runNow still 'Run now' (English); nl.json:1520 = 'Nu draaien'",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Translate scheduled.runNow for de/fr in src/_locales/de.json:1520 + fr.json:1520",
+   "what": "scheduled.runNow is untranslated in de and fr (still English 'Run now'); nl is translated ('Nu draaien').",
+   "where": "src/_locales/de.json:1394 + fr.json:1394",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Translate scheduled.runNow for de/fr in src/_locales/de.json:1520 + fr.json:1520"
+   }
+  },
+  {
+   "gid": 105,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "low",
+   "status": "open",
+   "evidence": "server/orchestrator/capacity.ts:148-160 exports activeCount()/queueLength() and MAX_CONCURRENT_TURNS is WS_MAX_CONCURRENT_TURNS env-only (line 16-17), but they are consumed only by obs/metrics.ts (Prometheus). workspaceSnapshot.ts does not emit activeCount/queueLength, and no board component shows 'N running / M queued'. No user-facing capacity surface.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add activeCount(now)+queueLength() to the workspace snapshot (capacity section) and render a small busy/queued chip on the board header.",
+   "what": "No user-facing capacity surface: activeCount/queueLength are not in the snapshot and the concurrency cap is env-only, so a user cannot see 'N running / M queued' or adjust the cap.",
+   "where": "server/orchestrator/capacity.ts:148-160",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add activeCount(now)+queueLength() to the workspace snapshot (capacity section) and render a small busy/queued chip on the board header."
+   }
+  },
+  {
+   "gid": 106,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "workspaceSnapshot.ts:342 still hard-labels the token budget currency: '€', and usage/page.tsx:47 shows `€${spent} / €${cap}`. Now framed intentionally as an 'AI/token €-budget' (page comment) — meaningful for metered Gemini but still 0 + misleading € on the Claude Max subscription. Coupled to gid 99's product-truth decision.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Resolve alongside gid 99: if token-volume reframe, drop the '€' label / switch to a token unit; if €-budget kept, gate the € display to when a metered price is actually set.",
+   "what": "Snapshot labels the token budget currency as '€' though it is token/subscription based and cost is always 0 — a misleading unit.",
+   "where": "server/read/workspaceSnapshot.ts:334",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Resolve alongside gid 99: if token-volume reframe, drop the '€' label / switch to a token unit; if €-budget kept, gate the € display to when a metered price is actually set."
+   }
+  },
+  {
+   "gid": 107,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/workspaces/usage/page.tsx:4 header intent comment still ends 'Dummy data.' although the page renders real aggregateUsage/aggregateByAi output (usage.byTicket/byAi/activity + budget from the snapshot).",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Edit the page.tsx:1-4 intent comment: replace 'Dummy data.' with a note that data comes from the real SpendRecord aggregate (aggregateUsage).",
+   "what": "Stale header comment claims 'Dummy data' though the page now renders real aggregateUsage output — misleads maintainers.",
+   "where": "src/workspaces/usage/page.tsx:4",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Edit the page.tsx:1-4 intent comment: replace 'Dummy data.' with a note that data comes from the real SpendRecord aggregate (aggregateUsage)."
+   }
+  },
+  {
+   "gid": 108,
+   "cluster": "Spend, budgets & capacity",
+   "severity": "low",
+   "status": "open",
+   "evidence": "The media €-budget editor still lives only in the Content-module settings: src/workspaces/content/settings/page.tsx:307-323 (content.mediaBudget + editMediaBudget), reached via Content nav which is module-gated. A Dev-only workspace that triggers media generation would have no budget surface.",
+   "needsQuestion": true,
+   "question": "Is media generation reachable in a Dev-only (Content-module-off) workspace? If yes the media €-budget UI must move to a shared settings location.",
+   "options": [
+    "Media is impossible without the Content module — leave the budget UI Content-gated (close as intended)",
+    "Media is possible in Dev-only — surface the media €-budget in a shared/global settings location",
+    "Enable the Content module implicitly whenever media is used"
+   ],
+   "mechanical": false,
+   "fix": "Confirm media generation is impossible outside the Content module; if it is possible, surface the €-budget in a shared settings location.",
+   "what": "Media budget UI + summary are only visible when the Content module is enabled (module-gated), so a Dev-only workspace using media has no budget surface.",
+   "where": "src/workspaces/content/settings/page.tsx",
+   "decision": {
+    "type": "choice",
+    "choice": "B",
+    "label": "Media is mogelijk in Dev-only — de media-€-budget in een gedeelde/globale instellingenlocatie tonen",
+    "note": null
+   }
+  },
+  {
+   "gid": 113,
+   "cluster": "Workspace-AI (chat, copilot, AI-drives-UI)",
+   "severity": "low",
+   "status": "open",
+   "evidence": "opCatalog.ts:268 marks preview-up (and preview-down) EXCLUDED as a 'dead op (preview runs via openPreview _api) — COMPLETION A5 decides its fate'; workspaceChat.ts:78 still forces action=null for time-travel, so the AI can only describe, not launch, a preview.",
+   "needsQuestion": true,
+   "question": "Time-travel preview is describe-only. preview-up is flagged dead (preview runs via openPreview _api). Make it AI-proposable, or leave describe-only?",
+   "options": [
+    "Enable preview-up in the op-catalog so preview is one-tap",
+    "Leave describe-only (preview stays a ticket control)"
+   ],
+   "mechanical": false,
+   "fix": "Add preview-up as a proposable op (part of the op-catalog fix) so 'preview main without commit X' becomes one-tap.",
+   "what": "The AI can only describe time-travel preview, not launch it, even though preview-up/preview-down are real ops.",
+   "where": "server/ai/workspaceChat.ts:57 (prompt forces action=null) + server/control/rbac.ts:182-183 (ops exist, not in AI set)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "preview-up inschakelen in de op-catalogus zodat preview one-tap is",
+    "note": null
+   }
+  },
+  {
+   "gid": 114,
+   "cluster": "Workspace-AI (chat, copilot, AI-drives-UI)",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "interpretChat wires both retrieve (workspaceChat.ts:174) and retrieveProductKnowledge (workspaceChat.ts:180), both best-effort/empty until indexed; code is present and correct. Grounding proof needs a scan-indexed workspace repo.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": false,
+   "fix": "Deferred-OK: code wired, no change needed; verify grounding live once a workspace repo is scan-indexed.",
+   "what": "Grounding quality depends on the shared RAG index being populated (a live/indexed repo + product-knowledge corpus) — code is present but proof needs an indexed workspace.",
+   "where": "server/ai/workspaceChat.ts:146,152 (retrieve / retrieveProductKnowledge, both best-effort empty)",
+   "decision": null
+  },
+  {
+   "gid": 121,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "low",
+   "status": "open",
+   "evidence": "Push url still hardcoded '/': conductor.ts:354, watchdog.ts:163, executor.ts:81 & :122 — each sets `url: '/'` despite a `tag: ticket-<key>`.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Set url to a deep path (e.g. `/?ticket=${ticketKey}`) in the four producers so sw.js notificationclick lands on the ticket; ensure the app reads the `?ticket=` param on load.",
+   "what": "Every producer hardcodes the OS push url to '/' even though a tag: ticket-<key> is set — tapping a push always opens the app root, never the referenced ticket.",
+   "where": "server/orchestrator/conductor.ts:351; server/automation/executor.ts:61,101; server/orchestrator/watchdog.ts:163",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Set url to a deep path (e.g. `/?ticket=${ticketKey}`) in the four producers so sw.js notificationclick lands on the ticket; ensure the app reads the `?ticket=` param on load."
+   }
+  },
+  {
+   "gid": 122,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/workspaces/settings/page.tsx:228 `const [push, setPush] = useState(false)` with no mount effect; togglePush (:231) only sets it on user action — never reconciled with pushManager.getSubscription().",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Add a mount useEffect that reads `navigator.serviceWorker.ready → pushManager.getSubscription()` and `setPush(!!sub)` (pushSubscribe.ts already has the getSubscription pattern).",
+   "what": "The settings push Toggle initializes to false on every mount and is never reconciled with pushManager.getSubscription(); a user who already enabled push sees the toggle OFF after reload.",
+   "where": "src/workspaces/settings/page.tsx:159",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Add a mount useEffect that reads `navigator.serviceWorker.ready → pushManager.getSubscription()` and `setPush(!!sub)` (pushSubscribe.ts already has the getSubscription pattern)."
+   }
+  },
+  {
+   "gid": 123,
+   "cluster": "Notifications, realtime, presence & PWA push",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/main.tsx:202-204 registers the SW only; grep for beforeinstallprompt in src/ returns zero matches — no install affordance.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "Capture the `beforeinstallprompt` event (preventDefault + stash it) and surface an 'Install Workspaces' button in settings or MobileChrome that calls the stashed prompt.",
+   "what": "No in-app 'Install app / Add to home screen' affordance or beforeinstallprompt handling — installability relies on the browser's native menu, which most phone-first users won't discover.",
+   "where": "src/main.tsx (SW register only; no install-prompt UI)",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Capture the `beforeinstallprompt` event (preventDefault + stash it) and surface an 'Install Workspaces' button in settings or MobileChrome that calls the stashed prompt."
+   }
+  },
+  {
+   "gid": 132,
+   "cluster": "Content pipeline core",
+   "severity": "low",
+   "status": "partial",
+   "evidence": "contentControl_server_v1.ts:18-24 allowlist; of the drifted ops, content-advance ([pieceId]/page.tsx:459), content-archive (436), content-unarchive (435) and content-unpublish (372) are now client-sent — only content-create is still never dispatched (grep: no client producer, tied to gap 126).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "content-create is the only remaining unsent op; wiring it is covered by gap 126's in-project 'add piece' path — otherwise drop it from the allowlist.",
+   "what": "The contentControl sync allowlist accepts content-create/advance/archive/unarchive/unpublish but no client code ever sends them — the advertised surface and the reachable feature-set have drifted.",
+   "where": "src/workspaces/_sync/contentControl_server_v1.ts:18-24",
+   "decision": {
+    "type": "mechanical",
+    "fix": "content-create is the only remaining unsent op; wiring it is covered by gap 126's in-project 'add piece' path — otherwise drop it from the allowlist."
+   }
+  },
+  {
+   "gid": 137,
+   "cluster": "Content generation (script/voice/image/video/3d/audio)",
+   "severity": "low",
+   "status": "open",
+   "evidence": "shortForm.ts:37 unconditionally calls stubHook(args.prompt) (word-slice at :22-27); no provider/AiFeature branch even when keys present, so hook/captions are always placeholder.",
+   "needsQuestion": false,
+   "question": null,
+   "options": [],
+   "mechanical": true,
+   "fix": "In generateShortForm, generate hook+captions via the 'script' AiFeature (runAiCompletion) when a provider is available, falling back to stubHook on failure/no-key.",
+   "what": "Short-form hook + captions are always derived by a naive word-slice stub, never AI-generated even when keys are present, so live short-form clips ship placeholder hook text.",
+   "where": "server/content/shortForm.ts:22-27 (stubHook always used) + :37",
+   "decision": {
+    "type": "mechanical",
+    "fix": "In generateShortForm, generate hook+captions via the 'script' AiFeature (runAiCompletion) when a provider is available, falling back to stubHook on failure/no-key."
+   }
+  },
+  {
+   "gid": 147,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "low",
+   "status": "open",
+   "evidence": "Inconsistency persists: settings/page.tsx:23-26 PUBLISH_PLATFORMS (connect list) = youtube/tiktok only, while :244 CHANNEL_PLATFORMS still includes instagram, linkedin, none in the channel-create dropdown.",
+   "needsQuestion": true,
+   "question": "IG/LinkedIn appear in the channel-create dropdown but not the connect list. Hide them until built, or show a disabled 'coming soon' row?",
+   "options": [
+    "Hide IG/LinkedIn everywhere",
+    "Show disabled 'coming soon' rows"
+   ],
+   "mechanical": false,
+   "fix": "Either hide IG/LinkedIn consistently or show a disabled 'coming soon' row so the roadmap reads the same everywhere.",
+   "what": "Only YouTube+TikTok have builders; Instagram/LinkedIn are future-ready (publish records an 'error' job 'platform.notBuilt') and are omitted from the settings connect list but PRESENT in the channel-create platform dropdown — an inconsistent roadmap signal.",
+   "where": "server/content/publish.ts:34-35,88-91; src/workspaces/content/settings/page.tsx:23-26 (connect) vs :244 (CHANNEL_PLATFORMS includes instagram/linkedin)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "IG/LinkedIn overal verbergen",
+    "note": null
+   }
+  },
+  {
+   "gid": 149,
+   "cluster": "Publishing, scheduling & channels/accounts",
+   "severity": "low",
+   "status": "open",
+   "evidence": "src/workspaces/_data/modules.ts:29 the 'scheduled' section is still only in the development module (cron automation); content workspaces have no scheduled-posts view, so a content user wanting to schedule a post has no matching nav even though scheduled publishing now ships (gap 138).",
+   "needsQuestion": true,
+   "question": "Scheduled publishing now ships. Add a 'Scheduled posts' view for content workspaces so the concept isn't split from the dev cron 'Scheduled' page?",
+   "options": [
+    "Add a content 'Scheduled posts' tab",
+    "Leave scheduled posts in the suggestions inbox"
+   ],
+   "mechanical": false,
+   "fix": "When scheduled publishing ships, add a 'Scheduled posts' tab for content workspaces (or a dedicated content scheduler) so the concept isn't split/mislabeled.",
+   "what": "Naming collision: the 'Scheduled' nav page is cron automation (agent-role/notify triggers), not scheduled publishing — a content user looking to schedule a post lands there and finds nothing about publishing.",
+   "where": "src/workspaces/scheduled/page.tsx; src/workspaces/_data/modules.ts (dev module only)",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Een content 'Scheduled posts'-tabblad toevoegen",
+    "note": null
+   }
+  },
+  {
+   "gid": 159,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "low",
+   "status": "open",
+   "evidence": "conductor.ts:1221-1222 comment still says 'Per-workspace key CONSUMPTION by the providers is a follow-up', but registry.ts:80-88 runMediaGeneration/loadWorkspaceMediaConfig already consumes __provider_key_<providerId> + __media_provider_ override with env fallback (FIX-A). Doc<->code drift.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Update the save-media-provider case comment at conductor.ts:1221-1222 to note that server/media/registry.ts:80-88 already consumes __provider_key_ / __media_provider_ overrides with env fallback.",
+   "what": "Stale comment claims per-workspace media key consumption is a follow-up, but registry.ts (via workspaceKeys.ts loadWorkspaceMediaConfig) already consumes __provider_key_ with env fallback — doc<->code drift.",
+   "where": "server/orchestrator/conductor.ts:1153-1156",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Update the save-media-provider case comment at conductor.ts:1221-1222 to note that server/media/registry.ts:80-88 already consumes __provider_key_ / __media_provider_ overrides with env fallback."
+   }
+  },
+  {
+   "gid": 160,
+   "cluster": "Content settings, brand & style libraries",
+   "severity": "low",
+   "status": "open",
+   "evidence": "contentAnalytics.ts:1-3 + interface (lines 9-17) still expose only production/spend folds; comment 'Views/CTR are placeholders until platform keys land'. No delivery-metric fields. Blocked on real publish OAuth (see gap 150-cluster publishRouting).",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": false,
+   "fix": "Deferred: once publish OAuth is live, fetch per-post metrics and extend computeContentAnalytics; near-term, label the analytics section as production-only until platform keys land.",
+   "what": "Analytics show production/cost only; delivery metrics (views, CTR, watch-time) are explicit placeholders pending real platform API keys.",
+   "where": "server/content/contentAnalytics.ts:1-3",
+   "decision": null
+  },
+  {
+   "gid": 168,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "low",
+   "status": "open",
+   "evidence": "generate.ts:193 runAiCompletion runs inline in the HTTP request with timeoutMs 240_000; the StudioArtifact row is created only AFTER completion (line 202 status 'ready' / line 195 status 'error') — no intermediate 'generating' row; only a client-local busy spinner.",
+   "needsQuestion": true,
+   "question": "Studio generation runs synchronously (240s timeout risk, no 'generating' status). Convert to an async job with generating→ready/error rows, or accept sync?",
+   "options": [
+    "Async job + generating status",
+    "Keep sync (accept timeout risk)"
+   ],
+   "mechanical": false,
+   "fix": "Enqueue an async job that writes generating then ready/error, surfaced via the snapshot.",
+   "what": "Studio generateArtifact runs synchronously inside the HTTP request with a 240s timeout and never writes a 'generating' status row — only client-local busy spinner; a slow PTY generation can hit the request timeout.",
+   "where": "server/studio/generate.ts:193-205",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Async job + generating-status",
+    "note": null
+   }
+  },
+  {
+   "gid": 169,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "low",
+   "status": "open",
+   "evidence": "schema.prisma:940 StudioBrief has optional projectId, but studioSaveBrief_v1.ts data type (line 16) omits projectId and the fields object (30-36) never sets it — briefs cannot be scoped per project.",
+   "needsQuestion": false,
+   "question": null,
+   "options": null,
+   "mechanical": true,
+   "fix": "Accept optional projectId in studioSaveBrief_v1 data and include it in the create/update fields.",
+   "what": "studioSaveBrief accepts an optional projectId but the handler never sets it, so briefs cannot be scoped per project.",
+   "where": "src/workspaces/_api/studioSaveBrief_v1.ts",
+   "decision": {
+    "type": "mechanical",
+    "fix": "Accept optional projectId in studioSaveBrief_v1 data and include it in the create/update fields."
+   }
+  },
+  {
+   "gid": 170,
+   "cluster": "Design, Studio, Designer & marketing",
+   "severity": "low",
+   "status": "open",
+   "evidence": "studio/page.tsx:234 thumbnail is rendered via LandingPreview (an <iframe srcDoc> HTML card, line 253); LandingPreview only offers expand + copy-HTML (256-257) — no render-to-PNG / social-sized raster export.",
+   "needsQuestion": true,
+   "question": "Thumbnails are HTML iframe cards, not raster images. Add render-to-PNG export, route through a real image provider, or leave as HTML?",
+   "options": [
+    "Client render-to-PNG",
+    "Generate via image provider",
+    "Leave as HTML preview"
+   ],
+   "mechanical": false,
+   "fix": "Offer render-to-PNG export or route through a real image provider.",
+   "what": "Studio 'thumbnail' is an HTML iframe card, not an exportable raster image; there is no render-to-PNG / social-sized export.",
+   "where": "src/workspaces/studio/page.tsx:227,238-254",
+   "decision": {
+    "type": "choice",
+    "choice": "A",
+    "label": "Client render-to-PNG",
+    "note": null
+   }
+  }
+ ]
+}
