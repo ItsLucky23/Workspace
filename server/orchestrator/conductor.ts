@@ -604,6 +604,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const name = str(payload, 'name');
       if (!name) return;
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { name } });
+      await recordAudit(prisma, action.workspaceId, userId, 'rename-workspace', name);
       return;
     }
     // ---- tickets / board ----
@@ -945,7 +946,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const aiInstruction = str(payload, 'aiInstruction') ?? '';
       const outputLanguage = str(payload, 'outputLanguage') ?? '';
       const geminiModel = str(payload, 'geminiModel') ?? '';
-      const geminiTemperature = str(payload, 'geminiTemperature') ?? '';
+      //? Clamp the temperature to Gemini's valid 0.0–2.0 range before persist (a bad value would 400 the API).
+      const geminiTempRaw = str(payload, 'geminiTemperature') ?? '';
+      const geminiTempNum = Number(geminiTempRaw);
+      const geminiTemperature = geminiTempRaw.trim() && Number.isFinite(geminiTempNum) ? String(Math.min(2, Math.max(0, geminiTempNum))) : '';
       const geminiBaseUrl = str(payload, 'geminiBaseUrl') ?? '';
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } });
       return { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl };
@@ -1218,8 +1222,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     //? Save per-workspace media settings (U3): an ENCRYPTED provider API key and/or a per-feature
     //? provider override, both in the EnvVar store (secretBox). Keys are namespaced so they never clash
-    //? with the user's app env vars. (Per-workspace key CONSUMPTION by the providers is a follow-up; this
-    //? persists + lets the settings UI show what is configured.)
+    //? with the user's app env vars. The providers CONSUME these at dispatch time —
+    //? server/media/registry.ts:80-88 reads __provider_key_ / __media_provider_ (env as fallback).
     case 'save-media-provider': {
       const providerId = str(payload, 'providerId');
       const apiKey = str(payload, 'apiKey');

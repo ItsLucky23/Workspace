@@ -346,7 +346,7 @@ function GitLabTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveGitlab, resyncForge } = useWorkspaces();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
-  const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.slug === 'youcomm-core' ? 'https://gitlab.youcomm.nl' : 'https://gitlab.com'));
+  const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.forgeType === 'github' ? 'https://api.github.com' : 'https://gitlab.com'));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
   //? value tells `saveGitlab` to keep the existing token unchanged.
   const [token, setToken] = useState('');
@@ -816,7 +816,7 @@ function AiBehaviorTab() {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}</span>
-          <input value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={fieldCls} />
+          <input type="number" min="0" max="2" step="0.1" value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={fieldCls} />
         </label>
         <label className="flex flex-col gap-1 col-span-2">
           <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiBaseUrl' })}</span>

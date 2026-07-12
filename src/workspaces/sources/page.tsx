@@ -2,7 +2,8 @@
 //? and Skills/MCP (queried on demand). Generated docs show which branches
 //? aren't folded in yet. Clicking a doc opens a read-only preview (right sheet,
 //? lots of content); Details opens a small CENTERED overlay via menuHandler
-//? (little data — no big sidebar). Dummy data; desktop-first.
+//? (little data — no big sidebar). Docs + skills come from InfoSource rows via
+//? the workspace realtime snapshot. Desktop-first.
 
 import { useEffect, useRef, useState } from 'react';
 

@@ -271,6 +271,8 @@ export default function AccountSettings() {
     [translate],
   );
   const selectedLanguage = languageItems.find((it) => it.id === language);
+  //? Real forge-connection state for the active project: a linked repo path/url means connected.
+  const forgeConnected = Boolean(activeProject?.gitUrl?.trim());
 
   const [sessions, setSessions] = useState<AccountSession[]>([]);
   const refreshSessions = useCallback(() => {
@@ -345,14 +347,15 @@ export default function AccountSettings() {
               </button>
               {devOpen && (
           <><Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
+            {/* Per-project forge connect (ADR 0036): GitLab OR GitHub for the active project. The
+                label + connected badge reflect REAL state — the workspace's chosen forge and whether
+                the active project has a linked repo (no more hardcoded "connected"). */}
             <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.gitlab' })}</span>
-              <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>
-            </Row>
-            {/* Per-project forge connect (ADR 0036): GitLab OR GitHub for the active project. */}
-            <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.github' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
-              <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
+              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: activeWorkspace.forgeType === 'github' ? 'workspaces.account.github' : 'workspaces.account.gitlab' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
+              <div className="flex items-center gap-2">
+                {forgeConnected && <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>}
+                <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
+              </div>
             </Row>
           </Card>
 

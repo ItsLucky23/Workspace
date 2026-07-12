@@ -10,7 +10,7 @@ import type { PrismaClient } from '@prisma/client';
 import { decryptSecret } from '../crypto/secretBox';
 import { docker, dockerAvailable } from '../container/runtime';
 
-const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:latest';
+const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 const NET = process.env.WS_NET ?? 'workspaces-net';
 
 export interface MigrateResult { ok: boolean; status: string; error?: string }
