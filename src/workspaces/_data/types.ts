@@ -333,6 +333,7 @@ export interface ContentPieceSummary {
   voiceUrl: string | null;         // V5: the piece's voiceover asset url (for the audio-track waveform)
   musicUrl: string | null;         // V5: the piece's background-music asset url (for the audio-track waveform)
   spentCents: number;              // Q1: this piece's own media spend (from MediaSpend rows), for per-piece cost transparency
+  archived?: boolean;              // #129: soft-archived — hidden from the board, shown in the Archived view with Restore
 }
 //? Content analytics fold (F5.1) surfaced for the insights dashboard (U4).
 export interface ContentAnalyticsView {

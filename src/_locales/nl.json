@@ -870,6 +870,8 @@
       "newPieceBriefPlaceholder": "Brief — waar gaat dit over, voor wie, en wat moet het bereiken?",
       "newPieceFormat": "Formaat",
       "newPieceCreate": "Aanmaken",
+      "archivedTab": "Gearchiveerd ({{n}})",
+      "restore": "Herstellen",
       "format_faceless": "Faceless",
       "format_talking_head": "Talking head",
       "budgetTitle": "Mediabudget",

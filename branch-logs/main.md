@@ -3833,3 +3833,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** de desktop-Shell "wie kijkt mee"-AvatarStack was FAKE (`members.slice(0,3)` — een statische roster, geen live presence). Nu gekoppeld aan de bestaande per-ticket presence-relay: de provider exposeert `presentUserIds` (de tick-geprunede `presence`-state) → de Shell rendert de members die daadwerkelijk NU aanwezig zijn (leeg = niemand, stack verborgen). #119 (per-view activeCount-badges via `aggregatePresence`) vereist dat de relay de huidige VIEW trackt i.p.v. alleen tickets — dat is een grotere relay-uitbreiding, apart.
 **Verify:** typecheck0·build✓·lint0(pre-existing activeProjectId-warning).
 **Files:** `src/workspaces/_shell/{Shell,WorkspacesProvider,WorkspacesContext}.tsx`.
+
+## 2026-07-13 — 🟢 v3-build golf 27 (Content pipeline): #129
+**Wat:** unarchive was onbereikbaar EN gearchiveerde pieces werden uit de snapshot gefilterd (geen restore-pad). Nu: de snapshot-query relaxt (`archived:false`-filter weg → alle pieces, met een `archived`-flag; analytics/insights filteren archived al intern zodat metrics niet wijzigen). De content-board toont alleen live pieces; een "Gearchiveerd (N)"-toggle in de header opent een Archived-view met per piece een Herstellen-knop (→ `content-unarchive` via runContentOp).
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: content.{archivedTab,restore} ×4.
+**Files:** `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

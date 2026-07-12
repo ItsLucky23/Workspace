@@ -870,6 +870,8 @@
       "newPieceBriefPlaceholder": "Brief — de quoi s'agit-il, pour qui, et quel est l'objectif ?",
       "newPieceFormat": "Format",
       "newPieceCreate": "Créer",
+      "archivedTab": "Archivés ({{n}})",
+      "restore": "Restaurer",
       "format_faceless": "Sans visage",
       "format_talking_head": "Face caméra",
       "budgetTitle": "Budget média",

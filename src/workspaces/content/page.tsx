@@ -82,20 +82,25 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
 }
 
 export default function Content() {
-  const { content, navigate, createContentPiece } = useWorkspaces();
+  const { content, navigate, createContentPiece, runContentOp } = useWorkspaces();
   const translate = useTranslator();
+  const [showArchived, setShowArchived] = useState(false);
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
+  //? #129 — the board shows only live pieces; archived ones live in the Archived view (Restore to bring back).
   const byStage = useMemo(() => {
     const map = new Map<string, ContentPieceSummary[]>();
     for (const s of STAGES) map.set(s.id, []);
     for (const p of content.pieces) {
+      if (p.archived) continue;
       const list = map.get(p.stageId);
       if (list) list.push(p);
       else map.set(p.stageId, [p]);
     }
     return map;
   }, [content.pieces]);
+  const archivedPieces = useMemo(() => content.pieces.filter((p) => p.archived), [content.pieces]);
+  const liveEmpty = content.pieces.every((p) => p.archived);
 
   const budget = content.mediaBudget;
   const pct = budget.enabled && budget.capCents > 0 ? Math.min(100, Math.round((budget.spentCents / budget.capCents) * 100)) : 0;
@@ -114,6 +119,12 @@ export default function Content() {
         <button type="button" onClick={() => { navigate('content/settings'); }} title={translate({ key: 'workspaces.content.settings' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common text-sm flex items-center gap-2 cursor-pointer">
           <Icon name="gear" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.settings' })}</span>
         </button>
+        {/* #129 — toggle the Archived view (Restore archived pieces). */}
+        {archivedPieces.length > 0 && (
+          <button type="button" onClick={() => { setShowArchived((v) => !v); }} className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 cursor-pointer ${showArchived ? 'border-primary bg-primary/10 text-primary' : 'border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common'}`}>
+            <Icon name="box-archive" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.archivedTab', params: [{ key: 'n', value: String(archivedPieces.length) }] })}</span>
+          </button>
+        )}
         {/* #125 — the primary create affordance (was entirely absent — only the AI could create pieces). */}
         <WsButton icon="plus" onClick={openNewPiece}>{translate({ key: 'workspaces.content.newPiece' })}</WsButton>
         {/* Media €-budget summary (F0.2) — always visible so a cost-sensitive user sees spend at a glance. */}
@@ -134,7 +145,19 @@ export default function Content() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-8">
-        {content.pieces.length === 0 ? (
+        {showArchived ? (
+          /* #129 — the Archived view: soft-archived pieces with a Restore (content-unarchive) action. */
+          <div className="flex flex-col gap-2 max-w-2xl">
+            {archivedPieces.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 rounded-xl border border-container1-border bg-container1 p-3">
+                <Icon name="box-archive" className="text-muted shrink-0" />
+                <span className="text-sm font-medium text-title truncate flex-1">{p.title}</span>
+                <span className="text-xs text-muted shrink-0">{p.format}</span>
+                <WsButton variant="secondary" icon="rotate-left" onClick={() => { runContentOp('content-unarchive', p.id); }}>{translate({ key: 'workspaces.content.restore' })}</WsButton>
+              </div>
+            ))}
+          </div>
+        ) : (liveEmpty ? (
           <div className="flex flex-col items-center gap-4">
             <EmptyState icon="wand-magic-sparkles" title={translate({ key: 'workspaces.content.empty' })} sub={translate({ key: 'workspaces.content.emptySub' })} />
             {/* #125 — empty-state CTA so a first-time user has an obvious way to create. */}
@@ -162,7 +185,7 @@ export default function Content() {
               );
             })}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

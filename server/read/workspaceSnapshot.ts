@@ -351,7 +351,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? Content platform (ADR 0069): the in-flight content pieces + the media €-budget status. Content
     //? models scope by explicit `workspaceId` (not tenantDb — feature-model pattern, ADR 0050).
     const contentWsId = currentWorkspaceId();
-    const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId, archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
+    //? #129 — include archived pieces too (the client filters the board to non-archived + shows an
+    //? Archived view with Restore); analytics/insights already exclude archived internally.
+    const contentPieceRows = await prisma.contentProject.findMany({ where: { workspaceId: contentWsId }, orderBy: { updatedAt: 'desc' }, take: 100 });
     //? U4 folds: content-analytics (over pieces + media spend + publish jobs), the style library (this
     //? workspace's + the global defaults), and channels + their brand voice.
     const [mediaSpendRows, publishJobRows, styleRows, channelRows, contentAssetRows, publishConnRows, mediaJobRows, referenceRows, shortLinkRows] = await Promise.all([
@@ -416,7 +418,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         //? V5 — the piece's newest voice/music asset url for the audio-track waveform.
         const pieceAssets = assetsByPiece.get(c.id) ?? [];
         const urlOfKind = (k: string): string | null => { for (let i = pieceAssets.length - 1; i >= 0; i--) { const a = pieceAssets[i]; if (a?.kind === k && a.url.length > 0) return a.url; } return null; };
-        return { id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: pieceAssets, scenes: scenesByPiece.get(c.id) ?? [], voiceVolume: c.voiceVolume, musicVolume: c.musicVolume, voiceUrl: urlOfKind('voice'), musicUrl: urlOfKind('music'), spentCents: spentByPiece.get(c.id) ?? 0 };
+        return { id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: pieceAssets, scenes: scenesByPiece.get(c.id) ?? [], voiceVolume: c.voiceVolume, musicVolume: c.musicVolume, voiceUrl: urlOfKind('voice'), musicUrl: urlOfKind('music'), spentCents: spentByPiece.get(c.id) ?? 0, ...(c.archived ? { archived: true } : {}) };
       }),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(

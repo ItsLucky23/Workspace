@@ -870,6 +870,8 @@
       "newPieceBriefPlaceholder": "Brief — what is this about, for whom, and what should it achieve?",
       "newPieceFormat": "Format",
       "newPieceCreate": "Create",
+      "archivedTab": "Archived ({{n}})",
+      "restore": "Restore",
       "format_faceless": "Faceless",
       "format_talking_head": "Talking head",
       "budgetTitle": "Media budget",
