@@ -160,7 +160,7 @@ export async function runWatchdogSweep(now: number): Promise<SweepCounts> {
     if (recipient) {
       await tryCatch(async () => {
         await prisma.notification.create({ data: { workspaceId: t.workspaceId, userId: recipient, type: 'reminder', title: 'A question is waiting', body: `${t.key} is still waiting for your answer.`, ticketId: t.id, deepLink: { view: 'board', ticketId: t.key }, read: false } });
-        await sendWebPush(prisma, recipient, { title: 'A question is waiting', body: `${t.key} is still waiting for your answer.`, url: '/', tag: `ticket-${t.key}` }, 'assignment');
+        await sendWebPush(prisma, recipient, { title: 'A question is waiting', body: `${t.key} is still waiting for your answer.`, url: `/?ticket=${t.key}`, tag: `ticket-${t.key}` }, 'assignment');
       });
     }
     await prisma.ticket.update({ where: { id: t.id }, data: { remindedAt: new Date(now) } }).catch(() => null);

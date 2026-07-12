@@ -16,6 +16,7 @@ import type { PageMiddleware } from '@luckystack/core/client';
 import { LocationProvider } from '@luckystack/presence/client';
 
 import { sessionBasedToken } from 'config';
+import { initInstallPrompt } from 'src/workspaces/_functions/installPrompt';
 
 import ErrorPage from 'src/_components/ErrorPage';
 import { MenuHandlerProvider } from 'src/_components/MenuHandler';
@@ -202,6 +203,8 @@ const router = createBrowserRouter([{
 if ('serviceWorker' in navigator) {
   globalThis.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js').catch(() => null); });
 }
+//? #123 — capture the PWA install prompt at boot so the in-app "Install" button can offer it later.
+initInstallPrompt();
 
 const root = document.querySelector('#root');
 if (root) {

@@ -16,9 +16,20 @@ import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
   const translate = useTranslator();
-  const { view, navigate, currentUser, activeWorkspace } = useWorkspaces();
+  const { view, navigate, openTicket, currentUser, activeWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
   const [drawer, setDrawer] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const onTicket = isTicketView(view);
+
+  //? #116/#120 — tapping a notification follows its deep-link (open the ticket / view), marks it read,
+  //? and closes the sheet. Falls back to just marking read when there is no deep-link.
+  const openNotification = (n: (typeof notifications)[number]) => {
+    const link = n.deepLink;
+    if (link?.ticketId) openTicket(link.ticketId);
+    else if (link?.view) navigate(link.view);
+    markNotificationRead(n.id);
+    setNotifOpen(false);
+  };
 
   return (
     <>
@@ -34,8 +45,38 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
         </button>
         <div className="flex-1" />
         <button type="button" onClick={onCmdK} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="magnifying-glass" /></button>
+        {/* #116 — the notification bell was desktop-only; a phone user can now see + clear notifications. */}
+        <button type="button" onClick={() => { setNotifOpen(true); }} className="relative w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer" title={translate({ key: 'workspaces.shell.notifications' })}>
+          <Icon name="bell" />
+          {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-[10px] font-bold text-title-primary flex items-center justify-center">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
+        </button>
         <AvatarBubble user={currentUser} size={30} />
       </header>
+
+      <AnimatePresence>
+        {notifOpen && (
+          <>
+            <motion.div className="md:hidden fixed inset-0 z-40 bg-overlay" onClick={() => { setNotifOpen(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
+            <motion.div className="md:hidden fixed inset-x-0 bottom-0 z-50 max-h-[70vh] bg-container1 border-t border-divider rounded-t-2xl p-4 flex flex-col gap-2"
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={SPRING_SHEET}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.shell.notifications' })}</span>
+                {unreadNotifications > 0 && <button type="button" onClick={markAllNotificationsRead} className="text-xs font-medium text-primary hover:text-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.markAllRead' })}</button>}
+              </div>
+              <div className="flex-1 overflow-y-auto flex flex-col gap-1">
+                {notifications.length === 0 && <div className="px-2 py-6 text-center text-sm text-muted">{translate({ key: 'workspaces.shell.noNotifications' })}</div>}
+                {notifications.map((n) => (
+                  <button key={n.id} type="button" onClick={() => { openNotification(n); }}
+                    className={`flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors cursor-pointer hover:bg-container2 ${n.read ? '' : 'bg-primary/5'}`}>
+                    <span className="text-sm font-medium text-title">{n.title}</span>
+                    {n.body.length > 0 && <span className="text-xs text-muted">{n.body}</span>}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {drawer && (

@@ -740,6 +740,8 @@
       "notificationsTitle": "Notifications",
       "notificationsDesc": "Soyez alerté lorsqu’une IA a besoin de votre input.",
       "webPush": "Push web",
+      "installApp": "Installer Workspaces",
+      "install": "Installer",
       "pushAssignment": "Attributions de tickets",
       "pushAutomation": "Automatisations",
       "pushAiSuggestion": "Suggestions IA",

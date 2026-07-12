@@ -34,6 +34,17 @@ export async function enablePush(): Promise<PushResult> {
   return res.status === 'success' ? 'ok' : 'error';
 }
 
+//? #122 — is there an active browser push subscription right now? Lets the settings toggle reconcile
+//? its state on mount (a user who already enabled push should see it ON after a reload).
+export async function hasPushSubscription(): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return false;
+  const [, sub] = await tryCatch(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  });
+  return Boolean(sub);
+}
+
 export async function disablePush(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
   const [, sub] = await tryCatch(async () => {

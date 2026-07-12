@@ -190,9 +190,18 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
 /* ----------------------------------------------------------------- top bar */
 export function TopBar({ onCmdK }: { onCmdK: () => void }) {
   const {
-    navigate, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members,
+    navigate, openTicket, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members,
     notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead,
   } = useWorkspaces();
+  //? #120 — a notification's deep-link is a real destination: open its ticket (or navigate to its view),
+  //? then mark read + close the popover. Falls back to just marking read when there is no deep-link.
+  const openNotification = (n: (typeof notifications)[number]) => {
+    const link = n.deepLink;
+    if (link?.ticketId) openTicket(link.ticketId);
+    else if (link?.view) navigate(link.view);
+    markNotificationRead(n.id);
+    setNotifOpen(false);
+  };
   const translate = useTranslator();
   const [wsOpen, setWsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -267,7 +276,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
               )}
               {notifications.map((n) => (
                 <button
-                  key={n.id} type="button" onClick={() => { markNotificationRead(n.id); }}
+                  key={n.id} type="button" onClick={() => { openNotification(n); }}
                   className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors cursor-pointer hover:bg-container2 ${n.read ? '' : 'bg-primary/5'}`}
                 >
                   <span className={`w-5 h-5 mt-0.5 rounded-md flex items-center justify-center shrink-0 ${n.read ? 'bg-container2 text-muted' : 'bg-primary/12 text-primary'}`}>

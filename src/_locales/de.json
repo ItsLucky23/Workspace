@@ -740,6 +740,8 @@
       "notificationsTitle": "Benachrichtigungen",
       "notificationsDesc": "Werde benachrichtigt, wenn eine AI deine Eingabe braucht.",
       "webPush": "Web-Push",
+      "installApp": "Workspaces installieren",
+      "install": "Installieren",
       "pushAssignment": "Ticket-Zuweisungen",
       "pushAutomation": "Automatisierungen",
       "pushAiSuggestion": "KI-Vorschläge",

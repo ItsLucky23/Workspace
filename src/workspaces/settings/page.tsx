@@ -4,7 +4,7 @@
 //? (or a dropped ~/.ssh/config containing it) maps to an SSH identity:
 //? 123 → test, 456 → mathijs. Dummy data; desktop-first.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 import { i18nNotify as notify, useSession, useTranslator, useUpdateLanguage } from '@luckystack/core/client';
 
@@ -17,7 +17,8 @@ import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primit
 import { isModuleEnabled } from '../_data/modules';
 import { SSH_KEY_TO_USER } from '../_data/seed';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import { enablePush, disablePush } from '../_functions/pushSubscribe';
+import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
+import { canInstall, promptInstall, subscribeInstall } from '../_functions/installPrompt';
 import type { SshKeyEntry } from '../_data/types';
 import type { SessionLayout } from '../../../config';
 
@@ -227,6 +228,10 @@ export default function AccountSettings() {
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
   const [push, setPush] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  //? #122 — reconcile the toggle with the actual browser subscription on mount (survives reload).
+  useEffect(() => { void hasPushSubscription().then(setPush); }, []);
+  //? #123 — the PWA install prompt (captured at boot) becomes available only when the browser offers it.
+  const canInstallApp = useSyncExternalStore(subscribeInstall, canInstall, () => false);
   const togglePush = (next: boolean) => {
     if (pushBusy) return;
     setPushBusy(true);
@@ -571,6 +576,13 @@ export default function AccountSettings() {
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
               <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
             </Row>
+            {/* #123 — install the PWA to the home screen (only shown when the browser offers the prompt). */}
+            {canInstallApp && (
+              <Row>
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
+                <WsButton variant="secondary" icon="download" onClick={() => { void promptInstall(); }}>{translate({ key: 'workspaces.account.install' })}</WsButton>
+              </Row>
+            )}
             {/* A3 — per-type push opt-out (only meaningful once push is enabled). */}
             {push && (
               <div className="flex flex-col gap-1 pl-3 border-l border-divider mt-1">

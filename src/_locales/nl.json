@@ -740,6 +740,8 @@
       "notificationsTitle": "Meldingen",
       "notificationsDesc": "Krijg een seintje wanneer een AI je input nodig heeft.",
       "webPush": "Web-push",
+      "installApp": "Workspaces installeren",
+      "install": "Installeren",
       "pushAssignment": "Ticket-toewijzingen",
       "pushAutomation": "Automatiseringen",
       "pushAiSuggestion": "AI-suggesties",

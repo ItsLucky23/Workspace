@@ -196,6 +196,19 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, [wantWorkspaceId, wantProjectId]);
   useEffect(() => { refetch(); }, [refetch]);
 
+  //? #121 — deep-link from an OS push / shortcut: `/?ticket=DEV-####` opens that ticket once the
+  //? snapshot has loaded it, then strips the param so a reload/back doesn't re-trigger.
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const ticketKey = new URLSearchParams(globalThis.location.search).get('ticket');
+    if (!ticketKey) { deepLinkHandled.current = true; return; }
+    if (!snap.tickets.some((t) => t.id === ticketKey)) return; // wait for the snapshot to load it
+    deepLinkHandled.current = true;
+    void navigate(pathForView(ticketKey));
+    globalThis.history.replaceState({}, '', globalThis.location.pathname);
+  }, [snap.tickets, navigate]);
+
   //? ----- Realtime (milestone 1) -----------------------------------------------
   //? Writes go through per-action `_sync` events that broadcast their delta to the
   //? workspace room; every client (incl. the sender) MERGES the delta into local

@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 224,
-    "edges": 341,
+    "nodes": 225,
+    "edges": 343,
     "symbols": 283,
     "callEdges": 42
   },
@@ -610,6 +610,11 @@
     },
     {
       "id": "workspaces/_functions/imageCrop.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_functions/installPrompt.ts",
       "kind": "other",
       "route": null
     },
@@ -1297,6 +1302,10 @@
     {
       "from": "main.tsx",
       "to": "_providers/socketStatusProvider.tsx"
+    },
+    {
+      "from": "main.tsx",
+      "to": "workspaces/_functions/installPrompt.ts"
     },
     {
       "from": "register/page.tsx",
@@ -2360,6 +2369,10 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_functions/installPrompt.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
       "to": "workspaces/_functions/pushSubscribe.ts"
     },
     {
@@ -3123,6 +3136,10 @@
     "workspaces/_functions/imageCrop.ts": [
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/content/[pieceId]/page.tsx"
+    ],
+    "workspaces/_functions/installPrompt.ts": [
+      "main.tsx",
+      "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/priority.ts": [
       "workspaces/board/[ticketId]/page.tsx",

@@ -740,6 +740,8 @@
       "notificationsTitle": "Notifications",
       "notificationsDesc": "Get pinged when an AI needs your input.",
       "webPush": "Web push",
+      "installApp": "Install Workspaces",
+      "install": "Install",
       "pushAssignment": "Ticket assignments",
       "pushAutomation": "Automations",
       "pushAiSuggestion": "AI suggestions",
