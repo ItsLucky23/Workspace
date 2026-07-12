@@ -928,6 +928,8 @@
       "styleLabelPlaceholder": "Libellé (facultatif)",
       "stylePromptPlaceholder": "Le system prompt qui définit ce style…",
       "styleSave": "Enregistrer le style",
+      "stylePreviewUpload": "Image d'aperçu",
+      "stylePreviewRemove": "Retirer l'aperçu",
       "styleNone": "Aucun style",
       "aiKeysTitle": "Fournisseur de texte IA",
       "aiKeysDesc": "La clé Gemini alimente les fonctions de script et d'analyse de référence. Stockée chiffrée, jamais réaffichée.",

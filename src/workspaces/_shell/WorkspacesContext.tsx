@@ -289,7 +289,7 @@ export interface WorkspacesCtx {
   //? Q2 — the per-workspace product/brand context folded into every creative generation.
   saveProductContext: (productContext: string) => void;
   //? Q3 — create/update + delete a per-workspace named style preset.
-  saveStyle: (feature: string, key: string, label: string, systemPrompt: string) => void;
+  saveStyle: (feature: string, key: string, label: string, systemPrompt: string, preview?: { previewAssetUrl: string; previewKind: string }) => void;
   deleteStyle: (feature: string, key: string) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
   skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')

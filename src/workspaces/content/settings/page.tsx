@@ -129,15 +129,17 @@ function StyleManagerSection() {
   const [key, setKey] = useState('');
   const [label, setLabel] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [preview, setPreview] = useState<{ url: string; kind: string } | null>(null);   // #155
   const canSave = key.trim().length > 0 && prompt.trim().length > 0;
   const submit = () => {
     if (!canSave) return;
-    saveStyle(feature, key.trim(), label.trim() || key.trim(), prompt.trim());
-    setKey(''); setLabel(''); setPrompt('');
+    saveStyle(feature, key.trim(), label.trim() || key.trim(), prompt.trim(), preview ? { previewAssetUrl: preview.url, previewKind: preview.kind } : undefined);
+    setKey(''); setLabel(''); setPrompt(''); setPreview(null);
   };
   //? #157 — edit a non-builtin style: pre-fill the create form (upsert-by-key overwrites it on save).
-  const editStyle = (s: { feature: string; key: string; label: string; systemPrompt: string }) => {
+  const editStyle = (s: { feature: string; key: string; label: string; systemPrompt: string; previewAssetUrl?: string | null; previewKind?: string | null }) => {
     setFeature(s.feature); setKey(s.key); setLabel(s.label); setPrompt(s.systemPrompt);
+    setPreview(s.previewAssetUrl ? { url: s.previewAssetUrl, kind: s.previewKind ?? 'image' } : null);
   };
   //? #152 — portable style-set export (copy JSON) + import (paste JSON, upsert-by-key).
   const exportStyles = () => {
@@ -165,6 +167,8 @@ function StyleManagerSection() {
           ? <div className="text-sm text-disabled">{translate({ key: 'workspaces.content.stylesEmpty' })}</div>
           : content.styles.map((s) => (
             <div key={`${s.feature}-${s.key}`} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
+              {/* #155 — style preview thumbnail (M4 gallery). */}
+              {s.previewAssetUrl && s.previewKind !== 'video' && <img src={s.previewAssetUrl} alt={s.label} className="w-9 h-9 rounded-md object-cover border border-container1-border shrink-0" />}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-title truncate">{s.label} <span className="text-xs text-disabled">· {s.feature}</span></div>
                 <div className="text-xs text-muted truncate">{s.systemPrompt}</div>
@@ -189,6 +193,12 @@ function StyleManagerSection() {
         </div>
         <input value={label} onChange={(e) => { setLabel(e.target.value); }} placeholder={translate({ key: 'workspaces.content.styleLabelPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
         <textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.stylePromptPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
+        {/* #155 — optional preview thumbnail: a sample of the look, shown in the style gallery. */}
+        <div className="flex items-center gap-2">
+          {preview && <img src={preview.url} alt="preview" className="w-10 h-10 rounded-md object-cover border border-container2-border" />}
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.content.stylePreviewUpload" icon="image" onUploaded={(url, kind) => { setPreview({ url, kind }); }} />
+          {preview && <button type="button" onClick={() => { setPreview(null); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.stylePreviewRemove' })}</button>}
+        </div>
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.styleSave' })}</button>
       </div>
     </section>

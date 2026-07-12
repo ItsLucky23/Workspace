@@ -928,6 +928,8 @@
       "styleLabelPlaceholder": "Label (optional)",
       "stylePromptPlaceholder": "Der System-Prompt, der diesen Stil definiert…",
       "styleSave": "Stil speichern",
+      "stylePreviewUpload": "Vorschaubild",
+      "stylePreviewRemove": "Vorschau entfernen",
       "styleNone": "Kein Stil",
       "aiKeysTitle": "KI-Textanbieter",
       "aiKeysDesc": "Der Gemini-Schlüssel treibt die Skript- + Referenzanalyse-Features an. Verschlüsselt gespeichert, nie zurückgezeigt.",

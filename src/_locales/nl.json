@@ -928,6 +928,8 @@
       "styleLabelPlaceholder": "Label (optioneel)",
       "stylePromptPlaceholder": "De system-prompt die deze stijl bepaalt…",
       "styleSave": "Stijl opslaan",
+      "stylePreviewUpload": "Voorbeeldafbeelding",
+      "stylePreviewRemove": "Voorbeeld verwijderen",
       "styleNone": "Geen stijl",
       "aiKeysTitle": "AI-tekstprovider",
       "aiKeysDesc": "De Gemini-key drijft de script- + referentie-analyse-features aan. Versleuteld opgeslagen, nooit teruggetoond.",

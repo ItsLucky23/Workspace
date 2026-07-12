@@ -928,6 +928,8 @@
       "styleLabelPlaceholder": "Label (optional)",
       "stylePromptPlaceholder": "The system prompt that defines this style…",
       "styleSave": "Save style",
+      "stylePreviewUpload": "Preview image",
+      "stylePreviewRemove": "Remove preview",
       "styleNone": "No style",
       "aiKeysTitle": "AI text provider",
       "aiKeysDesc": "The Gemini key powers the script + reference-analysis features. Stored encrypted, never shown back.",
