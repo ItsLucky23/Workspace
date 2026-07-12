@@ -34,10 +34,11 @@
    "what": "Token budget is dead-wired: the enforcement field ('pauseNew'/'pauseAll') is only written at seed and never read in server/, so nothing ever pauses on token spend; and spent never increments because costEstimate needs a per-model price that is empty on the Max subscription. resume-spend resets a spent that is always 0.",
    "where": "server/spend/record.ts:42 + server/bootstrap/seedWorkspace.ts:73",
    "decision": {
-    "type": "choice",
+    "type": "resolved",
     "choice": "B",
     "label": "Het token-budget + de raise-cap/edit-budget/resume-spend-ops volledig laten vallen — alleen visibility overhouden",
-    "note": null
+    "note": null,
+    "resolution": "Reframe as EURO-metered multi-cap budget: keep edit-budget/raise-cap/resume-spend + the editor; Claude/token stays 0 (visibility). Metered providers (Gemini/media) get a real cap. Pairs with #103."
    }
   },
   {
@@ -722,10 +723,11 @@
    "what": "preview-up/preview-down are vestigial dead ops in the frozen structured surface — they sit in the ControlOp union + OP_CAPABILITY but have no Conductor case (fall through to the default logged no-op) and no client caller; preview is done via the openPreview/closePreview _api routes instead.",
    "where": "src/workspaces/_functions/controlApi.ts:74 (no case at conductor.ts:2092-2096)",
    "decision": {
-    "type": "choice",
+    "type": "resolved",
     "choice": "A",
     "label": "Uit de union verwijderen",
-    "note": null
+    "note": null,
+    "resolution": "IMPLEMENT (not remove) — wire preview-up/down to open/closePreviewForTicket + AI-proposable. Overrides the earlier remove-answer per owner conflict-resolution."
    }
   },
   {
@@ -811,10 +813,11 @@
    "what": "Control ops 'preview-up'/'preview-down' are declared in the op union and RBAC-gated but have NO conductor case and no enqueue path — dead-wired. If ever accepted they silently no-op via the default console.warn 'not yet implemented in Fase 1'.",
    "where": "src/workspaces/_functions/controlApi.ts:74; server/control/rbac.ts:182-183; server/orchestrator/conductor.ts:2092-2096 (default)",
    "decision": {
-    "type": "choice",
+    "type": "resolved",
     "choice": "A",
     "label": "Beide ops verwijderen (preview loopt via openPreview _api)",
-    "note": null
+    "note": null,
+    "resolution": "IMPLEMENT — same as #17 (dedupe). Conductor cases -> open/closePreviewForTicket + AI-proposable + one-tap."
    }
   },
   {
@@ -1127,10 +1130,11 @@
    "what": "Multi-cap design (label/periodWindow/enforcement, D81/D82) is schema-only: edit-budget writes a single findFirst row's cap+alertPct and ignores label/enforcement/periodWindow; snapshot reads only budgetRows[0].",
    "where": "server/orchestrator/conductor.ts:1103-1108",
    "decision": {
-    "type": "choice",
+    "type": "resolved",
     "choice": "B",
     "label": "Een multi-cap-lijst + editor implementeren die alle rijen leest/schrijft",
-    "note": null
+    "note": null,
+    "resolution": "Multi-cap: extend the budget editor to read/write MULTIPLE WorkspaceBudget rows (label/periodWindow/enforcement)."
    }
   },
   {
@@ -2406,5 +2410,6 @@
     "note": null
    }
   }
- ]
+ ],
+ "conflictResolutions": "2026-07-12 owner: preview=implement (AI-proposable), budget=euro-metered multi-cap editor"
 }
