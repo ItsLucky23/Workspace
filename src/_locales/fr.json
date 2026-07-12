@@ -1696,6 +1696,8 @@
       "moveToStage": "Déplacer vers l'étape…",
       "moveToStageTitle": "Déplacer {{id}} vers l'étape",
       "moveToStageConfirm": "Déplacer",
+      "addReferenceTitle": "Associer une référence à {{id}}",
+      "noArtifacts": "Aucun artefact design/studio — générez-en un d'abord.",
       "manageSprints": "⚙ Gérer les sprints…",
       "pauseAll": "Mettre tous les agents en pause",
       "pauseAllConfirmTitle": "Mettre tous les agents en pause ?",

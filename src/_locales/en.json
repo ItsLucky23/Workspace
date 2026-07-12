@@ -1695,6 +1695,8 @@
       "moveToStage": "Move to stage…",
       "moveToStageTitle": "Move {{id}} to stage",
       "moveToStageConfirm": "Move",
+      "addReferenceTitle": "Attach a reference to {{id}}",
+      "noArtifacts": "No design/studio artifacts yet — generate one first.",
       "manageSprints": "⚙ Manage sprints…",
       "pauseAll": "Pause all agents",
       "pauseAllConfirmTitle": "Pause all agents?",

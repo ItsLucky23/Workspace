@@ -3798,3 +3798,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** per-service environments werden door de hele keten ondersteund (serviceId op env-deploy/ensureEnvironment) maar de UI las alleen envs met `serviceId===undefined` — multi-service (monorepo) projecten konden individuele services niet deployen. Nu een "Omgevingen per service"-sublijst in de environments-Card (alleen als het actieve project services declareert): per service dev+staging-rijen met deploy (serviceId-scoped) + teardown. Promote blijft project-level (de `promoteEnv`-ctx-method draagt geen serviceId — bewust niet uitgebreid).
 **Verify:** typecheck0·build✓·lint0(pre-existing #36)·localeIntegrity 8/8. Nieuwe i18n: account.perServiceEnvs ×4.
 **Files:** `src/workspaces/settings/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-12 — 🟢 v3-build golf 20 (Board): #6
+**Wat:** de "Add reference"-actie in het kaart-⋯-menu was een dode no-op. Nu opent 'ie een `ArtifactLinkPicker` (menuHandler-overlay) die de workspace's studio- + design-library-artifacts lijst → klik koppelt het artifact aan het ticket via `linkArtifact(ticketKey, artifactId, kind, label)`. Lege-staat-melding als er nog geen artifacts zijn.
+**Verify:** typecheck0·build✓·lint0(pre-existing #36)·localeIntegrity 8/8. Nieuwe i18n: board.{addReferenceTitle,noArtifacts} ×4.
+**Files:** `src/workspaces/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

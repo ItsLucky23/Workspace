@@ -1695,6 +1695,8 @@
       "moveToStage": "Verplaats naar fase…",
       "moveToStageTitle": "{{id}} naar fase verplaatsen",
       "moveToStageConfirm": "Verplaats",
+      "addReferenceTitle": "Koppel een referentie aan {{id}}",
+      "noArtifacts": "Nog geen design/studio-artifacts — genereer er eerst een.",
       "manageSprints": "⚙ Sprints beheren…",
       "pauseAll": "Alle agents pauzeren",
       "pauseAllConfirmTitle": "Alle agents pauzeren?",

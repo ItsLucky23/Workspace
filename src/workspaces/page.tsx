@@ -74,6 +74,32 @@ function StageMovePicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<type
   );
 }
 
+//? #6 — attach a design/studio artifact to a ticket as a reference (the 'Add reference' card action was
+//? a dead no-op). Lists the workspace's studio + design library artifacts → linkArtifact.
+function ArtifactLinkPicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<typeof useWorkspaces> }) {
+  const translate = useTranslator();
+  const items: { id: string; kind: string; label: string }[] = [
+    ...ctx.studioArtifacts.map((a) => ({ id: a.id, kind: a.kind, label: a.title })),
+    ...ctx.designArtifacts.map((a) => ({ id: a.id, kind: a.kind, label: a.name })),
+  ];
+  return (
+    <div className="w-full flex flex-col gap-2 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.board.addReferenceTitle', params: [{ key: 'id', value: ticket.id }] })}</div>
+      {items.length === 0 && <div className="text-sm text-muted py-4 text-center">{translate({ key: 'workspaces.board.noArtifacts' })}</div>}
+      <div className="max-h-80 overflow-y-auto flex flex-col gap-1">
+        {items.map((a) => (
+          <button key={`${a.kind}-${a.id}`} type="button" onClick={() => { ctx.linkArtifact(ticket.id, a.id, a.kind, a.label); void menuHandler.close(); }} className="flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-container2 cursor-pointer">
+            <Icon name="link" className="text-muted" />
+            <span className="text-sm text-title truncate">{a.label}</span>
+            <span className="text-xs text-muted ml-auto shrink-0">{a.kind}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-end"><WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton></div>
+    </div>
+  );
+}
+
 function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, translate: ReturnType<typeof useTranslator>): PopMenuItem[] {
   const paused = ticket.status === 'paused';
   return [
@@ -81,7 +107,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
     //? #9 — manual stage move (opens a stage picker).
     { label: translate({ key: 'workspaces.board.moveToStage' }), icon: 'arrow-right-arrow-left', onClick: () => { void menuHandler.open(<StageMovePicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
-    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { /* Fase 2: attach a TicketReference */ } },
+    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { void menuHandler.open(<ArtifactLinkPicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { divider: true },
     { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { if (paused) ctx.resumeTicket(ticket.id); else ctx.pauseTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.board.copyDevId' }), icon: 'copy', onClick: () => void navigator.clipboard.writeText(ticket.id) },

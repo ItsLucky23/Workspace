@@ -1696,6 +1696,8 @@
       "moveToStage": "In Phase verschieben…",
       "moveToStageTitle": "{{id}} in Phase verschieben",
       "moveToStageConfirm": "Verschieben",
+      "addReferenceTitle": "Referenz an {{id}} anhängen",
+      "noArtifacts": "Noch keine Design-/Studio-Artefakte — erzeuge zuerst eins.",
       "manageSprints": "⚙ Sprints verwalten…",
       "pauseAll": "Alle Agents pausieren",
       "pauseAllConfirmTitle": "Alle Agents pausieren?",
