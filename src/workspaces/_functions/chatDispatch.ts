@@ -41,6 +41,13 @@ const agent = (op: 'pause' | 'resume' | 'kill' | 'pause-all' | 'resume-all') => 
   void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op, ...(ticketKey ? { ticketKey } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
 };
 
+//? #134 — per-asset content-gen family: pieceId → contentProjectId + optional prompt, via contentControl.
+const contentGen = (op: string) => (p: ChatProposal, x: ChatDispatchExtras): void => {
+  const pieceId = str(p, 'pieceId'); if (!pieceId) return;
+  const prompt = str(p, 'prompt');
+  void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId: pieceId, ...(prompt ? { prompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+};
+
 export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispatchExtras) => void> = {
   pause: agent('pause'),
   resume: agent('resume'),
@@ -244,4 +251,14 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const title = str(p, 'title'); const description = str(p, 'description'); const priority = str(p, 'priority');
     void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: ticketKey, ...(title ? { title } : {}), ...(description ? { description } : {}), ...(priority ? { priority } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+
+  //? #134 — per-asset content generation (paid; accept = cost-confirm).
+  'content-gen-script': contentGen('content-gen-script'),
+  'content-gen-voice': contentGen('content-gen-voice'),
+  'content-gen-images': contentGen('content-gen-images'),
+  'content-assemble': contentGen('content-assemble'),
+  'content-gen-avatar': contentGen('content-gen-avatar'),
+  'content-gen-music': contentGen('content-gen-music'),
+  'content-gen-sfx': contentGen('content-gen-sfx'),
+  'content-gen-3d': contentGen('content-gen-3d'),
 };

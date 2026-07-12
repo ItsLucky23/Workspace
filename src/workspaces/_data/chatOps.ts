@@ -42,6 +42,9 @@ export const CHAT_ENABLED_OPS = [
   'trigger-run',
   // MR review / rollback (#54) — the mrId+ticketKey pair comes from the ctx MR list
   'mr-review', 'mr-rollback',
+  // per-asset content generation (#134) — paid gen ops, accept = cost-confirm
+  'content-gen-script', 'content-gen-voice', 'content-gen-images', 'content-assemble',
+  'content-gen-avatar', 'content-gen-music', 'content-gen-sfx', 'content-gen-3d',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

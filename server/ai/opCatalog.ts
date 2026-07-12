@@ -238,9 +238,16 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'archive a content piece (soft; restorable). params: pieceId',
     params: { pieceId: { kind: 'pieceId', required: true } },
   },
-  'content-gen-script': LATER, 'content-gen-voice': LATER, 'content-gen-images': LATER, 'content-assemble': LATER,
+  //? #134 — per-asset content generation (paid; the accept step is the cost-confirm, mentioned in `reply`).
+  'content-gen-script': { mode: 'enabled', hint: "generate the SCRIPT for a content piece (costs money — the user confirms). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
+  'content-gen-voice': { mode: 'enabled', hint: "generate the VOICEOVER for a content piece (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
+  'content-gen-images': { mode: 'enabled', hint: "generate the IMAGES/visuals for a content piece (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
+  'content-assemble': { mode: 'enabled', hint: "assemble a content piece's rendered video from its scenes+audio (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
   'content-gen-reference-image': LATER, 'content-gen-shortform': LATER, 'content-analyze-reference-video': LATER,
-  'content-gen-avatar': LATER, 'content-gen-music': LATER, 'content-gen-sfx': LATER, 'content-gen-3d': LATER,
+  'content-gen-avatar': { mode: 'enabled', hint: "generate a talking-AVATAR clip for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
+  'content-gen-music': { mode: 'enabled', hint: "generate background MUSIC for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
+  'content-gen-sfx': { mode: 'enabled', hint: "generate a SOUND EFFECT for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
+  'content-gen-3d': { mode: 'enabled', hint: "generate a 3D model for a piece (image→3D chain; costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
   'content-request-publish': LATER,
   'content-from-brief': EXCLUDED, // legacy `create-content`
   'content-import-asset': LATER, 'content-regenerate': {

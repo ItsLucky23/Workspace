@@ -3883,3 +3883,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** 3D-generatie was live kapot: `content-gen-3d` stuurde alleen een prompt, maar fal triposr (model-3d) is image-to-3D en vereist `image_url` → met echte keys faalde de job altijd (alleen de keyless-stub gaf een asset). Nu chaint de conductor-case: als `feature==='model-3d'` en er is geen referenceUrl, genereert 'ie EERST een image (image-gen) uit de prompt, haalt de asset-url op, en draait dan model-3d met die image als bron — de beschreven "genereer een image, dan converteren"-keten. De client-3D-knop hoeft niks te wijzigen (auto-chain). Buildbaar; live-3D vereist keys (jouw "media/erbij zijn").
 **Verify:** typecheck0·build✓·lint0. Server-only (conductor).
 **Files:** `server/orchestrator/conductor.ts`.
+
+## 2026-07-13 — 🟢 v3-build golf 37 (Content generation): #134
+**Wat:** geen enkele content-generatie-op was AI-bereikbaar (de Assistant kon alleen create-content = leeg stuk). Nu 8 per-asset content-gen-ops `later`→`enabled` geflipt: script·voice·images·assemble (pieceId) + avatar·music·sfx·3d (pieceId + optionele prompt), allemaal via een gedeelde `contentGen`-dispatcher-factory (contentControl-route). Het zijn PAID gen-ops → de accept-stap ís de cost-confirm (in de hint vermeld). De Workspace-AI kan nu "genereer de voiceover voor <stuk>" voorstellen. reference-image/shortform/analyze-video blijven `later`. Parity 53/53.
+**Verify:** typecheck0·build✓·lint0·opCatalogParity 53/53·chatCreateOps 19/19.
+**Files:** `server/ai/opCatalog.ts`, `src/workspaces/_data/chatOps.ts`, `src/workspaces/_functions/chatDispatch.ts`.
