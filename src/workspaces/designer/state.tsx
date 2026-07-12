@@ -80,6 +80,9 @@ export interface DesignerCtx {
   //? #161 — persist the active animation to the designer library (save-only; NOT coupled to activation,
   //? unlike useInProject) so a generated/edited animation survives a reload.
   saveAnimation: () => Promise<boolean>;
+  //? #166 — save the active theme/style to the library WITHOUT activating it (decouples persistence from
+  //? Use-in-project, so several generated themes can be kept without activating one).
+  saveToLibrary: (kind: 'theme' | 'style') => Promise<boolean>;
 }
 
 const Ctx = createContext<DesignerCtx | null>(null);
@@ -188,6 +191,24 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         if (!id) return false;
         const [e2, act] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'setActive', artifactId: id } }));
         if (e2 || act?.status !== 'success') return false;
+        refetch();
+        return true;
+      },
+      //? #166 — save the active theme/style to the library (op 'save' only; no setActive).
+      saveToLibrary: async (kind) => {
+        const workspaceId = activeWorkspace.id;
+        if (!workspaceId) return false;
+        let artifact: { kind: string; name: string; description: string; content: unknown; source: string } | null = null;
+        if (kind === 'theme') {
+          const t = themes.find((x) => x.id === activeThemeId);
+          if (t) artifact = { kind: 'theme', name: t.name, description: t.description, content: { light: t.light, dark: t.dark }, source: t.source };
+        } else {
+          const s = styles.find((x) => x.id === activeStyleId);
+          if (s) artifact = { kind: 'style', name: s.name, description: s.description, content: s, source: s.source };
+        }
+        if (!artifact) return false;
+        const [err, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
+        if (err || saved?.status !== 'success') return false;
         refetch();
         return true;
       },

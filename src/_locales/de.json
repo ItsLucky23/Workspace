@@ -1425,6 +1425,7 @@
         "generate": "Generate"
       },
       "useInProject": "Use in project",
+      "saveToLibrary": "In Bibliothek speichern",
       "activeInProject": "Active in project: {{name}}",
       "noneActive": "Nothing active — the coding agent has no design system yet",
       "light": "Hell",

@@ -3853,3 +3853,8 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Wat:** Designer-animaties hadden geen save-pad — `useInProject` deed alleen 'theme'|'style', en die koppelt save AAN activatie (de #166-flaw). Nu een aparte save-only `saveAnimation()`-ctx-method (via `designerLibrary` op 'save', GEEN setActive) + een "Opslaan"-knop op de Animations-sectie (naast Replay). Een AI-gegenereerde/bewerkte animatie overleeft nu een reload zonder geactiveerd te hoeven worden. (De `designerLibrary`-route + snapshot-merge steunden kind 'animation' al.)
 **Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: designer.{saveAnim,animSaved,animSaveFailed} ×4.
 **Files:** `src/workspaces/designer/state.tsx`, `src/workspaces/designer/sections/Animations.tsx`, `src/_locales/{en,nl,de,fr}.json`.
+
+## 2026-07-13 — 🟢 v3-build golf 31 (Designer): #166
+**Wat:** persistentie van AI-gegenereerde/bewerkte thema's & stijlen was GEKOPPELD aan activatie (`useInProject` = save + setActive) — je kon geen paar gegenereerde thema's bewaren zonder er één te activeren. Nu een aparte save-only `saveToLibrary(kind)`-ctx-method (via `designerLibrary` op 'save', GEEN setActive) + een "Opslaan in bibliotheek"-knop naast de Use-in-project-knop op de designer-bar. Zelfde ontkoppelings-patroon als #161 (animaties).
+**Verify:** typecheck0·build✓·lint0·localeIntegrity 8/8. Nieuwe i18n: designer.saveToLibrary ×4.
+**Files:** `src/workspaces/designer/state.tsx`, `src/workspaces/designer/page.tsx`, `src/_locales/{en,nl,de,fr}.json`.

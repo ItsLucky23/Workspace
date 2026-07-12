@@ -115,6 +115,7 @@ function DesignerShell() {
   const activeItem = themeItems.find((i) => i.id === d.activeThemeId);
 
   const [useBusy, setUseBusy] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
 
   const runAi = () => {
     const p = aiPrompt.trim();
@@ -130,6 +131,12 @@ function DesignerShell() {
     if (useBusy) return;
     setUseBusy(true);
     void d.useInProject(section === 'themes' ? 'theme' : 'style').then(() => { setUseBusy(false); });
+  };
+  //? #166 — save to the library WITHOUT activating (keep several generated themes/styles).
+  const saveToLibNow = () => {
+    if (saveBusy) return;
+    setSaveBusy(true);
+    void d.saveToLibrary(section === 'themes' ? 'theme' : 'style').then(() => { setSaveBusy(false); });
   };
   const activeName = section === 'themes' ? d.activeThemeName : d.activeStyleName;
 
@@ -194,6 +201,8 @@ function DesignerShell() {
             <span className="truncate">{activeName ? translate({ key: 'workspaces.designer.activeInProject', params: [{ key: 'name', value: activeName }] }) : translate({ key: 'workspaces.designer.noneActive' })}</span>
           </span>
           <div className="flex-1" />
+          {/* #166 — save to library (no activation), separate from Use-in-project. */}
+          <WsButton variant="ghost" icon={saveBusy ? 'spinner' : 'floppy-disk'} disabled={saveBusy} className={saveBusy ? '[&_svg]:animate-spin' : ''} onClick={saveToLibNow}>{translate({ key: 'workspaces.designer.saveToLibrary' })}</WsButton>
           <WsButton variant="secondary" icon={useBusy ? 'spinner' : 'circle-check'} disabled={useBusy} className={useBusy ? '[&_svg]:animate-spin' : ''} onClick={useInProjectNow}>{translate({ key: 'workspaces.designer.useInProject' })}</WsButton>
         </div>
       )}
