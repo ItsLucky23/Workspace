@@ -3,8 +3,7 @@
 //? through STDIN — content is never shell-interpolated). Gated on `workTickets` AND STAGE-LOCKED via
 //? `ticketEditGuard` (the same C4 edit-lock the live editor uses): a save while the AI is mid-turn — or on a
 //? non-user-editable stage — would race the agent's edits on the shared /work worktree, so it is refused.
-//?
-//? @docs owner ItsLucky23
+/** @docs owner ItsLucky23 */
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';

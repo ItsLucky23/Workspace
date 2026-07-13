@@ -2,8 +2,7 @@
 //? (#35, Track D), so the lightweight in-ticket editor can show git-backed content instead of diff-reconstructed
 //? text. A direct `_api` op (docker exec, not a Conductor write — it reads nothing authoritative). Gated on
 //? `workTickets`. Path is validated + bounded to /work in the transport (never an arbitrary host path).
-//?
-//? @docs owner ItsLucky23
+/** @docs owner ItsLucky23 */
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';

@@ -47,12 +47,12 @@
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
 | `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
-| `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | — | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
+| `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
-| `api/workspaces/saveWorktreeFile/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-worktree-file] SAVE an edited file back to a ticket's container worktree (#35, Track D). |
+| `api/workspaces/saveWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [save-worktree-file] SAVE an edited file back to a ticket's container worktree (#35, Track D). |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 | `api/workspaces/sshKeyAdd/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-add] (#76) persist a new SSH key on the CALLER'S account (real product, |
 | `api/workspaces/sshKeyRemove/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-remove] (#76) delete an SSH key from the CALLER'S account. Account-level |
@@ -135,8 +135,8 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 4 |
-| _(unowned)_ | 108 |
+| `ItsLucky23` | 6 |
+| _(unowned)_ | 106 |
 
 **Test coverage**: 3/112 routes have a per-route `.tests.ts`.
 

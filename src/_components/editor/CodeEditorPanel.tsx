@@ -37,6 +37,7 @@ export interface CodeEditorPanelProps {
   showThemeSwitcher?: boolean;
   title?: string;
   //? #35 — when provided, edits can be SAVED back to the source (the ticket worktree). Absent = view-only.
+  // luckystack-allow i18n-jsx: "Promise" here is the TS return type, not user-facing JSX text (linter false positive).
   onSave?: (path: string, content: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
