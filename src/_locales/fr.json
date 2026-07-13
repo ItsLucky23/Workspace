@@ -1431,6 +1431,8 @@
       "collapse": "Réduire",
       "expand": "Agrandir",
       "copyHtml": "Copier le HTML",
+      "downloadPng": "Télécharger le PNG",
+      "pngFailed": "Impossible de rastériser en PNG (le design utilise des ressources que le navigateur ne peut pas exporter). Utilisez Copier le HTML.",
       "vsHook": "Accroche",
       "vsDuration": "~{{sec}}s au total",
       "vsVo": "VO",

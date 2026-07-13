@@ -1431,6 +1431,8 @@
       "collapse": "Collapse",
       "expand": "Expand",
       "copyHtml": "Copy HTML",
+      "downloadPng": "Download PNG",
+      "pngFailed": "Couldn't rasterize to PNG (the design uses assets the browser can't export). Use Copy HTML instead.",
       "vsHook": "Hook",
       "vsDuration": "~{{sec}}s total",
       "vsVo": "VO",

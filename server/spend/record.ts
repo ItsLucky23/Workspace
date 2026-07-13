@@ -71,6 +71,8 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
 //? the Claude subscription is 0), so a Claude-only workspace never trips this — exactly decision B (€-metered
 //? enforcement, token/Claude stays visibility-only). Best-effort (a read failure = not enforced, never blocks).
 export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId: string): Promise<boolean> {
+  //? luckystack-allow tenant-scope: called from the background provision loop (no runInTenant context, like
+  //? the reaper/watchdog reads); explicitly filtered by the passed workspaceId, so it is tenant-safe.
   const caps = await prisma.workspaceBudget.findMany({
     where: { workspaceId, enabled: true, enforcement: { in: ['pauseNew', 'pauseAll'] } },
     select: { cap: true, spent: true },

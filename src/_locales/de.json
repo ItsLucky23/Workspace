@@ -1431,6 +1431,8 @@
       "collapse": "Einklappen",
       "expand": "Ausklappen",
       "copyHtml": "HTML kopieren",
+      "downloadPng": "PNG herunterladen",
+      "pngFailed": "Konnte nicht als PNG rastern (das Design nutzt Assets, die der Browser nicht exportieren kann). Nutze stattdessen HTML kopieren.",
       "vsHook": "Hook",
       "vsDuration": "~{{sec}}s gesamt",
       "vsVo": "VO",

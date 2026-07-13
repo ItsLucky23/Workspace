@@ -1431,6 +1431,8 @@
       "collapse": "Inklappen",
       "expand": "Uitklappen",
       "copyHtml": "HTML kopiëren",
+      "downloadPng": "PNG downloaden",
+      "pngFailed": "Kon niet naar PNG rasteren (het ontwerp gebruikt assets die de browser niet kan exporteren). Gebruik HTML kopiëren.",
       "vsHook": "Hook",
       "vsDuration": "~{{sec}}s totaal",
       "vsVo": "VO",

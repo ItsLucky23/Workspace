@@ -1,5 +1,17 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 8 (#170 client render-to-PNG)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did (#170, owner A: client render-to-PNG):**
+- Studio `LandingPreview` kreeg een "Download PNG"-knop: `downloadHtmlAsPng` rasteriseert de gegenereerde HTML-kaart via SVG `<foreignObject>` → `<img>` → `<canvas>` → blob → download, sociale-kaart-formaat 1200×630, volledig client-side (geen image-provider). Best-effort: een externe/cross-origin asset TAINT't de canvas → `toBlob` = null → eerlijke `notify.error` + fallback naar Copy HTML (owner koos client-render mét deze bekende limiet). i18n ×4.
+- **Nazorg batch 7:** `isSpendEnforcementActive` kreeg `// luckystack-allow tenant-scope` (draait buiten runInTenant in de provision-loop, expliciet workspaceId-gefilterd — zoals reaper/watchdog).
+
+**Files touched:** `src/workspaces/studio/page.tsx`, `src/_locales/×4`, `server/spend/record.ts` (allow-comment).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, locale 8/8. PNG-render is browser-runtime (geen unit-test mogelijk zonder DOM); de fallback is expliciet.
+
 ## 2026-07-13 — completion-gaps-v3 batch 7 (#83 stage.on_signal event, #99 metered-enforcement pause)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

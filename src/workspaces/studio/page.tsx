@@ -244,6 +244,38 @@ function ArtifactBody({ kind, c }: { kind: StudioArtifactKind; c: Record<string,
   return <NamesPreview c={c} />;
 }
 
+//? #170 — client-side render-to-PNG: rasterize the generated HTML card into a social-sized PNG via an
+//? SVG <foreignObject> → <img> → <canvas> → blob, then download it. Fully client-side (no image provider).
+//? Best-effort: an external image / cross-origin asset TAINTS the canvas so `toBlob` yields null — we notify
+//? and the user falls back to Copy HTML (the owner picked client render-to-PNG knowing this limit).
+const PNG_W = 1200;
+const PNG_H = 630;
+function downloadHtmlAsPng(html: string, onFail: () => void): void {
+  //? Wrap the card in a namespaced foreignObject at social-card dimensions.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${String(PNG_W)}" height="${String(PNG_H)}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${String(PNG_W)}px;height:${String(PNG_H)}px;overflow:hidden;background:#ffffff">${html}</div></foreignObject></svg>`;
+  const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const img = new Image();
+  img.addEventListener('load', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = PNG_W; canvas.height = PNG_H;
+    const cx = canvas.getContext('2d');
+    if (!cx) { onFail(); return; }
+    cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, PNG_W, PNG_H);
+    cx.drawImage(img, 0, 0);
+    //? toBlob is null when the canvas is tainted (external asset) — honest failure, not a broken file.
+    canvas.toBlob((blob) => {
+      if (!blob) { onFail(); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'design.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+  img.addEventListener('error', () => { onFail(); });
+  img.src = svgUrl;
+}
+
 function LandingPreview({ html }: { html: string }) {
   const translate = useTranslator();
   const [full, setFull] = useState(false);
@@ -257,6 +289,8 @@ function LandingPreview({ html }: { html: string }) {
       <div className="flex items-center gap-2">
         <WsButton variant="ghost" icon={full ? 'compress' : 'expand'} onClick={() => { setFull((v) => !v); }}>{translate({ key: full ? 'workspaces.studio.collapse' : 'workspaces.studio.expand' })}</WsButton>
         <WsButton variant="ghost" icon="copy" onClick={() => { void navigator.clipboard.writeText(html); }}>{translate({ key: 'workspaces.studio.copyHtml' })}</WsButton>
+        {/* #170 — download the card as a social-sized PNG (client-side raster; falls back to Copy HTML on taint). */}
+        <WsButton variant="ghost" icon="file-export" onClick={() => { downloadHtmlAsPng(html, () => { notify.error({ key: 'workspaces.studio.pngFailed' }); }); }}>{translate({ key: 'workspaces.studio.downloadPng' })}</WsButton>
       </div>
     </div>
   );
