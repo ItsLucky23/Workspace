@@ -748,6 +748,16 @@ export interface ChatPlan {
   steps: ChatProposal[];    // ordered; each dispatched via the same accept path as a single proposal
 }
 
+//? #109 — an "AI drives the UI" copilot directive: navigate the user to a page + (optionally) pre-fill a
+//? form there, then let them confirm the underlying action. Single-accept (the inline "Apply" button) — NOT a
+//? suggestion+op double layer, so no double-accept. The client applies navigate + drops `prefill` in a store
+//? the target page reads; `note` is the human explanation of what to do next.
+export interface CopilotDirective {
+  navigate: string;                       // a WsView id (or 'content/<id>' etc.) to route to
+  note: string;                           // plain-language "here's what to do"
+  prefill?: Record<string, string>;       // optional field→value hints the target form reads (copilotPrefill store)
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
@@ -755,6 +765,7 @@ export interface ChatMessage {
   questionSetId?: string; // renders a QuestionSet card inline in the Assistant chat (ERRATA E4)
   proposal?: ChatProposal; // an AI action proposal rendered with an Accept button
   plan?: ChatPlan;         // O-A — a multi-step intake plan rendered with an Approve-plan button
+  copilot?: CopilotDirective; // #109 — an AI-drives-UI directive rendered with an "Apply" button
   pending?: boolean;       // the AI turn is in flight (renders a thinking indicator)
   accepted?: boolean;      // the proposal/plan has been dispatched (Accept consumed)
   declined?: boolean;      // J5 — the proposal/plan was rejected (dismissed without dispatch)

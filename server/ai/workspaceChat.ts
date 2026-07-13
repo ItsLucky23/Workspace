@@ -23,7 +23,29 @@ export interface ChatResult {
   reply: string;
   proposal: ChatProposal | null;
   plan?: ChatPlan | null;
+  //? #109 — an AI-drives-UI directive: navigate the user to a page + optional form pre-fill hints.
+  copilot?: { navigate: string; note: string; prefill?: Record<string, string> } | null;
   error?: string;
+}
+
+//? #109 — the KNOWN nav targets a copilot directive may point at (a WsView id or a piece/settings sub-route).
+//? Kept permissive but bounded to real views so the AI can't navigate somewhere that doesn't exist.
+const COPILOT_NAV = new Set(['board', 'backlog', 'terminals', 'activity', 'sources', 'pipeline', 'scheduled', 'scheduled-posts', 'usage', 'content', 'content/settings', 'designer', 'interviewer', 'marketing', 'knowledge', 'studio', 'settings', 'workspace', 'ai']);
+
+//? #109 — validate a model-proposed copilot directive: a known nav target + a note, with string-only prefill
+//? hints. Rejects to null (the turn degrades to a plain reply) — never invents a route.
+export function validateCopilot(raw: unknown): { navigate: string; note: string; prefill?: Record<string, string> } | null {
+  if (raw === null || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const navigate = typeof r.navigate === 'string' ? r.navigate.trim() : '';
+  if (!COPILOT_NAV.has(navigate)) return null;
+  const note = typeof r.note === 'string' && r.note.trim().length > 0 ? r.note.trim() : '';
+  if (note.length === 0) return null;
+  const prefill: Record<string, string> = {};
+  if (r.prefill !== null && typeof r.prefill === 'object' && !Array.isArray(r.prefill)) {
+    for (const [k, v] of Object.entries(r.prefill as Record<string, unknown>)) if (typeof v === 'string') prefill[k] = v;
+  }
+  return { navigate, note, ...(Object.keys(prefill).length > 0 ? { prefill } : {}) };
 }
 
 export interface Ctx {
@@ -82,7 +104,7 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
   return [
     'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below — AND explain what THIS PRODUCT can do — use the product-capabilities below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
-    '{"reply": string, "action": null | <action>, "plan"?: {"summary": string, "steps": <action>[]}}  where <action> = {"op": "bulk-move"|"assign"|"add-comment"|"create-ticket"|"create-content", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string, "title"?: string, "description"?: string, "brief"?: string, "format"?: string}',
+    '{"reply": string, "action": null | <action>, "plan"?: {"summary": string, "steps": <action>[]}, "copilot"?: {"navigate": string, "note": string, "prefill"?: object}}  where <action> = {"op": "bulk-move"|"assign"|"add-comment"|"create-ticket"|"create-content", "ticketKeys"?: string[], "stageId"?: string, "assigneeId"?: string, "body"?: string, "title"?: string, "description"?: string, "brief"?: string, "format"?: string}',
     '- bulk-move: move ticketKeys to stageId (a stage id from the list). Use for pulling a high-priority/bugfix ticket forward.',
     '- assign: set assigneeId (a member id) on the single ticketKeys[0].',
     '- add-comment: post body on ticketKeys[0].',
@@ -96,6 +118,8 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     ...catalogPromptLines(),
     'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
+    //? #109 — AI-drives-UI: when the best help is to TAKE the user somewhere (not run an op), emit a copilot directive.
+    'AI-DRIVES-UI (copilot): when the user\'s ask is best served by GUIDING them to a specific page to finish it themselves (a settings screen, a form you can\'t fully fill, "where do I set X?", "take me to Y"), ADD a "copilot" field: {"navigate": <one of: board|backlog|terminals|activity|sources|pipeline|scheduled|scheduled-posts|usage|content|content/settings|designer|interviewer|marketing|knowledge|studio|settings|workspace|ai>, "note": short "here\'s what to do next", "prefill"?: { field: value }}. Use it INSTEAD of (or alongside) a plain reply when navigating helps; keep proposing an op when you CAN do the action directly. Only navigate to a listed target.',
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
@@ -215,5 +239,8 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   const replyRaw = (obj !== null && typeof obj.reply === 'string') ? obj.reply : res.text.trim();
   //? Prefer a multi-step plan when the model returned one; else a single proposal. (Never both — a plan wins.)
   const plan = validatePlan(obj?.plan ?? null, ctx);
-  return { reply: replyRaw, proposal: plan ? null : validateChatAction(obj?.action ?? null, ctx), plan };
+  //? #109 — a copilot directive (AI drives the UI) is orthogonal to a proposal/plan: it can guide the user to
+  //? a page to finish an action the AI can't fully specify. Validated against the known nav targets.
+  const copilot = validateCopilot(obj?.copilot ?? null);
+  return { reply: replyRaw, proposal: plan ? null : validateChatAction(obj?.action ?? null, ctx), plan, copilot };
 }

@@ -854,7 +854,7 @@
       "confirmDestructiveTitle": "Bevestig destructieve actie",
       "confirmDestructiveContent": "Deze actie is destructief of moeilijk terug te draaien: {summary}. Doorgaan?",
       "aiError": "De AI is nu niet beschikbaar. Probeer het opnieuw.",
-      "aiReject": "Weigeren", "aiDeclined": "Geweigerd", "aiAccept": "Accepteren",
+      "aiReject": "Weigeren", "aiDeclined": "Geweigerd", "aiAccept": "Accepteren", "aiApply": "Toepassen",
       "aiApprovePlan": "Plan goedkeuren",
       "aiAccepted": "Gedaan",
       "send": "Versturen",

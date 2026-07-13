@@ -854,7 +854,7 @@
       "confirmDestructiveTitle": "Destruktive Aktion bestätigen",
       "confirmDestructiveContent": "Diese Aktion ist destruktiv oder schwer rückgängig zu machen: {summary}. Fortfahren?",
       "aiError": "Die KI ist gerade nicht verfügbar. Bitte erneut versuchen.",
-      "aiReject": "Ablehnen", "aiDeclined": "Abgelehnt", "aiAccept": "Übernehmen",
+      "aiReject": "Ablehnen", "aiDeclined": "Abgelehnt", "aiAccept": "Übernehmen", "aiApply": "Anwenden",
       "aiApprovePlan": "Plan genehmigen",
       "aiAccepted": "Erledigt",
       "send": "Senden",

@@ -71,7 +71,7 @@
 | `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
 | `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | **no** | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
 | `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
-| `sync/workspaces/agentTerm/v1` | yes | — | login | — | **no** | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
+| `sync/workspaces/agentTerm/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
 | `sync/workspaces/answerInput/v1` | yes | — | login | — | **no** | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
 | `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
 | `sync/workspaces/bulkArchive/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
@@ -102,7 +102,7 @@
 | `sync/workspaces/revokeInvite/v1` | yes | — | login | — | **no** | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
 | `sync/workspaces/roleCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
 | `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
-| `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | — | **no** | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
+| `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
 | `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | **no** | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
@@ -133,8 +133,8 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 2 |
-| _(unowned)_ | 108 |
+| `ItsLucky23` | 4 |
+| _(unowned)_ | 106 |
 
 **Test coverage**: 3/110 routes have a per-route `.tests.ts`.
 

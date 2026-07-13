@@ -1,5 +1,21 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 10 (#109 AI-drives-UI copilot — producer + prefill)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did (#109, owner A: build full path):**
+- **Bevinding:** de RECEIVE-plumbing was AL af (evidence stale): `asSugType` bevat 'copilot' (:67), snapshot-projectie draagt `patch` (:573), client-navigate-applier bestaat (WorkspacesProvider acceptSuggestion). De echte gap = de PRODUCER + prefill-into-form.
+- **Producer (schoon, geen double-accept):** i.p.v. de copilot-propose-op (die een suggestion+op dubbel-accept zou geven), emit de chat een INLINE copilot-directive: `interpretChat` parset+valideert `obj.copilot` via `validateCopilot` (bekende nav-target uit `COPILOT_NAV` + note + string-only prefill) → `ChatResult.copilot`. systemPrompt kreeg de AI-drives-UI-instructie. aiChat-route gaf `result` al heel terug.
+- **Directive-applier:** `ChatMessage.copilot` + `CopilotDirective`-type; sendChat hangt `copilot` aan het AI-bericht; ChatBubble rendert een "Apply"-kaart (single-accept) → `applyCopilot` (navigate + drop prefill in de `copilotPrefill`-store) + `consumeCopilotPrefill`. Gedemonstreerde consumer: de content NewPieceForm auto-opent prefilled (title/brief) als er een copilotPrefill binnenkomt. i18n ×4 (aiApply).
+- **Nazorg batch 9:** `@docs owner` op agentTerm + rotateWebhookSecret nu als `/** */`-JSDoc-block (de `//?`-vorm werd niet herkend door de doc-coverage-linter).
+
+**Files touched:** `server/ai/workspaceChat.ts` (validateCopilot + ChatResult.copilot + prompt), `src/workspaces/_data/types.ts` (CopilotDirective + ChatMessage.copilot), `_shell/{WorkspacesProvider,WorkspacesContext,Shell}.tsx`, `content/page.tsx`, `src/_locales/×4`, `_sync/{agentTerm,rotateWebhookSecret}_server_v1.ts` (doc-owner), `tests/integration/copilot.test.mts` (+validateCopilot).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, copilot 13/13 (producer-validatie + de bestaande directive-flow E2E vs DB), locale 8/8.
+
+**Notes:** copilot-directive is bewust INLINE (single-accept) i.p.v. via de copilot-propose-suggestion (dat gaf de dubbel-accept die die op EXCLUDED hield). Prefill-consumer is nu de content-form; andere forms lezen dezelfde store incrementeel.
+
 ## 2026-07-13 — completion-gaps-v3 batch 9 (#20 live agent-PTY-tail)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

@@ -18,7 +18,7 @@ import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
-import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, NotificationItem } from '../_data/types';
+import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, NotificationItem } from '../_data/types';
 
 //? The CSS color token for a ticket's live status dot.
 function statusColor(status: string | undefined): string {
@@ -547,7 +547,7 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
   return { shown, typing: shown.length < text.length };
 }
 
-function ChatBubble({ m, onAccept, onAcceptPlan, onReject }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void; onReject: (id: string) => void }) {
+function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void; onReject: (id: string) => void; onApplyCopilot: (d: CopilotDirective) => void }) {
   const translate = useTranslator();
   const mine = m.role === 'user';
   const animate = !mine && !typedMessages.has(m.id) && !m.pending;
@@ -608,6 +608,14 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject }: { m: ChatMessage; o
               ))}
         </div>
       )}
+      {/* #109 — AI-drives-UI copilot directive: a single "Apply" navigates (+ pre-fills) the target page. */}
+      {m.copilot && (
+        <div className="mt-1.5 ml-8 max-w-[80%] rounded-xl border border-primary-border bg-primary/8 p-2.5 flex items-center gap-2">
+          <Icon name="wand-magic-sparkles" className="text-primary shrink-0" />
+          <span className="text-xs text-title flex-1 min-w-0">{m.copilot.note}</span>
+          <button type="button" onClick={() => { if (m.copilot) onApplyCopilot(m.copilot); }} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer shrink-0">{translate({ key: 'workspaces.shell.aiApply' })}</button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -617,7 +625,7 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject }: { m: ChatMessage; o
 let rememberedAiWidth = 340;
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, aiRuns, isMobile } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, applyCopilot, aiRuns, isMobile } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
@@ -681,7 +689,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         {tab === 'chat' ? (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} onReject={rejectChatProposal} />)}
+              {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} onReject={rejectChatProposal} onApplyCopilot={applyCopilot} />)}
               {/* Q4 — capability starter-questions: surface what the product can do, tappable to ask. Shown
                   while the conversation is empty (just the greeting). The AI answers from the product-knowledge. */}
               {chat.length <= 1 && (

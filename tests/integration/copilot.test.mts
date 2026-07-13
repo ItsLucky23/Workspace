@@ -6,6 +6,18 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
+const { validateCopilot } = await import('../../server/ai/workspaceChat');
+
+//? #109 — the chat PRODUCER: validateCopilot accepts a known nav target + note (+ string prefill), rejects the rest.
+{
+  const ok = validateCopilot({ navigate: 'content', note: 'Create your video here', prefill: { title: 'Launch', brief: 'about X', bad: 5 } });
+  assert(ok !== null && ok.navigate === 'content' && ok.note.length > 0, 'a valid copilot directive validates');
+  eq(ok?.prefill?.title, 'Launch', 'string prefill hints are carried');
+  assert(ok?.prefill !== undefined && !('bad' in ok.prefill), 'non-string prefill values are dropped');
+  eq(validateCopilot({ navigate: 'nope', note: 'x' }), null, 'an unknown nav target is rejected (no invented routes)');
+  eq(validateCopilot({ navigate: 'content', note: '' }), null, 'an empty note is rejected');
+  eq(validateCopilot(null), null, 'a null directive is rejected');
+}
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T>, timeoutMs = 8000, stepMs = 60): Promise<T | null> {

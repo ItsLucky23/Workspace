@@ -196,6 +196,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [, setPresenceTick] = useState(0);
   //? #20 — the live agent-terminal tail per ticket (a rolling buffer, capped). Fed by the agentTerm broadcast.
   const [agentTerm, setAgentTerm] = useState<Record<string, string>>({});
+  //? #109 — the pending copilot form pre-fill (field→value) the AI-drives-UI directive dropped; the target
+  //? page reads + consumes it. null between directives.
+  const [copilotPrefill, setCopilotPrefill] = useState<Record<string, string> | null>(null);
 
   const refetch = useCallback(() => {
     void (async () => {
@@ -975,8 +978,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (error || res?.status !== 'success' || res.result.error) {
           return { ...m, pending: false, text: translate({ key: 'workspaces.shell.aiError' }) };
         }
-        const { reply, proposal, plan } = res.result;
-        return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}), ...(plan ? { plan } : {}) };
+        const { reply, proposal, plan, copilot } = res.result;
+        return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}), ...(plan ? { plan } : {}), ...(copilot ? { copilot } : {}) };
       }));
     })();
   }, [snap.activeWorkspaceId, snap.activeProjectId, chat, translate]);
@@ -1115,6 +1118,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleAi: () => { setAiOpen((o) => !o); },
       chat,
       sendChat,
+      //? #109 — apply an AI-drives-UI copilot directive: drop the prefill for the target page, then navigate there.
+      applyCopilot: (d) => { setCopilotPrefill(d.prefill ?? null); void navigate(pathForView(d.navigate)); },
+      copilotPrefill,
+      consumeCopilotPrefill: () => { setCopilotPrefill(null); },
       acceptChatProposal,
       acceptChatPlan,
       rejectChatProposal,
@@ -1430,7 +1437,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -7,7 +7,7 @@
 import { createContext, use } from 'react';
 
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
@@ -61,6 +61,10 @@ export interface WorkspacesCtx {
   toggleAi: () => void;
   chat: ChatMessage[];
   sendChat: (text: string) => void;
+  //? #109 — AI-drives-UI: apply a copilot directive (navigate + drop form pre-fill); the target page consumes it.
+  applyCopilot: (directive: CopilotDirective) => void;
+  copilotPrefill: Record<string, string> | null;
+  consumeCopilotPrefill: () => void;
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
   acceptChatPlan: (messageId: string, plan: ChatPlan) => void;
   rejectChatProposal: (messageId: string) => void;

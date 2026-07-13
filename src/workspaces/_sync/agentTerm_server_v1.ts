@@ -3,8 +3,7 @@
 //? "Live agent" view can tail the turn as it happens. This handler only registers the route + its payload shape
 //? ({ ticketKey, chunk }) in the generated type maps for the client's `upsertSyncEventCallback('workspaces/agentTerm')`;
 //? a direct call is a no-op. NOT authoritative state (single-writer untouched) — pure observability.
-//?
-//? @docs owner ItsLucky23
+/** @docs owner ItsLucky23 */
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';

@@ -1,7 +1,7 @@
 //? intent: the Content studio — a board of your AI content pieces (script → media → assemble →
 //? review → publish) with the media €-budget, so a non-technical user sees everything they've made.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -15,10 +15,11 @@ import type { ContentPieceSummary } from '../_data/types';
 //? #125 — create a content piece from a brief (title + brief + format), the first UI create path (the
 //? board previously had no create affordance at all — only the AI's create-content proposal).
 const PIECE_FORMATS = ['faceless', 'talking-head'];
-function NewPieceForm({ onCreate }: { onCreate: (input: { title: string; brief: string; format: string }) => void }) {
+function NewPieceForm({ onCreate, initialTitle = '', initialBrief = '' }: { onCreate: (input: { title: string; brief: string; format: string }) => void; initialTitle?: string; initialBrief?: string }) {
   const translate = useTranslator();
-  const [title, setTitle] = useState('');
-  const [brief, setBrief] = useState('');
+  //? #109 — a copilot directive can pre-fill title/brief (the AI-drives-UI "make a video about X" flow).
+  const [title, setTitle] = useState(initialTitle);
+  const [brief, setBrief] = useState(initialBrief);
   const [format, setFormat] = useState(PIECE_FORMATS[0] ?? 'faceless');
   const formatItems: DropdownItem[] = PIECE_FORMATS.map((f) => ({ id: f, value: f, item: translate({ key: `workspaces.content.format_${f.replace('-', '_')}` }) }));
   const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
@@ -82,10 +83,18 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
 }
 
 export default function Content() {
-  const { content, navigate, createContentPiece, runContentOp } = useWorkspaces();
+  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
   const translate = useTranslator();
   const [showArchived, setShowArchived] = useState(false);
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
+  //? #109 — an AI-drives-UI copilot directive that navigated here with a title/brief pre-fill auto-opens the
+  //? create form with those values, then consumes the pre-fill so it fires exactly once.
+  useEffect(() => {
+    const title = copilotPrefill?.title ?? copilotPrefill?.brief;
+    if (title === undefined) return;
+    void menuHandler.open(<NewPieceForm onCreate={createContentPiece} initialTitle={copilotPrefill?.title ?? ''} initialBrief={copilotPrefill?.brief ?? ''} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
+    consumeCopilotPrefill();
+  }, [copilotPrefill, createContentPiece, consumeCopilotPrefill]);
 
   //? #129 — the board shows only live pieces; archived ones live in the Archived view (Restore to bring back).
   const byStage = useMemo(() => {
