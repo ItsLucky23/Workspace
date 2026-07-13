@@ -1,5 +1,21 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 11 (#35 code-editor ECHTE save via worktree)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e. **DIT IS HET LAATSTE ITEM.**
+
+**What I did (#35, owner B: build Track-D worktree-content + save-op):**
+- De lichte in-ticket Monaco "changes"-mode reconstrueerde content uit de diff en edits waren efemeer (view-only). Nu is er een echte save-round-trip naar de container-worktree.
+- **Transport** `server/container/worktreeFiles.ts`: `readWorktreeFile`/`writeWorktreeFile` via `docker exec` gebonden aan ONZE container (`isWorkspacesContainer`) + `isSafeWorktreePath`-guard (geen `..`/absoluut/shell-unsafe). Content gaat via STDIN (nooit shell-geïnterpoleerd → geen command-injection).
+- **Routes** `_api/readWorktreeFile_v1.ts` + `saveWorktreeFile_v1.ts` (workTickets-gated). Save is STAGE-LOCKED via `ticketEditGuard` (dezelfde C4 edit-lock als de live editor): geen save terwijl de AI mid-turn is / stage niet user-editable → racet de worktree niet.
+- **UI** `CodeEditorPanel` kreeg optionele `onSave` → Save-knop in de topbar + saving/saveFailed-status; edits persisteren nu. CodeTab wire't `saveWorktreeFile` naar de route. i18n ×4.
+
+**Files touched:** `server/container/worktreeFiles.ts` (nieuw), `src/workspaces/_api/{readWorktreeFile,saveWorktreeFile}_v1.ts` (nieuw), `src/_components/editor/CodeEditorPanel.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/×4`, `tests/unit/worktreeFiles.test.mts` (nieuw).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, worktreeFiles 16/16 (path-traversal-guard — de security-kern), locale 8/8. De docker-exec-round-trip vereist Docker + een geactiveerde ticket-container voor live E2E; de guard/routes/stage-lock/UI zijn geverifieerd. De "live" openvscode-mode bood al echte save; dit tilt de lichte Monaco-mode naar persisted.
+
+**⇒ completion-gaps-v3.json: ALLE code-implementeerbare items af (batches 1-11). Rest = alleen live-keys (#160/#114 publish/rewind) — vereist de user erbij.**
+
 ## 2026-07-13 — completion-gaps-v3 batch 10 (#109 AI-drives-UI copilot — producer + prefill)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

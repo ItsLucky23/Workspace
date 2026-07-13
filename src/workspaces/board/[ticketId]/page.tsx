@@ -138,6 +138,13 @@ function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; works
   const [launching, setLaunching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  //? #35 — save an edited file back to the ticket worktree (stage-locked server-side). Returns {ok,error?}.
+  const saveWorktreeFile = async (path: string, content: string): Promise<{ ok: boolean; error?: string }> => {
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveWorktreeFile', version: 'v1', data: { workspaceId, ticketKey, path, content } }));
+    if (error || res?.status !== 'success') return { ok: false, error: res?.status === 'error' ? res.errorCode : 'editor.saveFailed' };
+    return res.result;
+  };
+
   const launch = async (): Promise<void> => {
     setLaunching(true); setErr(null); setMode('live');
     const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/openEditor', version: 'v1', data: { workspaceId, ticketKey } }));
@@ -163,7 +170,7 @@ function CodeTab({ files, workspaceId, ticketKey }: { files: TicketFile[]; works
         {mode === 'changes' ? (
           editorFiles.length === 0 ? <EmptyState icon="code-branch" title={translate({ key: 'workspaces.ticket.noCode' })} /> : (
             <Suspense fallback={<div className="h-full flex items-center justify-center text-sm text-muted">{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>}>
-              <LazyCodeEditorPanel files={editorFiles} changes={changes} theme={theme} title={translate({ key: 'workspaces.ticket.tabCode' })} />
+              <LazyCodeEditorPanel files={editorFiles} changes={changes} theme={theme} title={translate({ key: 'workspaces.ticket.tabCode' })} onSave={saveWorktreeFile} />
             </Suspense>
           )
         ) : (liveUrl ? (

@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 232,
+    "nodes": 234,
     "edges": 350,
-    "symbols": 293,
+    "symbols": 297,
     "callEdges": 42
   },
   "nodes": [
@@ -434,6 +434,11 @@
       "route": "api/workspaces/pushConfig/v1"
     },
     {
+      "id": "workspaces/_api/readWorktreeFile_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/readWorktreeFile/v1"
+    },
+    {
       "id": "workspaces/_api/revokePat_v1.ts",
       "kind": "api",
       "route": "api/workspaces/revokePat/v1"
@@ -457,6 +462,11 @@
       "id": "workspaces/_api/savePushSubscription_v1.ts",
       "kind": "api",
       "route": "api/workspaces/savePushSubscription/v1"
+    },
+    {
+      "id": "workspaces/_api/saveWorktreeFile_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/saveWorktreeFile/v1"
     },
     {
       "id": "workspaces/_api/snapshot_v1.tests.ts",
@@ -4243,6 +4253,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/readWorktreeFile_v1.ts::<module>",
+      "file": "workspaces/_api/readWorktreeFile_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/readWorktreeFile_v1.ts::main",
+      "file": "workspaces/_api/readWorktreeFile_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/revokePat_v1.ts::<module>",
       "file": "workspaces/_api/revokePat_v1.ts",
       "name": "<module>",
@@ -4317,6 +4339,18 @@
     {
       "id": "workspaces/_api/savePushSubscription_v1.ts::main",
       "file": "workspaces/_api/savePushSubscription_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/saveWorktreeFile_v1.ts::<module>",
+      "file": "workspaces/_api/saveWorktreeFile_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/saveWorktreeFile_v1.ts::main",
+      "file": "workspaces/_api/saveWorktreeFile_v1.ts",
       "name": "main",
       "kind": "function"
     },

@@ -36,6 +36,8 @@ export interface CodeEditorPanelProps {
   readOnly?: boolean;
   showThemeSwitcher?: boolean;
   title?: string;
+  //? #35 — when provided, edits can be SAVED back to the source (the ticket worktree). Absent = view-only.
+  onSave?: (path: string, content: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 type View = 'files' | 'scm';
@@ -48,7 +50,7 @@ function scmColor(status: GitStatus, palette: ThemePalette): string {
   return palette.attribute;
 }
 
-export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeChange, readOnly, showThemeSwitcher = true, title }: CodeEditorPanelProps) {
+export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeChange, readOnly, showThemeSwitcher = true, title, onSave }: CodeEditorPanelProps) {
   const translate = useTranslator();
   const palette = getPalette(theme);
   const [contents, setContents] = useState<Record<string, string>>(() => Object.fromEntries(files.map((f) => [f.path, f.content])));
@@ -91,6 +93,23 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
   };
   const selectScm = (path: string): void => { setScmPath(path); setDrawerOpen(false); };
 
+  //? #35 — save the active file's edited content back to the source (worktree). Clears its dirty flag on
+  //? success; a locked/failed save (agent mid-turn, no container) surfaces its reason.
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveActive = (): void => {
+    if (!onSave || !activePath || saving || !dirty.has(activePath)) return;
+    const path = activePath;
+    const content = contents[path];
+    if (content === undefined) return;
+    setSaving(true); setSaveError(null);
+    void onSave(path, content).then((r) => {
+      setSaving(false);
+      if (r.ok) setDirty((d) => { const next = new Set(d); next.delete(path); return next; });
+      else setSaveError(r.error ?? 'editor.saveFailed');
+    });
+  };
+
   const activeChange = changes.find((c) => c.path === scmPath) ?? null;
   const activeLang = activePath ? languageForPath(activePath) : 'plaintext';
 
@@ -101,6 +120,14 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
         <button type="button" className="md:hidden px-2 py-1 rounded text-sm cursor-pointer" style={{ color: palette.fg }} onClick={() => { setDrawerOpen((o) => !o); }} aria-label="Toggle explorer">☰</button>
         <span className="text-[13px] font-medium truncate" style={{ color: palette.fg }}>{title ?? translate({ key: 'workspaces.editor.title' })}</span>
         <div className="flex-1" />
+        {/* #35 — save the active edited file back to the worktree (only when saving is wired). */}
+        {onSave && (
+          <button type="button" disabled={saving || activePath === null || !dirty.has(activePath)} onClick={saveActive}
+            className="text-[12px] rounded px-2 py-1 cursor-pointer outline-none border disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: palette.bg, color: palette.fg, borderColor: palette.border }}>
+            {saving ? translate({ key: 'workspaces.editor.saving' }) : translate({ key: 'workspaces.editor.save' })}
+          </button>
+        )}
         {showThemeSwitcher && (
           <select
             value={theme}
@@ -195,6 +222,7 @@ export function CodeEditorPanel({ files, changes = NO_CHANGES, theme, onThemeCha
             <div className="flex-1" />
             <span>{getPalette(theme).label}</span>
             {dirty.size > 0 && <span>● {translate({ key: 'workspaces.editor.unsavedCount', params: [{ key: 'n', value: String(dirty.size) }] })}</span>}
+            {saveError !== null && <span title={saveError}>⚠ {translate({ key: 'workspaces.editor.saveFailed' })}</span>}
           </div>
         </div>
       </div>
