@@ -10,7 +10,22 @@
 
 import { spawn } from 'node:child_process';
 
-import { DOCKER_BIN, containerName, isWorkspacesContainer, dockerAvailable, docker } from './runtime';
+import { DOCKER_BIN, containerName, isWorkspacesContainer, dockerAvailable } from './runtime';
+
+//? A RAW docker-exec that returns stdout BYTE-EXACT (the shared `docker()` helper `.trim()`s output, which
+//? would silently drop a file's trailing newline/whitespace — significant for source files + git). Best-effort.
+function dockerExecRaw(args: string[], stdin?: string): Promise<{ code: number; out: string; err: string }> {
+  return new Promise((resolve) => {
+    const proc = spawn(DOCKER_BIN, args, { windowsHide: true });
+    let out = '';
+    let err = '';
+    proc.stdout.on('data', (d: Buffer) => { out += d.toString('utf8'); });
+    proc.stderr.on('data', (d: Buffer) => { err += d.toString('utf8'); });
+    proc.on('error', (e) => { resolve({ code: -1, out: '', err: e.message }); });
+    proc.on('close', (code) => { resolve({ code: code ?? -1, out, err }); });
+    if (stdin !== undefined) { proc.stdin.on('error', () => { /* close handler reports */ }); proc.stdin.end(stdin); }
+  });
+}
 
 //? A worktree-relative path: safe chars only, no `..` (traversal), no leading `/` (absolute escape). The
 //? shell quoting below relies on this — never relax it without re-checking the exec.
@@ -23,7 +38,8 @@ export async function readWorktreeFile(workspaceId: string, ticketKey: string, p
   if (!(await dockerAvailable())) return { ok: false, error: 'docker.unavailable' };
   const container = containerName(workspaceId, ticketKey);
   if (!(await isWorkspacesContainer(container))) return { ok: false, error: 'container.notOurs' };
-  const r = await docker(['exec', '-w', '/work', container, 'cat', path]);
+  //? Raw exec (byte-exact) — never `docker()` here: its `.trim()` would drop the file's trailing newline.
+  const r = await dockerExecRaw(['exec', '-w', '/work', container, 'cat', path]);
   return r.code === 0 ? { ok: true, content: r.out } : { ok: false, error: 'editor.readFailed' };
 }
 
@@ -34,14 +50,8 @@ export async function writeWorktreeFile(workspaceId: string, ticketKey: string, 
   if (!(await dockerAvailable())) return { ok: false, error: 'docker.unavailable' };
   const container = containerName(workspaceId, ticketKey);
   if (!(await isWorkspacesContainer(container))) return { ok: false, error: 'container.notOurs' };
-  return new Promise((resolve) => {
-    //? `$1` is the validated path; `mkdir -p "$(dirname …)"` then `cat > "$1"` writes stdin to the file.
-    const proc = spawn(DOCKER_BIN, ['exec', '-i', '-w', '/work', container, 'sh', '-c', 'mkdir -p "$(dirname "$1")" && cat > "$1"', 'sh', path], { windowsHide: true });
-    let err = '';
-    proc.on('error', (e) => { resolve({ ok: false, error: `editor.writeFailed: ${e.message}` }); });
-    proc.stderr.on('data', (d) => { err += String(d); });
-    proc.on('close', (code) => { resolve(code === 0 ? { ok: true } : { ok: false, error: err.slice(0, 200) || 'editor.writeFailed' }); });
-    proc.stdin.on('error', () => { /* the close handler reports */ });
-    proc.stdin.end(content);
-  });
+  //? `$1` is the validated path; `mkdir -p "$(dirname …)"` then `cat > "$1"` writes STDIN to the file (content
+  //? is never part of the command → no shell injection).
+  const r = await dockerExecRaw(['exec', '-i', '-w', '/work', container, 'sh', '-c', 'mkdir -p "$(dirname "$1")" && cat > "$1"', 'sh', path], content);
+  return r.code === 0 ? { ok: true } : { ok: false, error: r.err.slice(0, 200) || 'editor.writeFailed' };
 }
