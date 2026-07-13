@@ -219,6 +219,9 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const [preview, setPreview] = useState<{ loading: boolean; url?: string; err?: boolean }>({ loading: false });
+  //? #20 — the live agent PTY tail for this ticket (empty when no live turn is streaming).
+  const [showLive, setShowLive] = useState(false);
+  const liveOutput = ctx.agentTerm[ticket.id] ?? '';
 
   const kill = (): void => {
     void menuHandler.confirm({
@@ -296,6 +299,17 @@ function TicketControls({ ticket }: { ticket: Ticket }) {
     {preview.url !== undefined && (
       <div className="px-4 md:px-6 pb-3">
         <iframe title={translate({ key: 'workspaces.ticket.openPreview' })} src={preview.url} className="w-full h-[60vh] rounded-xl border border-container1-border bg-container1" />
+      </div>
+    )}
+    {/* #20 — Live agent: tail the code agent's PTY output as the turn runs. Only offered once output arrives. */}
+    {liveOutput.length > 0 && (
+      <div className="px-4 md:px-6 pb-3 flex flex-col gap-2">
+        <button type="button" onClick={() => { setShowLive((v) => !v); }} className="self-start text-xs text-muted hover:text-common cursor-pointer inline-flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />{translate({ key: showLive ? 'workspaces.ticket.liveAgentHide' : 'workspaces.ticket.liveAgentShow' })}
+        </button>
+        {showLive && (
+          <pre className="w-full max-h-80 overflow-auto rounded-xl border border-container1-border bg-container2/60 p-3 text-[11px] leading-snug font-mono text-common whitespace-pre-wrap break-words">{liveOutput}</pre>
+        )}
       </div>
     )}
     </>

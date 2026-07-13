@@ -20,6 +20,10 @@ const CONTENT_ASSET_DELTA_ROUTE = 'sync/workspaces/contentAssetDelta/v1';
 //? room refetches (debounced) — covers the structural content mutations that carry no fine-grained delta
 //? (piece create/advance/archive, script gen, settings). Type carrier: `_sync/contentDirty_server_v1.ts`.
 const CONTENT_DIRTY_ROUTE = 'sync/workspaces/contentDirty/v1';
+//? #20 — the live agent-terminal tail route: throttled PTY chunks of the CODE agent's turn, keyed by ticket.
+//? Type carrier: `_sync/agentTerm_server_v1.ts`; the client's `upsertSyncEventCallback('workspaces/agentTerm')`
+//? appends each chunk to that ticket's Live-agent buffer. Observability only — never authoritative state.
+const AGENT_TERM_ROUTE = 'sync/workspaces/agentTerm/v1';
 
 //? Broadcast the current DB state of the given ticket keys to the workspace room.
 export async function broadcastTicketDelta(prisma: PrismaClient, workspaceId: string, ticketKeys: string[]): Promise<void> {
@@ -64,6 +68,22 @@ export async function broadcastContentAssetDelta(prisma: PrismaClient, workspace
 //? content changes (a new piece, a stage advance, an archive, a generated script, a settings edit) in
 //? sync across the whole workspace, not just for the caller. The fine-grained per-asset timer state
 //? still flows through `broadcastContentAssetDelta`; this is the catch-all for everything else.
+//? #20 — tee a throttled chunk of the CODE agent's live PTY output to the workspace room, keyed by ticket, so
+//? a "Live agent" view can tail the turn. Fire-and-forget; no io (worker) ⇒ no-op. NOT authoritative state.
+export function broadcastAgentTerm(workspaceId: string, ticketKey: string, chunk: string): void {
+  const io = getIoInstance();
+  if (!io || chunk.length === 0) return;
+  const room = formatRoomName(workspaceId, { purpose: 'broadcast', userId: null });
+  io.to(room).emit(socketEventNames.sync, {
+    cb: AGENT_TERM_ROUTE,
+    fullName: AGENT_TERM_ROUTE,
+    serverOutput: { status: 'success', ticketKey, chunk },
+    clientOutput: {},
+    message: `${AGENT_TERM_ROUTE} sync success`,
+    status: 'success',
+  });
+}
+
 export function broadcastContentDirty(workspaceId: string): void {
   const io = getIoInstance();
   if (!io) return;

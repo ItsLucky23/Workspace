@@ -1170,6 +1170,7 @@
       "previewOpening": "Starting preview…",
       "previewFailed": "Could not start the preview (is a dev command set?).",
       "stopPreview": "Stop preview",
+      "liveAgentShow": "Live agent", "liveAgentHide": "Hide live agent",
       "previewSetDevCommand": "Set the dev command",
       "advisoryTitle": "The agent assumed",
       "advisoryAssumption": "Assumed: {{assumption}}",

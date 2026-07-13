@@ -1170,6 +1170,7 @@
       "previewOpening": "Preview starten…",
       "previewFailed": "Kon de preview niet starten (is er een dev-commando ingesteld?).",
       "stopPreview": "Preview stoppen",
+      "liveAgentShow": "Live agent", "liveAgentHide": "Live agent verbergen",
       "previewSetDevCommand": "Stel het dev-commando in",
       "advisoryTitle": "De agent nam aan",
       "advisoryAssumption": "Aangenomen: {{assumption}}",

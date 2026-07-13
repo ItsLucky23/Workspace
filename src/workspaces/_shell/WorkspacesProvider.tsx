@@ -194,6 +194,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? so the two never clobber each other's fields. Pruned by the same 25s ticker.
   const [viewPresence, setViewPresence] = useState<Record<string, { view: string; lastSeen: number }>>({});
   const [, setPresenceTick] = useState(0);
+  //? #20 — the live agent-terminal tail per ticket (a rolling buffer, capped). Fed by the agentTerm broadcast.
+  const [agentTerm, setAgentTerm] = useState<Record<string, string>>({});
 
   const refetch = useCallback(() => {
     void (async () => {
@@ -291,6 +293,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/answerInput', version: 'v1',
     callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
   }), [upsertSyncEventCallback, mergeTickets]);
+  //? #20 — live agent tail: append each broadcast PTY chunk to that ticket's rolling buffer (capped 40k).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/agentTerm', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.ticketKey || !serverOutput.chunk) return;
+      const { ticketKey, chunk } = serverOutput;
+      setAgentTerm((s) => ({ ...s, [ticketKey]: (`${s[ticketKey] ?? ''}${chunk}`).slice(-40_000) }));
+    },
+  }), [upsertSyncEventCallback]);
   //? presence (#17): update who's viewing what. A `viewing:false` (clean leave) removes the entry;
   //? otherwise stamp lastSeen. Stale entries are pruned by the ticker below.
   useEffect(() => upsertSyncEventCallback({
@@ -1270,6 +1281,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).
       presentUserIds: Object.keys(presence),
       viewCounts,
+      agentTerm,
       //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
       answerQueue: snap.answerQueue,
       content: snap.content,
@@ -1418,7 +1430,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

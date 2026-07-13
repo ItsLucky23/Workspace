@@ -184,6 +184,8 @@ export interface WorkspacesCtx {
   //? #119 — per-view presence: how many OTHER members are on each nav view now (view id → count),
   //? for the nav-rail activity badges. Ephemeral (from the presence relay), self excluded.
   viewCounts: Record<string, number>;
+  //? #20 — the live agent-terminal tail per ticket key (a rolling PTY buffer; '' when no live turn).
+  agentTerm: Record<string, string>;
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim (who's answering).
   answerQueue: AnswerQueueItem[];
   claimTicket: (ticketKey: string, claiming: boolean) => void;

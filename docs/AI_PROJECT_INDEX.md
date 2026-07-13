@@ -63,7 +63,7 @@
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 
-## Sync routes (58)
+## Sync routes (59)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -71,6 +71,7 @@
 | `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
 | `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | **no** | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
 | `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
+| `sync/workspaces/agentTerm/v1` | yes | — | login | — | **no** | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
 | `sync/workspaces/answerInput/v1` | yes | — | login | — | **no** | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
 | `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
 | `sync/workspaces/bulkArchive/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
@@ -133,9 +134,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 2 |
-| _(unowned)_ | 107 |
+| _(unowned)_ | 108 |
 
-**Test coverage**: 3/109 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/110 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -189,7 +190,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/workspaceExport/v1`
 - `sync/workspaces/acceptSuggestion/v1`
 - `sync/workspaces/addComment/v1`
-- … +56 more
+- … +57 more
 
 ## Pages (30)
 

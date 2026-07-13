@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 231,
+    "nodes": 232,
     "edges": 350,
-    "symbols": 291,
+    "symbols": 293,
     "callEdges": 42
   },
   "nodes": [
@@ -707,6 +707,11 @@
       "id": "workspaces/_sync/agentControl_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/agentControl/v1"
+    },
+    {
+      "id": "workspaces/_sync/agentTerm_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/agentTerm/v1"
     },
     {
       "id": "workspaces/_sync/answerInput_server_v1.ts",
@@ -4648,6 +4653,18 @@
     {
       "id": "workspaces/_sync/agentControl_server_v1.ts::main",
       "file": "workspaces/_sync/agentControl_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/agentTerm_server_v1.ts::<module>",
+      "file": "workspaces/_sync/agentTerm_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/agentTerm_server_v1.ts::main",
+      "file": "workspaces/_sync/agentTerm_server_v1.ts",
       "name": "main",
       "kind": "function"
     },

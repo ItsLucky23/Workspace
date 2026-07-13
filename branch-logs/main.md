@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 9 (#20 live agent-PTY-tail)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did (#20, owner A: build live tail):**
+- **Server tee:** `stageRunner.driveContainerTurn` accepteert nu optioneel `workspaceId`/`ticketKey`; de `term.onData` tee't de PTY-output THROTTLED (300ms batch, 16k cap) naar `broadcastAgentTerm(ws, ticket, chunk)` — een nieuwe broadcast-only route `sync/workspaces/agentTerm/v1` (type-carrier `_sync/agentTerm_server_v1.ts`, payload {ticketKey,chunk}). Flush+timer-cleanup na de turn. Observability only — raakt de handshake-detectie/turn-result niet, geen single-writer.
+- **Client:** `WorkspacesProvider` `upsertSyncEventCallback('workspaces/agentTerm')` appendt elke chunk aan een per-ticket rolling buffer (`agentTerm` state, 40k cap) → context. Ticket-detail `TicketControls` toont een "Live agent"-collapsible (pulserende dot + monospace pre) zodra er output binnenkomt. i18n ×4.
+
+**Files touched:** `server/orchestrator/stageRunner.ts` (tee+opts), `server/read/broadcast.ts` (broadcastAgentTerm), `src/workspaces/_sync/agentTerm_server_v1.ts` (nieuw), `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/board/[ticketId]/page.tsx`, `src/_locales/×4`.
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, locale 8/8. Live-stream vereist een draaiende container-turn (Docker + dev-server) voor E2E; de broadcast/throttle/accumulatie-keten + type-carrier zijn statisch geverifieerd.
+
+**Notes:** throttle (300ms) tegen broadcast-storm; de tee is puur additief op de bestaande buf.text-handshake (billing-loop-veilig). Dev-server-herstart nodig om de nieuwe route + tee runtime te activeren.
+
 ## 2026-07-13 — completion-gaps-v3 batch 8 (#170 client render-to-PNG)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

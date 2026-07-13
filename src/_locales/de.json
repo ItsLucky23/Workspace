@@ -1170,6 +1170,7 @@
       "previewOpening": "Vorschau wird gestartet…",
       "previewFailed": "Vorschau konnte nicht gestartet werden (ist ein Dev-Befehl gesetzt?).",
       "stopPreview": "Vorschau stoppen",
+      "liveAgentShow": "Live-Agent", "liveAgentHide": "Live-Agent ausblenden",
       "previewSetDevCommand": "Dev-Befehl festlegen",
       "advisoryTitle": "Der Agent nahm an",
       "advisoryAssumption": "Angenommen: {{assumption}}",

@@ -1170,6 +1170,7 @@
       "previewOpening": "Démarrage de l'aperçu…",
       "previewFailed": "Impossible de démarrer l'aperçu (une commande dev est-elle définie ?).",
       "stopPreview": "Arrêter l'aperçu",
+      "liveAgentShow": "Agent en direct", "liveAgentHide": "Masquer l'agent en direct",
       "previewSetDevCommand": "Définir la commande dev",
       "advisoryTitle": "L'agent a supposé",
       "advisoryAssumption": "Supposé : {{assumption}}",

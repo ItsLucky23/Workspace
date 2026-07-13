@@ -21,7 +21,7 @@ import { renderStage, type StageArtifacts, type McpIntegration } from './renderS
 import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
-import { broadcastTicketDelta } from '../read/broadcast';
+import { broadcastTicketDelta, broadcastAgentTerm } from '../read/broadcast';
 import { jsonInput } from '../util/json';
 import { parseAdvisories } from './questionSet';
 import { pushTicketWork } from '../git/forge';
@@ -91,7 +91,7 @@ async function projectAuth(container: string): Promise<void> {
 //? — NOT by parsing the PTY. We NEVER call `term.kill()` (its Windows conpty console-list
 //? agent can crash the host process); instead `pkill` claude inside the container so the
 //? `docker exec` exits and the PTY closes naturally.
-export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
   const timeoutMs = opts.timeoutMs ?? 240_000;
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
   refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
@@ -113,7 +113,17 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   //? Accumulate PTY output (capped) so prompt-ready detection can scan it — the TURN result still
   //? comes from the Stop hook, not the PTY (C4 only uses the stream to time the handshake).
   const buf = { text: '' };
-  term.onData((d: string) => { buf.text = (buf.text + d).slice(-8000); });
+  //? #20 — optional live tail: batch PTY output (300ms) → broadcast to the ticket's Live-agent channel.
+  //? Throttled so a chatty turn can't storm the room; observability only (never gates/echoes the turn).
+  const tail = opts.workspaceId && opts.ticketKey ? { wsId: opts.workspaceId, key: opts.ticketKey, pending: '', timer: null as ReturnType<typeof setTimeout> | null } : null;
+  const flushTail = (): void => { if (tail && tail.pending.length > 0) { const chunk = tail.pending; tail.pending = ''; broadcastAgentTerm(tail.wsId, tail.key, chunk); } };
+  term.onData((d: string) => {
+    buf.text = (buf.text + d).slice(-8000);
+    if (tail) {
+      tail.pending = (tail.pending + d).slice(-16_000);
+      tail.timer ??= setTimeout(() => { tail.timer = null; flushTail(); }, 300);
+    }
+  });
 
   //? Boot handshake — wait until the trust prompt OR the input prompt actually appears (early-exit),
   //? with a ceiling so a wrong/missing marker degrades to a bounded wait rather than a hang (C4).
@@ -135,6 +145,9 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   //? Procps-free (/proc walk): `pkill` silently no-op'd — ps/pgrep aren't in the base image.
   await killClaudeByContainer(container);
   for (let i = 0; i < 12 && !state.exited; i++) await wait(300);
+  //? #20 — flush any buffered tail chunk + cancel the pending timer so nothing leaks past the turn.
+  if (tail?.timer) { clearTimeout(tail.timer); tail.timer = null; }
+  flushTail();
 
   if (captured.length === 0) return { ok: false, message: '', error: 'turn.timeout' };
   const [, payload] = await tryCatch(() => Promise.resolve(JSON.parse(captured) as { last_assistant_message?: unknown; session_id?: unknown }));
@@ -273,7 +286,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     if (resumeSessionId) return 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.';
     return 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
   })();
-  const drive = await driveContainerTurn(container.name, kickoff, resumeSessionId ? { resumeSessionId } : {});
+  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey });
   if (!drive.ok) {
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
     return { ok: false, error: drive.error ?? 'turn.failed' };
