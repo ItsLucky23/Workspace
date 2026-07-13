@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 7 (#83 stage.on_signal event, #99 metered-enforcement pause)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did:**
+- **#83** (owner A: emit missing events). `stage.on_approval` (conductor:2065) + `suggestion.accepted` (2088) bleken al gevuurd — alleen NIET aangeboden in de create-form. **`stage.on_signal` ontbrak volledig** → geïmplementeerd via een **injected SignalHook** (`registerSignalHook` in executor.ts, geregistreerd in triggers.ts bij module-load) zodat de emit-signal-case een `stage.on_signal`-EVENT raist ZONDER de executor→triggers-import-cyclus. Depth-guard (`MAX_SIGNAL_DEPTH=4`, `signalDepth` op TriggerAction, `depth`-param op fireEvent) tegen signal→signal-loops. AutomationPanel EVENTS-lijst kreeg `stage.on_signal` + `stage.on_approval`.
+- **#99-pause** (owner B: €-metered enforcement). Het `enforcement`-veld (pauseNew/pauseAll, opgeslagen via #103 maar nooit gelezen) wordt nu gelezen: `isSpendEnforcementActive(prisma,ws)` (enabled budget met enforcement + spent≥cap). `provisionContainers` (de provision-choke, naast de bestaande `ws.paused`-check) slaat nieuwe turns over bij een bereikte metered cap — non-destructief pause-new (draaiende turns maken af). Alleen metered spend (costEstimate>0 = Gemini/media) accrued `spent` → Claude-only workspace trip't 't nooit (decision B).
+
+**Files touched:** `server/automation/executor.ts` (SignalHook + signalDepth), `server/automation/triggers.ts` (hook-registratie + depth-guard), `server/spend/record.ts` (isSpendEnforcementActive), `server/orchestrator/conductor.ts` (provision-gate), `src/workspaces/_components/AutomationPanel.tsx`, `tests/integration/automation.test.mts` (+on_signal-chain), `tests/integration/spend.test.mts` (+enforcement-read).
+
+**Verify:** tsc 0, vite build ✓, eslint 0, ai:lint 0, automation 22/22 (on_signal-chain E2E), spend 21/21 (enforcement-read E2E vs DB).
+
+**Notes:** pauseAll's kill-running-half bewust NIET gedaan (killt werk mid-turn = risky); pause-new dekt de kern non-destructief. Dev-server-herstart nodig om de nieuwe hook + provision-gate runtime te activeren.
+
 ## 2026-07-13 — completion-gaps-v3 batch 6 (#140/#146 multi-account publishing)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

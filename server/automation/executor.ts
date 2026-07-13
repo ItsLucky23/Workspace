@@ -39,7 +39,14 @@ export interface TriggerAction {
   params: Record<string, unknown>;
   ticketKey?: string;           // the ticket the event concerned (if any)
   triggerName?: string;         // for the suggestion title / audit
+  signalDepth?: number;         // #83 — the fireEvent recursion depth (for the on_signal loop guard)
 }
+
+//? #83 — a late-bound hook so `emit-signal` can raise a `stage.on_signal` EVENT without executor.ts importing
+//? triggers.ts (that would be a cycle). triggers.ts registers it at module load; if unset, signals are inert.
+export type SignalHook = (prisma: PrismaClient, workspaceId: string, kind: string, ticketKey: string | null, depth: number) => void;
+let signalHook: SignalHook | null = null;
+export function registerSignalHook(fn: SignalHook): void { signalHook = fn; }
 
 export interface ExecOutcome { status: 'executed' | 'gated' | 'noop' | 'error'; detail?: string }
 
@@ -98,7 +105,11 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
     case 'emit-signal': {
       //? Append a WorkspaceSignal (monotonic seq) — the serial signal feed other triggers watch.
       const last = await prisma.workspaceSignal.findFirst({ where: { workspaceId }, orderBy: { seq: 'desc' }, select: { seq: true } });
-      await prisma.workspaceSignal.create({ data: { workspaceId, seq: (last?.seq ?? 0) + 1, kind: str(a.params, 'kind') ?? 'custom', payload: asJson(a.params.payload) } });
+      const kind = str(a.params, 'kind') ?? 'custom';
+      await prisma.workspaceSignal.create({ data: { workspaceId, seq: (last?.seq ?? 0) + 1, kind, payload: asJson(a.params.payload) } });
+      //? #83 — raise the `stage.on_signal` EVENT so triggers can chain off the signal (via the injected hook →
+      //? no executor→triggers import cycle). The depth rides through so fireEvent can bound signal→signal chains.
+      if (signalHook) signalHook(prisma, workspaceId, kind, a.ticketKey ?? null, a.signalDepth ?? 0);
       return { status: 'executed' };
     }
     case 'start-stage': {

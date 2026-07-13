@@ -16,7 +16,9 @@ import { WsButton } from './primitives';
 import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
-const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'ticket.merged', 'suggestion.accepted', 'cron'];
+//? #83 — stage.on_signal (a WorkspaceSignal was emitted) + stage.on_approval (a gated automation was approved)
+//? are now real fired events, so a trigger can chain off them.
+const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.merged', 'suggestion.accepted', 'cron'];
 //? #50/#88 — 'invoke-agent-role' is now event-attachable (was cron-only on the Scheduled page).
 //? #90 — run-command (operator-gated in-container shell) + invoke-workspace-ai (a non-coding AI Q&A) are
 //? now real executors, so they're offered here. run-command always opens an approval before it runs.

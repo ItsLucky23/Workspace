@@ -66,6 +66,18 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
   return { tokensIn, tokensOut, costEstimate };
 }
 
+//? #99 — is the workspace at/over an ENFORCED metered budget cap? Reads the enforcement field (#103) that
+//? was previously stored-but-never-read. Only METERED spend accrues `spent` (costEstimate>0 → Gemini/media;
+//? the Claude subscription is 0), so a Claude-only workspace never trips this — exactly decision B (€-metered
+//? enforcement, token/Claude stays visibility-only). Best-effort (a read failure = not enforced, never blocks).
+export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId: string): Promise<boolean> {
+  const caps = await prisma.workspaceBudget.findMany({
+    where: { workspaceId, enabled: true, enforcement: { in: ['pauseNew', 'pauseAll'] } },
+    select: { cap: true, spent: true },
+  });
+  return caps.some((c) => c.cap > 0 && c.spent >= c.cap);
+}
+
 //? Usage shapes live in the client `_data/types` (the snapshot emits them); re-exported for callers.
 export type { AiUsage, UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
 

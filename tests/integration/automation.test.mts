@@ -73,6 +73,14 @@ try {
   //? Accepting the suggestion (its patch) executes the deferred emit-signal.
   await executor.executeGatedAction(prisma, wsId, suggestion?.patch);
   eq(await prisma.workspaceSignal.count({ where: { workspaceId: wsId } }), beforeSig + 1, 'approving the suggestion executed the deferred action');
+
+  //? #83 — emit-signal raises a stage.on_signal EVENT: an ungated emit-signal on ticket.created + a notify on
+  //? stage.on_signal → firing ticket.created chains through the signal into the on_signal notify.
+  await prisma.workspaceTrigger.create({ data: { workspaceId: wsId, enabled: true, name: 'Emit sig', on: 'ticket.created', match: {}, action: 'emit-signal', params: { kind: 'chained' }, requiresApproval: false } });
+  await prisma.workspaceTrigger.create({ data: { workspaceId: wsId, enabled: true, name: 'On signal', on: 'stage.on_signal', match: {}, action: 'notify', params: { title: 'Signal landed!', body: 'chain' }, requiresApproval: false } });
+  await triggers.fireEvent(prisma, wsId, { on: 'ticket.created', ticketKey: 'DEV-3' });
+  const chained = await poll(() => prisma.notification.findFirst({ where: { workspaceId: wsId, title: 'Signal landed!' } }));
+  assert(chained !== null, 'emit-signal fired a stage.on_signal event that ran the on_signal trigger (#83)');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

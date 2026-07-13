@@ -56,6 +56,15 @@ try {
   assert(rec !== null && rec.tokensIn === 1000 && rec.tokensOut === 200, 'a SpendRecord row is persisted with the estimates');
   const sess = await prisma.agentSession.findUnique({ where: { id: session.id } });
   eq(sess?.tokenEstimate ?? 0, 1200, "the session's running token estimate is incremented");
+
+  //? #99 — metered-budget enforcement read: a workspace under an enforced cap is NOT enforced; at/over it IS.
+  eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'no enforced cap → provisioning not blocked');
+  const cap = await prisma.workspaceBudget.create({ data: { workspaceId: wsId, label: 'Metered', cap: 10, spent: 3, enforcement: 'pauseNew', enabled: true } });
+  eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'under the cap → still not enforced');
+  await prisma.workspaceBudget.update({ where: { id: cap.id }, data: { spent: 12 } });
+  eq(await spend.isSpendEnforcementActive(prisma, wsId), true, 'over the enforced cap → provisioning blocked');
+  await prisma.workspaceBudget.update({ where: { id: cap.id }, data: { enabled: false } });
+  eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'a disabled cap does not enforce even when over');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

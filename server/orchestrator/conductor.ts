@@ -57,6 +57,7 @@ import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncForgeIssues } from '../git/gitlabSync';
 import { withWorkspaceLease, claimActionOnce } from './cluster';
 import { dockerAvailable } from '../container/runtime';
+import { isSpendEnforcementActive } from '../spend/record';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
 import { presetCompose, presetEnv } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
@@ -412,6 +413,10 @@ async function provisionContainers(workspaceId: string, activated: { key: string
   //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
   if (ws?.paused === true) { console.log(`[conductor] provisioning skipped — workspace paused`); return; }
+  //? #99 — metered-budget enforcement: a workspace at/over an ENFORCED metered cap stops provisioning NEW
+  //? autonomous turns (running turns finish; the cap resets on its window). Non-destructive pause-new — only
+  //? metered spend (Gemini/media) can trip it; the Claude subscription is 0-cost so it never does (decision B).
+  if (await isSpendEnforcementActive(prisma, workspaceId)) { console.log(`[conductor] provisioning skipped — metered budget cap reached`); return; }
   for (const { key } of activated) {
     void tryCatch(async () => {
       //? Pause (C2): a per-ticket pause skips just this ticket.

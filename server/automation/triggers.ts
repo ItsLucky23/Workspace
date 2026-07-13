@@ -10,7 +10,10 @@ import type { PrismaClient, WorkspaceTrigger } from '@prisma/client';
 import { tryCatch } from '@luckystack/core';
 
 import { claimActionOnce } from '../orchestrator/cluster';
-import { runTriggerAction } from './executor';
+import { runTriggerAction, registerSignalHook } from './executor';
+
+//? #83 — the max signal→on_signal chain depth (a bounded fuse against a signal that re-emits itself).
+const MAX_SIGNAL_DEPTH = 4;
 
 //? The event that just happened. `on` matches WorkspaceTrigger.on (e.g. 'ticket.created',
 //? 'stage.on_complete'); the rest narrows `match`.
@@ -50,7 +53,9 @@ export function passesDebounce(trigger: Pick<WorkspaceTrigger, 'debounceMs' | 'l
 
 //? Fire all matching enabled triggers for an event. Best-effort per trigger (a failure is logged,
 //? never propagated) so one bad trigger can't break the event that raised it. Returns how many fired.
-export async function fireEvent(prisma: PrismaClient, workspaceId: string, event: EngineEvent): Promise<{ fired: number; gated: number }> {
+export async function fireEvent(prisma: PrismaClient, workspaceId: string, event: EngineEvent, depth = 0): Promise<{ fired: number; gated: number }> {
+  //? #83 — bound signal→on_signal→signal chains (a self-re-emitting signal would otherwise loop forever).
+  if (depth > MAX_SIGNAL_DEPTH) return { fired: 0, gated: 0 };
   const triggers = await prisma.workspaceTrigger.findMany({ where: { workspaceId, on: event.on, enabled: true } });
   let fired = 0;
   let gated = 0;
@@ -66,7 +71,7 @@ export async function fireEvent(prisma: PrismaClient, workspaceId: string, event
     }
     const [error, outcome] = await tryCatch(() => runTriggerAction(prisma, workspaceId, {
       action: t.action, params: (t.params !== null && typeof t.params === 'object' ? t.params : {}) as Record<string, unknown>,
-      ...(event.ticketKey ? { ticketKey: event.ticketKey } : {}), triggerName: t.name,
+      ...(event.ticketKey ? { ticketKey: event.ticketKey } : {}), triggerName: t.name, signalDepth: depth,
     }, t.requiresApproval));
     if (error) { console.error(`[automation] trigger ${t.name} failed:`, error.message); continue; }
     await prisma.workspaceTrigger.updateMany({ where: { id: t.id }, data: { lastFiredAt: new Date(now) } });
@@ -75,3 +80,10 @@ export async function fireEvent(prisma: PrismaClient, workspaceId: string, event
   }
   return { fired, gated };
 }
+
+//? #83 — wire the executor's emit-signal to raise a `stage.on_signal` EVENT (module-load side effect; breaks
+//? the executor→triggers import cycle). The signal's kind rides as the event payload + a match facet; depth+1
+//? feeds the loop guard above so a signal that re-emits itself can't spin forever.
+registerSignalHook((prisma, workspaceId, kind, ticketKey, depth) => {
+  void fireEvent(prisma, workspaceId, { on: 'stage.on_signal', ...(ticketKey ? { ticketKey } : {}), status: kind }, depth + 1);
+});
