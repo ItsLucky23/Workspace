@@ -108,16 +108,26 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
 //? G1/CP1 — the publish composer form: caption + hashtags + privacy + optional schedule for ONE platform.
 //? Submits the fields to content-request-publish (G1 persists them as the per-platform publishVariant).
-function PublishComposer({ platform, onSubmit, translate }: { platform: string; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string }) => void; translate: ReturnType<typeof useTranslator> }) {
+function PublishComposer({ platform, accounts, onSubmit, translate }: { platform: string; accounts: { accountId: string | null }[]; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string; accountId?: string }) => void; translate: ReturnType<typeof useTranslator> }) {
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [privacy, setPrivacy] = useState('public');
   const [scheduledAt, setScheduledAt] = useState('');
+  //? #140 — which connected account to post as (only shown when the platform has a named/multi account).
+  const [accountId, setAccountId] = useState(accounts[0]?.accountId ?? '');
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
   const privItems = (['public', 'unlisted', 'private'] as const).map((p) => ({ id: p, value: p, item: translate({ key: `workspaces.publish.priv_${p}` }) }));
+  const showAccountPicker = accounts.length > 1 || accounts.some((a) => a.accountId !== null);
+  const accountItems = accounts.map((a) => ({ id: a.accountId ?? '__default__', value: a.accountId ?? '', item: a.accountId ?? translate({ key: 'workspaces.content.publishDefaultAccount' }) }));
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title capitalize">{translate({ key: 'workspaces.publish.title', params: [{ key: 'platform', value: platform }] })}</div>
+      {showAccountPicker && (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-common">{translate({ key: 'workspaces.content.publishAccountLabel' })}</span>
+          <Dropdown size="sm" items={accountItems} value={accountItems.find((it) => it.value === accountId)} onChange={(it) => { setAccountId(String(it.value)); }} />
+        </div>
+      )}
       <textarea value={caption} onChange={(e) => { setCaption(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.publish.captionPh' })} className="w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary" />
       <input value={hashtags} onChange={(e) => { setHashtags(e.target.value); }} placeholder={translate({ key: 'workspaces.publish.hashtagsPh' })} className={inputCls} />
       <div className="flex items-center justify-between gap-3">
@@ -132,7 +142,7 @@ function PublishComposer({ platform, onSubmit, translate }: { platform: string; 
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="paper-plane" onClick={() => {
           const tags = hashtags.split(/[\s,]+/).map((t) => t.replace(/^#/, '').trim()).filter((t) => t.length > 0);
-          onSubmit({ ...(caption.trim() ? { caption: caption.trim() } : {}), ...(tags.length > 0 ? { hashtags: tags } : {}), privacy, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}) });
+          onSubmit({ ...(caption.trim() ? { caption: caption.trim() } : {}), ...(tags.length > 0 ? { hashtags: tags } : {}), privacy, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}), ...(accountId ? { accountId } : {}) });
         }}>{translate({ key: scheduledAt ? 'workspaces.publish.scheduleBtn' : 'workspaces.publish.publishBtn' })}</WsButton>
       </div>
     </div>
@@ -388,8 +398,10 @@ export default function ContentPiece({ params }: { params: Record<string, string
     void menuHandler.confirm({ title: translate({ key: 'workspaces.content.unpublish' }), content: translate({ key: 'workspaces.content.unpublishConfirm', params: [{ key: 'platform', value: platform }] }) }).then((ok) => { if (ok) runContentOp('content-unpublish', piece.id, { assetId, platform }); });
   };
   const requestPublish = (assetId: string, platform: string) => {
+    //? #140 — hand the composer this platform's connected accounts so it can offer an account picker.
+    const accounts = content.publishTargets.find((t) => t.platform === platform)?.accounts ?? [];
     void menuHandler.open(
-      <PublishComposer platform={platform} translate={translate} onSubmit={(fields) => {
+      <PublishComposer platform={platform} accounts={accounts} translate={translate} onSubmit={(fields) => {
         void menuHandler.close();
         runContentOp('content-request-publish', piece.id, { assetId, platform, ...fields });
       }} />,

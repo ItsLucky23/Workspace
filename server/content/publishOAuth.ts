@@ -265,6 +265,19 @@ export const realUploadTransport: PublishUploadTransport = {
 export const tokenKey = (platform: OAuthPlatform, accountId?: string | null): string =>
   accountId && accountId.length > 0 ? `__publish_${platform}_${accountId}` : `__publish_${platform}`;
 
+//? #140 — the INVERSE of `tokenKey`: parse a stored `__publish_…` EnvVar key back into { platform, accountId }.
+//? The platform is a fixed slug with no underscore, so the FIRST segment after the prefix is the platform and
+//? the remainder (if any) is the accountId. Returns null for a non-publish key. Pure + exported for the
+//? snapshot's multi-account projection (was mis-parsed: `slice('__publish_'.length)` folded the id into it).
+const PUBLISH_PREFIX = '__publish_';
+export function parseTokenKey(key: string): { platform: string; accountId: string | null } | null {
+  if (!key.startsWith(PUBLISH_PREFIX)) return null;
+  const rest = key.slice(PUBLISH_PREFIX.length);
+  const underscore = rest.indexOf('_');
+  if (underscore === -1) return { platform: rest, accountId: null };
+  return { platform: rest.slice(0, underscore), accountId: rest.slice(underscore + 1) || null };
+}
+
 //? Persist the OAuth tokens ENCRYPTED in the per-workspace EnvVar store (secretBox). Upsert by key.
 export async function saveConnection(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, tokens: StoredTokens, accountId?: string | null): Promise<void> {
   const value = encryptSecret(JSON.stringify(tokens));
@@ -320,11 +333,13 @@ export async function getValidConnection(
 //? Complete a connect: exchange the OAuth code for tokens + store them encrypted. Returns ok.
 export async function connectPublishPlatform(
   prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform,
-  input: { code: string; redirectUri: string }, opts: { transport?: OAuthTransport } = {},
+  input: { code: string; redirectUri: string }, opts: { transport?: OAuthTransport; accountId?: string | null } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const transport = opts.transport ?? realOAuthTransport;
   const [err, tokens] = await tryCatch(() => transport.exchange(platform, input));
   if (err || !tokens) return { ok: false, error: `publish.oauthFailed: ${err?.message ?? 'no-token'}` };
-  await saveConnection(prisma, workspaceId, platform, tokens);
+  //? #140 — store under the per-account key when an accountId is supplied (multi-account), else the legacy
+  //? single-account key (back-compat).
+  await saveConnection(prisma, workspaceId, platform, tokens, opts.accountId);
   return { ok: true };
 }

@@ -20,7 +20,7 @@ const STATE_TTL_MS = 10 * 60 * 1000;
 
 const isPlatform = (s: string): s is OAuthPlatform => (PLATFORMS as string[]).includes(s);
 
-interface OAuthState { workspaceId: string; userId: string; platform: OAuthPlatform; exp: number }
+interface OAuthState { workspaceId: string; userId: string; platform: OAuthPlatform; exp: number; accountId?: string }
 
 interface HttpReq { url?: string; headers: Record<string, string | string[] | undefined> }
 interface HttpRes { statusCode: number; setHeader: (k: string, v: string) => void; end: (b?: string) => void }
@@ -80,7 +80,10 @@ export function registerPublishOAuthRoutes(): void {
       if (workspaceId.length === 0) { send(res, 400, 'missing workspace'); return true; }
       const member = await hasCapability(getPrismaClient(), workspaceId, session.id, CAP.workspaceSettings);
       if (!member) { send(res, 403, 'forbidden'); return true; }
-      const state = encodeOAuthState({ workspaceId, userId: session.id, platform, exp: Date.now() + STATE_TTL_MS });
+      //? #140 — an optional accountId selects/creates a per-account connection (multi-account); it rides the
+      //? encrypted state through the round-trip (sanitized to a docker/env-safe slug so the token key is clean).
+      const accountIdRaw = (query.get('accountId') ?? '').trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40);
+      const state = encodeOAuthState({ workspaceId, userId: session.id, platform, exp: Date.now() + STATE_TTL_MS, ...(accountIdRaw ? { accountId: accountIdRaw } : {}) });
       redirect(res, buildAuthUrl(platform, { redirectUri, state }));
       return true;
     }
@@ -90,7 +93,7 @@ export function registerPublishOAuthRoutes(): void {
       const state = decodeOAuthState(query.get('state') ?? '');
       if (!state) { redirect(res, `${appSettings}?connected=error`); return true; }
       if (code.length === 0 || state.platform !== platform || state.exp < Date.now()) { redirect(res, `${appSettings}?connected=error`); return true; }
-      const [err, result] = await tryCatch(() => connectPublishPlatform(getPrismaClient(), state.workspaceId, platform, { code, redirectUri }));
+      const [err, result] = await tryCatch(() => connectPublishPlatform(getPrismaClient(), state.workspaceId, platform, { code, redirectUri }, { ...(state.accountId ? { accountId: state.accountId } : {}) }));
       redirect(res, `${appSettings}?connected=${!err && result?.ok === true ? platform : 'error'}`);
       return true;
     }

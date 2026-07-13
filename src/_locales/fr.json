@@ -973,6 +973,8 @@
       "publishDesc": "Connectez un compte pour pouvoir publier une vidéo terminée. La publication demande toujours votre confirmation d'abord.",
       "publishConnected": "Connecté",
       "publishDisconnect": "Déconnecter", "publishDisconnectConfirm": "Déconnecter ce compte ? Vous devrez le reconnecter pour publier.", "publishConnect": "Connecter",
+      "publishConnectAnother": "Connecter un compte", "publishDefaultAccount": "Compte par défaut", "publishNoAccounts": "Aucun compte connecté pour l’instant.",
+      "publishConnectAccountTitle": "Connecter un compte {{platform}}", "publishConnectAccountDesc": "Donnez un court libellé à ce compte (ex. un nom de chaîne) pour en connecter plusieurs. Laissez vide pour un seul compte.", "publishAccountLabelPlaceholder": "ex. chaine-principale (facultatif)", "publishAccountLabel": "Compte",
       "publishConfirmTitle": "Publier cette vidéo ?",
       "publishConfirmBody": "Ceci propose la publication sur le compte connecté. Elle ne devient publique qu'après votre approbation de la suggestion.",
       "actPipeline": "Générer la vidéo complète", "actScript": "Écrire le script",

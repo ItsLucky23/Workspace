@@ -973,6 +973,8 @@
       "publishDesc": "Connect an account so a finished video can be posted. Publishing always asks for your confirmation first.",
       "publishConnected": "Connected",
       "publishDisconnect": "Disconnect", "publishDisconnectConfirm": "Disconnect this account? You will need to reconnect to publish.", "publishConnect": "Connect",
+      "publishConnectAnother": "Connect account", "publishDefaultAccount": "Default account", "publishNoAccounts": "No accounts connected yet.",
+      "publishConnectAccountTitle": "Connect a {{platform}} account", "publishConnectAccountDesc": "Give this account a short label (e.g. a channel name) to connect more than one. Leave blank for a single account.", "publishAccountLabelPlaceholder": "e.g. main-channel (optional)", "publishAccountLabel": "Account",
       "publishConfirmTitle": "Publish this video?",
       "publishConfirmBody": "This proposes publishing to the connected account. It goes public only after you approve the suggestion.",
       "actPipeline": "Generate full video", "actScript": "Write script",

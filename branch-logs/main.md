@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-07-13 — completion-gaps-v3 batch 6 (#140/#146 multi-account publishing)
+
+**User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.
+
+**What I did (owner A: ship multi-account):**
+- **Snapshot mis-parse gefixt** (#140): `parseTokenKey(key)` (INVERSE van `tokenKey`; platform=eerste segment na `__publish_`, rest=accountId) i.p.v. `slice('__publish_'.length)` die de accountId in de platform vouwde. Snapshot bouwt nu `publishTargets[].accounts[]` (per-platform gegroepeerd) + `connected` = accounts.length>0. Type `PublishAccountSummary` + `PublishTargetSummary.accounts`.
+- **accountId door OAuth** (#140): `publishRoute` start-leg leest `?accountId=` (gesanitizet naar slug) → in de encrypted state-blob → callback → `connectPublishPlatform(..., {accountId})` → `saveConnection` per-account key.
+- **Multi-account UI** (#140/#146): content-settings toont nu één rij per gekoppeld account + per-account disconnect (`account-disconnect` mét accountId — conductor ondersteunde dit al) + "Account koppelen"-knop → `AccountConnectForm` (props-only, geen useWorkspaces = portal-gotcha) die een optioneel label vraagt → OAuth-start met accountId.
+- **Account-picker bij publish** (#140): `PublishComposer` krijgt de platform-accounts + toont een Dropdown als er named/multi-accounts zijn; accountId reist mee in `content-request-publish` (conductor threadt 'm al naar publishAsset). i18n ×4.
+
+**Files touched:** `server/content/publishOAuth.ts` (parseTokenKey + connectPublishPlatform accountId), `server/content/publishRoute.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/content/settings/page.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/_locales/×4`, `tests/integration/publishReal.test.mts` (+parseTokenKey round-trip).
+
+**Verify:** tsc 0, vite build ✓, eslint 0-errors, ai:lint 0, publishReal 23/23 (parseTokenKey pure + publish E2E), locale 8/8. Live OAuth-connect vereist echte client-id/secret (user erbij) — de flow/parsing/picker zijn bewezen.
+
 ## 2026-07-13 — completion-gaps-v3 batch 5 (#141 metrics-ingest leader-loop, #131 delete-adapters)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e.

@@ -7,7 +7,15 @@
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { saveConnection, getConnection, connectPublishPlatform } = await import('../../server/content/publishOAuth');
+const { saveConnection, getConnection, connectPublishPlatform, tokenKey, parseTokenKey } = await import('../../server/content/publishOAuth');
+
+//? #140 — tokenKey ⇄ parseTokenKey round-trip (pure, no DB): the platform slug (no underscore) + optional
+//? accountId survive the key encode/decode, so the snapshot groups per-account correctly.
+{
+  eq(parseTokenKey(tokenKey('youtube')), { platform: 'youtube', accountId: null }, 'default youtube key parses to accountId null');
+  eq(parseTokenKey(tokenKey('tiktok', 'main-channel')), { platform: 'tiktok', accountId: 'main-channel' }, 'per-account key parses platform + accountId');
+  eq(parseTokenKey('not-a-publish-key'), null, 'a non-publish key parses to null');
+}
 const { publishAsset } = await import('../../server/content/publish');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 

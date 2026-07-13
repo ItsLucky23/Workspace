@@ -24,6 +24,7 @@ import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
 import { decryptSecret } from '../crypto/secretBox';
+import { parseTokenKey } from '../content/publishOAuth';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
@@ -390,10 +391,21 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     ]);
     //? Join each asset to its MediaJob for the live queue/timer fields (queuePosition, startedAt).
     const jobById = new Map(mediaJobRows.map((j) => [j.id, j]));
-    //? FIX-C: which publish platforms have a stored OAuth connection (EnvVar `__publish_<platform>`), so the
-    //? settings UI shows connect/connected + the piece-detail only offers publish to a connected target.
-    const connectedPlatforms = new Set(publishConnRows.map((r) => r.key.slice('__publish_'.length)));
-    const publishTargets = ['youtube', 'tiktok'].map((platform) => ({ platform, connected: connectedPlatforms.has(platform) }));
+    //? FIX-C/#140: which publish platforms have a stored OAuth connection (EnvVar `__publish_<platform>` or
+    //? `__publish_<platform>_<accountId>`), grouped into per-platform ACCOUNTS. Parsed via parseTokenKey (the
+    //? old `slice('__publish_'.length)` folded the accountId into the platform → mis-parse).
+    const accountsByPlatform = new Map<string, (string | null)[]>();
+    for (const r of publishConnRows) {
+      const parsed = parseTokenKey(r.key);
+      if (!parsed) continue;
+      const list = accountsByPlatform.get(parsed.platform) ?? [];
+      list.push(parsed.accountId);
+      accountsByPlatform.set(parsed.platform, list);
+    }
+    const publishTargets = ['youtube', 'tiktok'].map((platform) => {
+      const accts = accountsByPlatform.get(platform) ?? [];
+      return { platform, connected: accts.length > 0, accounts: accts.map((accountId) => ({ accountId })) };
+    });
     //? U-fix B: group the produced media assets per piece so the detail page can show + download them.
     //? `stub` = the asset was produced in dummy mode (no key) — the registry marks it in `metadata.stub`.
     //? S2: which platforms each asset is currently published on (status 'done') — drives the unpublish control.

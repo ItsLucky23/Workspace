@@ -121,6 +121,27 @@ function StyleImportForm({ workspaceId, onImported }: { workspaceId: string; onI
   );
 }
 
+//? #140 — the "connect an account" prompt: capture an optional short LABEL that becomes the account slug
+//? (empty = the default single-account connection). Props-only (renders in the menu portal, above the
+//? WorkspacesProvider) — it never calls useWorkspaces; the parent wires `onConnect` to the OAuth redirect.
+function AccountConnectForm({ platformName, onConnect }: { platformName: string; onConnect: (label: string) => void }) {
+  const translate = useTranslator();
+  const [label, setLabel] = useState('');
+  const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
+  const submit = () => { void menuHandler.close(); onConnect(label.trim()); };
+  return (
+    <div className="w-full flex flex-col gap-3 p-5">
+      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.publishConnectAccountTitle', params: [{ key: 'platform', value: platformName }] })}</div>
+      <div className="text-sm text-muted">{translate({ key: 'workspaces.content.publishConnectAccountDesc' })}</div>
+      <input value={label} onChange={(e) => { setLabel(e.target.value); }} placeholder={translate({ key: 'workspaces.content.publishAccountLabelPlaceholder' })} className={fieldCls} />
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={() => void menuHandler.close()} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.shell.cancel' })}</button>
+        <button type="button" onClick={submit} className="rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.content.publishConnect' })}</button>
+      </div>
+    </div>
+  );
+}
+
 function StyleManagerSection() {
   const translate = useTranslator();
   const { content, saveStyle, deleteStyle, activeWorkspace, refetch } = useWorkspaces();
@@ -430,16 +451,24 @@ export default function ContentSettings() {
   const { content, activeWorkspace, editMediaBudget, saveMediaProvider, navigate, runContentOp, workspaces, copyWorkspaceAssets } = useWorkspaces();
   //? R2 — copy styles + brand from another workspace into this one (source picker + one-click).
   const [copySource, setCopySource] = useState('');
-  //? A3 — disconnect a connected platform's default account (confirm first — removing a credential).
-  const disconnectPlatform = (platform: string): void => {
-    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishDisconnect' }), content: translate({ key: 'workspaces.content.publishDisconnectConfirm' }) }).then((ok) => { if (ok) runContentOp('account-disconnect', '', { platform }); });
+  //? A3/#146 — disconnect ONE connected account (confirm first — removing a credential). accountId null =
+  //? the legacy default connection.
+  const disconnectPlatform = (platform: string, accountId: string | null): void => {
+    void menuHandler.confirm({ title: translate({ key: 'workspaces.content.publishDisconnect' }), content: translate({ key: 'workspaces.content.publishDisconnectConfirm' }) }).then((ok) => { if (ok) runContentOp('account-disconnect', '', { platform, ...(accountId ? { accountId } : {}) }); });
   };
   const translate = useTranslator();
 
   //? Start the OAuth connect: send the browser to the backend `start` route, which redirects to the
-  //? platform's consent screen and (via the callback) stores the token, then returns here.
-  const connectPlatform = (platform: string) => {
-    globalThis.location.href = `${backendUrl}/content/oauth/${platform}/start?ws=${encodeURIComponent(activeWorkspace.id)}`;
+  //? platform's consent screen and (via the callback) stores the token, then returns here. #140 — an optional
+  //? accountId opens a SEPARATE per-account connection (multi-account).
+  const connectPlatform = (platform: string, accountId?: string) => {
+    const base = `${backendUrl}/content/oauth/${platform}/start?ws=${encodeURIComponent(activeWorkspace.id)}`;
+    globalThis.location.href = accountId && accountId.length > 0 ? `${base}&accountId=${encodeURIComponent(accountId)}` : base;
+  };
+  //? #140 — open the "connect another account" prompt (label → accountId slug); the form is injected props-only
+  //? (it renders in the menu PORTAL, above WorkspacesProvider, so it must not call useWorkspaces — lesson 0011).
+  const openConnectAccount = (platform: string, platformName: string) => {
+    void menuHandler.open(<AccountConnectForm platformName={platformName} onConnect={(label) => { connectPlatform(platform, label); }} />, { dimBackground: true, background: 'bg-container1', size: 'sm' });
   };
   const budget = content.mediaBudget;
   const [enabled, setEnabled] = useState(budget.enabled);
@@ -566,22 +595,28 @@ export default function ContentSettings() {
               <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.publishTitle' })}</div>
               <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.publishDesc' })}</div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               {PUBLISH_PLATFORMS.map((p) => {
-                const connected = content.publishTargets.find((t) => t.platform === p.id)?.connected ?? false;
+                const target = content.publishTargets.find((t) => t.platform === p.id);
+                const accounts = target?.accounts ?? [];
+                const platformName = translate({ key: p.nameKey });
                 return (
-                  <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-container2-border bg-container2 px-3 py-2.5">
-                    <span className="text-sm font-medium text-title">{translate({ key: p.nameKey })}</span>
-                    {connected ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.publishConnected' })}</span>
-                        <button type="button" onClick={() => { disconnectPlatform(p.id); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.publishDisconnect' })}</button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => { connectPlatform(p.id); }} className="rounded-lg border border-primary-border bg-primary/10 text-primary px-3 py-1.5 text-sm font-medium hover:bg-primary/20 cursor-pointer flex items-center gap-1.5">
-                        <Icon name="link" /> {translate({ key: 'workspaces.content.publishConnect' })}
+                  <div key={p.id} className="rounded-xl border border-container2-border bg-container2 px-3 py-2.5 flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-title">{platformName}</span>
+                      {/* #140 — connect the first / another account (opens a label prompt). */}
+                      <button type="button" onClick={() => { openConnectAccount(p.id, platformName); }} className="rounded-lg border border-primary-border bg-primary/10 text-primary px-3 py-1.5 text-sm font-medium hover:bg-primary/20 cursor-pointer flex items-center gap-1.5">
+                        <Icon name="link" /> {translate({ key: accounts.length > 0 ? 'workspaces.content.publishConnectAnother' : 'workspaces.content.publishConnect' })}
                       </button>
-                    )}
+                    </div>
+                    {/* #140/#146 — one row per connected account with its own disconnect. */}
+                    {accounts.map((acc) => (
+                      <div key={acc.accountId ?? '__default__'} className="flex items-center justify-between gap-3 pl-1">
+                        <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {acc.accountId ?? translate({ key: 'workspaces.content.publishDefaultAccount' })}</span>
+                        <button type="button" onClick={() => { disconnectPlatform(p.id, acc.accountId); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.publishDisconnect' })}</button>
+                      </div>
+                    ))}
+                    {accounts.length === 0 && <span className="text-xs text-muted pl-1">{translate({ key: 'workspaces.content.publishNoAccounts' })}</span>}
                   </div>
                 );
               })}

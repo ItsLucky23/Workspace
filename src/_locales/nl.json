@@ -973,6 +973,8 @@
       "publishDesc": "Koppel een account zodat een afgeronde video geplaatst kan worden. Publiceren vraagt altijd eerst je bevestiging.",
       "publishConnected": "Verbonden",
       "publishDisconnect": "Ontkoppelen", "publishDisconnectConfirm": "Dit account ontkoppelen? Je moet opnieuw koppelen om te publiceren.", "publishConnect": "Koppelen",
+      "publishConnectAnother": "Account koppelen", "publishDefaultAccount": "Standaardaccount", "publishNoAccounts": "Nog geen accounts gekoppeld.",
+      "publishConnectAccountTitle": "Een {{platform}}-account koppelen", "publishConnectAccountDesc": "Geef dit account een kort label (bijv. een kanaalnaam) om er meer dan één te koppelen. Laat leeg voor één account.", "publishAccountLabelPlaceholder": "bijv. hoofdkanaal (optioneel)", "publishAccountLabel": "Account",
       "publishConfirmTitle": "Deze video publiceren?",
       "publishConfirmBody": "Dit stelt publicatie naar het gekoppelde account voor. Het gaat pas live nadat je de suggestie goedkeurt.",
       "actPipeline": "Hele video genereren", "actScript": "Script schrijven",

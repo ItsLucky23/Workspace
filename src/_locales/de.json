@@ -973,6 +973,8 @@
       "publishDesc": "Verbinde ein Konto, damit ein fertiges Video gepostet werden kann. Das Veröffentlichen fragt immer zuerst nach deiner Bestätigung.",
       "publishConnected": "Verbunden",
       "publishDisconnect": "Trennen", "publishDisconnectConfirm": "Dieses Konto trennen? Zum Veröffentlichen erneut verbinden.", "publishConnect": "Verbinden",
+      "publishConnectAnother": "Konto verbinden", "publishDefaultAccount": "Standardkonto", "publishNoAccounts": "Noch keine Konten verbunden.",
+      "publishConnectAccountTitle": "Ein {{platform}}-Konto verbinden", "publishConnectAccountDesc": "Gib diesem Konto ein kurzes Label (z. B. einen Kanalnamen), um mehr als eins zu verbinden. Leer lassen für ein einzelnes Konto.", "publishAccountLabelPlaceholder": "z. B. hauptkanal (optional)", "publishAccountLabel": "Konto",
       "publishConfirmTitle": "Dieses Video veröffentlichen?",
       "publishConfirmBody": "Dies schlägt die Veröffentlichung im verbundenen Konto vor. Es geht erst live, nachdem du den Vorschlag genehmigt hast.",
       "actPipeline": "Ganzes Video erzeugen", "actScript": "Skript schreiben",

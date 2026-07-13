@@ -364,7 +364,9 @@ export interface ContentReferenceSummary { id: string; kind: string; title: stri
 export interface ContentChannelSummary { id: string; name: string; platform: string; handle?: string | null; brandVoice: string; defaultStyleId?: string | null }
 //? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,
 //? so the settings UI shows connect/connected and the piece-detail only offers publish to a live target.
-export interface PublishTargetSummary { platform: string; connected: boolean }
+//? #140 — one connected account under a platform (accountId null = the legacy single-account connection).
+export interface PublishAccountSummary { accountId: string | null }
+export interface PublishTargetSummary { platform: string; connected: boolean; accounts: PublishAccountSummary[] }
 
 export interface ContentSnapshot {
   pieces: ContentPieceSummary[];
