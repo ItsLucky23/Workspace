@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Avatar from "src/_components/Avatar";
+import TwoFactorSection from "src/_components/TwoFactorSection";
 import Dropdown, { type DropdownItem } from "src/_components/dropdown/Dropdown";
 import {
   i18nNotify as notify,
@@ -466,6 +467,11 @@ export default function Home() {
             </form>
           </Section>
         )}
+
+        {/* Two-factor authentication (ADR 0024) — TOTP enrollment + recovery codes. */}
+        <Section title={translate({ key: 'settings.twoFactorSection' })}>
+          <TwoFactorSection />
+        </Section>
 
         {/* Active sessions */}
         <Section title={translate({ key: 'settings.sessionsSection' })}>

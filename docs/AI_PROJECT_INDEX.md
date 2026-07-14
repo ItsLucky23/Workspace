@@ -236,7 +236,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `confetti.ts` | `_functions/confetti.ts` | default | — |
 | `menuHandler.ts` | `_functions/menuHandler.ts` | menuHandler, setMenuHandlerRef | — |
 
-## Components — `src/_components/` (59 exports across 21 files)
+## Components — `src/_components/` (60 exports across 22 files)
 
 | File | Path | Exports | Summary |
 | --- | --- | --- | --- |
@@ -245,6 +245,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `ErrorPage.tsx` | `_components/ErrorPage.tsx` | default | — |
 | `LoginForm.tsx` | `_components/LoginForm.tsx` | default | — |
 | `MenuHandler.tsx` | `_components/MenuHandler.tsx` | MenuHandlerProvider, useMenuHandler | — |
+| `TwoFactorSection.tsx` | `_components/TwoFactorSection.tsx` | default | 2FA enrollment UI (ADR 0024 / @luckystack/login). Drives the authenticated `/auth/api/2fa/*` routes: |
 | `Dropdown.tsx` | `_components/dropdown/Dropdown.tsx` | default | — |
 | `MultiSelectDropdown.tsx` | `_components/dropdown/MultiSelectDropdown.tsx` | default | — |
 | `dropdownInternals.tsx` | `_components/dropdown/dropdownInternals.tsx` | DropdownDirection, DropdownItem, DropdownMenuController, DropdownMenuShell, +6 | — |
@@ -343,3 +344,4 @@ _(no cross-references detected)_
 | `default` | `_components/templates/Home.tsx` |
 | `default` | `_components/templates/TemplateProvider.tsx` |
 | `Template` | `_components/templates/TemplateProvider.tsx` |
+| `default` | `_components/TwoFactorSection.tsx` |

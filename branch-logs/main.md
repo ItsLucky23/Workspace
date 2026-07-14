@@ -1,5 +1,17 @@
 # Branch log — `main`
 
+## 2026-07-14 — 2FA + email-code login UI (frontend voor de 0.6.7-backend)
+
+**User prompt:** ja 2FA integreren met UI; ik voeg de key toe; committen is goed.
+
+**What I did (frontend voor ADR 0024, backend stond al):**
+- **`src/_components/TwoFactorSection.tsx` (nieuw):** enrollment-UI in Settings. Flow: `setup` (secret + otpauth-URI tonen) → 6-cijferige code → `enable` (recovery codes eenmalig tonen) → done; + `disable` + `recovery-codes`-regenerate voor een enrolled user. Drijft de authed `/auth/api/2fa/*` routes via CSRF-aware `httpFetch` + Bearer in token-mode. Leest `session.twoFactorEnabled` voor de staat. Gemount in `src/settings/page.tsx` als eigen `Section`.
+- **`src/_components/LoginForm.tsx`:** (1) 2FA-CHALLENGE bij inloggen — als credentials/email-code een `{requiresTwoFactor, challengeToken}` teruggeeft toont de form een code-stap → `POST /auth/api/2fa` → sessie (KRITIEK: zonder dit zou een 2FA-gebruiker buitengesloten raken). (2) passwordless EMAIL-CODE-login: toggle "log in met e-mailcode" → `email-code/request` → code → `email-code/verify` (kan zelf ook een 2FA-challenge teruggeven). `completeSession`/`authPost` naar module-scope. i18n ×4 (settings.twoFactor.* + login.twoFactor*/emailCode*).
+
+**Files touched:** `src/_components/{TwoFactorSection.tsx (new), LoginForm.tsx}`, `src/settings/page.tsx`, `src/_locales/×4`.
+
+**Verify:** tsc 0, vite build ✓, eslint 0-errors, ai:lint 0, locale 8/8. **LIVE-test vereist (developer-actie):** server starten → in Settings 2FA inschakelen (authenticator + code + recovery codes) → uitloggen → inloggen met de 6-cijferige code + de email-code-flow testen. Console-e-mailsender logt de code in dev; zet `TOTP_ENCRYPTION_KEY`/`RESEND_API_KEY` voor productie.
+
 ## 2026-07-14 — LuckyStack 0.4.1 → 0.6.7 upgrade + error-tracking + cron-migratie + 2FA-backend
 
 **User prompt:** upgrade naar 0.6.7 (handoff-runbook); daarna: 2FA + email-code-login AAN, onze crons switchen naar @luckystack/cron, error-tracking installeren + logs op de hook.

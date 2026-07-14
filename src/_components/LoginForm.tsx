@@ -12,6 +12,26 @@ import { i18nNotify as notify, useTranslator } from "@luckystack/core/client";
 //? short enough not to feel broken. Named to avoid a bare magic number.
 const REDIRECT_DELAY_MS = 1000;
 
+//? Shared session-minting tail: store the token (token mode) / clear stale (cookie mode) + redirect.
+//? Reused by the password, 2FA-verify and email-code paths (they all return the same header + envelope).
+function completeSession(sessionToken: string | null | undefined, authenticated: boolean, reason?: string): void {
+  notify.success({ key: reason ?? 'login.loggedIn' });
+  setTimeout(() => {
+    if (sessionToken && sessionBasedToken) sessionStorage.setItem("token", sessionToken);
+    else if (!sessionBasedToken) sessionStorage.removeItem("token");
+    globalThis.location.href = authenticated ? loginRedirectUrl : loginPageUrl;
+  }, REDIRECT_DELAY_MS);
+}
+
+//? Auth POST helper for the login-completing routes (CSRF-exempt like /auth/api/credentials; plain fetch
+//? mirrors that call). Returns the parsed envelope + the session-token header.
+async function authPost(path: string, body: Record<string, unknown>): Promise<{ status: boolean | string; reason?: string; errorCode?: string; authenticated?: boolean; requiresTwoFactor?: boolean; challengeToken?: string; sessionToken: string | null }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", "X-Session-Based-Token": String(sessionBasedToken) };
+  const res = await fetch(`${backendUrl}/auth/${path}`, { method: "POST", headers, body: JSON.stringify(body), credentials: "include" });
+  const parsed = (await res.json()) as { status: boolean | string; reason?: string; errorCode?: string; authenticated?: boolean; requiresTwoFactor?: boolean; challengeToken?: string };
+  return { ...parsed, sessionToken: res.headers.get("x-session-token") };
+}
+
 export default function LoginForm({ formType }: { formType: "login" | "register" }) {
   const translate = useTranslator();
   const isLogin = formType === "login";
@@ -26,6 +46,12 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [loading, setLoading] = useState(false);
+  //? #2FA/email-code (ADR 0024). `challengeToken` set ⇒ show the 2FA code step (password verified, session not
+  //? minted yet). `otcMode` ⇒ passwordless email-code login. `code` is the shared 6-digit / recovery input.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [otcMode, setOtcMode] = useState(false);
+  const [otcSent, setOtcSent] = useState(false);
+  const [code, setCode] = useState("");
 
   //? The login form is driven entirely by the server's env-based registry
   //? (`GET /auth/providers`) — the single source of truth. A provider is active
@@ -118,6 +144,9 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
         errorCode?: string;
         session?: SessionLayout;
         authenticated?: boolean;
+        //? #2FA — an enrolled account returns a challenge instead of a session (password verified, not minted).
+        requiresTwoFactor?: boolean;
+        challengeToken?: string;
       };
 
       return {
@@ -134,6 +163,14 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
       setLoading(false); return;
     }
 
+    //? #2FA — the account has a second factor: switch to the challenge step (password verified, no session yet).
+    if (response.requiresTwoFactor && response.challengeToken) {
+      setChallengeToken(response.challengeToken);
+      setCode("");
+      setLoading(false);
+      return;
+    }
+
     //? Success is ONLY a literal boolean `true`. Anything else — `false`, or the
     //? framework error envelope's `'error'` string — is a failure. (Without the
     //? strict `=== true`, a 403 CSRF reply `{ status: 'error' }` slipped through
@@ -147,18 +184,44 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
       return;
     }
 
-    notify.success({ key: response.reason ?? 'login.loggedIn' });
-    setTimeout(() => {
-      if (response.sessionToken && sessionBasedToken) {
-        sessionStorage.setItem("token", response.sessionToken);
-      } else if (!sessionBasedToken) {
-        //? Cookie mode: drop any stale sessionStorage token left behind by a
-        //? previous token-mode session — a leftover entry makes parts of the
-        //? client mis-detect the auth mode.
-        sessionStorage.removeItem("token");
-      }
-      globalThis.location.href = response.authenticated ? loginRedirectUrl : loginPageUrl;
-    }, REDIRECT_DELAY_MS);
+    completeSession(response.sessionToken, response.authenticated === true, response.reason);
+  };
+
+  //? Verify the pending 2FA challenge (TOTP or recovery code) → mint the session.
+  const verifyChallenge = async (): Promise<void> => {
+    if (!challengeToken || code.trim().length === 0 || loading) return;
+    setLoading(true);
+    const [err, res] = await tryCatch(() => authPost("api/2fa", { challengeToken, code: code.trim() }));
+    setLoading(false);
+    if (err || res?.status !== true) { notify.error({ key: res?.errorCode ?? res?.reason ?? 'login.twoFactorInvalid' }); return; }
+    completeSession(res.sessionToken, res.authenticated === true, res.reason);
+  };
+
+  //? Passwordless email-code: request a code (anti-enumeration — always "ok"), then verify it.
+  const requestEmailCode = async (): Promise<void> => {
+    if (loading) return;
+    const form = document.querySelector("form");
+    const email = (form?.querySelector('input[name="email"]') as HTMLInputElement | null)?.value ?? "";
+    if (email.trim().length === 0) { notify.error({ key: 'login.emailRequired' }); return; }
+    setLoading(true);
+    await tryCatch(() => authPost("api/email-code/request", { email: email.trim() }));
+    setLoading(false);
+    setOtcSent(true);
+    notify.success({ key: 'login.emailCodeSent' });
+  };
+
+  const verifyEmailCode = async (): Promise<void> => {
+    if (code.trim().length === 0 || loading) return;
+    const form = document.querySelector("form");
+    const email = (form?.querySelector('input[name="email"]') as HTMLInputElement | null)?.value ?? "";
+    setLoading(true);
+    const [err, res] = await tryCatch(() => authPost("api/email-code/verify", { email: email.trim(), code: code.trim() }));
+    setLoading(false);
+    if (err || !res) { notify.error({ key: 'common.404' }); return; }
+    //? Email-code can ALSO return a 2FA challenge (an enrolled user logging in passwordlessly).
+    if (res.requiresTwoFactor && res.challengeToken) { setChallengeToken(res.challengeToken); return; }
+    if (res.status !== true) { notify.error({ key: res.errorCode ?? res.reason ?? 'login.twoFactorInvalid' }); return; }
+    completeSession(res.sessionToken, res.authenticated === true, res.reason);
   };
 
   return (
@@ -189,7 +252,28 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
           </div>
         )}
 
-        {ready && showCredentials && (
+        {/* #2FA — the challenge step: password/email-code verified, enter the authenticator (or recovery) code. */}
+        {ready && challengeToken !== null && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-common">{translate({ key: 'login.twoFactorPrompt' })}</p>
+            <input
+              name="twoFactorCode" type="text" inputMode="numeric" autoComplete="one-time-code"
+              value={code} onChange={(e) => { setCode(e.target.value); }}
+              placeholder={translate({ key: 'login.twoFactorPlaceholder' })}
+              className={`${inputClass} font-mono tracking-widest`}
+            />
+            <button type="button" ref={buttonRef} disabled={loading || code.trim().length === 0}
+              className="h-9 rounded-md bg-primary text-title-primary text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
+              onClick={() => void verifyChallenge()}>
+              {loading ? translate({ key: 'login.loading' }) : translate({ key: 'login.twoFactorVerify' })}
+            </button>
+            <button type="button" className="text-xs text-muted hover:text-title cursor-pointer" onClick={() => { setChallengeToken(null); setCode(""); }}>
+              {translate({ key: 'login.twoFactorBack' })}
+            </button>
+          </div>
+        )}
+
+        {ready && showCredentials && challengeToken === null && (
           <>
             <div className="flex flex-col gap-3">
               {!isLogin && (
@@ -214,23 +298,35 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
                   className={inputClass}
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="font-medium text-xs">{translate({ key: 'login.password' })}</label>
-                  {isLogin && (
-                    <Link to="/reset-password" className="text-xs text-primary hover:text-primary-hover cursor-pointer">
-                      {translate({ key: 'login.forgotPassword' })}
-                    </Link>
-                  )}
+              {/* #email-code — in passwordless login mode the password field is hidden. */}
+              {!(isLogin && otcMode) && (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="font-medium text-xs">{translate({ key: 'login.password' })}</label>
+                    {isLogin && (
+                      <Link to="/reset-password" className="text-xs text-primary hover:text-primary-hover cursor-pointer">
+                        {translate({ key: 'login.forgotPassword' })}
+                      </Link>
+                    )}
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="********"
+                    className={inputClass}
+                  />
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="********"
-                  className={inputClass}
-                />
-              </div>
+              )}
+              {/* #email-code — the code input appears once a code has been sent (passwordless login mode). */}
+              {isLogin && otcMode && otcSent && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="otc" className="font-medium text-xs">{translate({ key: 'login.emailCodeLabel' })}</label>
+                  <input id="otc" name="emailCode" type="text" inputMode="numeric" autoComplete="one-time-code"
+                    value={code} onChange={(e) => { setCode(e.target.value); }}
+                    placeholder={translate({ key: 'login.twoFactorPlaceholder' })} className={`${inputClass} font-mono tracking-widest`} />
+                </div>
+              )}
               {!isLogin && (
                 <div className="flex flex-col gap-1">
                   <label htmlFor="confirmPassword" className="font-medium text-xs">{translate({ key: 'login.confirmPassword' })}</label>
@@ -244,15 +340,31 @@ export default function LoginForm({ formType }: { formType: "login" | "register"
                 </div>
               )}
 
-              <button
-                type="button"
-                ref={buttonRef}
-                className="mt-1 h-9 rounded-md bg-primary text-title-primary text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
-                onClick={(e) => void handleSubmit(e, "credentials")}
-                disabled={loading}
-              >
-                {loading ? translate({ key: 'login.loading' }) : buttonText}
-              </button>
+              {/* #email-code passwordless login: send a code, then verify it. Else the normal credentials submit. */}
+              {isLogin && otcMode ? (
+                <button type="button" ref={buttonRef}
+                  className="mt-1 h-9 rounded-md bg-primary text-title-primary text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
+                  onClick={() => void (otcSent ? verifyEmailCode() : requestEmailCode())} disabled={loading}>
+                  {loading ? translate({ key: 'login.loading' }) : translate({ key: otcSent ? 'login.emailCodeVerify' : 'login.emailCodeSend' })}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  ref={buttonRef}
+                  className="mt-1 h-9 rounded-md bg-primary text-title-primary text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
+                  onClick={(e) => void handleSubmit(e, "credentials")}
+                  disabled={loading}
+                >
+                  {loading ? translate({ key: 'login.loading' }) : buttonText}
+                </button>
+              )}
+              {/* #email-code toggle (login only): passwordless ⇄ password. */}
+              {isLogin && (
+                <button type="button" className="text-xs text-primary hover:text-primary-hover cursor-pointer self-center"
+                  onClick={() => { setOtcMode((v) => !v); setOtcSent(false); setCode(""); }}>
+                  {translate({ key: otcMode ? 'login.usePassword' : 'login.useEmailCode' })}
+                </button>
+              )}
             </div>
 
             {oauthProviders.length > 0 && (

@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 234,
-    "edges": 350,
+    "nodes": 235,
+    "edges": 351,
     "symbols": 297,
     "callEdges": 42
   },
@@ -150,6 +150,11 @@
     },
     {
       "id": "_components/templates/TemplateProvider.tsx",
+      "kind": "component",
+      "route": null
+    },
+    {
+      "id": "_components/TwoFactorSection.tsx",
       "kind": "component",
       "route": null
     },
@@ -1375,6 +1380,10 @@
     {
       "from": "settings/page.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "settings/page.tsx",
+      "to": "_components/TwoFactorSection.tsx"
     },
     {
       "from": "settings/page.tsx",
@@ -2810,6 +2819,9 @@
     ],
     "_components/templates/TemplateProvider.tsx": [
       "main.tsx"
+    ],
+    "_components/TwoFactorSection.tsx": [
+      "settings/page.tsx"
     ],
     "_functions/menuHandler.ts": [
       "_components/MenuHandler.tsx",

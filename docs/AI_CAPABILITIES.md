@@ -98,6 +98,7 @@ Every entry below is callable inside an API or sync handler's `main({ data, user
 | `src/_components/ErrorPage.tsx` | `default: ErrorPage` |
 | `src/_components/LoginForm.tsx` | `default: LoginForm` |
 | `src/_components/MenuHandler.tsx` | `MenuHandlerProvider({ children }: { children: ReactNode })`, `useMenuHandler()` |
+| `src/_components/TwoFactorSection.tsx` | `default: TwoFactorSection` |
 | `src/_components/dropdown/Dropdown.tsx` | `default: Dropdown` |
 | `src/_components/dropdown/MultiSelectDropdown.tsx` | `default: MultiSelectDropdown` |
 | `src/_components/dropdown/dropdownInternals.tsx` | `type DropdownDirection`, `interface DropdownItem`, `interface DropdownMenuController`, `DropdownMenuShell({ controller, size, className = "", menuClassName = "", showSearch = false, searchPlaceholder = "Search...", noResultsText = "No results", triggerLabel, hasSelection, filteredOptions, onActivate, initialFocusKey, ariaMultiselectable, children, }: DropdownMenuShellProps)`, `type DropdownSize`, `type DropdownValue`, `interface NormalizedOption`, `filterOptions(options: NormalizedOption[], searchValue: string): NormalizedOption[]`, `normalizeOptions(items: DropdownItem[]): NormalizedOption[]`, `useDropdownMenu({ showSearch }: UseDropdownMenuArgs): DropdownMenuController` |
