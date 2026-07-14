@@ -25,6 +25,7 @@ function completeSession(sessionToken: string | null | undefined, authenticated:
 
 //? Auth POST helper for the login-completing routes (CSRF-exempt like /auth/api/credentials; plain fetch
 //? mirrors that call). Returns the parsed envelope + the session-token header.
+// luckystack-allow i18n-jsx: the ": Promise<{ status … }>" match is a TS return-type annotation, not JSX text (linter false positive).
 async function authPost(path: string, body: Record<string, unknown>): Promise<{ status: boolean | string; reason?: string; errorCode?: string; authenticated?: boolean; requiresTwoFactor?: boolean; challengeToken?: string; sessionToken: string | null }> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "X-Session-Based-Token": String(sessionBasedToken) };
   const res = await fetch(`${backendUrl}/auth/${path}`, { method: "POST", headers, body: JSON.stringify(body), credentials: "include" });

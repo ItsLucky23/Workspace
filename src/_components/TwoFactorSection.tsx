@@ -11,6 +11,7 @@ import { httpFetch, useSession, i18nNotify as notify, useTranslator } from "@luc
 import { backendUrl, SessionLayout, sessionBasedToken } from "../../config";
 
 //? Call an authed /auth/api/2fa/* route: CSRF-aware + Bearer in token mode. Returns the parsed JSON body.
+// luckystack-allow i18n-jsx: the ": Promise<{ status … }>" match is a TS return-type annotation, not JSX text (linter false positive).
 async function post2fa(path: string, body: Record<string, unknown>): Promise<{ status: boolean | string; errorCode?: string; reason?: string; secret?: string; otpauthUri?: string; recoveryCodes?: string[] }> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "X-Session-Based-Token": String(sessionBasedToken) };
   if (sessionBasedToken) { const t = sessionStorage.getItem("token"); if (t) headers.Authorization = `Bearer ${t}`; }
