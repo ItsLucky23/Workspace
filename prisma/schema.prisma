@@ -91,6 +91,13 @@ model User {
   //? the settings/updatePreferences route and surfaced on the session.
   preferences     Json?
 
+  //? TOTP 2FA (ADR 0024 / @luckystack/login) — all OPTIONAL + safe defaults, only touched when a user
+  //? enrolls a second factor. `totpSecret` is AES-256-GCM-encrypted at rest when TOTP_ENCRYPTION_KEY is set;
+  //? `recoveryCodes` are hashed. Stripped from the session by `sanitizeUserForSession`.
+  twoFactorEnabled Boolean @default(false)
+  totpSecret       String?
+  recoveryCodes    Json?
+
   @@unique([email, provider])
 }
 

@@ -156,6 +156,15 @@ Notes:
 - When `sessionBasedToken` is `true`, auth flows do not set token cookies; credentials login returns `X-Session-Token` and OAuth callback redirects with `?token=`.
 - When `sessionBasedToken` is `false`, auth flows use HttpOnly cookie delivery.
 
+### Token-exposure contract (which side sees the raw token) — ADR 0018
+
+The raw session token reaches **page JS only in `sessionBasedToken` mode**, where the client deliberately holds it in `sessionStorage` (and the socket handshake reads it from there). In the default **cookie mode the token is the `HttpOnly` credential and must never reach page JS** — surfacing it there would defeat `HttpOnly` and hand an XSS foothold a stealable credential. This is why:
+
+- The value stored in the adapter never contains the token (it is the Redis key; LOGIN-M9 strips it).
+- `saveSession`'s `updateSession` broadcast sends the token only in `sessionBasedToken` mode; in cookie mode it broadcasts the token-stripped projection.
+- A security scan that flags "the token reaches page JS" is only correct for **cookie mode**; in `sessionBasedToken` mode it is by design. See `docs/decisions/0018-*.md`.
+- **Known follow-up (ADR 0018):** the `system/session` (`session_v1`) initial-load response still returns the token in cookie mode; fully closing it needs the client session type to stop requiring `token`.
+
 ---
 
 ## Session Functions

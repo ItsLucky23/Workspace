@@ -151,11 +151,78 @@ Reach for the dedicated functions when you wire up a custom auth surface (admin 
 
 ## Auth Endpoints
 
-| Endpoint                    | Method | Purpose                        |
-| --------------------------- | ------ | ------------------------------ |
-| `/auth/api/{provider}`      | GET    | Initiate OAuth login           |
-| `/auth/api/credentials`     | POST   | Credentials login/register     |
-| `/auth/callback/{provider}` | GET    | OAuth callback (from provider) |
+| Endpoint                       | Method | Purpose                                                        |
+| ------------------------------ | ------ | -------------------------------------------------------------- |
+| `/auth/api/{provider}`         | GET    | Initiate OAuth login                                            |
+| `/auth/api/credentials`        | POST   | Credentials login/register (may return a 2FA challenge)         |
+| `/auth/callback/{provider}`    | GET    | OAuth callback (from provider)                                  |
+| `/auth/api/email-code/request` | POST   | Passwordless login: mail a one-time code (ADR 0024; always "ok" — anti-enumeration) |
+| `/auth/api/email-code/verify`  | POST   | Passwordless login: verify the code, mint the session (or return a 2FA challenge) |
+| `/auth/api/2fa`                | POST   | Complete a pending 2FA challenge (`{ challengeToken, code, method? }`) → session |
+| `/auth/api/2fa/email-code`     | POST   | Send the 2FA email-fallback code for an active challenge        |
+| `/auth/api/2fa/setup`          | POST*  | Begin authenticator enrollment → `{ secret, otpauthUri }`       |
+| `/auth/api/2fa/enable`         | POST*  | Confirm enrollment with the first code → `{ recoveryCodes[] }` (shown once) |
+| `/auth/api/2fa/disable`        | POST*  | Turn 2FA off (requires a valid TOTP or recovery code)           |
+| `/auth/api/2fa/recovery-codes` | POST*  | Replace the recovery-code set (requires a valid TOTP code)      |
+
+`*` = authenticated (live session required); these are CSRF-enforced in cookie
+mode. The login-completing routes are CSRF-bootstrap-exempt like
+`/auth/api/credentials`. Authenticator apps work via the open TOTP standard
+(RFC 6238) — no vendor integration.
+
+### Enabling email-code login / 2FA on an EXISTING project (upgrade runbook)
+
+Both features ship OFF (`auth.emailCodeLogin: false`, `auth.twoFactor:
+'disabled'`) and every new config key auto-seeds to a safe default via the
+config deep-merge — so bumping `@luckystack/*` and running `npm install`
+changes nothing until you opt in. To turn them on in a project that was NOT
+re-scaffolded:
+
+1. **Config (`config.ts`).** Set `auth.emailCodeLogin: true` and/or
+   `auth.twoFactor: 'optional'`. *Skipping this keeps the feature off — safe.*
+2. **User columns (2FA only) — REQUIRED, manual.** Add three OPTIONAL columns
+   to your `prisma/schema.prisma` `User` model (or your data layer's user
+   table) and run `prisma generate` + `db push`/`migrate`:
+   ```prisma
+   twoFactorEnabled Boolean @default(false)
+   totpSecret       String?
+   recoveryCodes    Json?
+   ```
+   *If you flip `twoFactor: 'optional'` but skip this, plain logins keep
+   working, but the first enrollment attempt fails LOUDLY — the server log
+   names the exact missing columns and the user gets `login.twoFactorPersistFailed`.*
+3. **Email adapter (email-code login + the 2FA email fallback).** Ensure
+   `@luckystack/email` is installed and a sender is registered. *Skipping this
+   fails LOUDLY — the send logs "@luckystack/email is not installed" and the
+   flow returns `login.emailCodeSendFailed`.*
+4. **`TOTP_ENCRYPTION_KEY` in `.env.local` (recommended).** A long random
+   string; encrypts TOTP secrets at rest (AES-256-GCM). *Skipping stores them
+   plaintext with a one-time boot warning; adding the key later upgrades new
+   enrollments. Use a random value, not a memorable passphrase (it is not
+   stretched).*
+5. **UI — `npx luckystack update --app`** (ADR 0025). The phase-based
+   `LoginForm` (email-code + 2FA challenge views) and the settings
+   `TwoFactorSection` are consumer-owned `src/` files that a plain `npm install`
+   / framework-scope `update` can't deliver. Run `npx luckystack update --app`:
+   it renders a fresh scaffold with your recorded choices and delivers the new
+   `TwoFactorSection` (a genuinely new file) + a `LoginForm.tsx.new` sidecar if
+   you edited yours (an AI agent can apply the `dump/UPDATE_*.log` merge note).
+   Files you never touched are refreshed in place; your own code + `prisma/` +
+   secrets are never touched. Review with `git diff` before committing.
+
+### Security posture notes (ADR 0024)
+
+- **Recovery codes** (80-bit, one-time, sha256-at-rest) are the lost-device
+  path. `twoFactorEmailFallback` (default `true`) additionally lets an enrolled
+  user complete the challenge with a code mailed to their account address —
+  convenient, but it means mailbox possession can satisfy the second factor
+  (the same trust level as password reset). Set it `false` to require the
+  authenticator app (or a recovery code) only.
+- **2FA verification is rate-limited three ways:** a per-challenge attempt
+  budget (`twoFactorMaxAttempts`), a per-IP shield, and a cross-IP per-account
+  lockout (10 failed second-factor attempts / 15 min) that a botnet can't scale
+  past. Re-enrollment requires disabling first (which proves current
+  possession), so a hijacked session cannot silently overwrite the factor.
 
 ---
 

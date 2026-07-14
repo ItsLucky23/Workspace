@@ -20,8 +20,11 @@ export interface SyncParams {
 
 // eslint-disable-next-line @typescript-eslint/require-await -- broadcast-only type carrier; async+literal is required for serverOutput type extraction
 export const main = async (): Promise<SyncServerResponse> => {
-  //? Typed as `string` (not the literal '') so the extracted client payload widens correctly.
+  //? Typed as `string` (not the literal '') so the extracted client payload widens correctly — the annotation
+  //? is DELIBERATE (a bare `''` extracts as the literal `""`, which breaks the client callback's narrowing).
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- deliberate literal→string widening for the sync-type extractor
   const ticketKey: string = '';
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- deliberate literal→string widening for the sync-type extractor
   const chunk: string = '';
   return { status: 'success', ticketKey, chunk };
 };

@@ -8,12 +8,12 @@
 import { spawn } from 'node:child_process';
 
 import { DOCKER_BIN, docker } from '../container/runtime';
-import { isLeader } from '../orchestrator/cluster';
 import { getProxyProvider } from './index';
 
 const EDITOR_PORT = Number(process.env.WS_EDITOR_PORT ?? '3000');
 const IDLE_MS = Number(process.env.WS_EDITOR_IDLE_MIN ?? '30') * 60_000;
-const INTERVAL_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
+//? Reap cadence. Exported so the @luckystack/cron overlay job schedules it (cron's lease = single-instance).
+export const EDITOR_REAP_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
 const HEX = EDITOR_PORT.toString(16).toUpperCase().padStart(4, '0'); //? 3000 → '0BB8'
 
 //? container name → epoch ms it was first seen idle (cleared when a client connects / editor stops).
@@ -77,8 +77,3 @@ export async function reapIdleEditors(now: number): Promise<{ reaped: string[] }
   return { reaped };
 }
 
-//? Start the periodic reaper (called once at boot). Returns the timer so it can be cleared.
-export function startEditorReaper(): ReturnType<typeof setInterval> {
-  //? Only the leader instance reaps — otherwise N instances race on the same editors/routes.
-  return setInterval(() => { if (isLeader()) void reapIdleEditors(Date.now()); }, INTERVAL_MS);
-}

@@ -164,6 +164,15 @@ registerProjectConfig({
     //? To also enforce it at the schema level, tighten that to `@@unique([email])`
     //? and `prisma db push` (a dev action — only safe once no duplicate emails exist).
     providerAccountStrategy: 'unified',
+    //? Passwordless email-code login (ADR 0024): the login form gains a "send me a code" entry point;
+    //? the code is delivered by @luckystack/email (console sender in dev logs it). Anti-enumeration +
+    //? per-email/per-IP throttled.
+    emailCodeLogin: true,
+    //? TOTP 2FA (ADR 0024): 'optional' lets each user enroll an authenticator app (+ email fallback +
+    //? recovery codes) from Settings; 'disabled' turns it fully off. REQUIRES the User columns
+    //? twoFactorEnabled/totpSecret/recoveryCodes (added to prisma/schema.prisma) — enrollment fails LOUDLY
+    //? without them. Set TOTP_ENCRYPTION_KEY in .env.local to encrypt secrets at rest (AES-256-GCM).
+    twoFactor: 'optional',
   },
 });
 
@@ -196,7 +205,10 @@ import type { User } from '@prisma/client';
 //? core so this file compiles identically with or without @luckystack/login.
 export type { AuthProps } from '@luckystack/core';
 
-export interface SessionLayout extends Omit<User, 'password'> {
+//? Omit the at-rest SECRETS (password + the 2FA secret/recovery material) — the login package's
+//? `sanitizeUserForSession` strips exactly these, so the session never carries them. `twoFactorEnabled`
+//? stays (a non-secret flag the UI reads to show enrollment state).
+export interface SessionLayout extends Omit<User, 'password' | 'totpSecret' | 'recoveryCodes'> {
   avatarFallback: string;
   token: string;
   roomCodes?: string[];

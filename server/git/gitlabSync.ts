@@ -8,11 +8,11 @@ import { tryCatch, getPrismaClient } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
-import { isLeader } from '../orchestrator/cluster';
 import { resolveForge, type ResolvedForge } from './forgeResolve';
 import { withRetry } from '../util/retry';
 
-const SYNC_INTERVAL_MS = Number(process.env.WS_GITLAB_SYNC_MIN ?? '5') * 60_000;
+//? Poll cadence. Exported so the @luckystack/cron overlay job schedules it (cron's lease = single-instance).
+export const SYNC_INTERVAL_MS = Number(process.env.WS_GITLAB_SYNC_MIN ?? '5') * 60_000;
 const PER_PAGE = 100;
 const MAX_ISSUE_PAGES = 20; // safety cap — 2000 open issues; a hit is LOGGED, never silently dropped (C3).
 
@@ -135,18 +135,10 @@ export async function postIssueComment(prisma: PrismaClient, workspaceId: string
   return !err && ok === true;
 }
 
-let syncTimer: ReturnType<typeof setInterval> | null = null;
-
-//? Continuous sync — poll every project with a resolvable forge on a timer and upsert its issues
-//? (no webhook infra needed). Broadcasts touched tickets so boards stay live. Started at boot.
-export function startGitlabSyncPoller(): void {
-  if (syncTimer) return;
-  syncTimer = setInterval(() => { void pollLinkedProjects(); }, SYNC_INTERVAL_MS);
-}
-
-async function pollLinkedProjects(): Promise<void> {
-  //? Only the leader instance polls — otherwise N instances each hammer the forge API.
-  if (!isLeader()) return;
+//? Continuous sync — poll every project with a resolvable forge and upsert its issues (no webhook infra
+//? needed). Broadcasts touched tickets so boards stay live. Called by the @luckystack/cron overlay job;
+//? cron's lease guarantees a single instance polls (so N instances don't hammer the forge API).
+export async function runGitlabSyncTick(): Promise<void> {
   const prisma = getPrismaClient();
   //? Multi-project (ADR 0035/0036): iterate every project; `syncForgeIssues` no-ops a project
   //? with no resolvable forge, so this covers both a per-project ForgeConnection and the

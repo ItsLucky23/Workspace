@@ -17,11 +17,6 @@ These live outside the framework monorepo. The framework ships thin adapters or 
 - **Relationship to framework**: The framework ships only a thin adapter surface (similar to how `@luckystack/error-tracking` works); the heavy logic lives in the dedicated repo.
 - **Status**: Not started. Web-vitals folds into this as a subpath, not a standalone package. Rationale captured in memory `[[project_monitoring_separation]]`.
 
-### `@luckystack/sync-docs` CLI
-
-- **What**: `npx @luckystack/sync-docs` refreshes a consumer's `docs/luckystack/` snapshot when the framework receives doc updates. Diff-merge aware so consumer-custom edits are preserved.
-- **Status**: Not built. For MVP the scaffold-time copy is sufficient. Consumers can manually re-run `npx create-luckystack-app` against a temp dir and copy the deltas if they care about staying in sync.
-
 ---
 
 ## 2. Niche edge-cases that require framework changes

@@ -4,10 +4,9 @@
 //? + LinkedIn are FUTURE-READY (the abstraction lists them; posting isn't built). No keys → a dummy post
 //? returns a valid-shaped `stub://` external url. The Conductor is the only writer of the PublishJob.
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
+import { tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { isLeader } from '../orchestrator/cluster';
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
 import { extractExternalId, ingestPublishMetrics, buildMetricsRequest, type MetricsFetch } from './publishMetrics';
 
@@ -26,7 +25,7 @@ export function extractPublishVariant(raw: unknown, platform: string): PublishVa
 }
 
 //? O3 — how often the leader checks for due scheduled posts.
-const PUBLISH_INTERVAL_MS = Number(process.env.WS_PUBLISH_SCHEDULER_INTERVAL_MIN ?? '1') * 60_000;
+export const PUBLISH_INTERVAL_MS = Number(process.env.WS_PUBLISH_SCHEDULER_INTERVAL_MIN ?? '1') * 60_000;
 
 export type PublishPlatform = 'youtube' | 'tiktok' | 'instagram' | 'linkedin';
 
@@ -133,11 +132,6 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
   return { fired };
 }
 
-//? O3 — start the leader-gated scheduled-post loop (mirrors the watchdog interval). Returns the timer.
-export function startScheduledPublisher(): ReturnType<typeof setInterval> {
-  return setInterval(() => { if (isLeader()) void runScheduledPublish(getPrismaClient(), Date.now()).catch((error: unknown) => { console.error('[publish] scheduler error:', error); }); }, PUBLISH_INTERVAL_MS);
-}
-
 //? #131 — the pure per-platform DELETE request builder. YouTube supports `videos.delete`; TikTok has NO
 //? public post-delete endpoint (retract-only), so it returns null and the caller falls back to marking the
 //? job 'unpublished' without a live delete. Unknown platform / empty id ⇒ null. Caller supplies the token.
@@ -167,7 +161,7 @@ export async function deletePlatformPost(prisma: PrismaClient, workspaceId: stri
 }
 
 //? #141 — how often the leader refreshes audience metrics for posted content (default hourly; APIs are slow-moving).
-const METRICS_INTERVAL_MS = Number(process.env.WS_METRICS_INGEST_INTERVAL_MIN ?? '60') * 60_000;
+export const METRICS_INTERVAL_MS = Number(process.env.WS_METRICS_INGEST_INTERVAL_MIN ?? '60') * 60_000;
 
 //? #141 — the LIVE metrics-fetch transport for one workspace: use the platform's valid OAuth connection to
 //? call its stats endpoint. No connection / no keys ⇒ `undefined` (ingest skips that job — never blocks).
@@ -201,7 +195,3 @@ export async function runMetricsIngest(prisma: PrismaClient): Promise<{ updated:
   return { updated };
 }
 
-//? #141 — start the leader-gated metrics-ingest loop (mirrors the scheduled-publisher). Returns the timer.
-export function startMetricsIngest(): ReturnType<typeof setInterval> {
-  return setInterval(() => { if (isLeader()) void runMetricsIngest(getPrismaClient()).catch((error: unknown) => { console.error('[metrics] ingest error:', error); }); }, METRICS_INTERVAL_MS);
-}

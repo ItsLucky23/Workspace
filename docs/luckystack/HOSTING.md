@@ -209,6 +209,14 @@ This runs:
 2. `tsc -b && vite build` - Builds the frontend to `dist/`
 3. `node scripts/bundleServer.mjs` - Bundles the server
 
+> **Overlay note:** the `luckystack/` overlay folder is loaded *dynamically* in dev
+> (tsx imports the raw `.ts` files), but plain `node` cannot import `.ts` — so the
+> bundler generates an entry that statically compiles every overlay file into
+> `dist/server.js` and registers it via `registerOverlayLoader` from
+> `@luckystack/server`. `bootstrapLuckyStack` then skips the runtime folder walk.
+> Consequence: after editing anything under `luckystack/`, re-run the build — the
+> production bundle does NOT pick up overlay changes from disk.
+
 ### 2. Build Output
 
 After building, you'll have:

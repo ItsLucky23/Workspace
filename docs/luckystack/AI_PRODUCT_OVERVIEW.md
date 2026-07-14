@@ -34,7 +34,7 @@ component kit, streaming, the playground feature sweep).
 - **Helper / component** — reusable logic in `src/_functions/` / UI in `src/_components/`.
 - **ADR** — a committed decision record in `docs/decisions/` (the "why").
 
-## Pages by area (9)
+## Pages by area (10)
 
 ### (root)
 
@@ -47,6 +47,12 @@ component kit, streaming, the playground feature sweep).
 | Route | Purpose (plain language) | File |
 | --- | --- | --- |
 | `/admin` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `admin/page.tsx` |
+
+### devtools-lag-test
+
+| Route | Purpose (plain language) | File |
+| --- | --- | --- |
+| `/devtools-lag-test` | dev-only stress page that re-renders a large JSX tree at a fixed rate, to reproduce and measure the DevTools-open lag (React 19 console.createTask per element). | `devtools-lag-test/page.tsx` |
 
 ### docs
 

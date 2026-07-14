@@ -6,12 +6,12 @@
 
 import type { PrismaClient } from '@prisma/client';
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
+import { tryCatch } from '@luckystack/core';
 
-import { isLeader } from '../orchestrator/cluster';
 import { runTriggerAction } from './executor';
 
-const INTERVAL_MS = 60_000; // one tick per minute (cron's finest granularity)
+//? One tick per minute (cron's finest granularity). Exported so the @luckystack/cron overlay job schedules it.
+export const CRON_TICK_MS = 60_000;
 
 //? Does one cron FIELD (e.g. `*/5`) accept `value`, where the field's range starts at `min`? Pure.
 function fieldMatches(field: string, value: number, min: number): boolean {
@@ -60,9 +60,4 @@ export async function runCronTriggers(prisma: PrismaClient, now: Date): Promise<
     fired += 1;
   }
   return { fired };
-}
-
-//? Start the leader-gated per-minute scheduler (call once at boot). Returns the timer.
-export function startCronScheduler(): ReturnType<typeof setInterval> {
-  return setInterval(() => { if (isLeader()) void runCronTriggers(getPrismaClient(), new Date()).catch((error: unknown) => { console.error('[automation] cron sweep error:', error); }); }, INTERVAL_MS);
 }

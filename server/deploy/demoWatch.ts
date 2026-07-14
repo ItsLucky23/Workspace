@@ -5,16 +5,16 @@
 //? leader-gated sweep (`runDemoWatch`) with injectable head-resolution + deploy so it is tested without git
 //? or Docker.
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
+import { getPrismaClient } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { branchHead } from '../git/repoStore';
 import { deployEnvironment } from './environment';
 import { normalizeGitConfig } from '../git/branchStrategy';
-import { isLeader } from '../orchestrator/cluster';
 
 //? How often the demo-host watcher checks main for new commits.
-const DEMO_WATCH_MS = Number(process.env.WS_DEMO_WATCH_MS ?? '60000');
+//? Sweep cadence. Exported so the @luckystack/cron overlay job schedules it (cron's lease = single-instance).
+export const DEMO_WATCH_MS = Number(process.env.WS_DEMO_WATCH_MS ?? '60000');
 
 //? Redeploy a demo env when: auto-redeploy is on, it isn't pinned, the branch head is known (non-empty), and
 //? it differs from what's currently deployed. Pure + exported for tests.
@@ -55,11 +55,3 @@ export async function runDemoWatch(deps: DemoWatchDeps = {}): Promise<DemoWatchR
   return { checked: demos.length, redeployed };
 }
 
-//? Boot hook — the leader-gated demo-host watcher. Every tick (only on the leader) sweeps demo envs and
-//? redeploys any whose main moved. Mirrors startCronScheduler / startScheduledPublisher.
-export function startDemoWatcher(): ReturnType<typeof setInterval> {
-  return setInterval(() => {
-    if (!isLeader()) return;
-    void tryCatch(() => runDemoWatch()).then(([error]) => { if (error) console.error('[demo-watch] sweep error:', error.message); });
-  }, DEMO_WATCH_MS);
-}

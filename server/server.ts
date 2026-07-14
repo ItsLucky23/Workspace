@@ -43,13 +43,10 @@ import { bootstrapLuckyStack } from '@luckystack/server';
 import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 
 import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
-import { startEditorReaper } from './proxy/editorReaper';
-import { startWorkerReaper } from './orchestrator/workerReaper';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerTlsAsk } from './proxy/tlsAsk';
 import { registerShortLinkRedirect } from './content/shortlinkRoute';
 import { registerObservabilityEndpoints } from './obs/endpoints';
-import { startGitlabSyncPoller } from './git/gitlabSync';
 import { registerForgeWebhook } from './git/webhookRoute';
 import { registerBuildDownload } from './deploy/downloadRoute';
 import { registerMediaDownload } from './media/download';
@@ -187,13 +184,10 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? above prunes routes without a running container but never RE-ADDS one, so a proxy restart would
   //? otherwise drop a live env's URL. Idempotent + best-effort; dynamic import (secrets-order, lesson 0010).
   void import('./deploy/environment').then(({ reassertEnvironmentRoutes }) => reassertEnvironmentRoutes()).catch((e: unknown) => { console.error('[env] boot re-assert error:', e); });
-  //? Periodically evict idle live editors + prune their routes (CapacityManager). Leader-gated.
-  startEditorReaper();
-  //? W3 — periodically STOP the worker container of a parked (needs-input) ticket after it idles, freeing
-  //? CPU/RAM; the reprovision path restarts it on answer/resume. Leader-gated.
-  startWorkerReaper();
-  //? Continuously sync GitLab issues → tickets for every workspace with a linked repo. Leader-gated.
-  startGitlabSyncPoller();
+  //? Recurring background jobs (editor/worker reapers, GitLab sync, scheduled publish, metrics ingest,
+  //? automation cron, demo-watch) are now registered as @luckystack/cron jobs in `luckystack/cron/jobs.ts`
+  //? (ADR 0022) — the overlay auto-loads at boot and the cron package's Redis lease guarantees each fires on
+  //? exactly one instance (replacing the old ad-hoc `setInterval(() => { if (isLeader()) … })` loops).
   //? Crash-recovery (#1): reconcile interrupted turns on boot + periodically detect stuck/idle turns
   //? and intervene. Leader-gated (multi-instance-safe). DYNAMIC import so the Conductor's module-level
   //? `getPrismaClient()` is not pulled into the static graph BEFORE secrets are resolved above (else
@@ -211,18 +205,8 @@ import { startLeaderElection } from './orchestrator/cluster';
     const moved = migrateLegacyRepoLayout([...firstByWs].map(([workspaceId, projectId]) => ({ workspaceId, projectId })));
     if (moved > 0) console.log(`[R3-b] migrated ${String(moved)} legacy workspace repo(s) into their first project's slot`);
   })().catch((e: unknown) => { console.error('[R3-b] legacy repo migration error:', e); });
-  //? O3: the leader-gated scheduled-post loop fires due PublishJobs at their scheduledAt.
-  //? #141: the leader-gated metrics-ingest loop refreshes audience metrics for posted content.
-  const { startScheduledPublisher, startMetricsIngest } = await import('./content/publish');
-  startScheduledPublisher();
-  startMetricsIngest();
-  //? Automation (#2): the leased per-minute cron scheduler fires `on:'cron'` WorkspaceTriggers.
-  //? Dynamic import (keeps the automation graph out of the pre-secret-resolution static graph).
-  const { startCronScheduler } = await import('./automation/cron');
-  startCronScheduler();
-  //? D3: the leader-gated demo-host watcher redeploys demo envs when their target branch (main) moves.
-  const { startDemoWatcher } = await import('./deploy/demoWatch');
-  startDemoWatcher();
+  //? (scheduled-publish, metrics-ingest, automation-cron, demo-watch now run via the @luckystack/cron overlay
+  //? — see `luckystack/cron/jobs.ts`, ADR 0022.)
   //? Q2: index the product self-knowledge corpus (global, idempotent on the corpus hash) once at boot,
   //? leader-gated + delayed so leadership has settled. Best-effort — never blocks or breaks boot.
   const { ensureProductKnowledge } = await import('./rag/productKnowledge');

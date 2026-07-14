@@ -9,11 +9,17 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (1)
+## Lessons (7)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
 | 0001 | A node:* server import in shared/client code blanks the whole frontend | 🔴 critical | packages/core (client/server boundary) | runtime, bundling, client-server-boundary | `docs/lessons/0001-node-modules-leak-into-client-bundle.md` |
+| 0002 | A nested union in a route's input type made runtime validation reject ALL input with a bogus depth error | 🟠 high | packages/core (runtimeTypeValidation) | runtime, validation, type-text, production | `docs/lessons/0002-validatetype-union-depth-false-positive.md` |
+| 0003 | Measuring DevTools-open lag — three pitfalls that produce wrong conclusions | 🟡 medium | performance diagnostics (scripts/devtoolsLagHarness) | performance, devtools, react, measurement, cdp | `docs/lessons/0003-devtools-lag-measurement-pitfalls.md` |
+| 0004 | The @mikro-orm/cli crashes on Node 22 / Windows — run the SchemaGenerator via the API | 🟠 high | packages/create-luckystack-app (mikro-orm scaffold) | scaffold, mikro-orm, cli, windows, secret-manager | `docs/lessons/0004-mikro-orm-cli-figlet-crash-node22-windows.md` |
+| 0005 | npm run eats no provenance flag | 🟡 medium | release / publishing | npm, publish, provenance, windows, release | `docs/lessons/0005-npm-run-eats-no-provenance-flag.md` |
+| 0006 | reset cached client insufficient register instead | 🟠 high | core / redis / secret-manager | redis, secret-manager, boot, caching, ioredis | `docs/lessons/0006-reset-cached-client-insufficient-register-instead.md` |
+| 0007 | a fix that never fires verify the trigger | 🟠 high | core / server / secret-manager | redis, secret-manager, boot, config, verification | `docs/lessons/0007-a-fix-that-never-fires-verify-the-trigger.md` |
 
 ## Takeaways
 
@@ -24,3 +30,51 @@
 Never import a `node:*` module (or anything that transitively does — `async_hooks`, `fs`, `child_process`) from code the client bundle can reach; use the `@luckystack/core/client` entry, which is built to keep Node built-ins out (see the `tryCatchClient` lazy-capture pattern). And ALWAYS smoke-test the real browser before calling a change "ship-safe" — a green build + green tests do not prove the page renders. Related: `docs/examples/trycatch-error-handling.md`.
 
 → `docs/lessons/0001-node-modules-leak-into-client-bundle.md`
+
+### 0002 — A nested union in a route's input type made runtime validation reject ALL input with a bogus depth error
+
+**0002** · high · packages/core (runtimeTypeValidation) · tags: runtime, validation, type-text, production · 2026-07-02
+
+The single-member union recursion must only happen when `splitTopLevel` actually isolated a DIFFERENT sub-type (a trimmed leading/trailing `|`, or a stripped paren) — `unionParts.length === 1 && singleMember !== type`. When the single part equals the whole type, there is no top-level union; fall through to the object/array/primitive handling instead of recursing. Regression test: `runtimeTypeValidation.test.ts` — "accepts a shallow value against an object type whose properties contain nested unions". General takeaway: a "max depth exceeded" on a shallow value is almost never real nesting — suspect a recursion that doesn't consume input. And run the per-route (`*.tests.ts`) suite against a live server after any change to input types or the validator; `npx vitest run` does NOT exercise the HTTP validation path.
+
+→ `docs/lessons/0002-validatetype-union-depth-false-positive.md`
+
+### 0003 — Measuring DevTools-open lag — three pitfalls that produce wrong conclusions
+
+**0003** · medium · performance diagnostics (scripts/devtoolsLagHarness) · tags: performance, devtools, react, measurement, cdp · 2026-07-03
+
+Use `scripts/devtoolsLagHarness/cdpStressTest.mjs` with the committed `/devtools-lag-test` page at a NON-saturated point (n=1500, hz=20 → ~27fps baseline is the validated regime). Drive re-renders (setState on an interval), not synthetic pointer events. For socket-transport questions, read `socket.io.engine.transport.name` from the live module — never conclude from the request list. And remember `Debugger.setAsyncCallStackDepth` only approximates an open DevTools; console-object retention and source-map parsing exist only in the real DevTools frontend, so the final verdict needs a manual check.
+
+→ `docs/lessons/0003-devtools-lag-measurement-pitfalls.md`
+
+### 0004 — The @mikro-orm/cli crashes on Node 22 / Windows — run the SchemaGenerator via the API
+
+**0004** · high · packages/create-luckystack-app (mikro-orm scaffold) · tags: scaffold, mikro-orm, cli, windows, secret-manager · 2026-07-12
+
+Prefer the ORM's programmatic API over its CLI for framework-shipped scripts. `db:schema:update` now runs `orm.getSchemaGenerator().updateSchema()` in `scripts/mikroOrmSchema.ts` (via `tsx`), the exact equivalent of `schema:update --run`, with `loadEnvFiles()` + guarded secret-manager resolution first (mirrors `scripts/prismaWithSecrets.ts`). No `@mikro-orm/cli` dependency, no `figlet`, works on Node 22 / Windows, and honors secret-manager-resolved `DATABASE_URL`. When a scaffold ships a runnable script for a specific Node/OS combo, RUN it on that combo before shipping — a `--no-install` scaffold + tsc never exercises the actual command. (Same class as lesson 0001 / the runtime-test-before-ship memory.)
+
+→ `docs/lessons/0004-mikro-orm-cli-figlet-crash-node22-windows.md`
+
+### 0005 — npm run eats no provenance flag
+
+**0005** · medium · release / publishing · tags: npm, publish, provenance, windows, release · 2026-07-13
+
+Invoke the release script DIRECTLY with node so the flag lands in `process.argv` unambiguously, and set the env var as a belt-and-suspenders (npm reads it as a config too):
+
+→ `docs/lessons/0005-npm-run-eats-no-provenance-flag.md`
+
+### 0006 — reset cached client insufficient register instead
+
+**0006** · high · core / redis / secret-manager · tags: redis, secret-manager, boot, caching, ioredis · 2026-07-13
+
+For any client that captures a credential at construction (ioredis, DB pools, SDKs), the fix after a late secret resolution is to **eagerly rebuild + REGISTER a fresh client**, not to null a cache and hope the lazy rebuild reads the right value. Core now exposes `rebuildDefaultRedisClient()` (disconnect previous → construct from current env → `registerRedisClient`), used by the server boot and the `notifySecretsResolved` hook. `resetDefaultRedisClient()` remains but is documented as insufficient for this case.
+
+→ `docs/lessons/0006-reset-cached-client-insufficient-register-instead.md`
+
+### 0007 — a fix that never fires verify the trigger
+
+**0007** · high · core / server / secret-manager · tags: redis, secret-manager, boot, config, verification · 2026-07-14
+
+When a fix depends on a config value or a callback, **verify the value is actually populated / the callback is actually wired on the real path** — don't assume `getProjectConfig().X` is set just because the consumer "configured X" (they may only pass it to a package directly, never into `registerProjectConfig`). Prefer a trigger owned by the component that KNOWS the event happened. Here: the resolver (`@luckystack/secret-manager`) knows secrets were resolved, so IT fires the channel (global-symbol array → core rebuilds), instead of the server boot guessing from config. Add at least one test that exercises the trigger through the real entry point (here: a secret-manager resolve fires the global listeners), not only the leaf logic.
+
+→ `docs/lessons/0007-a-fix-that-never-fires-verify-the-trigger.md`

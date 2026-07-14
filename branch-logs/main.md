@@ -1,5 +1,21 @@
 # Branch log — `main`
 
+## 2026-07-14 — LuckyStack 0.4.1 → 0.6.7 upgrade + error-tracking + cron-migratie + 2FA-backend
+
+**User prompt:** upgrade naar 0.6.7 (handoff-runbook); daarna: 2FA + email-code-login AAN, onze crons switchen naar @luckystack/cron, error-tracking installeren + logs op de hook.
+
+**Upgrade (0.4.1→0.6.7):** alle 14 `@luckystack/*` → `^0.6.7` + `npm install`; `npx luckystack upgrade` → `dump/UPGRADE_PLAN.md`. GEEN breaking changes die ons raken (Prisma-peer al directe dep; geen Redis-workaround; sync/api-changelogs leeg). 50 sidecars: 15 framework-docs `.new` overgenomen, 35 code/config-bestanden ONS behouden (customisaties — o.a. `lintInvariants.mjs` met custom `tenant-scope`-regel, `prismaWithSecrets.ts` ADR-0017, `bundleServer.mjs` OVERLAY_ORDER geflagd voor bewuste prod-adoptie). +19 nieuwe framework-docs.
+
+**Error-tracking:** `npx luckystack add error-tracking` + `server/hooks/errorTrackingConsole.ts` (console-`ErrorTracker` + `enableErrorTrackingAutoInstrumentation`), gewired in `luckystack/server/index.ts`. Runtime-observability zonder DSN.
+
+**Cron-migratie (ADR 0022 — voor ons geschreven):** 7 leader-gated setInterval-loops → `@luckystack/cron` jobs in `luckystack/cron/jobs.ts` (scheduled-publish/metrics-ingest/automation-cron/worker-reaper/editor-reaper/demo-watch/gitlab-sync). Elk: `start*` weg, interval geëxporteerd, `cluster.isLeader()`-gate verwijderd (cron-lease = single-instance-autoriteit), tick-wrappers waar deps nodig. server.ts start*-calls weg.
+
+**2FA + email-code (backend):** config `auth.emailCodeLogin:true` + `auth.twoFactor:'optional'`; User-schema +`twoFactorEnabled`/`totpSecret`/`recoveryCodes`; `SessionLayout` omit de 2 secrets; prisma-types geregenereerd; `TOTP_ENCRYPTION_KEY` in template. Routes auto-geregistreerd door @luckystack/login. **UI volgt in een aparte commit.**
+
+**Files touched:** package.json/-lock, `docs/luckystack/*` (15 mod +19 new), `config.ts`, `prisma/schema.prisma`, `.env.local_template`, `functions/sentry.ts` (new), `server/hooks/errorTrackingConsole.ts` (new), `luckystack/{server/index.ts, cron/jobs.ts}`, `server/{content/publish,automation/cron,orchestrator/workerReaper,proxy/editorReaper,deploy/demoWatch,git/gitlabSync,server}.ts`, `src/workspaces/_sync/agentTerm_server_v1.ts` (lint-fix).
+
+**Verify:** tsc 0, vite build ✓, eslint 0-errors, ai:lint 0, tests groen (settings 11, automation 22, spend 21, copilot 13, worktreeSave 12, runCommandExec 7). Developer-acties: server-herstart; MongoDB schemaless (geen db-push nodig voor optionele velden); optioneel TOTP_ENCRYPTION_KEY/RESEND_API_KEY.
+
 ## 2026-07-13 — completion-gaps-v3 batch 11 (#35 code-editor ECHTE save via worktree)
 
 **User prompt:** (zelfde /goal) implementeer alle resterende punten + e2e. **DIT IS HET LAATSTE ITEM.**

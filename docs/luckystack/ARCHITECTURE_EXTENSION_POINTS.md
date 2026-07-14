@@ -502,34 +502,26 @@ Custom socket events are an **escape hatch** for integration shims. They do NOT 
 
 ## Scheduled jobs (cron / background work)
 
-LuckyStack does NOT ship a cron primitive. Scheduling is intentionally out-of-scope for v1 because every production deployment has a preferred scheduler — Kubernetes CronJob, AWS EventBridge, Vercel Cron, Render Cron, or an in-process library (`node-cron`, `bull`, `agenda`). Wrapping these in a framework abstraction would just be a leaky shim.
-
-### Recommended patterns
-
-**In-process for simple recurring work (single-instance deploys, dev):**
+**Use the optional `@luckystack/cron` package** (since 0.4.1 — ADR 0022 reverses the earlier "deliberately no cron" position, superseded by core's lease primitive landing):
 
 ```typescript
-import cron from 'node-cron';
-import { logger } from '@luckystack/core';
+// npm i @luckystack/cron, then in luckystack/cron/jobs.ts (auto-imported at boot):
+import { registerCronJob } from '@luckystack/cron';
 
-cron.schedule('0 3 * * *', async () => {
-  logger.info('[cron] nightly cleanup');
-  // call your existing api/sync handler logic by importing its `main`
-  // function directly — they're plain functions, no framework wiring needed
+registerCronJob({
+  name: 'nightly-cleanup',
+  schedule: '0 3 * * *',            // croner syntax, or { everyMs: 300_000 }
+  handler: async ({ jobName, scheduledFor }) => { /* idempotent work */ },
 });
 ```
 
-**Queue-based for retries + visibility:**
+It is leader-elected on core's `acquireLease` (jobs fire on exactly ONE instance; takeover within one lease TTL), with per-run dedup leases, overlap guards, jitter, per-tenant fan-out, Redis-backed run stats (`getCronJobStats`), and `preCronRun`/`postCronRun` hooks. Semantics to know: handlers must be idempotent (single-Redis best-effort lease — rare double-fire possible), no catch-up of ticks missed while leaderless, and it is a scheduler, NOT a queue. Full spec: `packages/cron/docs/scheduler.md` (consumer: `node_modules/@luckystack/cron/docs/scheduler.md`).
 
-```typescript
-import { Queue, Worker } from 'bullmq';
-// Use the same Redis client you registered via registerRedisClient(...)
-const queue = new Queue('reports', { connection: redisClient });
-new Worker('reports', async (job) => { /* ... */ }, { connection: redisClient });
-```
+### When to reach past it
 
-**External scheduler for multi-instance prod:** point a Kubernetes CronJob / EventBridge rule at a custom HTTP route registered via `registerCustomRoute(...)`. Gates auth with a shared secret header. This keeps scheduling out of your app process entirely.
+- **Retries / backoff / priorities / fan-in** — that is a task queue, not a scheduler. Use `bullmq` on the same Redis client you registered via `registerRedisClient(...)`.
+- **Scheduling fully outside the app process** (compliance, or you already run K8s CronJobs / EventBridge): point the external scheduler at a custom HTTP route registered via `registerCustomRoute(...)`, gated by a shared secret header. This remains a first-class pattern.
 
-### Why no built-in
+### History
 
-A `registerScheduledJob({name, cron, run})` primitive would either: (a) run in-process — fails in multi-instance deploys without a distributed lock, OR (b) demand a Redis-backed leader-election — which is what bull/agenda already do better. The framework deliberately leaves this slot empty.
+Until 0.4.1 this section deliberately left the cron slot empty: an in-process primitive without a distributed lock fails in multi-instance deploys, and the framework did not want to reinvent bull/agenda's leader election. Core's `lease.ts` (SET NX PX + owner-checked Lua) later closed exactly that gap, and `@luckystack/cron` is its first consumer — see ADR 0022 for the full reversal rationale.

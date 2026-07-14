@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (16)
+## Decisions (26)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -29,6 +29,16 @@
 | 0015 | Per-account login lockout uses a dual counter (per-IP + cross-IP) to actually stop distributed credential stuffing | 🟢 accepted | security, login, dos, brute-force | — | `docs/decisions/0015-login-lockout-dual-counter-cross-ip.md` |
 | 0016 | Expand the AI-context system with lessons / examples / coverage gates / eval before any RAG rung | 🟢 accepted | ai-context, docs, tooling, rag | — | `docs/decisions/0016-ai-context-layers-before-rag.md` |
 | 0016 | Single-source frontend/backend ports + router topology config is opt-in (not shipped by default) | 🟢 accepted | config, ports, scaffold, cli, router, packaging, dx | — | `docs/decisions/0016-single-source-ports-and-optin-router-topology.md` |
+| 0017 | Prisma (and other) CLI commands resolve secret-manager pointers via an always-on wrapper, not a full server boot | 🟢 accepted | secret-manager, prisma, cli, scaffold, dx, packaging | — | `docs/decisions/0017-prisma-cli-resolves-secret-manager-pointers.md` |
+| 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode | 🟢 accepted | security, session, auth, config | — | `docs/decisions/0018-session-token-to-client-only-in-sessionbasedtoken-mode.md` |
+| 0019 | Email uniqueness is opt-in and governed by auth.providerAccountStrategy, not a hard schema invariant | 🟢 accepted | auth, schema, config, oauth | — | `docs/decisions/0019-email-uniqueness-is-optin-via-provideraccountstrategy.md` |
+| 0020 | Scaffold gets an ORM dimension (prisma/drizzle/none); 'none' is a registration hook with a clear runtime error, not a full prune | 🟢 accepted | scaffold, cli, database, orm, dx | — | `docs/decisions/0020-orm-choice-with-none-via-registration-hook.md` |
+| 0021 | Scaffold writes a manifest (.luckystack/scaffold.json); updates to copied files go through an explicit `luckystack update` that never overwrites user-modified files (AI-assisted merge via change-notes) | 🟢 accepted | scaffold, cli, updates, dx | — | `docs/decisions/0021-scaffold-manifest-and-luckystack-update.md` |
+| 0022 | Ship @luckystack/cron (leader-elected scheduler) — reversing the "deliberately no cron" extension-points position | 🟢 accepted | cron, scheduler, packages, multi-instance, redis | — | `docs/decisions/0022-ship-luckystack-cron-reversing-no-cron.md` |
+| 0023 | auth selectable on ts first orms | 🟢 accepted | scaffold, auth, orm, cli | — | `docs/decisions/0023-auth-selectable-on-ts-first-orms.md` |
+| 0024 | email code login and totp 2fa | 🟢 accepted | auth, login, 2fa, security | — | `docs/decisions/0024-email-code-login-and-totp-2fa.md` |
+| 0025 | luckystack update app scope | 🟢 accepted | cli, update, scaffold, dx | — | `docs/decisions/0025-luckystack-update-app-scope.md` |
+| 0026 | secret manager redis pointer boot | 🟢 accepted | core, server, redis, secret-manager, boot | — | `docs/decisions/0026-secret-manager-redis-pointer-boot.md` |
 
 ## Summaries
 
@@ -164,6 +174,92 @@ Build seven layers on the existing rails (generator → committed artifact → M
 
 → `docs/decisions/0016-single-source-ports-and-optin-router-topology.md`
 
+### 0017 — Prisma (and other) CLI commands resolve secret-manager pointers via an always-on wrapper, not a full server boot
+
+**0017** · accepted · tags: secret-manager, prisma, cli, scaffold, dx, packaging · 2026-07-01
+
+Route every `prisma:*` script through a small wrapper, `scripts/prismaWithSecrets.ts`, that runs the boot **prefix** — `loadEnvFiles()` (`.env` + `.env.local`), then, if a secret-manager URL is configured, resolve pointers into `process.env` — and then `spawnSync('prisma', argv)` inheriting the resolved env. It does NOT start the HTTP/socket server: Prisma only needs the env and opens its own DB connection, so there are no ports to bind or connections to tear down.
+
+**Governs** (`//? @adr 0017`): `packages/create-luckystack-app/template/scripts/prismaWithSecrets.ts`, `scripts/prismaWithSecrets.ts`
+
+→ `docs/decisions/0017-prisma-cli-resolves-secret-manager-pointers.md`
+
+### 0018 — The session token reaches page JS only in sessionBasedToken (sessionStorage) mode
+
+**0018** · accepted · tags: security, session, auth, config · 2026-07-02
+
+The raw session `token` **never reaches page JS through the session object** — not via the `session_v1` bootstrap and not via the `updateSession` broadcast, in either mode. This is enforced by TYPE, not just discipline:
+
+**Governs** (`//? @adr 0018`): `packages/core/src/hooks/types.ts`, `packages/core/src/sessionTypes.ts`, `packages/login/src/session.ts`, `src/_api/session_v1.ts`, `src/_providers/SessionProvider.tsx`
+
+→ `docs/decisions/0018-session-token-to-client-only-in-sessionbasedtoken-mode.md`
+
+### 0019 — Email uniqueness is opt-in and governed by auth.providerAccountStrategy, not a hard schema invariant
+
+**0019** · accepted · tags: auth, schema, config, oauth · 2026-07-02
+
+Email uniqueness is opt-in. The default schema correctly omits `@unique` (per-provider strategy). Adding `@unique` is a consumer action tied to selecting `providerAccountStrategy: 'unified'`, performed via a Prisma migration on the consumer's own schema — never shipped as a framework default, because it would break the per-provider model and fail to migrate on any existing per-provider dataset that already has duplicate emails.
+
+**Governs** (`//? @adr 0019`): `packages/login/src/accountStrategy.ts`, `src/settings/_api/confirmEmailChange_v1.ts`
+
+→ `docs/decisions/0019-email-uniqueness-is-optin-via-provideraccountstrategy.md`
+
+### 0020 — Scaffold gets an ORM dimension (prisma/drizzle/none); 'none' is a registration hook with a clear runtime error, not a full prune
+
+**0020** · accepted · tags: scaffold, cli, database, orm, dx · 2026-07-08
+
+Add an `orm` dimension to the scaffold wizard and manage CLI: first round `prisma` / `drizzle` / `none` (MikroORM is the follow-up candidate because it covers MongoDB first-class). `orm: 'none'` is **hook-based, not prune-everything**: the scaffold ships the existing `luckystack/core/clients.ts` extension-point file as a stub ("register your own database client / UserAdapter here"); any DB access without a registration throws a clear LuckyStack error that names that exact file; a hard boot-time error fires only when an enabled feature demonstrably requires the DB (e.g. login with the default Prisma UserAdapter). The `/readyz` DB ping becomes pluggable so a DB-less project can report ready. The wizard filters DB options by ORM choice (e.g. Drizzle hides MongoDB).
+
+→ `docs/decisions/0020-orm-choice-with-none-via-registration-hook.md`
+
+### 0021 — Scaffold writes a manifest (.luckystack/scaffold.json); updates to copied files go through an explicit `luckystack update` that never overwrites user-modified files (AI-assisted merge via change-notes)
+
+**0021** · accepted · tags: scaffold, cli, updates, dx · 2026-07-08
+
+1. **Scaffold manifest**: `create-luckystack-app` writes `.luckystack/scaffold.json` at scaffold time = `{ version, choices, templateVars, files: [{ path, sha256 }] }` (hashes computed after `{{VAR}}` render). Recording choices/vars is non-negotiable — it is what makes any later re-render/diff valid, and it is the persisted state that unblocks ORM/dbProvider reconfigure in the manage CLI. 2. **Explicit `luckystack update` command** (never implicit on `npm update`): per file, hash-compare against the manifest. Pristine → safely overwritten with the new version's render. **User-modified → never overwritten**; the command emits a change-note (diff between the previous and new framework version of that file) that the project's AI merges into the user's modified copy; `.new` sidecars as the non-AI fallback. `CLAUDE.md` merges by section: the framework part is replaceable, the "User Project Rules" section below the fixed divider is user-owned. 3. **First scope**: the framework-owned, rarely-edited bucket (docs/luckystack/**, CLAUDE.md, skills/**, .claude/commands/**, generator scripts, eslint.luckystack/official configs, _dot_luckystack templates). Template source = run the scaffolder into a temp dir with the recorded choices and diff/copy from there (one source of truth). This subsumes the ROADMAP sync-docs item.
+
+→ `docs/decisions/0021-scaffold-manifest-and-luckystack-update.md`
+
+### 0022 — Ship @luckystack/cron (leader-elected scheduler) — reversing the "deliberately no cron" extension-points position
+
+**0022** · accepted · tags: cron, scheduler, packages, multi-instance, redis · 2026-07-09
+
+Ship an optional `@luckystack/cron` package (NOT a core/server feature). It composes existing primitives: leadership via core's lease (single scheduler lease, renew loop; the lease header's "the renew loop is app code" contract fulfilled here), per-run dedup leases, `registerCronJob({ name, schedule, handler, ... })` with croner-parsed cron expressions (bundled dep — hand-rolling a cron parser is the classic DST/DOM-DOW footgun) or `{ everyMs }` intervals, per-tenant fan-out via a consumer-supplied `tenants()` callback, Redis stats hashes, `preCronRun` (veto) / `postCronRun` hooks, lazy start on first registration, teardown via `preServerStop` (ADR 0011). Auto-wired through `OPTIONAL_PACKAGES` + a `luckystack/cron/` overlay slot; manageable via the CLI as a toggle. The extension-points doc now recommends the package first, keeps bullmq (queues) and external schedulers (out-of-process) as the reach-past patterns, and records the reversal.
+
+→ `docs/decisions/0022-ship-luckystack-cron-reversing-no-cron.md`
+
+### 0023 — auth selectable on ts first orms
+
+**0023** · accepted · tags: scaffold, auth, orm, cli · 2026-07-11
+
+The scaffold wizard shows the auth step for **prisma, drizzle and mikro-orm**; only `orm: 'none'` forces auth off (there is no data layer to write an adapter against). Explicit `--orm=none --auth=<mode>` exits 2 (mirrors the drizzle+mongodb hard reject). A non-prisma auth scaffold keeps the adapter-based flows (login/register/reset-password, LoginForm, functions/session.ts, @luckystack/login) and writes the per-ORM starter `luckystack/login/userAdapter.ts` (auto-imported at boot via the login overlay slot; consumer finishes 2 documented steps). The **Prisma-bound surface is pruned** to keep the scaffold buildable on first try: `src/settings` (6 `_api` routes call `functions.db.prisma` directly) and `server/hooks/notifications.ts` (`getPrismaClient()`; would fail silently inside its tryCatch on every login). README/Home.tsx/next-steps text is adjusted accordingly. `luckystack add login` behaves identically on a non-prisma project: it no longer copies the Prisma-bound files (previously it copied them and warned "port these" — leaving a project that could not compile). The starter strings are duplicated in create-luckystack-app and @luckystack/cli (they cannot import each other at runtime) and pinned byte-identical by a parity test.
+
+→ `docs/decisions/0023-auth-selectable-on-ts-first-orms.md`
+
+### 0024 — email code login and totp 2fa
+
+**0024** · accepted · tags: auth, login, 2fa, security · 2026-07-12
+
+**TOTP hand-rolled on `node:crypto`** (`packages/login/src/totp.ts`): HMAC- SHA1 HOTP + timing-safe TOTP verify across the drift window, base32 codecs, otpauth:// provisioning URI. Zero dependencies; pinned to the official RFC 4226/6238 test vectors. Replay protection = the verify returns the matched timestep; the flow layer persists the highest accepted step per user. **Email-OTP store** (`emailOtp.ts`) is deliberately NOT the core one-time-token primitive: that hashes the KEY material, which is only safe for 256-bit tokens — a 6-digit code (10^6) would be brute-forceable from a Redis dump and unfindable at verify time. Codes are keyed by purpose+identity with the sha256 in the VALUE, an atomic INCR attempt counter, winner-take-all consume, one active code per slot. **2FA challenge = a parked login** (`twoFactor.ts`): after the first factor verifies, no session is minted; a high-entropy challenge token (hashed at rest) is returned and `/auth/api/2fa` completes the login through the SAME `finalizeLogin` tail as the password path. Wrong codes do not burn the challenge — the attempt budget does. Methods: `totp` (primary), `email-code` (config-gated fallback, bound to an active challenge), `recovery-code` (10 one-time codes, sha256 at rest, fail-closed burn). **Login gate as a DI slot** (`registerTwoFactorGate`): twoFactor.ts registers itself via the package index — avoids a login↔twoFactor module cycle and keeps every path that never imports the package unchanged. **Secrets at rest**: `sanitizeUserForSession` (and the fail-closed session fallback) always strips `totpSecret`/`recoveryCodes`; the TOTP secret is AES-256-GCM encrypted when `TOTP_ENCRYPTION_KEY` is set (legacy plaintext stays readable so the key can be introduced later). **Routes live in the framework layer** (`@luckystack/server` `authSecondFactorRoutes.ts`) because only that layer may write the HttpOnly session cookie. Login-completing routes join the CSRF bootstrap-exemption set; the authed enrollment routes stay CSRF-enforced. **Backwards compatibility**: all logic ships in framework packages (comes along with a dep upgrade), routes self-wire, the new `UserRecord`/Prisma fields are optional, and both features default OFF (`auth.emailCodeLogin: false`, `auth.twoFactor: 'disabled'`). An upgraded v0.5.1 project enables them in config.ts; the only schema action is adding the three optional User columns (db push / migrate).
+
+→ `docs/decisions/0024-email-code-login-and-totp-2fa.md`
+
+### 0025 — luckystack update app scope
+
+**0025** · accepted · tags: cli, update, scaffold, dx · 2026-07-13
+
+Add an opt-in `--app` scope to `luckystack update`. It reuses the exact mechanism ADR 0021 built (fresh scaffold render with the recorded manifest choices = single source of truth; per-file add / overwrite-if-pristine / sidecar-if-modified / unchanged), and only broadens which files are in scope.
+
+→ `docs/decisions/0025-luckystack-update-app-scope.md`
+
+### 0026 — secret manager redis pointer boot
+
+**0026** · accepted · tags: core, server, redis, secret-manager, boot · 2026-07-13
+
+Fix the timing at the framework level, without making core depend on secret-manager and without moving secret-manager init into `bootstrapLuckyStack`.
+
+→ `docs/decisions/0026-secret-manager-redis-pointer-boot.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -171,4 +267,13 @@ Build seven layers on the existing rails (generator → committed artifact → M
 
 | File | ADR | Decision |
 | --- | --- | --- |
+| `packages/core/src/hooks/types.ts` | 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode |
+| `packages/core/src/sessionTypes.ts` | 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode |
+| `packages/create-luckystack-app/template/scripts/prismaWithSecrets.ts` | 0017 | Prisma (and other) CLI commands resolve secret-manager pointers via an always-on wrapper, not a full server boot |
+| `packages/login/src/accountStrategy.ts` | 0019 | Email uniqueness is opt-in and governed by auth.providerAccountStrategy, not a hard schema invariant |
+| `packages/login/src/session.ts` | 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode |
 | `packages/mcp/src/index.ts` | 0016 | Expand the AI-context system with lessons / examples / coverage gates / eval before any RAG rung |
+| `scripts/prismaWithSecrets.ts` | 0017 | Prisma (and other) CLI commands resolve secret-manager pointers via an always-on wrapper, not a full server boot |
+| `src/_api/session_v1.ts` | 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode |
+| `src/_providers/SessionProvider.tsx` | 0018 | The session token reaches page JS only in sessionBasedToken (sessionStorage) mode |
+| `src/settings/_api/confirmEmailChange_v1.ts` | 0019 | Email uniqueness is opt-in and governed by auth.providerAccountStrategy, not a hard schema invariant |

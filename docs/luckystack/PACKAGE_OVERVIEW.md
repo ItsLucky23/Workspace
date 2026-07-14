@@ -36,6 +36,7 @@
 | Package | Use case | Required peers | Optional peers |
 |---|---|---|---|
 | `@luckystack/router` | Optional standalone HTTP + WebSocket load-balancer for multi-instance / preset-bundle deploys with boot-UUID handshake, Redis-backed health state, and dev-to-staging fallback proxy. The router's topology config files (`services.config.ts` + `deploy.config.ts`, plus the build-time `server/config/presetLoader.ts`) are **NOT** in a default install — they ship via `npx luckystack add router` (which also wires their two `server.ts` side-effect imports) and are removed again by `npx luckystack remove router`. | `ioredis@^5.10.0` | none |
+| `@luckystack/cron` | Leader-elected, Redis-backed cron scheduler: declarative recurring jobs (`registerCronJob`, cron expressions via croner or `{ everyMs }` intervals) that fire on exactly ONE instance, with per-run dedup leases, overlap guards, jitter, per-tenant fan-out, run stats (`getCronJobStats`), and `preCronRun`/`postCronRun` hooks. Auto-wired at boot; register jobs in `luckystack/cron/*.ts`. Jobs must be idempotent (best-effort single-Redis lease). NOT a queue — for retries/priorities use bullmq. | none (Redis via core) | none |
 
 ## Dev Tools
 
@@ -69,6 +70,7 @@ Quick lookup: feature -> which package(s) to suggest.
 | Track user presence (online / AFK) | `@luckystack/presence` |
 | Send transactional emails | `@luckystack/email` |
 | Add error tracking | `@luckystack/error-tracking` |
+| Run recurring background jobs (cron, exactly-once per cluster) | `@luckystack/cron` |
 | Run multi-instance load-balanced | `@luckystack/router` |
 | Add API endpoints | `@luckystack/api` (auto-wired via `@luckystack/server`; create `src/{page}/_api/{name}_v{N}.ts`) |
 | Bootstrap a new project | `npx create-luckystack-app` |
@@ -89,7 +91,7 @@ Quick lookup: feature -> which package(s) to suggest.
 
 ---
 
-> **Reserved slot:** `packages/` also contains an `env-resolver` directory — an intentionally-reserved, **not-yet-implemented** placeholder (no `package.json`, no `src/`, excluded from `buildPackages.mjs` / `publishPackages.mjs`). It is NOT published, so it's deliberately absent from the tables above. The published count is 15 `@luckystack/*` packages (+ `create-luckystack-app`).
+> **Reserved slot:** `packages/` also contains an `env-resolver` directory — an intentionally-reserved, **not-yet-implemented** placeholder (no `package.json`, no `src/`, excluded from `buildPackages.mjs` / `publishPackages.mjs`). It is NOT published, so it's deliberately absent from the tables above. The published count is 16 `@luckystack/*` packages (+ `create-luckystack-app`).
 
 ---
 

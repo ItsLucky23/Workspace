@@ -6,6 +6,7 @@
 import { registerHook, resolveEnvKey } from '@luckystack/core';
 import { registerNotificationHooks } from '../../server/hooks/notifications';
 import { registerWorkspacesTerminalHooks } from '../../server/hooks/workspacesTerminal';
+import { registerConsoleErrorTracker } from '../../server/hooks/errorTrackingConsole';
 import { registerTenantKeyFormatter } from '../../server/tenant/tenantRedis';
 import { registerFirstLoginBootstrap } from '../../server/bootstrap/registerBootstrap';
 
@@ -14,6 +15,11 @@ import { registerFirstLoginBootstrap } from '../../server/bootstrap/registerBoot
 //? to leave on even if @luckystack/email isn't installed — the email
 //? sender no-ops with `{ ok: false, reason: 'no-sender' }`.
 registerNotificationHooks();
+
+//? Error-tracking observability (@luckystack/error-tracking): a CONSOLE ErrorTracker so we SEE at runtime
+//? what the framework captures (exceptions/messages/identity), + auto-instruments the api/sync hooks. Add a
+//? real backend later by setting SENTRY_DSN / POSTHOG_KEY (or `createSentryAdapter()` alongside this one).
+registerConsoleErrorTracker();
 
 //? Wires per-workspace Redis key isolation (tenant = Workspace). App keys created
 //? inside a `runInTenant(...)` scope are prefixed `:ws:<workspaceId>:`; framework

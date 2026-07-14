@@ -20,7 +20,7 @@
 | `api/reset-password/confirmReset/v1` | POST | public | 5 | — | yes | — | — |
 | `api/reset-password/sendReset/v1` | POST | public | 5 | — | yes | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
 | `api/settings/changePassword/v1` | POST | login | 10 | — | yes | — | — |
-| `api/settings/confirmEmailChange/v1` | POST | public | 10 | — | yes | — | — |
+| `api/settings/confirmEmailChange/v1` | POST | public | 10 | — | yes | — | @adr 0019 — Email uniqueness is opt-in via `providerAccountStrategy`. The |
 | `api/settings/deleteAccount/v1` | POST | login | 3 | — | yes | — | — |
 | `api/settings/listSessions/v1` | POST | login | 30 | — | yes | — | — |
 | `api/settings/requestEmailChange/v1` | POST | login | 5 | — | yes | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
@@ -56,12 +56,13 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/billing/listInvoices/v1`
 - `api/vehicles/listVehicles/v1`
 
-## Pages (9)
+## Pages (10)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
 | `/` | plain | — | `page.tsx` | — |
 | `/admin` | dashboard | yes | `admin/page.tsx` | — |
+| `/devtools-lag-test` | plain | — | `devtools-lag-test/page.tsx` | luckystack-allow i18n: dev-only diagnostic stress page, never user-facing |
 | `/docs` | plain | — | `docs/page.tsx` | — |
 | `/login` | plain | — | `login/page.tsx` | — |
 | `/playground` | dashboard | yes | `playground/page.tsx` | — |

@@ -6,12 +6,12 @@
 //? pure over injected deps (Docker/Prisma) so it is unit-testable without a daemon.
 
 import { docker } from '../container/runtime';
-import { isLeader } from './cluster';
 import { getPrismaClient } from '@luckystack/core';
 import { editorSockState } from '../proxy/editorReaper';
 
 const IDLE_MS = Number(process.env.WS_WORKER_IDLE_MIN ?? '20') * 60_000;
-const INTERVAL_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
+//? Reap cadence. Exported so the @luckystack/cron overlay job schedules it (leadership handled by cron's lease).
+export const WORKER_REAP_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
 
 //? container name → epoch ms it was first seen parked-idle (cleared when the ticket leaves needs-input / is gone).
 const idleSince = new Map<string, number>();
@@ -79,7 +79,7 @@ function realDeps(): WorkerReapDeps {
   };
 }
 
-//? Start the periodic worker-reaper (called once at boot). Leader-gated — only one instance reaps.
-export function startWorkerReaper(): ReturnType<typeof setInterval> {
-  return setInterval(() => { if (isLeader()) void reapIdleWorkers(Date.now(), realDeps()); }, INTERVAL_MS);
+//? One reaper pass (called by the @luckystack/cron overlay job; cron's lease guarantees single-instance).
+export async function runWorkerReapTick(): Promise<void> {
+  await reapIdleWorkers(Date.now(), realDeps());
 }

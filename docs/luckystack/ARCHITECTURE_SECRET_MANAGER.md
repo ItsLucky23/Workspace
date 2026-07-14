@@ -73,6 +73,23 @@ The seam decides remote-vs-local for you, so a project without the package — o
 
 > A top-level `await` in `server.ts` is fine — it is an ESM entry and the prod bundle emits `format: esm`. Resolution finishes before `bootstrapLuckyStack` / any `process.env` secret read. `@luckystack/secret-manager` is marked external in `scripts/bundleServer.mjs`, so the prod bundle builds and boots whether or not the package is installed.
 
+## Prisma & other CLI tools (`prisma:*`)
+
+`prisma/schema.prisma` reads its connection string from `url = env("DATABASE_URL")`. Once `DATABASE_URL` is a **pointer** (`DATABASE_URL=DB_CONNECTION_STRING_V3`) that value only becomes a real connection string *at boot*, inside `process.env`, after `resolveSecretsIfConfigured` runs. A Prisma CLI command run standalone never boots the server, so it would hand Prisma the raw pointer and fail.
+
+The scaffold therefore routes every `prisma:*` script through a tiny wrapper, `scripts/prismaWithSecrets.ts`, instead of `dotenv -e .env.local`:
+
+```jsonc
+"prisma:db:push": "tsx --tsconfig tsconfig.server.json scripts/prismaWithSecrets.ts db push",
+```
+
+The wrapper does exactly the boot **prefix** — `loadEnvFiles()` (`.env` + `.env.local`, a superset of the old `dotenv -e .env.local`), then, if a secret-manager URL is configured, `initSecretManager({ ...secretManager, source: 'remote' })` — and then spawns `prisma` with the now-resolved `process.env`. It does **not** start the HTTP/socket server (Prisma only needs the env, and Prisma opens its own DB connection), so there are no ports to bind or connections to tear down.
+
+- **Without secret-manager** the resolve step is a commented-out no-op: the wrapper is just `loadEnvFiles()` + prisma. Zero behaviour change for a base project.
+- **`npx luckystack add secret-manager`** (and a `--secret-manager` scaffold) uncomment the resolve block in `scripts/prismaWithSecrets.ts` — the *same* enable-later block, byte-identical, that it uncomments in `server/server.ts`. `remove secret-manager` re-comments it.
+
+Any other CLI tool that needs resolved secrets (a one-off migration script, a data backfill) can follow the same shape: `loadEnvFiles()` → `resolveSecretsIfConfigured(config.secretManager)` → do the work.
+
 ## Modes
 
 The boot seam pins `source: 'remote'` (fail-fast) and treats an empty `url` as "off" (plain local env) — the recommended setup. The package itself supports three modes; call `initSecretManager` directly if you need `'local'` / `'hybrid'`:
@@ -100,6 +117,29 @@ secretManager: {
 - `envFiles` — override which files are watched (default `['.env', '.env.local']`).
 
 So `.env` (plain config) and `.env.local` (pointers) each get a role: `.env` values are injected as-is on change, `.env.local` pointers are resolved from the server.
+
+## Clients built from a resolved secret (Redis, pools) — ADR 0026
+
+A long-lived client (ioredis, a DB pool, an SDK) reads its credential **once at construction** and never re-reads `process.env`. If such a client is built from a value that was still a POINTER (`REDIS_PASSWORD=REDIS_PASSWORD_V1`) — because something touched it before `initSecretManager` resolved it — the pointer is baked in and auth fails with `WRONGPASS` even after `process.env` is later fixed.
+
+The framework handles the default Redis client automatically (ADR 0026), on two levels:
+
+1. **Boot & rotation (automatic)** — `@luckystack/secret-manager` fires core's secrets-resolved channel after EVERY resolve, so core EAGERLY REBUILDS + registers a fresh default Redis client from the now-resolved `process.env` at resolve time (before any later env revert). No code needed — a bare `initSecretManager(...)` is enough. (A plain reset was insufficient — it defers the lazy rebuild, so a stale value could resurface; `rebuildDefaultRedisClient()` captures the resolved secret immediately into a registered client that wins over the resolver.)
+2. **A client the framework does NOT own** (your own pool / SDK) — subscribe to the same channel and rebuild it yourself. Either `registerSecretsResolvedListener((names) => ...)` from `@luckystack/core`, or wire the resolver's `onApplied` callback:
+
+```ts
+import { notifySecretsResolved } from '@luckystack/core';
+
+await initSecretManager({
+  ...projectConfig.secretManager,
+  source: 'remote',
+  onApplied: notifySecretsResolved, // drop clients built from a stale pointer (boot + rotation)
+});
+```
+
+`notifySecretsResolved(changedKeys)` is a generic hook — a custom pool/SDK client can subscribe via `registerSecretsResolvedListener(fn)` and rebuild itself the same way. For a client the framework does NOT own, rebuild it yourself inside `onApplied` (that is what `onApplied` receives the changed env NAMES for).
+
+> **Reminder — `envNames` must list the key.** `REDIS_PASSWORD` (or `DATABASE_URL`, …) only resolves if it is in the `envNames` allowlist; the default is deny-all. An unresolved pointer that still boots means `envNames` is missing it.
 
 ## The token
 
