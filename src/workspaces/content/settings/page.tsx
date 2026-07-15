@@ -12,7 +12,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-import { backendUrl } from '../../../../config';
+import { backendUrl, oauthCallbackBase } from '../../../../config';
 
 //? Prefix a backend-relative /media URL for the client origin (uploads land as /media/…); pass external URLs through.
 const mediaSrc = (url: string): string => (url.startsWith('/media/') ? `${backendUrl}${url}` : url);
@@ -462,7 +462,9 @@ export default function ContentSettings() {
   //? platform's consent screen and (via the callback) stores the token, then returns here. #140 — an optional
   //? accountId opens a SEPARATE per-account connection (multi-account).
   const connectPlatform = (platform: string, accountId?: string) => {
-    const base = `${backendUrl}/content/oauth/${platform}/start?ws=${encodeURIComponent(activeWorkspace.id)}`;
+    //? Use oauthCallbackBase (the BACKEND origin), not backendUrl (the Vite dev origin) — `/content/oauth/*`
+    //? isn't in the dev proxy, and this is the host you register as the redirect URI with the provider.
+    const base = `${oauthCallbackBase}/content/oauth/${platform}/start?ws=${encodeURIComponent(activeWorkspace.id)}`;
     globalThis.location.href = accountId && accountId.length > 0 ? `${base}&accountId=${encodeURIComponent(accountId)}` : base;
   };
   //? #140 — open the "connect another account" prompt (label → accountId slug); the form is injected props-only
