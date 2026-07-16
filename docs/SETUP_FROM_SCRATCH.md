@@ -48,26 +48,25 @@ Just make sure it's running — the app launches ticket/preview/ffmpeg container
 
 Open `.env.local` and fill these. You generate the keys yourself with one command.
 
-> **On Windows without `openssl`?** Use this instead for any "random hex" key:
-> `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-> and for a base64 key: `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"`
+> These use **Node** (already installed — it ships with the project), so they work identically on Windows,
+> macOS and Linux. Copy the whole line into your terminal; it prints one random string — paste that as the value.
 
 1. **`DATABASE_URL`** — **MUST.** Already correct for the local Mongo above. Only change it if your DB is
    elsewhere (MongoDB Atlas hands you a `mongodb+srv://…` URI — paste that).
 2. **`WORKSPACES_ENC_KEY`** — **MUST.** The server **refuses to boot** without it (it encrypts stored
    credentials). Generate + paste:
    ```bash
-   openssl rand -base64 48
+   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
    ```
 3. **`TOTP_ENCRYPTION_KEY`** — **strongly recommended** (2FA is enabled). Encrypts 2FA secrets. Generate + paste:
    ```bash
-   openssl rand -hex 32
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 4. **`EMAIL_FROM`** — set the "from" address for outgoing mail, e.g. `noreply@yourdomain.com`.
 5. **`REDIS_USER` / `REDIS_PASSWORD`** — leave **blank** (the local Redis above has no auth). Fill only if
    your Redis requires a login.
 6. **`WS_WEBHOOK_SECRET`** *(optional)* — only if a GitLab/GitHub webhook will POST into the app. Generate with
-   `openssl rand -hex 32`. Unset = the webhook endpoint is safely off. (You can also make one per-workspace
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Unset = the webhook endpoint is safely off. (You can also make one per-workspace
    in the app's GitLab tab.)
 7. **`TEST_RESET_TOKEN`** *(optional)* — only if you run the integration test suite. Any random string.
 
