@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { getPrismaClient, tryCatch, tryCatchSync } from '@luckystack/core';
+import { getPrismaClient, sleep, tryCatch, tryCatchSync } from '@luckystack/core';
 
 import { resolveAssignment, defaultAssignments } from './assignments';
 import { loadWorkspaceAiOverrides } from './workspaceAssignments';
@@ -78,7 +78,15 @@ export async function runAiCompletion(
   const capIdx = productCapabilityIndex();
   const systemParts = [capIdx, prefix, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0);
   const groundedReq = systemParts.length > 1 || (systemParts.length === 1 && systemParts[0] !== (req.system ?? '').trim()) ? { ...req, system: systemParts.join('\n\n') } : req;
-  const result = await provider.complete(groundedReq);
+  //? Gap-fix: bounded retry with backoff around the SINGLE provider call-site (there was none anywhere
+  //? in the AI layer — one transient blip failed the whole feature turn). Only failed results retry;
+  //? 'ai.providerUnavailable' is permanent-for-now and never retried. WS_AI_RETRY_ATTEMPTS tunes (min 1).
+  const attempts = Math.max(1, Number(process.env.WS_AI_RETRY_ATTEMPTS ?? '2'));
+  let result = await provider.complete(groundedReq);
+  for (let attempt = 1; attempt < attempts && !result.ok && result.error !== 'ai.providerUnavailable'; attempt++) {
+    await sleep(500 * 2 ** (attempt - 1));
+    result = await provider.complete(groundedReq);
+  }
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
   recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
   //? Durable per-AI spend (the missing half): one-shot completions only touched the in-memory activity ring,

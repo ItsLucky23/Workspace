@@ -7,8 +7,9 @@
 
 import { Prisma, type PrismaClient } from '@prisma/client';
 
-import { tryCatchSync } from '@luckystack/core';
+import { tryCatch, tryCatchSync } from '@luckystack/core';
 import { runAiCompletion } from '../ai/registry';
+import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import type { AiFeature } from '../ai/types';
 import { broadcastContentDirty } from '../read/broadcast';
 
@@ -207,12 +208,19 @@ export async function finishArtifact(prisma: PrismaClient, artifactId: string, i
   //? Seed the prompt with the workspace's central brand library so the artifact stays on-brand (G-MKT-2).
   const brand = await readBrandContext(prisma, input.workspaceId);
   const built = buildPrompt(input.kind, brief, brand);
+  //? Zelf-bewuste-AI-brug: fold the product-knowledge corpus in (was chat-only) so studio output can
+  //? reference what THIS platform can actually do next (render, schedule, publish, …). Best-effort.
+  const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, `${brief.productName} ${input.kind} marketing`, 2));
+  const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 2000);
+  const system = productContext.length > 0
+    ? `${built.system}\n\nPLATFORM CAPABILITIES (what this workspace platform offers around this artifact — mention a concrete next step when it fits):\n${productContext}`
+    : built.system;
   //? I4 — a free-text refine instruction appended to the prompt (was a blind re-roll from the unchanged brief).
   const prompt = applyRefine(built.prompt, input.tweak);
 
   //? Generous timeout — the interactive claude-cli PTY can be slow on longer (brand-seeded) prompts.
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
-  const completion = await runAiCompletion(meta.feature, { prompt, system: built.system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
+  const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
   if (!completion.ok || completion.text.trim().length === 0) {
     await prisma.studioArtifact.update({ where: { id: artifactId }, data: { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' } });
     broadcastContentDirty(input.workspaceId);

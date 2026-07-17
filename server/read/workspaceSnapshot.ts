@@ -216,6 +216,8 @@ export interface WorkspaceSnapshot {
   designArtifacts: { id: string; kind: string; name: string; description: string; content: unknown; source: string; active: boolean; createdAt: string }[];
   //? Interviewer module (ADR 0034): categorised, persisted improvement findings.
   interviewFindings: { id: string; area: string; severity: string; title: string; summary: string; status: string; ticketId: string | null; createdAt: string }[];
+  //? U2 (gap-fix): open "unfuck the UI" review requests — the designer inbox feed.
+  uiReviews: { id: string; page: string | null; problems: string[]; screenshots: string[]; notes: string | null; createdAt: string }[];
   //? Ticket ↔ artifact links (ADR 0034): design/Studio artifacts a ticket implements (keyed by DEV-#### key).
   ticketArtifactLinks: { id: string; ticketId: string; artifactId: string; artifactKind: string; name: string; label: string | null }[];
   //? #111 — the requesting user's persisted Workspace-AI chat history (per-user), chronological,
@@ -246,6 +248,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   studioBrand: null,
   designArtifacts: [],
   interviewFindings: [],
+  uiReviews: [],
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
@@ -288,7 +291,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const dbConnectionRows = activeProjectId ? await tenantDb.dbConnection.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const migrationRows = activeProjectId ? await tenantDb.migration.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
 
-    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, chatRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows] = await Promise.all([
+    const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, chatRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows, uiReviewRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
       tenantDb.pipelineStage.findMany({ where: projectScope, orderBy: { order: 'asc' } }),
@@ -326,6 +329,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       tenantDb.interviewFinding.findMany({ where: { status: { not: 'dismissed' } }, orderBy: { createdAt: 'desc' }, take: 200 }),
       //? Ticket ↔ artifact links (ADR 0034): which design/Studio artifact each ticket implements.
       tenantDb.ticketArtifactLink.findMany({ orderBy: { createdAt: 'asc' }, take: 500 }),
+      //? U2 (gap-fix): open UI-review requests — the designer inbox that turns them into redesign tickets.
+      tenantDb.uiReviewRequest.findMany({ where: { status: 'open' }, orderBy: { createdAt: 'desc' }, take: 50 }),
     ]);
 
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
@@ -562,6 +567,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       })),
       interviewFindings: interviewFindingRows.map((f) => ({
         id: f.id, area: f.area, severity: f.severity, title: f.title, summary: f.summary, status: f.status, ticketId: f.ticketId ?? null, createdAt: f.createdAt.toISOString(),
+      })),
+      uiReviews: uiReviewRows.map((r) => ({
+        id: r.id, page: r.page ?? null, problems: r.problems, screenshots: r.screenshots, notes: r.notes ?? null, createdAt: r.createdAt.toISOString(),
       })),
       ticketArtifactLinks: artifactLinkRows.map((l) => {
         const name = l.artifactKind === 'design'

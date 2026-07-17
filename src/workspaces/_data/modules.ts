@@ -26,7 +26,9 @@ export interface WorkspaceModule {
 //? UI/theme designer lane. Any nav item NOT owned by a module here (usage, ai,
 //? settings, workspace) is ALWAYS shown regardless of the enabled set.
 export const WORKSPACE_MODULES: WorkspaceModule[] = [
-  { id: 'development', labelKey: 'workspaces.modules.developmentLabel', descKey: 'workspaces.modules.developmentDesc', icon: 'code-branch', sections: ['board', 'backlog', 'terminals', 'activity', 'sources', 'pipeline', 'scheduled'] },
+  //? Gap-fix: 'interviewer' also unlocks for Development — the CODE-focused review tool previously only
+  //? unlocked via Design (which has no Sources/code-index), leaving dev workspaces without it.
+  { id: 'development', labelKey: 'workspaces.modules.developmentLabel', descKey: 'workspaces.modules.developmentDesc', icon: 'code-branch', sections: ['board', 'backlog', 'terminals', 'activity', 'sources', 'pipeline', 'scheduled', 'interviewer'] },
   //? #87 — Content/Design also unlock 'scheduled' (automation/triggers) so those lanes can reach
   //? scheduled posts + event automation, not just the Development lane. #165 — Design also unlocks
   //? 'marketing' (the Studio brand/landing generator) so a Design-only workspace can do visual/brand

@@ -102,7 +102,7 @@ function UiReviewForm() {
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const { activeWorkspace } = useWorkspaces();
+  const { activeWorkspace, uiReviews, uiReviewAction } = useWorkspaces();
   //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
   //? development module is on, so a design-focused workspace gets a cleaner section strip (the visual-authoring
   //? sections only). The other five sections are always available.
@@ -166,6 +166,35 @@ function DesignerShell() {
           <UiReviewForm />
         </Disclosure>
       </div>
+
+      {/* U2 (gap-fix) — the review INBOX: submitted requests were stored but never read back. Each open
+          request can become a redesign ticket or be dismissed. */}
+      {uiReviews.length > 0 && (
+        <div className="px-3 md:px-4 pt-2 shrink-0">
+          <Disclosure summary={translate({ key: 'workspaces.uiReview.inboxTitle', params: [{ key: 'n', value: String(uiReviews.length) }] })}>
+            <div className="flex flex-col gap-2">
+              {uiReviews.map((r) => (
+                <div key={r.id} className="flex items-start gap-3 rounded-lg border border-container2-border bg-container2/50 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-title truncate">{r.page ?? translate({ key: 'workspaces.uiReview.noPage' })}</div>
+                    {r.problems.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {r.problems.map((p) => <span key={p} className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px]">{p}</span>)}
+                      </div>
+                    )}
+                    {r.notes && <div className="text-xs text-muted mt-1 truncate">{r.notes}</div>}
+                    {r.screenshots.length > 0 && <div className="text-[11px] text-disabled mt-0.5">{translate({ key: 'workspaces.uiReview.shotCount', params: [{ key: 'n', value: String(r.screenshots.length) }] })}</div>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <WsButton variant="secondary" icon="ticket" onClick={() => { uiReviewAction('ui-review-to-ticket', r.id); }}>{translate({ key: 'workspaces.uiReview.makeTicket' })}</WsButton>
+                    <button type="button" onClick={() => { uiReviewAction('ui-review-dismiss', r.id); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.uiReview.dismiss' })}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Disclosure>
+        </div>
+      )}
 
       {/* section tabs */}
       <div className="px-3 md:px-4 shrink-0 border-b border-divider flex items-center gap-1 overflow-x-auto">

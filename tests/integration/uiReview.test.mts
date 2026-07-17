@@ -43,6 +43,28 @@ try {
   await enqueueControlAction({ workspaceId: wsId, op: 'ui-review-create', target: {}, payload: { screenshots: [], problems: [] }, userId: owner.id, clientRequestId: `ui-empty-${String(stamp)}` });
   await wait(300);
   eq(await prisma.uiReviewRequest.count({ where: { workspaceId: wsId } }), 1, 'an empty request is rejected (no row)');
+
+  //? U2 (gap-fix) — the review becomes a redesign TICKET: description carries problems + notes +
+  //? screenshots, the request flips to 'ticketed'. Needs a project for the ticket to land in.
+  await prisma.project.create({ data: { workspaceId: wsId, name: 'u2-project', gitlabPath: 'u2/project' } });
+  await enqueueControlAction({ workspaceId: wsId, op: 'ui-review-to-ticket', target: {}, payload: { reviewId: req?.id ?? '' }, userId: owner.id, clientRequestId: `ui-t-${String(stamp)}` });
+  const ticket = await poll(() => prisma.ticket.findFirst({ where: { workspaceId: wsId, labels: { has: 'ui-review' } } }));
+  assert(ticket !== null, 'a redesign ticket was created from the review');
+  eq(ticket?.stageId, 'unrefined', 'the redesign ticket enters at unrefined (Conductor invariant)');
+  assert((ticket?.description ?? '').includes('cluttered') && (ticket?.description ?? '').includes('the buttons look off'), 'the ticket description carries the problems + notes');
+  assert((ticket?.description ?? '').includes('/media/shot1.png'), 'the ticket description carries the screenshot urls');
+  const ticketed = await poll(() => prisma.uiReviewRequest.findFirst({ where: { workspaceId: wsId, id: req?.id ?? '', status: 'ticketed' } }));
+  assert(ticketed !== null, "the review flipped to 'ticketed' (left the inbox)");
+
+  //? U2 — dismiss path: a second review dismissed without a ticket.
+  await enqueueControlAction({ workspaceId: wsId, op: 'ui-review-create', target: {}, payload: { problems: ['confusing'], screenshots: [] }, userId: owner.id, clientRequestId: `ui-2-${String(stamp)}` });
+  const second = await poll(() => prisma.uiReviewRequest.findFirst({ where: { workspaceId: wsId, status: 'open' } }));
+  assert(second !== null, 'a second open review persisted');
+  await enqueueControlAction({ workspaceId: wsId, op: 'ui-review-dismiss', target: {}, payload: { reviewId: second?.id ?? '' }, userId: owner.id, clientRequestId: `ui-d-${String(stamp)}` });
+  const dismissed = await poll(() => prisma.uiReviewRequest.findFirst({ where: { workspaceId: wsId, id: second?.id ?? '', status: 'dismissed' } }));
+  assert(dismissed !== null, 'dismiss flips the review to dismissed');
+  //? Count only redesign tickets — creating the project seeds 2 welcome tickets alongside.
+  eq(await prisma.ticket.count({ where: { workspaceId: wsId, labels: { has: 'ui-review' } } }), 1, 'dismiss creates NO extra redesign ticket');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

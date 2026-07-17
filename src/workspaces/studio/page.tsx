@@ -10,6 +10,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
 import { WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+import { isSectionEnabled } from '../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../_data/types';
 
 export const template = 'workspaces';
@@ -42,7 +43,13 @@ export default function Studio() { return <StudioSurface variant="studio" />; }
 //? page over one shared Studio. `/marketing` re-uses this with variant="marketing".
 export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
+  //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
+  const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
+  const sendToContent = (artifactId: string) => {
+    runContentOp('studio-send-to-content', '', { artifactId });
+    notify.success({ key: 'workspaces.studio.sentToContent' });
+  };
   //? Marketing focuses on the marketer kinds; Studio shows both designer + marketer groups.
   const roles: readonly ('designer' | 'marketer')[] = variant === 'marketing' ? ['marketer'] : ['designer', 'marketer'];
   const [selectedId, setSelectedId] = useState<string | null>(studioBriefs[0]?.id ?? null);
@@ -142,7 +149,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
               {/* artifacts */}
               <div className="flex flex-col gap-4">
                 {artifacts.length === 0 && !busyKind && <div className="text-sm text-muted py-8 text-center border border-dashed border-container1-border rounded-2xl">{translate({ key: 'workspaces.studio.noArtifacts' })}</div>}
-                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} />)}
+                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} />)}
               </div>
             </div>
           )
@@ -201,7 +208,7 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
 }
 
 //? ---- Artifact card (renders by kind) ----
-function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void }) {
+function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
@@ -214,6 +221,7 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote }: { a
         {artifact.status === 'generating' && <span className="text-xs text-muted flex items-center gap-1.5"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</span>}
         {artifact.status === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.studio.failed' })}</span>}
         {onPromote && <button type="button" onClick={onPromote} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.useAsBrandHint' })}><Icon name="swatchbook" className="text-xs" />{translate({ key: 'workspaces.studio.useAsBrand' })}</button>}
+        {onSendToContent && <button type="button" onClick={onSendToContent} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.sendToContentHint' })}><Icon name="paper-plane" className="text-xs" />{translate({ key: 'workspaces.studio.sendToContent' })}</button>}
         <button type="button" disabled={busy} onClick={onRegenerate} className={`text-muted hover:text-primary ${busy ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`} title={translate({ key: 'workspaces.studio.regenerate' })}><Icon name="rotate" className="text-xs" /></button>
         <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer" title={translate({ key: 'workspaces.studio.deleteArtifact' })}><Icon name="trash-can" className="text-xs" /></button>
       </div>

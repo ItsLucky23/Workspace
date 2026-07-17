@@ -856,6 +856,14 @@ function AiBehaviorTab() {
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
+  //? Gap-fix: live provider health (which AI backends are usable right now).
+  const [providerHealth, setProviderHealth] = useState<{ id: string; label: string; available: boolean }[] | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const [, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiProviderHealth', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
+      if (res?.status === 'success') setProviderHealth(res.result.providers);
+    })();
+  }, [activeWorkspace.id]);
   return (
     <div className="flex flex-col gap-3 max-w-2xl">
       <div>
@@ -899,6 +907,21 @@ function AiBehaviorTab() {
         <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}</div>
         <div className="w-64">
           <Dropdown size="sm" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />
+        </div>
+      </div>
+
+      {/* Gap-fix — provider health: availableProviders() was exported for a UI that never came. */}
+      <div className="pt-2 border-t border-divider mt-2">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.providerHealthTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.providerHealthDesc' })}</div>
+        <div className="flex flex-wrap gap-2">
+          {providerHealth === null && <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</span>}
+          {providerHealth?.map((p) => (
+            <span key={p.id} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${p.available ? 'bg-correct/10 text-correct' : 'bg-wrong/10 text-wrong'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-correct' : 'bg-wrong'}`} />
+              {p.label}
+            </span>
+          ))}
         </div>
       </div>
 

@@ -1025,6 +1025,16 @@ export interface DesignArtifact {
 }
 
 //? Interviewer module (ADR 0034) — a persisted, categorised improvement finding.
+//? U2 (gap-fix): an open "unfuck the UI" review request in the designer inbox.
+export interface UiReviewSummary {
+  id: string;
+  page: string | null;
+  problems: string[];
+  screenshots: string[];
+  notes: string | null;
+  createdAt: string;
+}
+
 export interface InterviewFinding {
   id: string;
   area: string;                        // reliability|dx|ux|performance|security|product|other

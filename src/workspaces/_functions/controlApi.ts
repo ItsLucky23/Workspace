@@ -33,7 +33,7 @@ export type ControlOp =
   | 'role-create' | 'role-update'
   // workspace settings (15/19/22)
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration'
-  | 'service-provision' | 'service-teardown' | 'ui-review-create'
+  | 'service-provision' | 'service-teardown' | 'ui-review-create' | 'ui-review-to-ticket' | 'ui-review-dismiss'
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'forge-connect'
   | 'save-git-config' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-autonomy'
@@ -66,7 +66,7 @@ export type ControlOp =
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
   | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-video-restyle' | 'content-edit-image' | 'shortlink-create' | 'capture-run'
   | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
-  | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role'
+  | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role' | 'studio-send-to-content'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

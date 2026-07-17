@@ -91,6 +91,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { name: { kind: 'serviceName', required: true } },
   },
   'ui-review-create': LATER,
+  'ui-review-to-ticket': EXCLUDED, // U2 gap-fix — direct inbox button on the designer page
+  'ui-review-dismiss': EXCLUDED,   // U2 gap-fix — direct inbox button
   'gitlab-settings': EXCLUDED, // carries the forge token
   'gitlab-verify': LATER,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
@@ -267,6 +269,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'content-gen-3d': { mode: 'enabled', hint: "generate a 3D model for a piece (image→3D chain; costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
   'content-request-publish': LATER,
   'content-from-brief': EXCLUDED, // legacy `create-content`
+  'studio-send-to-content': EXCLUDED, // gap-fix — direct UI button on the Studio artifact card
   'content-import-asset': LATER, 'content-regenerate': {
     mode: 'enabled',
     hint: 'regenerate a media asset (optionally tweaked, costs money — the user confirms). params: assetId, pieceId?, tweak?, count? (1-4)',

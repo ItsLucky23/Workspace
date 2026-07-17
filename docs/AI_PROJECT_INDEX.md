@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (53)
+## API routes (54)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,7 @@
 | `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
 | `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
 | `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/aiProviderHealth/v1` | POST | login | 12 | ItsLucky23 | **no** | — | Workspaces — [ai-provider-health] (gap-fix) the provider health read: which AI backends are usable |
 | `api/workspaces/auditLog/v1` | POST | login | 12 | — | **no** | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
 | `api/workspaces/brandExport/v1` | POST | login | 30 | — | **no** | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
 | `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
@@ -65,7 +66,7 @@
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 
-## Sync routes (59)
+## Sync routes (60)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -127,6 +128,7 @@
 | `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
 | `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
+| `sync/workspaces/uiReviewAction/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [ui-review-to-ticket / ui-review-dismiss] (U2 gap-fix) act on an open "unfuck the UI" |
 | `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
 
 ## Ownership & coverage
@@ -135,10 +137,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 6 |
+| `ItsLucky23` | 8 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/112 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/114 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -155,6 +157,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/settings/updateUser/v1`
 - `api/workspaces/acceptInvite/v1`
 - `api/workspaces/aiChat/v1`
+- `api/workspaces/aiProviderHealth/v1`
 - `api/workspaces/auditLog/v1`
 - `api/workspaces/brandExport/v1`
 - `api/workspaces/brandImport/v1`
@@ -191,8 +194,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
 - `api/workspaces/timeTravelPreview/v1`
-- `api/workspaces/workspaceExport/v1`
-- … +59 more
+- … +61 more
 
 ## Pages (30)
 

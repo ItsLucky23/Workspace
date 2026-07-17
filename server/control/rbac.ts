@@ -71,6 +71,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'service-provision': CAP.workspaceSettings,
   'service-teardown': CAP.workspaceSettings,
   'ui-review-create': CAP.workTickets,
+  'ui-review-to-ticket': CAP.workTickets, // U2 gap-fix — inbox → redesign ticket
+  'ui-review-dismiss': CAP.workTickets,   // U2 gap-fix — dismiss without ticket
   'save-integration': CAP.workspaceSettings,
   'remove-integration': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,
@@ -117,6 +119,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-gen-3d': CAP.workTickets,
   'content-request-publish': CAP.workTickets,
   'content-from-brief': CAP.workTickets,
+  'studio-send-to-content': CAP.workTickets, // gap-fix — hand a Studio artifact to the content lane
+
   'content-import-asset': CAP.workTickets,
   'content-regenerate': CAP.workTickets,
   'content-inpaint': CAP.workTickets,

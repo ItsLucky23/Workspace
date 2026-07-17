@@ -1975,6 +1975,30 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const channelId = str(payload, 'channelId');
       return prisma.contentProject.create({ data: { workspaceId: action.workspaceId, projectId: project.id, title: str(payload, 'title') ?? 'New content', brief, format: str(payload, 'format') ?? 'faceless', ...(channelId ? { channelId } : {}) } });
     }
+    //? Send-to-Content (gap-fix "verbind de eilanden"): hand a ready Studio artifact over to the content
+    //? lane — a new piece whose brief carries the artifact, plus a 'script' asset holding its body, so
+    //? thumbnails/scripts/landing copy stop needing a manual download → re-upload round-trip.
+    case 'studio-send-to-content': {
+      const artifactId = str(payload, 'artifactId');
+      if (!artifactId) return;
+      const artifact = await prisma.studioArtifact.findFirst({ where: { workspaceId: action.workspaceId, id: artifactId } });
+      if (artifact?.status !== 'ready') return { ok: false, error: 'studio.artifactNotReady' };
+      const studioBrief = await prisma.studioBrief.findFirst({ where: { workspaceId: action.workspaceId, id: artifact.briefId } });
+      let contentProj = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId, projectType: 'content' }, orderBy: { createdAt: 'asc' } });
+      contentProj ??= await prisma.project.create({ data: { workspaceId: action.workspaceId, name: 'Content', projectType: 'content', gitlabPath: '' } });
+      const piece = await prisma.contentProject.create({ data: {
+        workspaceId: action.workspaceId, projectId: contentProj.id,
+        title: artifact.title,
+        brief: `From Studio (${artifact.kind})${studioBrief ? ` — ${studioBrief.productName}` : ''}: use the attached ${artifact.kind} artifact as the starting material.`,
+        format: artifact.kind === 'videoScript' ? 'faceless' : 'image',
+      } });
+      await prisma.contentAsset.create({ data: {
+        workspaceId: action.workspaceId, contentProjectId: piece.id, kind: 'script', url: null, status: 'ready',
+        metadata: jsonInput({ source: 'studio', artifactId: artifact.id, artifactKind: artifact.kind, body: JSON.stringify(artifact.content).slice(0, 60_000) }),
+      } });
+      broadcastContentDirty(action.workspaceId);
+      return piece;
+    }
     //? Reference-driven photorealistic image (F2.1, ADR 0049 — #1 feature) — condition on a reference image.
     case 'content-gen-reference-image': {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
@@ -2276,6 +2300,42 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const page = str(payload, 'page'); const notes = str(payload, 'notes');
       return prisma.uiReviewRequest.create({ data: { workspaceId: action.workspaceId, screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}), createdById: userId, status: 'open' } });
     }
+    //? U2 (gap-fix): turn an open UI-review request into a redesign TICKET — the review's problems, notes
+    //? and screenshot urls become the ticket description, so the pipeline (or a human) picks it up. The
+    //? request flips to 'ticketed' (it leaves the designer inbox but stays queryable).
+    case 'ui-review-to-ticket': {
+      const reviewId = str(payload, 'reviewId');
+      if (!reviewId) return;
+      const review = await prisma.uiReviewRequest.findFirst({ where: { workspaceId: action.workspaceId, id: reviewId, status: 'open' } });
+      if (!review) return { ok: false, error: 'uiReview.notFound' };
+      const reviewProjectId = await resolveProjectId(prisma, action.workspaceId, null);
+      if (!reviewProjectId) return { ok: false, error: 'env.noProject' };
+      const lastTicket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
+      const ticketNumber = (lastTicket?.number ?? 0) + 1;
+      const description = [
+        `Redesign request from the UI-review inbox${review.page ? ` — page: ${review.page}` : ''}.`,
+        review.problems.length > 0 ? `Reported problems: ${review.problems.join(', ')}.` : '',
+        review.notes ? `Notes: ${review.notes}` : '',
+        review.screenshots.length > 0 ? `Screenshots:\n${review.screenshots.join('\n')}` : '',
+      ].filter((s) => s.length > 0).join('\n\n');
+      const redesignTicket = await prisma.ticket.create({ data: {
+        workspaceId: action.workspaceId, projectId: reviewProjectId, key: `DEV-${String(ticketNumber)}`, number: ticketNumber,
+        title: `Redesign: ${review.page ?? 'UI'}`, description, stageId: 'unrefined', status: 'idle',
+        labels: ['ui-review'], creatorId: userId, priority: 'normal',
+      } });
+      await prisma.uiReviewRequest.updateMany({ where: { workspaceId: action.workspaceId, id: reviewId }, data: { status: 'ticketed' } });
+      //? Best-effort tail (event + broadcast): a failure here must never error the op — the serial
+      //? chain would re-run it and duplicate the ticket.
+      await tryCatch(() => recordTicketEvent(action.workspaceId, redesignTicket.id, 'status-change', userId, 'created the ticket from a UI review'));
+      await tryCatch(() => broadcastTicketDelta(prisma, action.workspaceId, [redesignTicket.key]));
+      return redesignTicket;
+    }
+    //? U2 — dismiss an open UI-review request without a ticket.
+    case 'ui-review-dismiss': {
+      const reviewId = str(payload, 'reviewId');
+      if (reviewId) await prisma.uiReviewRequest.updateMany({ where: { workspaceId: action.workspaceId, id: reviewId, status: 'open' }, data: { status: 'dismissed' } });
+      return;
+    }
     //? Promote up the dev→staging→prod ladder (ADR 0038) — deploys the SOURCE env's tested image to the
     //? next stage; prod is gated on an explicit approval + a live source (B-23).
     case 'env-promote': {
@@ -2417,7 +2477,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? already gates who may do it — so we call the raw ungated executor directly.
       const role = str(payload, 'role');
       if (!role) return;
-      await executeTriggerAction(prisma, action.workspaceId, { action: 'invoke-agent-role', params: { role } });
+      //? Optional focus (e.g. "the auth flow") narrows the role's review — threaded through as a param.
+      const roleFocus = str(payload, 'focus');
+      await executeTriggerAction(prisma, action.workspaceId, { action: 'invoke-agent-role', params: { role, ...(roleFocus ? { focus: roleFocus } : {}) } });
       return;
     }
     // ---- notifications ----

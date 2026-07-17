@@ -28,7 +28,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
+  StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
@@ -91,6 +91,7 @@ interface Snap {
   studioBrand: StudioBrandLibrary | null;
   designArtifacts: DesignArtifact[];
   interviewFindings: InterviewFinding[];
+  uiReviews: UiReviewSummary[];
   ticketArtifactLinks: TicketArtifactLink[];
   //? #111 — the user's persisted Workspace-AI chat history (per-user), chronological.
   chat: ChatMessage[];
@@ -120,6 +121,7 @@ const EMPTY_SNAP: Snap = {
   studioBrand: null,
   designArtifacts: [],
   interviewFindings: [],
+  uiReviews: [],
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
@@ -1225,8 +1227,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createUiReview: (input) => {
         const room = snap.activeWorkspaceId;
         if (room && (input.screenshots.length > 0 || input.problems.length > 0 || (input.notes ?? '').trim().length > 0)) {
-          void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { screenshots: input.screenshots, problems: input.problems, ...(input.page ? { page: input.page } : {}), ...(input.notes ? { notes: input.notes } : {}), clientRequestId: nextReqId() }, receiver: room });
+          void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { screenshots: input.screenshots, problems: input.problems, ...(input.page ? { page: input.page } : {}), ...(input.notes ? { notes: input.notes } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
         }
+      },
+      //? U2 (gap-fix): the designer inbox — open reviews + turn-into-ticket / dismiss.
+      uiReviews: snap.uiReviews,
+      uiReviewAction: (op, reviewId) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/uiReviewAction', version: 'v1', data: { op, reviewId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
       },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
@@ -1327,7 +1335,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       deleteCustomTask: (taskId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'delete-custom-task', taskId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runCustomTask: (taskId, vars) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, vars, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? #167 — invoke an agent-role now (interviewer "Generate ideas now"); refetch to surface new findings.
-      runAgentRole: (role) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'run-agent-role', role, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runAgentRole: (role, focus) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'run-agent-role', role, ...(focus?.trim() ? { focus: focus.trim() } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? O5 — reusable output specs (save/delete).
       outputTemplates: snap.outputTemplates,
       saveOutputTemplate: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

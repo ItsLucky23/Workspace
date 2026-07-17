@@ -9,20 +9,27 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag/index';
+import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { resolveProjectId } from '../orchestrator/projectResolve';
 import { parseFindings, recordFindings } from './findings';
 
 //? Pure prompt builder (unit-testable). `focus` narrows the review (e.g. "the auth flow"); empty =
 //? the whole project. `context` is retrieved codebase excerpts (RAG) that GROUND the ideas in the
 //? real project — empty when nothing is indexed (then it reasons from the brief only).
-export function buildInterviewerPrompt(focus: string, context = ''): { system: string; prompt: string } {
+//? `productContext` (zelf-bewuste-AI-brug) is the PRODUCT-knowledge corpus — what THIS platform can
+//? do — kept as a separate section so ideas can lean on real platform capabilities, which matters
+//? most for content/design workspaces that have no code index at all.
+export function buildInterviewerPrompt(focus: string, context = '', productContext = ''): { system: string; prompt: string } {
   const scope = focus.trim().length > 0 ? focus.trim() : 'the whole project';
   const grounding = context.trim().length > 0
     ? `\n\nGROUND your ideas in these real excerpts from the codebase (cite the file when relevant):\n${context.trim()}`
     : '';
+  const productGrounding = productContext.trim().length > 0
+    ? `\n\nPLATFORM CAPABILITIES (what this workspace platform itself offers — use these when an idea can be realised with an existing module):\n${productContext.trim()}`
+    : '';
   return {
     system: 'You are a sharp senior engineer reviewing a software project and proposing improvements. Output 3–5 concise, concrete, actionable ideas as a short markdown list. Each line MUST be exactly: `- [area] **Title** — one sentence on why it matters`, where area is ONE of reliability, dx, ux, performance, security, product. No preamble, no filler.',
-    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}`,
+    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}${productGrounding}`,
   };
 }
 
@@ -41,7 +48,11 @@ export function registerInterviewerRole(): void {
       const projId = await resolveProjectId(getPrismaClient(), ctx.workspaceId, typeof ctx.params.projectId === 'string' ? ctx.params.projectId : null);
       const [, chunks] = await tryCatch(() => retrieve(getPrismaClient(), ctx.workspaceId, query, 6, undefined, projId ?? undefined));
       const context = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
-      const { system, prompt } = buildInterviewerPrompt(focus, context);
+      //? Zelf-bewuste-AI-brug: also ground on the product-knowledge corpus (was chat-only) so ideas
+      //? for content/design workspaces (no code index) stop being generic bullets.
+      const [, pk] = await tryCatch(() => retrieveProductKnowledge(getPrismaClient(), query, 3));
+      const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 3000);
+      const { system, prompt } = buildInterviewerPrompt(focus, context, productContext);
       const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: 'Interviewer · improvement ideas' }));
       if (error || !res?.ok || res.text.trim().length === 0) return { kind: 'interview-result', title: 'Interviewer', body: 'Could not generate ideas this run — try again.' };
       //? Persist the ideas as CATEGORISED findings (ADR 0034) so they survive + can become tickets.

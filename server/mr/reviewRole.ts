@@ -10,6 +10,7 @@ import type { PrismaClient } from '@prisma/client';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag';
+import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { branchDiff } from '../git/repoStore';
 import { jsonInput } from '../util/json';
 import { parseUnifiedDiff } from './diff';
@@ -41,7 +42,7 @@ export function validateAgainstDiff(findings: ReviewFinding[], rawDiff: string):
   return findings.filter((f) => valid.has(`${f.filePath}:${String(f.line)}`)).slice(0, 30);
 }
 
-function buildReviewPrompt(diffText: string, ragContext: string): { system: string; prompt: string } {
+function buildReviewPrompt(diffText: string, ragContext: string, productContext = ''): { system: string; prompt: string } {
   const system = [
     'You are a senior code reviewer reviewing a merge request diff.',
     'Report ONLY concrete, actionable problems: bugs, correctness, security, resource leaks, missing error handling, broken edge cases.',
@@ -50,6 +51,9 @@ function buildReviewPrompt(diffText: string, ragContext: string): { system: stri
     '- [path/to/file.ts:LINE] the concrete problem and the fix',
     'Use the NEW-side line number from the diff. No prose, no headers, no summary — only the finding lines.',
     ragContext.length > 0 ? `\nRepository context (for grounding):\n${ragContext}` : '',
+    //? Zelf-bewuste-AI-brug: the product-knowledge corpus (was chat-only) so the review can weigh
+    //? PRODUCT intent (what the platform/feature is for), not just code mechanics.
+    productContext.length > 0 ? `\nProduct intent context (what this is FOR — weigh findings against it):\n${productContext}` : '',
   ].join('\n');
   return { system, prompt: `Review this merge-request diff:\n\n${diffText.slice(0, 24_000)}` };
 }
@@ -99,7 +103,9 @@ export function registerMrReviewRole(): void {
 
       const [, chunks] = await tryCatch(() => retrieve(prisma, ctx.workspaceId, mr.title, 6, undefined, mr.projectId));
       const ragContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 5000);
-      const { system, prompt } = buildReviewPrompt(diffText, ragContext);
+      const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, mr.title, 2));
+      const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 2000);
+      const { system, prompt } = buildReviewPrompt(diffText, ragContext, productContext);
 
       const [err, res] = await tryCatch(() => runAiCompletion('mr-review', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: `MR review · ${mr.title}` }));
       if (err || !res?.ok) return { kind: 'mr-review', title: 'AI MR review', body: `Review failed: ${err?.message ?? res?.error ?? 'unknown'}` };

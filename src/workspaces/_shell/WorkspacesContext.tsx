@@ -11,7 +11,7 @@ import type {
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
-  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink,
+  StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 
@@ -129,6 +129,9 @@ export interface WorkspacesCtx {
   allowCiRed: (enabled: boolean) => void;
   diagnoseRootCause: (symptom: string) => void;
   createUiReview: (input: { screenshots: string[]; problems: string[]; page?: string; notes?: string }) => void;
+  //? U2 (gap-fix): the designer review-inbox — open requests + turn one into a redesign ticket / dismiss.
+  uiReviews: UiReviewSummary[];
+  uiReviewAction: (op: 'ui-review-to-ticket' | 'ui-review-dismiss', reviewId: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
@@ -224,7 +227,7 @@ export interface WorkspacesCtx {
   deleteCustomTask: (taskId: string) => void;
   runCustomTask: (taskId: string, vars?: Record<string, string>) => void;
   //? #167 — invoke a registered agent-role now (e.g. the interviewer "Generate ideas now" button).
-  runAgentRole: (role: string) => void;
+  runAgentRole: (role: string, focus?: string) => void;
   //? O5 — reusable output specs (a named render format + watermark), applied across pieces.
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   saveOutputTemplate: (input: { templateId?: string; name: string; format: string; watermarkPosition?: string }) => void;

@@ -44,6 +44,8 @@ export default function Interviewer() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  //? Focus (gap-fix): narrows "Generate ideas now" to one area (e.g. "the auth flow"); empty = whole project.
+  const [focus, setFocus] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
@@ -80,7 +82,10 @@ export default function Interviewer() {
             <span className="text-xl font-semibold">{translate({ key: 'workspaces.interviewer.title' })}</span>
           </div>
           {/* #167 — invoke the interviewer agent-role on demand; the findings surface via the snapshot when ready. */}
-          <WsButton variant="secondary" icon="lightbulb" onClick={() => { runAgentRole('interviewer'); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }}>{translate({ key: 'workspaces.interviewer.generateNow' })}</WsButton>
+          <div className="flex items-center gap-2">
+            <input value={focus} onChange={(e) => { setFocus(e.target.value); }} placeholder={translate({ key: 'workspaces.interviewer.focusPlaceholder' })} className="hidden sm:block h-9 w-52 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary" />
+            <WsButton variant="secondary" icon="lightbulb" onClick={() => { runAgentRole('interviewer', focus); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }}>{translate({ key: 'workspaces.interviewer.generateNow' })}</WsButton>
+          </div>
         </div>
         <p className="text-sm text-muted mt-1.5 max-w-2xl">{translate({ key: 'workspaces.interviewer.intro' })}</p>
       </div>

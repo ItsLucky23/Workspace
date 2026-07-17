@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 236,
-    "edges": 355,
-    "symbols": 299,
+    "nodes": 238,
+    "edges": 356,
+    "symbols": 303,
     "callEdges": 42
   },
   "nodes": [
@@ -317,6 +317,11 @@
       "id": "workspaces/_api/aiChat_v1.ts",
       "kind": "api",
       "route": "api/workspaces/aiChat/v1"
+    },
+    {
+      "id": "workspaces/_api/aiProviderHealth_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/aiProviderHealth/v1"
     },
     {
       "id": "workspaces/_api/auditLog_v1.ts",
@@ -997,6 +1002,11 @@
       "id": "workspaces/_sync/triggerAction_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/triggerAction/v1"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewAction_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/uiReviewAction/v1"
     },
     {
       "id": "workspaces/_sync/uiReviewCreate_server_v1.ts",
@@ -2516,6 +2526,10 @@
     },
     {
       "from": "workspaces/studio/page.tsx",
+      "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/studio/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -3135,7 +3149,9 @@
       "workspaces/_sync/saveSections_server_v1.ts",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/designer/page.tsx",
+      "workspaces/marketing/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/studio/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/seed.ts": [
@@ -3551,8 +3567,8 @@
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
-      "dependents": 14,
-      "directDependents": 10
+      "dependents": 16,
+      "directDependents": 11
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -3973,6 +3989,18 @@
     {
       "id": "workspaces/_api/aiChat_v1.ts::main",
       "file": "workspaces/_api/aiChat_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/aiProviderHealth_v1.ts::<module>",
+      "file": "workspaces/_api/aiProviderHealth_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/aiProviderHealth_v1.ts::main",
+      "file": "workspaces/_api/aiProviderHealth_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -5413,6 +5441,18 @@
     {
       "id": "workspaces/_sync/triggerAction_server_v1.ts::main",
       "file": "workspaces/_sync/triggerAction_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewAction_server_v1.ts::<module>",
+      "file": "workspaces/_sync/uiReviewAction_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/uiReviewAction_server_v1.ts::main",
+      "file": "workspaces/_sync/uiReviewAction_server_v1.ts",
       "name": "main",
       "kind": "function"
     },
