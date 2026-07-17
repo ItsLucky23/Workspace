@@ -1377,9 +1377,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         ...(str(payload, 'platform') ? { platform: str(payload, 'platform') } : {}),
         ...('handle' in payload ? { handle: str(payload, 'handle') ?? null } : {}),
         ...('brandVoice' in payload ? { brandVoice: str(payload, 'brandVoice') ?? null } : {}),
-        ...('defaultStyleId' in payload ? { defaultStyleId: str(payload, 'defaultStyleId') ?? null } : {}),
+        //? '' → null: defaultStyleId is @db.ObjectId — an empty string made Prisma throw and the WHOLE
+        //? edit silently no-op (pre-existing: every channel-edit without a house style saved nothing).
+        ...('defaultStyleId' in payload ? { defaultStyleId: (str(payload, 'defaultStyleId') ?? '').trim() || null } : {}),
         ...('aiDisclosureDefault' in payload ? { aiDisclosureDefault: bool(payload, 'aiDisclosureDefault') } : {}),
-        ...('defaultAccountId' in payload ? { defaultAccountId: str(payload, 'defaultAccountId') ?? null } : {}),
+        ...('defaultAccountId' in payload ? { defaultAccountId: (str(payload, 'defaultAccountId') ?? '').trim() || null } : {}),
         ...('autopilot' in payload ? { autopilot: bool(payload, 'autopilot') } : {}),
       };
       await prisma.channel.updateMany({ where: { workspaceId: action.workspaceId, id: channelId }, data });

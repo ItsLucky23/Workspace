@@ -11,12 +11,13 @@ import { useTranslator } from '@luckystack/core/client';
 import Icon from '../_components/Icon';
 import { SPRING_SHEET } from '../_components/motion';
 import { AvatarBubble } from '../_components/primitives';
+import { isSectionEnabled } from '../_data/modules';
 import { NAV_BOTTOM, NAV_ITEMS } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
   const translate = useTranslator();
-  const { view, navigate, openTicket, currentUser, activeWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
+  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
   const [drawer, setDrawer] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const onTicket = isTicketView(view);
@@ -88,12 +89,31 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                 <span className="w-8 h-8 rounded-lg bg-primary text-title-primary flex items-center justify-center font-bold">{translate({ key: 'workspaces.mobileChrome.logoInitial' })}</span>
                 <span className="font-semibold text-title">{translate({ key: 'workspaces.mobileChrome.appName' })}</span>
               </div>
-              {[...NAV_ITEMS, ...NAV_BOTTOM].map((it) => (
-                <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
-                  className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
-                  <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
-                </button>
-              ))}
+              {/* Gap-fix: the drawer now module-gates like the desktop rail (it showed Board on a
+                  design-only workspace, and tapping it bounced straight back). */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-1">
+                {[...NAV_ITEMS, ...NAV_BOTTOM].filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id)).map((it) => (
+                  <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
+                    className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
+                    <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
+                  </button>
+                ))}
+              </div>
+              {/* Gap-fix: the phone had NO way to switch workspace (desktop-only dropdown) — the drawer
+                  now lists them; the active one is highlighted. */}
+              {workspaces.length > 1 && (
+                <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1 max-h-48 overflow-y-auto">
+                  <span className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{translate({ key: 'workspaces.mobileChrome.switchWorkspace' })}</span>
+                  {workspaces.map((w) => (
+                    <button key={w.id} type="button" onClick={() => { setActiveWorkspace(w.id); setDrawer(false); }}
+                      className={`flex items-center gap-2.5 rounded-xl h-10 px-3 text-sm font-medium transition-colors cursor-pointer ${w.id === activeWorkspace.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
+                      <span className="w-6 h-6 rounded-md bg-primary/15 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">{w.name[0]}</span>
+                      <span className="truncate">{w.name}</span>
+                      {w.id === activeWorkspace.id && <Icon name="check" className="ml-auto text-xs text-primary" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </>
         )}

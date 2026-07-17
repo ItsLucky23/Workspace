@@ -10,10 +10,24 @@
 //? The Conductor writes ASYNC off the serial chain, so snapshots poll.
 //? Best-effort cleanup (throwaway owner + created workspace) before report().
 
-import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
-const BASE = 'http://localhost:80';
-const ORIGIN = 'http://localhost:5173'; // the dev public origin (Vite) — passes the origin gate
+import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
+import { ports } from '../../config.ports';
+
+//? Gap-fix: the base/origin were hardcoded to the OLD dev ports (80/5173) — after the port move to
+//? 4787/5391 every request hit nothing and the whole suite failed ("register returned status:true").
+//? Resolve like vite.config does: the server's ACTUALLY-bound port file, falling back to config.ports.
+function backendPort(): number {
+  try {
+    const raw = readFileSync(path.join(process.cwd(), 'node_modules', '.luckystack', 'dev-server.json'), 'utf8');
+    const info = JSON.parse(raw) as { port?: number };
+    return info.port ?? ports.backend;
+  } catch { return ports.backend; }
+}
+const BASE = `http://localhost:${String(backendPort())}`;
+const ORIGIN = `http://localhost:${String(ports.frontend)}`; // the dev public origin (Vite) — passes the origin gate
 const email = `e2e-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}@test.local`;
 const password = 'Test1234!aA'; // upper + lower + digit + special, len 11 — satisfies the default policy
 

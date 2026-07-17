@@ -46,6 +46,14 @@ try {
   assert(yt !== null && typeof yt === 'object' && (yt as Record<string, unknown>).syntheticMedia === true, "the channel's aiDisclosureDefault was applied as the variant's syntheticMedia");
   assert(listAiRuns(wsId).some((r) => r.feature === 'autopilot-publish'), 'the autopilot post landed in the Activity feed');
 
+  // ---- 1b. regression: a FULL-FORM channel-edit with an empty defaultStyleId must persist ----
+  //? Pre-existing bug: '' for the @db.ObjectId styleId made Prisma throw and the WHOLE edit silently
+  //? no-op — every UI edit without a house style saved nothing (masked until the autopilot toggle).
+  await enqueueControlAction({ workspaceId: wsId, op: 'channel-edit', target: {}, payload: { channelId: manual.id, name: 'Handmatig', platform: 'youtube', handle: '', brandVoice: '', defaultStyleId: '', aiDisclosureDefault: true, defaultAccountId: '', autopilot: false }, userId: owner.id, clientRequestId: `ap-edit-${String(stamp)}` });
+  const edited = await poll(() => prisma.channel.findFirst({ where: { workspaceId: wsId, id: manual.id, aiDisclosureDefault: true } }));
+  assert(edited !== null, "a full-form edit with empty defaultStyleId persists (was a silent no-op)");
+  eq(edited?.defaultStyleId, null, "an empty styleId lands as null, not ''");
+
   // ---- 2. manual channel: unchanged behaviour — a suggestion, no job ----
   await enqueueControlAction({ workspaceId: wsId, op: 'content-request-publish', target: {}, payload: { contentProjectId: pieceManual.id, assetId: assetManual.id, platform: 'youtube' }, userId: owner.id, clientRequestId: `ap-man-${String(stamp)}` });
   const sugg = await poll(() => prisma.workspaceSuggestion.findFirst({ where: { workspaceId: wsId, type: 'publish' } }));

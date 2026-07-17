@@ -1935,7 +1935,8 @@
     "mobileChrome": {
       "board": "Board",
       "logoInitial": "W",
-      "appName": "Workspaces"
+      "appName": "Workspaces",
+      "switchWorkspace": "Wissel van workspace"
     },
     "wsShell": {
       "back": "Terug",
