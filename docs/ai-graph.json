@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 235,
-    "edges": 351,
-    "symbols": 297,
+    "nodes": 236,
+    "edges": 353,
+    "symbols": 299,
     "callEdges": 42
   },
   "nodes": [
@@ -620,6 +620,11 @@
     },
     {
       "id": "workspaces/_data/types.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_data/uiReviewTaxonomy.ts",
       "kind": "other",
       "route": null
     },
@@ -1735,6 +1740,10 @@
     },
     {
       "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
       "to": "workspaces/_components/SearchPalette.tsx"
     },
     {
@@ -2048,6 +2057,10 @@
     {
       "from": "workspaces/designer/page.tsx",
       "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/designer/page.tsx",
+      "to": "workspaces/_data/uiReviewTaxonomy.ts"
     },
     {
       "from": "workspaces/designer/page.tsx",
@@ -3172,6 +3185,9 @@
       "workspaces/usage/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
+    "workspaces/_data/uiReviewTaxonomy.ts": [
+      "workspaces/designer/page.tsx"
+    ],
     "workspaces/_functions/chatDispatch.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
@@ -3492,7 +3508,7 @@
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
       "dependents": 38,
-      "directDependents": 33
+      "directDependents": 34
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -4611,6 +4627,18 @@
       "file": "workspaces/_data/types.ts",
       "name": "<module>",
       "kind": "module"
+    },
+    {
+      "id": "workspaces/_data/uiReviewTaxonomy.ts::<module>",
+      "file": "workspaces/_data/uiReviewTaxonomy.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_data/uiReviewTaxonomy.ts::uiProblemI18nKey",
+      "file": "workspaces/_data/uiReviewTaxonomy.ts",
+      "name": "uiProblemI18nKey",
+      "kind": "function"
     },
     {
       "id": "workspaces/_functions/controlApi.ts::<module>",

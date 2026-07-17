@@ -50,7 +50,7 @@ export async function indexInstitutionalMemory(prisma: PrismaClient, workspaceId
   for (const c of carries) { const t = carryText(c.envelope); if (t.length > 0) rows.push({ filePath: `memory/carryover-${c.id}`, content: t }); }
   if (rows.length === 0) { await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: MEMORY_COMMIT } }); return { ok: true, entries: 0 }; }
 
-  const vectors = await embedTexts(rows.map((r) => r.content));
+  const vectors = await embedTexts(rows.map((r) => r.content), { workspaceId, feature: 'rag-memory' });
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: MEMORY_COMMIT } });
   await prisma.ragEntry.createMany({ data: rows.map((r, i) => ({ workspaceId, commitHash: MEMORY_COMMIT, filePath: r.filePath, chunkId: '0', content: r.content, embedding: vectors[i] ?? [] })) });
   return { ok: true, entries: rows.length };

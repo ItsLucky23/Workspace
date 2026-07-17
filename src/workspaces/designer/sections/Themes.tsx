@@ -150,8 +150,8 @@ function ThemeRow({ theme, mode, active, compare, onSelect, onRename, onCompare,
     <div onClick={onSelect} className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${active ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
       <div className="flex -space-x-1 shrink-0">{swatches.map((s) => <span key={s} className="w-4 h-4 rounded-full border border-container1-border" style={{ backgroundColor: t[s] }} />)}</div>
       <RenameField value={theme.name} onRename={onRename} className="flex-1 min-w-0 text-sm text-title" />
-      <button type="button" onClick={(e) => { e.stopPropagation(); onCompare(); }} title={translate({ key: 'workspaces.designer.compare' })} className={`shrink-0 cursor-pointer ${compare ? 'text-primary' : 'text-muted opacity-0 group-hover:opacity-100 hover:text-primary'}`}><Icon name="table-columns" className="text-xs" /></button>
-      {onRemove && <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(); }} className="text-muted hover:text-wrong opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
+      <button type="button" onClick={(e) => { e.stopPropagation(); onCompare(); }} title={translate({ key: 'workspaces.designer.compare' })} className={`shrink-0 cursor-pointer ${compare ? 'text-primary' : 'text-muted opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 hover:text-primary'}`}><Icon name="table-columns" className="text-xs" /></button>
+      {onRemove && <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
     </div>
   );
 }

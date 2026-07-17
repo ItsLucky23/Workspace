@@ -24,6 +24,7 @@ const DEFAULT_MODEL_PRICE_PER_1K: Record<string, number> = {
   'gemini-2.5-pro': 0.012,
   'gemini-1.5-flash': 0.0005,
   'gemini-1.5-pro': 0.006,
+  'gemini-embedding-001': 0.0001,
 };
 function priceMap(): Record<string, number> {
   const merged: Record<string, number> = { ...DEFAULT_MODEL_PRICE_PER_1K };

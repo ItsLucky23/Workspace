@@ -1460,12 +1460,13 @@
       "desc": "Flag what feels off — upload screenshots, tick the problems, add notes. It becomes a redesign ticket.",
       "addShot": "Add screenshot",
       "shotN": "Shot {{n}}",
-      "problem_clutter": "Too cluttered",
+      "problem_cluttered": "Too cluttered",
       "problem_confusing": "Confusing",
-      "problem_spacing": "Spacing",
-      "problem_alignment": "Alignment",
-      "problem_contrast": "Contrast",
+      "problem_not_responsive": "Not responsive",
+      "problem_spacing_alignment": "Spacing & alignment",
+      "problem_color_contrast": "Color & contrast",
       "problem_inconsistent": "Inconsistent",
+      "problem_visual_hierarchy": "Visual hierarchy",
       "pagePlaceholder": "Which page/screen? (optional)",
       "notesPlaceholder": "What should change and why?",
       "submit": "Send review request",
@@ -1908,7 +1909,12 @@
     },
     "wsShell": {
       "back": "Back",
-      "backTo": " to {{label}}"
+      "backTo": " to {{label}}",
+      "fabNewTicket": "New ticket",
+      "fabNewPiece": "New content piece",
+      "fabTitlePlaceholder": "Title…",
+      "fabCreate": "Create",
+      "fabCancel": "Cancel"
     }
   }
 }

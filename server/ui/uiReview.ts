@@ -3,18 +3,12 @@
 //? an accepted request into N redesign variants → a ticket with the chosen design + the ticked problems as stage
 //? instructions. This module is the pure taxonomy + the request validation; the Conductor persists it (B-23).
 
-//? The curated problem taxonomy (the checkboxes). Stable keys — the UI localizes the labels; U2 folds the ticked
-//? ones into the redesign brief. Free-text (`notes`) covers anything off-list.
-export const UI_PROBLEMS = [
-  'cluttered',            // onoverzichtelijk
-  'too-much-on-one-page', // te veel op één pagina
-  'not-responsive',       // niet goed responsive
-  'inconsistent-controls',// inconsistente buttons/dropdowns/invoervelden tussen pagina's
-  'spacing-alignment',    // spacing / uitlijning
-  'color-usage',          // kleurgebruik
-  'visual-hierarchy',     // visuele hiërarchie
-] as const;
-export type UiProblem = (typeof UI_PROBLEMS)[number];
+//? The curated problem taxonomy (the checkboxes) lives in ONE shared module the designer form
+//? imports too — re-exported here so server-side consumers keep their import path. U2 folds the
+//? ticked ones into the redesign brief. Free-text (`notes`) covers anything off-list.
+import { UI_PROBLEMS, type UiProblem } from '../../src/workspaces/_data/uiReviewTaxonomy';
+
+export { UI_PROBLEMS, type UiProblem } from '../../src/workspaces/_data/uiReviewTaxonomy';
 
 export function isUiProblem(s: string): s is UiProblem {
   return (UI_PROBLEMS as readonly string[]).includes(s);

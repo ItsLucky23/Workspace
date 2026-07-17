@@ -5,9 +5,10 @@
 //? @imports from sourceIds, the MCP skill catalog, model-tier→id mapping, and the D2 role
 //? prompt-layering — the first version renders the load-bearing task + permissions + Stop hook.
 
-import type { PipelineStageCfg } from '../../src/workspaces/_data/types';
+import type { PipelineStageCfg, StageModelChoice } from '../../src/workspaces/_data/types';
 import type { CarryOverEnvelope } from './turnResult';
 import { renderPromptTemplate } from './turnResult';
+import { effortThinkingTokens } from './modelSelect';
 
 export interface StageRenderCtx {
   ticketId: string;
@@ -27,6 +28,10 @@ export interface StageRenderCtx {
   //? becomes an stdio MCP server in .mcp.json with its credentials injected as env. `command` is a full shell
   //? string (e.g. "npx -y some-mcp --flag"); it is split into command + args.
   integrations?: McpIntegration[];
+  //? The RESOLVED model choice for this turn (base or an escalation rule, modelSelect). Drives the
+  //? settings.json `model` backstop + the MAX_THINKING_TOKENS effort budget; the spawn's `--model`
+  //? flag (stageRunner) is the authoritative half of the same wiring.
+  modelChoice?: StageModelChoice;
 }
 
 export interface McpIntegration { name: string; command: string; env?: Record<string, string> }
@@ -105,6 +110,11 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     renderPromptTemplate(cfg.promptTemplate, ctx.carryOver),
     doneGuidance,
     '```ws-carryover\\n{ "summary": "...", "changedFiles": [], "openQuestions": [] }\\n```',
+    //? Auto-escalation: teach the agent to self-score the REMAINING work so the NEXT stage can
+    //? resolve its model tier from the rules (modelSelect.resolveModelChoice).
+    ...(cfg.modelCfg.autoEscalate
+      ? ['Auto-escalation is ON for this pipeline: also include `"complexityScore": <1-10>` in the ws-carryover JSON — your honest judgement of how complex the REMAINING work on this ticket is (1 = trivial, 10 = very hard). The next stage selects its model tier from this score.']
+      : []),
     'If you are blocked and need a human, end with a ```ws-needs-input block listing the questions instead.',
     'NON-BLOCKING questions (W2): if a question does NOT block your progress, DO NOT stop — make a sensible assumption, keep working, and record it in `openQuestions` as `{ "question": "...", "assumption": "what you assumed" }`. The human can correct it later; a divergent answer will trigger a revision turn. Reserve `ws-needs-input` for questions that TRULY block you.',
   ].filter((s) => s.trim().length > 0).join('\n\n');
@@ -115,6 +125,9 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   const ask = cfg.commands.filter((c) => c.mode === 'ask').map((c) => c.pattern);
   const deny = [...cfg.commands.filter((c) => c.mode === 'deny').map((c) => c.pattern), 'Read(/auth/**)', 'Bash(cat /auth/*:*)'];
   const settingsJson = JSON.stringify({
+    //? Model + effort wiring: `model` is the settings-side backstop of the spawn's `--model` flag;
+    //? the effort knob becomes the extended-thinking budget the CLI actually honours.
+    ...(ctx.modelChoice ? { model: ctx.modelChoice.model, env: { MAX_THINKING_TOKENS: String(effortThinkingTokens(ctx.modelChoice.effort)) } } : {}),
     permissions: { allow, ask, deny },
     hooks: {
       Stop: [{ hooks: [{ type: 'command', command: STOP_HOOK_CMD }] }],

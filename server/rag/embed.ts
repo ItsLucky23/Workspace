@@ -6,10 +6,15 @@
 //? produced the same way (cosine only compares same-embedder vectors). The chosen embedder is
 //? stamped via `embedTag()` so a later switch is detectable.
 
-import { tryCatch } from '@luckystack/core';
+import { tryCatch, getPrismaClient } from '@luckystack/core';
+
+import { recordAiRun } from '../ai/activity';
+import { recordTurnSpend } from '../spend/record';
 
 const API_KEY = process.env.GEMINI_API_KEY ?? '';
-const EMBED_MODEL = process.env.WS_EMBED_MODEL ?? 'text-embedding-004';
+//? text-embedding-004 was retired by Google (404s since mid-2026, silently forcing the local
+//? fallback) — gemini-embedding-001 is the current embeddings model (3072-dim).
+const EMBED_MODEL = process.env.WS_EMBED_MODEL ?? 'gemini-embedding-001';
 const LOCAL_DIM = 256;
 
 export function embedTag(): string {
@@ -52,36 +57,63 @@ function localEmbed(text: string): number[] {
 
 interface GeminiEmbedResponse { embeddings?: { values?: number[] }[] }
 
-//? Batch-embed via the Gemini embeddings API. Returns null on any failure so the caller can fall
-//? back to local embeddings rather than losing the whole index.
+//? batchEmbedContents accepts at most 100 requests per call — larger corpora (the 200+ chunk
+//? product-knowledge index) 400 without slicing.
+const GEMINI_BATCH_MAX = 100;
+
+//? Batch-embed via the Gemini embeddings API (sliced to the API's batch limit). Returns null on
+//? any failure so the caller can fall back to local embeddings rather than losing the whole index.
 async function geminiEmbed(texts: string[]): Promise<number[][] | null> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents?key=${API_KEY}`;
-  const body = {
-    requests: texts.map((t) => ({ model: `models/${EMBED_MODEL}`, content: { parts: [{ text: t.slice(0, 8000) }] } })),
-  };
   const [err, out] = await tryCatch(async () => {
-    // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(`gemini-embed ${String(res.status)}`);
-    const json = (await res.json()) as GeminiEmbedResponse;
-    return (json.embeddings ?? []).map((e) => l2norm(e.values ?? []));
+    const all: number[][] = [];
+    for (let start = 0; start < texts.length; start += GEMINI_BATCH_MAX) {
+      const slice = texts.slice(start, start + GEMINI_BATCH_MAX);
+      const body = {
+        requests: slice.map((t) => ({ model: `models/${EMBED_MODEL}`, content: { parts: [{ text: t.slice(0, 8000) }] } })),
+      };
+      // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`gemini-embed ${String(res.status)}`);
+      const json = (await res.json()) as GeminiEmbedResponse;
+      all.push(...(json.embeddings ?? []).map((e) => l2norm(e.values ?? [])));
+    }
+    return all;
   });
   if (err || out?.length !== texts.length) return null;
   return out;
 }
 
+//? Metering context for a batch: which workspace pays/sees the run. Embeddings previously ran
+//? completely invisible (no SpendRecord, no Activity entry) — the gap-scan billing leak. Only the
+//? METERED path (Gemini) records; the local embedder is free and stays silent.
+export interface EmbedMeterCtx { workspaceId?: string; feature?: string }
+
+function meterEmbedRun(texts: string[], meter: EmbedMeterCtx, startedAt: number): void {
+  if (!meter.workspaceId) return;
+  const workspaceId = meter.workspaceId;
+  const feature = meter.feature ?? 'rag-embed';
+  const inputChars = texts.reduce((sum, t) => sum + Math.min(t.length, 8000), 0);
+  recordAiRun({ workspaceId, feature, prompt: `embed ${String(texts.length)} chunks (${String(inputChars)} chars)`, output: '', providerId: 'gemini', status: 'ok', startedAt });
+  void tryCatch(() => recordTurnSpend(getPrismaClient(), { workspaceId, sessionKey: `embed:${feature}`, model: EMBED_MODEL, providerId: 'gemini', feature, inputChars, outputChars: 0 }));
+}
+
 //? Embed a batch of texts with the active embedder (Gemini if keyed, else local). Never throws.
-export async function embedTexts(texts: string[]): Promise<number[][]> {
+export async function embedTexts(texts: string[], meter: EmbedMeterCtx = {}): Promise<number[][]> {
   if (texts.length === 0) return [];
   if (API_KEY.length > 0) {
+    const startedAt = Date.now();
     const g = await geminiEmbed(texts);
-    if (g) return g;
+    if (g) {
+      meterEmbedRun(texts, meter, startedAt);
+      return g;
+    }
   }
   return texts.map((t) => localEmbed(t));
 }
 
-export async function embedOne(text: string): Promise<number[]> {
-  const vecs = await embedTexts([text]);
+export async function embedOne(text: string, meter: EmbedMeterCtx = {}): Promise<number[]> {
+  const vecs = await embedTexts([text], meter);
   return vecs[0] ?? [];
 }
 

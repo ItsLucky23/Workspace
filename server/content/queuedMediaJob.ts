@@ -11,6 +11,7 @@
 
 import type { PrismaClient } from '@prisma/client';
 
+import { recordAiRun } from '../ai/activity';
 import { recordMediaSpend } from '../media/budget';
 import { runMediaGeneration } from '../media/registry';
 import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProgress } from '../media/types';
@@ -70,8 +71,19 @@ export async function runQueuedMediaAsset(prisma: PrismaClient, args: QueuedMedi
   //? Q2 — persistent brand/product grounding for every media flow (one choke-point). The caller's own
   //? request wins if it already set brandContext.
   const brandContext = args.request.brandContext ?? await buildBrandContext(prisma, workspaceId, contentProjectId);
+  const startedAt = Date.now();
   const res = await runMediaGeneration({ feature, ...args.request, ...(brandContext ? { brandContext } : {}), onProgress });
   await progressChain;
+
+  //? Activity-feed visibility (gap-scan leak): media generation was €-metered but never appeared in
+  //? the Activity tab — record every real (non-stub) provider run there, success AND failure.
+  if (!res.stub) {
+    recordAiRun({
+      workspaceId, feature: `media-${feature}`, label: args.request.label ?? kind,
+      prompt: args.request.prompt ?? '', output: res.ok ? (res.asset?.url ?? '') : '',
+      providerId: res.providerId, status: res.ok ? 'ok' : 'error', ...(res.error ? { error: res.error } : {}), startedAt,
+    });
+  }
 
   if (!res.ok || !res.asset) {
     await prisma.mediaJob.update({ where: { id: job.id }, data: { status: 'error', providerId: res.providerId, error: res.error ?? 'media.failed' } });

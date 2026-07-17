@@ -53,7 +53,7 @@ export async function indexProductKnowledge(prisma: PrismaClient): Promise<Produ
   const chunks = corpus.chunks.filter((c) => typeof c.text === 'string' && c.text.trim().length > 0);
   //? Embed every chunk + the marker (the hash) in one batch, so the marker also gets a real vector.
   const texts = [...chunks.map((c) => c.text), corpus.hash];
-  const [embErr, vectors] = await tryCatch(() => embedTexts(texts));
+  const [embErr, vectors] = await tryCatch(() => embedTexts(texts, { workspaceId: PRODUCT_WS, feature: 'rag-product' }));
   if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'product.embedFailed' };
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT } });
   const rows = chunks.map((c, i) => ({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));

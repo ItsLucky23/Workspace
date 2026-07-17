@@ -32,6 +32,7 @@ import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHando
 import { killClaudeByContainer } from './agentControl';
 import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
+import { resolveModelChoice, buildTurnArgs } from './modelSelect';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
 const CAPTURE = '/work/.claude/turn-stop.json';
@@ -91,7 +92,7 @@ async function projectAuth(container: string): Promise<void> {
 //? — NOT by parsing the PTY. We NEVER call `term.kill()` (its Windows conpty console-list
 //? agent can crash the host process); instead `pkill` claude inside the container so the
 //? `docker exec` exits and the PTY closes naturally.
-export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string; model?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
   const timeoutMs = opts.timeoutMs ?? 240_000;
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
   refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
@@ -103,8 +104,9 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   //? instructions (+ the settings deny set as defense-in-depth) shape what it does.
   //? `--resume <id>` continues an interrupted session verbatim (crash-recovery, #1) rather than
   //? starting a fresh conversation — the CLI restores the transcript, so the kickoff just nudges it on.
-  const resumeArgs = opts.resumeSessionId ? ['--resume', opts.resumeSessionId] : [];
-  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', container, 'claude', ...resumeArgs, '--permission-mode', 'bypassPermissions', '--settings', '/work/.claude/settings.json', '--append-system-prompt-file', '/work/.claude/stage-instructions.txt'], {
+  //? `--model` = the stage's RESOLVED model choice (base or an escalation rule) — the argv is
+  //? built by the pure buildTurnArgs so the spawn-args are unit-testable (modelSelect).
+  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', container, 'claude', ...buildTurnArgs({ ...(opts.resumeSessionId ? { resumeSessionId: opts.resumeSessionId } : {}), ...(opts.model ? { model: opts.model } : {}) })], {
     name: 'xterm-color', cols: 120, rows: 34, cwd: process.cwd(), env: process.env,
   });
   //? Object property (not a local) so TS doesn't treat the onExit-mutated flag as constant.
@@ -167,14 +169,17 @@ function coerceEnvelope(v: unknown): CarryOverEnvelope | null {
     changedFiles: Array.isArray(o.changedFiles) ? o.changedFiles.filter((x): x is string => typeof x === 'string') : [],
     openQuestions: Array.isArray(o.openQuestions) ? o.openQuestions.filter((x): x is string => typeof x === 'string') : [],
     ...(typeof o.commitHash === 'string' ? { commitHash: o.commitHash } : {}),
+    ...(typeof o.complexityScore === 'number' ? { complexityScore: o.complexityScore } : {}),
   };
 }
 
 //? A plain JSON object for the Prisma Json column (CarryOverEnvelope has an optional field).
 function envelopeJson(e: CarryOverEnvelope): Prisma.InputJsonObject {
-  return e.commitHash
-    ? { summary: e.summary, changedFiles: e.changedFiles, openQuestions: e.openQuestions, commitHash: e.commitHash }
-    : { summary: e.summary, changedFiles: e.changedFiles, openQuestions: e.openQuestions };
+  return {
+    summary: e.summary, changedFiles: e.changedFiles, openQuestions: e.openQuestions,
+    ...(e.commitHash ? { commitHash: e.commitHash } : {}),
+    ...(typeof e.complexityScore === 'number' ? { complexityScore: e.complexityScore } : {}),
+  };
 }
 
 //? A4 — the per-workspace autonomy level modulates the per-stage human gate. `gate-every` gates every stage,
@@ -223,6 +228,12 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const prior = await prisma.carryOver.findFirst({ where: { ticketId: ticket.id, toStageId: stageKey }, orderBy: { createdAt: 'desc' } });
   const carryOver = coerceEnvelope(prior?.envelope ?? null);
 
+  //? Resolve the ACTUAL model/effort for this turn: the stage's base choice, or (autoEscalate) the
+  //? escalation rule matched by the agent's own complexity score from the previous stage.
+  const choice = resolveModelChoice(cfg.modelCfg, carryOver?.complexityScore ?? null);
+  const scoreNote = typeof carryOver?.complexityScore === 'number' ? ` (score ${String(carryOver.complexityScore)})` : '';
+  console.log(`[stage] ${ticketKey}@${stageKey} model=${choice.model} effort=${choice.effort}${scoreNote}${cfg.modelCfg.autoEscalate ? ' autoEscalate' : ''}`);
+
   //? Context-docs injected into CLAUDE.md: enabled workspace-wide workflow guidance (the
   //? starter-library snippets) + this stage's explicitly-selected sourceIds (skip the
   //? `summary` pseudo-source + any non-ObjectId ids so the Mongo `in` filter stays valid).
@@ -264,14 +275,14 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? referenced EnvVar, decrypted) injected as env. Best-effort — a read failure just omits integrations.
   const integrations = await loadMcpIntegrations(prisma, workspaceId);
 
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}) });
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
 
   //? The ONE runtime row for this worker session (04b §7) — created here (nothing else
   //? writes worker rows). Its id anchors the CarryOver; status is Conductor-owned.
   const session = await prisma.agentSession.upsert({
     where: { workspaceId_sessionKey: { workspaceId, sessionKey } },
-    create: { workspaceId, ticketId: ticket.id, stageId: stageKey, kind: 'worker', sessionKey, status: 'busy', containerId: container.containerId, worktreePath: '/work', cliVersion: '2.1.198', model: cfg.modelCfg.base.model },
+    create: { workspaceId, ticketId: ticket.id, stageId: stageKey, kind: 'worker', sessionKey, status: 'busy', containerId: container.containerId, worktreePath: '/work', cliVersion: '2.1.198', model: choice.model },
     update: { status: 'busy', containerId: container.containerId },
   });
 
@@ -286,7 +297,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     if (resumeSessionId) return 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.';
     return 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
   })();
-  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey });
+  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: choice.model });
   if (!drive.ok) {
     await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
     return { ok: false, error: drive.error ?? 'turn.failed' };
@@ -299,7 +310,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
   await tryCatch(() => recordTurnSpend(prisma, {
     workspaceId, userId: ticket.assigneeId ?? null, ticketId: ticket.id, stageId: stageKey, sessionKey,
-    model: cfg.modelCfg.base.model, providerId: 'claude-cli', feature: 'pipeline-agent',
+    model: choice.model, providerId: 'claude-cli', feature: 'pipeline-agent',
     inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
   }));
 
@@ -389,7 +400,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     const pcProbe = await docker(['exec', container.name, 'sh', '-c', 'test -f /work/.claude/precompact-signal && echo yes || echo no']);
     const preCompact = pcProbe.out.trim() === 'yes';
     if (!preCompact && !shouldHandoff(sess.tokenEstimate, budget)) return;
-    const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: sess.claudeSessionId });
+    const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: sess.claudeSessionId, model: choice.model });
     const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
     if (!body) return;
     await recordHandoff(prisma, { workspaceId, sessionKey, ticketId: ticket.id, stageId: stageKey, body, reason: preCompact ? 'precompact' : 'budget' });

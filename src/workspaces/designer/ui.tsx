@@ -33,7 +33,7 @@ export function RenameField({ value, onRename, className = '' }: { value: string
     <span onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }} title={translate({ key: 'workspaces.designer.rename' })}
       className={`group/rn inline-flex items-center gap-1.5 min-w-0 ${className}`}>
       <span className="truncate">{value}</span>
-      <button type="button" onClick={(e) => { e.stopPropagation(); setEditing(true); }} className="text-[10px] text-muted opacity-0 group-hover/rn:opacity-100 shrink-0 cursor-pointer hover:text-primary"><Icon name="pen" /></button>
+      <button type="button" onClick={(e) => { e.stopPropagation(); setEditing(true); }} className="text-[10px] text-muted opacity-0 pointer-coarse:opacity-100 group-hover/rn:opacity-100 shrink-0 cursor-pointer hover:text-primary"><Icon name="pen" /></button>
     </span>
   );
 }

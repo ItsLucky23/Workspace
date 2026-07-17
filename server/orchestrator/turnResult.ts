@@ -17,6 +17,9 @@ export interface CarryOverEnvelope {
   //? shaped `{question, assumption}`). Surfaced on the ticket without parking it; a divergent answer → revision.
   advisories?: { q: string; assumption: string }[];
   commitHash?: string;
+  //? Auto-escalation (StageModelCfg.autoEscalate): the agent's own 1–10 complexity score for the
+  //? REMAINING work — the NEXT stage resolves its model tier from it (modelSelect.resolveModelChoice).
+  complexityScore?: number;
 }
 
 //? What a turn's final message signalled. The stageRunner weighs this against the stage's
@@ -79,6 +82,9 @@ export async function parseTurnResult(message: string): Promise<TurnResult> {
     const o = (parsed !== null && typeof parsed === 'object') ? parsed as Record<string, unknown> : {};
     const commitHash = typeof o.commitHash === 'string' ? o.commitHash : undefined;
     const oq = extractOpenQuestions(o.openQuestions);
+    //? complexityScore: clamp to the 1–10 contract; anything non-numeric is simply absent.
+    const rawScore = typeof o.complexityScore === 'number' && Number.isFinite(o.complexityScore)
+      ? Math.min(10, Math.max(1, Math.round(o.complexityScore))) : undefined;
     return {
       kind: 'done',
       envelope: {
@@ -87,6 +93,7 @@ export async function parseTurnResult(message: string): Promise<TurnResult> {
         openQuestions: oq.openQuestions,
         ...(oq.advisories.length > 0 ? { advisories: oq.advisories } : {}),
         ...(commitHash ? { commitHash } : {}),
+        ...(typeof rawScore === 'number' ? { complexityScore: rawScore } : {}),
       },
     };
   }

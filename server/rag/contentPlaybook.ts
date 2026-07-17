@@ -75,7 +75,7 @@ export async function indexContentPlaybook(prisma: PrismaClient): Promise<Playbo
   const corpus = await loadPlaybook();
   if (!corpus) return { ok: false, entries: 0, error: 'playbook.corpusMissing' };
   const texts = [...corpus.chunks.map((c) => c.text), corpus.hash];
-  const [embErr, vectors] = await tryCatch(() => embedTexts(texts));
+  const [embErr, vectors] = await tryCatch(() => embedTexts(texts, { workspaceId: PLAYBOOK_WS, feature: 'rag-playbook' }));
   if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'playbook.embedFailed' };
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT } });
   const rows = corpus.chunks.map((c, i) => ({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));

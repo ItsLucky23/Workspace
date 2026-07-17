@@ -59,7 +59,7 @@ export async function buildKnowledgeGraph(prisma: PrismaClient, workspaceId: str
     ...tickets.map((t) => `${t.title}\n${t.description ?? ''}`),
     ...pieces.map((p) => p.title),
   ];
-  const vectors = await embedTexts(texts);
+  const vectors = await embedTexts(texts, { workspaceId, feature: 'knowledge-graph' });
   const embedded = nodes.map((n, i) => ({ id: n.id, vec: vectors[i] ?? [] }));
   const edges = similarityEdges(embedded, opts);
   return { nodes, edges };

@@ -15,6 +15,7 @@ import { Disclosure, Segmented, WsButton } from '../_components/primitives';
 import { MediaUploadButton } from '../_components/MediaUploadButton';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { isModuleEnabled } from '../_data/modules';
+import { UI_PROBLEMS, uiProblemI18nKey } from '../_data/uiReviewTaxonomy';
 import { DesignerProvider, useDesigner } from './state';
 import type { ThemeMode } from './themes';
 import Components from './sections/Components';
@@ -51,8 +52,8 @@ export default function DesignerPage() {
 //? The sections the unified "AI generates it" bar can target (each has an AI generator).
 const AI_SECTIONS = new Set<SectionId>(['themes', 'styles', 'animations']);
 
-//? U1 — "unfuck the UI" review request: the fixed problem taxonomy the user ticks (kept small + concrete).
-const UI_PROBLEMS = ['clutter', 'confusing', 'spacing', 'alignment', 'contrast', 'inconsistent'] as const;
+//? U1 — "unfuck the UI" review request: the CANONICAL problem taxonomy (shared with the server-side
+//? validator via _data/uiReviewTaxonomy — a diverging local list here previously nulled every tick).
 
 //? U1 — a self-contained UI-review form (ui-review-create). Inline (rendered inside WorkspacesProvider), so it
 //? may use useWorkspaces directly (no menuHandler-portal gotcha, lesson 0011). Screenshots upload to media; the
@@ -85,7 +86,7 @@ function UiReviewForm() {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {UI_PROBLEMS.map((p) => (
-          <button key={p} type="button" onClick={() => { setProblems((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]); setSent(false); }} className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${problems.includes(p) ? 'bg-primary/15 text-primary' : 'bg-container2 text-muted hover:text-common'}`}>{translate({ key: `workspaces.uiReview.problem_${p}` })}</button>
+          <button key={p} type="button" onClick={() => { setProblems((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]); setSent(false); }} className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${problems.includes(p) ? 'bg-primary/15 text-primary' : 'bg-container2 text-muted hover:text-common'}`}>{translate({ key: `workspaces.uiReview.${uiProblemI18nKey(p)}` })}</button>
         ))}
       </div>
       <input value={page} onChange={(e) => { setPage(e.target.value); setSent(false); }} placeholder={translate({ key: 'workspaces.uiReview.pagePlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />

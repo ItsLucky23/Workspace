@@ -52,7 +52,7 @@ export async function indexWorkspace(
     for (const [i, content] of parts.entries()) rows.push({ filePath: f.path, chunkId: String(i), content, text: `${f.path}\n${content}` });
   }
 
-  const vectors = await embedTexts(rows.map((r) => r.text));
+  const vectors = await embedTexts(rows.map((r) => r.text), { workspaceId, feature: 'rag-index' });
 
   //? Frozen-per-commit replace: drop this commit's old rows, insert the fresh set.
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash } });
@@ -99,7 +99,7 @@ export async function retrieve(
   const entries = await prisma.ragEntry.findMany({ where: { workspaceId, commitHash: ref }, select: { filePath: true, content: true, embedding: true } });
   if (entries.length === 0) return [];
 
-  const qvec = await embedOne(query);
+  const qvec = await embedOne(query, { workspaceId, feature: 'rag-query' });
   const scored = entries.map((e) => ({
     filePath: e.filePath,
     content: e.content,

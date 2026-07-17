@@ -1460,12 +1460,13 @@
       "desc": "Meld wat niet klopt — upload screenshots, vink de problemen aan, voeg notities toe. Het wordt een redesign-ticket.",
       "addShot": "Screenshot toevoegen",
       "shotN": "Screenshot {{n}}",
-      "problem_clutter": "Te druk",
+      "problem_cluttered": "Te druk",
       "problem_confusing": "Verwarrend",
-      "problem_spacing": "Witruimte",
-      "problem_alignment": "Uitlijning",
-      "problem_contrast": "Contrast",
+      "problem_not_responsive": "Niet responsive",
+      "problem_spacing_alignment": "Witruimte & uitlijning",
+      "problem_color_contrast": "Kleur & contrast",
       "problem_inconsistent": "Inconsistent",
+      "problem_visual_hierarchy": "Visuele hiërarchie",
       "pagePlaceholder": "Welke pagina/scherm? (optioneel)",
       "notesPlaceholder": "Wat moet er veranderen en waarom?",
       "submit": "Reviewverzoek versturen",
@@ -1908,7 +1909,12 @@
     },
     "wsShell": {
       "back": "Terug",
-      "backTo": " naar {{label}}"
+      "backTo": " naar {{label}}",
+      "fabNewTicket": "Nieuw ticket",
+      "fabNewPiece": "Nieuw content-item",
+      "fabTitlePlaceholder": "Titel…",
+      "fabCreate": "Aanmaken",
+      "fabCancel": "Annuleren"
     }
   }
 }

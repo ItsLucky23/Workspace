@@ -93,7 +93,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                 <div className="text-sm text-title truncate">{b.name}</div>
                 <div className="text-xs text-muted truncate">{b.productName}</div>
               </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); removeBrief(b); }} className="text-muted hover:text-wrong opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); removeBrief(b); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>
             </div>
           ))}
         </div>

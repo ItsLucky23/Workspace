@@ -40,7 +40,7 @@ export default function Styles() {
             <div key={st.id} onClick={() => { d.setActiveStyleId(st.id); }} className={`group rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${st.id === d.activeStyleId ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
               <div className="flex items-center gap-2">
                 <RenameField value={st.name} onRename={(n) => { d.renameStyle(st.id, n); }} className="flex-1 min-w-0 text-sm text-title" />
-                {st.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeStyle(st.id); }} className="text-muted hover:text-wrong opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
+                {st.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeStyle(st.id); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
               </div>
               <div className="flex flex-wrap gap-1 mt-1">{styleChips(st).slice(0, 3).map((c) => <span key={c} className="text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5">{c}</span>)}</div>
             </div>

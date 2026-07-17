@@ -312,7 +312,7 @@ function FileDiff({ file, mr, ticketKey }: { file: MrDiffFile; mr: MrView; ticke
                       <button
                         type="button" title={translate({ key: 'workspaces.mr.commentOnLine' })}
                         onClick={() => { setComposing((c) => (c === key ? null : key)); }}
-                        className="opacity-0 group-hover/line:opacity-100 text-muted hover:text-primary transition-opacity cursor-pointer"
+                        className="opacity-0 pointer-coarse:opacity-100 group-hover/line:opacity-100 text-muted hover:text-primary transition-opacity cursor-pointer"
                       >
                         <Icon name="comment" />
                       </button>

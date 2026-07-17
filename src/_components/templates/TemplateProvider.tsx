@@ -70,7 +70,7 @@ export default function TemplateProvider({
         reconnectAttempt={socketStatus.self.reconnectAttempt}
         label={translate({ key: 'template.socketStatus' })}
         position="bottom-left"
-        className="left-1/2 right-auto -translate-x-1/2"
+        className="left-1/2! right-auto! -translate-x-1/2 -translate-y-16 md:translate-y-0"
       />
       <TemplateComponent>{children}</TemplateComponent>
     </div>

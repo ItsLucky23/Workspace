@@ -1460,12 +1460,13 @@
       "desc": "Signalez ce qui cloche — téléversez des captures, cochez les problèmes, ajoutez des notes. Cela devient un ticket de refonte.",
       "addShot": "Ajouter une capture",
       "shotN": "Capture {{n}}",
-      "problem_clutter": "Trop chargé",
+      "problem_cluttered": "Trop chargé",
       "problem_confusing": "Confus",
-      "problem_spacing": "Espacement",
-      "problem_alignment": "Alignement",
-      "problem_contrast": "Contraste",
+      "problem_not_responsive": "Non responsive",
+      "problem_spacing_alignment": "Espacement et alignement",
+      "problem_color_contrast": "Couleur et contraste",
       "problem_inconsistent": "Incohérent",
+      "problem_visual_hierarchy": "Hiérarchie visuelle",
       "pagePlaceholder": "Quelle page/écran ? (facultatif)",
       "notesPlaceholder": "Qu'est-ce qui doit changer et pourquoi ?",
       "submit": "Envoyer la demande",
@@ -1908,7 +1909,12 @@
     },
     "wsShell": {
       "back": "Retour",
-      "backTo": " vers {{label}}"
+      "backTo": " vers {{label}}",
+      "fabNewTicket": "Nouveau ticket",
+      "fabNewPiece": "Nouveau contenu",
+      "fabTitlePlaceholder": "Titre…",
+      "fabCreate": "Créer",
+      "fabCancel": "Annuler"
     }
   }
 }

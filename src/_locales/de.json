@@ -1460,12 +1460,13 @@
       "desc": "Melde, was sich falsch anfühlt — Screenshots hochladen, Probleme ankreuzen, Notizen hinzufügen. Es wird ein Redesign-Ticket.",
       "addShot": "Screenshot hinzufügen",
       "shotN": "Screenshot {{n}}",
-      "problem_clutter": "Zu überladen",
+      "problem_cluttered": "Zu überladen",
       "problem_confusing": "Verwirrend",
-      "problem_spacing": "Abstände",
-      "problem_alignment": "Ausrichtung",
-      "problem_contrast": "Kontrast",
+      "problem_not_responsive": "Nicht responsiv",
+      "problem_spacing_alignment": "Abstände & Ausrichtung",
+      "problem_color_contrast": "Farbe & Kontrast",
       "problem_inconsistent": "Inkonsistent",
+      "problem_visual_hierarchy": "Visuelle Hierarchie",
       "pagePlaceholder": "Welche Seite/Ansicht? (optional)",
       "notesPlaceholder": "Was sollte sich ändern und warum?",
       "submit": "Review-Anfrage senden",
@@ -1908,7 +1909,12 @@
     },
     "wsShell": {
       "back": "Zurück",
-      "backTo": " zu {{label}}"
+      "backTo": " zu {{label}}",
+      "fabNewTicket": "Neues Ticket",
+      "fabNewPiece": "Neues Content-Element",
+      "fabTitlePlaceholder": "Titel…",
+      "fabCreate": "Erstellen",
+      "fabCancel": "Abbrechen"
     }
   }
 }

@@ -36,7 +36,7 @@ export default function Animations() {
             <div key={an.id} onClick={() => { d.setActiveAnimId(an.id); }} className={`group rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${an.id === d.activeAnimId ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
               <div className="flex items-center gap-2">
                 <RenameField value={an.name} onRename={(n) => { d.renameAnim(an.id, n); }} className="flex-1 min-w-0 text-sm text-title" />
-                {an.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeAnim(an.id); }} className="text-muted hover:text-wrong opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
+                {an.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeAnim(an.id); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
               </div>
               <div className="flex flex-wrap gap-1 mt-1">{animChips(an).slice(0, 3).map((c) => <span key={c} className="text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5">{c}</span>)}</div>
             </div>

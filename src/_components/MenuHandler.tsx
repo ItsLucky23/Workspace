@@ -28,10 +28,12 @@ interface MenuHandlerContextType {
 }
 
 const MENU_ANIMATION_MS = 200;
+//? Clamped to the viewport (minus the overlay's p-3 margin) so the smallest phone never
+//? clips a modal horizontally — every caller scales along without change.
 const SIZE_PX: Record<NonNullable<MenuOptions['size']>, string> = {
-  sm: '384px',
-  md: '512px',
-  lg: '768px',
+  sm: 'min(384px, calc(100vw - 1.5rem))',
+  md: 'min(512px, calc(100vw - 1.5rem))',
+  lg: 'min(768px, calc(100vw - 1.5rem))',
 };
 
 const MenuHandlerContext = createContext<MenuHandlerContextType | null>(null);

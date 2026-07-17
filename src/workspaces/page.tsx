@@ -165,7 +165,7 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
           <PopMenu
             items={cardMenuItems(ticket, ctx, translate)}
             onOpenChange={(open) => { if (!open) menuClosedAt.current = Date.now(); }}
-            triggerClass="w-7 h-7 flex items-center justify-center rounded-lg text-muted opacity-0 group-hover:opacity-100 hover:bg-container2 hover:text-common cursor-pointer transition-opacity"
+            triggerClass="w-7 h-7 flex items-center justify-center rounded-lg text-muted opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 hover:bg-container2 hover:text-common cursor-pointer transition-opacity"
           />
         </div>
       </div>
