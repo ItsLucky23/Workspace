@@ -36,7 +36,9 @@ try {
   const job = await prisma.mediaJob.findFirst({ where: { workspaceId: wsId, contentProjectId: pieceId, feature: 'model-3d' } });
   eq(job?.providerId, 'fal', '3d routed to its provider');
   eq(job?.resultAssetId, mesh?.id, 'the MediaJob links its asset');
-  eq((await prisma.mediaBudget.findUnique({ where: { workspaceId: wsId } }))?.spentCents, 20, 'the 3d stub cost (20c) debited the budget');
+  //? #133 — a PROMPT-driven 3d runs the image→3d chain: the source image (4c) + the mesh (20c).
+  //? (A referenceUrl-driven call skips the image stage and debits only 20c.)
+  eq((await prisma.mediaBudget.findUnique({ where: { workspaceId: wsId } }))?.spentCents, 24, 'the prompt→image→3d chain debited image (4c) + mesh (20c)');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

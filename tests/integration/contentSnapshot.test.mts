@@ -47,7 +47,10 @@ try {
   await enqueueControlAction({ workspaceId: wsId, op: 'content-archive', target: {}, payload: { contentProjectId: piece?.id }, userId: owner.id, clientRequestId: `f42-ar-${String(stamp)}` });
   await poll(async () => ((await prisma.contentProject.findUnique({ where: { id: piece?.id ?? '' } }))?.archived === true ? true : null));
   const snap2 = await buildSnapshot(prisma, owner.id, wsId);
-  assert(!snap2.content.pieces.some((p) => p.title === 'Dino explainer'), 'an archived piece drops out of the snapshot');
+  //? #129 — the snapshot KEEPS archived pieces (flagged) so the Archived view + the media library can
+  //? show them; the content board filters them client-side. (Pre-#129 this asserted the piece dropped.)
+  const archivedPiece = snap2.content.pieces.find((p) => p.title === 'Dino explainer');
+  assert(archivedPiece !== undefined && archivedPiece.archived === true, 'an archived piece stays in the snapshot, flagged archived (the board filters client-side)');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

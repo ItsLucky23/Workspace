@@ -23,8 +23,12 @@ await import('@luckystack/core');
 //? The RAW `.env.local` values dotenvx injected — the provider keys are secret-manager POINTERS
 //? (e.g. FAL_KEY=`FAL_KEY_V1`). We stash them, then unset for the default stub world. `db()` restores the
 //? pointers so the secret-manager can RESOLVE them (it reads the pointer from process.env, not the file).
+//? Blank (NOT delete): dotenvx runs again on later server-module imports and only injects MISSING
+//? names — a deleted key resurrects as its raw pointer (the .env migration moved the pointers to
+//? `.env`, which made this bite: providers then fired REAL calls in the stub world → 401s). An
+//? EMPTY value survives every later pass and providers `.trim()` it to "absent".
 const rawPointers: Record<string, string> = {};
-for (const k of PROVIDER_KEYS) { const v = process.env[k]; if (v !== undefined) rawPointers[k] = v; delete process.env[k]; }
+for (const k of PROVIDER_KEYS) { const v = process.env[k]; if (v !== undefined && v !== '') rawPointers[k] = v; process.env[k] = ''; }
 
 //? The REAL provider keys resolved by the secret-manager during `db()`, stashed so a LIVE test can
 //? restore them (`enableLiveProviders()`) after the default stub-unset.
@@ -46,8 +50,12 @@ export async function db(): Promise<PrismaClient> {
   for (const k of PROVIDER_KEYS) {
     const v = process.env[k];
     if (v !== undefined && v !== '') stashedProviderKeys[k] = v;
-    delete process.env[k];
+    process.env[k] = ''; //? blank, not delete — see the rawPointers note (dotenvx re-injects missing names)
   }
+  //? Deterministic INTEGRATION default: cheap media semantics (single-stage flows, lowest cost) —
+  //? historically `.env`'s WS_MEDIA_CHEAP=1 was re-injected by a later dotenvx pass; set it
+  //? explicitly here (db()-only, so pure unit tests keep the real OFF-by-default behaviour).
+  process.env.WS_MEDIA_CHEAP = '1';
   //? H2 fail-closed: at-rest encryption is mandatory, so `encryptSecret` now THROWS without a key.
   //? Guarantee a deterministic test key when the secret-manager didn't supply one (tests create
   //? fresh data per run, so intra-run consistency is all that matters).
