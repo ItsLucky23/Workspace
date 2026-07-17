@@ -2349,6 +2349,15 @@
       "readOnlyNote": "Nur lesen: Antworten erfolgt auf der Plattform selbst.",
       "empty": "Noch keine Kommentare",
       "emptySub": "Kommentare zu deinen veröffentlichten Posts erscheinen hier. YouTube braucht die neue Lese-Berechtigung — verbinde das Konto einmal neu, falls dies leer bleibt."
+    },
+    "voice": {
+      "record": "Sprachnachricht aufnehmen",
+      "stop": "Aufnahme stoppen",
+      "micDenied": "Kein Mikrofonzugriff.",
+      "failed": "Transkription fehlgeschlagen.",
+      "empty": "Nichts gehört – versuche es erneut.",
+      "speakOn": "Antworten werden vorgelesen (zum Stummschalten tippen)",
+      "speakOff": "Antworten vorlesen"
     }
   }
 }

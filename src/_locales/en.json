@@ -2349,6 +2349,15 @@
       "readOnlyNote": "Read-only: replying stays on the platform itself.",
       "empty": "No comments yet",
       "emptySub": "Comments on your published posts appear here. YouTube needs the new read permission — reconnect the account once if this stays empty."
+    },
+    "voice": {
+      "record": "Record a voice message",
+      "stop": "Stop recording",
+      "micDenied": "Microphone access denied.",
+      "failed": "Voice transcription failed.",
+      "empty": "Nothing was heard - try again.",
+      "speakOn": "Speaking replies aloud (tap to mute)",
+      "speakOff": "Speak replies aloud"
     }
   }
 }

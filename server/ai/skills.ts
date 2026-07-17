@@ -38,6 +38,7 @@ const FEATURE_GROUP: Record<AiFeature, SkillApplyPoint> = {
   'custom-generate': 'custom',
   'image-critique': 'designer',
   'document-generate': 'documents',
+  'speech-to-text': 'chat',
 };
 
 export function applyPointForFeature(feature: AiFeature): SkillApplyPoint {

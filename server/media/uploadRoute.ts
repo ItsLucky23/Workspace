@@ -23,6 +23,8 @@ const MAX_BYTES = 64 * 1024 * 1024; // 64 MB — generous for a short clip, boun
 const ALLOWED_EXT: Record<string, string> = {
   png: 'image', jpg: 'image', jpeg: 'image', webp: 'image', gif: 'image',
   mp4: 'video', webm: 'video', mov: 'video',
+  //? VO — voice clips (browser MediaRecorder → audio/webm; also common upload formats) for speech-to-text.
+  mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', aac: 'audio',
 };
 
 const sendJson = (res: ServerResponse, code: number, body: Record<string, unknown>): void => {

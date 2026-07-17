@@ -2349,6 +2349,15 @@
       "readOnlyNote": "Lecture seule : répondre se fait sur la plateforme elle-même.",
       "empty": "Aucun commentaire",
       "emptySub": "Les commentaires de vos publications apparaissent ici. YouTube requiert la nouvelle permission de lecture — reconnectez le compte une fois si cela reste vide."
+    },
+    "voice": {
+      "record": "Enregistrer un message vocal",
+      "stop": "Arrêter l'enregistrement",
+      "micDenied": "Accès au microphone refusé.",
+      "failed": "Échec de la transcription.",
+      "empty": "Rien entendu – réessayez.",
+      "speakOn": "Réponses lues à voix haute (appuyez pour couper)",
+      "speakOff": "Lire les réponses à voix haute"
     }
   }
 }

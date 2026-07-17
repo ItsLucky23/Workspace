@@ -42,6 +42,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'image-critique': 'gemini-api',
   //? DOC2 — document drafting is non-coding bulk text → Gemini (fast/cheap), overridable per workspace.
   'document-generate': 'gemini-api',
+  //? VO — speech-to-text needs an audio-capable model → Gemini. Degrades to a stub without a key.
+  'speech-to-text': 'gemini-api',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a

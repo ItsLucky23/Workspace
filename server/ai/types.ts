@@ -56,7 +56,10 @@ export type AiFeature =
   | 'image-critique'
   //? DOC2 (DOCUMENTS_AND_SKILLS) — the Documents module's draft writer (generate/rewrite/summarize/extend
   //? a workspace document). Non-coding bulk text → defaults to Gemini; drafts only, never a direct write.
-  | 'document-generate';
+  | 'document-generate'
+  //? VO (DOCUMENTS_AND_SKILLS) — speech-to-text: an audio clip → its transcript. Needs an audio-capable
+  //? model (Gemini); the transcript then rides the existing text paths (chat / ticket). Never a write.
+  | 'speech-to-text';
 
 export interface AiCompletionRequest {
   prompt: string;
@@ -66,6 +69,9 @@ export interface AiCompletionRequest {
   //? F5 — image URLs (local `/media/...` or http) for a MULTIMODAL turn. A vision provider (Gemini) reads
   //? the actual pixels; text-only providers (Claude CLI) ignore them. Empty/omitted = a normal text turn.
   imageUrls?: string[];
+  //? VO — audio URLs (local `/media/...` or http) for a speech-to-text turn. An audio-capable provider
+  //? (Gemini) transcribes them; text-only providers ignore them.
+  audioUrls?: string[];
   //? Optional tagging so the run shows up in the workspace's central AI-activity feed (the
   //? "Activity" tab of the Workspace-AI panel). No tenancy is enforced here — it's a display tag.
   workspaceId?: string;

@@ -133,5 +133,5 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | EV3 | ✅ | 0274 | evalPipeline 19/19 |
 | KG1 | ✅ | — | kgBudgetAndTranscode 14/14 |
 | KG2 | ✅ | — | kgBudgetAndTranscode 14/14 |
-| VO1 | ⬜ | | |
-| VO2 | ⬜ | | |
+| VO1 | ✅ | 0275 | voiceLayer 10/10 (live round-trip) |
+| VO2 | ✅ | 0275 | voiceLayer 10/10 (live round-trip) |

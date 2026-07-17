@@ -2349,6 +2349,15 @@
       "readOnlyNote": "Alleen-lezen: reageren doe je op het platform zelf.",
       "empty": "Nog geen reacties",
       "emptySub": "Reacties op je gepubliceerde posts verschijnen hier. YouTube heeft de nieuwe lees-permissie nodig — koppel het account één keer opnieuw als dit leeg blijft."
+    },
+    "voice": {
+      "record": "Spraakbericht opnemen",
+      "stop": "Opname stoppen",
+      "micDenied": "Geen toegang tot de microfoon.",
+      "failed": "Transcriptie mislukt.",
+      "empty": "Niets gehoord - probeer opnieuw.",
+      "speakOn": "Antwoorden worden voorgelezen (tik om te dempen)",
+      "speakOff": "Antwoorden voorlezen"
     }
   }
 }

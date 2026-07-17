@@ -7,7 +7,10 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { apiRequest, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
+import { apiRequest, tryCatch as tryCatchClient, i18nNotify as notify, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
+
+import { uploadMedia } from '../_functions/uploadMedia';
+import { backendUrl } from '../../../config';
 
 import { motion } from 'motion/react';
 
@@ -625,11 +628,83 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m
 //? threading width through app state — keeps drag re-renders local to the panel).
 let rememberedAiWidth = 340;
 
+//? VO (DOCUMENTS_AND_SKILLS) — phone-first voice input: record via the PWA mic (MediaRecorder), upload
+//? the clip, transcribe it (provider-abstracted STT), and hand the transcript back to prefill the chat.
+//? Gracefully hidden when the browser has no mic/MediaRecorder (typing stays the path). One clip → one
+//? transcript; no new verb (invariant #2). Own state machine: idle → recording → transcribing.
+function VoiceMicButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+  const translate = useTranslator();
+  const { activeWorkspace } = useWorkspaces();
+  const [state, setState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const supported = 'MediaRecorder' in globalThis && typeof navigator !== 'undefined' && typeof navigator.mediaDevices.getUserMedia === 'function';
+  if (!supported) return null;
+
+  const stop = (): void => { recRef.current?.stop(); };
+  const start = async (): Promise<void> => {
+    const [err, stream] = await tryCatchClient(() => navigator.mediaDevices.getUserMedia({ audio: true }));
+    if (err || !stream) { notify.error({ key: 'workspaces.voice.micDenied' }); return; }
+    chunksRef.current = [];
+    const rec = new MediaRecorder(stream);
+    recRef.current = rec;
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    rec.onstop = () => {
+      for (const t of stream.getTracks()) t.stop();
+      void (async () => {
+        setState('transcribing');
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
+        const file = new File([blob], `voice-${String(chunksRef.current.length)}.webm`, { type: 'audio/webm' });
+        const uploaded = await uploadMedia(file, activeWorkspace.id);
+        if (!uploaded) { setState('idle'); notify.error({ key: 'workspaces.voice.failed' }); return; }
+        const [rerr, res] = await tryCatchClient(() => apiRequest({ name: 'workspaces/voiceTranscribe', version: 'v1', data: { workspaceId: activeWorkspace.id, audioUrl: uploaded.url } }));
+        setState('idle');
+        if (!rerr && res?.status === 'success') {
+          const text = res.result.text.trim();
+          if (text.length > 0) onTranscript(text);
+          else notify.error({ key: 'workspaces.voice.empty' });
+        } else notify.error({ key: 'workspaces.voice.failed' });
+      })();
+    };
+    rec.start();
+    setState('recording');
+  };
+
+  const busy = state === 'transcribing';
+  return (
+    <button
+      type="button" disabled={busy}
+      onClick={() => { if (state === 'recording') stop(); else void start(); }}
+      title={translate({ key: state === 'recording' ? 'workspaces.voice.stop' : 'workspaces.voice.record' })}
+      aria-label={translate({ key: state === 'recording' ? 'workspaces.voice.stop' : 'workspaces.voice.record' })}
+      className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-60 ${state === 'recording' ? 'bg-wrong text-title-primary animate-pulse' : 'bg-container2 text-common hover:bg-container2-hover'}`}
+    >
+      <Icon name={busy ? 'spinner' : (state === 'recording' ? 'stop' : 'microphone')} className={busy ? 'animate-spin' : ''} />
+    </button>
+  );
+}
+
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, applyCopilot, aiRuns, isMobile } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, applyCopilot, aiRuns, isMobile, activeWorkspace } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
+  //? VO — "speak replies" opt-in: TTS-play each NEW assistant message (persisted per browser).
+  const [speak, setSpeak] = useState(() => globalThis.localStorage.getItem('ws-voice-speak') === '1');
+  const lastSpokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!speak) return;
+    const last = chat.at(-1);
+    if (last?.role !== 'ai' || last.pending === true || last.text.trim().length === 0 || last.id === lastSpokenRef.current) return;
+    lastSpokenRef.current = last.id;
+    const text = last.text;
+    void (async () => {
+      const [err, res] = await tryCatchClient(() => apiRequest({ name: 'workspaces/voiceSynthesize', version: 'v1', data: { workspaceId: activeWorkspace.id, text } }));
+      if (err || res?.status !== 'success' || res.result.stub) return;
+      const audio = new Audio(`${backendUrl}${res.result.url}`);
+      void audio.play().catch(() => { /* autoplay may be blocked until a user gesture */ });
+    })();
+  }, [chat, speak, activeWorkspace.id]);
   const [width, setWidth] = useState(rememberedAiWidth);
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -703,6 +778,10 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
               )}
             </div>
             <div className="border-t border-divider p-3 flex items-center gap-2">
+              {/* VO — voice input: record → STT → prefill the chat draft (phone-first, PWA mic). */}
+              <VoiceMicButton onTranscript={(t) => { setDraft((d) => (d.trim().length > 0 ? `${d} ${t}` : t)); }} />
+              {/* VO — "speak replies" opt-in (TTS the Assistant's answers aloud). */}
+              <button type="button" onClick={() => { setSpeak((s) => { const next = !s; globalThis.localStorage.setItem('ws-voice-speak', next ? '1' : '0'); return next; }); }} title={translate({ key: speak ? 'workspaces.voice.speakOn' : 'workspaces.voice.speakOff' })} aria-label={translate({ key: speak ? 'workspaces.voice.speakOn' : 'workspaces.voice.speakOff' })} className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center cursor-pointer ${speak ? 'bg-primary/15 text-primary' : 'bg-container2 text-muted hover:text-common'}`}><Icon name="volume-high" /></button>
               <input
                 value={draft} onChange={(e) => { setDraft(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
                 placeholder={translate({ key: 'workspaces.shell.askAiPlaceholder' })}

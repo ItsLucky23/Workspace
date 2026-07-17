@@ -15,6 +15,31 @@ import type { AiCompletionRequest, AiCompletionResult, AiProvider } from '../typ
 //? URLs are read straight off the media store on disk; http(s) URLs are fetched. Returns null on any failure
 //? (the turn then just proceeds text-only). Bounded to ~8MB so a huge asset can't blow the request.
 const MIME_BY_EXT: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+//? VO (DOCUMENTS_AND_SKILLS) — audio mime types for speech-to-text (Gemini reads audio inline_data).
+const AUDIO_MIME_BY_EXT: Record<string, string> = { '.mp3': 'audio/mp3', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.webm': 'audio/webm', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac' };
+async function mediaPart(url: string, mimeMap: Record<string, string>, fallbackMime: string, maxBytes = 20_000_000): Promise<{ inline_data: { mime_type: string; data: string } } | null> {
+  const [err, part] = await tryCatch(async () => {
+    let bytes: Buffer | null = null;
+    const ext = path.extname(new URL(url, 'http://x').pathname).toLowerCase();
+    if (url.startsWith('/media/')) {
+      const file = path.join(MEDIA_DIR, url.slice('/media/'.length));
+      if (!existsSync(file)) return null;
+      bytes = readFileSync(file);
+    } else if (/^https?:\/\//.test(url)) {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      bytes = Buffer.from(await res.arrayBuffer());
+    } else {
+      return null;
+    }
+    if (bytes.length === 0 || bytes.length > maxBytes) return null;
+    return { inline_data: { mime_type: mimeMap[ext] ?? fallbackMime, data: bytes.toString('base64') } };
+  });
+  return err ? null : (part ?? null);
+}
+async function audioPart(url: string): Promise<{ inline_data: { mime_type: string; data: string } } | null> {
+  return mediaPart(url, AUDIO_MIME_BY_EXT, 'audio/webm');
+}
 async function imagePart(url: string): Promise<{ inline_data: { mime_type: string; data: string } } | null> {
   const [err, part] = await tryCatch(async () => {
     let bytes: Buffer | null = null;
@@ -90,7 +115,10 @@ export const geminiApiProvider: AiProvider = {
     //? Failed/oversized images are silently dropped so the turn still runs (text-only).
     const resolvedParts = await Promise.all((req.imageUrls ?? []).map((u) => imagePart(u)));
     const imageParts = resolvedParts.filter((p): p is { inline_data: { mime_type: string; data: string } } => p !== null);
-    const parts: (GeminiPart | { inline_data: { mime_type: string; data: string } })[] = [{ text: req.prompt }, ...imageParts];
+    //? VO — audio parts for speech-to-text (Gemini transcribes audio inline_data; text-only providers ignore).
+    const resolvedAudio = await Promise.all((req.audioUrls ?? []).map((u) => audioPart(u)));
+    const audioParts = resolvedAudio.filter((p): p is { inline_data: { mime_type: string; data: string } } => p !== null);
+    const parts: (GeminiPart | { inline_data: { mime_type: string; data: string } })[] = [{ text: req.prompt }, ...imageParts, ...audioParts];
     const payload = {
       contents: [{ role: 'user', parts }],
       ...(req.system ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),

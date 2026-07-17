@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (192)
+## Decisions (193)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -205,6 +205,7 @@
 | 0272 | inspiratie import vision extractie naar theme voorstel | 🟢 accepted | designer, inspiration, vision, documents-and-skills | — | `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md` |
 | 0273 | comment inbox read only youtube tiktok | 🟢 accepted | content, comments, oauth, documents-and-skills | — | `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md` |
 | 0274 | pipeline role prompt eval replay harness | 🟢 accepted | eval, pipeline, testing, documents-and-skills | — | `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md` |
+| 0275 | voice interface provider abstracted stt plus tts | 🟢 accepted | voice, ai, provider-abstraction, documents-and-skills | — | `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md` |
 
 ## Summaries
 
@@ -1754,6 +1755,16 @@ Een golden corpus van OPGENOMEN stage-turns (`eval/pipeline/scenarios/GT-001..00
 
 → `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md`
 
+### 0275 — voice interface provider abstracted stt plus tts
+
+**0275** · accepted · tags: voice, ai, provider-abstraction, documents-and-skills · 2026-07-17
+
+STT rijdt op de bestaande AI-provider-abstractie (ADR 0007): nieuwe `AiFeature 'speech-to-text'` + `AiCompletionRequest.audioUrls`; de Gemini-provider hangt audio als `inline_data` aan (net als images voor vision), tekst-only providers negeren het. Default provider = Gemini. TTS-output hergebruikt de bestáánde gemeterde media-`tts`-feature (ElevenLabs) via `synthesizeSpeech` (budget-guard + spend-record). De transcript rijdt de BESTAANDE tekstpaden (Assistant-chat) — géén nieuwe structured-channel-verb (invariant #2), geen write. UI: mic-knop + "speak replies"-toggle in de `AIPanel`-composer; browser `MediaRecorder` → `/media/upload` (audio-exts toegevoegd) → `voiceTranscribe_v1` → draft-prefill; `voiceSynthesize_v1` speelt antwoorden. Honest degrade overal: geen key ⇒ error (STT) of gevlagde stub (TTS), nooit een verzonnen transcript.
+
+**Governs** (`//? @adr 0275`): `server/voice/voice.ts`
+
+→ `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1768,3 +1779,4 @@ Een golden corpus van OPGENOMEN stage-turns (`eval/pipeline/scenarios/GT-001..00
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
+| `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |

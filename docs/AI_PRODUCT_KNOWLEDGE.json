@@ -1,6 +1,6 @@
 {
-  "hash": "819088ac33048988",
-  "chunkCount": 209,
+  "hash": "9d14dff4c444f279",
+  "chunkCount": 210,
   "chunks": [
     {
       "id": "cap-001",
@@ -1255,6 +1255,12 @@
       "kind": "decision",
       "title": "0274-pipeline-role-prompt-eval-replay-harness",
       "text": "ADR 0274: 0274-pipeline-role-prompt-eval-replay-harness. Elke wijziging aan een rol-prompt (refine/plan/implement/review) is ongetest — een prompt-edit die de agent een malformed carry-over laat emitten, buiten de ticket-file-scope laat drijven, een BLOKKERENDE vraag laat stellen waar een advisory hoort, of z'n complexity-score laat vergeten, degradeert de hele pipeline stil. De bestaande `ai:eval`-harness meet iets anders (of de docs-artefacten Claude Code helpen). De user koos in het interview: **replay-helft eerst** (geen subscription-turns), live golden-runs later. Decision: Een golden corpus van OPGENOMEN stage-turns (`eval/pipeline/scenarios/GT-001..006.json`) wordt afgespeeld door de ÉCHTE pipeline-code (`parseTurnResult`, `renderPromptTemplate`, de structured-question-codec) en gescoord op structurele invarianten: kind-match, envelope-welgevormdheid (summary/openQuestions), **scope-naleving** (changedFiles tegen `scope.allow`-globs, none in `scope.deny`), **advisories-hebben-assumptie** (een W2-advisory zonder assumptie = een verkapte blokkerende vraag), **complexity 1–10**, **template-volledig-gevuld** (geen resterende `{{chip}}`), question-decode. Géén LLM in de scorer. `npm run ai:eval:pipeline` scoort; `--check` is de CI-gate tegen `baseline.json` (per-ticket-score mag niet dalen); `--write-baseline` herijkt bewust. Elke fixture draagt een `promptVersion` — bij een prompt-wijziging herneem je de turns en bumpt de versie; breken de nieuwe turns een invariant, dan z"
+    },
+    {
+      "id": "adr-0275",
+      "kind": "decision",
+      "title": "0275-voice-interface-provider-abstracted-stt-plus-tts",
+      "text": "ADR 0275: 0275-voice-interface-provider-abstracted-stt-plus-tts. Feature-doc `06_VOICE_INPUT.md` ontwierp voice als BUILD-DEFERRED: self-hosted whisper.cpp, ALLEEN speech-to-text, geen TTS, met een streaming-upload-custom-route en drie send-to-targets. De user koos in het interview van 2026-07-17: voice bouwen, **provider-pluggable** STT/TTS, phone-first spraak-in voor de Assistant (PWA-mic → STT → bestaand chat-pad) én spraak-uit (TTS op antwoorden, opt-in). Twee botsingen met de oude spec: provider-abstractie-vs-whisper-only, en TTS-output-vs-out-of-scope. Decision: STT rijdt op de bestaande AI-provider-abstractie (ADR 0007): nieuwe `AiFeature 'speech-to-text'` + `AiCompletionRequest.audioUrls`; de Gemini-provider hangt audio als `inline_data` aan (net als images voor vision), tekst-only providers negeren het. Default provider = Gemini. TTS-output hergebruikt de bestáánde gemeterde media-`tts`-feature (ElevenLabs) via `synthesizeSpeech` (budget-guard + spend-record). De transcript rijdt de BESTAANDE tekstpaden (Assistant-chat) — géén nieuwe structured-channel-verb (invariant #2), geen write. UI: mic-knop + \"speak replies\"-toggle in de `AIPanel`-composer; browser `MediaRecorder` → `/media/upload` (audio-exts toegevoegd) → `voiceTranscribe_v1` → draft-prefill; `voiceSynthesize_v1` speelt antwoorden. Honest degrade overal: geen key ⇒ error (STT) of gevlagde stub (TTS), nooit een verzonnen transcript."
     }
   ]
 }

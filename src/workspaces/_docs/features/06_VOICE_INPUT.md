@@ -6,6 +6,13 @@
 
 ## Scope
 
+> **BUILT 2026-07-17 (DOCUMENTS_AND_SKILLS FASE VO)** — the deferred spec below is now shipped, with two conscious deviations from the original design (see **ADR 0275**):
+> 1. **STT is provider-abstracted, not whisper-only.** Per the project's `ai-provider-abstraction` rule (ADR 0007), speech-to-text rides `runAiCompletion('speech-to-text', { audioUrls })` → an audio-capable model (Gemini by default), not a hardcoded self-hosted whisper.cpp container. A self-hosted whisper provider can be added to the same seam later without touching callers. Trade-off: the default sends audio to the configured provider (Gemini) rather than staying strictly on-host — a workspace that needs on-host STT swaps the provider.
+> 2. **Voice OUTPUT (TTS) was added** for the Assistant ("speak replies" opt-in), reusing the existing metered media `tts` feature (ElevenLabs). The original doc marked TTS out-of-scope; the user's 2026-07-17 decision brought it in.
+>
+> What shipped: a mic button + "speak replies" toggle in the Workspace-AI chat composer (`AIPanel`), the browser `MediaRecorder` → `/media/upload` → `voiceTranscribe_v1` → prefill-the-draft flow, `voiceSynthesize_v1` for spoken replies, and the `speech-to-text` AiFeature + `audioUrls` on the completion request. The three send-to targets + the streaming-upload custom-route + the editable transcript-review + the waveform are NOT yet built — v1 wires the Assistant-chat path; the ticket/agent targets ride a follow-up. Honest degrade throughout: no key ⇒ an error (STT) or a flagged stub (TTS), never a fabricated transcript.
+
+> _Original scope (kept for the follow-up build):_
 > **BUILD DEFERRED (late tier)** — per **D5**, this feature is fully designed here but **not built in v1**. The build slots in last (the IDEE_SPEC §15 build order puts voice at step 7, after the board, Workspace-AI, and realtime/presence land). This doc is the buildable spec for that later pass; nothing below should block earlier work.
 
 **In**

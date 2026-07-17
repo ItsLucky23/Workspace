@@ -11,8 +11,10 @@ import { backendUrl } from '../../../config';
 const MIME_EXT: Record<string, string> = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
   'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+  //? VO — voice clips: MediaRecorder emits audio/webm or audio/ogg; also accept common audio uploads.
+  'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
 };
-const ALLOWED = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov']);
+const ALLOWED = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'aac']);
 
 export interface UploadedMedia { url: string; kind: string }
 

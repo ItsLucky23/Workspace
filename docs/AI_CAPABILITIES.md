@@ -93,6 +93,8 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/styleExport/v1` | POST | 30 | — | — |
 | `workspaces/styleImport/v1` | POST | 20 | — | — |
 | `workspaces/timeTravelPreview/v1` | POST | 12 | — | — |
+| `workspaces/voiceSynthesize/v1` | POST | 20 | — | — |
+| `workspaces/voiceTranscribe/v1` | POST | 30 | — | — |
 | `workspaces/workspaceExport/v1` | POST | 6 | — | — |
 | `workspaces/workspaceImport/v1` | POST | 3 | — | — |
 

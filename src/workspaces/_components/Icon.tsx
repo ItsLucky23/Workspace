@@ -15,6 +15,7 @@ import {
   faMagnifyingGlass, faMobileScreen, faMoon, faPaperPlane, faPause, faPlay, faPlus, faRightFromBracket,
   faRobot, faShieldHalved, faSliders, faSun, faTableCellsLarge, faTableColumns, faTerminal, faTrash, faTriangleExclamation,
   faUpRightFromSquare, faUser, faUsers, faWandMagicSparkles, faWaveSquare, faXmark,
+  faMicrophone, faStop, faSpinner, faVolumeHigh,
 } from 'src/_functions/icon';
 
 type FaIcon = typeof faRobot;
@@ -78,6 +79,10 @@ const ICONS: Record<string, FaIcon> = {
   'wand-magic-sparkles': faWandMagicSparkles,
   'wave-square': faWaveSquare,
   xmark: faXmark,
+  microphone: faMicrophone,
+  stop: faStop,
+  spinner: faSpinner,
+  'volume-high': faVolumeHigh,
 };
 
 export type IconName = keyof typeof ICONS | (string & {});

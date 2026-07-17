@@ -2,9 +2,9 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 246,
-    "edges": 370,
-    "symbols": 317,
+    "nodes": 248,
+    "edges": 371,
+    "symbols": 321,
     "callEdges": 46
   },
   "nodes": [
@@ -537,6 +537,16 @@
       "id": "workspaces/_api/timeTravelPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/timeTravelPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/voiceSynthesize/v1"
+    },
+    {
+      "id": "workspaces/_api/voiceTranscribe_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/voiceTranscribe/v1"
     },
     {
       "id": "workspaces/_api/workspaceExport_v1.ts",
@@ -1747,6 +1757,10 @@
     {
       "from": "workspaces/_shell/Shell.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_functions/uploadMedia.ts"
     },
     {
       "from": "workspaces/_shell/Shell.tsx",
@@ -3418,9 +3432,15 @@
       "workspaces/board/[ticketId]/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
@@ -3693,6 +3713,12 @@
       "directDependents": 12
     },
     {
+      "id": "workspaces/_functions/uploadMedia.ts",
+      "kind": "other",
+      "dependents": 13,
+      "directDependents": 4
+    },
+    {
       "id": "_sockets/apiRequest.ts",
       "kind": "other",
       "dependents": 11,
@@ -3757,12 +3783,6 @@
       "kind": "other",
       "dependents": 7,
       "directDependents": 2
-    },
-    {
-      "id": "workspaces/_functions/uploadMedia.ts",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 3
     },
     {
       "id": "workspaces/designer/state.tsx",
@@ -4705,6 +4725,30 @@
     {
       "id": "workspaces/_api/timeTravelPreview_v1.ts::main",
       "file": "workspaces/_api/timeTravelPreview_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.ts::<module>",
+      "file": "workspaces/_api/voiceSynthesize_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.ts::main",
+      "file": "workspaces/_api/voiceSynthesize_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/voiceTranscribe_v1.ts::<module>",
+      "file": "workspaces/_api/voiceTranscribe_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/voiceTranscribe_v1.ts::main",
+      "file": "workspaces/_api/voiceTranscribe_v1.ts",
       "name": "main",
       "kind": "function"
     },
