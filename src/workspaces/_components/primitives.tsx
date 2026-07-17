@@ -132,7 +132,8 @@ export function WsButton({ variant = 'primary', icon, children, onClick, title, 
 export function IconButton({ icon, onClick, title, active, className = '' }: { icon: IconName; onClick?: () => void; title?: string; active?: boolean; className?: string }) {
   return (
     <button
-      type="button" onClick={onClick} title={title}
+      //? a11y (gap-fix): icon-only → the title doubles as the accessible name (falls back to the icon name).
+      type="button" onClick={onClick} title={title} aria-label={title ?? icon}
       className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-common transition-[color,background-color,transform] duration-150 cursor-pointer hover:bg-container2 motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
     >
       <Icon name={icon} />

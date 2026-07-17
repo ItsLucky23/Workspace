@@ -731,6 +731,7 @@ model TicketLink {
   createdAt      DateTime @default(now())
 
   @@index([workspaceId, ticketId])
+  @@index([workspaceId, targetTicketId])         // blocks-gate: openBlockersFor queries the REVERSE direction
 }
 
 //? An external / info reference attached to a ticket (04 §1, cascade list 04b

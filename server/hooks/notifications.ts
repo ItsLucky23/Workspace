@@ -54,7 +54,9 @@ export const registerNotificationHooks = (): void => {
           title: 'New sign-in detected',
           intro: `Hi ${user.name ?? 'there'}, a new sign-in just happened on your account using ${provider}. If this was you, you can ignore this message.`,
           ctaLabel: 'Review your sessions',
-          ctaUrl: `${appUrl}/settings`,
+          //? Gap-fix: deep-link to the PRODUCT settings (sessions + the security card live there) — the
+          //? framework /settings page is unreachable from the Workspaces UI a user actually inhabits.
+          ctaUrl: `${appUrl}/workspaces/settings`,
           footer: 'You receive this because "Email me when a new sign-in happens" is on in your notification preferences.',
         });
 
@@ -95,7 +97,8 @@ export const sendPasswordChangedNotification = async (userId: string): Promise<v
       title: 'Your password was changed',
       intro: `Hi ${user.name ?? 'there'}, the password on your account was just updated. Any other devices that were signed in have been signed out automatically. If this wasn't you, reset your password immediately and review your active sessions.`,
       ctaLabel: 'Open settings',
-      ctaUrl: `${appUrl}/settings`,
+      //? Gap-fix: same product-settings deep-link as the sign-in mail.
+      ctaUrl: `${appUrl}/workspaces/settings`,
       footer: 'You receive this because "Email me when my password is changed" is on in your notification preferences.',
     });
 

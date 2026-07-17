@@ -442,17 +442,20 @@ function ChannelManagerSection() {
 }
 
 //? #84 — output-template manager (O5): reusable render specs (format + watermark position) a piece can
-//? export with. Fully backend-wired but had ZERO frontend consumer; this is the management surface.
-const OUTPUT_FORMATS = ['mp4', 'webm', 'gif'];
-const WATERMARK_POSITIONS = ['none', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
+//? export with. Gap-fix: the UI previously offered CONTAINER values (mp4/webm/gif) and long position
+//? names while the server validates format as an ASPECT (16:9/9:16/1:1) and positions as ''|br|bl|tr|tl
+//? — every choice was silently coerced to 16:9/none. The UI now speaks the server's real value sets.
+const OUTPUT_FORMATS = ['16:9', '9:16', '1:1'];
+const WATERMARK_POSITIONS = ['', 'tl', 'tr', 'bl', 'br'];
+const WM_LABEL_KEY: Record<string, string> = { '': 'wm_none', tl: 'wm_top_left', tr: 'wm_top_right', bl: 'wm_bottom_left', br: 'wm_bottom_right' };
 function OutputTemplateSection() {
   const translate = useTranslator();
   const { outputTemplates, saveOutputTemplate, deleteOutputTemplate } = useWorkspaces();
   const [name, setName] = useState('');
-  const [format, setFormat] = useState(OUTPUT_FORMATS[0] ?? 'mp4');
-  const [watermark, setWatermark] = useState(WATERMARK_POSITIONS[0] ?? 'none');
+  const [format, setFormat] = useState(OUTPUT_FORMATS[0] ?? '16:9');
+  const [watermark, setWatermark] = useState('');
   const formatItems: DropdownItem[] = OUTPUT_FORMATS.map((f) => ({ id: f, value: f, item: f }));
-  const wmItems: DropdownItem[] = WATERMARK_POSITIONS.map((w) => ({ id: w, value: w, item: translate({ key: `workspaces.content.wm_${w.replace('-', '_')}` }) }));
+  const wmItems: DropdownItem[] = WATERMARK_POSITIONS.map((w) => ({ id: w, value: w, item: translate({ key: `workspaces.content.${WM_LABEL_KEY[w] ?? 'wm_none'}` }) }));
   const submit = () => {
     if (name.trim().length === 0) return;
     saveOutputTemplate({ name: name.trim(), format, watermarkPosition: watermark });
@@ -471,7 +474,7 @@ function OutputTemplateSection() {
             <div key={t.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-title truncate">{t.name}</div>
-                <div className="text-xs text-muted truncate">{t.format}{t.watermarkPosition === 'none' ? '' : ` · ${t.watermarkPosition}`}</div>
+                <div className="text-xs text-muted truncate">{t.format}{t.watermarkPosition ? ` · ${translate({ key: `workspaces.content.${WM_LABEL_KEY[t.watermarkPosition] ?? 'wm_none'}` })}` : ''}</div>
               </div>
               <button type="button" onClick={() => { deleteOutputTemplate(t.id); }} title={translate({ key: 'workspaces.content.styleDelete' })} className="w-7 h-7 rounded-md text-muted hover:text-wrong hover:bg-wrong/10 flex items-center justify-center cursor-pointer shrink-0"><Icon name="trash" /></button>
             </div>
