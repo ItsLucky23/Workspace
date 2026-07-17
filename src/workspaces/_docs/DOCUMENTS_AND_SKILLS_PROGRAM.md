@@ -116,11 +116,11 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | SK3 | ✅ | 0270 | skillsLayer 28/28 |
 | DOC1 | ✅ | 0271 | documentsModule 22/22 |
 | DOC2 | ✅ | 0271 | documentsModule 22/22 |
-| DOC3 | 🟡 | 0271 | ops+UI+images klaar; docx/pdf/xlsx-renderers in EXP |
+| DOC3 | ✅ | 0271 | compleet met EXP-renderers |
 | DOC4 | ✅ | 0271 | documentsModule 22/22 |
-| EXP1 | ⬜ | | |
-| EXP2 | ⬜ | | |
-| EXP3 | ⬜ | | |
+| EXP1 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
+| EXP2 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
+| EXP3 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
 | INS1 | ⬜ | | |
 | INS2 | ⬜ | | |
 | INS3 | ⬜ | | |

@@ -167,6 +167,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'document-apply-draft': CAP.workTickets,
   'document-discard-draft': CAP.workTickets,
   'document-gen-image': CAP.workTickets,
+  'document-export': CAP.workTickets,
   'save-stage-config': CAP.editPipeline,
   'stage-create': CAP.editPipeline,
   'stage-delete': CAP.editPipeline,

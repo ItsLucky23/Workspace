@@ -1,0 +1,290 @@
+/** @docs owner ItsLucky23 */
+//? EXP (DOCUMENTS_AND_SKILLS) — the document EXPORT layer. Markdown is the single source (ADR 0271);
+//? every format is a RENDER TARGET: md (verbatim) + html (own safe md→html subset, standalone page
+//? with optional brand logo) + xlsx (markdown tables → a dependency-free minimal OOXML workbook) run
+//? natively; docx (pandoc) + pdf (headless-chromium print of the html) run in throwaway Docker
+//? containers (images overridable via WS_EXPORT_PANDOC_IMAGE / WS_EXPORT_CHROME_IMAGE). Outputs land
+//? in the media store (`/media/<file>`) and are appended to Document.assets by the Conductor op.
+//? @adr 0271
+
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+import { deflateRawSync } from 'node:zlib';
+
+import { tryCatch, tryCatchSync } from '@luckystack/core';
+
+import { docker } from '../container/runtime';
+import { persistMediaBytes, MEDIA_DIR } from '../media/store';
+
+export type DocumentExportFormat = 'md' | 'html' | 'pdf' | 'docx' | 'xlsx';
+export const DOCUMENT_EXPORT_FORMATS: DocumentExportFormat[] = ['md', 'html', 'pdf', 'docx', 'xlsx'];
+
+const PANDOC_IMAGE = (process.env.WS_EXPORT_PANDOC_IMAGE ?? '').trim() || 'pandoc/core:3.2';
+const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenika/alpine-chrome:124';
+
+/* ----------------------------------------------------------------- md → html */
+
+function esc(s: string): string {
+  return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+function inline(s: string): string {
+  return esc(s)
+    .replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replaceAll(/`(.+?)`/g, '<code>$1</code>');
+}
+const isRow = (l: string): boolean => { const t = l.trim(); return t.startsWith('|') && t.endsWith('|') && t.length > 2; };
+const isDivider = (l: string): boolean => isRow(l) && /^\|[\s:|-]+\|$/.test(l.trim());
+const cells = (l: string): string[] => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+//? The same markdown subset MarkdownView renders: headings, bullets, numbered lists, quotes, tables.
+export function mdToHtmlBody(markdown: string): string {
+  const lines = markdown.split('\n');
+  const out: string[] = [];
+  let list: 'ul' | 'ol' | null = null;
+  const closeList = (): void => { if (list) { out.push(`</${list}>`); list = null; } };
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? '';
+    if (isRow(line) && isDivider(lines[i + 1] ?? '')) {
+      closeList();
+      const header = cells(line);
+      out.push('<table><thead><tr>' + header.map((h) => `<th>${inline(h)}</th>`).join('') + '</tr></thead><tbody>');
+      let j = i + 2;
+      while (j < lines.length && isRow(lines[j] ?? '')) {
+        const r = cells(lines[j] ?? '');
+        out.push('<tr>' + header.map((_, ci) => `<td>${inline(r[ci] ?? '')}</td>`).join('') + '</tr>');
+        j += 1;
+      }
+      out.push('</tbody></table>');
+      i = j;
+      continue;
+    }
+    const t = line.trim();
+    if (t.startsWith('- ') || t.startsWith('* ')) {
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+      out.push(`<li>${inline(t.slice(2))}</li>`);
+    } else if (/^\d+\.\s/.test(t)) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push(`<li>${inline(t.replace(/^\d+\.\s/, ''))}</li>`);
+    } else {
+      closeList();
+      if (t.length === 0) { /* paragraph gap */ }
+      else if (t.startsWith('#### ')) out.push(`<h4>${inline(t.slice(5))}</h4>`);
+      else if (t.startsWith('### ')) out.push(`<h3>${inline(t.slice(4))}</h3>`);
+      else if (t.startsWith('## ')) out.push(`<h2>${inline(t.slice(3))}</h2>`);
+      else if (t.startsWith('# ')) out.push(`<h1>${inline(t.slice(2))}</h1>`);
+      else if (t.startsWith('> ')) out.push(`<blockquote>${inline(t.slice(2))}</blockquote>`);
+      else out.push(`<p>${inline(t)}</p>`);
+    }
+    i += 1;
+  }
+  closeList();
+  return out.join('\n');
+}
+
+//? EXP3 — standalone shareable page: inline CSS, print-friendly, optional brand-logo header.
+export function standaloneHtml(title: string, markdown: string, brandLogoDataUri?: string): string {
+  const css = [
+    'body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1.25rem;color:#1f2430;line-height:1.6}',
+    'h1{font-size:1.7rem;margin:1.2rem 0 .6rem}h2{font-size:1.3rem;margin:1.1rem 0 .5rem}h3{font-size:1.1rem;margin:1rem 0 .4rem}h4{font-size:1rem;margin:.9rem 0 .3rem}',
+    'table{border-collapse:collapse;margin:.8rem 0;width:100%}th,td{border:1px solid #d5d9e2;padding:.45rem .6rem;text-align:left;vertical-align:top}th{background:#f2f4f8}',
+    'code{background:#f2f4f8;border-radius:4px;padding:.1rem .3rem;font-size:.9em}blockquote{border-left:3px solid #d5d9e2;margin:.6rem 0;padding:.1rem .9rem;color:#5a6172;font-style:italic}',
+    'header.brand{display:flex;justify-content:flex-end;margin-bottom:.5rem}header.brand img{max-height:44px}',
+    '@media print{body{margin:0 auto}}',
+  ].join('');
+  const logo = brandLogoDataUri ? `<header class="brand"><img src="${brandLogoDataUri}" alt=""/></header>` : '';
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title><style>${css}</style></head><body>${logo}${mdToHtmlBody(markdown)}</body></html>`;
+}
+
+/* ----------------------------------------------------------------- markdown tables → xlsx */
+
+export interface MdTable { name: string; header: string[]; rows: string[][] }
+
+//? Every markdown table in the document, named after the nearest preceding heading.
+export function extractTables(markdown: string): MdTable[] {
+  const lines = markdown.split('\n');
+  const tables: MdTable[] = [];
+  let heading = 'Sheet';
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? '';
+    const t = line.trim();
+    if (/^#{1,4}\s/.test(t)) heading = t.replace(/^#{1,4}\s/, '').trim() || heading;
+    if (isRow(line) && isDivider(lines[i + 1] ?? '')) {
+      const header = cells(line);
+      const rows: string[][] = [];
+      let j = i + 2;
+      while (j < lines.length && isRow(lines[j] ?? '')) { rows.push(cells(lines[j] ?? '')); j += 1; }
+      tables.push({ name: heading, header, rows });
+      i = j;
+      continue;
+    }
+    i += 1;
+  }
+  return tables;
+}
+
+//? Minimal STORE/DEFLATE-free… actually: DEFLATE-compressed ZIP writer (local headers + central dir).
+//? Enough for OOXML consumers; no external dependency.
+function crc32(buf: Buffer): number {
+  let c: number;
+  const table: number[] = [];
+  for (let n = 0; n < 256; n += 1) {
+    c = n;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xED_B8_83_20 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  let crc = 0 ^ -1;
+  for (const byte of buf) crc = (crc >>> 8) ^ (table[(crc ^ byte) & 0xFF] ?? 0);
+  return (crc ^ -1) >>> 0;
+}
+
+export function zipBuffer(entries: { name: string; data: Buffer }[]): Buffer {
+  const parts: Buffer[] = [];
+  const central: Buffer[] = [];
+  let offset = 0;
+  for (const e of entries) {
+    const nameBuf = Buffer.from(e.name, 'utf8');
+    const comp = deflateRawSync(e.data);
+    const crc = crc32(e.data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04_03_4B_50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0, 6); local.writeUInt16LE(8, 8);
+    local.writeUInt16LE(0, 10); local.writeUInt16LE(0, 12); local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(comp.length, 18); local.writeUInt32LE(e.data.length, 22); local.writeUInt16LE(nameBuf.length, 26); local.writeUInt16LE(0, 28);
+    parts.push(local, nameBuf, comp);
+    const cen = Buffer.alloc(46);
+    cen.writeUInt32LE(0x02_01_4B_50, 0); cen.writeUInt16LE(20, 4); cen.writeUInt16LE(20, 6); cen.writeUInt16LE(0, 8); cen.writeUInt16LE(8, 10);
+    cen.writeUInt16LE(0, 12); cen.writeUInt16LE(0, 14); cen.writeUInt32LE(crc, 16); cen.writeUInt32LE(comp.length, 20); cen.writeUInt32LE(e.data.length, 24);
+    cen.writeUInt16LE(nameBuf.length, 28); cen.writeUInt32LE(0, 30); cen.writeUInt16LE(0, 36); cen.writeUInt32LE(0, 38); cen.writeUInt32LE(offset, 42);
+    central.push(cen, nameBuf);
+    offset += 30 + nameBuf.length + comp.length;
+  }
+  const centralStart = offset;
+  const centralBuf = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06_05_4B_50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralBuf.length, 12); end.writeUInt32LE(centralStart, 16);
+  return Buffer.concat([...parts, centralBuf, end]);
+}
+
+const colName = (n: number): string => {
+  let s = '';
+  let x = n;
+  for (;;) { s = String.fromCodePoint(65 + (x % 26)) + s; x = Math.floor(x / 26) - 1; if (x < 0) break; }
+  return s;
+};
+
+const sheetXml = (t: MdTable): string => {
+  const rows = [t.header, ...t.rows];
+  const rowsXml = rows.map((r, ri) =>
+    `<row r="${String(ri + 1)}">` + r.map((c, ci) => `<c r="${colName(ci)}${String(ri + 1)}" t="inlineStr"><is><t xml:space="preserve">${esc(c)}</t></is></c>`).join('') + '</row>',
+  ).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
+};
+const safeName = (s: string, i: number): string => (s.replaceAll(/[\\/?*[\]:]/g, ' ').trim().slice(0, 28) || 'Sheet') + ` ${String(i + 1)}`;
+
+//? Markdown tables → a minimal OOXML workbook (inline strings; one worksheet per table). A document
+//? without tables exports its lines as a single one-column sheet so the export is never empty.
+export function xlsxFromMarkdown(title: string, markdown: string): Buffer {
+  let tables = extractTables(markdown);
+  if (tables.length === 0) {
+    const linesRows = markdown.split('\n').filter((l) => l.trim().length > 0).map((l) => [l.trim()]);
+    tables = [{ name: title || 'Document', header: ['Text'], rows: linesRows }];
+  }
+  const sheetsMeta = tables.map((t, i) => ({ id: i + 1, name: safeName(t.name, i) }));
+  const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheetsMeta.map((s) => `<sheet name="${esc(s.name)}" sheetId="${String(s.id)}" r:id="rId${String(s.id)}"/>`).join('')}</sheets></workbook>`;
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheetsMeta.map((s) => `<Relationship Id="rId${String(s.id)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${String(s.id)}.xml"/>`).join('')}</Relationships>`;
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheetsMeta.map((s) => `<Override PartName="/xl/worksheets/sheet${String(s.id)}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;
+  const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  return zipBuffer([
+    { name: '[Content_Types].xml', data: Buffer.from(contentTypes, 'utf8') },
+    { name: '_rels/.rels', data: Buffer.from(rootRels, 'utf8') },
+    { name: 'xl/workbook.xml', data: Buffer.from(workbook, 'utf8') },
+    { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(workbookRels, 'utf8') },
+    ...tables.map((t, i) => ({ name: `xl/worksheets/sheet${String(i + 1)}.xml`, data: Buffer.from(sheetXml(t), 'utf8') })),
+  ]);
+}
+
+/* ----------------------------------------------------------------- container renders */
+
+//? One throwaway container run over a temp dir (mounted as /data). Returns the produced bytes.
+//? `--network none`: the render never needs egress (inputs are mounted, the logo is a data URI).
+async function containerRender(buildInput: (dir: string) => void, imageAndArgs: string[], outFile: string): Promise<Buffer | null> {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ws-export-'));
+  const [err, bytes] = await tryCatch(async () => {
+    buildInput(dir);
+    //? Docker on Windows accepts C:\… bind paths; normalize to forward slashes for safety.
+    const mount = `${dir.replaceAll('\\', '/')}:/data`;
+    const res = await docker(['run', '--rm', '--network', 'none', '-v', mount, ...imageAndArgs]);
+    if (res.code !== 0) throw new Error(`export container exited ${String(res.code)}`);
+    return readFileSync(path.join(dir, outFile));
+  });
+  tryCatchSync(() => { rmSync(dir, { recursive: true, force: true }); });
+  return err ? null : bytes;
+}
+
+export async function renderDocx(markdown: string): Promise<Buffer | null> {
+  return containerRender(
+    (dir) => { writeFileSync(path.join(dir, 'in.md'), markdown, 'utf8'); },
+    [PANDOC_IMAGE, '/data/in.md', '-f', 'markdown', '-t', 'docx', '-o', '/data/out.docx'],
+    'out.docx',
+  );
+}
+
+export async function renderPdf(title: string, markdown: string, logoDataUri?: string): Promise<Buffer | null> {
+  return containerRender(
+    (dir) => { writeFileSync(path.join(dir, 'in.html'), standaloneHtml(title, markdown, logoDataUri), 'utf8'); },
+    [CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--print-to-pdf=/data/out.pdf', '--no-pdf-header-footer', 'file:///data/in.html'],
+    'out.pdf',
+  );
+}
+
+/* ----------------------------------------------------------------- the export entry */
+
+export interface ExportResult { ok: boolean; url?: string; error?: string }
+
+//? EXP3 — inline the workspace brand logo as a data URI (the export must be self-contained; the
+//? chromium container runs with --network none). Only local /media/ logos inline; failures = no logo.
+export function brandLogoDataUri(brandLogoUrl: string | null): string | undefined {
+  if (!brandLogoUrl?.startsWith('/media/')) return undefined;
+  const name = brandLogoUrl.slice('/media/'.length);
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) return undefined;
+  const [err, uri] = tryCatchSync(() => {
+    const bytes = readFileSync(path.join(MEDIA_DIR, name));
+    const ext = path.extname(name).slice(1).toLowerCase();
+    const mime = ext === 'jpg' ? 'jpeg' : ext;
+    return `data:image/${mime};base64,${bytes.toString('base64')}`;
+  });
+  return err || uri === null ? undefined : uri;
+}
+
+export async function exportDocument(
+  doc: { id: string; title: string; content: string }, format: DocumentExportFormat, brandLogoUrl: string | null,
+): Promise<ExportResult> {
+  const id = `doc-${doc.id.slice(-6)}-${randomUUID().slice(0, 8)}`;
+  if (format === 'md') {
+    const { url } = persistMediaBytes(Buffer.from(doc.content, 'utf8'), 'md', id);
+    return { ok: true, url };
+  }
+  if (format === 'html') {
+    const { url } = persistMediaBytes(Buffer.from(standaloneHtml(doc.title, doc.content, brandLogoDataUri(brandLogoUrl)), 'utf8'), 'html', id);
+    return { ok: true, url };
+  }
+  if (format === 'xlsx') {
+    const { url } = persistMediaBytes(xlsxFromMarkdown(doc.title, doc.content), 'xlsx', id);
+    return { ok: true, url };
+  }
+  if (format === 'docx') {
+    const bytes = await renderDocx(doc.content);
+    if (!bytes) return { ok: false, error: 'export.containerFailed' };
+    const { url } = persistMediaBytes(bytes, 'docx', id);
+    return { ok: true, url };
+  }
+  const bytes = await renderPdf(doc.title, doc.content, brandLogoDataUri(brandLogoUrl));
+  if (!bytes) return { ok: false, error: 'export.containerFailed' };
+  const { url } = persistMediaBytes(bytes, 'pdf', id);
+  return { ok: true, url };
+}

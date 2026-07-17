@@ -2313,7 +2313,16 @@
       "imagePromptPlaceholder": "Describe an image to generate…",
       "genImage": "AI image",
       "upload": "Upload",
-      "uploadedLabel": "Uploaded"
+      "uploadedLabel": "Uploaded",
+      "exportTitle": "Export",
+      "exporting": "Exporting…",
+      "format": {
+        "md": "Markdown",
+        "html": "HTML",
+        "pdf": "PDF",
+        "docx": "Word",
+        "xlsx": "Excel"
+      }
     }
   }
 }

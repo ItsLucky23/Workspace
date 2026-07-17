@@ -2313,7 +2313,16 @@
       "imagePromptPlaceholder": "Beschrijf een afbeelding om te genereren…",
       "genImage": "AI-afbeelding",
       "upload": "Uploaden",
-      "uploadedLabel": "Geüpload"
+      "uploadedLabel": "Geüpload",
+      "exportTitle": "Exporteren",
+      "exporting": "Bezig…",
+      "format": {
+        "md": "Markdown",
+        "html": "HTML",
+        "pdf": "PDF",
+        "docx": "Word",
+        "xlsx": "Excel"
+      }
     }
   }
 }

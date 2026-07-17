@@ -2313,7 +2313,16 @@
       "imagePromptPlaceholder": "Décrivez une image à générer…",
       "genImage": "Image IA",
       "upload": "Téléverser",
-      "uploadedLabel": "Téléversé"
+      "uploadedLabel": "Téléversé",
+      "exportTitle": "Exporter",
+      "exporting": "Export…",
+      "format": {
+        "md": "Markdown",
+        "html": "HTML",
+        "pdf": "PDF",
+        "docx": "Word",
+        "xlsx": "Excel"
+      }
     }
   }
 }

@@ -72,7 +72,7 @@ export type ControlOp =
   | 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-delete' | 'ai-skill-reset'
   //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. AI output lands as aiDraft; apply-draft is the
   //? consent that writes content (B-23). gen-image reuses the media pipeline into document assets.
-  | 'document-create' | 'document-edit' | 'document-delete' | 'document-ai' | 'document-apply-draft' | 'document-discard-draft' | 'document-gen-image'
+  | 'document-create' | 'document-edit' | 'document-delete' | 'document-ai' | 'document-apply-draft' | 'document-discard-draft' | 'document-gen-image' | 'document-export'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

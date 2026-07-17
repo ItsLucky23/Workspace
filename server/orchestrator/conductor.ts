@@ -76,6 +76,7 @@ import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
 import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions } from '../documents/docs';
+import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
@@ -2209,6 +2210,22 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const documentId = str(payload, 'documentId');
       if (documentId) { await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: null, aiDraftLabel: '' } }); broadcastContentDirty(action.workspaceId); }
       return;
+    }
+    //? EXP — render the markdown source to a target format; the produced file lands in the media
+    //? store and is appended to the document's assets (kind 'export') so the UI lists + links it.
+    case 'document-export': {
+      const documentId = str(payload, 'documentId');
+      const format = DOCUMENT_EXPORT_FORMATS.find((f) => f === str(payload, 'format'));
+      if (!documentId || !format) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { brandLogoUrl: true } });
+      const res = await exportDocument({ id: doc.id, title: doc.title, content: doc.content }, format, ws?.brandLogoUrl ?? null);
+      if (!res.ok || !res.url) return { ok: false, status: 'error', error: res.error ?? 'export.failed' };
+      const prevAssets2 = Array.isArray(doc.assets) ? doc.assets : [];
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets: [...prevAssets2, { kind: 'export', url: res.url, label: format }] } });
+      broadcastContentDirty(action.workspaceId);
+      return { url: res.url };
     }
     case 'document-gen-image': {
       const documentId = str(payload, 'documentId');

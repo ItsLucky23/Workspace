@@ -24,7 +24,7 @@ const AI_MODES = ['generate', 'rewrite', 'summarize', 'extend'] as const;
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, navigate, activeWorkspace } = useWorkspaces();
+  const { documents, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, navigate, activeWorkspace } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
 
   const [title, setTitle] = useState(doc?.title ?? '');
@@ -35,6 +35,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   const [aiInstruction, setAiInstruction] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [imgPrompt, setImgPrompt] = useState('');
+  const [exporting, setExporting] = useState<string | null>(null);
 
   //? Server refetches land here: adopt them unless the user has local unsaved edits.
   useEffect(() => {
@@ -44,6 +45,9 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   }, [doc, dirty]);
   //? The AI run finished when a draft appears — release the busy flag.
   useEffect(() => { if (doc?.aiDraft !== null) setAiBusy(false); }, [doc?.aiDraft]);
+  //? An export finished when a new export asset lands in the refetched snapshot.
+  const exports = (doc?.assets ?? []).filter((a) => a.kind === 'export');
+  useEffect(() => { setExporting(null); }, [exports.length]);
 
   if (!doc) {
     return (
@@ -112,11 +116,33 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         ? <textarea value={content} onChange={(e) => { setContent(e.target.value); setDirty(true); }} rows={18} placeholder={translate({ key: 'workspaces.documents.contentPlaceholder' })} className={`${fieldCls} min-h-96 py-2 font-mono text-[13px] leading-relaxed resize-y`} />
         : <div className="rounded-lg border border-container1-border bg-container1 p-4 min-h-96"><MarkdownView markdown={content} /></div>}
 
+      {/* EXP — export the markdown source to a target format; results appear under attachments. */}
+      <div className="pt-2 border-t border-divider">
+        <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.exportTitle' })}</div>
+        <div className="flex flex-wrap gap-2">
+          {(['md', 'html', 'pdf', 'docx', 'xlsx'] as const).map((f) => (
+            <WsButton key={f} variant="secondary" icon="file-lines" onClick={() => { setExporting(f); exportDocument(doc.id, f); }} disabled={exporting !== null}>
+              {translate({ key: exporting === f ? 'workspaces.documents.exporting' : `workspaces.documents.format.${f}` })}
+            </WsButton>
+          ))}
+        </div>
+        {exports.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {exports.map((a, i) => (
+              <a key={`${a.url}-${String(i)}`} href={a.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">
+                <Icon name="up-right-from-square" />
+                {a.label.toUpperCase()}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Assets: uploads + AI-generated images. */}
       <div className="pt-2 border-t border-divider">
         <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.assetsTitle' })}</div>
         <div className="flex flex-wrap gap-2 mb-2">
-          {doc.assets.map((a, i) => (
+          {doc.assets.filter((a) => a.kind !== 'export').map((a, i) => (
             <a key={`${a.url}-${String(i)}`} href={a.url} target="_blank" rel="noreferrer" className="block w-28">
               {a.kind === 'image' && !a.stub
                 ? <img src={a.url} alt={a.label} className="w-28 h-20 object-cover rounded-lg border border-container1-border" />

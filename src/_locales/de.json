@@ -2313,7 +2313,16 @@
       "imagePromptPlaceholder": "Beschreibe ein zu generierendes Bild…",
       "genImage": "KI-Bild",
       "upload": "Hochladen",
-      "uploadedLabel": "Hochgeladen"
+      "uploadedLabel": "Hochgeladen",
+      "exportTitle": "Exportieren",
+      "exporting": "Exportiert…",
+      "format": {
+        "md": "Markdown",
+        "html": "HTML",
+        "pdf": "PDF",
+        "docx": "Word",
+        "xlsx": "Excel"
+      }
     }
   }
 }

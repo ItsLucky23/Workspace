@@ -14,14 +14,14 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image']);
+const DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image', 'document-export']);
 const isDocumentOp = (op: string): op is ControlOp => DOCUMENT_OPS.has(op);
 
 export interface SyncParams {
   clientInput: {
     op: string; clientRequestId: string;
     documentId?: string; title?: string; content?: string;
-    mode?: string; instruction?: string; prompt?: string;
+    mode?: string; instruction?: string; prompt?: string; format?: string;
     addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string;
   };
   user: SessionLayout;
