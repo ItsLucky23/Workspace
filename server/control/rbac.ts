@@ -125,6 +125,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-regenerate': CAP.workTickets,
   'content-inpaint': CAP.workTickets,
   'content-reorder-beats': CAP.workTickets,
+  'content-transcode': CAP.workTickets,
   'content-save-scenes': CAP.workTickets,
   'content-decompose-video': CAP.workTickets,
   'content-refine-range': CAP.workTickets,

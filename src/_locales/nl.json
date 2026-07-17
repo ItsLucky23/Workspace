@@ -1409,7 +1409,12 @@
       "brandEmpty": "Nog geen kanalen. Voeg een kanaal toe om z'n merkstem in te stellen.",
       "brandVoicePlaceholder": "bijv. vriendelijk, bondig, speels; nooit verkoperig.",
       "brandSave": "Merk opslaan",
-      "brandSaved": "Opgeslagen"
+      "brandSaved": "Opgeslagen",
+      "transcodeWebm": "Naar WebM (web-embed)",
+      "transcodeGif": "Naar GIF (preview-loop)",
+      "transcodeStarted": "Bezig met converteren - het nieuwe bestand verschijnt hier zodra klaar.",
+      "webmLabel": "WEBM",
+      "gifLabel": "GIF"
     },
     "knowledge": {
       "title": "Kennisgraaf",

@@ -131,7 +131,7 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | EV1 | ✅ | 0274 | evalPipeline 19/19 |
 | EV2 | ✅ | 0274 | evalPipeline 19/19 |
 | EV3 | ✅ | 0274 | evalPipeline 19/19 |
-| KG1 | ⬜ | | |
-| KG2 | ⬜ | | |
+| KG1 | ✅ | — | kgBudgetAndTranscode 14/14 |
+| KG2 | ✅ | — | kgBudgetAndTranscode 14/14 |
 | VO1 | ⬜ | | |
 | VO2 | ⬜ | | |

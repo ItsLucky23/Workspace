@@ -188,7 +188,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
   );
 }
 
-function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegenerate, onEditRegion, onEditImage, onCritique, onInstructEdit, onRestyle, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onUnpublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onInstructEdit: (assetId: string) => void; onRestyle: (assetId: string) => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
+function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegenerate, onEditRegion, onEditImage, onCritique, onInstructEdit, onRestyle, onTranscode, onTrimAudio, translate }: { asset: ContentAssetSummary; connectedPlatforms: string[]; onPublish: (assetId: string, platform: string) => void; onUnpublish: (assetId: string, platform: string) => void; onRegenerate: (assetId: string, count: number) => void; onEditRegion: (asset: ContentAssetSummary) => void; onEditImage: (asset: ContentAssetSummary) => void; onCritique: (assetId: string) => void; onInstructEdit: (assetId: string) => void; onRestyle: (assetId: string) => void; onTranscode: (assetId: string, format: 'webm' | 'gif') => void; onTrimAudio: (asset: ContentAssetSummary) => void; translate: ReturnType<typeof useTranslator> }) {
   const href = assetHref(asset.url);
   //? F4 — a render's url is an .mp4 (can't be an <img>); use its extracted poster frame as the thumbnail.
   //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
@@ -285,6 +285,13 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegene
       {asset.kind === 'video' && asset.status === 'ready' && !asset.stub && asset.url.length > 0 && (
         <div className="flex items-center gap-1 px-2 pb-2">
           <button type="button" onClick={() => { onRestyle(asset.id); }} title={translate({ key: 'workspaces.content.restyle' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="film" /> {translate({ key: 'workspaces.content.restyle' })}</button>
+        </div>
+      )}
+      {/* KG2 — transcode a finished mp4 (render/video) to webm/gif as a new sibling asset. */}
+      {(asset.kind === 'render' || asset.kind === 'video') && asset.status === 'ready' && !asset.stub && asset.url.endsWith('.mp4') && (
+        <div className="flex items-center gap-1 px-2 pb-2">
+          <button type="button" onClick={() => { onTranscode(asset.id, 'webm'); }} title={translate({ key: 'workspaces.content.transcodeWebm' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="film" /> {translate({ key: 'workspaces.content.webmLabel' })}</button>
+          <button type="button" onClick={() => { onTranscode(asset.id, 'gif'); }} title={translate({ key: 'workspaces.content.transcodeGif' })} className="rounded-md bg-container1 text-common px-1.5 py-1 text-[10px] font-semibold hover:bg-container2-hover cursor-pointer flex items-center gap-1 motion-safe:active:scale-95"><Icon name="film" /> {translate({ key: 'workspaces.content.gifLabel' })}</button>
         </div>
       )}
       {/* F9 — a standalone audio asset (voice/music/sfx): inline preview + a local trim/gain editor. */}
@@ -462,6 +469,8 @@ export default function ContentPiece({ params }: { params: Record<string, string
       runContentOp('content-video-restyle', piece.id, { assetId, prompt: extra.trim() || 'cinematic, warm colour grade, shallow depth of field' });
     })();
   };
+  //? KG2 — transcode a finished mp4 to webm/gif (free — a local ffmpeg pass, no provider spend).
+  const transcode = (assetId: string, format: 'webm' | 'gif') => { runContentOp('content-transcode', piece.id, { assetId, format }); notify.success({ key: 'workspaces.content.transcodeStarted' }); };
   //? F6 — instruct-edit an image asset ("change the sky to sunset"), whole-image. Uses the free-form direction
   //? field as the instruction (required); paid → cost-confirm with the € amount.
   const instructEdit = (assetId: string) => {
@@ -629,7 +638,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onUnpublish={unpublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTrimAudio={trimAudio} translate={translate} />)}
+                  {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onUnpublish={unpublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTranscode={transcode} onTrimAudio={trimAudio} translate={translate} />)}
                 </div>
               )}
             </div>

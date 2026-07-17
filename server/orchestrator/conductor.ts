@@ -32,7 +32,7 @@ import { runContentPipeline } from '../content/runPipeline';
 import { generateVoiceover } from '../content/voice';
 import { generateBeatImages } from '../content/images';
 import { assembleContent } from '../content/assembly';
-import { localizeAsset, trimAudioFile } from '../content/render';
+import { localizeAsset, trimAudioFile, transcodeContainer } from '../content/render';
 import { runCapture, buildCaptureScenario, generateCaptureScenario, coerceScenario } from '../content/capture';
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
@@ -1280,7 +1280,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const capCents = num(payload, 'capCents');
       const alertPct = num(payload, 'alertPct');
       const enabled = bool(payload, 'enabled');
-      const update: { capCents?: number; alertPct?: number; enabled: boolean } = { enabled };
+      //? KG1 — re-arm the alert push on any budget edit (a new cap/threshold is a fresh crossing).
+      const update: { capCents?: number; alertPct?: number; enabled: boolean; alertPushed: boolean } = { enabled, alertPushed: false };
       if (capCents !== undefined) update.capCents = capCents;
       if (alertPct !== undefined) update.alertPct = alertPct;
       await prisma.mediaBudget.upsert({
@@ -1447,6 +1448,21 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind, url, status: 'ready', metadata: jsonInput({ imported: true, uploadedBy: userId }) } });
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return;
+    }
+    //? KG2 — transcode a rendered mp4 asset to an alternative container (webm/gif) as a NEW sibling asset.
+    case 'content-transcode': {
+      const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
+      const assetId = str(payload, 'assetId');
+      const targetFmt = str(payload, 'format') === 'gif' ? 'gif' : 'webm';
+      if (!contentProjectId || !assetId) return;
+      const src = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: assetId, contentProjectId } });
+      const srcUrl = src?.url ?? '';
+      if (!srcUrl.startsWith('/media/') || !srcUrl.endsWith('.mp4')) return { ok: false, status: 'error', error: 'content.notTranscodable' };
+      const newUrl = await transcodeContainer(srcUrl.slice('/media/'.length), targetFmt);
+      if (!newUrl) return { ok: false, status: 'error', error: 'content.transcodeFailed' };
+      const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind: 'video', url: newUrl, status: 'ready', metadata: jsonInput({ transcodedFrom: assetId, container: targetFmt }) } });
+      await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
+      return { url: newUrl };
     }
     case 'content-reorder-beats': {
       //? E3 — the video timeline: persist a new beat order + per-beat duration (trim). The render reads beats

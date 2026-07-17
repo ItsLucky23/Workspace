@@ -307,7 +307,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'instruct-edit an existing IMAGE asset ("change the sky to sunset") — whole-image edit, no mask (costs money, the user confirms). params: pieceId, assetId (an image/render asset), prompt (the instruction)',
     params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, prompt: { kind: 'string', required: true } },
   },
-  'content-inpaint': LATER, 'content-reorder-beats': LATER, 'content-save-scenes': LATER,
+  'content-inpaint': LATER, 'content-reorder-beats': LATER, 'content-save-scenes': LATER, 'content-transcode': LATER,
   'content-decompose-video': LATER, 'content-refine-range': LATER,
   'content-run-pipeline': {
     mode: 'enabled',

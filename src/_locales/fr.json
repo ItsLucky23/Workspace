@@ -1409,7 +1409,12 @@
       "brandEmpty": "Pas encore de canaux. Ajoutez un canal pour définir sa voix de marque.",
       "brandVoicePlaceholder": "ex. amical, concis, un peu joueur ; jamais commercial.",
       "brandSave": "Enregistrer la marque",
-      "brandSaved": "Enregistré"
+      "brandSaved": "Enregistré",
+      "transcodeWebm": "Convertir en WebM (embed web)",
+      "transcodeGif": "Convertir en GIF (boucle aperçu)",
+      "transcodeStarted": "Conversion en cours – le nouveau fichier apparaît ici une fois prêt.",
+      "webmLabel": "WEBM",
+      "gifLabel": "GIF"
     },
     "knowledge": {
       "title": "Graphe de connaissances",

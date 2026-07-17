@@ -449,6 +449,30 @@ export function buildWatermarkArgs(inName: string, outName: string, logoName: st
   return ['-y', '-i', `/media/${inName}`, '-i', `/media/${logoName}`, '-filter_complex', `[0:v][1:v]overlay=${OVERLAY_XY[position]}[outv]`, '-map', '[outv]', '-map', '0:a?', '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
 }
 
+//? KG2 — transcode a finished mp4 into an alternative delivery CONTAINER (webm for web-embeds, gif for
+//? previews/loops). A post-pass over the mp4 (like watermark/CTA), so the mp4 path stays untouched.
+//? webm = VP9 + Opus; gif = a two-pass palette (fps/width-capped for a sane file size). Pure + exported.
+export type TranscodeTarget = 'webm' | 'gif';
+export function buildTranscodeArgs(inName: string, outName: string, target: TranscodeTarget, opts: { gifFps?: number; gifWidth?: number } = {}): string[] {
+  if (target === 'webm') {
+    return ['-y', '-i', `/media/${inName}`, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '32', '-c:a', 'libopus', '-b:a', '96k', `/media/${outName}`];
+  }
+  //? gif: build a palette then map through it (far better quality/size than a naive gif encode).
+  const fps = Math.max(5, Math.min(24, opts.gifFps ?? 12));
+  const width = Math.max(120, Math.min(1080, opts.gifWidth ?? 480));
+  const filter = `fps=${String(fps)},scale=${String(width)}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`;
+  return ['-y', '-i', `/media/${inName}`, '-filter_complex', filter, '-loop', '0', `/media/${outName}`];
+}
+
+//? Transcode a rendered mp4 to webm/gif → the new served url. Best-effort: a failure keeps the mp4.
+export async function transcodeContainer(inName: string, target: TranscodeTarget, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const outName = `${inName.replace(/\.mp4$/, '')}.${target}`;
+  const [err, res] = await tryCatch(() => run(buildTranscodeArgs(inName, outName, target)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Apply the watermark pass → the new served url; null on any failure (the clean render is kept).
 export async function applyWatermark(inName: string, logoName: string, position: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
   const run = opts.run ?? dockerFfmpegRunner;

@@ -1409,7 +1409,12 @@
       "brandEmpty": "No channels yet. Add a channel to set its brand voice.",
       "brandVoicePlaceholder": "e.g. friendly, concise, a bit playful; never salesy.",
       "brandSave": "Save brand",
-      "brandSaved": "Saved"
+      "brandSaved": "Saved",
+      "transcodeWebm": "Convert to WebM (web embed)",
+      "transcodeGif": "Convert to GIF (preview loop)",
+      "transcodeStarted": "Converting - the new file appears here when done.",
+      "webmLabel": "WEBM",
+      "gifLabel": "GIF"
     },
     "knowledge": {
       "title": "Knowledge graph",

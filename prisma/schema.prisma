@@ -1746,6 +1746,7 @@ model MediaBudget {
   spentCents    Int      @default(0)                // running spend in the current window
   windowStartAt DateTime @default(now())
   enabled       Boolean  @default(false)            // opt-in
+  alertPushed   Boolean  @default(false)            // KG1 — dedup: the alertPct push fired for the CURRENT crossing (reset on budget edit)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

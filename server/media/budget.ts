@@ -4,8 +4,12 @@
 //? capCents<=0 = unlimited. The Conductor is the writer; these helpers run inside `runInTenant`.
 
 import type { PrismaClient } from '@prisma/client';
+import { tryCatch } from '@luckystack/core';
 
 import { isHostSpendCapReached } from '../spend/record';
+import { sendWebPushMany } from '../hooks/webPush';
+
+const eurosStr = (c: number): string => `€${(c / 100).toFixed(2)}`;
 
 export interface MediaBudgetCheck {
   ok: boolean;
@@ -49,6 +53,29 @@ export async function recordMediaSpend(
     },
   });
   await prisma.mediaBudget.updateMany({ where: { workspaceId }, data: { spentCents: { increment: e.costCents } } });
+  //? KG1 — a budget-alert push at the alertPct crossing (best-effort; a failed push never fails the spend).
+  await tryCatch(() => maybeSendBudgetAlert(prisma, workspaceId));
+}
+
+//? KG1 — fire a ONE-TIME push when the workspace's media spend crosses its alert threshold. Dedup via
+//? `alertPushed` (reset on a budget edit / window reset). Only for enabled, capped budgets. Pushed to
+//? every workspace member who hasn't opted out of the 'automation' category. Pure best-effort.
+export async function maybeSendBudgetAlert(prisma: PrismaClient, workspaceId: string): Promise<void> {
+  const b = await prisma.mediaBudget.findUnique({ where: { workspaceId } });
+  if (!b || !b.enabled || b.capCents <= 0) return;
+  const threshold = (b.capCents * b.alertPct) / 100;
+  if (b.spentCents < threshold || b.alertPushed) return;
+  //? Claim the alert atomically-ish: flip the flag first so a concurrent spend can't double-fire.
+  const claimed = await prisma.mediaBudget.updateMany({ where: { workspaceId, alertPushed: false }, data: { alertPushed: true } });
+  if (claimed.count === 0) return;
+  const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { name: true, slug: true } });
+  await sendWebPushMany(prisma, members.map((m) => m.userId), {
+    title: `Media budget alert — ${ws?.name ?? 'workspace'}`,
+    body: `Spend has reached ${String(b.alertPct)}% of the cap (${eurosStr(b.spentCents)} of ${eurosStr(b.capCents)}).`,
+    url: '/workspaces/content/settings',
+    tag: `budget-alert-${workspaceId}`,
+  }, 'automation');
 }
 
 //? Current media-budget status (for the settings UI + the snapshot). `overAlert` = past the alert %.
