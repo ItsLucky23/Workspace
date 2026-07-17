@@ -240,33 +240,132 @@ node dist/server.js
 
 ## Running on Bun
 
-LuckyStack also runs on [Bun](https://bun.sh) ≥ 1.1 alongside the default Node ≥ 20 target. Bun is opt-in — there's no flag to flip, you just invoke the entry with `bun` instead of `node`.
-
-**Validate compatibility first:**
-
-```bash
-npm run bun:check         # runs under Node — baseline check
-bun run scripts/checkBunCompat.mjs   # runs under Bun — parity check
-```
-
-`bun:check` probes the modules LuckyStack reaches at boot (`node:crypto`, `node:fs`, `node:path`, `node:url`, `@prisma/client`, `socket.io`, `ioredis`, `@luckystack/core`, `@luckystack/server`). It does NOT boot the server — that requires a populated `.env.local`.
-
-**Dev / prod entry points:**
+LuckyStack targets **both** Node ≥ 20 and [Bun](https://bun.sh). There is no runtime
+switch, no wizard question, no config dimension — you run the same project with
+whichever runtime you invoke:
 
 ```bash
-# Dev: run the server directly under Bun (Bun has native TS support, no tsx needed)
-npm run bun:server
-
-# Prod: serve the compiled bundle under Bun
-npm run bun:prod
+npm run server    # -> Node (canonical path, via tsx)
+bun run server    # -> Bun  (genuinely Bun; see "How this works" below)
 ```
 
-**Known caveats:**
+> **Status (verified 2026-07-15, bun 1.3.14 / Windows x64):** the dev server BOOTS
+> and SERVES under Bun — Redis connected, Socket.io initialized, `/livez` → `200`,
+> `/_health` → `{"status":"ok",...}`. **But optional-package detection is currently
+> broken under Bun** (see [Known blockers](#known-blockers-bun)), so a Bun boot
+> silently loses login/sync/presence/devkit. Bun is **not production-ready** until
+> that lands. Node remains the supported default.
 
-- **Prisma 6.x** has experimental Bun support. The default Prisma engine works for standard query patterns; edge runtimes / Accelerate may behave differently. Smoke-test your hot queries before flipping a production deploy.
-- **Socket.io HTTP fallback** (`packages/sync/src/handleHttpSyncRequest.ts`) uses the standard Node HTTP interface, which Bun emulates. Long polling has been validated; if you depend on exotic headers or `Transfer-Encoding`, test under load.
-- The supervisor (`server/dev/supervisor.ts`) spawns a child via `tsx`. To use Bun's native TS instead, swap the spawn target in supervisor.ts or just bypass the supervisor with `bun:server` for dev (no hot-reload of `config.ts` though).
-- If a specific path hits a real Bun blocker, document it inline rather than fighting the runtime; the canonical Node path stays the supported default.
+### Verifying which runtime you actually got
+
+This matters more than it sounds. **On Windows there is no shebang** — npm generates
+a `.cmd` shim per bin (`node_modules/.bin/luckystack-dev.cmd`) that hardcodes a
+`node` call. So a naive `bun run server` launches **Node** and every log line still
+looks green. Measured, before the supervisor fix:
+
+| Command | Runtime you actually got |
+|---|---|
+| `bun run server` (bin-based script) | 🔴 **Node** (`C:\Program Files\nodejs\node.exe`) |
+| `bun --bun run server` | ✅ Bun (via a node-shim Bun injects at `%TEMP%\bun-node-<hash>\node.exe`) |
+| `bun run ./file.ts` (direct file) | ✅ Bun |
+
+The supervisor now prints the runtime it spawned the server child with, so you never
+have to guess:
+
+```
+[Supervisor] Started server process (pid: 27448, runtime: bun)
+```
+
+To confirm from inside your own code, use `typeof Bun !== 'undefined'` — **not**
+`process.execPath`. Under `bun --bun run <bin-script>` the child's `process.execPath`
+is Bun's injected node-shim (`…\Temp\bun-node-<hash>\node.exe`), which *looks* like
+Node while genuinely being Bun.
+
+### How this works
+
+`@luckystack/devkit`'s supervisor (`packages/devkit/src/supervisor.ts`, the
+`luckystack-dev` bin behind `npm run server`) resolves the child's runtime rather
+than assuming it. Bun leaves fingerprints even when it hands off to Node via the
+`.cmd` shim:
+
+```
+npm_config_user_agent = "bun/1.3.14 npm/? node/v24.3.0 win32 x64"
+npm_execpath          = "<abs>/bun.exe"
+```
+
+So the supervisor can tell `bun run` from `npm run`, and `npm_execpath` hands it the
+real bun binary. The resolution table:
+
+| Situation | Child spawned as | Runtime |
+|---|---|---|
+| `npm run server` | `node <tsx-cli> --tsconfig tsconfig.server.json server/server.ts` | Node |
+| `bun run server` (we are Node via the shim) | `<bun.exe> --bun run <abs>/server/server.ts` | Bun |
+| `bun --bun run server` (already Bun) | `<process.execPath> <abs>/server/server.ts` | Bun |
+| `bun run server`, bun binary not locatable | — **fails loudly, exits 1** | — |
+
+Two deliberate properties:
+
+- **tsx is dropped on the Bun path.** Bun compiles TypeScript natively, so tsx would
+  only add a redundant transpile hop — and `--tsconfig` is not a Bun flag at all.
+  Bun reads `tsconfig.json` itself, which is where the scaffold's `paths` live
+  (`src/*`, `server/*`, `shared/*`, `luckystack/*`, `config`).
+- **It never silently falls back to Node.** If a `bun run` launch is detected but the
+  bun binary can't be located, the supervisor refuses and exits 1. A green-looking
+  Node boot that claims to be Bun is the exact failure this removes.
+
+### Env semantics
+
+`bunfig.toml` ships with `env = false` at the project root. Bun preloads
+`.env` / `.env.<mode>` / `.env.local` before any user code runs; Node does not.
+LuckyStack loads its own env files and relies on Node semantics, so `env = false`
+makes `bun` and `node` load exactly the same values. **Keep this file.**
+
+> `env = false` requires **Bun ≥ 1.3.3**. Both the framework root and scaffold
+> `engines.bun` declarations use that same floor; do not lower it, because older
+> Bun releases silently ignore the setting and auto-load env files LuckyStack
+> never loads.
+
+### Known blockers (Bun)
+
+<a id="known-blockers-bun"></a>
+
+- **`@luckystack/router` cannot currently proxy WebSockets on Bun.** Bun's
+  `node:http` upgrade socket accepts `write()` but delivers no handshake bytes
+  ([oven-sh/bun#28396](https://github.com/oven-sh/bun/issues/28396)). This affects
+  only the separate router process; LuckyStack backends serve Socket.io normally
+  on Bun. The router measures the primitive at boot and refuses to start when it
+  is broken, so it cannot appear healthy while black-holing sockets. Run the
+  router on Node until the upstream capability probe passes.
+- **`node:repl` is not implemented by Bun** (`repl.start is not a function`). The
+  framework monorepo's optional sample REPL is skipped on Bun; scaffolded
+  consumer projects ship no REPL and are unaffected.
+
+### Prod on Bun
+
+```bash
+node dist/server.js   # Node backend
+bun dist/server.js    # Bun backend
+```
+
+The prod bundle is plain JS, so no transpile hop is involved either way. Optional
+package detection is verified on both runtimes. Only the separate router process
+has the Bun limitation above and must currently run on Node.
+
+### Not yet verified
+
+Honest gaps — do not read these as either working or broken:
+
+- **Prisma queries under Bun in this stack.** Prisma's docs now list Bun as a
+  supported runtime (the older "experimental" note here was stale — see
+  <https://www.prisma.io/docs/guides/bun>), but no LuckyStack query path has been
+  exercised against a live DB under Bun. Smoke-test your hot queries before trusting
+  a deploy.
+- **`@luckystack/router`'s WebSocket proxy under Bun.** Untested.
+- **Socket.io under sustained load / long-polling fallback under Bun.** The
+  handshake + adapter attach were confirmed at boot; traffic was not exercised.
+- **`prisma generate` under `bunx --bun`** — deliberately stays on `npx` (Prisma's
+  CLI is a Node program; `bunx --bun prisma generate` has an open Windows hang,
+  oven-sh/bun#14868).
 
 ---
 

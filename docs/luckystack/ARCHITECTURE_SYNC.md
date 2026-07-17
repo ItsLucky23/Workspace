@@ -520,6 +520,13 @@ When exceeded, handlers return `sync.rateLimitExceeded` with `seconds` in `error
 
 Generated sync output typing preserves direct literal return values in object properties (for example `allowed: true` vs `allowed: false`) so TypeScript can narrow branch-specific shapes safely.
 
+Transport inputs must use wire-safe declarations: represent dates as ISO `string`,
+validate, then convert explicitly. A `Date` in `clientInput` is rejected during
+generation because JSON delivers a string while the handler annotation would promise
+an instance. Outputs/streams project `Date -> string`; binary outputs are rejected
+from the shared HTTP/Socket.io map because the two transports deliver incompatible
+runtime shapes.
+
 ### Error Contract
 
 - Sync errors should return `status: 'error'` with an `errorCode` (and optional `errorParams` / `httpStatus`).

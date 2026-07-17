@@ -164,6 +164,9 @@ real split deploy. `npm run luckystack-validate-deploy` flags service/preset mis
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| Router **refuses to start**: "This runtime cannot proxy WebSockets" | You are running the router on **Bun**. Its `node:http` upgrade sockets are a silent no-op ([oven-sh/bun#28396](https://github.com/oven-sh/bun/issues/28396)) — the router would serve HTTP, look healthy, and drop every socket | Run the router on **Node**; backends can stay on Bun. `LUCKYSTACK_ALLOW_BROKEN_WS_PROXY=1` downgrades it to a warning if you genuinely never upgrade |
+| Client hits the router and socket.io fails with **"websocket error"**, HTTP routes fine | `@luckystack/router` 0.4.0–0.6.7: the forwarded 101 lost `Connection: Upgrade`, so no handshake could complete | Upgrade the router past 0.6.7 |
+| Client hits the router and socket.io fails with **"xhr poll error"** / `502 serviceNotAssigned` naming service `socket.io` | `@luckystack/router` ≤0.6.7: the polling handshake was routed by first path segment, so it looked for a service named `socket.io` | Upgrade the router past 0.6.7 |
 | A `syncRequest` broadcast / `broadcastStream` reaches **no one** on other servers | Instances pointing at **different** Redis (so neither `fetchSockets()` nor the adapter spans them) | Point every backend at one shared Redis (`REDIS_HOST`/`REDIS_PORT`); enable `strictBootHandshake` to catch it at boot |
 | Every sync feels slightly slower / more Redis traffic in a cluster | Each sync fan-out does one cross-instance `fetchSockets()` (Redis round-trip) + one `RemoteSocket.emit()` per remote recipient | Expected; single-instance short-circuits. For very high sync throughput or huge rooms, the `io.serverSideEmit()` fan-out (O(instances)) is the optimization — no API change |
 | Router **crashes at boot** with an explicit-port error | A `deploy.config.ts` binding URL has no port | Add the port (`http://host:8081/`) |
@@ -179,14 +182,45 @@ real split deploy. `npm run luckystack-validate-deploy` flags service/preset mis
 ### Automated — proves the Redis cross-instance link
 
 ```bash
-npm run test:integration
+LUCKYSTACK_REQUIRE_REDIS=1 npm run test:integration
 ```
 
-Runs `packages/core/src/socketRedisAdapter.integration.test.ts`: two real Socket.io servers +
-`@socket.io/redis-adapter` on your actual Redis. It asserts (a) `ioB.to(room).emit()` reaches a
-client on **server A**, (b) `io.in(room).fetchSockets()` returns members from **both** servers
-(the regular sync fan-out's cross-instance enumeration), and (c) a `RemoteSocket.emit()` from
-server A reaches a client on server B. **Skips gracefully** if no Redis is reachable.
+Runs two suites against your actual Redis:
+
+- `packages/core/src/socketRedisAdapter.integration.test.ts` — two real Socket.io servers +
+  `@socket.io/redis-adapter`. Asserts (a) `ioB.to(room).emit()` reaches a client on **server A**,
+  (b) `io.in(room).fetchSockets()` returns members from **both** servers (the regular sync
+  fan-out's cross-instance enumeration), and (c) a `RemoteSocket.emit()` from server A reaches a
+  client on server B.
+- `packages/router/src/wsProxy.integration.test.ts` — the same, **through a real
+  `startRouter()`**: a real socket.io client upgrades across the proxy (both websocket-only and
+  the browser-realistic polling→upgrade path) and still receives cross-instance fan-out from the
+  instance it never talked to.
+
+> **Set `LUCKYSTACK_REQUIRE_REDIS=1` whenever you are trying to PROVE something.** Both suites
+> skip gracefully when Redis is unreachable so a Redis-less CI stays green — but a skip is
+> indistinguishable from a pass in the summary line, and that is not hypothetical: on a dev
+> machine whose `.env.local` points at a Redis with credentials the local one rejects, these
+> suites reported "skipped" as a PASS *for as long as they existed*. The flag turns the skip into
+> a loud failure. Against a local no-auth docker Redis, bypass `.env.local` with
+> `LUCKYSTACK_ENV_FILES=.env LUCKYSTACK_REQUIRE_REDIS=1 npm run test:integration`.
+
+### Automated — proves the router proxies WebSockets, on both runtimes
+
+```bash
+npm run smoke:ws     # node
+```
+
+`scripts/wsProxySmoke.ts` boots two backend instances + a real router and drives a real
+socket.io client through it, printing the runtime it is actually on and PASS/FAIL per check. It
+**requires** Redis and never skips — a smoke test whose point is proving something must not pass
+by proving nothing.
+
+> **The router does not run on Bun.** It refuses to start there, on purpose: Bun's `node:http`
+> upgrade sockets are a silent no-op ([oven-sh/bun#28396](https://github.com/oven-sh/bun/issues/28396),
+> open), so a Bun router would serve HTTP, report healthy, and drop every WebSocket. Run the
+> router on Node; your backends can still run on Bun. The check is a boot-time capability probe,
+> so it starts working by itself once Bun fixes it.
 
 ### Manual — see it end-to-end with two real backends (browser)
 

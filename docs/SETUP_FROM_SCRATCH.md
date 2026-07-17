@@ -203,7 +203,12 @@ Generate a VAPID keypair once:
 node -e "console.log(require('web-push').generateVAPIDKeys())"
 ```
 It prints `{ publicKey, privateKey }`. Paste into `.env.local`:
-`WS_VAPID_PUBLIC=<publicKey>` / `WS_VAPID_PRIVATE=<privateKey>` / `WS_VAPID_SUBJECT=mailto:you@example.com` → restart.
+
+`WS_VAPID_PUBLIC=publicKey` 
+
+`WS_VAPID_PRIVATE=privateKey` 
+
+`WS_VAPID_SUBJECT=mailto:you@example.com` → restart.
 
 ---
 

@@ -22,7 +22,7 @@ export const ports: {
    *  covers same-origin session cookies + sockets.) */
   devBackendUrl?: string;
 } = {
-  frontend: 5173,
-  backend: 80,
+  frontend: 5391,
+  backend: 4787,
   // devBackendUrl: 'https://staging-api.example.com',
 };

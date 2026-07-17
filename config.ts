@@ -196,7 +196,7 @@ export const {
 // Project-specific session shape. Extend the framework's BaseSessionLayout
 // with whatever extra fields your User model has. Keep it structurally
 // compatible with BaseSessionLayout (the type-check below enforces it).
-import type { BaseSessionLayout } from '@luckystack/core';
+import type { BaseSessionLayout, Jsonify } from '@luckystack/core';
 import type { User } from '@prisma/client';
 
 //? Re-export AuthProps so file-based `_api` / `_sync` handlers can
@@ -208,7 +208,7 @@ export type { AuthProps } from '@luckystack/core';
 //? Omit the at-rest SECRETS (password + the 2FA secret/recovery material) — the login package's
 //? `sanitizeUserForSession` strips exactly these, so the session never carries them. `twoFactorEnabled`
 //? stays (a non-secret flag the UI reads to show enrollment state).
-export interface SessionLayout extends Omit<User, 'password' | 'totpSecret' | 'recoveryCodes'> {
+export interface SessionLayout extends Jsonify<Omit<User, 'password' | 'totpSecret' | 'recoveryCodes'>> {
   avatarFallback: string;
   token: string;
   roomCodes?: string[];

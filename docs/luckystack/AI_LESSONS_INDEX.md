@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (7)
+## Lessons (11)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,10 @@
 | 0005 | npm run eats no provenance flag | 🟡 medium | release / publishing | npm, publish, provenance, windows, release | `docs/lessons/0005-npm-run-eats-no-provenance-flag.md` |
 | 0006 | reset cached client insufficient register instead | 🟠 high | core / redis / secret-manager | redis, secret-manager, boot, caching, ioredis | `docs/lessons/0006-reset-cached-client-insufficient-register-instead.md` |
 | 0007 | a fix that never fires verify the trigger | 🟠 high | core / server / secret-manager | redis, secret-manager, boot, config, verification | `docs/lessons/0007-a-fix-that-never-fires-verify-the-trigger.md` |
+| 0008 | A green test that asserts the status line proved the router could proxy WebSockets — it never could | 🔴 critical | packages/router | testing, sockets, router, protocol, false-green | `docs/lessons/0008-status-line-is-not-a-handshake.md` |
+| 0009 | The integration suite that "proves the Redis cross-instance link" had never run a single test | 🟠 high | testing | testing, redis, false-green, env | `docs/lessons/0009-a-skipped-test-suite-reports-as-a-pass.md` |
+| 0010 | An ORM's toJSON() describes stringifying THAT object — not the same object reached through its parent | 🟡 medium | packages/devkit | types, orm, serialization, codegen, wontfix | `docs/lessons/0010-tojson-describes-the-object-not-the-parent-path.md` |
+| 0011 | A Windows-green lockfile can be invalid for Linux npm ci | 🟠 high | release | npm, lockfile, ci, cross-platform, release | `docs/lessons/0011-windows-lockfile-can-omit-linux-optional-transitives.md` |
 
 ## Takeaways
 
@@ -27,7 +31,7 @@
 
 **0001** · critical · packages/core (client/server boundary) · tags: runtime, bundling, client-server-boundary · 2026-06-23
 
-Never import a `node:*` module (or anything that transitively does — `async_hooks`, `fs`, `child_process`) from code the client bundle can reach; use the `@luckystack/core/client` entry, which is built to keep Node built-ins out (see the `tryCatchClient` lazy-capture pattern). And ALWAYS smoke-test the real browser before calling a change "ship-safe" — a green build + green tests do not prove the page renders. Related: `docs/examples/trycatch-error-handling.md`.
+Never import a `node:*` module (or anything that transitively does — `async_hooks`, `fs`, `child_process`) from code the client bundle can reach; use the `@luckystack/core/client` entry. Keep server-only state such as AsyncLocalStorage in a separate module rather than relying on a lazy import inside a mixed registry.
 
 → `docs/lessons/0001-node-modules-leak-into-client-bundle.md`
 
@@ -78,3 +82,35 @@ For any client that captures a credential at construction (ioredis, DB pools, SD
 When a fix depends on a config value or a callback, **verify the value is actually populated / the callback is actually wired on the real path** — don't assume `getProjectConfig().X` is set just because the consumer "configured X" (they may only pass it to a package directly, never into `registerProjectConfig`). Prefer a trigger owned by the component that KNOWS the event happened. Here: the resolver (`@luckystack/secret-manager`) knows secrets were resolved, so IT fires the channel (global-symbol array → core rebuilds), instead of the server boot guessing from config. Add at least one test that exercises the trigger through the real entry point (here: a secret-manager resolve fires the global listeners), not only the leaf logic.
 
 → `docs/lessons/0007-a-fix-that-never-fires-verify-the-trigger.md`
+
+### 0008 — A green test that asserts the status line proved the router could proxy WebSockets — it never could
+
+**0008** · critical · packages/router · tags: testing, sockets, router, protocol, false-green · 2026-07-15
+
+**When you implement a protocol, test the protocol, not a substring of it.** For an upgrade that means: a real client connects, and the negotiated transport is `websocket`. Anything less tests your own mock. **A test helper that stops reading early caps what any assertion built on it can ever catch.** `sendUpgrade` returned the first line; no test using it could have found this, no matter how well written. Audit helpers for what they *discard*. **Treat "not covered" rows in a ledger as red, not as prose.** The gap was written down and stayed open because nothing was failing. **Directional rules need directional sets.** Hop-by-hop, forwarded headers, CORS — request-side and response-side rules are different rules. Reusing one set for both is a recognisable smell; name the sets after the direction (`WS_RESPONSE_HOP_BY_HOP_HEADERS`) so the wrong one looks wrong at the call site. **When a security fix filters something, pin what it must NOT filter in the same commit.** The sweep's intent was right; only its blast radius was wrong, and a single test asserting `connection: upgrade` survives would have caught it on day one.
+
+→ `docs/lessons/0008-status-line-is-not-a-handshake.md`
+
+### 0009 — The integration suite that "proves the Redis cross-instance link" had never run a single test
+
+**0009** · high · testing · tags: testing, redis, false-green, env · 2026-07-15
+
+**Give every conditional skip an opt-in that turns it into a failure.** `LUCKYSTACK_REQUIRE_REDIS=1` now does this; run it that way whenever the point of the run is proof. The error names host, port, and whether auth was attempted, which is exactly what the skip was hiding. **Read the skip count, not the pass count.** `1 passed | 5 skipped` is not a pass; the file passed, the tests did not run. Prefer a green count you can point at. **A test whose whole purpose is proving something should not be able to pass by proving nothing.** `scripts/wsProxySmoke.ts` therefore exits 1 when Redis is missing — it has no legitimate skip case. **Beware env overlays in tests.** `.env.local` holds credentials for real infrastructure; a local docker service usually has none. Bypass with `LUCKYSTACK_ENV_FILES=.env` (ambient-only, per the env contract) rather than editing a secrets file — and never read `.env.local` to find out why (CLAUDE.md rule 16).
+
+→ `docs/lessons/0009-a-skipped-test-suite-reports-as-a-pass.md`
+
+### 0010 — An ORM's toJSON() describes stringifying THAT object — not the same object reached through its parent
+
+**0010** · medium · packages/devkit · tags: types, orm, serialization, codegen, wontfix · 2026-07-15
+
+**When a codegen rule is derived from a runtime contract, verify the runtime actually takes that path.** Rule 1 is correct for `Date` (verified: ISO string standalone *and* through the entity) and wrong for a Collection-in-an-entity. Same rule, same file, different answer — only a payload can tell you which. **Vague-but-true beats precise-but-false.** `({ } & { })[]` costs the consumer a narrowing step. `EntityDTO<Item>[]` would cost them a production bug that type-checks. When you cannot be precise *and* correct, stay wide. **A type-level "improvement" is a claim about runtime.** Before tightening a generated type, produce the payload it claims to describe. **Beware fixes that only work for the ORM in front of you.** Substituting a type parameter with its constraint is a guess dressed as a derivation — it equates `EntityDTO<TT>` with "TT serialized", which is nowhere in the contract. A name-free rule that is really a per-ORM guess is still a per-ORM guess. **Record the refutation at the code, not only in a ledger.** The reasoning now sits above `resolveToJsonReturnType`, so the next person who spots the "obvious" fix meets the measurement before they touch it.
+
+→ `docs/lessons/0010-tojson-describes-the-object-not-the-parent-path.md`
+
+### 0011 — A Windows-green lockfile can be invalid for Linux npm ci
+
+**0011** · high · release · tags: npm, lockfile, ci, cross-platform, release · 2026-07-16
+
+Validate release lockfiles with the npm majors used by CI: `npm ci --dry-run -ignore-scripts` under npm 10, 11, and the publish workflow's current npm. Keep `@emnapi/core` and `@emnapi/runtime` as root dev dependencies while the transitive optional-dependency graph needs them. Direct dependencies force npm to retain their lock entries on Windows; they are tooling-only and are not published in any LuckyStack package tarball. A successful `npm install` is not equivalent to `npm ci`; the latter validates the committed graph before installing. Do not move or recreate a release tag until the CI install step has passed. If a tag has already fired but publication has not started, fix `main` and use the manual publish workflow from the corrected commit rather than force-moving the tag.
+
+→ `docs/lessons/0011-windows-lockfile-can-omit-linux-optional-transitives.md`

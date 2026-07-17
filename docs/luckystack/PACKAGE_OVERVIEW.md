@@ -29,7 +29,7 @@
 
 | Package | Use case | Required peers | Optional peers |
 |---|---|---|---|
-| `@luckystack/error-tracking` | Pluggable server error-tracking with built-in Sentry / Datadog / PostHog adapters and multi-tracker fan-out (per-adapter throws are swallowed). | none | `@sentry/node@^10.48.0`, `dd-trace@^5.0.0`, `hot-shots@^10.0.0`, `posthog-node@^4.0.0` |
+| `@luckystack/error-tracking` | Pluggable server error-tracking with built-in Sentry / Datadog / PostHog adapters and multi-tracker fan-out (per-adapter throws are swallowed). | none | `@sentry/node@^10.66.0`, `dd-trace@^5.0.0`, `hot-shots@^10.0.0`, `posthog-node@^4.0.0` |
 
 ## Infrastructure & Deployment
 

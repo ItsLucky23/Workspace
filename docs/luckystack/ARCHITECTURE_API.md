@@ -173,6 +173,17 @@ For translated error responses over HTTP, send one of:
 - `Accept-Language: en`
 - `X-Language: en`
 
+### Transport-safe types
+
+- Declare date inputs as ISO `string`, not `Date`. JSON cannot deliver a Date
+  instance; type generation fails loudly on `Date` so handler methods such as
+  `.getTime()` cannot compile against a value that arrives as a string. Validate
+  the ISO string and convert explicitly inside the handler when needed.
+- Generated outputs describe the serialized client value (`Date -> string`).
+  Return explicit JSON DTOs/base64 for binary data: shared HTTP and Socket.io
+  response maps reject `Buffer`/ArrayBuffer/typed-array outputs because their
+  transports produce different runtime shapes.
+
 ### Response Contract
 
 - API handlers must return exactly one of:

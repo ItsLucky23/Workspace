@@ -2,11 +2,14 @@ node_modules
 dist
 .eslintcache
 
-# Local env: .env holds only non-secret config and IS committed.
-# .env.local holds secret-manager POINTERS (e.g. DATABASE_URL_V1), not literal
-# secrets — the real bearer token is `.secret-manager-token` (gitignored). So
-# .env.local IS committed by design.
-# .env.local
+# Local env model:
+#   .env       = PRODUCTION baseline, COMMITTED. Holds only secret-manager POINTERS
+#                (e.g. DATABASE_URL_V1, resolved at runtime) + non-secret config.
+#                Never a literal secret. NODE_ENV=production, SECURE=true.
+#   .env.local = local DEV OVERRIDES, GITIGNORED. NODE_ENV=development, SECURE=false,
+#                dev-only infra (localhost, tunnel ports, Windows paths) and any
+#                literal secret that isn't a pointer. Loaded after .env, overrides it.
+.env.local
 
 # @luckystack/secret-manager shared bearer token (single-line file, never commit).
 .secret-manager-token
