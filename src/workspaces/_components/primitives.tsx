@@ -240,7 +240,7 @@ export function InfoDot({ title, body, align = 'right' }: { title?: string; body
 export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean; divider?: boolean; onClick?: () => void }
 //? `label` renders a text + chevron trigger (e.g. "Advanced ▾") instead of the icon-only button, for a
 //? progressive-disclosure menu that reads as a labelled control. Omit it → the original icon-only trigger.
-export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
+export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, ariaLabel, triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; ariaLabel?: string; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const change = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
   const ref = useClickAway<HTMLDivElement>(open, () => { change(false); });
@@ -248,6 +248,8 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, trig
     <div className="relative" ref={ref}>
       <button
         type="button"
+        //? a11y (gap-fix): the icon-only trigger had NO accessible name — screen readers announced "button".
+        {...(label ? {} : { 'aria-label': ariaLabel ?? 'menu', 'aria-haspopup': true, 'aria-expanded': open })}
         onClick={(e) => { e.stopPropagation(); change(!open); }}
         className={triggerClass ?? (label
           ? 'inline-flex items-center gap-1.5 h-8 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 transition-colors cursor-pointer'

@@ -12,7 +12,7 @@
 //? — the ControlRequest/ControlAck contract and this op-dispatch are unchanged.
 
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
-import { Prisma, type Ticket as DbTicket } from '@prisma/client';
+import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/client';
 
 import { randomBytes } from 'node:crypto';
 
@@ -42,6 +42,7 @@ import { generateMediaAsset } from '../content/mediaAsset';
 import type { MediaFeature } from '../media/types';
 import { publishAsset, isPublishPlatform, deletePlatformPost } from '../content/publish';
 import { indexChannelBrand } from '../content/brandMemory';
+import { recordAiRun } from '../ai/activity';
 import { jsonInput } from '../util/json';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
@@ -396,6 +397,19 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
 //? wipes a real AI open-question). One per defer reason.
 export const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
 export const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
+//? Gap-fix — the blocks-gate banner (the open blocker keys are appended). Override: remove the link,
+//? or set the ticket's priority to `urgent` (the same deliberate force the capacity cap honours).
+export const BLOCKED_DEFER_MSG = '🔒 Geblokkeerd door open ticket(s)';
+
+//? The keys of OPEN tickets that block `ticketId` via a TicketLink(rel:'blocks') pointing AT it.
+//? A blocker counts as open unless archived / status 'done' / parked on the 'done' stage. Exported
+//? for the blocks-gate integration test (the live path continues into a real container launch).
+export async function openBlockersFor(db: PrismaClient, workspaceId: string, ticketId: string): Promise<string[]> {
+  const blockLinks = await db.ticketLink.findMany({ where: { workspaceId, rel: 'blocks', targetTicketId: ticketId }, select: { ticketId: true } });
+  if (blockLinks.length === 0) return [];
+  const blockerRows = await db.ticket.findMany({ where: { workspaceId, id: { in: blockLinks.map((b) => b.ticketId) } }, select: { key: true, status: true, stageId: true, archived: true } });
+  return blockerRows.filter((b) => !b.archived && b.status !== 'done' && b.stageId !== 'done').map((b) => b.key);
+}
 
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
@@ -420,8 +434,21 @@ async function provisionContainers(workspaceId: string, activated: { key: string
   for (const { key } of activated) {
     void tryCatch(async () => {
       //? Pause (C2): a per-ticket pause skips just this ticket.
-      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { status: true, priority: true } });
+      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { id: true, status: true, priority: true } });
       if (t?.status === 'paused') { console.log(`[conductor] runStage ${key}@${stageId} skipped — ticket paused`); return; }
+      //? Gap-fix — the BLOCKS-GATE: `TicketLink(rel:'blocks')` was pure decoration; two linked tickets
+      //? could run (and merge-conflict) in parallel. A ticket whose blocker is still open is DEFERRED
+      //? with a banner naming the blockers. Deliberate override: remove the link, or set priority to
+      //? `urgent` (the same explicit force the capacity cap honours). Checked BEFORE reserving a slot.
+      if (t && t.priority !== 'urgent') {
+        const openBlockers = await openBlockersFor(prisma, workspaceId, t.id);
+        if (openBlockers.length > 0) {
+          console.log(`[conductor] runStage ${key}@${stageId} skipped — blocked by ${openBlockers.join(', ')}`);
+          await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: `${BLOCKED_DEFER_MSG}: ${openBlockers.join(', ')}` } });
+          await broadcastTicketDelta(prisma, workspaceId, [key]);
+          return;
+        }
+      }
       //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in the
       //? live VS Code — that races their worktree. Checked BEFORE reserving a capacity slot so an
       //? edit-locked ticket never consumes the budget. Skip + banner + broadcast; re-entering
@@ -445,8 +472,8 @@ async function provisionContainers(workspaceId: string, activated: { key: string
         await broadcastTicketDelta(prisma, workspaceId, [key]);
         return;
       }
-      //? Clear a prior defer banner (editor/capacity; targeted, leaves real open-questions intact).
-      await prisma.ticket.updateMany({ where: { workspaceId, key, needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, data: { needsInput: null } });
+      //? Clear a prior defer banner (editor/capacity/blocks; targeted, leaves real open-questions intact).
+      await prisma.ticket.updateMany({ where: { workspaceId, key, OR: [{ needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, { needsInput: { startsWith: BLOCKED_DEFER_MSG } }] }, data: { needsInput: null } });
       try {
         await runStage(workspaceId, key, stageId, { resume, ...(resumePrompt === undefined ? {} : { resumePrompt }) });
       } finally {
@@ -1338,7 +1365,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!name) return;
       const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
       if (!projectId) return { ok: false, status: 'error', error: 'env.noProject' };
-      const created = await prisma.channel.create({ data: { workspaceId: action.workspaceId, projectId, name, platform: str(payload, 'platform') ?? 'none', ...(str(payload, 'handle') ? { handle: str(payload, 'handle') } : {}), ...(str(payload, 'brandVoice') ? { brandVoice: str(payload, 'brandVoice') } : {}), aiDisclosureDefault: bool(payload, 'aiDisclosureDefault') } });
+      const created = await prisma.channel.create({ data: { workspaceId: action.workspaceId, projectId, name, platform: str(payload, 'platform') ?? 'none', ...(str(payload, 'handle') ? { handle: str(payload, 'handle') } : {}), ...(str(payload, 'brandVoice') ? { brandVoice: str(payload, 'brandVoice') } : {}), aiDisclosureDefault: bool(payload, 'aiDisclosureDefault'), ...(str(payload, 'defaultAccountId') ? { defaultAccountId: str(payload, 'defaultAccountId') } : {}), autopilot: bool(payload, 'autopilot') } });
       broadcastContentDirty(action.workspaceId);
       return created;
     }
@@ -1352,6 +1379,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         ...('brandVoice' in payload ? { brandVoice: str(payload, 'brandVoice') ?? null } : {}),
         ...('defaultStyleId' in payload ? { defaultStyleId: str(payload, 'defaultStyleId') ?? null } : {}),
         ...('aiDisclosureDefault' in payload ? { aiDisclosureDefault: bool(payload, 'aiDisclosureDefault') } : {}),
+        ...('defaultAccountId' in payload ? { defaultAccountId: str(payload, 'defaultAccountId') ?? null } : {}),
+        ...('autopilot' in payload ? { autopilot: bool(payload, 'autopilot') } : {}),
       };
       await prisma.channel.updateMany({ where: { workspaceId: action.workspaceId, id: channelId }, data });
       broadcastContentDirty(action.workspaceId);
@@ -1394,7 +1423,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     case 'content-edit-product': {
       //? Q2 — the per-workspace product/brand context folded into every creative generation.
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { productContext: str(payload, 'productContext') ?? '' } });
+      //? Gap-fix: also carries the brand logo (/media upload) the render watermark overlays. Partial
+      //? updates: only the provided fields change.
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: {
+        ...('productContext' in payload ? { productContext: str(payload, 'productContext') ?? '' } : {}),
+        ...('brandLogoUrl' in payload ? { brandLogoUrl: str(payload, 'brandLogoUrl') ?? null } : {}),
+      } });
       return;
     }
     case 'content-import-asset': {
@@ -1846,7 +1880,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!contentProjectId) return;
       const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId } });
       if (!piece) return;
-      await assembleContent(prisma, { workspaceId: action.workspaceId, contentProjectId });
+      //? Gap-fix (render settings): the assemble call can carry an aspect ratio (persisted on the piece —
+      //? the backend was ready but no UI could ever set it) and/or an OutputTemplate — which was pure CRUD
+      //? without effect; its format + watermarkPosition now actually drive the render.
+      let wmPosition = str(payload, 'watermarkPosition');
+      const assembleAspect = str(payload, 'aspectRatio');
+      if (assembleAspect === '16:9' || assembleAspect === '9:16' || assembleAspect === '1:1') {
+        await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { aspectRatio: assembleAspect } });
+      }
+      const templateId = str(payload, 'templateId');
+      if (templateId) {
+        const tpl = await prisma.outputTemplate.findFirst({ where: { workspaceId: action.workspaceId, id: templateId } });
+        if (tpl) {
+          if (tpl.format === '16:9' || tpl.format === '9:16' || tpl.format === '1:1') {
+            await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { aspectRatio: tpl.format } });
+          }
+          if (tpl.watermarkPosition) wmPosition ??= tpl.watermarkPosition;
+        }
+      }
+      await assembleContent(prisma, { workspaceId: action.workspaceId, contentProjectId, ...(wmPosition ? { watermarkPosition: wmPosition } : {}) });
       return;
     }
     //? Short-form clip (F2.2, ADR 0049) — a hook-driven vertical video via video-gen.
@@ -1925,9 +1977,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const caption = str(payload, 'caption');
       const privacy = str(payload, 'privacy');
       const hashtags = strArr(payload, 'hashtags');
+      //? Channel-binding (gap-fix): the piece's channel supplies the DEFAULT publish account and — on an
+      //? autopilot channel — replaces the per-post approval (the autopilot switch IS the consent, ADR).
+      const pieceRow = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { channelId: true } });
+      const channelRow = pieceRow?.channelId ? await prisma.channel.findFirst({ where: { workspaceId: action.workspaceId, id: pieceRow.channelId } }) : null;
+      const effectiveAccountId = accountId ?? channelRow?.defaultAccountId ?? undefined;
       //? AI-disclosure (EU AI Act art. 50 / platform policy): the composer's synthetic-media checkbox —
-      //? persisted per platform so the upload adapter sets the platform's disclosure flag.
-      const syntheticMedia = 'syntheticMedia' in payload ? bool(payload, 'syntheticMedia') : undefined;
+      //? persisted per platform so the upload adapter sets the platform's disclosure flag. Absent (an
+      //? autopilot run has no human ticking boxes) → the channel's aiDisclosureDefault applies.
+      const syntheticMedia = 'syntheticMedia' in payload ? bool(payload, 'syntheticMedia') : (channelRow?.autopilot ? channelRow.aiDisclosureDefault : undefined);
       const hasVariant = caption !== undefined || (privacy === 'public' || privacy === 'unlisted' || privacy === 'private') || hashtags.length > 0 || syntheticMedia !== undefined;
       if (hasVariant) {
         const proj = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { publishVariants: true } });
@@ -1941,10 +1999,28 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         };
         await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { publishVariants: jsonInput(current) } });
       }
-      const acctLabel = accountId ? ` (${accountId})` : '';
+      //? @adr 0269
+      //? AUTOPILOT (per-channel opt-in consent): the channel owner explicitly flipped autopilot ON,
+      //? which IS the prior approval for publishing from this channel — so skip the suggestion and post
+      //? now (through the same publishAsset path a human accept would take; B-23 intact: the Conductor is
+      //? still the only writer). Every autopilot post lands in the Activity feed. The kill-switch is the
+      //? channel toggle itself.
+      if (channelRow?.autopilot) {
+        const startedAt = Date.now();
+        const published = await publishAsset(prisma, action.workspaceId, { contentProjectId, assetId, platform, ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}), scheduledAt: scheduledAt ? new Date(scheduledAt) : null });
+        recordAiRun({
+          workspaceId: action.workspaceId, feature: 'autopilot-publish', label: `Autopilot · ${channelRow.name} → ${platform}`,
+          prompt: `piece ${contentProjectId} asset ${assetId}${effectiveAccountId ? ` account ${effectiveAccountId}` : ''}`,
+          output: published.externalUrl ?? (published.scheduled ? 'scheduled' : ''), providerId: platform,
+          status: published.ok ? 'ok' : 'error', ...(published.error ? { error: published.error } : {}), startedAt,
+        });
+        broadcastContentDirty(action.workspaceId);
+        return published;
+      }
+      const acctLabel = effectiveAccountId ? ` (${effectiveAccountId})` : '';
       const title = scheduledAt ? `Schedule for ${platform}${acctLabel}` : `Publish to ${platform}${acctLabel}`;
       const body = scheduledAt ? `Schedule this content for ${platform} at ${scheduledAt}?` : `Ready to publish this content to ${platform}? This is public and hard to undo.`;
-      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title, body, patch: { contentProjectId, assetId, platform, ...(accountId ? { accountId } : {}), ...(scheduledAt ? { scheduledAt } : {}) } } });
+      return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title, body, patch: { contentProjectId, assetId, platform, ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}), ...(scheduledAt ? { scheduledAt } : {}) } } });
     }
     //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
     //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the

@@ -45,6 +45,8 @@ export interface SyncParams {
     //? A2 — channel/account management (channel-create/edit/delete, account-disconnect). `platform` +
     //? `projectId` are already declared above; only the genuinely-new fields here.
     channelId?: string; name?: string; handle?: string; brandVoice?: string; defaultStyleId?: string; accountId?: string;
+    //? Channel-binding + autopilot + disclosure-default (gap-fix).
+    aiDisclosureDefault?: boolean; defaultAccountId?: string; autopilot?: boolean;
     //? Inspiration/reference library (reference-add/delete).
     referenceId?: string; description?: string; assetUrl?: string; tags?: string[];
     //? M3 — long-form target duration for content-run-pipeline (was missing from the contract).

@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { persistMediaBytes } from '../media/store';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
-import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, applyCtaOverlay, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
+import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, applyCtaOverlay, applyWatermark, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
 
 export interface AssembleResult {
   ok: boolean;
@@ -24,7 +24,7 @@ export interface AssembleResult {
 
 export async function assembleContent(
   prisma: PrismaClient,
-  args: { workspaceId: string; contentProjectId: string },
+  args: { workspaceId: string; contentProjectId: string; watermarkPosition?: string },
   opts: { run?: FfmpegRunner; probe?: DurationProbe } = {},
 ): Promise<AssembleResult> {
   const script = await prisma.script.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId }, orderBy: { createdAt: 'desc' } });
@@ -126,6 +126,18 @@ export async function assembleContent(
     const ctaUrl = await applyCtaOverlay(finalUrl.replace(/^\/media\//, ''), ctaText, opts);
     if (ctaUrl) finalUrl = ctaUrl;
   }
+  //? Gap-fix — the brand-logo WATERMARK pass: fully built in ffmpeg but never called. Fires only when a
+  //? position was chosen (op payload / OutputTemplate) AND the workspace uploaded a logo — never a
+  //? surprise overlay. Best-effort: a failed pass keeps the clean render.
+  let watermarked = false;
+  if (render.ok && args.watermarkPosition && finalUrl.startsWith('/media/')) {
+    const wsRow = await prisma.workspace.findUnique({ where: { id: args.workspaceId }, select: { brandLogoUrl: true } });
+    const logoFile = wsRow?.brandLogoUrl ? await localizeAsset(wsRow.brandLogoUrl) : null;
+    if (logoFile) {
+      const wmUrl = await applyWatermark(finalUrl.replace(/^\/media\//, ''), logoFile, args.watermarkPosition, opts);
+      if (wmUrl) { finalUrl = wmUrl; watermarked = true; }
+    }
+  }
   //? Honesty (audit fix): a stub render did NOT produce a real mp4 → it is NOT 'ready' and NOT 'downloadable'.
   //? Previously it was recorded 'ready'+downloadable:true with a `stub://render/...` url — a fake finished video.
   await prisma.contentAsset.update({
@@ -134,7 +146,7 @@ export async function assembleContent(
       url: render.ok ? finalUrl : `stub://render/${args.contentProjectId}`,
       ...(render.storageRef ? { storageRef: render.storageRef } : {}),
       status: render.ok ? 'ready' : 'error',
-      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(captionsBurned ? { captionMode } : {}), ...(render.posterUrl ? { posterUrl: render.posterUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
+      metadata: jsonInput({ stub, totalMs: effectiveTotalMs, beatCount: segmentCount, hasVoice: Boolean(voice), hasAllImages, downloadable: render.ok, ...(useScenes ? { sceneCount: scenes.length } : {}), ...(captionsSrtUrl ? { captionsSrtUrl, captionsVttUrl } : {}), ...(captionsBurned ? { captionMode } : {}), ...(watermarked ? { watermarkPosition: args.watermarkPosition } : {}), ...(render.posterUrl ? { posterUrl: render.posterUrl } : {}), ...(render.ok ? {} : { degrade: render.error ?? 'stub' }) }),
     },
   });
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { status: render.ok ? 'done' : 'error' } });

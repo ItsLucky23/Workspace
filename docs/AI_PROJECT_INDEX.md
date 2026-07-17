@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (54)
+## API routes (55)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -65,6 +65,7 @@
 | `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
 | `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
+| `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | **no** | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
 ## Sync routes (60)
 
@@ -137,10 +138,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 8 |
+| `ItsLucky23` | 9 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/114 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/115 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -194,7 +195,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
 - `api/workspaces/timeTravelPreview/v1`
-- … +61 more
+- … +62 more
 
 ## Pages (30)
 

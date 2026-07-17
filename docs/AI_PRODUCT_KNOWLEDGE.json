@@ -1,6 +1,6 @@
 {
-  "hash": "c0602e92ff76d853",
-  "chunkCount": 203,
+  "hash": "83d8e59bc045a3cc",
+  "chunkCount": 204,
   "chunks": [
     {
       "id": "cap-001",
@@ -1219,6 +1219,12 @@
       "kind": "decision",
       "title": "0268-multimodal-image-critique",
       "text": "ADR 0268: 0268-multimodal-image-critique. A headline media ask was \"upload a photo and tell the AI what should change about it.\" The only existing \"analyze\" path (`analyzeReferenceVideo`) handed the media URL to the model as a TEXT string — the model never saw the pixels. No provider in the abstraction accepted image input. Decision: - **`AiCompletionRequest.imageUrls?: string[]`** — an optional multimodal input. The Gemini provider resolves each URL to bytes (local `/media/<file>` off the media store, or http fetch), base64-encodes it, and sends it as an `inline_data` part alongside the text prompt. Text-only providers (Claude CLI) ignore the field. Failed/oversized (>8MB) images are dropped so the turn still runs text-only. - **New `image-critique` AiFeature**, defaulted to `gemini-api` (vision-capable) in the assignment map; degrades to an honest stub without a key (never a fake result). - **`critiqueImage` service** + **`content-critique-image` control-op** (content family, RBAC `workTickets`): loads a ready IMAGE asset, runs the critique, stores the result on the asset's `metadata.critique` (+ `critiqueStub` honesty flag), and broadcasts a delta. **Advisory only** — it never edits the asset; the prompt maps each suggestion to an existing edit op (inpaint/adjust/crop/ regenerate) the user then runs. Reachable via the UI and (X1) proposable by the assistant. - **Lazy env read (bug fix):** the Gemini provider captured `GEMINI_API_KEY` at MODULE LOAD, but the key is a `@luck"
+    },
+    {
+      "id": "adr-0269",
+      "kind": "decision",
+      "title": "0269-channel-autopilot-consent-vooraf",
+      "text": "ADR 0269: 0269-channel-autopilot-consent-vooraf. Invariant B-23 zegt: de mens keurt elke authoritative write goed; publiceren liep ALTIJD via een `WorkspaceSuggestion(type:'publish')` die de gebruiker accepteert. Maar de productvisie (\"10 YouTube-kanalen op cron-timers, een workspace puur voor automated content\") vraagt een keten die zonder dagelijkse taps doorloopt: idee → render → publiceren. De gap-scan (GAP_SCAN_2026-07-16, critical \"geen autonome end-to-end pipeline\") bevestigde dat elke schakel handmatig was. De gebruiker heeft in het beslis-interview van 2026-07-17 expliciet gekozen voor per-kanaal opt-in. Decision: - **`Channel.autopilot` (default false)** is een per-kanaal opt-in die de gebruiker bewust aanzet via een expliciete confirm-dialoog. **Die consent vooraf ÍS de goedkeuring** voor elke publish vanaf dat kanaal — `content-request-publish` slaat de suggestion over en publiceert direct wanneer het kanaal autopilot aan heeft. B-23 blijft intact: de Conductor blijft de enige writer (de hele keten loopt via Conductor-ops), alleen het consent-MOMENT verschuift van per-post naar per-kanaal. - **De keten**: de content-ideator-rol (cron, `params.channelId`) is kanaal-bewust (naam/brand-voice + per-kanaal winners) en draait op een autopilot-kanaal de volledige keten: `content-from-brief` (kanaal-gebonden piece) → `content-run-pipeline` (volledige render) → `content-request-publish` (autopilot-tak → direct posten). - **Waarborgen**: (1) de kill-switch is de autopilot-t"
     }
   ]
 }

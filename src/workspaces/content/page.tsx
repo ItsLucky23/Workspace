@@ -3,14 +3,33 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { EmptyState, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { ContentPieceSummary } from '../_data/types';
+import type { ContentAssetSummary, ContentPieceSummary } from '../_data/types';
+import { backendUrl } from '../../../config';
+
+//? `/media/<file>` is served by the backend; hosted urls pass through (mirrors the piece page's helper).
+function assetHref(url: string): string {
+  return url.startsWith('/media/') ? `${backendUrl}${url}` : url;
+}
+
+//? The library card's preview: image / silent video frame / a kind icon for audio-ish assets.
+function LibraryThumb({ asset, pieceTitle }: { asset: ContentAssetSummary; pieceTitle: string }) {
+  if (asset.kind === 'image') return <img src={assetHref(asset.url)} alt={pieceTitle} className="w-full h-full object-cover" />;
+  if (asset.kind === 'render' || asset.kind === 'video') return <video src={assetHref(asset.url)} muted playsInline className="w-full h-full object-cover" />;
+  return <Icon name="wave-square" className="text-2xl text-muted" />;
+}
+
+//? Gap-fix — "use in piece": a compact piece-picker under each library asset (content-import-asset).
+function LibraryUsePicker({ pieces, onPick, translate }: { pieces: ContentPieceSummary[]; onPick: (pieceId: string) => void; translate: ReturnType<typeof useTranslator> }) {
+  const items: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.libraryUseIn' }) }, ...pieces.map((p) => ({ id: p.id, value: p.id, item: p.title }))];
+  return <Dropdown size="sm" value={items[0]} items={items} onChange={(it) => { const id = String(it.id); if (id) onPick(id); }} />;
+}
 
 //? #125 — create a content piece from a brief (title + brief + format), the first UI create path (the
 //? board previously had no create affordance at all — only the AI's create-content proposal).
@@ -111,6 +130,21 @@ export default function Content() {
   const archivedPieces = useMemo(() => content.pieces.filter((p) => p.archived), [content.pieces]);
   const liveEmpty = content.pieces.every((p) => p.archived);
 
+  //? Gap-fix — the WORKSPACE-WIDE media library: every ready asset across all pieces (they were
+  //? locked inside their own piece; even the timeline's picker only saw the current piece's assets).
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryKind, setLibraryKind] = useState('all');
+  const libraryAssets = useMemo(() => {
+    const rows: { asset: ContentAssetSummary; pieceId: string; pieceTitle: string }[] = [];
+    for (const p of content.pieces) for (const a of p.assets) {
+      if (a.status !== 'ready' || a.stub || !a.url.startsWith('/media/')) continue;
+      rows.push({ asset: a, pieceId: p.id, pieceTitle: p.title });
+    }
+    return rows.toReversed(); //? newest pieces last in snapshot → show newest first
+  }, [content.pieces]);
+  const libraryKinds = useMemo(() => ['all', ...new Set(libraryAssets.map((r) => r.asset.kind))], [libraryAssets]);
+  const libraryFiltered = libraryKind === 'all' ? libraryAssets : libraryAssets.filter((r) => r.asset.kind === libraryKind);
+
   const budget = content.mediaBudget;
   const pct = budget.enabled && budget.capCents > 0 ? Math.min(100, Math.round((budget.spentCents / budget.capCents) * 100)) : 0;
 
@@ -134,6 +168,12 @@ export default function Content() {
             <Icon name="box-archive" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.archivedTab', params: [{ key: 'n', value: String(archivedPieces.length) }] })}</span>
           </button>
         )}
+        {/* Gap-fix — the workspace-wide media library toggle. */}
+        {libraryAssets.length > 0 && (
+          <button type="button" onClick={() => { setShowLibrary((v) => !v); }} className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 cursor-pointer ${showLibrary ? 'border-primary bg-primary/10 text-primary' : 'border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common'}`}>
+            <Icon name="table-cells-large" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.libraryTab', params: [{ key: 'n', value: String(libraryAssets.length) }] })}</span>
+          </button>
+        )}
         {/* #125 — the primary create affordance (was entirely absent — only the AI could create pieces). */}
         <WsButton icon="plus" onClick={openNewPiece}>{translate({ key: 'workspaces.content.newPiece' })}</WsButton>
         {/* Media €-budget summary (F0.2) — always visible so a cost-sensitive user sees spend at a glance. */}
@@ -154,7 +194,36 @@ export default function Content() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-8">
-        {showArchived ? (
+        {showLibrary ? (
+          /* Gap-fix — the workspace-wide media LIBRARY: filter by kind, reuse any asset in another piece. */
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {libraryKinds.map((k) => (
+                <button key={k} type="button" onClick={() => { setLibraryKind(k); }} className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${libraryKind === k ? 'bg-primary/15 text-primary' : 'bg-container2 text-muted hover:text-common'}`}>
+                  {k === 'all' ? translate({ key: 'workspaces.content.libraryAll' }) : k}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {libraryFiltered.map(({ asset, pieceId, pieceTitle }) => (
+                <div key={asset.id} className="rounded-xl border border-container1-border bg-container1 overflow-hidden flex flex-col">
+                  <button type="button" onClick={() => { navigate(`content/${pieceId}`); }} aria-label={pieceTitle} className="aspect-video bg-container2 flex items-center justify-center overflow-hidden cursor-pointer">
+                    <LibraryThumb asset={asset} pieceTitle={pieceTitle} />
+                  </button>
+                  <div className="p-2 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                      <span className="rounded-full bg-container2 px-1.5 py-0.5">{asset.kind}</span>
+                      <span className="truncate">{pieceTitle}</span>
+                    </div>
+                    <LibraryUsePicker pieces={content.pieces.filter((p) => !p.archived)} onPick={(targetId) => { runContentOp('content-import-asset', targetId, { url: asset.url, kind: asset.kind === 'video' || asset.kind === 'render' ? 'video' : 'image' }); notify.success({ key: 'workspaces.content.libraryImported' }); }} translate={translate} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {libraryFiltered.length === 0 && <EmptyState icon="table-cells-large" title={translate({ key: 'workspaces.content.libraryEmpty' })} sub={''} />}
+          </div>
+        ) : null}
+        {!showLibrary && showArchived && (
           /* #129 — the Archived view: soft-archived pieces with a Restore (content-unarchive) action. */
           <div className="flex flex-col gap-2 max-w-2xl">
             {archivedPieces.map((p) => (
@@ -166,7 +235,8 @@ export default function Content() {
               </div>
             ))}
           </div>
-        ) : (liveEmpty ? (
+        )}
+        {!showLibrary && !showArchived && (liveEmpty ? (
           <div className="flex flex-col items-center gap-4">
             <EmptyState icon="wand-magic-sparkles" title={translate({ key: 'workspaces.content.empty' })} sub={translate({ key: 'workspaces.content.emptySub' })} />
             {/* #125 — empty-state CTA so a first-time user has an obvious way to create. */}

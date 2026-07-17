@@ -312,12 +312,16 @@ function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, onRegene
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
-  const { content, runContentOp, navigate, activeWorkspace } = useWorkspaces();
+  const { content, runContentOp, navigate, activeWorkspace, outputTemplates } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [durationKey, setDurationKey] = useState('auto');
   //? F2 — how captions are delivered on the rendered video (sidecar .srt only / burned-in / soft mov_text track).
   const [captionKey, setCaptionKey] = useState('sidecar');
+  //? Gap-fix (render settings): the aspect ratio finally gets a UI control (the backend was ready —
+  //? every render fell back to 16:9), plus the OutputTemplate picker that makes templates REAL.
+  const [aspectKey, setAspectKey] = useState('16:9');
+  const [templateKey, setTemplateKey] = useState('');
   //? H1 (ads) — an optional CTA / end-card line overlaid on the last seconds of the ad render.
   const [ctaText, setCtaText] = useState('');
   const [extra, setExtra] = useState('');
@@ -359,6 +363,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const DURATION_MS: Record<string, number> = { auto: 0, short: 20_000, normal: 45_000, long: 90_000 };
   const durationItems: DropdownItem[] = (['auto', 'short', 'normal', 'long'] as const).map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.dur_${k}` }) }));
   const captionItems: DropdownItem[] = (['sidecar', 'burn', 'soft'] as const).map((k) => ({ id: k, value: k, item: translate({ key: `workspaces.content.cap_${k}` }) }));
+  //? The technical ratio labels ARE the values (16:9/9:16/1:1) — no translation needed.
+  const aspectItems: DropdownItem[] = (['16:9', '9:16', '1:1'] as const).map((k) => ({ id: k, value: k, item: k }));
+  const templateItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.templateNone' }) }, ...outputTemplates.map((t) => ({ id: t.id, value: t.id, item: `${t.name} (${t.format}${t.watermarkPosition ? ' · wm' : ''})` }))];
 
   //? Q1: the € estimate for an action, from the snapshot's per-feature cost table. 0 (no chip) for
   //? non-metered actions (script/assemble).
@@ -389,6 +396,13 @@ export default function ContentPiece({ params }: { params: Record<string, string
         //? F2 — non-default caption delivery (sidecar is the server default, so only send when it differs).
         if (captionKey !== 'sidecar') payload.captionMode = captionKey;
         if (ctaText.trim()) payload.ctaText = ctaText.trim();
+        payload.aspectRatio = aspectKey;
+      }
+      //? Gap-fix: assemble carries the chosen aspect + (optional) output template — its format +
+      //? watermark position now actually drive the render.
+      if (action.op === 'content-assemble') {
+        payload.aspectRatio = aspectKey;
+        if (templateKey) payload.templateId = templateKey;
       }
       runContentOp(action.op, piece.id, payload);
     })();
@@ -530,6 +544,16 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <span className="text-muted">{translate({ key: 'workspaces.content.captionLabel' })}</span>
               <Dropdown size="md" value={captionItems.find((i) => i.id === captionKey)} items={captionItems} onChange={(it) => { setCaptionKey(String(it.id)); }} />
             </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">{translate({ key: 'workspaces.content.aspectLabel' })}</span>
+              <Dropdown size="md" value={aspectItems.find((i) => i.id === aspectKey)} items={aspectItems} onChange={(it) => { setAspectKey(String(it.id)); }} />
+            </label>
+            {templateItems.length > 1 && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">{translate({ key: 'workspaces.content.templateLabel' })}</span>
+                <Dropdown size="md" value={templateItems.find((i) => i.id === templateKey) ?? templateItems[0]} items={templateItems} onChange={(it) => { setTemplateKey(String(it.id)); }} />
+              </label>
+            )}
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">{translate({ key: 'workspaces.content.ctaLabel' })}</span>
               <input value={ctaText} onChange={(e) => { setCtaText(e.target.value); }} placeholder={translate({ key: 'workspaces.content.ctaPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />

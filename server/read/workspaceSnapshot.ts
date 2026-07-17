@@ -466,7 +466,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       ),
       styles: styleRows.map((s) => ({ id: s.id, key: s.key, label: s.label, feature: s.feature, builtin: s.builtin, systemPrompt: s.systemPrompt, previewAssetUrl: s.previewAssetUrl, previewKind: s.previewKind })),
       references: referenceRows.map((r) => ({ id: r.id, kind: r.kind, title: r.title, description: r.description, assetUrl: r.assetUrl, tags: r.tags })),
-      channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, handle: c.handle, brandVoice: c.brandVoice ?? '', defaultStyleId: c.defaultStyleId ?? null, aiDisclosureDefault: c.aiDisclosureDefault })),
+      channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, handle: c.handle, brandVoice: c.brandVoice ?? '', defaultStyleId: c.defaultStyleId ?? null, aiDisclosureDefault: c.aiDisclosureDefault, defaultAccountId: c.defaultAccountId ?? null, autopilot: c.autopilot })),
       publishTargets,
       mediaCosts: mediaCostTable(),
       //? H2/H3 (ads) — the workspace's trackable links (clicks desc, so the top A/B variant leads).

@@ -350,7 +350,7 @@ export function TabBar() {
             {view === id && <span className="absolute inset-0 rounded-lg bg-container1 shadow-sm" />}
             <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(statusLookup[id]) }} />
             <span className="relative z-10">{id}</span>
-            <button type="button" onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
+            <button type="button" aria-label="Close tab" onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
           </div>
         ))}
       </div>
@@ -810,7 +810,7 @@ export function MobileBottomBar({ onFab }: { onFab: () => void }) {
       {items.map((it, i) => (
         <div key={it.id} className="contents">
           {i === 2 && (
-            <button type="button" onClick={onFab} className="w-12 h-12 -mt-6 rounded-full bg-primary text-title-primary shadow-lg flex items-center justify-center cursor-pointer">
+            <button type="button" onClick={onFab} aria-label="New" className="w-12 h-12 -mt-6 rounded-full bg-primary text-title-primary shadow-lg flex items-center justify-center cursor-pointer">
               <Icon name="plus" className="text-lg" />
             </button>
           )}

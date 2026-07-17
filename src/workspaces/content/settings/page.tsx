@@ -69,9 +69,12 @@ function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (k
 //? on-brand without the user re-typing it. Saved via the content-edit-product control-op.
 function ProductContextSection() {
   const translate = useTranslator();
-  const { activeWorkspace, saveProductContext } = useWorkspaces();
+  const { activeWorkspace, saveProductContext, saveBrandLogo } = useWorkspaces();
   const [value, setValue] = useState(activeWorkspace.productContext ?? '');
   const [saved, setSaved] = useState(false);
+  //? Gap-fix — the brand logo the render WATERMARK overlays (the ffmpeg overlay existed but had no
+  //? logo source). Uploaded to /media, persisted via content-edit-product.
+  const [logoSet, setLogoSet] = useState(false);
   return (
     <section className="rounded-2xl border border-container1-border bg-container1 p-5">
       <div className="mb-2">
@@ -86,6 +89,13 @@ function ProductContextSection() {
       <div className="mt-2 flex items-center gap-3">
         <button type="button" onClick={() => { saveProductContext(value.trim()); setSaved(true); }} className="rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.brandContextSave' })}</button>
         {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.brandContextSaved' })}</span>}
+      </div>
+      <div className="mt-3 pt-3 border-t border-divider flex items-center justify-between gap-3">
+        <span className="text-sm text-common" title={translate({ key: 'workspaces.content.brandLogoHint' })}>{translate({ key: 'workspaces.content.brandLogoLabel' })}</span>
+        <div className="flex items-center gap-2">
+          {logoSet && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.brandLogoSet' })}</span>}
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.content.brandLogoUpload" icon="image" onUploaded={(url) => { saveBrandLogo(url); setLogoSet(true); }} />
+        </div>
       </div>
     </section>
   );
@@ -344,15 +354,30 @@ function ChannelManagerSection() {
   const [defaultStyleId, setDefaultStyleId] = useState('');   // #153 — the channel's house style
   //? AI-disclosure default: prefills the publish composer's synthetic-media checkbox; autopilot follows it.
   const [aiDisclosure, setAiDisclosure] = useState(false);
+  //? Channel↔account-binding + autopilot (gap-fix): which connected account this channel posts with,
+  //? and the per-channel autopilot consent (idea→render→publish without per-step approval).
+  const [defaultAccountId, setDefaultAccountId] = useState('');
+  const [autopilot, setAutopilot] = useState(false);
+  const platformAccounts = content.publishTargets.find((t) => t.platform === platform)?.accounts ?? [];
+  const accountItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.channelDefaultAccount' }) }, ...platformAccounts.filter((a) => a.accountId !== null).map((a) => ({ id: a.accountId ?? '', value: a.accountId ?? '', item: a.accountId ?? '' }))];
   const canSave = name.trim().length > 0;
-  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); setDefaultStyleId(''); setAiDisclosure(false); };
-  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null; defaultStyleId?: string | null; aiDisclosureDefault?: boolean }): void => {
-    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? ''); setDefaultStyleId(c.defaultStyleId ?? ''); setAiDisclosure(c.aiDisclosureDefault ?? false);
+  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); setDefaultStyleId(''); setAiDisclosure(false); setDefaultAccountId(''); setAutopilot(false); };
+  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null; defaultStyleId?: string | null; aiDisclosureDefault?: boolean; defaultAccountId?: string | null; autopilot?: boolean }): void => {
+    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? ''); setDefaultStyleId(c.defaultStyleId ?? ''); setAiDisclosure(c.aiDisclosureDefault ?? false); setDefaultAccountId(c.defaultAccountId ?? ''); setAutopilot(c.autopilot ?? false);
+  };
+  //? Autopilot ON is a consent moment (it replaces every per-post approval) → an explicit confirm that
+  //? also states the channel's current disclosure default.
+  const toggleAutopilot = (next: boolean) => {
+    if (!next) { setAutopilot(false); return; }
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.content.autopilotConfirmTitle' }),
+      content: translate({ key: aiDisclosure ? 'workspaces.content.autopilotConfirmBody' : 'workspaces.content.autopilotConfirmBodyNoDisclosure' }),
+    }).then((ok) => { if (ok) setAutopilot(true); });
   };
   const submit = () => {
     if (!canSave) return;
-    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim(), defaultStyleId, aiDisclosureDefault: aiDisclosure });
-    else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}), aiDisclosureDefault: aiDisclosure });
+    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim(), defaultStyleId, aiDisclosureDefault: aiDisclosure, defaultAccountId, autopilot });
+    else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}), aiDisclosureDefault: aiDisclosure, ...(defaultAccountId ? { defaultAccountId } : {}), autopilot });
     reset();
   };
   const removeChannel = (id: string): void => {
@@ -370,7 +395,7 @@ function ChannelManagerSection() {
           : content.channels.map((c) => (
             <div key={c.id} className="flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-3 py-2">
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-title truncate">{c.name} <span className="text-xs text-disabled">· {c.platform}{c.handle ? ` · ${c.handle}` : ''}</span></div>
+                <div className="text-sm font-medium text-title truncate">{c.name} <span className="text-xs text-disabled">· {c.platform}{c.handle ? ` · ${c.handle}` : ''}</span>{c.autopilot && <span className="ml-1.5 rounded-full bg-warning/15 text-warning px-1.5 py-0.5 text-[10px] font-semibold uppercase">{translate({ key: 'workspaces.content.autopilotBadge' })}</span>}</div>
                 {c.brandVoice ? <div className="text-xs text-muted truncate">{c.brandVoice}</div> : null}
               </div>
               <button type="button" onClick={() => { startEdit(c); }} title={translate({ key: 'workspaces.content.channelEdit' })} className={`w-7 h-7 rounded-md flex items-center justify-center cursor-pointer shrink-0 ${editingId === c.id ? 'text-primary bg-primary/10' : 'text-muted hover:text-title hover:bg-container2-hover'}`}><Icon name="pen-nib" /></button>
@@ -399,6 +424,16 @@ function ChannelManagerSection() {
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm text-common" title={translate({ key: 'workspaces.content.channelAiDisclosureHint' })}>{translate({ key: 'workspaces.content.channelAiDisclosure' })}</span>
           <Toggle on={aiDisclosure} onChange={setAiDisclosure} label={aiDisclosure ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
+        </div>
+        {accountItems.length > 1 && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-common" title={translate({ key: 'workspaces.content.channelAccountHint' })}>{translate({ key: 'workspaces.content.channelAccount' })}</span>
+            <Dropdown size="sm" value={accountItems.find((i) => i.id === defaultAccountId) ?? accountItems[0]} items={accountItems} onChange={(it) => { setDefaultAccountId(String(it.id)); }} />
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-common" title={translate({ key: 'workspaces.content.autopilotHint' })}>{translate({ key: 'workspaces.content.autopilotLabel' })}</span>
+          <Toggle on={autopilot} onChange={toggleAutopilot} label={autopilot ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
         </div>
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.channelSave' })}</button>
       </div>

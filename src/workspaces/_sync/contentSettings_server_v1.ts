@@ -25,6 +25,8 @@ export interface SyncParams {
     key?: string; label?: string; systemPrompt?: string;
     previewAssetUrl?: string; previewKind?: string;   // #155 — style preview thumbnail
     channelId?: string; brandVoice?: string; productContext?: string;
+    //? Gap-fix — the brand logo (/media upload) the render watermark overlays.
+    brandLogoUrl?: string;
   };
   user: SessionLayout;
   functions: Functions;

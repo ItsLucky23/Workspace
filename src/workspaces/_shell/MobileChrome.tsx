@@ -37,14 +37,14 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
         {onTicket ? (
           <button type="button" onClick={() => { navigate('board'); }} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> {translate({ key: 'workspaces.mobileChrome.board' })}</button>
         ) : (
-          <button type="button" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
+          <button type="button" aria-label="Menu" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
         )}
         <button type="button" className="flex items-center gap-2 ml-1 text-sm font-semibold text-title">
           <span className="w-5 h-5 rounded-md bg-primary text-title-primary text-[11px] font-bold flex items-center justify-center">{activeWorkspace.name[0]}</span>
           {activeWorkspace.name} <Icon name="caret-down" className="text-xs text-muted" />
         </button>
         <div className="flex-1" />
-        <button type="button" onClick={onCmdK} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="magnifying-glass" /></button>
+        <button type="button" aria-label="Search" onClick={onCmdK} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="magnifying-glass" /></button>
         {/* #116 — the notification bell was desktop-only; a phone user can now see + clear notifications. */}
         <button type="button" onClick={() => { setNotifOpen(true); }} className="relative w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer" title={translate({ key: 'workspaces.shell.notifications' })}>
           <Icon name="bell" />

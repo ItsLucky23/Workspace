@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
-import { i18nNotify as notify, useSession, useTranslator, useUpdateLanguage } from '@luckystack/core/client';
+import { i18nNotify as notify, tryCatch, useSession, useTranslator, useUpdateLanguage } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -31,6 +31,19 @@ interface AccountSession {
 
 //? An example file path shown in the SSH drop-zone — code, not translatable copy.
 const SSH_CONFIG_PATH = '~/.ssh/config';
+
+//? Gap-fix — read a workspace-export JSON file and recreate it as a NEW workspace (module-scope:
+//? it touches no component state).
+const importWorkspace = (file: File): void => {
+  void (async () => {
+    const [parseErr, bundle] = await tryCatch(async () => JSON.parse(await file.text()) as unknown);
+    if (parseErr) { notify.error({ key: 'workspaces.account.importInvalid' }); return; }
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/workspaceImport', version: 'v1', data: { bundle } }));
+    if (err || res?.status !== 'success') { notify.error({ key: 'workspaces.account.importFailed' }); return; }
+    notify.success({ key: 'workspaces.account.importDone' });
+    globalThis.location.reload();
+  })();
+};
 
 //? Selectable UI languages — one code per `src/_locales/*.json` locale file, each
 //? with a `settings.language.<code>` label. Mirrors `src/settings/page.tsx`.
@@ -692,6 +705,14 @@ export default function AccountSettings() {
             <Row>
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.downloadData' })}</span>
               <WsButton variant="secondary" icon="up-right-from-square" onClick={exportData}>{translate({ key: 'workspaces.account.export' })}</WsButton>
+            </Row>
+            {/* Gap-fix — import a workspace-export JSON back as a NEW workspace (there was no import path). */}
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.importWorkspace' })}</span>
+              <label className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-sm text-common cursor-pointer">
+                <Icon name="download" /> {translate({ key: 'workspaces.account.importPick' })}
+                <input type="file" accept="application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importWorkspace(f); e.target.value = ''; }} />
+              </label>
             </Row>
           </Card>
         </div>

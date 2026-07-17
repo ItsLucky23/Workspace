@@ -167,6 +167,7 @@ model Workspace {
   reasonerTokenBudget   Int?                             // optional future one-shot reasoner budget
   handoffInstruction    String   @default("")            // the editable self-handoff instruction template
   productContext        String   @default("")            // Q2 — brand/product context (what we do / audience / always-mention), folded into every creative generation
+  brandLogoUrl          String?                          // gap-fix — the brand logo (/media/… upload) the render watermark overlays (watermark fires only when a position is chosen)
   aiInstruction         String   @default("")            // Q4 — workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion's system prompt
   outputLanguage        String   @default("")            // K4 — preferred AI OUTPUT language (e.g. 'Dutch'); empty = the model's default. Prepended as a directive to every completion
   autonomyLevel         String   @default("gate-key-stages") // A4 — 'gate-every' | 'gate-key-stages' (default: per-stage gateForApproval) | 'full-auto' (skip non-destructive gates)
@@ -1412,6 +1413,8 @@ model Channel {
   brandVoice     String?                             // one-line house voice (seeds gen)
   defaultStyleId String?  @db.ObjectId               // → StylePreset.id (house style)
   aiDisclosureDefault Boolean @default(false)        // prefills the publish composer's synthetic-media checkbox (EU AI Act / platform policy); autopilot follows this
+  defaultAccountId String?                            // which connected publish account this channel posts with (null = the platform default connection)
+  autopilot      Boolean  @default(false)             // per-channel opt-in: idea→render→publish WITHOUT per-step approval (the consent is this switch — ADR)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -310,6 +310,8 @@ export interface WorkspacesCtx {
   editChannelBrand: (channelId: string, brandVoice: string) => void;
   //? Q2 — the per-workspace product/brand context folded into every creative generation.
   saveProductContext: (productContext: string) => void;
+  //? Gap-fix — persist the uploaded brand logo the render watermark overlays.
+  saveBrandLogo: (brandLogoUrl: string) => void;
   //? Q3 — create/update + delete a per-workspace named style preset.
   saveStyle: (feature: string, key: string, label: string, systemPrompt: string, preview?: { previewAssetUrl: string; previewKind: string }) => void;
   deleteStyle: (feature: string, key: string) => void;

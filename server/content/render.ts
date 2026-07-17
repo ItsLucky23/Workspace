@@ -443,6 +443,22 @@ export function buildCtaArgs(inName: string, outName: string, text: string, tail
   return ['-y', '-i', `/media/${inName}`, '-vf', draw, '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
 }
 
+//? Gap-fix — the brand-logo watermark as a SECOND pass over the finished mp4 (like captions/CTA), so it
+//? works identically for the beat-slideshow AND the scene-stitch path. Pure args + exported for tests.
+export function buildWatermarkArgs(inName: string, outName: string, logoName: string, position: WatermarkPosition): string[] {
+  return ['-y', '-i', `/media/${inName}`, '-i', `/media/${logoName}`, '-filter_complex', `[0:v][1:v]overlay=${OVERLAY_XY[position]}[outv]`, '-map', '[outv]', '-map', '0:a?', '-c:a', 'copy', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `/media/${outName}`];
+}
+
+//? Apply the watermark pass → the new served url; null on any failure (the clean render is kept).
+export async function applyWatermark(inName: string, logoName: string, position: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+  const run = opts.run ?? dockerFfmpegRunner;
+  const pos: WatermarkPosition = position === 'bl' || position === 'tr' || position === 'tl' ? position : 'br';
+  const outName = `${inName.replace(/\.mp4$/, '')}-wm.mp4`;
+  const [err, res] = await tryCatch(() => run(buildWatermarkArgs(inName, outName, logoName, pos)));
+  if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
+  return `/media/${outName}`;
+}
+
 //? Apply a CTA end-card overlay to a rendered ad mp4 → the new served url. Best-effort: a failure keeps the
 //? un-overlaid render (never loses the video).
 export async function applyCtaOverlay(inName: string, text: string, opts: { run?: FfmpegRunner } = {}): Promise<string | null> {

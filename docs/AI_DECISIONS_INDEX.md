@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (186)
+## Decisions (187)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -199,6 +199,7 @@
 | 0266 | security hardening sweep | 🟢 accepted | security, rbac, ssrf, push, git | — | `docs/decisions/0266-security-hardening-sweep.md` |
 | 0267 | multi repo per project storage | 🟢 accepted | git, multi-project, storage, r3b | — | `docs/decisions/0267-multi-repo-per-project-storage.md` |
 | 0268 | multimodal image critique | 🟢 accepted | ai, media, vision, provider | — | `docs/decisions/0268-multimodal-image-critique.md` |
+| 0269 | channel autopilot consent vooraf | 🟢 accepted | content, autopilot, b-23, consent, publishing | — | `docs/decisions/0269-channel-autopilot-consent-vooraf.md` |
 
 ## Summaries
 
@@ -1692,6 +1693,16 @@ Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/
 
 → `docs/decisions/0268-multimodal-image-critique.md`
 
+### 0269 — channel autopilot consent vooraf
+
+**0269** · accepted · tags: content, autopilot, b-23, consent, publishing · 2026-07-17
+
+**`Channel.autopilot` (default false)** is een per-kanaal opt-in die de gebruiker bewust aanzet via een expliciete confirm-dialoog. **Die consent vooraf ÍS de goedkeuring** voor elke publish vanaf dat kanaal — `content-request-publish` slaat de suggestion over en publiceert direct wanneer het kanaal autopilot aan heeft. B-23 blijft intact: de Conductor blijft de enige writer (de hele keten loopt via Conductor-ops), alleen het consent-MOMENT verschuift van per-post naar per-kanaal. **De keten**: de content-ideator-rol (cron, `params.channelId`) is kanaal-bewust (naam/brand-voice + per-kanaal winners) en draait op een autopilot-kanaal de volledige keten: `content-from-brief` (kanaal-gebonden piece) → `content-run-pipeline` (volledige render) → `content-request-publish` (autopilot-tak → direct posten). **Waarborgen**: (1) de kill-switch is de autopilot-toggle zelf (uitzetten stopt de eerstvolgende run); (2) elke autopilot-publish landt in de Activity-feed (`autopilot-publish`); (3) AI-disclosure volgt `Channel.aiDisclosureDefault` — de confirm-dialoog waarschuwt expliciet wanneer die uit staat; (4) het account is `Channel.defaultAccountId`; (5) de media-budget-guards (per-workspace cap + host-breed `WS_HOST_SPEND_CAP_EUR`) begrenzen de kosten van elke run.
+
+**Governs** (`//? @adr 0269`): `server/content/ideatorRole.ts`
+
+→ `docs/decisions/0269-channel-autopilot-consent-vooraf.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1701,3 +1712,4 @@ Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `scripts/testWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
+| `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |

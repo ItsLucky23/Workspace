@@ -1,43 +1,91 @@
 //? Content ideator role (F3.3, ADR 0067) — a SCHEDULABLE content-generation role. A cron trigger
-//? (`action:'invoke-agent-role', params:{role:'content-ideator', theme?}`) fires it; because it `mutates`
-//? (proposing content is a write path), the automation executor GATES it into an approval suggestion — it
-//? never writes content directly (B-23). Call `registerContentIdeatorRole()` once at boot.
+//? (`action:'invoke-agent-role', params:{role:'content-ideator', theme?, channelId?}`) fires it.
+//? Gap-fix (content-keten): the role is now CHANNEL-AWARE — a `channelId` param grounds the idea in
+//? that channel's name/brand voice and scopes the winners feedback to THAT channel (no more mixed
+//? cross-channel signal). Two modes:
+//?  - default (`mutates:true`): the executor GATES the idea into an approval suggestion (B-23).
+//?  - AUTOPILOT channel: the channel owner's explicit autopilot opt-in IS the consent (ADR), so the
+//?    role drives the WHOLE chain — piece (bound to the channel) → full pipeline render → publish —
+//?    entirely through Conductor ops (B-23 intact: the Conductor stays the only writer).
+//? Call `registerContentIdeatorRole()` once at boot.
+//? @adr 0269
 
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { topPerformers } from './publishMetrics';
+import { isPublishPlatform } from './publish';
 
-//? CP4 — the analytics→ideas feedback loop: fold the workspace's recent best-performing posts (by views) into
-//? the ideator's prompt so future ideas lean toward what actually worked. Best-effort; empty when nothing has
-//? metrics yet. Joins each done PublishJob's ingested metrics to its piece title.
-export async function recentWinnersLine(workspaceId: string): Promise<string> {
+//? The Conductor is imported LAZILY (inside the chain) — its module runs `getPrismaClient()` at load,
+//? and this role registers at boot BEFORE the secret-manager resolves DATABASE_URL; a static import
+//? here constructed the Prisma client on the raw pointer and broke the whole server boot.
+
+//? CP4 — the analytics→ideas feedback loop: fold the recent best-performing posts (by views) into the
+//? ideator's prompt so future ideas lean toward what actually worked. `channelId` scopes the winners to
+//? ONE channel (gap-fix: channel A's ideator no longer learns from channel B's audience). Best-effort.
+export async function recentWinnersLine(workspaceId: string, channelId?: string): Promise<string> {
   const [, rows] = await tryCatch(async () => {
     const prisma = getPrismaClient();
-    const jobs = await prisma.publishJob.findMany({ where: { workspaceId, status: 'done', metrics: { not: null } }, select: { platform: true, metrics: true, contentProjectId: true }, take: 50 });
-    if (jobs.length === 0) return [] as { platform: string; title: string; metrics: unknown }[];
-    const pieces = await prisma.contentProject.findMany({ where: { workspaceId, id: { in: jobs.map((j) => j.contentProjectId) } }, select: { id: true, title: true } });
+    const pieces = await prisma.contentProject.findMany({ where: { workspaceId, ...(channelId ? { channelId } : {}) }, select: { id: true, title: true } });
+    if (pieces.length === 0) return [] as { platform: string; title: string; metrics: unknown }[];
+    const jobs = await prisma.publishJob.findMany({ where: { workspaceId, status: 'done', metrics: { not: null }, contentProjectId: { in: pieces.map((p) => p.id) } }, select: { platform: true, metrics: true, contentProjectId: true }, take: 50 });
     const titleById = new Map(pieces.map((p) => [p.id, p.title]));
     return jobs.map((j) => ({ platform: j.platform, title: titleById.get(j.contentProjectId) ?? 'a post', metrics: j.metrics }));
   });
   const winners = topPerformers(rows ?? []);
   if (winners.length === 0) return '';
-  return `\nRecent WINNERS (lean the idea toward what worked): ${winners.map((w) => `"${w.title}" (${w.platform}, ${String(w.views)} views)`).join('; ')}.`;
+  return `\nRecent WINNERS on this channel (lean the idea toward what worked): ${winners.map((w) => `"${w.title}" (${w.platform}, ${String(w.views)} views)`).join('; ')}.`;
+}
+
+//? The autopilot chain: idea → piece (channel-bound) → full pipeline → publish, all as Conductor ops.
+//? Exported for the integration test. Returns a short human-readable run report.
+export async function runAutopilotChain(workspaceId: string, channel: { id: string; name: string; platform: string }, idea: string): Promise<string> {
+  const { enqueueControlAction } = await import('../orchestrator/conductor');
+  const prisma = getPrismaClient();
+  //? A cron run has no acting user — attribute the autopilot writes to the workspace owner (who is
+  //? also the one who flipped the autopilot consent on).
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } });
+  const userId = ws?.ownerId ?? '';
+  const stampId = `ap-${channel.id.slice(-6)}-${String(Date.now())}`;
+  const title = idea.split('\n')[0]?.slice(0, 80) ?? 'Autopilot idea';
+  const created = await enqueueControlAction({ workspaceId, op: 'content-from-brief', target: {}, payload: { title, brief: idea, channelId: channel.id, format: 'faceless' }, userId, clientRequestId: `${stampId}-piece` });
+  const piece = (created.result !== null && typeof created.result === 'object' && 'id' in created.result) ? created.result as { id: string } : null;
+  if (!piece) return `Autopilot for ${channel.name}: could not create the piece.`;
+  await enqueueControlAction({ workspaceId, op: 'content-run-pipeline', target: {}, payload: { contentProjectId: piece.id, mode: 'video' }, userId, clientRequestId: `${stampId}-pipeline` });
+  //? The pipeline just ran (awaited); the newest ready render/video asset is the publishable output.
+  const render = await prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, status: 'ready', kind: { in: ['render', 'video'] } }, orderBy: { createdAt: 'desc' } });
+  if (!render) return `Autopilot for ${channel.name}: piece + pipeline ran, but no ready render came out — left for review.`;
+  if (!isPublishPlatform(channel.platform)) return `Autopilot for ${channel.name}: rendered, but platform '${channel.platform}' has no publish adapter — left for review.`;
+  //? Publish through the SAME op a human would fire — its autopilot branch posts without a suggestion.
+  const pub = await enqueueControlAction({ workspaceId, op: 'content-request-publish', target: {}, payload: { contentProjectId: piece.id, assetId: render.id, platform: channel.platform }, userId, clientRequestId: `${stampId}-publish` });
+  const pubRes = (pub.result !== null && typeof pub.result === 'object') ? pub.result as { ok?: boolean; externalUrl?: string; stub?: boolean } : null;
+  const outcome = pubRes?.ok ? `published (${pubRes.externalUrl ?? ''})` : (pubRes?.stub ? 'published as STUB (platform not connected)' : 'publish failed');
+  return `Autopilot for ${channel.name}: "${title}" → rendered → ${outcome}.`;
 }
 
 export function registerContentIdeatorRole(): void {
   registerAgentRole({
     key: 'content-ideator',
     label: 'Content ideator',
-    description: 'Proposes a fresh content idea for a channel on a schedule (gated to a suggestion — B-23).',
+    description: 'Proposes a fresh content idea for a channel on a schedule (gated to a suggestion — B-23; an autopilot channel runs the whole chain).',
     mutates: true,
     run: async (ctx) => {
-      const theme = typeof ctx.params.theme === 'string' && ctx.params.theme ? ctx.params.theme : 'your channel';
-      //? CP4 — ground the idea in the channel's actual top performers when there are any.
-      const winners = await recentWinnersLine(ctx.workspaceId);
+      const prisma = getPrismaClient();
+      //? Channel-aware grounding: name + brand voice + per-channel winners when a channelId is bound.
+      const channelId = typeof ctx.params.channelId === 'string' ? ctx.params.channelId : undefined;
+      const channel = channelId ? await prisma.channel.findFirst({ where: { workspaceId: ctx.workspaceId, id: channelId } }) : null;
+      const theme = channel
+        ? `the "${channel.name}" channel (${channel.platform})${channel.brandVoice ? ` — brand voice: ${channel.brandVoice}` : ''}`
+        : (typeof ctx.params.theme === 'string' && ctx.params.theme ? ctx.params.theme : 'your channel');
+      const winners = await recentWinnersLine(ctx.workspaceId, channel?.id);
       const res = await runAiCompletion('script', { prompt: `Propose ONE fresh short-form content idea for ${theme}: a hook + a one-line premise.${winners}`, workspaceId: ctx.workspaceId, label: 'Content idea' });
       const body = res.ok && res.text ? res.text : `A fresh idea for ${theme}: a 45-second explainer opening on a bold question, then a punchy 3-beat payoff.`;
+      //? AUTOPILOT: the channel's explicit opt-in replaces the per-step approval — run the whole chain.
+      if (channel?.autopilot) {
+        const [chainErr, report] = await tryCatch(() => runAutopilotChain(ctx.workspaceId, channel, body));
+        return { kind: 'content-idea', title: `Autopilot run · ${channel.name}`, body: chainErr ? `Autopilot failed: ${chainErr.message}` : (report ?? '') };
+      }
       return { kind: 'content-idea', title: `Content idea for ${theme}`, body };
     },
   });
