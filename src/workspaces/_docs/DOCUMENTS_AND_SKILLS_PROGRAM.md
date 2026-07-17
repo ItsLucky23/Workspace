@@ -107,6 +107,8 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 - Live golden-runs (eval) — pas na de replay-helft.
 - Themes/styles-migratie onder het Skill-model — kan later, picker-UI-deling is genoeg voor nu.
 
+## VOORTGANG — ✅ PROGRAMMA COMPLEET (2026-07-17): alle 8 fasen SK/DOC/EXP/INS/CI/EV/KG/VO gebouwd+getest+gecommit (ADRs 0270-0275), eind-e2e via agent-browser groen.
+
 ## VOORTGANG (levend — bijgewerkt per gecommit increment)
 
 | Item | Status | ADR | Test |
