@@ -10,3 +10,10 @@ export function jsonInput(value: unknown): Prisma.InputJsonValue {
   const json: unknown = structuredClone(value ?? null);
   return json as Prisma.InputJsonValue;
 }
+
+//? The same boundary, narrowed to an OBJECT input — for `$runCommandRaw`, whose parameter type
+//? refuses the wider `InputJsonValue` (a raw Mongo command is always a document).
+export function jsonInputObject(value: Record<string, unknown>): Prisma.InputJsonObject {
+  const json: unknown = structuredClone(value);
+  return json as Prisma.InputJsonObject;
+}

@@ -52,6 +52,20 @@ const { buildAuthUrl, buildExchangeRequest, parseTokenResponse, buildUploadReque
   assert((tt.body ?? '').includes('PULL_FROM_URL') && (tt.body ?? '').includes('https://cdn/v.mp4'), 'tiktok pulls the video from the asset url');
 }
 
+// 4b) AI-disclosure (EU AI Act / platform policy) — the synthetic-media flag reaches BOTH payloads,
+//     and its absence keeps the payload byte-identical to the pre-disclosure shape.
+{
+  const yt = buildUploadRequest('youtube', { accessToken: 'AT', assetUrl: 'https://cdn/v.mp4', title: 'V', variant: { syntheticMedia: true } });
+  assert((yt.body ?? '').includes('"containsSyntheticMedia":true'), 'youtube status carries containsSyntheticMedia when disclosed');
+  const ytOff = buildUploadRequest('youtube', { accessToken: 'AT', assetUrl: 'https://cdn/v.mp4', title: 'V' });
+  assert(!(ytOff.body ?? '').includes('containsSyntheticMedia'), 'no disclosure → youtube payload unchanged');
+
+  const tt = buildUploadRequest('tiktok', { accessToken: 'AT', assetUrl: 'https://cdn/v.mp4', title: 'C', variant: { syntheticMedia: true } });
+  assert((tt.body ?? '').includes('"is_aigc":true'), 'tiktok post_info carries is_aigc when disclosed');
+  const ttOff = buildUploadRequest('tiktok', { accessToken: 'AT', assetUrl: 'https://cdn/v.mp4', title: 'C', variant: { syntheticMedia: false } });
+  assert(!(ttOff.body ?? '').includes('is_aigc'), 'explicit false → no aigc flag (manual checkbox semantics)');
+}
+
 // 5) F1 — refresh-token grant request shape + expiry check
 {
   process.env.YOUTUBE_CLIENT_ID = 'yt'; process.env.YOUTUBE_CLIENT_SECRET = 'sec';

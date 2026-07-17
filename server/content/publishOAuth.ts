@@ -91,7 +91,9 @@ export function parseTokenResponse(json: unknown): StoredTokens | null {
 //? O2 — a normalized per-platform privacy choice + the mappers to each platform's own vocabulary. TikTok has
 //? no "unlisted", so it collapses to SELF_ONLY. Pure + exported.
 export type PublishPrivacy = 'public' | 'unlisted' | 'private';
-export interface PublishVariant { caption?: string; hashtags?: string[]; privacy?: PublishPrivacy }
+//? `syntheticMedia` = the AI-disclosure flag (EU AI Act art. 50 / platform synthetic-media policy):
+//? YouTube → status.containsSyntheticMedia, TikTok → post_info.is_aigc.
+export interface PublishVariant { caption?: string; hashtags?: string[]; privacy?: PublishPrivacy; syntheticMedia?: boolean }
 const YT_PRIVACY: Record<PublishPrivacy, string> = { public: 'public', unlisted: 'unlisted', private: 'private' };
 const TT_PRIVACY: Record<PublishPrivacy, string> = { public: 'PUBLIC_TO_EVERYONE', unlisted: 'SELF_ONLY', private: 'SELF_ONLY' };
 
@@ -110,17 +112,20 @@ export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken
   const cfg = CFG[platform];
   const caption = composeCaption(input.title, input.variant);
   const privacy = input.variant?.privacy ?? 'private';
+  //? AI-disclosure: only an explicit true sets the platform flag (absent/false = no disclosure field,
+  //? preserving the prior payload byte-for-byte for undisclosed posts).
+  const synthetic = input.variant?.syntheticMedia === true;
   if (platform === 'youtube') {
     return {
       url: cfg.uploadUrl, method: 'POST',
       headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json', 'X-Upload-Content-Type': 'video/*' },
-      body: JSON.stringify({ snippet: { title: input.title, description: caption }, status: { privacyStatus: YT_PRIVACY[privacy] } }),
+      body: JSON.stringify({ snippet: { title: input.title, description: caption }, status: { privacyStatus: YT_PRIVACY[privacy], ...(synthetic ? { containsSyntheticMedia: true } : {}) } }),
     };
   }
   return {
     url: cfg.uploadUrl, method: 'POST',
     headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ post_info: { title: caption, privacy_level: TT_PRIVACY[privacy] }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
+    body: JSON.stringify({ post_info: { title: caption, privacy_level: TT_PRIVACY[privacy], ...(synthetic ? { is_aigc: true } : {}) }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
   };
 }
 

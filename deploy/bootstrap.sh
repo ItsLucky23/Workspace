@@ -45,6 +45,38 @@ set_if_empty REDIS_PASSWORD
 set_if_empty WORKSPACES_ENC_KEY
 set_if_empty WS_WEBHOOK_SECRET
 
+# --- 2b. VAPID keypair for web push (phone-first: without it push silently no-ops on a fresh install).
+# An ECDSA P-256 pair in the base64url shapes web-push expects: public = the 65-byte uncompressed
+# point, private = the JWK `d`. Uses host node when present, else a throwaway node container.
+set_env_value() {
+  local key="$1" val="$2"
+  grep -v -E "^${key}=" "$ENV_FILE" > "$ENV_FILE.tmp"
+  printf '%s=%s\n' "$key" "$val" >> "$ENV_FILE.tmp"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
+vapid_current() { grep -E "^WS_VAPID_PUBLIC=" "$ENV_FILE" | head -1 | cut -d= -f2-; }
+
+if [ -z "$(vapid_current)" ]; then
+  VAPID_JS='const{generateKeyPairSync}=require("crypto");const{publicKey,privateKey}=generateKeyPairSync("ec",{namedCurve:"prime256v1"});const spki=publicKey.export({type:"spki",format:"der"});const raw=spki.subarray(spki.length-65);console.log(Buffer.from(raw).toString("base64url"));console.log(privateKey.export({format:"jwk"}).d);'
+  if command -v node >/dev/null 2>&1; then
+    VAPID_OUT="$(node -e "$VAPID_JS")"
+  else
+    VAPID_OUT="$(docker run --rm node:22-alpine node -e "$VAPID_JS")" || die "VAPID key generation failed (need host node or docker)"
+  fi
+  VAPID_PUB="$(printf '%s\n' "$VAPID_OUT" | sed -n 1p)"
+  VAPID_PRIV="$(printf '%s\n' "$VAPID_OUT" | sed -n 2p)"
+  [ -n "$VAPID_PUB" ] && [ -n "$VAPID_PRIV" ] || die "VAPID key generation produced no keys"
+  set_env_value WS_VAPID_PUBLIC "$VAPID_PUB"
+  set_env_value WS_VAPID_PRIVATE "$VAPID_PRIV"
+  # subject falls back to PUBLIC_URL's admin mailto shape; override in .env for a real contact.
+  CUR_SUBJECT="$(grep -E "^WS_VAPID_SUBJECT=" "$ENV_FILE" | head -1 | cut -d= -f2-)"
+  [ -n "$CUR_SUBJECT" ] || set_env_value WS_VAPID_SUBJECT "mailto:admin@localhost"
+  log "generated WS_VAPID_PUBLIC/WS_VAPID_PRIVATE (web push enabled out of the box)"
+else
+  log "WS_VAPID_PUBLIC already set — keeping it"
+fi
+
 # --- 3. build the base image the app uses for ticket containers (if the Dockerfile is present) ---
 if [ -f "../docker/base.Dockerfile" ]; then
   log "building the ticket base image (workspaces/base:0.1.0)…"

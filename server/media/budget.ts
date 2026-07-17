@@ -5,9 +5,11 @@
 
 import type { PrismaClient } from '@prisma/client';
 
+import { isHostSpendCapReached } from '../spend/record';
+
 export interface MediaBudgetCheck {
   ok: boolean;
-  reason?: 'media.budgetExceeded';
+  reason?: 'media.budgetExceeded' | 'media.hostCapExceeded';
   unlimited: boolean;
   capCents: number;
   spentCents: number;
@@ -15,9 +17,13 @@ export interface MediaBudgetCheck {
 }
 
 //? Would `costCents` push the workspace past its media €-cap? Pure read — the caller records the spend
-//? on success. No budget / `!enabled` / `capCents<=0` = unlimited (always ok).
+//? on success. No budget / `!enabled` / `capCents<=0` = unlimited (always ok) — EXCEPT the host-wide
+//? ceiling (WS_HOST_SPEND_CAP_EUR), which caps even unlimited workspaces.
 export async function checkMediaBudget(prisma: PrismaClient, workspaceId: string, costCents: number): Promise<MediaBudgetCheck> {
   const b = await prisma.mediaBudget.findUnique({ where: { workspaceId } });
+  if (await isHostSpendCapReached(prisma)) {
+    return { ok: false, reason: 'media.hostCapExceeded', unlimited: false, capCents: b?.capCents ?? 0, spentCents: b?.spentCents ?? 0, remainingCents: 0 };
+  }
   if (!b || !b.enabled || b.capCents <= 0) {
     return { ok: true, unlimited: true, capCents: b?.capCents ?? 0, spentCents: b?.spentCents ?? 0, remainingCents: Number.MAX_SAFE_INTEGER };
   }

@@ -78,8 +78,39 @@ export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId
     where: { workspaceId, enabled: true, enforcement: { in: ['pauseNew', 'pauseAll'] } },
     select: { cap: true, spent: true },
   });
-  return caps.some((c) => c.cap > 0 && c.spent >= c.cap);
+  if (caps.some((c) => c.cap > 0 && c.spent >= c.cap)) return true;
+  //? Host-wide ceiling: one runaway workspace must not be able to run the TOTAL bill unbounded.
+  return await isHostSpendCapReached(prisma);
 }
+
+//? Host-wide metered €-ceiling (gap-scan blind spot: budgets were per-workspace only). Configured by the
+//? self-host operator via WS_HOST_SPEND_CAP_EUR (0/absent = no host cap). Total = every workspace's
+//? metered spend: the mediaSpend €-ledger (cents) + the SpendRecord costEstimate (€, Gemini). Enforced
+//? with pauseNew semantics through isSpendEnforcementActive + the media pre-generation guard. The
+//? aggregate is cached briefly so per-generation checks don't rescan both tables.
+const HOST_CAP_CACHE_MS = 60_000;
+const hostCapCache = { at: 0, totalCents: 0 };
+export async function hostSpendTotalCents(prisma: PrismaClient): Promise<number> {
+  if (Date.now() - hostCapCache.at < HOST_CAP_CACHE_MS) return hostCapCache.totalCents;
+  //? luckystack-allow tenant-scope: a deliberately host-wide aggregate (the whole point of the cap).
+  const media = await prisma.mediaSpend.aggregate({ _sum: { costCents: true } });
+  //? luckystack-allow tenant-scope: same host-wide aggregate.
+  const records = await prisma.spendRecord.aggregate({ _sum: { costEstimate: true } });
+  hostCapCache.totalCents = (media._sum.costCents ?? 0) + Math.round((records._sum.costEstimate ?? 0) * 100);
+  hostCapCache.at = Date.now();
+  return hostCapCache.totalCents;
+}
+export function hostSpendCapCents(): number {
+  const eur = Number(process.env.WS_HOST_SPEND_CAP_EUR ?? '0');
+  return Number.isFinite(eur) && eur > 0 ? Math.round(eur * 100) : 0;
+}
+export async function isHostSpendCapReached(prisma: PrismaClient): Promise<boolean> {
+  const cap = hostSpendCapCents();
+  if (cap <= 0) return false;
+  return (await hostSpendTotalCents(prisma)) >= cap;
+}
+//? Test hook: drop the cached aggregate so a test sees fresh sums.
+export function resetHostSpendCache(): void { hostCapCache.at = 0; }
 
 //? Usage shapes live in the client `_data/types` (the snapshot emits them); re-exported for callers.
 export type { AiUsage, UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';

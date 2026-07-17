@@ -16,6 +16,7 @@ import { runWorkerReapTick, WORKER_REAP_MS } from '../../server/orchestrator/wor
 import { reapIdleEditors, EDITOR_REAP_MS } from '../../server/proxy/editorReaper';
 import { runDemoWatch, DEMO_WATCH_MS } from '../../server/deploy/demoWatch';
 import { runGitlabSyncTick, SYNC_INTERVAL_MS } from '../../server/git/gitlabSync';
+import { runBackup, BACKUP_INTERVAL_MS, BACKUP_ENABLED } from '../../server/db/backup';
 
 //? O3 — fire due scheduled posts.
 registerCronJob({ name: 'scheduled-publish', schedule: { everyMs: PUBLISH_INTERVAL_MS }, handler: async () => { await runScheduledPublish(getPrismaClient(), Date.now()); } });
@@ -37,3 +38,12 @@ registerCronJob({ name: 'demo-watch', schedule: { everyMs: DEMO_WATCH_MS }, hand
 
 //? Poll linked forges for new/updated issues → tickets.
 registerCronJob({ name: 'gitlab-sync', schedule: { everyMs: SYNC_INTERVAL_MS }, handler: async () => { await runGitlabSyncTick(); } });
+
+//? Automatic DB backup (ADR 0032 DR-mandaat) — daily by default, WS_BACKUP_INTERVAL_HOURS=0 disables.
+//? Restore: `npm run db:restore -- <file> --yes` (DESTRUCTIVE; see DR_RUNBOOK).
+if (BACKUP_ENABLED) {
+  registerCronJob({ name: 'db-backup', schedule: { everyMs: BACKUP_INTERVAL_MS }, handler: async () => {
+    const res = await runBackup(getPrismaClient());
+    console.log(`[backup] ${res.ok ? `wrote ${res.file ?? ''} (${String(res.docs)} docs, ${String(res.collections)} collections)` : `FAILED: ${res.error ?? ''}`}`);
+  } });
+}

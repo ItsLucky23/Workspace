@@ -11,6 +11,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
+import { Toggle } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { backendUrl, oauthCallbackBase } from '../../../../config';
 
@@ -341,15 +342,17 @@ function ChannelManagerSection() {
   const [handle, setHandle] = useState('');
   const [brandVoice, setBrandVoice] = useState('');
   const [defaultStyleId, setDefaultStyleId] = useState('');   // #153 — the channel's house style
+  //? AI-disclosure default: prefills the publish composer's synthetic-media checkbox; autopilot follows it.
+  const [aiDisclosure, setAiDisclosure] = useState(false);
   const canSave = name.trim().length > 0;
-  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); setDefaultStyleId(''); };
-  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null; defaultStyleId?: string | null }): void => {
-    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? ''); setDefaultStyleId(c.defaultStyleId ?? '');
+  const reset = () => { setEditingId(null); setName(''); setHandle(''); setBrandVoice(''); setPlatform('youtube'); setDefaultStyleId(''); setAiDisclosure(false); };
+  const startEdit = (c: { id: string; name: string; platform: string; handle?: string | null; brandVoice?: string | null; defaultStyleId?: string | null; aiDisclosureDefault?: boolean }): void => {
+    setEditingId(c.id); setName(c.name); setPlatform(c.platform); setHandle(c.handle ?? ''); setBrandVoice(c.brandVoice ?? ''); setDefaultStyleId(c.defaultStyleId ?? ''); setAiDisclosure(c.aiDisclosureDefault ?? false);
   };
   const submit = () => {
     if (!canSave) return;
-    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim(), defaultStyleId });
-    else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}) });
+    if (editingId) runContentOp('channel-edit', '', { channelId: editingId, name: name.trim(), platform, handle: handle.trim(), brandVoice: brandVoice.trim(), defaultStyleId, aiDisclosureDefault: aiDisclosure });
+    else runContentOp('channel-create', '', { name: name.trim(), platform, ...(handle.trim() ? { handle: handle.trim() } : {}), ...(brandVoice.trim() ? { brandVoice: brandVoice.trim() } : {}), aiDisclosureDefault: aiDisclosure });
     reset();
   };
   const removeChannel = (id: string): void => {
@@ -393,6 +396,10 @@ function ChannelManagerSection() {
             <Dropdown size="md" value={styleItems.find((i) => i.id === defaultStyleId) ?? styleItems[0]} items={styleItems} onChange={(it) => { setDefaultStyleId(String(it.id)); }} />
           </div>
         )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-common" title={translate({ key: 'workspaces.content.channelAiDisclosureHint' })}>{translate({ key: 'workspaces.content.channelAiDisclosure' })}</span>
+          <Toggle on={aiDisclosure} onChange={setAiDisclosure} label={aiDisclosure ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
+        </div>
         <button type="button" disabled={!canSave} onClick={submit} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer motion-safe:active:scale-[0.98]">{translate({ key: 'workspaces.content.channelSave' })}</button>
       </div>
     </section>

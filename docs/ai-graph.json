@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 236,
-    "edges": 353,
+    "edges": 355,
     "symbols": 299,
     "callEdges": 42
   },
@@ -2032,6 +2032,10 @@
     },
     {
       "from": "workspaces/content/settings/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2440,6 +2444,10 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
+      "to": "_components/TwoFactorSection.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
       "to": "_functions/menuHandler.ts"
     },
     {
@@ -2628,6 +2636,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Gallery.tsx",
@@ -2834,7 +2843,8 @@
       "main.tsx"
     ],
     "_components/TwoFactorSection.tsx": [
-      "settings/page.tsx"
+      "settings/page.tsx",
+      "workspaces/settings/page.tsx"
     ],
     "_functions/menuHandler.ts": [
       "_components/MenuHandler.tsx",
@@ -3026,6 +3036,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Gallery.tsx",
@@ -3069,6 +3080,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Gallery.tsx",
@@ -3166,6 +3178,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -3231,6 +3244,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Animations.tsx",
       "workspaces/designer/sections/Components.tsx",
@@ -3471,13 +3485,13 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 54,
+      "dependents": 55,
       "directDependents": 5
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 49,
+      "dependents": 50,
       "directDependents": 29
     },
     {
@@ -3495,20 +3509,20 @@
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 40,
+      "dependents": 41,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 39,
+      "dependents": 40,
       "directDependents": 8
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 38,
-      "directDependents": 34
+      "dependents": 39,
+      "directDependents": 35
     },
     {
       "id": "_components/ConfirmMenu.tsx",

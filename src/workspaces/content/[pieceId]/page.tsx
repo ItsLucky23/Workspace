@@ -11,7 +11,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { Disclosure, EmptyState, PopMenu, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, PopMenu, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -108,11 +108,13 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
 //? G1/CP1 — the publish composer form: caption + hashtags + privacy + optional schedule for ONE platform.
 //? Submits the fields to content-request-publish (G1 persists them as the per-platform publishVariant).
-function PublishComposer({ platform, accounts, onSubmit, translate }: { platform: string; accounts: { accountId: string | null }[]; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string; accountId?: string }) => void; translate: ReturnType<typeof useTranslator> }) {
+function PublishComposer({ platform, accounts, defaultSynthetic, onSubmit, translate }: { platform: string; accounts: { accountId: string | null }[]; defaultSynthetic: boolean; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string; accountId?: string; syntheticMedia?: boolean }) => void; translate: ReturnType<typeof useTranslator> }) {
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [privacy, setPrivacy] = useState('public');
   const [scheduledAt, setScheduledAt] = useState('');
+  //? AI-disclosure checkbox — manual per post, prefilled from the channel's aiDisclosureDefault.
+  const [synthetic, setSynthetic] = useState(defaultSynthetic);
   //? #140 — which connected account to post as (only shown when the platform has a named/multi account).
   const [accountId, setAccountId] = useState(accounts[0]?.accountId ?? '');
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
@@ -138,11 +140,15 @@ function PublishComposer({ platform, accounts, onSubmit, translate }: { platform
         <span className="text-sm text-common">{translate({ key: 'workspaces.publish.schedule' })}</span>
         <input type="datetime-local" value={scheduledAt} onChange={(e) => { setScheduledAt(e.target.value); }} className="h-9 px-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary" />
       </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-common" title={translate({ key: 'workspaces.publish.syntheticHint' })}>{translate({ key: 'workspaces.publish.synthetic' })}</span>
+        <Toggle on={synthetic} onChange={setSynthetic} label={synthetic ? translate({ key: 'workspaces.publish.syntheticOn' }) : translate({ key: 'workspaces.publish.syntheticOff' })} />
+      </div>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="paper-plane" onClick={() => {
           const tags = hashtags.split(/[\s,]+/).map((t) => t.replace(/^#/, '').trim()).filter((t) => t.length > 0);
-          onSubmit({ ...(caption.trim() ? { caption: caption.trim() } : {}), ...(tags.length > 0 ? { hashtags: tags } : {}), privacy, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}), ...(accountId ? { accountId } : {}) });
+          onSubmit({ ...(caption.trim() ? { caption: caption.trim() } : {}), ...(tags.length > 0 ? { hashtags: tags } : {}), privacy, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}), ...(accountId ? { accountId } : {}), syntheticMedia: synthetic });
         }}>{translate({ key: scheduledAt ? 'workspaces.publish.scheduleBtn' : 'workspaces.publish.publishBtn' })}</WsButton>
       </div>
     </div>
@@ -400,8 +406,11 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const requestPublish = (assetId: string, platform: string) => {
     //? #140 — hand the composer this platform's connected accounts so it can offer an account picker.
     const accounts = content.publishTargets.find((t) => t.platform === platform)?.accounts ?? [];
+    //? AI-disclosure default: the piece's channel prefills the synthetic-media checkbox (props-injected —
+    //? menuHandler renders above WorkspacesProvider, lesson 0011).
+    const defaultSynthetic = content.channels.find((c) => c.id === piece.channelId)?.aiDisclosureDefault ?? false;
     void menuHandler.open(
-      <PublishComposer platform={platform} accounts={accounts} translate={translate} onSubmit={(fields) => {
+      <PublishComposer platform={platform} accounts={accounts} defaultSynthetic={defaultSynthetic} translate={translate} onSubmit={(fields) => {
         void menuHandler.close();
         runContentOp('content-request-publish', piece.id, { assetId, platform, ...fields });
       }} />,

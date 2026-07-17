@@ -361,7 +361,7 @@ export interface ContentStyleSummary { id: string; key: string; label: string; f
 //? Inspiration/reference library entry (an example ad/thumbnail/intro the AI emulates).
 export interface ContentReferenceSummary { id: string; kind: string; title: string; description: string; assetUrl?: string | null; tags: string[] }
 //? A channel + its brand voice (U4) — the per-channel brand snippet that feeds brand-RAG.
-export interface ContentChannelSummary { id: string; name: string; platform: string; handle?: string | null; brandVoice: string; defaultStyleId?: string | null }
+export interface ContentChannelSummary { id: string; name: string; platform: string; handle?: string | null; brandVoice: string; defaultStyleId?: string | null; aiDisclosureDefault: boolean }
 //? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,
 //? so the settings UI shows connect/connected and the piece-detail only offers publish to a live target.
 //? #140 — one connected account under a platform (accountId null = the legacy single-account connection).

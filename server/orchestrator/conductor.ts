@@ -1338,7 +1338,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!name) return;
       const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
       if (!projectId) return { ok: false, status: 'error', error: 'env.noProject' };
-      const created = await prisma.channel.create({ data: { workspaceId: action.workspaceId, projectId, name, platform: str(payload, 'platform') ?? 'none', ...(str(payload, 'handle') ? { handle: str(payload, 'handle') } : {}), ...(str(payload, 'brandVoice') ? { brandVoice: str(payload, 'brandVoice') } : {}) } });
+      const created = await prisma.channel.create({ data: { workspaceId: action.workspaceId, projectId, name, platform: str(payload, 'platform') ?? 'none', ...(str(payload, 'handle') ? { handle: str(payload, 'handle') } : {}), ...(str(payload, 'brandVoice') ? { brandVoice: str(payload, 'brandVoice') } : {}), aiDisclosureDefault: bool(payload, 'aiDisclosureDefault') } });
       broadcastContentDirty(action.workspaceId);
       return created;
     }
@@ -1351,6 +1351,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         ...('handle' in payload ? { handle: str(payload, 'handle') ?? null } : {}),
         ...('brandVoice' in payload ? { brandVoice: str(payload, 'brandVoice') ?? null } : {}),
         ...('defaultStyleId' in payload ? { defaultStyleId: str(payload, 'defaultStyleId') ?? null } : {}),
+        ...('aiDisclosureDefault' in payload ? { aiDisclosureDefault: bool(payload, 'aiDisclosureDefault') } : {}),
       };
       await prisma.channel.updateMany({ where: { workspaceId: action.workspaceId, id: channelId }, data });
       broadcastContentDirty(action.workspaceId);
@@ -1924,7 +1925,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const caption = str(payload, 'caption');
       const privacy = str(payload, 'privacy');
       const hashtags = strArr(payload, 'hashtags');
-      const hasVariant = caption !== undefined || (privacy === 'public' || privacy === 'unlisted' || privacy === 'private') || hashtags.length > 0;
+      //? AI-disclosure (EU AI Act art. 50 / platform policy): the composer's synthetic-media checkbox —
+      //? persisted per platform so the upload adapter sets the platform's disclosure flag.
+      const syntheticMedia = 'syntheticMedia' in payload ? bool(payload, 'syntheticMedia') : undefined;
+      const hasVariant = caption !== undefined || (privacy === 'public' || privacy === 'unlisted' || privacy === 'private') || hashtags.length > 0 || syntheticMedia !== undefined;
       if (hasVariant) {
         const proj = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { publishVariants: true } });
         const existing = proj?.publishVariants;
@@ -1933,6 +1937,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           ...(caption === undefined ? {} : { caption }),
           ...(hashtags.length > 0 ? { hashtags } : {}),
           ...(privacy === 'public' || privacy === 'unlisted' || privacy === 'private' ? { privacy } : {}),
+          ...(syntheticMedia === undefined ? {} : { syntheticMedia }),
         };
         await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { publishVariants: jsonInput(current) } });
       }

@@ -1411,6 +1411,7 @@ model Channel {
   description    String?
   brandVoice     String?                             // one-line house voice (seeds gen)
   defaultStyleId String?  @db.ObjectId               // → StylePreset.id (house style)
+  aiDisclosureDefault Boolean @default(false)        // prefills the publish composer's synthetic-media checkbox (EU AI Act / platform policy); autopilot follows this
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -21,6 +21,7 @@ export function extractPublishVariant(raw: unknown, platform: string): PublishVa
   if (typeof e.caption === 'string') out.caption = e.caption;
   if (Array.isArray(e.hashtags)) out.hashtags = e.hashtags.filter((t): t is string => typeof t === 'string');
   if (e.privacy === 'public' || e.privacy === 'unlisted' || e.privacy === 'private') out.privacy = e.privacy;
+  if (typeof e.syntheticMedia === 'boolean') out.syntheticMedia = e.syntheticMedia;
   return out;
 }
 

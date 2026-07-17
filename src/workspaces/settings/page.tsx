@@ -10,6 +10,7 @@ import { i18nNotify as notify, useSession, useTranslator, useUpdateLanguage } fr
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+import TwoFactorSection from 'src/_components/TwoFactorSection';
 import { apiRequest } from 'src/_sockets/apiRequest';
 
 import Icon from '../_components/Icon';
@@ -675,6 +676,16 @@ export default function AccountSettings() {
                 </Row>
               </div>
             )}
+          </Card>
+
+          {/* Account & security — the 2FA/GDPR/mail-preference flows were fully built on /settings but
+              unreachable from Workspaces (gap-scan A8): embed 2FA here + a visible route to the rest. */}
+          <Card title={translate({ key: 'workspaces.account.securityTitle' })} desc={translate({ key: 'workspaces.account.securityDesc' })}>
+            <TwoFactorSection />
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.fullSettings' })}</span>
+              <WsButton variant="secondary" icon="up-right-from-square" onClick={() => { globalThis.location.assign('/settings'); }}>{translate({ key: 'workspaces.account.openFullSettings' })}</WsButton>
+            </Row>
           </Card>
 
           <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>
