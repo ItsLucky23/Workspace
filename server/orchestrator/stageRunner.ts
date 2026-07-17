@@ -28,6 +28,7 @@ import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
+import { skillPromptBlock } from '../ai/skills';
 import { recordTurnSpend } from '../spend/record';
 import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
@@ -251,7 +252,10 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? a dev stage knows the platform around the code it writes. Best-effort — empty corpus = omitted.
   const [, pkChunks] = await tryCatch(() => retrieveProductKnowledge(prisma, `${ticket.title}\n${ticket.description ?? ''}`, 2));
   const productDoc = (pkChunks ?? []).map((c) => c.content).join('\n\n').slice(0, 2500);
-  const contextDocs = [...starterDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc }] : [])];
+  //? SK2 — enabled 'dev' skills reach the PTY coding agent as a context-doc (the one-shot choke-point
+  //? in ai/registry.ts doesn't cover the PTY path). Best-effort: read failure = no doc.
+  const [, skillsDoc] = await tryCatch(() => skillPromptBlock(workspaceId, 'dev'));
+  const contextDocs = [...starterDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '' }] : [])];
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
   //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).

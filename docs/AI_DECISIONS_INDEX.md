@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (187)
+## Decisions (188)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -200,6 +200,7 @@
 | 0267 | multi repo per project storage | 🟢 accepted | git, multi-project, storage, r3b | — | `docs/decisions/0267-multi-repo-per-project-storage.md` |
 | 0268 | multimodal image critique | 🟢 accepted | ai, media, vision, provider | — | `docs/decisions/0268-multimodal-image-critique.md` |
 | 0269 | channel autopilot consent vooraf | 🟢 accepted | content, autopilot, b-23, consent, publishing | — | `docs/decisions/0269-channel-autopilot-consent-vooraf.md` |
+| 0270 | universeel skill model met apply points | 🟢 accepted | ai, skills, architecture, documents-and-skills | — | `docs/decisions/0270-universeel-skill-model-met-apply-points.md` |
 
 ## Summaries
 
@@ -1703,6 +1704,16 @@ Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/
 
 → `docs/decisions/0269-channel-autopilot-consent-vooraf.md`
 
+### 0270 — universeel skill model met apply points
+
+**0270** · accepted · tags: ai, skills, architecture, documents-and-skills · 2026-07-17
+
+Eén nieuw workspace-scoped `Skill`-model (slug, name, instruction, examples, applyPoints[], enabled, builtin) met één resolver (`server/ai/skills.ts`): `skillPromptBlock(workspaceId, applyPoint)`. Twee injectiepunten dekken ALLE AI-runs: (1) het bestaande completion-choke-point in `server/ai/registry.ts` (elke one-shot feature; de feature→apply-point-groep-map staat in skills.ts en is exhaustief over `AiFeature`), en (2) de PTY-stage-runner als contextDoc (`'dev'`-groep). Apply-point-groepen: all/content/studio/designer/dev/interviewer/documents/chat/custom — canonieke lijst in `src/workspaces/_data/types.ts` (client+server één bron). Vijf builtin-seeds per workspace (lazy bij snapshot-read, idempotent), allemaal standaard UIT (consent-first); builtins zijn bewerkbaar + resetbaar, nooit verwijderbaar. CRUD via vier `ai-skill-*` Conductor-ops (B-23), RBAC workspaceSettings. De humanizer-seed verankert de ADR-0015-grens (menselijke toon ja, AI-detectie-omzeiling/disclosure-verwijdering nooit) in de instructietekst zelf.
+
+**Governs** (`//? @adr 0270`): `server/ai/skills.ts`
+
+→ `docs/decisions/0270-universeel-skill-model-met-apply-points.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1712,4 +1723,5 @@ Re-key ALL physical git storage by `(workspaceId, projectId)`: `data/workspaces/
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `scripts/testWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
+| `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |

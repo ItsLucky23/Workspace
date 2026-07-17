@@ -10,6 +10,7 @@ import path from 'node:path';
 import { getPrismaClient, sleep, tryCatch, tryCatchSync } from '@luckystack/core';
 
 import { resolveAssignment, defaultAssignments } from './assignments';
+import { applyPointForFeature, skillPromptBlock } from './skills';
 import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
 import { recordTurnSpend } from '../spend/record';
@@ -76,7 +77,10 @@ export async function runAiCompletion(
   //? Q3 — every feature also gets the compact product-capability index (global, cached), so the whole AI
   //? surface is product-aware, not just the chat.
   const capIdx = productCapabilityIndex();
-  const systemParts = [capIdx, prefix, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0);
+  //? SK2 — the workspace's ENABLED skills whose apply-points match this feature's group, injected at the
+  //? same single choke-point (best-effort: a failed read means no block, never a failed turn).
+  const skillsBlock = await skillPromptBlock(req.workspaceId, applyPointForFeature(feature));
+  const systemParts = [capIdx, prefix, skillsBlock, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0);
   const groundedReq = systemParts.length > 1 || (systemParts.length === 1 && systemParts[0] !== (req.system ?? '').trim()) ? { ...req, system: systemParts.join('\n\n') } : req;
   //? Gap-fix: bounded retry with backoff around the SINGLE provider call-site (there was none anywhere
   //? in the AI layer — one transient blip failed the whole feature turn). Only failed results retry;

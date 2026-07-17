@@ -1589,6 +1589,30 @@ model StylePreset {
   @@index([workspaceId, feature])
 }
 
+//? SK1 (DOCUMENTS_AND_SKILLS) — a workspace-scoped SKILL: a reusable instruction block ("humanizer",
+//? "tone-of-voice", "SEO-optimizer") injected into AI runs at its apply-points. Distinct from StylePreset
+//? (per-feature render style, picked per run): a Skill is an ALWAYS-ON behavioural layer while enabled,
+//? scoped by apply-point GROUPS (content/dev/designer/studio/interviewer/documents/chat/all — see
+//? server/ai/skills.ts for the feature→group map). `builtin` rows are seeded per workspace, editable,
+//? resettable, not deletable. The humanizer's instruction embeds the ADR-0015 integrity boundary
+//? (human tone yes, AI-detection evasion never).
+model Skill {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  slug        String                                  // stable key, e.g. 'humanizer' (unique per workspace)
+  name        String
+  instruction String                                  // the prompt block injected at matching apply-points
+  examples    String   @default("")                   // optional few-shot examples appended under the instruction
+  applyPoints String[] @default([])                   // apply-point group ids; [] or ['all'] = every AI run
+  enabled     Boolean  @default(false)                // OFF until the user turns it on (consent-first)
+  builtin     Boolean  @default(false)                // seeded default (not deletable, instruction resettable)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, enabled])
+  @@index([workspaceId, slug])
+}
+
 //? A curated INSPIRATION/reference example a workspace collects (a great ad, thumbnail, video intro, hook).
 //? The `description` ("what makes it work") is what the content AI retrieves + emulates the STRUCTURE of; the
 //? optional `assetUrl` is the uploaded sample shown in the library. Distinct from StylePreset (how it renders).

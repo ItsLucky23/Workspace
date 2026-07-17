@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 239,
-    "edges": 357,
-    "symbols": 305,
-    "callEdges": 42
+    "nodes": 240,
+    "edges": 358,
+    "symbols": 308,
+    "callEdges": 43
   },
   "nodes": [
     {
@@ -959,6 +959,11 @@
       "route": "sync/workspaces/serviceTeardown/v1"
     },
     {
+      "id": "workspaces/_sync/skillsControl_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/skillsControl/v1"
+    },
+    {
       "id": "workspaces/_sync/skillToggle_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/skillToggle/v1"
@@ -1828,6 +1833,10 @@
     {
       "from": "workspaces/_sync/saveStageConfig_server_v1.ts",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_sync/skillsControl_server_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
     },
     {
       "from": "workspaces/activity/page.tsx",
@@ -3261,6 +3270,7 @@
       "workspaces/_sync/saveGitConfig_server_v1.ts",
       "workspaces/_sync/saveIntegration_server_v1.ts",
       "workspaces/_sync/saveStageConfig_server_v1.ts",
+      "workspaces/_sync/skillsControl_server_v1.ts",
       "workspaces/activity/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/DiffView.tsx",
@@ -3510,8 +3520,8 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 55,
-      "directDependents": 5
+      "dependents": 56,
+      "directDependents": 6
     },
     {
       "id": "workspaces/_data/types.ts",
@@ -5346,6 +5356,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/skillsControl_server_v1.ts::<module>",
+      "file": "workspaces/_sync/skillsControl_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/skillsControl_server_v1.ts::isSkillOp",
+      "file": "workspaces/_sync/skillsControl_server_v1.ts",
+      "name": "isSkillOp",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/skillsControl_server_v1.ts::main",
+      "file": "workspaces/_sync/skillsControl_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/skillToggle_server_v1.ts::<module>",
       "file": "workspaces/_sync/skillToggle_server_v1.ts",
       "name": "<module>",
@@ -5658,6 +5686,10 @@
     {
       "from": "workspaces/_sync/serviceProvision_server_v1.ts::main",
       "to": "workspaces/_sync/serviceProvision_server_v1.ts::rejected"
+    },
+    {
+      "from": "workspaces/_sync/skillsControl_server_v1.ts::main",
+      "to": "workspaces/_sync/skillsControl_server_v1.ts::isSkillOp"
     }
   ],
   "symbolBlastRadius": {
@@ -5780,6 +5812,9 @@
     ],
     "workspaces/_sync/serviceProvision_server_v1.ts::rejected": [
       "workspaces/_sync/serviceProvision_server_v1.ts::main"
+    ],
+    "workspaces/_sync/skillsControl_server_v1.ts::isSkillOp": [
+      "workspaces/_sync/skillsControl_server_v1.ts::main"
     ]
   }
 }

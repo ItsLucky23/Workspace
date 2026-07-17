@@ -134,6 +134,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'raise-cap': LATER_D, 'edit-budget': LATER_D, 'resume-spend': LATER_D,
   'skill-toggle': LATER,
+  //? SK1 — the universal AI-skills layer (flip to enabled once chat proposing them proves useful).
+  'ai-skill-save': LATER, 'ai-skill-toggle': LATER, 'ai-skill-delete': LATER_D, 'ai-skill-reset': LATER,
   'save-stage-config': LATER,
   'stage-create': {
     mode: 'enabled',

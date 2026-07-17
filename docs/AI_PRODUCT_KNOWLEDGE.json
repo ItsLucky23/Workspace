@@ -1,6 +1,6 @@
 {
-  "hash": "83d8e59bc045a3cc",
-  "chunkCount": 204,
+  "hash": "c1a0bf25d7a8d137",
+  "chunkCount": 205,
   "chunks": [
     {
       "id": "cap-001",
@@ -1225,6 +1225,12 @@
       "kind": "decision",
       "title": "0269-channel-autopilot-consent-vooraf",
       "text": "ADR 0269: 0269-channel-autopilot-consent-vooraf. Invariant B-23 zegt: de mens keurt elke authoritative write goed; publiceren liep ALTIJD via een `WorkspaceSuggestion(type:'publish')` die de gebruiker accepteert. Maar de productvisie (\"10 YouTube-kanalen op cron-timers, een workspace puur voor automated content\") vraagt een keten die zonder dagelijkse taps doorloopt: idee → render → publiceren. De gap-scan (GAP_SCAN_2026-07-16, critical \"geen autonome end-to-end pipeline\") bevestigde dat elke schakel handmatig was. De gebruiker heeft in het beslis-interview van 2026-07-17 expliciet gekozen voor per-kanaal opt-in. Decision: - **`Channel.autopilot` (default false)** is een per-kanaal opt-in die de gebruiker bewust aanzet via een expliciete confirm-dialoog. **Die consent vooraf ÍS de goedkeuring** voor elke publish vanaf dat kanaal — `content-request-publish` slaat de suggestion over en publiceert direct wanneer het kanaal autopilot aan heeft. B-23 blijft intact: de Conductor blijft de enige writer (de hele keten loopt via Conductor-ops), alleen het consent-MOMENT verschuift van per-post naar per-kanaal. - **De keten**: de content-ideator-rol (cron, `params.channelId`) is kanaal-bewust (naam/brand-voice + per-kanaal winners) en draait op een autopilot-kanaal de volledige keten: `content-from-brief` (kanaal-gebonden piece) → `content-run-pipeline` (volledige render) → `content-request-publish` (autopilot-tak → direct posten). - **Waarborgen**: (1) de kill-switch is de autopilot-t"
+    },
+    {
+      "id": "adr-0270",
+      "kind": "decision",
+      "title": "0270-universeel-skill-model-met-apply-points",
+      "text": "ADR 0270: 0270-universeel-skill-model-met-apply-points. De gebruiker wil \"skills\" (humanizer, tone-of-voice, SEO-optimizer, merkstem, jargon-vertaler) die overal in het platform variatie en sturing geven — niet alleen in één module. Het platform had al drie half-overlappende sturingslagen: `Workspace.aiInstruction` (alles), `StylePreset` (per-feature render-stijl, per run gekozen), en DesignThemes/media-styles (galerijen). Geen daarvan is een herbruikbaar, per-workspace beheerbaar gedrags-blok dat selectief op módules toepasbaar is. Decision: Eén nieuw workspace-scoped `Skill`-model (slug, name, instruction, examples, applyPoints[], enabled, builtin) met één resolver (`server/ai/skills.ts`): `skillPromptBlock(workspaceId, applyPoint)`. Twee injectiepunten dekken ALLE AI-runs: (1) het bestaande completion-choke-point in `server/ai/registry.ts` (elke one-shot feature; de feature→apply-point-groep-map staat in skills.ts en is exhaustief over `AiFeature`), en (2) de PTY-stage-runner als contextDoc (`'dev'`-groep). Apply-point-groepen: all/content/studio/designer/dev/interviewer/documents/chat/custom — canonieke lijst in `src/workspaces/_data/types.ts` (client+server één bron). Vijf builtin-seeds per workspace (lazy bij snapshot-read, idempotent), allemaal standaard UIT (consent-first); builtins zijn bewerkbaar + resetbaar, nooit verwijderbaar. CRUD via vier `ai-skill-*` Conductor-ops (B-23), RBAC workspaceSettings. De humanizer-seed verankert de ADR-0015-grens (menselijke toon ja"
     }
   ]
 }

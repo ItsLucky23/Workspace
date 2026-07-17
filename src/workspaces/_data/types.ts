@@ -632,6 +632,22 @@ export interface SkillEntry {
   lastIndexed?: string;
 }
 
+//? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer: a workspace-scoped instruction block
+//? (humanizer, tone-of-voice, …) injected into AI runs at its apply-point groups. Distinct from the
+//? InfoSource-based `SkillEntry` workflow snippets above.
+export const AI_SKILL_APPLY_POINTS = ['all', 'content', 'studio', 'designer', 'dev', 'interviewer', 'documents', 'chat', 'custom'] as const;
+export type AiSkillApplyPoint = (typeof AI_SKILL_APPLY_POINTS)[number];
+export interface AiSkillEntry {
+  id: string;
+  slug: string;
+  name: string;
+  instruction: string;
+  examples: string;
+  applyPoints: string[];     // apply-point group ids; [] or ['all'] = every AI run
+  enabled: boolean;
+  builtin: boolean;          // seeded default — editable + resettable, never deletable
+}
+
 //? Account: SSH keys (B-05). For the dummy login the `value` (public-key text)
 //? decides identity: '123' → test, '456' → mathijs.
 export interface SshKeyEntry {

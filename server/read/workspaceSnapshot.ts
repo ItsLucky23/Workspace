@@ -12,12 +12,14 @@
 //? derived from the same `PipelineStage` rows.
 
 import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
+import { tryCatch } from '@luckystack/core';
 
 import { activeCount, queueLength, capacityLimit } from '../orchestrator/capacity';
 import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
+import { ensureBuiltinSkills } from '../ai/skills';
 import { formatTime, toContentAssetSummary, toInfoDoc, toTicket } from './mappers';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
@@ -33,7 +35,7 @@ import { computeContentAnalytics } from '../content/contentAnalytics';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
-  SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
+  AiSkillEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
@@ -168,6 +170,9 @@ export interface WorkspaceSnapshot {
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
+  //? SK1 — the universal AI-skills layer (workspace-scoped instruction blocks; distinct from the
+  //? InfoSource-based `skills` workflow snippets below).
+  aiSkills: AiSkillEntry[];
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
@@ -233,7 +238,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -336,10 +341,17 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
     //? #76 — the caller's account-global SSH keys (NOT tenant-scoped → plain prisma, no workspaceId).
     const sshKeyRows = await prisma.sshKey.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
-    //? E5 — the workspace's user-defined AI tasks (name + template + last output).
-    const customTaskRows = await tenantDb.customAiTask.findMany({ orderBy: { createdAt: 'desc' } });
-    //? O5 — the workspace's reusable output specs.
-    const outputTemplateRows = await tenantDb.outputTemplate.findMany({ orderBy: { createdAt: 'desc' } });
+    //? E5 — the workspace's user-defined AI tasks (name + template + last output). SECURITY fix (SK-ronde):
+    //? CustomAiTask/OutputTemplate are NOT in TENANT_MODELS, so the old no-where `tenantDb` reads passed
+    //? through UNSCOPED — every snapshot leaked every workspace's rows. Feature-model pattern (ADR 0050):
+    //? explicit workspaceId.
+    const customTaskRows = await prisma.customAiTask.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
+    //? O5 — the workspace's reusable output specs (same explicit scoping fix).
+    const outputTemplateRows = await prisma.outputTemplate.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
+    //? SK1 — the workspace's AI skills (universal skills layer). Lazy-seed the builtin set so existing
+    //? workspaces get them on first read; best-effort (a failed seed still returns the snapshot).
+    await tryCatch(() => ensureBuiltinSkills(currentWorkspaceId()));
+    const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
@@ -523,6 +535,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
       //? O5 — reusable output specs.
       outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
+      //? SK1 — the universal AI-skills layer.
+      aiSkills: aiSkillRows.map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
       tickets: ticketRows.map((t) => {
         const mapped = toTicket(t);
         //? Real per-ticket cost chip (#16): "<tokens> tok" when the ticket has run turns, else no chip.

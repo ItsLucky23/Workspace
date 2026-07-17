@@ -9,7 +9,7 @@ import { createContext, use } from 'react';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
@@ -232,6 +232,12 @@ export interface WorkspacesCtx {
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   saveOutputTemplate: (input: { templateId?: string; name: string; format: string; watermarkPosition?: string }) => void;
   deleteOutputTemplate: (templateId: string) => void;
+  //? SK1 — the universal AI-skills layer (workspace-scoped instruction blocks injected into AI runs).
+  aiSkills: AiSkillEntry[];
+  saveAiSkill: (input: { skillId?: string; name: string; instruction: string; examples?: string; applyPoints?: string[]; enabled?: boolean }) => void;
+  toggleAiSkill: (skillId: string, on: boolean) => void;
+  deleteAiSkill: (skillId: string) => void;
+  resetAiSkill: (skillId: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).

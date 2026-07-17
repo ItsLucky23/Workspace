@@ -26,7 +26,7 @@ import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
@@ -73,6 +73,8 @@ interface Snap {
   aiOverrides: { feature: string; providerId: string }[];
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
+  //? SK1 — the universal AI-skills layer.
+  aiSkills: AiSkillEntry[];
   myInvites: MyInvite[];
   notes: TicketNote[];
   repo: RepoInfo;
@@ -105,7 +107,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
@@ -1340,6 +1342,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       outputTemplates: snap.outputTemplates,
       saveOutputTemplate: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteOutputTemplate: (templateId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'delete-output-template', templateId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? SK1 — the universal AI-skills layer (save/toggle/delete/reset via the skillsControl sync route).
+      aiSkills: snap.aiSkills,
+      saveAiSkill: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      toggleAiSkill: (skillId, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-toggle', skillId, on, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteAiSkill: (skillId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-delete', skillId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      resetAiSkill: (skillId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-reset', skillId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? A4 — the workspace autonomy level (optimistic flip + persist).
       saveAutonomy: (autonomyLevel) => {
         const room = snap.activeWorkspaceId;

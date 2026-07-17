@@ -74,6 +74,7 @@ import { killTicketAgent } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
+import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
@@ -2093,6 +2094,44 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'skill-toggle': {
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
       if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });
+      return;
+    }
+    //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (Skill model; distinct from the
+    //? InfoSource 'skill-toggle' above). Create-or-edit; builtins are editable + resettable, never deletable.
+    case 'ai-skill-save': {
+      const skillId = str(payload, 'skillId');
+      const name = (str(payload, 'name') ?? '').trim();
+      const instruction = str(payload, 'instruction') ?? '';
+      const examples = str(payload, 'examples') ?? '';
+      const applyPoints = Array.isArray(payload.applyPoints) ? payload.applyPoints.filter((p): p is string => typeof p === 'string' && (SKILL_APPLY_POINTS as readonly string[]).includes(p)) : [];
+      if (skillId) {
+        await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { ...(name ? { name } : {}), instruction, examples, applyPoints } });
+        broadcastContentDirty(action.workspaceId);
+        return;
+      }
+      if (!name) return;
+      const slug = `${name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40) || 'skill'}-${Date.now().toString(36)}`;
+      const created = await prisma.skill.create({ data: { workspaceId: action.workspaceId, slug, name, instruction, examples, applyPoints, enabled: bool(payload, 'enabled') } });
+      broadcastContentDirty(action.workspaceId);
+      return { id: created.id };
+    }
+    case 'ai-skill-toggle': {
+      const skillId = str(payload, 'skillId');
+      if (skillId) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { enabled: bool(payload, 'on') } }); broadcastContentDirty(action.workspaceId); }
+      return;
+    }
+    case 'ai-skill-delete': {
+      const skillId = str(payload, 'skillId');
+      //? builtins are never deletable (only resettable) — deleteMany's builtin:false filter enforces it.
+      if (skillId) { await prisma.skill.deleteMany({ where: { workspaceId: action.workspaceId, id: skillId, builtin: false } }); broadcastContentDirty(action.workspaceId); }
+      return;
+    }
+    case 'ai-skill-reset': {
+      const skillId = str(payload, 'skillId');
+      if (!skillId) return;
+      const row = await prisma.skill.findFirst({ where: { workspaceId: action.workspaceId, id: skillId, builtin: true }, select: { slug: true } });
+      const seed = row ? builtinSkillDefault(row.slug) : null;
+      if (seed) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { name: seed.name, instruction: seed.instruction, applyPoints: seed.applyPoints, examples: '' } }); broadcastContentDirty(action.workspaceId); }
       return;
     }
     case 'save-stage-config': {

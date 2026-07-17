@@ -154,6 +154,11 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'copilot-propose': CAP.workTickets,
   'resume-spend': CAP.workspaceSettings,
   'skill-toggle': CAP.editPipeline,
+  //? SK1 — the universal AI-skills layer (Skill model), workspace-settings-scoped.
+  'ai-skill-save': CAP.workspaceSettings,
+  'ai-skill-toggle': CAP.workspaceSettings,
+  'ai-skill-delete': CAP.workspaceSettings,
+  'ai-skill-reset': CAP.workspaceSettings,
   'save-stage-config': CAP.editPipeline,
   'stage-create': CAP.editPipeline,
   'stage-delete': CAP.editPipeline,
