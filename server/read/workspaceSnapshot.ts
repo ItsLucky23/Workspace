@@ -35,7 +35,7 @@ import { computeContentAnalytics } from '../content/contentAnalytics';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
-  AiSkillEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
+  AiSkillEntry, DocumentEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
@@ -173,6 +173,8 @@ export interface WorkspaceSnapshot {
   //? SK1 — the universal AI-skills layer (workspace-scoped instruction blocks; distinct from the
   //? InfoSource-based `skills` workflow snippets below).
   aiSkills: AiSkillEntry[];
+  //? DOC1 — the Documents module.
+  documents: DocumentEntry[];
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
@@ -238,7 +240,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], sprints: [], suggestions: [], budget: null, budgets: [],
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -352,6 +354,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? workspaces get them on first read; best-effort (a failed seed still returns the snapshot).
     await tryCatch(() => ensureBuiltinSkills(currentWorkspaceId()));
     const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
+    //? DOC1 — the workspace's documents (newest-edited first; bounded).
+    const documentRows = await prisma.document.findMany({ where: { workspaceId: currentWorkspaceId(), archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
@@ -537,6 +541,17 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
       //? SK1 — the universal AI-skills layer.
       aiSkills: aiSkillRows.map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
+      //? DOC1 — the Documents module (assets JSON → typed list; unknown shapes dropped).
+      documents: documentRows.map((d) => ({
+        id: d.id, title: d.title, content: d.content, aiDraft: d.aiDraft, aiDraftLabel: d.aiDraftLabel,
+        assets: (Array.isArray(d.assets) ? d.assets : []).flatMap((a) => {
+          if (a === null || typeof a !== 'object') return [];
+          const rec = a as { url?: unknown; kind?: unknown; label?: unknown; stub?: unknown };
+          if (typeof rec.url !== 'string') return [];
+          return [{ kind: typeof rec.kind === 'string' ? rec.kind : 'file', url: rec.url, label: typeof rec.label === 'string' ? rec.label : '', ...(rec.stub === true ? { stub: true } : {}) }];
+        }),
+        updatedAt: d.updatedAt.getTime(),
+      })),
       tickets: ticketRows.map((t) => {
         const mapped = toTicket(t);
         //? Real per-ticket cost chip (#16): "<tokens> tok" when the ticket has run turns, else no chip.

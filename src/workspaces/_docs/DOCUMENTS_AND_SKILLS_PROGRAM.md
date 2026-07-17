@@ -111,13 +111,13 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 
 | Item | Status | ADR | Test |
 |---|---|---|---|
-| SK1 | ⬜ | | |
-| SK2 | ⬜ | | |
-| SK3 | ⬜ | | |
-| DOC1 | ⬜ | | |
-| DOC2 | ⬜ | | |
-| DOC3 | ⬜ | | |
-| DOC4 | ⬜ | | |
+| SK1 | ✅ | 0270 | skillsLayer 28/28 |
+| SK2 | ✅ | 0270 | skillsLayer 28/28 |
+| SK3 | ✅ | 0270 | skillsLayer 28/28 |
+| DOC1 | ✅ | 0271 | documentsModule 22/22 |
+| DOC2 | ✅ | 0271 | documentsModule 22/22 |
+| DOC3 | 🟡 | 0271 | ops+UI+images klaar; docx/pdf/xlsx-renderers in EXP |
+| DOC4 | ✅ | 0271 | documentsModule 22/22 |
 | EXP1 | ⬜ | | |
 | EXP2 | ⬜ | | |
 | EXP3 | ⬜ | | |

@@ -120,6 +120,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/contentSettings/v1` | — | — | — |
 | `workspaces/copyWorkspaceAssets/v1` | — | — | — |
 | `workspaces/customTask/v1` | — | — | — |
+| `workspaces/documentsControl/v1` | — | — | — |
 | `workspaces/findingAction/v1` | — | — | — |
 | `workspaces/gitlabSettings/v1` | — | — | — |
 | `workspaces/invite/v1` | — | — | — |

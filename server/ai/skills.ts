@@ -37,6 +37,7 @@ const FEATURE_GROUP: Record<AiFeature, SkillApplyPoint> = {
   'script': 'content',
   'custom-generate': 'custom',
   'image-critique': 'designer',
+  'document-generate': 'documents',
 };
 
 export function applyPointForFeature(feature: AiFeature): SkillApplyPoint {

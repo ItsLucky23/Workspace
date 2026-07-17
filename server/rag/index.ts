@@ -78,7 +78,7 @@ export async function indexWorkspace(
 //? grounding), the default "latest commit" pick MUST skip these, else a recently-added reference example or a
 //? brand snippet (newer createdAt than the last code index) would hijack a code query. The two GLOBAL corpora
 //? (product-knowledge/content-playbook) live under the sentinel workspace, so they never reach a real ws here.
-export const RESERVED_CORPUS_COMMITS = ['reference', 'institutional-memory', 'product-knowledge', 'content-playbook'];
+export const RESERVED_CORPUS_COMMITS = ['reference', 'institutional-memory', 'product-knowledge', 'content-playbook', 'workspace-documents'];
 
 export async function retrieve(
   prisma: PrismaClient, workspaceId: string, query: string, k = 6, commitHash?: string, projectId?: string,

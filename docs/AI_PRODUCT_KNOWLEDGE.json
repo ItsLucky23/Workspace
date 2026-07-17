@@ -1,6 +1,6 @@
 {
-  "hash": "c1a0bf25d7a8d137",
-  "chunkCount": 205,
+  "hash": "53ced96ad44f6a0b",
+  "chunkCount": 206,
   "chunks": [
     {
       "id": "cap-001",
@@ -1231,6 +1231,12 @@
       "kind": "decision",
       "title": "0270-universeel-skill-model-met-apply-points",
       "text": "ADR 0270: 0270-universeel-skill-model-met-apply-points. De gebruiker wil \"skills\" (humanizer, tone-of-voice, SEO-optimizer, merkstem, jargon-vertaler) die overal in het platform variatie en sturing geven — niet alleen in één module. Het platform had al drie half-overlappende sturingslagen: `Workspace.aiInstruction` (alles), `StylePreset` (per-feature render-stijl, per run gekozen), en DesignThemes/media-styles (galerijen). Geen daarvan is een herbruikbaar, per-workspace beheerbaar gedrags-blok dat selectief op módules toepasbaar is. Decision: Eén nieuw workspace-scoped `Skill`-model (slug, name, instruction, examples, applyPoints[], enabled, builtin) met één resolver (`server/ai/skills.ts`): `skillPromptBlock(workspaceId, applyPoint)`. Twee injectiepunten dekken ALLE AI-runs: (1) het bestaande completion-choke-point in `server/ai/registry.ts` (elke one-shot feature; de feature→apply-point-groep-map staat in skills.ts en is exhaustief over `AiFeature`), en (2) de PTY-stage-runner als contextDoc (`'dev'`-groep). Apply-point-groepen: all/content/studio/designer/dev/interviewer/documents/chat/custom — canonieke lijst in `src/workspaces/_data/types.ts` (client+server één bron). Vijf builtin-seeds per workspace (lazy bij snapshot-read, idempotent), allemaal standaard UIT (consent-first); builtins zijn bewerkbaar + resetbaar, nooit verwijderbaar. CRUD via vier `ai-skill-*` Conductor-ops (B-23), RBAC workspaceSettings. De humanizer-seed verankert de ADR-0015-grens (menselijke toon ja"
+    },
+    {
+      "id": "adr-0271",
+      "kind": "decision",
+      "title": "0271-documents-module-markdown-bron-plus-render-targets",
+      "text": "ADR 0271: 0271-documents-module-markdown-bron-plus-render-targets. De gebruiker wil een volwaardige Documents-module (specs, plannen, briefings, sheets) waarin de AI alle bestandstypen kan maken en bewerken (Word/PDF/Excel/images), phone-first, met export. De bestaande content-pipeline is video/post-gericht; Studio-artifacts zijn campagne-gebonden. Er was geen generieke document-laag. Decision: Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); Word/PDF/Excel/HTML zijn **render-targets** in de EXP-fase (pandoc/chromium-container), geen aparte opslagformaten — markdown-tabellen zijn de bron voor de xlsx-export. AI-schrijfacties (generate/rewrite/summarize/extend, feature `document-generate`, default Gemini) landen ALTIJD in `aiDraft`; de op `document-apply-draft` is de consent die `content` schrijft (B-23), met een `DocumentRevision`-snapshot van de vorige versie (gebonden op 20). Documenten indexeren in de gedeelde workspace-RAG onder het reserved-corpus-commit `workspace-documents` (`doc/<id>/<chunk>`), zodat chat én document-runs erop gronden; document-runs gronden omgekeerd op product-knowledge + de andere documenten. Eigen nav-module `documents` (vierde WorkspaceModule) met eigen routes (`documents/` + `documents/[docId]`). Afbeeldingen via de bestaande media-pipeline (budget-guard + spend + honest stub); uploads via `/media/upload` als document-assets."
     }
   ]
 }

@@ -40,6 +40,8 @@ const DEFAULT_ASSIGNMENTS: Record<AiFeature, AiProviderId> = {
   'custom-generate': 'claude-cli',
   //? F5 — image critique needs a VISION model → defaults to Gemini (multimodal). Degrades to a stub without a key.
   'image-critique': 'gemini-api',
+  //? DOC2 — document drafting is non-coding bulk text → Gemini (fast/cheap), overridable per workspace.
+  'document-generate': 'gemini-api',
 };
 
 //? Resolve the provider for a feature. `overrides` is the extension seam — pass a

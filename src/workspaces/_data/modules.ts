@@ -11,7 +11,7 @@
 //? picker, settings toggles) and the server (createWorkspace input validation) import
 //? ONE source of truth.
 
-export type WorkspaceModuleId = 'development' | 'content' | 'design';
+export type WorkspaceModuleId = 'development' | 'content' | 'design' | 'documents';
 
 export interface WorkspaceModule {
   id: WorkspaceModuleId;
@@ -35,6 +35,9 @@ export const WORKSPACE_MODULES: WorkspaceModule[] = [
   //? generation. (OPEN VRAAG: defaults per Rule 3a — user away; revisit if the nav feels too broad.)
   { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'scheduled-posts'] },
   { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled'] },
+  //? DOC1 (DOCUMENTS_AND_SKILLS) — the Documents module: AI-drafted workspace documents (specs,
+  //? designs, plans) with export targets. Own module so any workspace type can add just this.
+  { id: 'documents', labelKey: 'workspaces.modules.documentsLabel', descKey: 'workspaces.modules.documentsDesc', icon: 'file-lines', sections: ['documents'] },
 ];
 
 //? Per-section metadata for the settings toggle grid (individual sections can be

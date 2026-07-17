@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 240,
-    "edges": 358,
-    "symbols": 308,
-    "callEdges": 43
+    "nodes": 244,
+    "edges": 369,
+    "symbols": 311,
+    "callEdges": 44
   },
   "nodes": [
     {
@@ -569,6 +569,11 @@
       "route": null
     },
     {
+      "id": "workspaces/_components/MarkdownView.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_components/MediaUploadButton.tsx",
       "kind": "other",
       "route": null
@@ -812,6 +817,11 @@
       "id": "workspaces/_sync/customTask_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/customTask/v1"
+    },
+    {
+      "id": "workspaces/_sync/documentsControl_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/documentsControl/v1"
     },
     {
       "id": "workspaces/_sync/findingAction_server_v1.ts",
@@ -1141,6 +1151,16 @@
     {
       "id": "workspaces/designer/ui.tsx",
       "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/documents/[docId]/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/documents/page.tsx",
+      "kind": "page",
       "route": null
     },
     {
@@ -1811,6 +1831,10 @@
       "to": "workspaces/_functions/controlApi.ts"
     },
     {
+      "from": "workspaces/_sync/documentsControl_server_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
       "from": "workspaces/_sync/mrAction_server_v1.ts",
       "to": "workspaces/_functions/controlApi.ts"
     },
@@ -2343,6 +2367,46 @@
       "to": "workspaces/designer/fonts.ts"
     },
     {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/MarkdownView.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/MediaUploadButton.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/documents/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/documents/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/documents/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/documents/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/interviewer/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -2674,6 +2738,8 @@
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -2709,6 +2775,7 @@
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
@@ -2736,6 +2803,7 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx",
       "workspaces/designer/ui.tsx",
+      "workspaces/documents/[docId]/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
       "workspaces/scheduled/page.tsx",
@@ -2762,6 +2830,7 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx",
       "workspaces/designer/ui.tsx",
+      "workspaces/documents/[docId]/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
       "workspaces/scheduled/page.tsx",
@@ -2900,6 +2969,7 @@
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
       "workspaces/pipeline/page.tsx",
@@ -3011,6 +3081,8 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx",
       "workspaces/designer/ui.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3031,10 +3103,14 @@
     "workspaces/_components/ImageRegionEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"
     ],
+    "workspaces/_components/MarkdownView.tsx": [
+      "workspaces/documents/[docId]/page.tsx"
+    ],
     "workspaces/_components/MediaUploadButton.tsx": [
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/settings/page.tsx",
-      "workspaces/designer/page.tsx"
+      "workspaces/designer/page.tsx",
+      "workspaces/documents/[docId]/page.tsx"
     ],
     "workspaces/_components/ModulePicker.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -3074,6 +3150,8 @@
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3118,6 +3196,8 @@
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3219,6 +3299,8 @@
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3265,6 +3347,7 @@
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "workspaces/_sync/contentControl_server_v1.ts",
       "workspaces/_sync/contentSettings_server_v1.ts",
+      "workspaces/_sync/documentsControl_server_v1.ts",
       "workspaces/_sync/mrAction_server_v1.ts",
       "workspaces/_sync/projectAdmin_server_v1.ts",
       "workspaces/_sync/saveGitConfig_server_v1.ts",
@@ -3286,6 +3369,8 @@
       "workspaces/designer/sections/Gallery.tsx",
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3323,7 +3408,8 @@
       "workspaces/_components/MediaUploadButton.tsx",
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/settings/page.tsx",
-      "workspaces/designer/page.tsx"
+      "workspaces/designer/page.tsx",
+      "workspaces/documents/[docId]/page.tsx"
     ],
     "workspaces/_functions/useEscapeKey.ts": [
       "workspaces/_components/ImageEditor.tsx",
@@ -3383,6 +3469,8 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx",
       "workspaces/designer/state.tsx",
+      "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
       "workspaces/marketing/page.tsx",
@@ -3520,68 +3608,68 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 56,
-      "directDependents": 6
+      "dependents": 59,
+      "directDependents": 7
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 50,
+      "dependents": 52,
       "directDependents": 29
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 47,
-      "directDependents": 42
+      "dependents": 49,
+      "directDependents": 44
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 43,
-      "directDependents": 34
+      "dependents": 45,
+      "directDependents": 36
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 41,
+      "dependents": 43,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 40,
+      "dependents": 42,
       "directDependents": 8
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 39,
-      "directDependents": 35
+      "dependents": 41,
+      "directDependents": 37
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 30,
+      "dependents": 31,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 30,
-      "directDependents": 22
+      "dependents": 31,
+      "directDependents": 23
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 24,
+      "dependents": 25,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 22,
-      "directDependents": 18
+      "dependents": 23,
+      "directDependents": 19
     },
     {
       "id": "workspaces/_data/modules.ts",
@@ -3656,16 +3744,16 @@
       "directDependents": 2
     },
     {
+      "id": "workspaces/_functions/uploadMedia.ts",
+      "kind": "other",
+      "dependents": 7,
+      "directDependents": 3
+    },
+    {
       "id": "workspaces/designer/state.tsx",
       "kind": "other",
       "dependents": 7,
       "directDependents": 7
-    },
-    {
-      "id": "_sockets/socketInitializer.ts",
-      "kind": "other",
-      "dependents": 6,
-      "directDependents": 3
     }
   ],
   "symbols": [
@@ -5002,6 +5090,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/documentsControl_server_v1.ts::<module>",
+      "file": "workspaces/_sync/documentsControl_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp",
+      "file": "workspaces/_sync/documentsControl_server_v1.ts",
+      "name": "isDocumentOp",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/documentsControl_server_v1.ts::main",
+      "file": "workspaces/_sync/documentsControl_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/findingAction_server_v1.ts::<module>",
       "file": "workspaces/_sync/findingAction_server_v1.ts",
       "name": "<module>",
@@ -5680,6 +5786,10 @@
       "to": "workspaces/_sync/contentSettings_server_v1.ts::isSettingsOp"
     },
     {
+      "from": "workspaces/_sync/documentsControl_server_v1.ts::main",
+      "to": "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp"
+    },
+    {
       "from": "workspaces/_sync/saveSections_server_v1.ts::main",
       "to": "workspaces/_data/modules.ts::sanitizeSections"
     },
@@ -5809,6 +5919,9 @@
     ],
     "workspaces/_sync/contentSettings_server_v1.ts::isSettingsOp": [
       "workspaces/_sync/contentSettings_server_v1.ts::main"
+    ],
+    "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp": [
+      "workspaces/_sync/documentsControl_server_v1.ts::main"
     ],
     "workspaces/_sync/serviceProvision_server_v1.ts::rejected": [
       "workspaces/_sync/serviceProvision_server_v1.ts::main"

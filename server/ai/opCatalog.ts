@@ -136,6 +136,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'skill-toggle': LATER,
   //? SK1 — the universal AI-skills layer (flip to enabled once chat proposing them proves useful).
   'ai-skill-save': LATER, 'ai-skill-toggle': LATER, 'ai-skill-delete': LATER_D, 'ai-skill-reset': LATER,
+  //? DOC — the Documents module (draft-based; flip to enabled once chat-proposing documents proves useful).
+  'document-create': LATER, 'document-edit': LATER, 'document-delete': LATER_D, 'document-ai': LATER,
+  'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER,
   'save-stage-config': LATER,
   'stage-create': {
     mode: 'enabled',

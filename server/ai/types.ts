@@ -53,7 +53,10 @@ export type AiFeature =
   | 'custom-generate'
   //? F5 — image critique ("what should change about this photo"): a MULTIMODAL model looks at the actual
   //? pixels (not just a URL string) and returns concrete improvement suggestions. Defaults to Gemini (vision).
-  | 'image-critique';
+  | 'image-critique'
+  //? DOC2 (DOCUMENTS_AND_SKILLS) — the Documents module's draft writer (generate/rewrite/summarize/extend
+  //? a workspace document). Non-coding bulk text → defaults to Gemini; drafts only, never a direct write.
+  | 'document-generate';
 
 export interface AiCompletionRequest {
   prompt: string;

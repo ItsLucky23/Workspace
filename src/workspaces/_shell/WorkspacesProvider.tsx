@@ -26,7 +26,7 @@ import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
@@ -75,6 +75,8 @@ interface Snap {
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   //? SK1 — the universal AI-skills layer.
   aiSkills: AiSkillEntry[];
+  //? DOC1 — the Documents module.
+  documents: DocumentEntry[];
   myInvites: MyInvite[];
   notes: TicketNote[];
   repo: RepoInfo;
@@ -107,7 +109,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
@@ -146,6 +148,7 @@ const VIEW_LABELS: Record<string, string> = {
   sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
   knowledge: 'Knowledge', content: 'Content', 'scheduled-posts': 'Scheduled posts', settings: 'Account', workspace: 'Workspace',
+  documents: 'Documents',
 };
 function viewLabel(view: WsView): string {
   return isTicketView(view) ? view : (VIEW_LABELS[view] ?? 'Board');
@@ -1342,6 +1345,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       outputTemplates: snap.outputTemplates,
       saveOutputTemplate: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteOutputTemplate: (templateId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'delete-output-template', templateId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? DOC — the Documents module (all writes via the documentsControl sync route → Conductor).
+      documents: snap.documents,
+      createDocument: (title, content) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-create', title, ...(content ? { content } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      editDocument: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-edit', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteDocument: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-delete', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runDocumentAi: (documentId, mode, instruction) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-ai', documentId, mode, instruction, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      applyDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-apply-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      discardDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-discard-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      genDocumentImage: (documentId, prompt) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-gen-image', documentId, prompt, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? SK1 — the universal AI-skills layer (save/toggle/delete/reset via the skillsControl sync route).
       aiSkills: snap.aiSkills,
       saveAiSkill: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

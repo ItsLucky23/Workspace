@@ -997,7 +997,9 @@
       "contentLabel": "Content & Marketing",
       "contentDesc": "AI-generatie van afbeeldingen, video & teksten plus publiceren. Geen code nodig.",
       "designLabel": "Design",
-      "designDesc": "UI- & thema-designer met een AI-interviewer. Geen code nodig."
+      "designDesc": "UI- & thema-designer met een AI-interviewer. Geen code nodig.",
+      "documentsLabel": "Documenten",
+      "documentsDesc": "AI-geschreven documenten: specs, plannen, briefings en sheets met PDF/Word/Excel-export."
     },
     "sections": {
       "intro": "Zet losse secties aan of uit. Modules zijn slechts presets — combineer ze vrij (voeg bijv. de Interviewer toe aan een Ontwikkel-workspace).",
@@ -1014,7 +1016,8 @@
       "content": "Content",
       "marketing": "Marketing",
       "designer": "Designer",
-      "interviewer": "Interviewer"
+      "interviewer": "Interviewer",
+      "documents": "Documenten"
     },
     "glossary": {
       "title": "Woordenlijst",
@@ -2274,6 +2277,43 @@
       "fabTitlePlaceholder": "Titel…",
       "fabCreate": "Aanmaken",
       "fabCancel": "Annuleren"
+    },
+    "documents": {
+      "title": "Documenten",
+      "subtitle": "AI-geschreven workspace-documenten: specs, plannen, briefings en sheets — jij keurt elke AI-wijziging goed.",
+      "newPlaceholder": "Titel van nieuw document…",
+      "create": "Aanmaken",
+      "emptyTitle": "Nog geen documenten",
+      "emptySub": "Maak je eerste document en laat de AI het schrijven vanuit jouw instructie.",
+      "draftBadge": "AI-concept",
+      "noContentYet": "Leeg document",
+      "delete": "Document verwijderen",
+      "deleteConfirmTitle": "Document verwijderen?",
+      "deleteConfirmBody": "\"{title}\" en de historie verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "notFound": "Document niet gevonden",
+      "backToList": "Terug naar documenten",
+      "titleLabel": "Documenttitel",
+      "save": "Opslaan",
+      "mode": {
+        "generate": "Genereren",
+        "rewrite": "Herschrijven",
+        "summarize": "Samenvatten",
+        "extend": "Uitbreiden"
+      },
+      "aiInstructionPlaceholder": "Vertel de AI wat te schrijven of veranderen…",
+      "aiRun": "AI-concept maken",
+      "aiBusy": "Bezig…",
+      "draftTitle": "AI-concept — beoordeel en pas toe",
+      "applyDraft": "Concept toepassen",
+      "discardDraft": "Weggooien",
+      "tabEdit": "Bewerken",
+      "tabPreview": "Voorbeeld",
+      "contentPlaceholder": "Schrijf hier markdown — of laat de AI het hierboven schrijven.",
+      "assetsTitle": "Bijlagen",
+      "imagePromptPlaceholder": "Beschrijf een afbeelding om te genereren…",
+      "genImage": "AI-afbeelding",
+      "upload": "Uploaden",
+      "uploadedLabel": "Geüpload"
     }
   }
 }

@@ -75,6 +75,7 @@ import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
+import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions } from '../documents/docs';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
@@ -2133,6 +2134,95 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const seed = row ? builtinSkillDefault(row.slug) : null;
       if (seed) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { name: seed.name, instruction: seed.instruction, applyPoints: seed.applyPoints, examples: '' } }); broadcastContentDirty(action.workspaceId); }
       return;
+    }
+    //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. The Conductor is the ONLY writer of
+    //? Document.content; AI output lands as aiDraft and document-apply-draft is the consent (B-23).
+    case 'document-create': {
+      const title = (str(payload, 'title') ?? '').trim();
+      if (!title) return;
+      const created = await prisma.document.create({ data: { workspaceId: action.workspaceId, title, content: str(payload, 'content') ?? '' } });
+      await tryCatch(() => indexDocument(prisma, action.workspaceId, created.id, created.title, created.content));
+      broadcastContentDirty(action.workspaceId);
+      return { id: created.id };
+    }
+    case 'document-edit': {
+      const documentId = str(payload, 'documentId');
+      if (!documentId) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      const title = (str(payload, 'title') ?? '').trim() || doc.title;
+      const content = 'content' in payload ? (str(payload, 'content') ?? '') : doc.content;
+      //? A manual overwrite of non-trivial content snapshots the previous version (history/undo).
+      if ('content' in payload && content !== doc.content && doc.content.trim().length > 0) {
+        await prisma.documentRevision.create({ data: { workspaceId: action.workspaceId, documentId, content: doc.content, note: 'edit' } });
+        await pruneDocumentRevisions(prisma, action.workspaceId, documentId);
+      }
+      //? Optional asset attach (uploaded via /media/upload) — appended alongside the text fields.
+      const addUrl = str(payload, 'addAssetUrl');
+      const prevAssets = Array.isArray(doc.assets) ? doc.assets : [];
+      const assets = addUrl ? [...prevAssets, { kind: str(payload, 'addAssetKind') ?? 'file', url: addUrl, label: str(payload, 'addAssetLabel') ?? '' }] : undefined;
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { title, content, ...(assets ? { assets } : {}) } });
+      await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, title, content));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'document-delete': {
+      const documentId = str(payload, 'documentId');
+      if (!documentId) return;
+      await prisma.documentRevision.deleteMany({ where: { workspaceId: action.workspaceId, documentId } });
+      await prisma.document.deleteMany({ where: { workspaceId: action.workspaceId, id: documentId } });
+      //? Clear its RAG rows (best-effort — a failed cleanup must not fail the delete).
+      await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, '', ''));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'document-ai': {
+      const documentId = str(payload, 'documentId');
+      if (!documentId) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      const mode = (['generate', 'rewrite', 'summarize', 'extend'] as const).find((m) => m === str(payload, 'mode')) ?? 'rewrite';
+      const instruction = str(payload, 'instruction') ?? '';
+      const res = await runDocumentAi(prisma, action.workspaceId, { id: doc.id, title: doc.title, content: doc.content }, mode, instruction);
+      if (!res.ok) return { ok: false, status: 'error', error: res.error ?? 'ai.failed' };
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: res.text, aiDraftLabel: `${mode}${instruction.trim() ? `: ${instruction.trim().slice(0, 80)}` : ''}` } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'document-apply-draft': {
+      const documentId = str(payload, 'documentId');
+      if (!documentId) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      if (doc.aiDraft === null) return;
+      const draft = doc.aiDraft;
+      if (doc.content.trim().length > 0) {
+        await prisma.documentRevision.create({ data: { workspaceId: action.workspaceId, documentId, content: doc.content, note: `ai: ${doc.aiDraftLabel}` } });
+        await pruneDocumentRevisions(prisma, action.workspaceId, documentId);
+      }
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { content: draft, aiDraft: null, aiDraftLabel: '' } });
+      await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, doc.title, draft));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    case 'document-discard-draft': {
+      const documentId = str(payload, 'documentId');
+      if (documentId) { await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: null, aiDraftLabel: '' } }); broadcastContentDirty(action.workspaceId); }
+      return;
+    }
+    case 'document-gen-image': {
+      const documentId = str(payload, 'documentId');
+      const prompt = (str(payload, 'prompt') ?? '').trim();
+      if (!documentId || !prompt) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      const img = await generateDocumentImage(prisma, action.workspaceId, doc.title, prompt);
+      if (!img.ok || !img.url) return { ok: false, status: 'error', error: img.blocked ? 'media.budgetExceeded' : 'media.failed' };
+      const prev = Array.isArray(doc.assets) ? doc.assets : [];
+      const assets = [...prev, { kind: 'image', url: img.url, label: prompt.slice(0, 80), stub: img.stub === true }];
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets } });
+      broadcastContentDirty(action.workspaceId);
+      return { url: img.url };
     }
     case 'save-stage-config': {
       const stageId = str(target, 'stageId') ?? str(payload, 'id');

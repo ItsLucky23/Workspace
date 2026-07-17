@@ -23,7 +23,7 @@ _(The main features/areas of the app and what each is for. The AI keeps this in 
 
 _(Domain terms used in this project, so the AI + the team use the same vocabulary.)_
 
-## Pages by area (30)
+## Pages by area (32)
 
 ### (root)
 
@@ -87,6 +87,8 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 | `/workspaces/content/insights` | content insights — how much you've made and what it cost (analytics), your style library, and a per-channel brand-voice editor that feeds brand-RAG, so a creator sees performance + tunes the brand. | `workspaces/content/insights/page.tsx` |
 | `/workspaces/content/settings` | content setup & settings — connect your AI media provider keys (encrypted) and set a media €-budget cap + alert, with a guided first-run flow, so a non-technical user can safely turn on real generation. Keys never leave the server; every save is a control-op (the Conductor writes, B-23). | `workspaces/content/settings/page.tsx` |
 | `/workspaces/designer` | Designer — a broad visual editor for the whole product UI, not just a component list. Sections (Components / Styles / Animations / Themes / Typography) all preview under one active theme + style, so you can see, compare and edit every part of the visual language — by hand for the simple knobs, and (theme) by AI. Built on the pluggable AI-provider layer + our real component library, so anything the coding-agent ships shows up here automatically. | `workspaces/designer/page.tsx` |
+| `/workspaces/documents` | Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). See every document at a glance (draft-pending badge), create a new one, and open it in the editor where the AI writes drafts you approve. Exports (PDF/Word/Excel/HTML) live on the document itself. | `workspaces/documents/page.tsx` |
+| `/workspaces/documents/[docId]` | a document's editor — write markdown (or let the AI draft it: generate/rewrite/summarize/ extend with your instruction), review the AI draft side-by-side and apply or discard it (the apply is the consent — the AI never overwrites your text), attach uploaded or AI-generated images, and save. Exports (PDF/Word/Excel/HTML) follow in the export phase. | `workspaces/documents/[docId]/page.tsx` |
 | `/workspaces/interviewer` | Interviewer — ask the AI anything about THIS codebase and think through new plans together. It has repo context (via the Workspace-AI), so you can ask "how does the auth flow work?", "what's worth improving?", or "work out a plan for feature X" and get a worked-out answer. Deeper RAG search + structured question/idea cards land in a following phase; this is the free-form planning chat on top of the existing repo-aware `workspaces/aiChat` backend. | `workspaces/interviewer/page.tsx` |
 | `/workspaces/knowledge` | the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as nodes (context sources, tickets, content pieces) linked by similarity + link edges, so a user can see how their work relates. N2: the render of the N1 knowledgeGraph_v1 data op. | `workspaces/knowledge/page.tsx` |
 | `/workspaces/marketing` | Marketing — take your product to market. The AI marketer role turns a short product brief into marketing copy, a go-to-market strategy, email sequences, ad sets, a social calendar, naming, thumbnails and video scripts — each live-previewed. Its own page (user-chosen split) that reuses the shared Studio surface with a marketing focus (marketer kinds only; the designer kinds live on /studio). | `workspaces/marketing/page.tsx` |

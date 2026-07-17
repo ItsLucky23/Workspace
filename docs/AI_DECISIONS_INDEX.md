@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (188)
+## Decisions (189)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -201,6 +201,7 @@
 | 0268 | multimodal image critique | 🟢 accepted | ai, media, vision, provider | — | `docs/decisions/0268-multimodal-image-critique.md` |
 | 0269 | channel autopilot consent vooraf | 🟢 accepted | content, autopilot, b-23, consent, publishing | — | `docs/decisions/0269-channel-autopilot-consent-vooraf.md` |
 | 0270 | universeel skill model met apply points | 🟢 accepted | ai, skills, architecture, documents-and-skills | — | `docs/decisions/0270-universeel-skill-model-met-apply-points.md` |
+| 0271 | documents module markdown bron plus render targets | 🟢 accepted | documents, architecture, documents-and-skills | — | `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md` |
 
 ## Summaries
 
@@ -1714,6 +1715,16 @@ Eén nieuw workspace-scoped `Skill`-model (slug, name, instruction, examples, ap
 
 → `docs/decisions/0270-universeel-skill-model-met-apply-points.md`
 
+### 0271 — documents module markdown bron plus render targets
+
+**0271** · accepted · tags: documents, architecture, documents-and-skills · 2026-07-17
+
+Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); Word/PDF/Excel/HTML zijn **render-targets** in de EXP-fase (pandoc/chromium-container), geen aparte opslagformaten — markdown-tabellen zijn de bron voor de xlsx-export. AI-schrijfacties (generate/rewrite/summarize/extend, feature `document-generate`, default Gemini) landen ALTIJD in `aiDraft`; de op `document-apply-draft` is de consent die `content` schrijft (B-23), met een `DocumentRevision`-snapshot van de vorige versie (gebonden op 20). Documenten indexeren in de gedeelde workspace-RAG onder het reserved-corpus-commit `workspace-documents` (`doc/<id>/<chunk>`), zodat chat én document-runs erop gronden; document-runs gronden omgekeerd op product-knowledge + de andere documenten. Eigen nav-module `documents` (vierde WorkspaceModule) met eigen routes (`documents/` + `documents/[docId]`). Afbeeldingen via de bestaande media-pipeline (budget-guard + spend + honest stub); uploads via `/media/upload` als document-assets.
+
+**Governs** (`//? @adr 0271`): `server/documents/docs.ts`
+
+→ `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1725,3 +1736,4 @@ Eén nieuw workspace-scoped `Skill`-model (slug, name, instruction, examples, ap
 | `scripts/testWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |
+| `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |

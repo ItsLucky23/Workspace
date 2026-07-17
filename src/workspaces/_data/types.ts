@@ -648,6 +648,18 @@ export interface AiSkillEntry {
   builtin: boolean;          // seeded default — editable + resettable, never deletable
 }
 
+//? DOC1 (DOCUMENTS_AND_SKILLS) — a workspace document (markdown source + optional AI draft + assets).
+export interface DocumentAsset { kind: string; url: string; label: string; stub?: boolean }
+export interface DocumentEntry {
+  id: string;
+  title: string;
+  content: string;
+  aiDraft: string | null;      // pending AI proposal (apply = consent, B-23)
+  aiDraftLabel: string;
+  assets: DocumentAsset[];
+  updatedAt: number;           // epoch ms (list sorting + "edited …" display)
+}
+
 //? Account: SSH keys (B-05). For the dummy login the `value` (public-key text)
 //? decides identity: '123' → test, '456' → mathijs.
 export interface SshKeyEntry {

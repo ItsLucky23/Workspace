@@ -9,7 +9,7 @@ import { createContext, use } from 'react';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
@@ -17,7 +17,7 @@ import type {
 
 export type WsView =
   | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'scheduled-posts' | 'knowledge'
+  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'scheduled-posts' | 'knowledge' | 'documents'
   | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 
@@ -238,6 +238,15 @@ export interface WorkspacesCtx {
   toggleAiSkill: (skillId: string, on: boolean) => void;
   deleteAiSkill: (skillId: string) => void;
   resetAiSkill: (skillId: string) => void;
+  //? DOC — the Documents module (AI output lands as aiDraft; applyDocumentDraft is the consent, B-23).
+  documents: DocumentEntry[];
+  createDocument: (title: string, content?: string) => void;
+  editDocument: (input: { documentId: string; title?: string; content?: string; addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string }) => void;
+  deleteDocument: (documentId: string) => void;
+  runDocumentAi: (documentId: string, mode: string, instruction: string) => void;
+  applyDocumentDraft: (documentId: string) => void;
+  discardDocumentDraft: (documentId: string) => void;
+  genDocumentImage: (documentId: string, prompt: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).

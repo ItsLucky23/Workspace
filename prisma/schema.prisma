@@ -1589,6 +1589,38 @@ model StylePreset {
   @@index([workspaceId, feature])
 }
 
+//? DOC1 (DOCUMENTS_AND_SKILLS) — a workspace document: markdown SOURCE (`content`) with optional
+//? render-targets (EXP exports) + attached assets. AI edits land as `aiDraft` FIRST (B-23: the
+//? Conductor writes `content` only on document-apply-draft — the accept IS the consent); every
+//? applied change snapshots the PREVIOUS content as a DocumentRevision (history/undo).
+model Document {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  title        String
+  content      String   @default("")               // markdown source (tables inside feed the xlsx export)
+  aiDraft      String?                             // pending AI proposal; null = none
+  aiDraftLabel String   @default("")               // what produced the draft (mode + instruction)
+  assets       Json?                               // [{ kind:'image'|'file', url, label }]
+  archived     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([workspaceId, archived])
+}
+
+//? DOC1 — an applied-change snapshot (the content BEFORE an apply/manual overwrite). Bounded per
+//? document by the conductor (oldest pruned past 20).
+model DocumentRevision {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  documentId  String   @db.ObjectId
+  content     String
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, documentId])
+}
+
 //? SK1 (DOCUMENTS_AND_SKILLS) — a workspace-scoped SKILL: a reusable instruction block ("humanizer",
 //? "tone-of-voice", "SEO-optimizer") injected into AI runs at its apply-points. Distinct from StylePreset
 //? (per-feature render style, picked per run): a Skill is an ALWAYS-ON behavioural layer while enabled,

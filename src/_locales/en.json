@@ -997,7 +997,9 @@
       "contentLabel": "Content & Marketing",
       "contentDesc": "AI image, video & copy generation plus publishing. No code required.",
       "designLabel": "Design",
-      "designDesc": "UI & theme designer with an AI interviewer. No code required."
+      "designDesc": "UI & theme designer with an AI interviewer. No code required.",
+      "documentsLabel": "Documents",
+      "documentsDesc": "AI-drafted documents: specs, plans, briefs and sheets with PDF/Word/Excel export."
     },
     "sections": {
       "intro": "Turn individual sections on or off. Modules are just presets — mix them freely (e.g. add the Interviewer to a Development workspace).",
@@ -1014,7 +1016,8 @@
       "content": "Content",
       "marketing": "Marketing",
       "designer": "Designer",
-      "interviewer": "Interviewer"
+      "interviewer": "Interviewer",
+      "documents": "Documents"
     },
     "glossary": {
       "title": "Glossary",
@@ -2274,6 +2277,43 @@
       "fabTitlePlaceholder": "Title…",
       "fabCreate": "Create",
       "fabCancel": "Cancel"
+    },
+    "documents": {
+      "title": "Documents",
+      "subtitle": "AI-drafted workspace documents: specs, plans, briefs and sheets — you approve every AI change.",
+      "newPlaceholder": "New document title…",
+      "create": "Create",
+      "emptyTitle": "No documents yet",
+      "emptySub": "Create your first document and let the AI draft it from your instruction.",
+      "draftBadge": "AI draft",
+      "noContentYet": "Empty document",
+      "delete": "Delete document",
+      "deleteConfirmTitle": "Delete document?",
+      "deleteConfirmBody": "Delete \"{title}\" and its history? This cannot be undone.",
+      "notFound": "Document not found",
+      "backToList": "Back to documents",
+      "titleLabel": "Document title",
+      "save": "Save",
+      "mode": {
+        "generate": "Generate",
+        "rewrite": "Rewrite",
+        "summarize": "Summarize",
+        "extend": "Extend"
+      },
+      "aiInstructionPlaceholder": "Tell the AI what to write or change…",
+      "aiRun": "Draft with AI",
+      "aiBusy": "Drafting…",
+      "draftTitle": "AI draft — review and apply",
+      "applyDraft": "Apply draft",
+      "discardDraft": "Discard",
+      "tabEdit": "Edit",
+      "tabPreview": "Preview",
+      "contentPlaceholder": "Write markdown here — or let the AI draft it above.",
+      "assetsTitle": "Attachments",
+      "imagePromptPlaceholder": "Describe an image to generate…",
+      "genImage": "AI image",
+      "upload": "Upload",
+      "uploadedLabel": "Uploaded"
     }
   }
 }

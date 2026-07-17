@@ -67,7 +67,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | **no** | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (61)
+## Sync routes (62)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -90,6 +90,7 @@
 | `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `sync/workspaces/copyWorkspaceAssets/v1` | yes | — | login | — | **no** | — | Workspaces — [copy-workspace-assets] via `_sync` (FREEDOM_PROGRAM R2). Copy the user-authored styles + the |
 | `sync/workspaces/customTask/v1` | yes | — | login | — | **no** | — | Workspaces — [custom-task] ops via `_sync` (FREEDOM_PROGRAM E5). Create/update/delete a user-defined AI |
+| `sync/workspaces/documentsControl/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
 | `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
 | `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
@@ -139,10 +140,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 10 |
+| `ItsLucky23` | 11 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/116 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/117 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -196,9 +197,9 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
 - `api/workspaces/timeTravelPreview/v1`
-- … +63 more
+- … +64 more
 
-## Pages (30)
+## Pages (32)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -220,6 +221,8 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/content/insights` | workspaces | — | `workspaces/content/insights/page.tsx` | intent: content insights — how much you've made and what it cost (analytics), your style library, and |
 | `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: content setup & settings — connect your AI media provider keys (encrypted) and set a media |
 | `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
+| `/workspaces/documents` | workspaces | — | `workspaces/documents/page.tsx` | intent: Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). See |
+| `/workspaces/documents/[docId]` | workspaces | — | `workspaces/documents/[docId]/page.tsx` | intent: a document's editor — write markdown (or let the AI draft it: generate/rewrite/summarize/ |
 | `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
 | `/workspaces/knowledge` | workspaces | — | `workspaces/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as |
 | `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |

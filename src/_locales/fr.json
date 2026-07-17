@@ -997,7 +997,9 @@
       "contentLabel": "Contenu & Marketing",
       "contentDesc": "Génération IA d'images, vidéos & textes plus publication. Aucun code requis.",
       "designLabel": "Design",
-      "designDesc": "Concepteur d'UI & de thèmes avec un intervieweur IA. Aucun code requis."
+      "designDesc": "Concepteur d'UI & de thèmes avec un intervieweur IA. Aucun code requis.",
+      "documentsLabel": "Documents",
+      "documentsDesc": "Documents rédigés par l'IA : specs, plans, briefs et feuilles avec export PDF/Word/Excel."
     },
     "sections": {
       "intro": "Activez ou désactivez des sections individuelles. Les modules ne sont que des préréglages — combinez-les librement (par ex. ajoutez l'Intervieweur à un espace de développement).",
@@ -1014,7 +1016,8 @@
       "content": "Contenu",
       "marketing": "Marketing",
       "designer": "Concepteur",
-      "interviewer": "Intervieweur"
+      "interviewer": "Intervieweur",
+      "documents": "Documents"
     },
     "glossary": {
       "title": "Glossaire",
@@ -2274,6 +2277,43 @@
       "fabTitlePlaceholder": "Titre…",
       "fabCreate": "Créer",
       "fabCancel": "Annuler"
+    },
+    "documents": {
+      "title": "Documents",
+      "subtitle": "Documents rédigés par l'IA : specs, plans, briefs et feuilles — vous validez chaque modification de l'IA.",
+      "newPlaceholder": "Titre du nouveau document…",
+      "create": "Créer",
+      "emptyTitle": "Aucun document",
+      "emptySub": "Créez votre premier document et laissez l'IA le rédiger à partir de votre instruction.",
+      "draftBadge": "Brouillon IA",
+      "noContentYet": "Document vide",
+      "delete": "Supprimer le document",
+      "deleteConfirmTitle": "Supprimer le document ?",
+      "deleteConfirmBody": "Supprimer « {title} » et son historique ? Cette action est irréversible.",
+      "notFound": "Document introuvable",
+      "backToList": "Retour aux documents",
+      "titleLabel": "Titre du document",
+      "save": "Enregistrer",
+      "mode": {
+        "generate": "Générer",
+        "rewrite": "Réécrire",
+        "summarize": "Résumer",
+        "extend": "Étendre"
+      },
+      "aiInstructionPlaceholder": "Dites à l'IA quoi écrire ou modifier…",
+      "aiRun": "Brouillon IA",
+      "aiBusy": "En cours…",
+      "draftTitle": "Brouillon IA — relire et appliquer",
+      "applyDraft": "Appliquer",
+      "discardDraft": "Rejeter",
+      "tabEdit": "Éditer",
+      "tabPreview": "Aperçu",
+      "contentPlaceholder": "Écrivez du markdown ici — ou laissez l'IA rédiger ci-dessus.",
+      "assetsTitle": "Pièces jointes",
+      "imagePromptPlaceholder": "Décrivez une image à générer…",
+      "genImage": "Image IA",
+      "upload": "Téléverser",
+      "uploadedLabel": "Téléversé"
     }
   }
 }
