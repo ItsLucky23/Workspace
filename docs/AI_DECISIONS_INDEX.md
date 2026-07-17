@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (189)
+## Decisions (190)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -202,6 +202,7 @@
 | 0269 | channel autopilot consent vooraf | 🟢 accepted | content, autopilot, b-23, consent, publishing | — | `docs/decisions/0269-channel-autopilot-consent-vooraf.md` |
 | 0270 | universeel skill model met apply points | 🟢 accepted | ai, skills, architecture, documents-and-skills | — | `docs/decisions/0270-universeel-skill-model-met-apply-points.md` |
 | 0271 | documents module markdown bron plus render targets | 🟢 accepted | documents, architecture, documents-and-skills | — | `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md` |
+| 0272 | inspiratie import vision extractie naar theme voorstel | 🟢 accepted | designer, inspiration, vision, documents-and-skills | — | `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md` |
 
 ## Summaries
 
@@ -1724,6 +1725,14 @@ Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); 
 **Governs** (`//? @adr 0271`): `server/documents/docs.ts`, `server/documents/export.ts`
 
 → `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md`
+
+### 0272 — inspiratie import vision extractie naar theme voorstel
+
+**0272** · accepted · tags: designer, inspiration, vision, documents-and-skills · 2026-07-17
+
+(1) **URL-capture** hergebruikt het chromium-export-image als wegwerp-screenshotter (genetwerkt, `--screenshot`, URL ge-percent-encoded tegen Windows-arg-quoting). (2) **Extractie** loopt via de bestáánde `image-critique`-feature (vision, provider-pluggable) met een theme-extractie-prompt; `parseTheme` maakt het resultaat altijd compleet. Het resultaat wordt een **inactief** `DesignArtifact` (source `'ai'`) — activeren blijft de expliciete gebruikersstap (setActive), zodat een import nooit stilletjes de huisstijl wijzigt. (3) **Vergelijken** stuurt beide screenshots in één vision-call en slaat de markdown-analyse op als `UiReviewRequest` (page `inspiration-compare`) — de bestaande inbox + `ui-review-to-ticket` maken er zonder nieuw pad een redesign-ticket van. (4) **Stijl-galerij**: zes curated presets (Brutalist/Glassmorphism/Minimal/Editorial/Playful/Corporate) als partiële token-sets door `parseTheme`, lazy+idempotent per workspace geseed (source `'seed'`). Bonus-securityfix: acht modellen (DesignArtifact, StudioBrief/Artifact/BrandLibrary, InterviewFinding, TicketArtifactLink, UiReviewRequest, WorkspaceChatMessage) werden in de snapshot via tenantDb gelezen maar stonden NIET in `TENANT_MODELS` → cross-tenant-lek; toegevoegd aan de set + regressietests.
+
+→ `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md`
 
 ## Code governed by decisions
 

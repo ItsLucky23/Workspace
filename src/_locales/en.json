@@ -2323,6 +2323,18 @@
         "docx": "Word",
         "xlsx": "Excel"
       }
+    },
+    "inspire": {
+      "title": "Inspiration",
+      "desc": "Import a look you love: paste a site URL (we screenshot + extract its style into a theme proposal), upload a screenshot, or compare your page against an inspiration - the analysis lands in the review inbox.",
+      "urlPlaceholder": "https://a-site-you-admire.com",
+      "captureExtract": "Capture & extract",
+      "uploadShot": "Upload screenshot",
+      "ownPlaceholder": "Your page (URL or upload first)",
+      "inspPlaceholder": "Inspiration (URL)",
+      "compare": "Compare",
+      "done": "Done - check your theme library / review inbox.",
+      "failed": "Failed - is the vision AI configured and the URL reachable?"
     }
   }
 }

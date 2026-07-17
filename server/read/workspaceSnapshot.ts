@@ -20,6 +20,7 @@ import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { ensureBuiltinSkills } from '../ai/skills';
+import { ensureStyleGallery } from '../designer/inspiration';
 import { formatTime, toContentAssetSummary, toInfoDoc, toTicket } from './mappers';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
@@ -297,6 +298,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? ADR 0043 — the active project's DB connections + migrations (for the DB panel). URLs stay server-only.
     const dbConnectionRows = activeProjectId ? await tenantDb.dbConnection.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const migrationRows = activeProjectId ? await tenantDb.migration.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
+
+    //? INS4 — lazy-seed the curated style-gallery theme presets BEFORE the library read below
+    //? (idempotent, best-effort: a failed seed still returns the snapshot).
+    await tryCatch(() => ensureStyleGallery(prisma, currentWorkspaceId()));
 
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, chatRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows, uiReviewRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),

@@ -2323,6 +2323,18 @@
         "docx": "Word",
         "xlsx": "Excel"
       }
+    },
+    "inspire": {
+      "title": "Inspiration",
+      "desc": "Importez un style que vous aimez : collez une URL (nous capturons + extrayons le style en proposition de thème), téléversez une capture, ou comparez votre page à une inspiration – l'analyse arrive dans la boîte de revue.",
+      "urlPlaceholder": "https://un-site-que-vous-admirez.fr",
+      "captureExtract": "Capturer & extraire",
+      "uploadShot": "Téléverser une capture",
+      "ownPlaceholder": "Votre page (URL)",
+      "inspPlaceholder": "Inspiration (URL)",
+      "compare": "Comparer",
+      "done": "Terminé – voir la bibliothèque de thèmes / boîte de revue.",
+      "failed": "Échec – l'IA vision est-elle configurée et l'URL accessible ?"
     }
   }
 }

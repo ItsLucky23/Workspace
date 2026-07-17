@@ -2323,6 +2323,18 @@
         "docx": "Word",
         "xlsx": "Excel"
       }
+    },
+    "inspire": {
+      "title": "Inspiration",
+      "desc": "Importiere einen Look, den du liebst: Site-URL einfügen (wir screenshotten + extrahieren den Stil als Theme-Vorschlag), Screenshot hochladen, oder deine Seite mit einer Inspiration vergleichen – die Analyse landet in der Review-Inbox.",
+      "urlPlaceholder": "https://eine-site-die-du-magst.de",
+      "captureExtract": "Erfassen & extrahieren",
+      "uploadShot": "Screenshot hochladen",
+      "ownPlaceholder": "Deine Seite (URL)",
+      "inspPlaceholder": "Inspiration (URL)",
+      "compare": "Vergleichen",
+      "done": "Fertig - siehe Theme-Bibliothek / Review-Inbox.",
+      "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert und die URL erreichbar?"
     }
   }
 }

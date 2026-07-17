@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (55)
+## API routes (56)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -35,6 +35,7 @@
 | `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | **no** | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
 | `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
 | `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
+| `api/workspaces/designerInspiration/v1` | POST | login | 10 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `api/workspaces/designerLibrary/v1` | POST | login | 40 | — | **no** | — | Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR |
 | `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | **no** | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
 | `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
@@ -140,10 +141,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 11 |
+| `ItsLucky23` | 12 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/117 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/118 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -171,6 +172,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/deleteWorkspace/v1`
 - `api/workspaces/designerGenerateAsset/v1`
 - `api/workspaces/designerGenerateTheme/v1`
+- `api/workspaces/designerInspiration/v1`
 - `api/workspaces/designerLibrary/v1`
 - `api/workspaces/devLaunchEditor/v1`
 - `api/workspaces/generateDockerfile/v1`
@@ -196,8 +198,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioSaveBrief/v1`
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
-- `api/workspaces/timeTravelPreview/v1`
-- … +64 more
+- … +65 more
 
 ## Pages (32)
 

@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 244,
+    "nodes": 245,
     "edges": 369,
-    "symbols": 311,
-    "callEdges": 44
+    "symbols": 314,
+    "callEdges": 45
   },
   "nodes": [
     {
@@ -372,6 +372,11 @@
       "id": "workspaces/_api/designerGenerateTheme_v1.ts",
       "kind": "api",
       "route": "api/workspaces/designerGenerateTheme/v1"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/designerInspiration/v1"
     },
     {
       "id": "workspaces/_api/designerLibrary_v1.ts",
@@ -4232,6 +4237,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerInspiration_v1.ts::<module>",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.ts::main",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.ts::resolveSide",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "resolveSide",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/designerLibrary_v1.ts::<module>",
       "file": "workspaces/_api/designerLibrary_v1.ts",
       "name": "<module>",
@@ -5678,6 +5701,10 @@
       "to": "workspaces/_data/modules.ts::sanitizeSections"
     },
     {
+      "from": "workspaces/_api/designerInspiration_v1.ts::main",
+      "to": "workspaces/_api/designerInspiration_v1.ts::resolveSide"
+    },
+    {
       "from": "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror",
       "to": "workspaces/_api/devLaunchEditor_v1.ts::git"
     },
@@ -5834,6 +5861,9 @@
     "settings/_api/listSessions_v1.ts::sessionHandle": [
       "settings/_api/listSessions_v1.ts::main",
       "settings/_api/revokeSession_v1.ts::main"
+    ],
+    "workspaces/_api/designerInspiration_v1.ts::resolveSide": [
+      "workspaces/_api/designerInspiration_v1.ts::main"
     ],
     "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror": [
       "workspaces/_api/devLaunchEditor_v1.ts::main"

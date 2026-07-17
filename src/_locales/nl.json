@@ -2323,6 +2323,18 @@
         "docx": "Word",
         "xlsx": "Excel"
       }
+    },
+    "inspire": {
+      "title": "Inspiratie",
+      "desc": "Importeer een stijl die je mooi vindt: plak een site-URL (wij screenshotten + destilleren de stijl naar een theme-voorstel), upload een screenshot, of vergelijk jouw pagina met een inspiratie - de analyse landt in de review-inbox.",
+      "urlPlaceholder": "https://een-site-die-je-bewondert.nl",
+      "captureExtract": "Vastleggen & extraheren",
+      "uploadShot": "Screenshot uploaden",
+      "ownPlaceholder": "Jouw pagina (URL)",
+      "inspPlaceholder": "Inspiratie (URL)",
+      "compare": "Vergelijken",
+      "done": "Klaar - kijk in je theme-bibliotheek / review-inbox.",
+      "failed": "Mislukt - is de vision-AI geconfigureerd en de URL bereikbaar?"
     }
   }
 }

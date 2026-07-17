@@ -44,6 +44,18 @@ export const TENANT_MODELS = new Set<string>([
   'RagEntry',
   'EnvVar',
   'IntegrationTool',
+  //? SECURITY fix (INS-ronde) — these were read via tenantDb in the snapshot but were NOT in this
+  //? set, so the no-where reads passed through UNSCOPED: every workspace's snapshot leaked every
+  //? other workspace's studio briefs/artifacts/brand library, design library, interviewer findings,
+  //? ticket-artifact links, UI reviews and (per-user) chat. All carry `workspaceId`.
+  'WorkspaceChatMessage',
+  'StudioBrief',
+  'StudioArtifact',
+  'StudioBrandLibrary',
+  'DesignArtifact',
+  'InterviewFinding',
+  'TicketArtifactLink',
+  'UiReviewRequest',
 ]);
 
 //? The tenant-scoped client. `tenantDb.ticket.findMany()` only ever sees the

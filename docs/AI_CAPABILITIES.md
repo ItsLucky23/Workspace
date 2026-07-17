@@ -63,6 +63,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/deleteWorkspace/v1` | POST | 30 | — | — |
 | `workspaces/designerGenerateAsset/v1` | POST | 20 | — | — |
 | `workspaces/designerGenerateTheme/v1` | POST | 20 | — | — |
+| `workspaces/designerInspiration/v1` | POST | 10 | — | — |
 | `workspaces/designerLibrary/v1` | POST | 40 | — | — |
 | `workspaces/devLaunchEditor/v1` | POST | 6 | — | — |
 | `workspaces/generateDockerfile/v1` | POST | 6 | — | — |

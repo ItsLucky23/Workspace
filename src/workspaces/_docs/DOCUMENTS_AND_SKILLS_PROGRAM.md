@@ -121,10 +121,10 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | EXP1 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
 | EXP2 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
 | EXP3 | ✅ | (0271) | documentExport 24/24 (echte Docker) |
-| INS1 | ⬜ | | |
-| INS2 | ⬜ | | |
-| INS3 | ⬜ | | |
-| INS4 | ⬜ | | |
+| INS1 | ✅ | 0272 | designerInspiration 23/23 |
+| INS2 | ✅ | 0272 | designerInspiration 23/23 |
+| INS3 | ✅ | 0272 | designerInspiration 23/23 |
+| INS4 | ✅ | 0272 | designerInspiration 23/23 |
 | CI1 | ⬜ | | |
 | CI2 | ⬜ | | |
 | CI3 | ⬜ | | |

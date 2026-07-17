@@ -1,6 +1,6 @@
 {
-  "hash": "53ced96ad44f6a0b",
-  "chunkCount": 206,
+  "hash": "f697a01ca8031992",
+  "chunkCount": 207,
   "chunks": [
     {
       "id": "cap-001",
@@ -1237,6 +1237,12 @@
       "kind": "decision",
       "title": "0271-documents-module-markdown-bron-plus-render-targets",
       "text": "ADR 0271: 0271-documents-module-markdown-bron-plus-render-targets. De gebruiker wil een volwaardige Documents-module (specs, plannen, briefings, sheets) waarin de AI alle bestandstypen kan maken en bewerken (Word/PDF/Excel/images), phone-first, met export. De bestaande content-pipeline is video/post-gericht; Studio-artifacts zijn campagne-gebonden. Er was geen generieke document-laag. Decision: Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); Word/PDF/Excel/HTML zijn **render-targets** in de EXP-fase (pandoc/chromium-container), geen aparte opslagformaten — markdown-tabellen zijn de bron voor de xlsx-export. AI-schrijfacties (generate/rewrite/summarize/extend, feature `document-generate`, default Gemini) landen ALTIJD in `aiDraft`; de op `document-apply-draft` is de consent die `content` schrijft (B-23), met een `DocumentRevision`-snapshot van de vorige versie (gebonden op 20). Documenten indexeren in de gedeelde workspace-RAG onder het reserved-corpus-commit `workspace-documents` (`doc/<id>/<chunk>`), zodat chat én document-runs erop gronden; document-runs gronden omgekeerd op product-knowledge + de andere documenten. Eigen nav-module `documents` (vierde WorkspaceModule) met eigen routes (`documents/` + `documents/[docId]`). Afbeeldingen via de bestaande media-pipeline (budget-guard + spend + honest stub); uploads via `/media/upload` als document-assets."
+    },
+    {
+      "id": "adr-0272",
+      "kind": "decision",
+      "title": "0272-inspiratie-import-vision-extractie-naar-theme-voorstel",
+      "text": "ADR 0272: 0272-inspiratie-import-vision-extractie-naar-theme-voorstel. De gebruiker wil UI's \"vergelijken met online stijlen\": een site die je mooi vindt importeren als stijlrichting, en je eigen pagina naast een inspiratie leggen. Er bestond al: een 30-token-theme-systeem met `parseTheme` (vult partieel → compleet), de multimodale `image-critique`-feature (Gemini vision), een chromium-container (export-fase), en de UI-review-inbox met `ui-review-to-ticket`. Decision: (1) **URL-capture** hergebruikt het chromium-export-image als wegwerp-screenshotter (genetwerkt, `--screenshot`, URL ge-percent-encoded tegen Windows-arg-quoting). (2) **Extractie** loopt via de bestáánde `image-critique`-feature (vision, provider-pluggable) met een theme-extractie-prompt; `parseTheme` maakt het resultaat altijd compleet. Het resultaat wordt een **inactief** `DesignArtifact` (source `'ai'`) — activeren blijft de expliciete gebruikersstap (setActive), zodat een import nooit stilletjes de huisstijl wijzigt. (3) **Vergelijken** stuurt beide screenshots in één vision-call en slaat de markdown-analyse op als `UiReviewRequest` (page `inspiration-compare`) — de bestaande inbox + `ui-review-to-ticket` maken er zonder nieuw pad een redesign-ticket van. (4) **Stijl-galerij**: zes curated presets (Brutalist/Glassmorphism/Minimal/Editorial/Playful/Corporate) als partiële token-sets door `parseTheme`, lazy+idempotent per workspace geseed (source `'seed'`). Bonus-securityfix: acht modellen (DesignArtifact, St"
     }
   ]
 }
