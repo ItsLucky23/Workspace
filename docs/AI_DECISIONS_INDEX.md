@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (191)
+## Decisions (192)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -204,6 +204,7 @@
 | 0271 | documents module markdown bron plus render targets | 🟢 accepted | documents, architecture, documents-and-skills | — | `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md` |
 | 0272 | inspiratie import vision extractie naar theme voorstel | 🟢 accepted | designer, inspiration, vision, documents-and-skills | — | `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md` |
 | 0273 | comment inbox read only youtube tiktok | 🟢 accepted | content, comments, oauth, documents-and-skills | — | `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md` |
+| 0274 | pipeline role prompt eval replay harness | 🟢 accepted | eval, pipeline, testing, documents-and-skills | — | `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md` |
 
 ## Summaries
 
@@ -1744,6 +1745,14 @@ Een `SocialComment`-cache (upsert op de platform-comment-id) gevoed door een ref
 **Governs** (`//? @adr 0273`): `server/content/commentInbox.ts`
 
 → `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md`
+
+### 0274 — pipeline role prompt eval replay harness
+
+**0274** · accepted · tags: eval, pipeline, testing, documents-and-skills · 2026-07-17
+
+Een golden corpus van OPGENOMEN stage-turns (`eval/pipeline/scenarios/GT-001..006.json`) wordt afgespeeld door de ÉCHTE pipeline-code (`parseTurnResult`, `renderPromptTemplate`, de structured-question-codec) en gescoord op structurele invarianten: kind-match, envelope-welgevormdheid (summary/openQuestions), **scope-naleving** (changedFiles tegen `scope.allow`-globs, none in `scope.deny`), **advisories-hebben-assumptie** (een W2-advisory zonder assumptie = een verkapte blokkerende vraag), **complexity 1–10**, **template-volledig-gevuld** (geen resterende `{{chip}}`), question-decode. Géén LLM in de scorer. `npm run ai:eval:pipeline` scoort; `--check` is de CI-gate tegen `baseline.json` (per-ticket-score mag niet dalen); `--write-baseline` herijkt bewust. Elke fixture draagt een `promptVersion` — bij een prompt-wijziging herneem je de turns en bumpt de versie; breken de nieuwe turns een invariant, dan zakt de score → rood.
+
+→ `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md`
 
 ## Code governed by decisions
 

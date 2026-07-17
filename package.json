@@ -28,6 +28,7 @@
     "ai:lint": "node scripts/lintInvariants.mjs",
     "ai:doc-staleness": "node scripts/checkDocStaleness.mjs",
     "ai:eval": "node eval/scoreEval.mjs",
+    "ai:eval:pipeline": "tsx --tsconfig tsconfig.server.json eval/pipeline/scorePipeline.mts",
     "generateArtifacts": "tsx --tsconfig tsconfig.server.json scripts/generateTypeMaps.ts && tsx --tsconfig tsconfig.server.json scripts/generateServerRequests.ts",
     "test": "npm run generateArtifacts && tsx --tsconfig tsconfig.server.json scripts/testWithSecrets.ts",
     "scaffold:test": "node scripts/scaffoldRouteTest.mjs",

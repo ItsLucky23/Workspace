@@ -1,0 +1,13 @@
+{
+  "id": "GT-006",
+  "title": "Review stage that surfaces findings but changes nothing",
+  "promptVersion": "review@1",
+  "scope": { "allow": ["**"] },
+  "stages": [
+    {
+      "stage": "review",
+      "expectKind": "done",
+      "message": "Reviewed the diff. Two things worth noting; neither blocks the merge.\n\n```ws-carryover\n{ \"summary\": \"Review passed with 2 non-blocking notes: an unhandled empty-array case in the mapper, and a missing test for the error branch.\", \"changedFiles\": [], \"openQuestions\": [{ \"question\": \"Add a test for the error branch before merge?\", \"assumption\": \"follow-up ticket (not a blocker)\" }], \"complexityScore\": 3 }\n```"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "hash": "73c28697a9cfc07a",
-  "chunkCount": 208,
+  "hash": "819088ac33048988",
+  "chunkCount": 209,
   "chunks": [
     {
       "id": "cap-001",
@@ -1249,6 +1249,12 @@
       "kind": "decision",
       "title": "0273-comment-inbox-read-only-youtube-tiktok",
       "text": "ADR 0273: 0273-comment-inbox-read-only-youtube-tiktok. De gebruiker wil reacties op gepubliceerde posts kunnen ZIEN, per platform, phone-first — maar in het interview van 2026-07-17 expliciet gekozen: **alleen lezen, nog geen reply-opties** (geen AI-suggesties, geen autopilot-replies). Er bestond al: PublishJob met `externalId` (post-id), de OAuth-connectielaag met token-refresh, en het cron/metrics-ingest-patroon. Decision: Een `SocialComment`-cache (upsert op de platform-comment-id) gevoed door een refresh (cron `comments-ingest` elke WS_COMMENTS_INTERVAL_MIN + on-demand `comments-refresh`-op), per gekoppelde connectie over de done-posts. **Geen reply-surface** — het model heeft geen reply-veld, er is geen reply-op. YouTube's `commentThreads.list` zit achter de bredere `youtube.force-ssl`-scope: nieuwe connecties vragen die scope erbij, en de granted scope wordt in `StoredTokens.scope` bewaard zodat `connectionSupportsComments` OUDE upload-only-connecties detecteert → de inbox toont een eenmalige \"opnieuw koppelen\"-hint (nooit gefabriceerde rijen). TikTok's comment-list is voor de meeste apps partner-gated: de fetch is eerlijk gebouwd, een weigering wordt een per-platform 'unavailable'-note. Pure request-builders/parsers zijn exporteerbaar; de netwerkstap is injecteerbaar (fixtures in tests, nooit live). Mark-read (één/alle) via een op; de UI groepeert per kanaal, nieuwste eerst, met een ongelezen-badge."
+    },
+    {
+      "id": "adr-0274",
+      "kind": "decision",
+      "title": "0274-pipeline-role-prompt-eval-replay-harness",
+      "text": "ADR 0274: 0274-pipeline-role-prompt-eval-replay-harness. Elke wijziging aan een rol-prompt (refine/plan/implement/review) is ongetest — een prompt-edit die de agent een malformed carry-over laat emitten, buiten de ticket-file-scope laat drijven, een BLOKKERENDE vraag laat stellen waar een advisory hoort, of z'n complexity-score laat vergeten, degradeert de hele pipeline stil. De bestaande `ai:eval`-harness meet iets anders (of de docs-artefacten Claude Code helpen). De user koos in het interview: **replay-helft eerst** (geen subscription-turns), live golden-runs later. Decision: Een golden corpus van OPGENOMEN stage-turns (`eval/pipeline/scenarios/GT-001..006.json`) wordt afgespeeld door de ÉCHTE pipeline-code (`parseTurnResult`, `renderPromptTemplate`, de structured-question-codec) en gescoord op structurele invarianten: kind-match, envelope-welgevormdheid (summary/openQuestions), **scope-naleving** (changedFiles tegen `scope.allow`-globs, none in `scope.deny`), **advisories-hebben-assumptie** (een W2-advisory zonder assumptie = een verkapte blokkerende vraag), **complexity 1–10**, **template-volledig-gevuld** (geen resterende `{{chip}}`), question-decode. Géén LLM in de scorer. `npm run ai:eval:pipeline` scoort; `--check` is de CI-gate tegen `baseline.json` (per-ticket-score mag niet dalen); `--write-baseline` herijkt bewust. Elke fixture draagt een `promptVersion` — bij een prompt-wijziging herneem je de turns en bumpt de versie; breken de nieuwe turns een invariant, dan z"
     }
   ]
 }

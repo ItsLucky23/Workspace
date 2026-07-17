@@ -1,0 +1,13 @@
+{
+  "id": "GT-004",
+  "title": "Long refactor that runs past a single turn",
+  "promptVersion": "implement@1",
+  "scope": { "allow": ["server/**"] },
+  "stages": [
+    {
+      "stage": "implement",
+      "expectKind": "continue",
+      "message": "I've migrated 4 of the 9 call sites so far. Still working through the remaining handlers — no carry-over yet, continuing on the next turn."
+    }
+  ]
+}

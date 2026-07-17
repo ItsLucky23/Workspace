@@ -1,0 +1,24 @@
+{
+  "id": "GT-001",
+  "title": "Add rate-limiting to the login API route",
+  "promptVersion": "refine@1,plan@1,implement@1,review@1",
+  "scope": { "allow": ["src/login/**", "server/auth/**"], "deny": ["prisma/**", "package.json"] },
+  "stages": [
+    {
+      "stage": "refine",
+      "expectKind": "done",
+      "message": "I clarified the ticket.\n\n```ws-carryover\n{ \"summary\": \"Add a per-IP rate limit to POST /auth/api/credentials: 5 attempts / 15 min, 429 on exceed. Scope: the login route + the auth rate-limit helper.\", \"changedFiles\": [], \"openQuestions\": [{ \"question\": \"Should the limit be per-IP or per-account?\", \"assumption\": \"per-IP (the standard for brute-force protection)\" }], \"complexityScore\": 3 }\n```",
+      "nextTemplate": "Implement this plan:\n{{summary}}\nOpen questions carried in:\n{{openQuestions}}"
+    },
+    {
+      "stage": "implement",
+      "expectKind": "done",
+      "message": "Done. Added the limiter + a regression test.\n\n```ws-carryover\n{ \"summary\": \"Added a sliding-window rate limit (5/15min per IP) to the login route with a 429 response and a regression test.\", \"changedFiles\": [\"src/login/_api/credentials_v1.ts\", \"server/auth/rateLimit.ts\"], \"openQuestions\": [], \"commitHash\": \"a1b2c3d\", \"complexityScore\": 4 }\n```"
+    },
+    {
+      "stage": "review",
+      "expectKind": "done",
+      "message": "Reviewed — looks correct.\n\n```ws-carryover\n{ \"summary\": \"Review passed: the limit resets correctly, the 429 carries Retry-After, the test covers the exceed path.\", \"changedFiles\": [], \"openQuestions\": [], \"complexityScore\": 2 }\n```"
+    }
+  ]
+}

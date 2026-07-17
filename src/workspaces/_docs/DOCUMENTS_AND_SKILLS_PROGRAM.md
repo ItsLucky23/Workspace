@@ -128,9 +128,9 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | CI1 | ✅ | 0273 | commentInbox 21/21 |
 | CI2 | ✅ | 0273 | commentInbox 21/21 |
 | CI3 | ✅ | 0273 | commentInbox 21/21 |
-| EV1 | ⬜ | | |
-| EV2 | ⬜ | | |
-| EV3 | ⬜ | | |
+| EV1 | ✅ | 0274 | evalPipeline 19/19 |
+| EV2 | ✅ | 0274 | evalPipeline 19/19 |
+| EV3 | ✅ | 0274 | evalPipeline 19/19 |
 | KG1 | ⬜ | | |
 | KG2 | ⬜ | | |
 | VO1 | ⬜ | | |

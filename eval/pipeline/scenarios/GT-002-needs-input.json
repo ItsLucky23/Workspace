@@ -1,0 +1,13 @@
+{
+  "id": "GT-002",
+  "title": "Wire the new billing provider (genuinely ambiguous → blocks)",
+  "promptVersion": "refine@1,plan@1",
+  "scope": { "allow": ["server/billing/**", "src/billing/**"] },
+  "stages": [
+    {
+      "stage": "refine",
+      "expectKind": "needs-input",
+      "message": "This needs a decision before I can plan it — the two providers behave differently on refunds.\n\n```ws-needs-input\n{ \"questions\": [ { \"prompt\": \"Which billing provider should we integrate?\", \"kind\": \"choice\", \"options\": [\"Stripe\", \"Mollie\", \"Adyen\"] }, { \"prompt\": \"Do we need to support partial refunds in v1?\", \"kind\": \"approve\" } ] }\n```"
+    }
+  ]
+}

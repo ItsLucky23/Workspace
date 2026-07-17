@@ -1,0 +1,13 @@
+{
+  "id": "GT-005",
+  "title": "Non-coding content run (script + advisory)",
+  "promptVersion": "refine@1,implement@1",
+  "scope": { "allow": ["src/workspaces/content/**", "server/content/**"] },
+  "stages": [
+    {
+      "stage": "implement",
+      "expectKind": "done",
+      "message": "Wrote the launch script + storyboard.\n\n```ws-carryover\n{ \"summary\": \"Drafted a 45s launch script (hook + 3 beats + CTA) and a matching storyboard for the faceless format.\", \"changedFiles\": [\"server/content/ideatorRole.ts\"], \"openQuestions\": [{ \"question\": \"Should the CTA push the waitlist or the demo?\", \"assumption\": \"the waitlist (pre-launch)\" }, \"Keep the hook under 3 seconds\"], \"complexityScore\": 2 }\n```"
+    }
+  ]
+}

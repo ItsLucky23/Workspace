@@ -1,0 +1,19 @@
+{
+  "id": "GT-003",
+  "title": "Add a presence sync event",
+  "promptVersion": "refine@1,plan@1,implement@1,review@1",
+  "scope": { "allow": ["src/dashboard/**", "server/read/**"], "deny": ["config.ts"] },
+  "stages": [
+    {
+      "stage": "plan",
+      "expectKind": "done",
+      "message": "Plan ready.\n\n```ws-carryover\n{ \"summary\": \"Add a presence _sync event: server validates the room, client broadcasts cursor position. Files: the sync server handler + the dashboard client hook.\", \"changedFiles\": [], \"openQuestions\": [\"Prune stale presence after 30s of no ping\"], \"complexityScore\": 5 }\n```",
+      "nextTemplate": "Build it:\n{{summary}}\nNotes: {{openQuestions}}\nPrior commit: {{commitHash}}"
+    },
+    {
+      "stage": "implement",
+      "expectKind": "done",
+      "message": "Implemented + tested.\n\n```ws-carryover\n{ \"summary\": \"Added presence sync (server-validate + client cursor broadcast) with a 30s prune and a handler test.\", \"changedFiles\": [\"src/dashboard/_sync/presence_server_v1.ts\", \"src/dashboard/page.tsx\", \"server/read/broadcast.ts\"], \"openQuestions\": [], \"commitHash\": \"f4e5d6c\", \"complexityScore\": 5 }\n```"
+    }
+  ]
+}
