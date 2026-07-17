@@ -77,6 +77,7 @@ import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
 import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions } from '../documents/docs';
 import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
+import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
 import { fireEvent } from '../automation/triggers';
@@ -2226,6 +2227,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets: [...prevAssets2, { kind: 'export', url: res.url, label: format }] } });
       broadcastContentDirty(action.workspaceId);
       return { url: res.url };
+    }
+    //? CI (DOCUMENTS_AND_SKILLS) — the read-only comment inbox: on-demand refresh + mark read.
+    case 'comments-refresh': {
+      const res = await refreshComments(prisma, action.workspaceId);
+      broadcastContentDirty(action.workspaceId);
+      return { checkedPosts: res.checkedPosts, newComments: res.newComments, notes: res.notes };
+    }
+    case 'comments-mark-read': {
+      const commentId = str(payload, 'commentId');
+      await (commentId ? prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, id: commentId }, data: { read: true } }) : prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, read: false }, data: { read: true } }));
+      broadcastContentDirty(action.workspaceId);
+      return;
     }
     case 'document-gen-image': {
       const documentId = str(payload, 'documentId');

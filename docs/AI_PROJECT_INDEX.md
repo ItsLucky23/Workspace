@@ -68,7 +68,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | **no** | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (62)
+## Sync routes (63)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -85,6 +85,7 @@
 | `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
 | `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
 | `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/commentInbox/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `sync/workspaces/contentAssetDelta/v1` | yes | — | login | — | **no** | — | Workspaces — [content-asset-delta] BROADCAST-ONLY realtime carrier. Mid-generation media jobs |
 | `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
 | `sync/workspaces/contentDirty/v1` | yes | — | login | — | **no** | — | Workspaces — [content-dirty] BROADCAST-ONLY realtime carrier. A coarse "the content slice changed" |
@@ -141,10 +142,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 12 |
+| `ItsLucky23` | 13 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/118 routes have a per-route `.tests.ts`.
+**Test coverage**: 3/119 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -198,7 +199,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioSaveBrief/v1`
 - `api/workspaces/styleExport/v1`
 - `api/workspaces/styleImport/v1`
-- … +65 more
+- … +66 more
 
 ## Pages (32)
 

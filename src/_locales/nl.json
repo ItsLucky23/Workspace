@@ -2335,6 +2335,15 @@
       "compare": "Vergelijken",
       "done": "Klaar - kijk in je theme-bibliotheek / review-inbox.",
       "failed": "Mislukt - is de vision-AI geconfigureerd en de URL bereikbaar?"
+    },
+    "comments": {
+      "tab": "Reacties",
+      "noChannel": "Geen kanaal",
+      "refresh": "Verversen",
+      "markAllRead": "Alles gelezen",
+      "readOnlyNote": "Alleen-lezen: reageren doe je op het platform zelf.",
+      "empty": "Nog geen reacties",
+      "emptySub": "Reacties op je gepubliceerde posts verschijnen hier. YouTube heeft de nieuwe lees-permissie nodig — koppel het account één keer opnieuw als dit leeg blijft."
     }
   }
 }

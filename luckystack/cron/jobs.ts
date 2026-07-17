@@ -11,6 +11,7 @@ import { getPrismaClient } from '@luckystack/core';
 import { registerCronJob } from '@luckystack/cron';
 
 import { runScheduledPublish, runMetricsIngest, PUBLISH_INTERVAL_MS, METRICS_INTERVAL_MS } from '../../server/content/publish';
+import { runCommentsIngest, COMMENTS_INTERVAL_MS } from '../../server/content/commentInbox';
 import { runCronTriggers, CRON_TICK_MS } from '../../server/automation/cron';
 import { runWorkerReapTick, WORKER_REAP_MS } from '../../server/orchestrator/workerReaper';
 import { reapIdleEditors, EDITOR_REAP_MS } from '../../server/proxy/editorReaper';
@@ -23,6 +24,9 @@ registerCronJob({ name: 'scheduled-publish', schedule: { everyMs: PUBLISH_INTERV
 
 //? #141 — refresh audience metrics for posted content.
 registerCronJob({ name: 'metrics-ingest', schedule: { everyMs: METRICS_INTERVAL_MS }, handler: async () => { await runMetricsIngest(getPrismaClient()); } });
+
+//? CI — refresh the read-only comment inbox for published posts (WS_COMMENTS_INTERVAL_MIN, default 30).
+registerCronJob({ name: 'comments-ingest', schedule: { everyMs: COMMENTS_INTERVAL_MS }, handler: async () => { await runCommentsIngest(getPrismaClient()); } });
 
 //? #2 — fire due `on:'cron'` WorkspaceTriggers (per-minute sweep; each trigger carries its own cron string).
 registerCronJob({ name: 'automation-cron', schedule: { everyMs: CRON_TICK_MS }, handler: async () => { await runCronTriggers(getPrismaClient(), new Date()); } });

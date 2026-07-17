@@ -10,7 +10,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { EmptyState, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { ContentAssetSummary, ContentPieceSummary } from '../_data/types';
+import type { ContentAssetSummary, ContentPieceSummary, SocialCommentSummary } from '../_data/types';
 import { backendUrl } from '../../../config';
 
 //? `/media/<file>` is served by the backend; hosted urls pass through (mirrors the piece page's helper).
@@ -102,7 +102,7 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
 }
 
 export default function Content() {
-  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
+  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead } = useWorkspaces();
   const translate = useTranslator();
   const [showArchived, setShowArchived] = useState(false);
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -145,6 +145,18 @@ export default function Content() {
   const libraryKinds = useMemo(() => ['all', ...new Set(libraryAssets.map((r) => r.asset.kind))], [libraryAssets]);
   const libraryFiltered = libraryKind === 'all' ? libraryAssets : libraryAssets.filter((r) => r.asset.kind === libraryKind);
 
+  //? CI — the read-only comment inbox (grouped per channel, newest first; no reply surface).
+  const [showComments, setShowComments] = useState(false);
+  const channelName = (id: string | null): string => content.channels.find((c) => c.id === id)?.name ?? translate({ key: 'workspaces.comments.noChannel' });
+  const commentGroups = useMemo(() => {
+    const groups = new Map<string, SocialCommentSummary[]>();
+    for (const c of content.comments) {
+      const key = c.channelId ?? '';
+      groups.set(key, [...(groups.get(key) ?? []), c]);
+    }
+    return [...groups.entries()];
+  }, [content.comments]);
+
   const budget = content.mediaBudget;
   const pct = budget.enabled && budget.capCents > 0 ? Math.min(100, Math.round((budget.spentCents / budget.capCents) * 100)) : 0;
 
@@ -168,6 +180,11 @@ export default function Content() {
             <Icon name="box-archive" /> <span className="hidden md:inline">{translate({ key: 'workspaces.content.archivedTab', params: [{ key: 'n', value: String(archivedPieces.length) }] })}</span>
           </button>
         )}
+        {/* CI — the comment-inbox toggle (unread badge). */}
+        <button type="button" onClick={() => { setShowComments((v) => !v); if (!showComments) refreshComments(); }} className={`relative h-9 px-3 rounded-lg border text-sm flex items-center gap-2 cursor-pointer ${showComments ? 'border-primary bg-primary/10 text-primary' : 'border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common'}`}>
+          <Icon name="comment" /> <span className="hidden md:inline">{translate({ key: 'workspaces.comments.tab' })}</span>
+          {content.unreadComments > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-primary text-title-primary text-[10px] font-semibold flex items-center justify-center">{content.unreadComments}</span>}
+        </button>
         {/* Gap-fix — the workspace-wide media library toggle. */}
         {libraryAssets.length > 0 && (
           <button type="button" onClick={() => { setShowLibrary((v) => !v); }} className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 cursor-pointer ${showLibrary ? 'border-primary bg-primary/10 text-primary' : 'border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common'}`}>
@@ -194,7 +211,36 @@ export default function Content() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-8">
-        {showLibrary ? (
+        {showComments && (
+          /* CI — the read-only comment inbox: per channel, newest first, mark read. NO reply controls. */
+          <div className="flex flex-col gap-3 max-w-3xl mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <WsButton variant="secondary" icon="arrows-rotate" onClick={() => { refreshComments(); }}>{translate({ key: 'workspaces.comments.refresh' })}</WsButton>
+              {content.unreadComments > 0 && <WsButton variant="ghost" icon="check" onClick={() => { markCommentsRead(); }}>{translate({ key: 'workspaces.comments.markAllRead' })}</WsButton>}
+              <span className="text-xs text-muted">{translate({ key: 'workspaces.comments.readOnlyNote' })}</span>
+            </div>
+            {content.comments.length === 0 && (
+              <EmptyState icon="comment" title={translate({ key: 'workspaces.comments.empty' })} sub={translate({ key: 'workspaces.comments.emptySub' })} />
+            )}
+            {commentGroups.map(([chanKey, rows]) => (
+              <div key={chanKey || 'none'} className="flex flex-col gap-2">
+                <div className="text-sm font-semibold text-title">{channelName(chanKey || null)}</div>
+                {rows.map((c) => (
+                  <button key={c.id} type="button" onClick={() => { if (!c.read) markCommentsRead(c.id); }}
+                    className={`text-left rounded-lg border p-2.5 cursor-pointer transition-colors ${c.read ? 'border-container1-border bg-container1' : 'border-primary/40 bg-primary/5'}`}>
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <span className="rounded-full bg-container2 px-1.5 py-0.5">{c.platform}</span>
+                      <span className="font-medium text-common truncate">{c.author}</span>
+                      <span className="ml-auto shrink-0">{new Date(c.publishedAt).toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm text-common mt-1 whitespace-pre-wrap">{c.text}</div>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+        {!showComments && showLibrary ? (
           /* Gap-fix — the workspace-wide media LIBRARY: filter by kind, reuse any asset in another piece. */
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-1.5">
@@ -223,7 +269,7 @@ export default function Content() {
             {libraryFiltered.length === 0 && <EmptyState icon="table-cells-large" title={translate({ key: 'workspaces.content.libraryEmpty' })} sub={''} />}
           </div>
         ) : null}
-        {!showLibrary && showArchived && (
+        {!showComments && !showLibrary && showArchived && (
           /* #129 — the Archived view: soft-archived pieces with a Restore (content-unarchive) action. */
           <div className="flex flex-col gap-2 max-w-2xl">
             {archivedPieces.map((p) => (
@@ -236,7 +282,7 @@ export default function Content() {
             ))}
           </div>
         )}
-        {!showLibrary && !showArchived && (liveEmpty ? (
+        {!showComments && !showLibrary && !showArchived && (liveEmpty ? (
           <div className="flex flex-col items-center gap-4">
             <EmptyState icon="wand-magic-sparkles" title={translate({ key: 'workspaces.content.empty' })} sub={translate({ key: 'workspaces.content.emptySub' })} />
             {/* #125 — empty-state CTA so a first-time user has an obvious way to create. */}

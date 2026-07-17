@@ -1715,6 +1715,26 @@ model PublishJob {
   @@index([workspaceId, contentProjectId])
 }
 
+//? CI (DOCUMENTS_AND_SKILLS) — a cached comment on a PUBLISHED post (read-only inbox; replies are a
+//? deliberate non-goal). Upserted by the comment-refresh (cron + on-demand) keyed on `externalId`.
+model SocialComment {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @db.ObjectId
+  platform         String                            // 'youtube' | 'tiktok'
+  contentProjectId String?  @db.ObjectId             // the piece the commented post belongs to
+  channelId        String?  @db.ObjectId             // the piece's channel (inbox grouping)
+  externalVideoId  String                            // platform post/video id
+  externalId       String                            // platform comment id (dedup key)
+  author           String
+  text             String
+  publishedAt      DateTime
+  read             Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([workspaceId, read])
+  @@index([workspaceId, externalId])
+}
+
 //? The per-workspace media €-budget (F0.2, ADR 0051) — ONE row per workspace. `capCents`/`spentCents`
 //? in cents; `enabled=false` or `capCents<=0` = no cap. The pre-generation guard (server/media/budget.ts)
 //? blocks a gen that would push `spentCents` past `capCents`. Opt-in (disabled by default).

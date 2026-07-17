@@ -73,6 +73,8 @@ export type ControlOp =
   //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. AI output lands as aiDraft; apply-draft is the
   //? consent that writes content (B-23). gen-image reuses the media pipeline into document assets.
   | 'document-create' | 'document-edit' | 'document-delete' | 'document-ai' | 'document-apply-draft' | 'document-discard-draft' | 'document-gen-image' | 'document-export'
+  //? CI (DOCUMENTS_AND_SKILLS) — the read-only comment inbox (refresh + mark read; replies are a non-goal).
+  | 'comments-refresh' | 'comments-mark-read'
   // notifications (18)
   | 'mark-read'
   // AI-session controls (24/19) — contract-frozen; wired by Lane A (Fase 2)

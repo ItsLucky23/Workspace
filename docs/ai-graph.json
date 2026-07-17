@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 245,
-    "edges": 369,
-    "symbols": 314,
-    "callEdges": 45
+    "nodes": 246,
+    "edges": 370,
+    "symbols": 317,
+    "callEdges": 46
   },
   "nodes": [
     {
@@ -792,6 +792,11 @@
       "id": "workspaces/_sync/changeRole_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/changeRole/v1"
+    },
+    {
+      "id": "workspaces/_sync/commentInbox_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/commentInbox/v1"
     },
     {
       "id": "workspaces/_sync/contentAssetDelta_server_v1.ts",
@@ -1822,6 +1827,10 @@
     {
       "from": "workspaces/_shell/WorkspacesTemplate.tsx",
       "to": "workspaces/_shell/WorkspacesShell.tsx"
+    },
+    {
+      "from": "workspaces/_sync/commentInbox_server_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
     },
     {
       "from": "workspaces/_sync/contentAssetDelta_server_v1.ts",
@@ -3349,6 +3358,7 @@
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/_sync/commentInbox_server_v1.ts",
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "workspaces/_sync/contentControl_server_v1.ts",
       "workspaces/_sync/contentSettings_server_v1.ts",
@@ -3613,8 +3623,8 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 59,
-      "directDependents": 7
+      "dependents": 60,
+      "directDependents": 8
     },
     {
       "id": "workspaces/_data/types.ts",
@@ -5023,6 +5033,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/commentInbox_server_v1.ts::<module>",
+      "file": "workspaces/_sync/commentInbox_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/commentInbox_server_v1.ts::isCommentOp",
+      "file": "workspaces/_sync/commentInbox_server_v1.ts",
+      "name": "isCommentOp",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/commentInbox_server_v1.ts::main",
+      "file": "workspaces/_sync/commentInbox_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/contentAssetDelta_server_v1.ts::<module>",
       "file": "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "name": "<module>",
@@ -5801,6 +5829,10 @@
       "to": "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion"
     },
     {
+      "from": "workspaces/_sync/commentInbox_server_v1.ts::main",
+      "to": "workspaces/_sync/commentInbox_server_v1.ts::isCommentOp"
+    },
+    {
       "from": "workspaces/_sync/contentAssetDelta_server_v1.ts::main",
       "to": "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset"
     },
@@ -5940,6 +5972,9 @@
       "workspaces/_functions/structuredQuestion.ts::normalizeQuestion",
       "workspaces/_functions/structuredQuestion.ts::parseStructuredQuestion",
       "workspaces/_functions/structuredQuestion.ts::questionPrompt"
+    ],
+    "workspaces/_sync/commentInbox_server_v1.ts::isCommentOp": [
+      "workspaces/_sync/commentInbox_server_v1.ts::main"
     ],
     "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset": [
       "workspaces/_sync/contentAssetDelta_server_v1.ts::main"

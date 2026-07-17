@@ -16,7 +16,7 @@ import { withRetry } from '../util/retry';
 
 export type OAuthPlatform = 'youtube' | 'tiktok';
 
-export interface StoredTokens { accessToken: string; refreshToken?: string; expiresAt?: number }
+export interface StoredTokens { accessToken: string; refreshToken?: string; expiresAt?: number; scope?: string }
 export interface HttpRequest { url: string; method: string; headers: Record<string, string>; body?: string }
 
 //? Per-platform OAuth + API config (client id/secret from env; the endpoints are fixed).
@@ -26,7 +26,10 @@ const CFG: Record<OAuthPlatform, PlatformCfg> = {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     uploadUrl: 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-    scope: 'https://www.googleapis.com/auth/youtube.upload',
+    //? CI — the comment inbox reads commentThreads, which Google gates behind youtube.force-ssl; NEW
+    //? connections get both scopes. OLDER upload-only connections keep publishing but the inbox marks
+    //? them "reconnect to read comments" (connectionSupportsComments).
+    scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl',
     clientIdEnv: 'YOUTUBE_CLIENT_ID', clientSecretEnv: 'YOUTUBE_CLIENT_SECRET',
   },
   tiktok: {
@@ -85,7 +88,9 @@ export function parseTokenResponse(json: unknown): StoredTokens | null {
   if (accessToken.length === 0) return null;
   const refreshToken = typeof data.refresh_token === 'string' ? data.refresh_token : undefined;
   const expiresInSec = typeof data.expires_in === 'number' ? data.expires_in : undefined;
-  return { accessToken, ...(refreshToken === undefined ? {} : { refreshToken }), ...(expiresInSec === undefined ? {} : { expiresAt: Date.now() + expiresInSec * 1000 }) };
+  //? CI — keep the GRANTED scope so the comment inbox can detect old upload-only connections.
+  const scope = typeof data.scope === 'string' && data.scope.trim().length > 0 ? data.scope.trim() : undefined;
+  return { accessToken, ...(refreshToken === undefined ? {} : { refreshToken }), ...(expiresInSec === undefined ? {} : { expiresAt: Date.now() + expiresInSec * 1000 }), ...(scope === undefined ? {} : { scope }) };
 }
 
 //? O2 — a normalized per-platform privacy choice + the mappers to each platform's own vocabulary. TikTok has
@@ -330,7 +335,9 @@ export async function getValidConnection(
   const transport = opts.refreshTransport ?? realRefreshTransport;
   const [err, refreshed] = await tryCatch(() => transport.refresh(platform, refreshToken));
   if (err || !refreshed) return stored;
-  const merged: StoredTokens = { ...refreshed, refreshToken: refreshed.refreshToken ?? refreshToken };
+  //? CI — a refresh response may omit `scope`; keep the originally-granted scope so the comment
+  //? inbox's capability check survives token refreshes.
+  const merged: StoredTokens = { ...refreshed, refreshToken: refreshed.refreshToken ?? refreshToken, ...(refreshed.scope === undefined && stored.scope !== undefined ? { scope: stored.scope } : {}) };
   await saveConnection(prisma, workspaceId, platform, merged, opts.accountId);
   return merged;
 }

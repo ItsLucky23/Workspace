@@ -2335,6 +2335,15 @@
       "compare": "Compare",
       "done": "Done - check your theme library / review inbox.",
       "failed": "Failed - is the vision AI configured and the URL reachable?"
+    },
+    "comments": {
+      "tab": "Comments",
+      "noChannel": "No channel",
+      "refresh": "Refresh",
+      "markAllRead": "Mark all read",
+      "readOnlyNote": "Read-only: replying stays on the platform itself.",
+      "empty": "No comments yet",
+      "emptySub": "Comments on your published posts appear here. YouTube needs the new read permission — reconnect the account once if this stays empty."
     }
   }
 }

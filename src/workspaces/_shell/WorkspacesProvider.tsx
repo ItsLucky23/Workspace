@@ -116,7 +116,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [] },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -1355,6 +1355,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       discardDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-discard-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       genDocumentImage: (documentId, prompt) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-gen-image', documentId, prompt, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       exportDocument: (documentId, format) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-export', documentId, format, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? CI — the read-only comment inbox.
+      refreshComments: () => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/commentInbox', version: 'v1', data: { op: 'comments-refresh', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      markCommentsRead: (commentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/commentInbox', version: 'v1', data: { op: 'comments-mark-read', ...(commentId ? { commentId } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? SK1 — the universal AI-skills layer (save/toggle/delete/reset via the skillsControl sync route).
       aiSkills: snap.aiSkills,
       saveAiSkill: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

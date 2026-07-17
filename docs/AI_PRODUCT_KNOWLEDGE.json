@@ -1,6 +1,6 @@
 {
-  "hash": "f697a01ca8031992",
-  "chunkCount": 207,
+  "hash": "73c28697a9cfc07a",
+  "chunkCount": 208,
   "chunks": [
     {
       "id": "cap-001",
@@ -1243,6 +1243,12 @@
       "kind": "decision",
       "title": "0272-inspiratie-import-vision-extractie-naar-theme-voorstel",
       "text": "ADR 0272: 0272-inspiratie-import-vision-extractie-naar-theme-voorstel. De gebruiker wil UI's \"vergelijken met online stijlen\": een site die je mooi vindt importeren als stijlrichting, en je eigen pagina naast een inspiratie leggen. Er bestond al: een 30-token-theme-systeem met `parseTheme` (vult partieel → compleet), de multimodale `image-critique`-feature (Gemini vision), een chromium-container (export-fase), en de UI-review-inbox met `ui-review-to-ticket`. Decision: (1) **URL-capture** hergebruikt het chromium-export-image als wegwerp-screenshotter (genetwerkt, `--screenshot`, URL ge-percent-encoded tegen Windows-arg-quoting). (2) **Extractie** loopt via de bestáánde `image-critique`-feature (vision, provider-pluggable) met een theme-extractie-prompt; `parseTheme` maakt het resultaat altijd compleet. Het resultaat wordt een **inactief** `DesignArtifact` (source `'ai'`) — activeren blijft de expliciete gebruikersstap (setActive), zodat een import nooit stilletjes de huisstijl wijzigt. (3) **Vergelijken** stuurt beide screenshots in één vision-call en slaat de markdown-analyse op als `UiReviewRequest` (page `inspiration-compare`) — de bestaande inbox + `ui-review-to-ticket` maken er zonder nieuw pad een redesign-ticket van. (4) **Stijl-galerij**: zes curated presets (Brutalist/Glassmorphism/Minimal/Editorial/Playful/Corporate) als partiële token-sets door `parseTheme`, lazy+idempotent per workspace geseed (source `'seed'`). Bonus-securityfix: acht modellen (DesignArtifact, St"
+    },
+    {
+      "id": "adr-0273",
+      "kind": "decision",
+      "title": "0273-comment-inbox-read-only-youtube-tiktok",
+      "text": "ADR 0273: 0273-comment-inbox-read-only-youtube-tiktok. De gebruiker wil reacties op gepubliceerde posts kunnen ZIEN, per platform, phone-first — maar in het interview van 2026-07-17 expliciet gekozen: **alleen lezen, nog geen reply-opties** (geen AI-suggesties, geen autopilot-replies). Er bestond al: PublishJob met `externalId` (post-id), de OAuth-connectielaag met token-refresh, en het cron/metrics-ingest-patroon. Decision: Een `SocialComment`-cache (upsert op de platform-comment-id) gevoed door een refresh (cron `comments-ingest` elke WS_COMMENTS_INTERVAL_MIN + on-demand `comments-refresh`-op), per gekoppelde connectie over de done-posts. **Geen reply-surface** — het model heeft geen reply-veld, er is geen reply-op. YouTube's `commentThreads.list` zit achter de bredere `youtube.force-ssl`-scope: nieuwe connecties vragen die scope erbij, en de granted scope wordt in `StoredTokens.scope` bewaard zodat `connectionSupportsComments` OUDE upload-only-connecties detecteert → de inbox toont een eenmalige \"opnieuw koppelen\"-hint (nooit gefabriceerde rijen). TikTok's comment-list is voor de meeste apps partner-gated: de fetch is eerlijk gebouwd, een weigering wordt een per-platform 'unavailable'-note. Pure request-builders/parsers zijn exporteerbaar; de netwerkstap is injecteerbaar (fixtures in tests, nooit live). Mark-read (één/alle) via een op; de UI groepeert per kanaal, nieuwste eerst, met een ongelezen-badge."
     }
   ]
 }

@@ -2335,6 +2335,15 @@
       "compare": "Vergleichen",
       "done": "Fertig - siehe Theme-Bibliothek / Review-Inbox.",
       "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert und die URL erreichbar?"
+    },
+    "comments": {
+      "tab": "Kommentare",
+      "noChannel": "Kein Kanal",
+      "refresh": "Aktualisieren",
+      "markAllRead": "Alle gelesen",
+      "readOnlyNote": "Nur lesen: Antworten erfolgt auf der Plattform selbst.",
+      "empty": "Noch keine Kommentare",
+      "emptySub": "Kommentare zu deinen veröffentlichten Posts erscheinen hier. YouTube braucht die neue Lese-Berechtigung — verbinde das Konto einmal neu, falls dies leer bleibt."
     }
   }
 }

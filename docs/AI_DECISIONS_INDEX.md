@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (190)
+## Decisions (191)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -203,6 +203,7 @@
 | 0270 | universeel skill model met apply points | 🟢 accepted | ai, skills, architecture, documents-and-skills | — | `docs/decisions/0270-universeel-skill-model-met-apply-points.md` |
 | 0271 | documents module markdown bron plus render targets | 🟢 accepted | documents, architecture, documents-and-skills | — | `docs/decisions/0271-documents-module-markdown-bron-plus-render-targets.md` |
 | 0272 | inspiratie import vision extractie naar theme voorstel | 🟢 accepted | designer, inspiration, vision, documents-and-skills | — | `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md` |
+| 0273 | comment inbox read only youtube tiktok | 🟢 accepted | content, comments, oauth, documents-and-skills | — | `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md` |
 
 ## Summaries
 
@@ -1734,6 +1735,16 @@ Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); 
 
 → `docs/decisions/0272-inspiratie-import-vision-extractie-naar-theme-voorstel.md`
 
+### 0273 — comment inbox read only youtube tiktok
+
+**0273** · accepted · tags: content, comments, oauth, documents-and-skills · 2026-07-17
+
+Een `SocialComment`-cache (upsert op de platform-comment-id) gevoed door een refresh (cron `comments-ingest` elke WS_COMMENTS_INTERVAL_MIN + on-demand `comments-refresh`-op), per gekoppelde connectie over de done-posts. **Geen reply-surface** — het model heeft geen reply-veld, er is geen reply-op. YouTube's `commentThreads.list` zit achter de bredere `youtube.force-ssl`-scope: nieuwe connecties vragen die scope erbij, en de granted scope wordt in `StoredTokens.scope` bewaard zodat `connectionSupportsComments` OUDE upload-only-connecties detecteert → de inbox toont een eenmalige "opnieuw koppelen"-hint (nooit gefabriceerde rijen). TikTok's comment-list is voor de meeste apps partner-gated: de fetch is eerlijk gebouwd, een weigering wordt een per-platform 'unavailable'-note. Pure request-builders/parsers zijn exporteerbaar; de netwerkstap is injecteerbaar (fixtures in tests, nooit live). Mark-read (één/alle) via een op; de UI groepeert per kanaal, nieuwste eerst, met een ongelezen-badge.
+
+**Governs** (`//? @adr 0273`): `server/content/commentInbox.ts`
+
+→ `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1744,6 +1755,7 @@ Eén `Document`-model met **markdown als enige bron van waarheid** (`content`); 
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `scripts/testWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
+| `server/content/commentInbox.ts` | 0273 | comment inbox read only youtube tiktok |
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |

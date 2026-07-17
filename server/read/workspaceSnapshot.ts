@@ -247,7 +247,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [] },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -415,6 +415,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       prisma.referenceExample.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.shortLink.findMany({ where: { workspaceId: contentWsId }, orderBy: { clicks: 'desc' } }),
     ]);
+    //? CI — the read-only comment inbox (bounded newest-first cache; explicit workspaceId scoping).
+    const socialCommentRows = await prisma.socialComment.findMany({ where: { workspaceId: contentWsId }, orderBy: { publishedAt: 'desc' }, take: 100 });
+    const unreadComments = await prisma.socialComment.count({ where: { workspaceId: contentWsId, read: false } });
     //? Join each asset to its MediaJob for the live queue/timer fields (queuePosition, startedAt).
     const jobById = new Map(mediaJobRows.map((j) => [j.id, j]));
     //? FIX-C/#140: which publish platforms have a stored OAuth connection (EnvVar `__publish_<platform>` or
@@ -494,6 +497,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       shortLinks: shortLinkRows.map((l) => ({ id: l.id, contentProjectId: l.contentProjectId, slug: l.slug, targetUrl: l.targetUrl, variant: l.variant, clicks: l.clicks })),
       //? P3 — per-feature media model overrides (from the __media_model_<feature> EnvVars).
       mediaModels: envRows.filter((e) => e.key.startsWith('__media_model_')).map((e) => ({ feature: e.key.slice('__media_model_'.length), model: e.value })),
+      //? CI — the read-only comment inbox.
+      comments: socialCommentRows.map((c) => ({ id: c.id, platform: c.platform, channelId: c.channelId ?? null, contentProjectId: c.contentProjectId ?? null, author: c.author, text: c.text, publishedAt: c.publishedAt.getTime(), read: c.read })),
+      unreadComments,
     };
 
     const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));

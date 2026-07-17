@@ -115,6 +115,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/bulkSprint/v1` | — | — | — |
 | `workspaces/bulkStatus/v1` | — | — | — |
 | `workspaces/changeRole/v1` | — | — | — |
+| `workspaces/commentInbox/v1` | — | — | — |
 | `workspaces/contentAssetDelta/v1` | — | — | — |
 | `workspaces/contentControl/v1` | — | — | — |
 | `workspaces/contentDirty/v1` | — | — | — |

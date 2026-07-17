@@ -248,6 +248,9 @@ export interface WorkspacesCtx {
   discardDocumentDraft: (documentId: string) => void;
   genDocumentImage: (documentId: string, prompt: string) => void;
   exportDocument: (documentId: string, format: string) => void;
+  //? CI — the read-only comment inbox (refresh + mark read; the list lives on content.comments).
+  refreshComments: () => void;
+  markCommentsRead: (commentId?: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).

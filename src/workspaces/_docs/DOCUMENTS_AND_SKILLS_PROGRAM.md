@@ -125,9 +125,9 @@ SK eerst omdat DOC/INS/VO er skills uit injecteren; DOC vóór EXP omdat export 
 | INS2 | ✅ | 0272 | designerInspiration 23/23 |
 | INS3 | ✅ | 0272 | designerInspiration 23/23 |
 | INS4 | ✅ | 0272 | designerInspiration 23/23 |
-| CI1 | ⬜ | | |
-| CI2 | ⬜ | | |
-| CI3 | ⬜ | | |
+| CI1 | ✅ | 0273 | commentInbox 21/21 |
+| CI2 | ✅ | 0273 | commentInbox 21/21 |
+| CI3 | ✅ | 0273 | commentInbox 21/21 |
 | EV1 | ⬜ | | |
 | EV2 | ⬜ | | |
 | EV3 | ⬜ | | |

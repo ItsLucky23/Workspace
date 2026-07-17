@@ -379,6 +379,22 @@ export interface ContentSnapshot {
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
   mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
   shortLinks: ShortLinkSummary[];       // H2/H3 (ads): trackable links + clicks (the A/B comparison data)
+  //? CI — the read-only comment inbox (cached comments on published posts) + platform notes
+  //? ('comments.youtubeReconnect' → the one-time re-consent hint).
+  comments: SocialCommentSummary[];
+  unreadComments: number;
+}
+
+//? CI (DOCUMENTS_AND_SKILLS) — one cached comment on a published post (read-only; no reply surface).
+export interface SocialCommentSummary {
+  id: string;
+  platform: string;
+  channelId: string | null;
+  contentProjectId: string | null;
+  author: string;
+  text: string;
+  publishedAt: number;   // epoch ms
+  read: boolean;
 }
 
 //? H3 (ads) — a trackable short link surfaced to the UI. `clicks` is the conversion signal; `variant` groups

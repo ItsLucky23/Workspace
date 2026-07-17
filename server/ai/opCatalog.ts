@@ -139,6 +139,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   //? DOC — the Documents module (draft-based; flip to enabled once chat-proposing documents proves useful).
   'document-create': LATER, 'document-edit': LATER, 'document-delete': LATER_D, 'document-ai': LATER,
   'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER, 'document-export': LATER,
+  //? CI — the read-only comment inbox.
+  'comments-refresh': LATER, 'comments-mark-read': LATER,
   'save-stage-config': LATER,
   'stage-create': {
     mode: 'enabled',
