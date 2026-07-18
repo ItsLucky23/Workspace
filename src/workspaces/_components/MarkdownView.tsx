@@ -1,8 +1,37 @@
 //? DOC2 (DOCUMENTS_AND_SKILLS) — minimal, SAFE markdown renderer for document previews: headings,
-//? bullets, numbered lists, tables, paragraphs. No HTML injection (no dangerouslySetInnerHTML) —
-//? extends the studio StrategyPreview approach with table support (tables also drive the xlsx export).
+//? bullets, numbered lists, tables, code blocks, mermaid diagrams (DESIGN_DOCS_PROGRAM 2.2), paragraphs.
+//? No raw HTML injection except mermaid's own strict-sanitized SVG output — extends the studio
+//? StrategyPreview approach with table + fenced-code + diagram support.
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+
+import { tryCatch } from '@luckystack/core/client';
+
+//? Lazy-load mermaid once (a ~3.5MB module) — kept out of the main bundle; only paid when a doc has a diagram.
+let mermaidPromise: Promise<typeof import('mermaid')> | null = null;
+function loadMermaid(): Promise<typeof import('mermaid')> { mermaidPromise ??= import('mermaid'); return mermaidPromise; }
+let mermaidSeq = 0;
+
+//? DESIGN_DOCS_PROGRAM 2.2 — render one ```mermaid block to an SVG (strict security level → mermaid
+//? sanitizes its own output). Falls back to the raw source in a code block if the diagram can't parse.
+function Mermaid({ code }: { code: string }): ReactNode {
+  const ref = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void loadMermaid().then(async (mod) => {
+      const mermaid = mod.default;
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
+      mermaidSeq += 1;
+      const [err, res] = await tryCatch(() => mermaid.render(`mmd-${String(mermaidSeq)}`, code));
+      if (err || !res) { if (alive) setFailed(true); return; }
+      if (alive && ref.current) ref.current.innerHTML = res.svg; // mermaid strict-mode sanitized SVG
+    }).catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [code]);
+  if (failed) return <pre className="my-2 p-3 rounded-lg bg-container2 text-xs text-common overflow-x-auto">{code}</pre>;
+  return <div ref={ref} className="my-2 overflow-x-auto flex justify-center" />;
+}
 
 //? strip **bold**/`code`/_italic_ markers for a plain readable render.
 function stripInline(s: string): string {
@@ -26,6 +55,20 @@ export default function MarkdownView({ markdown, className = '' }: { markdown: s
   let i = 0;
   while (i < lines.length) {
     const line = lines[i] ?? '';
+    //? Fenced block: ```mermaid → a rendered diagram; any other ``` → a code block. Consumed verbatim.
+    const fence = /^```+\s*([\w-]*)\s*$/.exec(line.trim());
+    if (fence) {
+      const lang = fence[1] ?? '';
+      const body: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && !/^```+\s*$/.test((lines[j] ?? '').trim())) { body.push(lines[j] ?? ''); j += 1; }
+      const code = body.join('\n');
+      out.push(lang === 'mermaid'
+        ? <Mermaid key={i} code={code} />
+        : <pre key={i} className="my-2 p-3 rounded-lg bg-container2 text-xs text-common overflow-x-auto">{code}</pre>);
+      i = j + 1;
+      continue;
+    }
     //? Table block: header row + divider + body rows.
     if (isTableRow(line) && isTableDivider(lines[i + 1] ?? '')) {
       const header = splitRow(line);
