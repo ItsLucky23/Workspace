@@ -390,13 +390,19 @@ export function TabBar() {
 //? Opened via menuHandler (outside the WorkspacesProvider tree), so it can't use
 //? the context — it receives the create callback as a prop. Kept intentionally
 //? simple: one project = one workspace, add the team afterwards.
-export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[]) => void }) {
+//? G5 — the pipeline tiers offered at creation. `professional` stays the default so nothing changes for
+//? someone who does not care; the lighter tiers exist because a 7-stage pipeline is ceremony a solo project
+//? never asked for.
+const PIPELINE_TIERS = ['simple', 'advanced', 'professional'] as const;
+
+export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[], presetKey?: string) => void }) {
   const translate = useTranslator();
   const [name, setName] = useState('');
+  const [tier, setTier] = useState<string>('professional');
   //? Default all modules on (full experience); deselect the lanes you don't want.
   const [modules, setModules] = useState<WorkspaceModuleId[]>(WORKSPACE_MODULES.map((m) => m.id));
   const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
-  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; onCreate(n, sectionsForModules(modules)); void menuHandler.close(); };
+  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; onCreate(n, sectionsForModules(modules), tier); void menuHandler.close(); };
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createWorkspace' })}</div>
@@ -408,6 +414,20 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
       />
       <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
       <ModulePicker selected={modules} onToggle={toggleModule} />
+      {/* G5 — how much pipeline to start with. Only meaningful with the development module on. */}
+      {modules.includes('development') && (
+        <>
+          <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.tierHeading' })}</div>
+          <div className="flex flex-wrap gap-2">
+            {PIPELINE_TIERS.map((t) => (
+              <button key={t} type="button" onClick={() => { setTier(t); }}
+                className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${tier === t ? 'border-primary-border bg-primary/10 text-primary' : 'border-container1-border bg-container2/50 text-common hover:bg-container2'}`}>
+                {translate({ key: `workspaces.modules.tier_${t}` })}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

@@ -84,6 +84,11 @@ const skill = (op: 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-reset') => (p
 };
 
 export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispatchExtras) => void> = {
+  //? G3 — publish a generated Studio page (the artifact id comes from the studio list).
+  'studio-publish-site': (p, x) => {
+    const artifactId = str(p, 'artifactId'); if (!artifactId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'studio-publish-site', artifactId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? F1 — compose a thumbnail for a piece (headline + optional AI background).
   'content-gen-thumbnail': (p, x) => {
     const pieceId = str(p, 'pieceId'); const headline = str(p, 'headline');

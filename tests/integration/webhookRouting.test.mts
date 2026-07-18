@@ -81,11 +81,23 @@ const [runError] = await tryCatch(async () => {
     const soloProject = await prisma.project.findFirst({ where: { workspaceId: soloWorkspaceId }, select: { id: true } });
     assert(soloProject !== null, 'the solo workspace has a project');
     if (!soloProject) return;
-    await prisma.project.update({ where: { id: soloProject.id }, data: { gitlabPath: 'acme/solo' } });
+    await prisma.project.update({
+      where: { id: soloProject.id },
+      data: { gitlabPath: 'acme/legacy', gitUrl: 'https://gitlab.example/acme/stale.git' },
+    });
+    await prisma.forgeConnection.create({
+      data: {
+        workspaceId: soloWorkspaceId,
+        projectId: soloProject.id,
+        mode: 'gitlab',
+        repoPath: 'acme/canonical',
+        status: 'connected',
+      },
+    });
     const mismatch = parseWebhookEvent({
       object_kind: 'issue',
-      project: { path_with_namespace: 'acme/foreign' },
-      object_attributes: { iid: 45, action: 'open', title: 'Foreign', state: 'opened' },
+      project: { path_with_namespace: 'acme/stale' },
+      object_attributes: { iid: 45, action: 'open', title: 'Stale URL event', state: 'opened' },
     });
     const result = await enqueueInternalAction({
       workspaceId: soloWorkspaceId,
@@ -95,8 +107,8 @@ const [runError] = await tryCatch(async () => {
       userId: 'webhook-routing-test',
       clientRequestId: `wh-solo-mismatch-${String(stamp)}`,
     });
-    eq(forgeTouchedKeys(result.result), [], 'even a single-project workspace skips an explicit repo mismatch');
-    eq(await prisma.ticket.count({ where: { workspaceId: soloWorkspaceId, key: 'DEV-45' } }), 0, 'repo mismatch cannot fall back to the only project');
+    eq(forgeTouchedKeys(result.result), [], 'an explicit ForgeConnection repoPath wins over a stale matching gitUrl');
+    eq(await prisma.ticket.count({ where: { workspaceId: soloWorkspaceId, key: 'DEV-45' } }), 0, 'gitUrl A / connection B / event A fails closed instead of relabelling the event');
   });
   if (soloError) assert(false, `unexpected solo-workspace error: ${soloError.message}`);
   await cleanupWorkspace(prisma, soloWorkspaceId, [owner.id]);

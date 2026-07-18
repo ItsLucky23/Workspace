@@ -3,7 +3,7 @@
 //? Conductor writer. The route itself performs no authoritative DB write.
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { IncomingHttpHeaders, IncomingMessage } from 'node:http';
+import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http';
 
 import { getPrismaClient, tryCatch, tryCatchSync } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
@@ -16,13 +16,8 @@ import { forgeTouchedKeys } from './gitlabSync';
 import { parseWebhookEvent } from './webhookIngest';
 
 export const MAX_FORGE_WEBHOOK_BYTES = 1_000_000;
+export const FORGE_WEBHOOK_BODY_TIMEOUT_MS = 10_000;
 const WEBHOOK_PREFIX = '/webhooks/forge/';
-
-interface Res {
-  statusCode: number;
-  setHeader: (key: string, value: string) => void;
-  end: (body?: string) => void;
-}
 
 interface ProcessWebhookInput {
   workspaceId: string;
@@ -39,10 +34,20 @@ export interface ForgeWebhookDependencies {
 
 interface WebhookOutcome { code: number; message: string }
 
-function send(res: Res, code: number, message: string): void {
+function send(res: ServerResponse, code: number, message: string): void {
   res.statusCode = code;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify({ status: code < 300 ? 'ok' : 'error', message }));
+}
+
+function sendAndTerminate(req: IncomingMessage, res: ServerResponse, code: number, message: string): void {
+  req.pause();
+  res.shouldKeepAlive = false;
+  res.setHeader('Connection', 'close');
+  res.once('finish', () => {
+    if (!req.destroyed) req.destroy();
+  });
+  send(res, code, message);
 }
 
 function header(headers: IncomingHttpHeaders, key: string): string {
@@ -72,7 +77,16 @@ export function forgeEventRequestId(
   if (gitlabEventUuid.length > 0) {
     return `forge-event:gitlab:${createHash('sha256').update(gitlabEventUuid).digest('hex')}`;
   }
-  const digest = createHash('sha256').update(workspaceId).update('\0').update(rawBody).digest('hex');
+  const githubEvent = header(headers, 'x-github-event').trim().toLowerCase().slice(0, 256);
+  const gitlabEvent = header(headers, 'x-gitlab-event').trim().toLowerCase().slice(0, 256);
+  const provider = githubEvent.length > 0 ? 'github' : 'gitlab';
+  const eventType = githubEvent || gitlabEvent || 'unknown';
+  const digest = createHash('sha256')
+    .update(workspaceId).update('\0')
+    .update(provider).update('\0')
+    .update(eventType).update('\0')
+    .update(rawBody)
+    .digest('hex');
   return `forge-event:body:${digest}`;
 }
 
@@ -82,37 +96,72 @@ function webhookChunkBytes(chunk: unknown): Uint8Array | null {
   return chunk instanceof Uint8Array ? chunk : null;
 }
 
-async function readBody(req: IncomingMessage): Promise<{ raw: string; tooLarge: boolean; failed: boolean }> {
+type ForgeWebhookBodyResult =
+  | { status: 'ok'; raw: string }
+  | { status: 'too-large' }
+  | { status: 'failed' }
+  | { status: 'timeout' };
+
+type ForgeWebhookContentLength =
+  | { status: 'absent' | 'valid' }
+  | { status: 'invalid' | 'oversize' };
+
+function forgeWebhookContentLength(headers: IncomingHttpHeaders): ForgeWebhookContentLength {
+  const raw = header(headers, 'content-length').trim();
+  if (raw.length === 0) return { status: 'absent' };
+  if (!/^\d+$/.test(raw)) return { status: 'invalid' };
+  const bytes = Number(raw);
+  if (!Number.isSafeInteger(bytes) || bytes < 0) return { status: 'invalid' };
+  return bytes > MAX_FORGE_WEBHOOK_BYTES ? { status: 'oversize' } : { status: 'valid' };
+}
+
+async function readBody(req: IncomingMessage, timeoutMs: number): Promise<ForgeWebhookBodyResult> {
   return new Promise((resolve) => {
     const chunks: Uint8Array[] = [];
     let size = 0;
-    let tooLarge = false;
     let settled = false;
-    const finish = (result: { raw: string; tooLarge: boolean; failed: boolean }): void => {
+    const timer = setTimeout(() => {
+      req.pause();
+      chunks.length = 0;
+      finish({ status: 'timeout' });
+    }, timeoutMs);
+
+    function cleanup(): void {
+      clearTimeout(timer);
+      req.removeListener('data', onData);
+      req.removeListener('end', onEnd);
+      req.removeListener('error', onFailure);
+      req.removeListener('aborted', onFailure);
+    }
+    function finish(result: ForgeWebhookBodyResult): void {
       if (settled) return;
       settled = true;
+      cleanup();
       resolve(result);
-    };
-    req.on('data', (chunk: unknown) => {
+    }
+    function onData(chunk: unknown): void {
       const bytes = webhookChunkBytes(chunk);
       if (!bytes) return;
       size += bytes.byteLength;
       if (size > MAX_FORGE_WEBHOOK_BYTES) {
-        tooLarge = true;
+        req.pause();
+        chunks.length = 0;
+        finish({ status: 'too-large' });
         return;
       }
       chunks.push(bytes);
-    });
-    req.on('end', () => {
-      finish({
-        raw: tooLarge ? '' : Buffer.concat(chunks).toString('utf8'),
-        tooLarge,
-        failed: false,
-      });
-    });
-    req.on('error', () => {
-      finish({ raw: '', tooLarge: false, failed: true });
-    });
+    }
+    function onEnd(): void {
+      finish({ status: 'ok', raw: Buffer.concat(chunks).toString('utf8') });
+    }
+    function onFailure(): void {
+      finish({ status: 'failed' });
+    }
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onFailure);
+    req.on('aborted', onFailure);
   });
 }
 
@@ -175,32 +224,64 @@ export async function processForgeWebhook(
   return { code: 200, message: keys.length > 0 ? `ingested ${keys.join(',')}` : 'no-op' };
 }
 
+export interface ForgeWebhookRequestOptions {
+  dependencies?: ForgeWebhookDependencies;
+  bodyTimeoutMs?: number;
+}
+
+export async function handleForgeWebhookRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  options: ForgeWebhookRequestOptions = {},
+): Promise<boolean> {
+  const rawUrl = (req.url ?? '').split('?')[0] ?? '';
+  if (!rawUrl.startsWith(WEBHOOK_PREFIX)) return false;
+  const workspaceId = rawUrl.slice(WEBHOOK_PREFIX.length).replace(/\/+$/, '');
+  if ((req.method ?? '').toUpperCase() !== 'POST') {
+    sendAndTerminate(req, res, 405, 'method not allowed');
+    return true;
+  }
+  if (workspaceId.length === 0) {
+    sendAndTerminate(req, res, 400, 'missing workspace');
+    return true;
+  }
+
+  const contentLength = forgeWebhookContentLength(req.headers);
+  if (contentLength.status === 'invalid') {
+    sendAndTerminate(req, res, 400, 'bad content length');
+    return true;
+  }
+  if (contentLength.status === 'oversize') {
+    sendAndTerminate(req, res, 413, 'body too large');
+    return true;
+  }
+
+  const configuredTimeout = options.bodyTimeoutMs ?? FORGE_WEBHOOK_BODY_TIMEOUT_MS;
+  const bodyTimeoutMs = Number.isSafeInteger(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : FORGE_WEBHOOK_BODY_TIMEOUT_MS;
+  const body = await readBody(req, bodyTimeoutMs);
+  if (body.status === 'too-large') {
+    sendAndTerminate(req, res, 413, 'body too large');
+    return true;
+  }
+  if (body.status === 'timeout') {
+    sendAndTerminate(req, res, 408, 'body timeout');
+    return true;
+  }
+  if (body.status === 'failed') {
+    sendAndTerminate(req, res, 400, 'bad body');
+    return true;
+  }
+  const outcome = await processForgeWebhook(
+    { workspaceId, headers: req.headers, rawBody: body.raw },
+    options.dependencies,
+  );
+  send(res, outcome.code, outcome.message);
+  return true;
+}
+
 export function registerForgeWebhook(): void {
   registerOriginExemptPath({ pathPrefix: WEBHOOK_PREFIX });
-  registerCustomRoute(async (req, res) => {
-    const rawUrl = (req.url ?? '').split('?')[0] ?? '';
-    if (!rawUrl.startsWith(WEBHOOK_PREFIX)) return false;
-    const workspaceId = rawUrl.slice(WEBHOOK_PREFIX.length).replace(/\/+$/, '');
-    if ((req.method ?? '').toUpperCase() !== 'POST') {
-      send(res, 405, 'method not allowed');
-      return true;
-    }
-    if (workspaceId.length === 0) {
-      send(res, 400, 'missing workspace');
-      return true;
-    }
-
-    const body = await readBody(req);
-    if (body.tooLarge) {
-      send(res, 413, 'body too large');
-      return true;
-    }
-    if (body.failed) {
-      send(res, 400, 'bad body');
-      return true;
-    }
-    const outcome = await processForgeWebhook({ workspaceId, headers: req.headers, rawBody: body.raw });
-    send(res, outcome.code, outcome.message);
-    return true;
-  }, { phase: 'pre-params' });
+  registerCustomRoute((req, res) => handleForgeWebhookRequest(req, res), { phase: 'pre-params' });
 }

@@ -113,11 +113,6 @@ export function parseWebhookEvent(body: unknown, eventHeader?: string): ForgeIss
   }, project?.path_with_namespace);
 }
 
-function repoMatchesGitUrl(gitUrl: string | null, repo: string): boolean {
-  const normalized = normalizeForgeRepo(gitUrl ?? '');
-  return normalized.endsWith(`/${repo}`) || normalized.endsWith(`:${repo}`);
-}
-
 async function resolveEventProject(
   prisma: PrismaClient,
   workspaceId: string,
@@ -127,7 +122,7 @@ async function resolveEventProject(
   const [projects, connections, workspace] = await Promise.all([
     prisma.project.findMany({
       where: { workspaceId },
-      select: { id: true, gitlabPath: true, gitUrl: true },
+      select: { id: true, gitlabPath: true },
     }),
     prisma.forgeConnection.findMany({
       where: { workspaceId },
@@ -143,13 +138,11 @@ async function resolveEventProject(
     const workspaceMode = forgeMode(workspace.forgeType);
     const mode = connection ? forgeMode(connection.mode) : workspaceMode;
     if (mode !== event.provider) continue;
+    //? The configured forge identity is canonical. In particular, an explicit
+    //? ForgeConnection for repo B must never be relabelled as repo A by a stale Project.gitUrl.
     const configuredRepo = normalizeForgeRepo(connection?.repoPath ?? project.gitlabPath);
-    const matchesConfigured = configuredRepo.length > 0 && configuredRepo === event.repo;
-    const matchesUrl = repoMatchesGitUrl(project.gitUrl, event.repo);
-    if (matchesConfigured || matchesUrl) {
-      //? A gitUrl-only match is routable, but apply still requires a configured forge repo.
-      //? Returning the configured identity makes that later check fail closed when it is blank.
-      matches.push({ id: project.id, repo: configuredRepo });
+    if (configuredRepo.length > 0 && configuredRepo === event.repo) {
+      matches.push({ id: project.id, repo: event.repo });
     }
   }
   return matches.length === 1 ? matches[0] ?? null : null;
@@ -186,13 +179,16 @@ export async function applyForgeEvent(
   if (!project || project.repo.length === 0) {
     return { ok: true, synced: 0, keys: [], skipped: 1, reason: 'forge.repoMismatch' };
   }
+  let state = event.state;
+  if (event.action === 'close') state = 'closed';
+  else if (event.action === 'open' || event.action === 'reopen') state = 'open';
   const snapshot = buildForgeSnapshot(project.id, event.provider, project.repo, [{
     iid: event.iid,
     title: event.title,
     description: event.description,
     labels: event.labels,
     web_url: event.url,
-    state: event.state,
+    state,
   }]);
   return applyForgeSnapshot(prisma, workspaceId, project.id, snapshot);
 }

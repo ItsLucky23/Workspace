@@ -855,7 +855,10 @@
           "chat": "Chat",
           "custom": "Eigene Aufgaben"
         }
-      }
+      },
+      "cloneWorkspace": "Workspace duplizieren",
+      "cloneWorkspaceDesc": "Starte einen neuen Workspace mit dieser Einrichtung: Pipeline, Skills, Stile, Kanäle und Trigger. Tickets, Inhalte, Zugangsdaten und Mitglieder werden nicht kopiert.",
+      "clone": "Duplizieren"
     },
     "services": {
       "title": "Services",
@@ -1006,7 +1009,11 @@
       "designLabel": "Design",
       "designDesc": "UI- & Theme-Designer mit einem KI-Interviewer. Kein Code nötig.",
       "documentsLabel": "Dokumente",
-      "documentsDesc": "KI-verfasste Dokumente: Specs, Pläne, Briefings und Sheets mit PDF/Word/Excel-Export."
+      "documentsDesc": "KI-verfasste Dokumente: Specs, Pläne, Briefings und Sheets mit PDF/Word/Excel-Export.",
+      "tierHeading": "Wie viel Pipeline?",
+      "tier_simple": "Einfach · 3 Phasen",
+      "tier_advanced": "Erweitert · 5 Phasen",
+      "tier_professional": "Professionell · 7 Phasen"
     },
     "sections": {
       "intro": "Einzelne Bereiche ein- oder ausschalten. Module sind nur Vorlagen — frei kombinierbar (z. B. den Interviewer zu einem Entwicklungs-Workspace hinzufügen).",

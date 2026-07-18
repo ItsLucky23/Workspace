@@ -1,7 +1,7 @@
 //? B1/SW-01 forge writer acceptance: webhook/snapshot writes enter only through
 //? InternalOp/Public ControlOp apply, with exact project scope and stable dedup.
 
-import { tryCatch } from '@luckystack/core';
+import { redis, tryCatch } from '@luckystack/core';
 
 import type { ForgeWebhookDependencies } from '../../server/git/webhookRoute';
 import type { ForgeResyncDependencies } from '../../src/workspaces/_sync/projectAdmin_server_v1';
@@ -11,6 +11,7 @@ const prisma = await db();
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 const { encryptSecret } = await import('../../server/crypto/secretBox');
 const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const { claimControlAction, controlActionOutcomeKey } = await import('../../server/orchestrator/cluster');
 const { currentWriterScope } = await import('../../server/orchestrator/writerContext');
 const {
   applyForgeSnapshot,
@@ -113,8 +114,102 @@ const [runError] = await tryCatch(async () => {
     forgeEventRequestId(workspaceId, firstBody, {}) !== forgeEventRequestId(workspaceId, duplicateBody, {}),
     'headerless webhook idempotency falls back to the workspace+raw-body digest',
   );
+  assert(
+    forgeEventRequestId(workspaceId, firstBody, { 'x-github-event': 'issues' })
+      !== forgeEventRequestId(workspaceId, firstBody, { 'x-github-event': 'push' }),
+    'fallback idempotency includes the GitHub event header when the body is identical',
+  );
+  assert(
+    forgeEventRequestId(workspaceId, firstBody, { 'x-gitlab-event': 'Issue Hook' })
+      !== forgeEventRequestId(workspaceId, firstBody, { 'x-gitlab-event': 'Push Hook' }),
+    'fallback idempotency includes the GitLab event type when the body is identical',
+  );
+
+  //? Crash/retry replay: the authoritative write succeeds, but the first broadcast fails.
+  //? Retrying the same delivery must recover the original touched keys from Redis.
+  const replayBody = JSON.stringify({
+    object_kind: 'issue',
+    project: { path_with_namespace: 'acme/b' },
+    object_attributes: { iid: 68, action: 'open', title: 'Replay broadcast', state: 'opened', url: 'https://gitlab.example/acme/b/-/issues/68' },
+  });
+  const replayHeaders = {
+    'x-gitlab-token': 'workspace-webhook-secret',
+    'x-gitlab-event-uuid': `replay-${String(stamp)}`,
+  };
+  let replayBroadcastAttempts = 0;
+  const replayedBroadcasts: string[][] = [];
+  const replayDependencies: ForgeWebhookDependencies = {
+    prisma,
+    enqueue: enqueueInternalAction,
+    broadcast: async (_workspaceId, keys) => {
+      replayBroadcastAttempts += 1;
+      if (replayBroadcastAttempts === 1) throw new Error('injected crash before broadcast');
+      replayedBroadcasts.push(keys);
+    },
+    now: () => stamp + 1000,
+  };
+  await processForgeWebhook({ workspaceId, headers: replayHeaders, rawBody: replayBody }, replayDependencies);
+  await processForgeWebhook({ workspaceId, headers: replayHeaders, rawBody: replayBody }, replayDependencies);
+  eq(replayBroadcastAttempts, 2, 'retry attempts the broadcaster again after the first post-write failure');
+  eq(replayedBroadcasts, [['DEV-68']], 'retry broadcaster receives the same touched keys from the terminal replay');
+
   const deliverySignals = await prisma.workspaceSignal.findMany({ where: { workspaceId, kind: 'forge-event-apply' }, select: { payload: true } });
   eq(deliverySignals.filter(({ payload }) => JSON.stringify(payload).includes(deliveryRequestId)).length, 1, 'duplicate delivery appends one durable writer signal');
+
+  const closeAt = stamp + 5000;
+  const lifecycleDependencies: ForgeWebhookDependencies = {
+    prisma,
+    enqueue: enqueueInternalAction,
+    broadcast: async () => undefined,
+    now: () => closeAt,
+  };
+  const closed = await processForgeWebhook({
+    workspaceId,
+    headers: {
+      'x-gitlab-token': 'workspace-webhook-secret',
+      'x-gitlab-event-uuid': `close-${String(stamp)}`,
+    },
+    rawBody: JSON.stringify({
+      object_kind: 'issue',
+      project: { path_with_namespace: 'acme/b' },
+      object_attributes: { iid: 67, action: 'close', title: 'Closed metadata', description: 'close update', state: 'closed', url: 'https://gitlab.example/acme/b/-/issues/67' },
+      labels: [{ title: 'closed-label' }],
+    }),
+  }, lifecycleDependencies);
+  eq(closed.message, 'ingested DEV-67', 'close returns the affected ticket key');
+  const closedTicket = await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-67' }, select: { archived: true, title: true, description: true, labels: true } });
+  eq(closedTicket, { archived: true, title: 'Closed metadata', description: 'close update', labels: ['closed-label'] }, 'close archives the existing ticket and applies its metadata update');
+  eq((await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { webhookLastEventAt: true } }))?.webhookLastEventAt?.getTime(), closeAt, 'close still updates accepted-event metadata');
+
+  const reopened = await processForgeWebhook({
+    workspaceId,
+    headers: {
+      'x-gitlab-token': 'workspace-webhook-secret',
+      'x-gitlab-event-uuid': `reopen-${String(stamp)}`,
+    },
+    rawBody: JSON.stringify({
+      object_kind: 'issue',
+      project: { path_with_namespace: 'acme/b' },
+      object_attributes: { iid: 67, action: 'reopen', title: 'Reopened metadata', description: 'open again', state: 'opened', url: 'https://gitlab.example/acme/b/-/issues/67' },
+    }),
+  }, lifecycleDependencies);
+  eq(reopened.message, 'ingested DEV-67', 'reopen returns the affected ticket key');
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-67' }, select: { archived: true, title: true } })), { archived: false, title: 'Reopened metadata' }, 'reopen unarchives the existing ticket');
+
+  const unknownClosed = await processForgeWebhook({
+    workspaceId,
+    headers: {
+      'x-gitlab-token': 'workspace-webhook-secret',
+      'x-gitlab-event-uuid': `close-unknown-${String(stamp)}`,
+    },
+    rawBody: JSON.stringify({
+      object_kind: 'issue',
+      project: { path_with_namespace: 'acme/b' },
+      object_attributes: { iid: 69, action: 'close', title: 'Unknown closed', state: 'closed', url: 'https://gitlab.example/acme/b/-/issues/69' },
+    }),
+  }, lifecycleDependencies);
+  eq(unknownClosed.message, 'no-op', 'an unknown closed issue is acknowledged without an affected key');
+  eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-69' } }), 0, 'an unknown close never creates a ticket');
 
   const ignoredAt = stamp + 10_000;
   const ignoredDependencies: ForgeWebhookDependencies = {
@@ -180,6 +275,14 @@ const [runError] = await tryCatch(async () => {
     clientRequestId: snapshotRequestId,
   });
   eq(duplicateSnapshot.signalSeq, firstSnapshot.signalSeq, 'duplicate project+dataset digest replays one execution');
+  eq(forgeTouchedKeys(duplicateSnapshot.result), ['DEV-88'], 'terminal replay preserves only the touched-key result needed by broadcasters');
+  const storedSnapshotOutcome = await redis.get(controlActionOutcomeKey(`internal:${workspaceId}:${snapshotRequestId}`));
+  assert(storedSnapshotOutcome !== null && !storedSnapshotOutcome.includes('Snapshot issue'), 'Redis terminal outcome never persists the arbitrary forge result');
+  eq(
+    await claimControlAction(`internal:${workspaceId}:${snapshotRequestId}`),
+    { state: 'success', signalSeq: firstSnapshot.signalSeq, resultKeys: ['DEV-88'] },
+    'Redis terminal outcome exposes only signalSeq plus bounded resultKeys',
+  );
   eq(await prisma.workspaceSignal.count({ where: { workspaceId, kind: 'forge-snapshot-apply' } }), 1, 'duplicate dataset appends one durable signal');
   eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-88' } }), 1, 'duplicate dataset creates one ticket');
   const firstUpdatedAt = (await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-88' }, select: { updatedAt: true } }))?.updatedAt.getTime();
@@ -194,6 +297,55 @@ const [runError] = await tryCatch(async () => {
   });
   eq(forgeTouchedKeys(afterOutcomeTtl.result), [], 'same dataset in a later dedup window performs no ticket mutation');
   eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-88' }, select: { updatedAt: true } }))?.updatedAt.getTime(), firstUpdatedAt, 'same dataset in a later dedup window leaves updatedAt unchanged');
+
+  const initialOpenSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [
+    { iid: 92, title: 'Still open', state: 'opened', web_url: 'https://gitlab.example/acme/b/-/issues/92' },
+    { iid: 93, title: 'Will disappear', state: 'opened', web_url: 'https://gitlab.example/acme/b/-/issues/93' },
+  ], false, true);
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: initialOpenSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `full-initial-${String(stamp)}`,
+  });
+  const healedSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [
+    { iid: 92, title: 'Still open', state: 'opened', web_url: 'https://gitlab.example/acme/b/-/issues/92' },
+  ], false, true);
+  const healed = await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: healedSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `full-heal-${String(stamp)}`,
+  });
+  eq(forgeTouchedKeys(healed.result), ['DEV-93'], 'an uncapped full open snapshot includes the absent ticket key');
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-93' }, select: { archived: true } }))?.archived, true, 'a full open snapshot heals a missed close by archiving the absent forge ticket');
+
+  const cappedSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [], true, true);
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: cappedSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `capped-no-absence-${String(stamp)}`,
+  });
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-92' }, select: { archived: true } }))?.archived, false, 'a capped snapshot never infers absence');
+
+  const emptyFullSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [], false, true);
+  const emptyFull = await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: emptyFullSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `full-empty-${String(stamp)}`,
+  });
+  eq(forgeTouchedKeys(emptyFull.result), ['DEV-92'], 'a later complete snapshot reports the final missed-close heal key');
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-92' }, select: { archived: true } }))?.archived, true, 'an uncapped empty open snapshot archives the remaining forge-linked ticket');
 
   const signalText = JSON.stringify(await prisma.workspaceSignal.findMany({
     where: { workspaceId, kind: { in: ['forge-event-apply', 'forge-snapshot-apply'] } },

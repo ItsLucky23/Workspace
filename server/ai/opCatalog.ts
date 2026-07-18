@@ -71,6 +71,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'sprint-edit': LATER,
   // ---- members / RBAC / workspace lifecycle
   'create-workspace': EXCLUDED, // cross-workspace plumbing
+  //? G2 — cloning creates a SECOND workspace; the Assistant is scoped to the current one (invariant #4),
+  //? so this stays a deliberate UI action.
+  'clone-workspace': EXCLUDED,
   'rename-workspace': LATER,
   'delete-workspace': LATER_D,
   'transfer-ownership': LATER_D,
@@ -324,6 +327,16 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   //? F5 — the reply text is a human decision (and it posts publicly), so the Assistant does not compose it
   //? blind from chat; the inbox drafts + the user approves. Kept out of the chat catalog on purpose.
   'content-reply-comment': LATER,
+  //? G3 — one-click "put this generated page live". Publishing is public-facing, so the Assistant may
+  //? propose it (the user still accepts) but taking it down stays a UI action.
+  'studio-publish-site': {
+    mode: 'enabled',
+    hint: 'publish a generated Studio page to a public URL. params: artifactId',
+    params: { artifactId: { kind: 'string', required: true } },
+  },
+  'studio-unpublish-site': LATER_D,
+  //? G4 — which assets belong in the reusable library is a taste call; it stays a UI click.
+  'asset-star': LATER,
   'content-critique-image': {
     mode: 'enabled',
     hint: 'AI critique of an image asset ("what should change about this photo") — vision feedback + which edit fixes each point. params: pieceId, assetId, prompt? (a specific question)',
@@ -450,7 +463,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'content-gen-3d': 'content', 'content-critique-image': 'content', 'content-video-restyle': 'content', 'content-edit-image': 'content',
   'content-run-pipeline': 'content', 'content-gen-thumbnail': 'content', 'content-edit-brand': 'content', 'content-edit-product': 'content',
   'channel-create': 'content', 'channel-edit': 'content', 'channel-delete': 'content',
-  'capture-run': 'content', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
+  'capture-run': 'content', 'studio-publish-site': 'content', 'studio-unpublish-site': 'content', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
 };
 
 //? Each module's DEFINING section. `isModuleEnabled` is deliberately loose (any section counts) because

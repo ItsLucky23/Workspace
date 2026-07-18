@@ -4,8 +4,11 @@
 //? Non-coding, `mutates:false` (propose-only). A GUARDED fetch: http(s) only, timeout, size-capped,
 //? never throws (never breaks the trigger pipeline). Call `registerScraperRole()` once at boot.
 
+import { getPrismaClient } from '@luckystack/core';
+
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
+import { recordWatchSnapshot, pruneWatchSnapshots } from './watch';
 import { safeHttpRequest, type SafeHttpDependencies } from '../security/safeHttp';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
@@ -52,6 +55,14 @@ export function registerScraperRole(): void {
       if (!url) return { kind: 'scrape-result', title: 'Web scraper', body: 'No URL configured for this task (set params.url).' };
       const text = await fetchPageText(url);
       if (!text) return { kind: 'scrape-result', title: 'Web scraper', body: `Could not fetch ${url} — only reachable http(s) pages are scraped.` };
+      //? GAP_SCAN G8 — WATCH mode (`params.watch: true`): store a snapshot and report the DELTA since the
+      //? last check instead of re-summarising the whole page every run. That is what makes a scheduled
+      //? competitor watch worth reading — an unchanged page produces a one-line "no change", not noise.
+      if (ctx.params.watch === true) {
+        const outcome = await recordWatchSnapshot(getPrismaClient(), ctx.workspaceId, url, text);
+        await pruneWatchSnapshots(getPrismaClient(), ctx.workspaceId, url);
+        return { kind: 'scrape-result', title: outcome.changed ? `Changed: ${url}` : `Watched ${url}`, body: outcome.summary };
+      }
       const res = await runAiCompletion('scraper', {
         system: 'You extract the most useful facts from a web page for outreach + marketing: what the page/company is about, its key offerings, and any contact or lead signals. Output a short markdown summary — no preamble.',
         prompt: buildScraperPrompt(url, text),

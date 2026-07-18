@@ -47,6 +47,8 @@ export interface ForgeSnapshot {
   repo: string;
   issues: ForgeIssue[];
   capped: boolean;
+  //? True only for an authoritative open-issues listing. Webhook snapshots are deltas.
+  full: boolean;
 }
 
 export interface ForgeApplyResult {
@@ -166,6 +168,7 @@ export function buildForgeSnapshot(
   repo: string,
   rows: readonly unknown[],
   sourceCapped = false,
+  full = false,
 ): ForgeSnapshot {
   const normalized = rows
     .map((row) => normalizeForgeIssue(row))
@@ -173,7 +176,7 @@ export function buildForgeSnapshot(
     .toSorted((a, b) => a.iid - b.iid || a.title.localeCompare(b.title));
   const issues: ForgeIssue[] = [];
   const seen = new Set<number>();
-  let bytes = Buffer.byteLength(JSON.stringify({ projectId, mode, repo, issues: [], capped: sourceCapped }));
+  let bytes = Buffer.byteLength(JSON.stringify({ projectId, mode, repo, issues: [], capped: sourceCapped, full }));
   let capped = sourceCapped || rows.length !== normalized.length;
 
   for (const issue of normalized) {
@@ -192,6 +195,7 @@ export function buildForgeSnapshot(
     repo: normalizeForgeRepo(repo),
     issues,
     capped,
+    full,
   };
 }
 
@@ -204,7 +208,7 @@ export function readForgeSnapshot(value: unknown): ForgeSnapshot | null {
   if (typeof row.repo !== 'string' || row.repo.length === 0 || row.repo.length > MAX_FORGE_REPO) return null;
   if (!Array.isArray(row.issues) || row.issues.length > MAX_FORGE_ISSUES) return null;
   for (const issue of row.issues) if (normalizeForgeIssue(issue) === null) return null;
-  return buildForgeSnapshot(row.projectId, row.mode, row.repo, row.issues, row.capped === true);
+  return buildForgeSnapshot(row.projectId, row.mode, row.repo, row.issues, row.capped === true, row.full === true);
 }
 
 export function forgeSnapshotRequestId(snapshot: ForgeSnapshot): string {
@@ -313,7 +317,7 @@ export async function fetchForgeSnapshot(
   }
   return {
     ok: true,
-    snapshot: buildForgeSnapshot(projectId, forge.mode, forge.repoPath, fetched.rows, fetched.capped),
+    snapshot: buildForgeSnapshot(projectId, forge.mode, forge.repoPath, fetched.rows, fetched.capped, true),
   };
 }
 
@@ -353,6 +357,13 @@ async function liveForgeIdentity(
     : null;
 }
 
+function forgeIssueArchiveState(state: string): boolean | null {
+  const normalized = state.trim().toLowerCase();
+  if (normalized === 'closed') return true;
+  if (normalized === 'open' || normalized === 'opened' || normalized === 'reopened') return false;
+  return null;
+}
+
 async function applyIssueToProject(
   prisma: PrismaClient,
   workspaceId: string,
@@ -370,20 +381,26 @@ async function applyIssueToProject(
       description: true,
       labels: true,
       issueUrl: true,
+      archived: true,
     },
   });
   //? Ticket.key is globally unique within a workspace. Until the schema changes, the
   //? same forge iid in a sibling project is a collision: never update that sibling.
   if (existing?.projectId && existing.projectId !== projectId) return { key, touched: false };
+  const archiveState = forgeIssueArchiveState(issue.state);
+  //? A close webhook is a delta, not a create instruction. Unknown closed issues stay unknown.
+  if (!existing && archiveState === true) return { key, touched: false };
   const common = {
     title: issue.title,
     description: issue.description,
     labels: issue.labels,
-    issueUrl: issue.web_url,
+    issueUrl: issue.web_url ?? existing?.issueUrl ?? null,
+    archived: archiveState ?? existing?.archived ?? false,
   };
   const unchanged = existing?.title === common.title
     && existing.description === common.description
     && existing.issueUrl === common.issueUrl
+    && existing.archived === common.archived
     && existing.labels.length === common.labels.length
     && existing.labels.every((label, index) => label === common.labels[index]);
   if (unchanged) return { key, touched: false };
@@ -434,6 +451,32 @@ export async function applyForgeSnapshot(
     const applied = await applyIssueToProject(prisma, workspaceId, projectId, issue);
     if (applied.touched) keys.push(applied.key);
     else skipped += 1;
+  }
+
+  //? Forge wins: only a COMPLETE, uncapped open-issue listing proves absence. Archive
+  //? forge-linked local projections missing from that set; capped listings and webhook
+  //? deltas can never infer absence. Local-only tickets (no issueUrl) remain untouched.
+  if (snapshot.full && !snapshot.capped) {
+    const openNumbers = snapshot.issues
+      .filter((issue) => forgeIssueArchiveState(issue.state) !== true)
+      .map((issue) => issue.iid);
+    const missing = await prisma.ticket.findMany({
+      where: {
+        workspaceId,
+        projectId,
+        archived: false,
+        issueUrl: { not: null },
+        ...(openNumbers.length > 0 ? { number: { notIn: openNumbers } } : {}),
+      },
+      select: { id: true, key: true },
+    });
+    if (missing.length > 0) {
+      await prisma.ticket.updateMany({
+        where: { workspaceId, projectId, id: { in: missing.map((ticket) => ticket.id) } },
+        data: { archived: true },
+      });
+      keys.push(...missing.map((ticket) => ticket.key));
+    }
   }
   return { ok: true, synced: keys.length, keys, skipped };
 }

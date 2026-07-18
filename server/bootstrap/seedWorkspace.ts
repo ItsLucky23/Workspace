@@ -15,7 +15,7 @@ import {
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
 import { isModuleEnabled } from '../../src/workspaces/_data/modules';
-import { createDefaultPipeline } from './defaultPipeline';
+import { createDefaultPipeline, type PipelinePreset } from './defaultPipeline';
 import { createStarterLibrary } from './starterLibrary';
 import { rebuildDesignSystemDoc } from '../designer/designSystemDoc';
 import { encryptSecret } from '../crypto/secretBox';
@@ -40,14 +40,14 @@ function slugify(name: string): string {
 //? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
 //? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
 //? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
-export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[]): Promise<{ workspaceId: string }> {
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional'): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   //? Module gating (workspaces/_data/modules.ts): the caller passes the RESOLVED
   //? section-id list from the chosen module presets. Absent/empty ⇒ legacy all-on.
   const sections = enabledSections ?? [];
   const devEnabled = isModuleEnabled(sections.length > 0 ? sections : undefined, 'development');
   const ws = await prisma.workspace.create({
-    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey: 'professional', enabledSections: sections },
+    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey, enabledSections: sections },
   });
   const workspaceId = ws.id;
 
@@ -64,7 +64,8 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? Server-owned default pipeline (lesson-0002 FIXED): no `src/` import, so this
   //? seeds real stages in a production bundle too (the old `STAGE_CONFIGS` loop
   //? stubbed to a no-op in prod → blank board).
-  await createDefaultPipeline(prisma, workspaceId, project.id);
+  //? G5 — the chosen tier decides how many stages the board starts with (dead `presetKey` made real).
+  await createDefaultPipeline(prisma, workspaceId, project.id, presetKey);
   //? Seed the curated starter-guidance library (all disabled; the user toggles them on from
   //? the Workflow settings — the "nudge, not a blank page" for their own AI workflows).
   await createStarterLibrary(prisma, workspaceId, project.id);

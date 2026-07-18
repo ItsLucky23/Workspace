@@ -387,6 +387,8 @@ export interface ContentSnapshot {
   channelHealth: ChannelHealthSummary[];   // A5: per-channel last-success/failure roll-up
   //? A7: where each platform's APP credentials come from — never the values themselves.
   platformCredentials: { platform: string; source: 'workspace' | 'env' | 'none' }[];
+  //? G4: the workspace-wide reusable asset library (starred first, then newest).
+  assetLibrary: { id: string; kind: string; url: string; pieceId: string; pieceTitle: string; starred: boolean; createdAt: number }[];
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
   mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
   shortLinks: ShortLinkSummary[];       // H2/H3 (ads): trackable links + clicks (the A/B comparison data)

@@ -16,7 +16,7 @@
 
 import { randomBytes } from 'node:crypto';
 
-import { acquireLease, renewLease, releaseLease, formatKey, redis, tryCatch } from '@luckystack/core';
+import { acquireLease, renewLease, releaseLease, formatKey, redis, tryCatch, tryCatchSync } from '@luckystack/core';
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -257,15 +257,38 @@ export async function claimActionOnce(dedupKey: string): Promise<boolean> {
 }
 
 //? Control ACK idempotency needs more than the boolean trigger contract above: a duplicate must
-//? distinguish pending from terminal success/failure. Only the outcome code + signal seq are stored
-//? (never an Error message or arbitrary op result), and both pending + terminal records are TTL-bounded.
+//? distinguish pending from terminal success/failure. Success may carry ONLY a bounded list of
+//? identifier-shaped result keys so a retry can repeat the original broadcast; arbitrary op results,
+//? Error messages, and secrets never enter Redis. Pending + terminal records are TTL-bounded.
 export const CONTROL_ACTION_OUTCOME_TTL_MS = 60_000;
+export const MAX_CONTROL_ACTION_RESULT_KEYS = 2000;
+export const MAX_CONTROL_ACTION_RESULT_KEY_BYTES = 128;
+export const MAX_CONTROL_ACTION_RESULT_KEYS_BYTES = 128_000;
 const CONTROL_ACTION_PENDING_WAIT_MS = 2000;
 const CONTROL_ACTION_PENDING_POLL_MS = 20;
+const CONTROL_ACTION_RESULT_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+
+export function boundedControlActionResultKeys(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  let totalBytes = 0;
+  for (const entry of value) {
+    if (typeof entry !== 'string' || !CONTROL_ACTION_RESULT_KEY_PATTERN.test(entry) || seen.has(entry)) continue;
+    const bytes = Buffer.byteLength(entry);
+    if (bytes === 0 || bytes > MAX_CONTROL_ACTION_RESULT_KEY_BYTES) continue;
+    if (totalBytes + bytes > MAX_CONTROL_ACTION_RESULT_KEYS_BYTES) break;
+    seen.add(entry);
+    keys.push(entry);
+    totalBytes += bytes;
+    if (keys.length >= MAX_CONTROL_ACTION_RESULT_KEYS) break;
+  }
+  return keys;
+}
 
 export type ControlActionFailureCode = 'control.semanticFailure' | 'control.executionFailure';
 export type ControlActionTerminalOutcome =
-  | { state: 'success'; signalSeq: number }
+  | { state: 'success'; signalSeq: number; resultKeys?: string[] }
   | { state: 'failure'; errorCode: ControlActionFailureCode };
 export type ControlActionClaim =
   | { state: 'claimed'; token: string }
@@ -294,14 +317,44 @@ end
 return 0
 `;
 
+function parseStoredControlActionResultKeys(encoded: string): string[] {
+  const maxJsonBytes = MAX_CONTROL_ACTION_RESULT_KEYS_BYTES + (MAX_CONTROL_ACTION_RESULT_KEYS * 3) + 2;
+  const maxEncodedBytes = Math.ceil(maxJsonBytes * 4 / 3) + 4;
+  if (Buffer.byteLength(encoded) > maxEncodedBytes) {
+    throw new Error('[cluster] invalid control-action outcome record');
+  }
+  const [decodeError, json] = tryCatchSync(() => Buffer.from(encoded, 'base64url').toString('utf8'));
+  if (decodeError || json === null || Buffer.byteLength(json) > maxJsonBytes) {
+    throw new Error('[cluster] invalid control-action outcome record');
+  }
+  const [parseError, parsed] = tryCatchSync((): unknown => JSON.parse(json));
+  if (parseError || !Array.isArray(parsed)) {
+    throw new Error('[cluster] invalid control-action outcome record');
+  }
+  const keys = boundedControlActionResultKeys(parsed);
+  if (keys.length !== parsed.length || keys.some((key, index) => key !== parsed[index])) {
+    throw new Error('[cluster] invalid control-action outcome record');
+  }
+  return keys;
+}
+
 function parseControlActionOutcome(raw: string): StoredControlActionOutcome {
   if (raw.startsWith('pending:')) {
     const token = raw.slice('pending:'.length);
     if (token.length > 0) return { state: 'pending', token };
   }
   if (raw.startsWith('success:')) {
-    const signalSeq = Number(raw.slice('success:'.length));
-    if (Number.isSafeInteger(signalSeq)) return { state: 'success', signalSeq };
+    const success = raw.slice('success:'.length);
+    const keysMarker = ':keys:';
+    const keysAt = success.indexOf(keysMarker);
+    const signalSeq = Number(keysAt === -1 ? success : success.slice(0, keysAt));
+    if (Number.isSafeInteger(signalSeq)) {
+      if (keysAt === -1) return { state: 'success', signalSeq };
+      const resultKeys = parseStoredControlActionResultKeys(success.slice(keysAt + keysMarker.length));
+      return resultKeys.length > 0
+        ? { state: 'success', signalSeq, resultKeys }
+        : { state: 'success', signalSeq };
+    }
   }
   if (raw === 'failure:control.semanticFailure') {
     return { state: 'failure', errorCode: 'control.semanticFailure' };
@@ -310,6 +363,14 @@ function parseControlActionOutcome(raw: string): StoredControlActionOutcome {
     return { state: 'failure', errorCode: 'control.executionFailure' };
   }
   throw new Error('[cluster] invalid control-action outcome record');
+}
+
+function serializeControlActionOutcome(outcome: ControlActionTerminalOutcome): string {
+  if (outcome.state === 'failure') return `failure:${outcome.errorCode}`;
+  const resultKeys = boundedControlActionResultKeys(outcome.resultKeys);
+  if (resultKeys.length === 0) return `success:${String(outcome.signalSeq)}`;
+  const encoded = Buffer.from(JSON.stringify(resultKeys)).toString('base64url');
+  return `success:${String(outcome.signalSeq)}:keys:${encoded}`;
 }
 
 async function readControlActionOutcome(dedupKey: string): Promise<StoredControlActionOutcome | null> {
@@ -345,9 +406,7 @@ export async function completeControlAction(
   token: string,
   outcome: ControlActionTerminalOutcome,
 ): Promise<void> {
-  const terminal = outcome.state === 'success'
-    ? `success:${String(outcome.signalSeq)}`
-    : `failure:${outcome.errorCode}`;
+  const terminal = serializeControlActionOutcome(outcome);
   const [error, completed] = await tryCatch(() => redis.eval(
     COMPLETE_CONTROL_ACTION_LUA,
     1,

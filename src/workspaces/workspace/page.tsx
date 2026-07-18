@@ -720,7 +720,7 @@ function RepositoryTab() {
 
 function DangerTab() {
   const translate = useTranslator();
-  const { activeWorkspace, members, transferOwnership, deleteWorkspace } = useWorkspaces();
+  const { activeWorkspace, members, transferOwnership, deleteWorkspace, cloneWorkspace } = useWorkspaces();
   const [transferTarget, setTransferTarget] = useState('');
   const memberItems = members.filter((m) => m.id !== activeWorkspace.ownerId).map((m) => ({ id: m.id, value: m.id, item: m.name }));
 
@@ -732,6 +732,16 @@ function DangerTab() {
       input: activeWorkspace.slug,
     }).then((ok) => { if (ok) transferOwnership(transferTarget); });
   };
+
+  //? G2 — the duplicate is named after the source ("<name> (copy)"); renaming it afterwards is one click
+  //? in the same settings page, which is cheaper than asking for a name before the user has seen the copy.
+  const startClone = (): void => {
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.workspaceSettings.cloneWorkspace' }),
+      content: translate({ key: 'workspaces.workspaceSettings.cloneWorkspaceDesc' }),
+    }).then((ok) => { if (ok) cloneWorkspace(`${activeWorkspace.name} (copy)`); });
+  };
+
 
   const startDelete = () => {
     void menuHandler.confirm({
@@ -757,6 +767,16 @@ function DangerTab() {
           />
           <WsButton variant="secondary" onClick={startTransfer}>{translate({ key: 'workspaces.workspaceSettings.transfer' })}</WsButton>
         </div>
+      </div>
+      <div className="h-px bg-wrong/20" />
+      {/* GAP_SCAN G2 — start a second workspace from this one's setup instead of re-onboarding from zero.
+          Copies configuration only: no tickets, no content, no credentials, no members. */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.cloneWorkspace' })}</div>
+          <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.cloneWorkspaceDesc' })}</div>
+        </div>
+        <WsButton variant="secondary" icon="copy" onClick={startClone}>{translate({ key: 'workspaces.workspaceSettings.clone' })}</WsButton>
       </div>
       <div className="h-px bg-wrong/20" />
       <div className="flex items-center justify-between gap-3">

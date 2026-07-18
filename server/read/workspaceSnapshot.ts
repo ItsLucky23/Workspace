@@ -28,6 +28,7 @@ import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
 import { parseTokenKey, parseHealthKey, credentialKey, envCredentials, credentialSource } from '../content/publishOAuth';
 import { buildChannelHealth, accountKey } from '../content/publishHealth';
+import { listLibrary } from '../content/assetLibrary';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
@@ -250,7 +251,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -538,6 +539,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       publishTargets,
       channelHealth,
       platformCredentials,
+      //? GAP_SCAN G4 — the workspace-wide asset library (starred first): the same index C2's document
+      //? picker reads, so a brand mascot is reusable everywhere instead of siloed under one piece.
+      assetLibrary: await listLibrary(prisma, contentWsId, { limit: 60 }),
       mediaCosts: mediaCostTable(),
       //? H2/H3 (ads) — the workspace's trackable links (clicks desc, so the top A/B variant leads).
       shortLinks: shortLinkRows.map((l) => ({ id: l.id, contentProjectId: l.contentProjectId, slug: l.slug, targetUrl: l.targetUrl, variant: l.variant, clicks: l.clicks })),

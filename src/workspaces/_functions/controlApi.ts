@@ -28,7 +28,7 @@ export type ControlOp =
   | 'bulk-move' | 'bulk-status' | 'bulk-assign' | 'bulk-sprint' | 'bulk-archive'
   | 'sprint-create' | 'sprint-edit'
   // members / RBAC / workspace lifecycle (16/17)
-  | 'create-workspace' | 'rename-workspace' | 'delete-workspace' | 'transfer-ownership'
+  | 'create-workspace' | 'clone-workspace' | 'rename-workspace' | 'delete-workspace' | 'transfer-ownership'
   | 'change-role' | 'remove-member' | 'invite' | 'revoke-invite' | 'accept-invite'
   | 'role-create' | 'role-update'
   // workspace settings (15/19/22)
@@ -64,7 +64,7 @@ export type ControlOp =
   | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images' | 'content-assemble'
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
-  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-gen-thumbnail' | 'content-reply-comment' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run'
+  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-gen-thumbnail' | 'content-reply-comment' | 'studio-publish-site' | 'studio-unpublish-site' | 'asset-star' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run'
   | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
   | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role' | 'studio-send-to-content'
   //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (workspace-scoped instruction blocks

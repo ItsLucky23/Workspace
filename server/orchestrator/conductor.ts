@@ -21,6 +21,10 @@ import { encryptSecret } from '../crypto/secretBox';
 import { credentialKey } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
+import { isPipelinePreset } from '../bootstrap/defaultPipeline';
+import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
+import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
+import { setAssetStarred } from '../content/assetLibrary';
 import { sanitizeSections } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { createStarterLibrary } from '../bootstrap/starterLibrary';
@@ -67,6 +71,7 @@ import {
   claimControlAction,
   completeControlAction,
   waitForControlActionOutcome,
+  boundedControlActionResultKeys,
   type ControlActionFailureCode,
   type ControlActionTerminalOutcome,
   type WorkspaceLeaseGuard,
@@ -587,9 +592,16 @@ export interface EnqueueControlActionOptions {
   workspaceLease?: WorkspaceLeaseRunner;
 }
 
+function controlActionResultKeys(result: unknown): string[] {
+  if (typeof result !== 'object' || result === null || !('keys' in result)) return [];
+  return boundedControlActionResultKeys(result.keys);
+}
+
 function replayTerminalControlAction(outcome: ControlActionTerminalOutcome): EnqueuedControlAction {
   if (outcome.state === 'failure') throw new ControlActionEnqueueError(outcome.errorCode);
-  return { signalSeq: outcome.signalSeq };
+  return outcome.resultKeys && outcome.resultKeys.length > 0
+    ? { signalSeq: outcome.signalSeq, result: { keys: [...outcome.resultKeys] } }
+    : { signalSeq: outcome.signalSeq };
 }
 
 //? Run an already-claimed public or internal action through the original serial queues. Keeping the
@@ -693,7 +705,12 @@ async function enqueueWriterAction(
     });
     return enqueued;
   }
-  await completeControlAction(dedupKey, claim.token, { state: 'success', signalSeq: enqueued.signalSeq });
+  const resultKeys = controlActionResultKeys(enqueued.result);
+  await completeControlAction(dedupKey, claim.token, {
+    state: 'success',
+    signalSeq: enqueued.signalSeq,
+    ...(resultKeys.length > 0 ? { resultKeys } : {}),
+  });
   return enqueued;
 }
 
@@ -1064,8 +1081,22 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? workspace owned by the caller — the onboarding "create a workspace" path.
       //? Uses the plain client (not tenant-scoped): there is no tenant yet.
       const name = str(payload, 'name');
-      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections));
+      //? G5 — the creation form's tier (simple/advanced/professional) decides the seeded pipeline; an
+      //? unknown or absent value keeps the previous full-pipeline behaviour.
+      const rawPreset = str(payload, 'presetKey') ?? '';
+      const preset = isPipelinePreset(rawPreset) ? rawPreset : 'professional';
+      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections), preset);
       return;
+    }
+    //? GAP_SCAN G2 — clone THIS workspace's configuration into a new one owned by the caller. Config only:
+    //? no tickets, no content, no credentials, no members (see cloneWorkspace for the full contract).
+    case 'clone-workspace': {
+      const cloneName = str(payload, 'name');
+      if (!cloneName) return { ok: false, error: 'clone.invalidRequest' };
+      const cloned = await cloneWorkspace(prisma, action.workspaceId, userId, cloneName.trim());
+      if (!cloned.ok) return { ok: false, error: cloned.error ?? 'clone.failed' };
+      await recordAudit(prisma, action.workspaceId, userId, 'clone-workspace', cloned.workspaceId ?? null, cloned.copied);
+      return { workspaceId: cloned.workspaceId, copied: cloned.copied };
     }
     case 'invite': {
       const email = str(payload, 'email');
@@ -1880,6 +1911,31 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!posted.ok) return { ok: false, status: 'error', error: posted.error ?? 'reply.failed' };
       //? A replied-to comment is handled: mark it read so the inbox reflects reality.
       await prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, id: commentId }, data: { read: true } });
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true };
+    }
+    //? GAP_SCAN G4 — mark an asset as part of the workspace's reusable library (or take it out).
+    case 'asset-star': {
+      const assetId = str(payload, 'assetId');
+      if (!assetId) return { ok: false, status: 'error', error: 'asset.invalidRequest' };
+      const res = await setAssetStarred(prisma, action.workspaceId, assetId, bool(payload, 'starred'));
+      if (!res.ok) return { ok: false, status: 'error', error: 'asset.notFound' };
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true };
+    }
+    //? GAP_SCAN G3 — put a generated Studio page live at /s/<slug> (re-publishing keeps the same URL).
+    case 'studio-publish-site': {
+      const artifactId = str(payload, 'artifactId');
+      if (!artifactId) return { ok: false, status: 'error', error: 'site.invalidRequest' };
+      const published = await publishArtifactSite(prisma, action.workspaceId, artifactId, publicBaseUrl());
+      if (!published.ok) return { ok: false, status: 'error', error: published.error ?? 'site.failed' };
+      broadcastContentDirty(action.workspaceId);
+      return { slug: published.slug, url: published.url };
+    }
+    case 'studio-unpublish-site': {
+      const slug = str(payload, 'slug');
+      if (!slug) return { ok: false, status: 'error', error: 'site.invalidRequest' };
+      await unpublishArtifactSite(prisma, action.workspaceId, slug);
       broadcastContentDirty(action.workspaceId);
       return { ok: true };
     }

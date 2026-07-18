@@ -46,6 +46,7 @@ import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerTlsAsk } from './proxy/tlsAsk';
 import { registerShortLinkRedirect } from './content/shortlinkRoute';
+import { registerPublishedSiteRoute } from './deploy/siteRoute';
 import { registerObservabilityEndpoints } from './obs/endpoints';
 import { registerForgeWebhook } from './git/webhookRoute';
 import { registerBuildDownload } from './deploy/downloadRoute';
@@ -117,6 +118,8 @@ import { startLeaderElection } from './orchestrator/cluster';
   registerTlsAsk();
   //? H3 — the trackable short-link redirect (`/l/<slug>` → click + 302 to the target with UTM passthrough).
   registerShortLinkRedirect();
+  //? G3 — serve published Studio/Designer pages at /s/<slug> (public, strict-CSP, session-less).
+  registerPublishedSiteRoute();
   //? Observability (#5): /healthz (liveness) + /readyz (DB+Redis readiness) + /metrics (Prometheus).
   //? Pre-params custom routes so probes don't require a session.
   registerObservabilityEndpoints();

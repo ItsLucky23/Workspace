@@ -111,17 +111,34 @@ const [testError] = await core.tryCatch(async () => {
     'the pending control outcome has a bounded TTL',
   );
   if (successClaim.state === 'claimed') {
-    await cluster.completeControlAction(successOutcomeKey, successClaim.token, { state: 'success', signalSeq: 42 });
+    await cluster.completeControlAction(successOutcomeKey, successClaim.token, {
+      state: 'success',
+      signalSeq: 42,
+      resultKeys: ['DEV-42', 'bad key', 'DEV-42', 'x'.repeat(cluster.MAX_CONTROL_ACTION_RESULT_KEY_BYTES + 1)],
+    });
   }
   eq(
     await cluster.claimControlAction(successOutcomeKey),
-    { state: 'success', signalSeq: 42 },
-    'terminal control success is replayed across callers',
+    { state: 'success', signalSeq: 42, resultKeys: ['DEV-42'] },
+    'terminal control success replays only bounded identifier-shaped result keys',
   );
   const successTtl = await core.redis.pttl(cluster.controlActionOutcomeKey(successOutcomeKey));
   assert(
     successTtl > 0 && successTtl <= cluster.CONTROL_ACTION_OUTCOME_TTL_MS,
     'the terminal success outcome has a bounded TTL',
+  );
+
+  const legacySuccessOutcomeKey = `control-legacy-success-${String(stamp)}`;
+  await core.redis.set(
+    cluster.controlActionOutcomeKey(legacySuccessOutcomeKey),
+    'success:43',
+    'PX',
+    cluster.CONTROL_ACTION_OUTCOME_TTL_MS,
+  );
+  eq(
+    await cluster.claimControlAction(legacySuccessOutcomeKey),
+    { state: 'success', signalSeq: 43 },
+    'a rolling-deploy legacy success:<seq> record still parses',
   );
 
   const failureOutcomeKey = `control-failure-${String(stamp)}`;

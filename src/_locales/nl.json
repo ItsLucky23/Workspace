@@ -855,7 +855,10 @@
           "chat": "Chat",
           "custom": "Eigen taken"
         }
-      }
+      },
+      "cloneWorkspace": "Workspace dupliceren",
+      "cloneWorkspaceDesc": "Begin een nieuwe workspace met deze setup: pipeline, skills, stijlen, kanalen en triggers. Tickets, content, sleutels en leden gaan niet mee.",
+      "clone": "Dupliceren"
     },
     "services": {
       "title": "Services",
@@ -1006,7 +1009,11 @@
       "designLabel": "Design",
       "designDesc": "UI- & thema-designer met een AI-interviewer. Geen code nodig.",
       "documentsLabel": "Documenten",
-      "documentsDesc": "AI-geschreven documenten: specs, plannen, briefings en sheets met PDF/Word/Excel-export."
+      "documentsDesc": "AI-geschreven documenten: specs, plannen, briefings en sheets met PDF/Word/Excel-export.",
+      "tierHeading": "Hoeveel pipeline?",
+      "tier_simple": "Simpel · 3 fases",
+      "tier_advanced": "Uitgebreid · 5 fases",
+      "tier_professional": "Professioneel · 7 fases"
     },
     "sections": {
       "intro": "Zet losse secties aan of uit. Modules zijn slechts presets — combineer ze vrij (voeg bijv. de Interviewer toe aan een Ontwikkel-workspace).",

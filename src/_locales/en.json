@@ -855,7 +855,10 @@
           "chat": "Chat",
           "custom": "Custom tasks"
         }
-      }
+      },
+      "cloneWorkspace": "Duplicate workspace",
+      "cloneWorkspaceDesc": "Start a new workspace from this one's setup: pipeline, skills, styles, channels and triggers. No tickets, content, credentials or members are copied.",
+      "clone": "Duplicate"
     },
     "services": {
       "title": "Services",
@@ -1006,7 +1009,11 @@
       "designLabel": "Design",
       "designDesc": "UI & theme designer with an AI interviewer. No code required.",
       "documentsLabel": "Documents",
-      "documentsDesc": "AI-drafted documents: specs, plans, briefs and sheets with PDF/Word/Excel export."
+      "documentsDesc": "AI-drafted documents: specs, plans, briefs and sheets with PDF/Word/Excel export.",
+      "tierHeading": "How much pipeline?",
+      "tier_simple": "Simple · 3 stages",
+      "tier_advanced": "Advanced · 5 stages",
+      "tier_professional": "Professional · 7 stages"
     },
     "sections": {
       "intro": "Turn individual sections on or off. Modules are just presets — mix them freely (e.g. add the Interviewer to a Development workspace).",

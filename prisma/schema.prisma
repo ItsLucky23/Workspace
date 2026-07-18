@@ -351,6 +351,66 @@ model UiReviewRequest {
 //? GAP_SCAN F4 — analytics OVER TIME. `PublishJob.metrics` is overwritten on every ingest, so the system
 //? only ever knew the CURRENT totals: no growth curve, no "which post is still climbing", no before/after
 //? for a thumbnail A/B. One immutable row per ingest per post gives every trend question a real answer.
+//? GAP_SCAN G8 — one stored fetch of a watched page. The scraper used to fetch-and-forget, so "what
+//? changed on their pricing page?" was unanswerable. Bounded per url by `pruneWatchSnapshots`.
+//? GAP_SCAN G3 — a Studio/Designer artifact served as a live page at `/s/<slug>`. The HTML is
+//? AI-generated (untrusted) and is served with a strict CSP from a cookie-less path — see
+//? `server/deploy/staticSite.ts`. Re-publishing the same artifact overwrites the same row/URL.
+//? GAP_SCAN G7 — a prompt A/B experiment: two variants of ONE feature's prompt, with the outcome that
+//? matters recorded per subject. At most one `running` experiment per feature (two overlapping tests on the
+//? same prompt make both unreadable). See `server/ai/promptExperiment.ts`.
+model PromptExperiment {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  feature     String                              // the AI feature whose prompt is under test
+  name        String
+  variantA    String
+  variantB    String
+  status      String   @default("running")        // 'running' | 'stopped'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, feature, status])
+}
+
+//? One measured outcome for one subject (a piece, a ticket, a turn) under its assigned variant. Unique per
+//? (experiment, subject) so a repeating metrics ingest cannot inflate the sample.
+model PromptTrial {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  experimentId String   @db.ObjectId
+  subjectId    String
+  variant      String                             // 'a' | 'b'
+  score        Float
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId, experimentId, subjectId])
+}
+
+model PublishedSite {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  artifactId  String   @db.ObjectId
+  slug        String   @unique
+  title       String
+  html        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, slug])
+}
+
+model SiteSnapshot {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  url         String
+  hash        String                              // normalized-content hash (cheap unchanged-check)
+  content     String                              // normalized text, capped at write time
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, url, createdAt])
+}
+
 model PublishMetricSnapshot {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId  String   @db.ObjectId

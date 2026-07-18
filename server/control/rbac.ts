@@ -56,6 +56,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'sprint-create': CAP.manageSprints,
   'sprint-edit': CAP.manageSprints,
   'create-workspace': null,
+  //? GAP_SCAN G2 — cloning READS this workspace's whole configuration, so it needs the settings bar.
+  'clone-workspace': CAP.workspaceSettings,
   'rename-workspace': CAP.workspaceSettings,
   'delete-workspace': CAP.ownerActions,
   'transfer-ownership': CAP.ownerActions,
@@ -138,6 +140,11 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-gen-thumbnail': CAP.workTickets,
   //? F5 — replying posts publicly as the channel; content-work capability.
   'content-reply-comment': CAP.workTickets,
+  //? G3 — publishing puts a page on a public URL; same bar as other content work.
+  'studio-publish-site': CAP.workTickets,
+  'studio-unpublish-site': CAP.workTickets,
+  //? G4 — starring marks an asset as part of the workspace's reusable library.
+  'asset-star': CAP.workTickets,
   'content-critique-image': CAP.workTickets,
   'content-video-restyle': CAP.workTickets,
   'content-edit-image': CAP.workTickets,

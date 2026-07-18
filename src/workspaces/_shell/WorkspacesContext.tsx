@@ -79,7 +79,10 @@ export interface WorkspacesCtx {
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
-  createWorkspace: (name: string, enabledSections?: string[]) => void;
+  //? G2 — duplicate this workspace's configuration into a new one.
+  cloneWorkspace: (name: string) => void;
+  //? G5 — `presetKey` = the pipeline tier the new workspace starts with.
+  createWorkspace: (name: string, enabledSections?: string[], presetKey?: string) => void;
   //? Multi-project / multi-service (ADR 0035): a workspace holds N projects, each
   //? optionally N services. The board/pipeline/sources render the ACTIVE project.
   projects: ProjectSummary[];

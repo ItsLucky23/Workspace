@@ -855,7 +855,10 @@
           "chat": "Chat",
           "custom": "Tâches perso"
         }
-      }
+      },
+      "cloneWorkspace": "Dupliquer l espace",
+      "cloneWorkspaceDesc": "Démarrez un nouvel espace avec cette configuration : pipeline, compétences, styles, canaux et déclencheurs. Ni tickets, ni contenus, ni identifiants, ni membres.",
+      "clone": "Dupliquer"
     },
     "services": {
       "title": "Services",
@@ -1006,7 +1009,11 @@
       "designLabel": "Design",
       "designDesc": "Concepteur d'UI & de thèmes avec un intervieweur IA. Aucun code requis.",
       "documentsLabel": "Documents",
-      "documentsDesc": "Documents rédigés par l'IA : specs, plans, briefs et feuilles avec export PDF/Word/Excel."
+      "documentsDesc": "Documents rédigés par l'IA : specs, plans, briefs et feuilles avec export PDF/Word/Excel.",
+      "tierHeading": "Quel pipeline ?",
+      "tier_simple": "Simple · 3 étapes",
+      "tier_advanced": "Avancé · 5 étapes",
+      "tier_professional": "Professionnel · 7 étapes"
     },
     "sections": {
       "intro": "Activez ou désactivez des sections individuelles. Les modules ne sont que des préréglages — combinez-les librement (par ex. ajoutez l'Intervieweur à un espace de développement).",

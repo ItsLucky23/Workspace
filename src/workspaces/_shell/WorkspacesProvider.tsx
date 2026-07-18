@@ -118,7 +118,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -1254,7 +1254,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setWantProjectId(undefined);
         setLoading(true);
       },
-      createWorkspace: (name, enabledSections) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), clientRequestId: nextReqId() } })); },
+      //? G2 — clone this workspace's SETUP into a new one (no tickets, content, credentials or members).
+      cloneWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/cloneWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? G5 — `presetKey` picks how heavy the seeded pipeline is (simple/advanced/professional).
+      createWorkspace: (name, enabledSections, presetKey) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), ...(presetKey ? { presetKey } : {}), clientRequestId: nextReqId() } })); },
       //? Multi-project / multi-service (ADR 0035).
       projects: snap.projects,
       activeProject: snap.projects.find((project) => project.id === snap.activeProjectId) ?? null,

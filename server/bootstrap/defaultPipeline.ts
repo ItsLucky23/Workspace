@@ -81,11 +81,39 @@ const DEFAULT_STAGES: DefaultStage[] = [
   { key: 'final', kind: 'final', name: 'Final', order: 6, aiEnabled: false, model: 'haiku', effort: 'low', maxTurns: 10, ...BLANK },
 ];
 
+//? GAP_SCAN G5 — pipeline PRESETS. `Workspace.presetKey` existed as dead data: every workspace, from a
+//? one-person side project to a team repo, was seeded the full 7-stage pipeline, and a content-only
+//? workspace got a dev pipeline it can never run. The tier now decides which stages are seeded:
+//?
+//?   simple       — unrefined → implementation → final (three columns, no ceremony)
+//?   advanced     — adds plan + test
+//?   professional — the full 7-stage default (unchanged; still the default tier)
+//?
+//? Stage KEYS are unchanged across tiers, so a ticket, a carry-over and every stage-scoped setting keep
+//? meaning if the owner later moves up a tier — upgrading adds columns, it does not rewrite history.
+export type PipelinePreset = 'simple' | 'advanced' | 'professional';
+
+const PRESET_STAGES: Record<PipelinePreset, string[]> = {
+  simple: ['unrefined', 'impl', 'final'],
+  advanced: ['unrefined', 'refined', 'plan', 'impl', 'final'],
+  professional: DEFAULT_STAGES.map((s) => s.key),
+};
+
+export function isPipelinePreset(v: string): v is PipelinePreset {
+  return v === 'simple' || v === 'advanced' || v === 'professional';
+}
+
+//? The stages a preset seeds, re-ordered contiguously so the board has no gaps.
+export function stagesForPreset(preset: PipelinePreset): DefaultStage[] {
+  const keys = new Set(PRESET_STAGES[preset]);
+  return DEFAULT_STAGES.filter((s) => keys.has(s.key)).map((s, i) => ({ ...s, order: i }));
+}
+
 //? Seed the default pipeline stages for a new workspace's project. Mirrors the field
 //? mapping `createBlankWorkspace` previously did over `STAGE_CONFIGS`, but from
 //? server-owned data so it works in a production bundle.
-export async function createDefaultPipeline(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<void> {
-  for (const s of DEFAULT_STAGES) {
+export async function createDefaultPipeline(prisma: PrismaClient, workspaceId: string, projectId: string, preset: PipelinePreset = 'professional'): Promise<void> {
+  for (const s of stagesForPreset(preset)) {
     await prisma.pipelineStage.create({
       data: {
         workspaceId, projectId, key: s.key, kind: s.kind, name: s.name, order: s.order,

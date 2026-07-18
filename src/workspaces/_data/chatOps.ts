@@ -29,6 +29,8 @@ export const CHAT_ENABLED_OPS = [
   'content-critique-image',
   //? F1 — compose a thumbnail (template, or with an AI background).
   'content-gen-thumbnail',
+  //? G3 — put a generated Studio page live on a public URL.
+  'studio-publish-site',
   // F7 — video-to-video restyle (paid gen)
   'content-video-restyle',
   'content-edit-image',
