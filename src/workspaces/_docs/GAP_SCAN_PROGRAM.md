@@ -35,7 +35,7 @@ The scan's #1, #3 and the publishing-reliability cluster. Today the autopilot ch
 | A4 | **Dead-OAuth detection + reconnect CTA** — `getValidConnection` marks a connection unhealthy instead of silently returning a stale token | M | A revoked account surfaces "reconnect" in the UI instead of a generic failure |
 | A5 | **Per-channel publish health** — an at-a-glance "are all N channels still posting?" panel | M | The insights/settings view shows per-channel last-success + failure count |
 | A6 | **Burst/quota staggering** — spread posts that fire in one cron tick | S | Many same-tick posts are spaced; no platform-quota rejections in a burst test |
-| A7 | **Platform app-credentials in-app** (decision 4) — move `YOUTUBE_CLIENT_ID/SECRET`, `TIKTOK_CLIENT_KEY/SECRET` out of `.env` into per-workspace encrypted settings (the `save-media-provider` pattern: secretBox at rest, RBAC `workspaceSettings`, write-only in the UI — never echoed back), with `.env` kept as a fallback so existing installs keep working | M | A self-hoster pastes YouTube credentials in the UI, connects an account and publishes — with `.env` empty; the secret never leaves the server in plaintext |
+| A7 | **Platform app-credentials in-app** (decision 4) — move `YOUTUBE_CLIENT_ID/SECRET`, `TIKTOK_CLIENT_KEY/SECRET` out of `.env` into per-workspace encrypted settings (the `save-media-provider` pattern: secretBox at rest, RBAC `workspaceSettings`, write-only in the UI — never echoed back), with `.env` kept as a fallback so existing installs keep working. **No auto-migration** — the owner re-enters them by hand | M | A self-hoster pastes YouTube credentials in the UI, connects an account and publishes — with `.env` empty; the secret never leaves the server in plaintext |
 
 **Exit:** configure a channel on a cron timer from the UI → it publishes → a failure is visible, retried, and
 notified.
@@ -91,6 +91,11 @@ Everything here is "the data already exists, the call is just never made".
 ## Phase E — Security / ops track (from the scan's completeness note)
 
 These were code-verified but deliberately kept out of the feature sections.
+
+> **Report-first (working agreement).** E2 and E3 change what is ALLOWED at runtime and can break flows that
+> quietly work today. Each ships in **warn/report mode** first — the guard runs and logs every violation it
+> WOULD have blocked — and is only flipped to loud-fail after that report is reviewed. E1/E4 are plain fixes
+> and go straight in.
 
 | # | Item | Effort | Verifiable goal |
 |---|---|---|---|
@@ -153,6 +158,19 @@ These were code-verified but deliberately kept out of the feature sections.
 4. **Platform APP credentials move OUT of `.env` and into the app** (see A7). A self-hoster pastes their
    YouTube/TikTok app credentials in the UI instead of editing `.env`; stored encrypted per workspace, exactly
    like the media-provider keys. `.env` stays a fallback so existing installs keep working.
+
+## Working agreements (2026-07-18)
+
+- **Branch:** this program commits to **`feat/design-docs-program`** (the same branch the parallel hardening
+  work uses) — one shared history, no separate merge.
+- **Phase A verification = stub + integration tests.** Fan-out, retry/backoff, error rows and notifications
+  are proven against the stub provider + real Mongo. **No real uploads** — nothing costs money or lands on a
+  real channel. The owner does the live publish check separately if/when they want.
+- **A7 = no auto-migration.** Build the UI + encrypted storage only; the owner re-enters the credentials by
+  hand. Do NOT copy existing `.env` values into the store on boot.
+- **Phase E = report first, enforce second.** Every security guard (tenant scoping, egress) ships in
+  warn/report mode with logging, so we can see exactly what WOULD break, and is only flipped to loud-fail
+  after that report is reviewed.
 
 ### Note on A1 — what "channels in-app, not env keys" means in this codebase
 
