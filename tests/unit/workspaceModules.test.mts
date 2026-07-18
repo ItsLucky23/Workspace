@@ -41,7 +41,7 @@ const { WORKSPACE_MODULES, WORKSPACE_SECTIONS, GATEABLE_SECTIONS, sectionsForMod
   eq(sanitizeSections('not-an-array').length, 0, 'non-array → empty');
   assert(WORKSPACE_SECTIONS.every((s) => GATEABLE_SECTIONS.includes(s.id)), 'every section def id is gateable');
   eq(WORKSPACE_SECTIONS.length, GATEABLE_SECTIONS.length, 'section defs cover exactly the gateable set');
-  assert(WORKSPACE_MODULES.length === 3, 'three shippable modules');
+  assert(WORKSPACE_MODULES.length === 4, 'four shippable modules (development, content, design, documents)');
 }
 
 report('tests/unit/workspaceModules.test.mts');
