@@ -20,3 +20,13 @@ Building `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md` (Design tool: UI-from-0 +
 *Verification:* typecheck 0 · lint 0 errors · ai:lint clean · new unit test 15/15 · opCatalog parity 53/53. Real-Docker E2E of the extraction pipeline proven: chromium→PDF→poppler `pdftotext` returns the text, and pandoc md→docx→md round-trips (both images pull + run).
 
 *Notes:* Full upload→extract→generate through the live server (DB+redis) not yet run end-to-end; the container extraction itself is proven with real Docker. Poppler image `minidocks/poppler:latest` (env `WS_POPPLER_IMAGE`).
+
+## 2026-07-18 — Phase 2.5 (diff-before-approve + revision restore)
+
+*What I did:*
+- **Diff-before-approve** — dependency-free LCS line diff (`src/workspaces/documents/lineDiff.ts`) rendered via the existing `DiffView`; the document draft-review panel now defaults to a diff (current vs AI draft) with a `+n −n` stat and a diff/preview toggle. Makes the apply-is-consent step (B-23) actually reviewable, incl. on a phone.
+- **Revision view + restore** — the snapshot now ships each document's revision history (id/note/date only; content fetched on restore); new single-writer op `document-restore-revision` snapshots the current content first (undoable) then restores + reindexes; editor gains a History list with a confirm-gated Restore.
+
+*Files touched:* `src/workspaces/documents/lineDiff.ts` (new), `tests/unit/documentLineDiff.test.mts` (new), `src/workspaces/documents/[docId]/page.tsx`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/documentsControl_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`.
+
+*Verification:* typecheck 0 · lint 0 errors · ai:lint clean · line-diff unit 9/9 · grounding 15/15 · op-parity 53/53. generateArtifacts re-run for the new snapshot field + op param.

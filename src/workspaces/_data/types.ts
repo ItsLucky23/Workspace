@@ -666,6 +666,7 @@ export interface AiSkillEntry {
 
 //? DOC1 (DOCUMENTS_AND_SKILLS) — a workspace document (markdown source + optional AI draft + assets).
 export interface DocumentAsset { kind: string; url: string; label: string; stub?: boolean; extractStatus?: string; extractedText?: string }
+export interface DocumentRevisionMeta { id: string; note: string; createdAt: number }
 export interface DocumentEntry {
   id: string;
   title: string;
@@ -673,6 +674,7 @@ export interface DocumentEntry {
   aiDraft: string | null;      // pending AI proposal (apply = consent, B-23)
   aiDraftLabel: string;
   assets: DocumentAsset[];
+  revisions: DocumentRevisionMeta[];  // history (newest first; id/note/date — content fetched on restore)
   updatedAt: number;           // epoch ms (list sorting + "edited …" display)
 }
 

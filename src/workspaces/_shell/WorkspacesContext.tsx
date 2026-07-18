@@ -248,6 +248,7 @@ export interface WorkspacesCtx {
   discardDocumentDraft: (documentId: string) => void;
   genDocumentImage: (documentId: string, prompt: string) => void;
   exportDocument: (documentId: string, format: string) => void;
+  restoreDocumentRevision: (documentId: string, revisionId: string) => void;
   //? CI — the read-only comment inbox (refresh + mark read; the list lives on content.comments).
   refreshComments: () => void;
   markCommentsRead: (commentId?: string) => void;

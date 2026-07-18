@@ -361,6 +361,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
     //? DOC1 — the workspace's documents (newest-edited first; bounded).
     const documentRows = await prisma.document.findMany({ where: { workspaceId: currentWorkspaceId(), archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
+    //? DESIGN_DOCS_PROGRAM 2.5 — per-document revision history (id/note/date only; content is fetched on
+    //? restore, never shipped in the snapshot) so the editor can list + restore prior versions.
+    const revisionRows = await prisma.documentRevision.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' }, select: { id: true, documentId: true, note: true, createdAt: true }, take: 500 });
+    const revisionsByDoc = new Map<string, { id: string; note: string; createdAt: number }[]>();
+    for (const r of revisionRows) { const list = revisionsByDoc.get(r.documentId) ?? []; list.push({ id: r.id, note: r.note, createdAt: r.createdAt.getTime() }); revisionsByDoc.set(r.documentId, list); }
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
@@ -563,6 +568,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           //? deliberately NOT sent to the client (it can be huge — the server uses it only for grounding).
           return [{ kind: typeof rec.kind === 'string' ? rec.kind : 'file', url: rec.url, label: typeof rec.label === 'string' ? rec.label : '', ...(rec.stub === true ? { stub: true } : {}), ...(typeof rec.extractStatus === 'string' ? { extractStatus: rec.extractStatus } : {}) }];
         }),
+        revisions: revisionsByDoc.get(d.id) ?? [],
         updatedAt: d.updatedAt.getTime(),
       })),
       tickets: ticketRows.map((t) => {

@@ -2271,6 +2271,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (documentId) { await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: null, aiDraftLabel: '' } }); broadcastContentDirty(action.workspaceId); }
       return;
     }
+    //? DESIGN_DOCS_PROGRAM 2.5 — restore a prior revision as the current content. Snapshots the current
+    //? content first (so a restore is itself undoable), then reindexes. Single writer (B-23).
+    case 'document-restore-revision': {
+      const documentId = str(payload, 'documentId');
+      const revisionId = str(payload, 'revisionId');
+      if (!documentId || !revisionId) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      const rev = await prisma.documentRevision.findFirst({ where: { workspaceId: action.workspaceId, id: revisionId, documentId } });
+      if (!doc || !rev) return;
+      if (doc.content.trim().length > 0 && doc.content !== rev.content) {
+        await prisma.documentRevision.create({ data: { workspaceId: action.workspaceId, documentId, content: doc.content, note: 'edit' } });
+        await pruneDocumentRevisions(prisma, action.workspaceId, documentId);
+      }
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { content: rev.content, aiDraft: null, aiDraftLabel: '' } });
+      await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, doc.title, rev.content));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     //? EXP — render the markdown source to a target format; the produced file lands in the media
     //? store and is appended to the document's assets (kind 'export') so the UI lists + links it.
     case 'document-export': {

@@ -14,7 +14,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image', 'document-export']);
+const DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image', 'document-export', 'document-restore-revision']);
 const isDocumentOp = (op: string): op is ControlOp => DOCUMENT_OPS.has(op);
 
 export interface SyncParams {
@@ -23,6 +23,7 @@ export interface SyncParams {
     documentId?: string; title?: string; content?: string;
     mode?: string; instruction?: string; prompt?: string; format?: string;
     addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string;
+    revisionId?: string;
   };
   user: SessionLayout;
   functions: Functions;

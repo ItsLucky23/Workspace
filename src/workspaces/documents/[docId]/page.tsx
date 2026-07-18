@@ -8,12 +8,15 @@ import { useEffect, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
+import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import MarkdownView from '../../_components/MarkdownView';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { EmptyState, Segmented, WsButton } from '../../_components/primitives';
+import DiffView from '../../board/[ticketId]/DiffView';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { lineDiff, diffStat } from '../lineDiff';
 
 export const template = 'workspaces';
 
@@ -32,7 +35,7 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, navigate, activeWorkspace } = useWorkspaces();
+  const { documents, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
 
   const [title, setTitle] = useState(doc?.title ?? '');
@@ -44,6 +47,8 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   const [aiBusy, setAiBusy] = useState(false);
   const [imgPrompt, setImgPrompt] = useState('');
   const [exporting, setExporting] = useState<string | null>(null);
+  //? Draft review: rendered preview vs a line diff against the current content (apply = consent, B-23).
+  const [draftView, setDraftView] = useState<'diff' | 'preview'>('diff');
 
   //? Server refetches land here: adopt them unless the user has local unsaved edits.
   useEffect(() => {
@@ -109,7 +114,25 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
               <WsButton variant="ghost" icon="trash" onClick={() => { discardDocumentDraft(doc.id); }}>{translate({ key: 'workspaces.documents.discardDraft' })}</WsButton>
             </div>
           </div>
-          <div className="max-h-72 overflow-auto rounded bg-container1 p-3"><MarkdownView markdown={doc.aiDraft} /></div>
+          {(() => {
+            const diff = lineDiff(doc.content, doc.aiDraft);
+            const stat = diffStat(diff);
+            const statLabel = `+${String(stat.added)} −${String(stat.removed)}`;
+            return (
+              <>
+                <div className="flex items-center gap-2">
+                  <Segmented
+                    options={[{ id: 'diff', label: translate({ key: 'workspaces.documents.draftDiff' }) }, { id: 'preview', label: translate({ key: 'workspaces.documents.draftPreview' }) }]}
+                    value={draftView} onChange={setDraftView}
+                  />
+                  <span className="text-xs text-muted">{statLabel}</span>
+                </div>
+                <div className="max-h-72 overflow-auto rounded bg-container1 p-3">
+                  {draftView === 'diff' ? <DiffView lines={diff} /> : <MarkdownView markdown={doc.aiDraft} />}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -165,6 +188,21 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,.pdf,.docx,.txt,.md" labelKey="workspaces.documents.upload" icon="plus" onUploaded={(url, kind) => { editDocument({ documentId: doc.id, addAssetUrl: url, addAssetKind: kind, addAssetLabel: translate({ key: 'workspaces.documents.uploadedLabel' }) }); }} />
         </div>
       </div>
+
+      {/* History: prior revisions (restore snapshots current first, so it's undoable). */}
+      {doc.revisions.length > 0 && (
+        <div className="pt-2 border-t border-divider">
+          <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.historyTitle' })}</div>
+          <div className="flex flex-col gap-1">
+            {doc.revisions.slice(0, 12).map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">
+                <span className="text-muted truncate">{`${new Date(r.createdAt).toLocaleString()} · ${r.note}`}</span>
+                <WsButton variant="ghost" icon="clock-rotate-left" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.documents.restoreConfirmTitle' }), content: translate({ key: 'workspaces.documents.restoreConfirmBody' }) }).then((ok) => { if (ok) restoreDocumentRevision(doc.id, r.id); }); }}>{translate({ key: 'workspaces.documents.restore' })}</WsButton>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

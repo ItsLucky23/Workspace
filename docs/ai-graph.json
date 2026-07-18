@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 248,
-    "edges": 371,
+    "nodes": 249,
+    "edges": 375,
     "symbols": 321,
     "callEdges": 46
   },
@@ -1176,6 +1176,11 @@
     {
       "id": "workspaces/documents/[docId]/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/documents/lineDiff.ts",
+      "kind": "other",
       "route": null
     },
     {
@@ -2400,6 +2405,10 @@
     },
     {
       "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2417,6 +2426,18 @@
     {
       "from": "workspaces/documents/[docId]/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/board/[ticketId]/DiffView.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/documents/lineDiff.ts"
+    },
+    {
+      "from": "workspaces/documents/lineDiff.ts",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/documents/page.tsx",
@@ -2803,6 +2824,7 @@
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
       "workspaces/documents/page.tsx",
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
@@ -2997,6 +3019,7 @@
       "workspaces/designer/page.tsx",
       "workspaces/designer/sections/Components.tsx",
       "workspaces/designer/sections/Themes.tsx",
+      "workspaces/documents/[docId]/page.tsx",
       "workspaces/documents/page.tsx",
       "workspaces/marketing/page.tsx",
       "workspaces/page.tsx",
@@ -3328,6 +3351,7 @@
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/lineDiff.ts",
       "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
@@ -3399,6 +3423,7 @@
       "workspaces/designer/sections/Styles.tsx",
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/documents/[docId]/page.tsx",
+      "workspaces/documents/lineDiff.ts",
       "workspaces/documents/page.tsx",
       "workspaces/interviewer/page.tsx",
       "workspaces/knowledge/page.tsx",
@@ -3536,7 +3561,8 @@
     ],
     "workspaces/board/[ticketId]/DiffView.tsx": [
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
-      "workspaces/board/[ticketId]/page.tsx"
+      "workspaces/board/[ticketId]/page.tsx",
+      "workspaces/documents/[docId]/page.tsx"
     ],
     "workspaces/board/[ticketId]/FileDiffViewer.tsx": [
       "workspaces/board/[ticketId]/page.tsx"
@@ -3635,6 +3661,9 @@
       "workspaces/designer/sections/Themes.tsx",
       "workspaces/designer/sections/Typography.tsx"
     ],
+    "workspaces/documents/lineDiff.ts": [
+      "workspaces/documents/[docId]/page.tsx"
+    ],
     "workspaces/studio/page.tsx": [
       "workspaces/marketing/page.tsx"
     ]
@@ -3643,14 +3672,14 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 60,
+      "dependents": 61,
       "directDependents": 8
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 52,
-      "directDependents": 29
+      "dependents": 53,
+      "directDependents": 30
     },
     {
       "id": "workspaces/_components/Icon.tsx",
@@ -3685,14 +3714,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 31,
+      "dependents": 32,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 31,
-      "directDependents": 23
+      "dependents": 32,
+      "directDependents": 24
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
