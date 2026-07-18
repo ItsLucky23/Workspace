@@ -9,7 +9,7 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { captureUrlScreenshot, extractThemeFromScreenshot, saveThemeProposal, compareDesigns } from '../../../server/designer/inspiration';
+import { captureUrlScreenshot, extractThemeFromScreenshot, extractStyleFromScreenshot, saveThemeProposal, saveStyleProposal, compareDesigns, type CaptureViewport } from '../../../server/designer/inspiration';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -17,10 +17,13 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; op: string; url?: string; imageUrl?: string; hint?: string; ownUrl?: string; inspirationUrl?: string };
+  data: { workspaceId: string; op: string; url?: string; imageUrl?: string; hint?: string; ownUrl?: string; inspirationUrl?: string; viewport?: string };
   user: SessionLayout;
   functions: Functions;
 }
+
+//? 3.2 — the capture viewport (desktop default; 'mobile' for the phone form factor).
+const asViewport = (v: string | undefined): CaptureViewport => (v === 'mobile' ? 'mobile' : 'desktop');
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
   const { workspaceId, op } = data;
@@ -32,12 +35,17 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (op === 'inspire-url') {
     const url = (data.url ?? '').trim();
     if (!/^https?:\/\//.test(url)) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const shot = await captureUrlScreenshot(url);
+    const shot = await captureUrlScreenshot(url, asViewport(data.viewport));
     if (!shot) return { status: 'error', errorCode: 'inspire.captureFailed' };
     const theme = await extractThemeFromScreenshot(workspaceId, shot, data.hint ?? '');
     if (!theme) return { status: 'error', errorCode: 'inspire.extractFailed' };
-    const id = await saveThemeProposal(prisma, workspaceId, theme, new URL(url).hostname);
-    return { status: 'success', result: { id, name: theme.name, screenshotUrl: shot } };
+    const origin = new URL(url).hostname;
+    const id = await saveThemeProposal(prisma, workspaceId, theme, origin);
+    //? 3.1 — also extract the full STYLE (radius/shadow/font/motion) so the imported look resembles the
+    //? reference once applied, not just its colours. Best-effort — a style-extract miss doesn't fail the import.
+    const style = await extractStyleFromScreenshot(workspaceId, shot);
+    const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, origin) : null;
+    return { status: 'success', result: { id, name: theme.name, screenshotUrl: shot, ...(styleId ? { styleId } : {}) } };
   }
 
   if (op === 'inspire-image') {
@@ -46,12 +54,15 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     const theme = await extractThemeFromScreenshot(workspaceId, imageUrl, data.hint ?? '');
     if (!theme) return { status: 'error', errorCode: 'inspire.extractFailed' };
     const id = await saveThemeProposal(prisma, workspaceId, theme, 'upload');
-    return { status: 'success', result: { id, name: theme.name, screenshotUrl: imageUrl } };
+    const style = await extractStyleFromScreenshot(workspaceId, imageUrl);
+    const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, 'upload') : null;
+    return { status: 'success', result: { id, name: theme.name, screenshotUrl: imageUrl, ...(styleId ? { styleId } : {}) } };
   }
 
   if (op === 'compare') {
-    //? Each side is EITHER an already-uploaded /media/ screenshot OR a URL we capture first.
-    const resolveSide = async (v: string): Promise<string | null> => (v.startsWith('/media/') ? v : (/^https?:\/\//.test(v) ? captureUrlScreenshot(v) : null));
+    //? Each side is EITHER an already-uploaded /media/ screenshot OR a URL we capture first (at `viewport`).
+    const vp = asViewport(data.viewport);
+    const resolveSide = async (v: string): Promise<string | null> => (v.startsWith('/media/') ? v : (/^https?:\/\//.test(v) ? captureUrlScreenshot(v, vp) : null));
     const own = await resolveSide((data.ownUrl ?? '').trim());
     const insp = await resolveSide((data.inspirationUrl ?? '').trim());
     if (!own || !insp) return { status: 'error', errorCode: 'inspire.captureFailed' };

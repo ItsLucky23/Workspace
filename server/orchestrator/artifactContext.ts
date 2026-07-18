@@ -9,14 +9,23 @@ import { buildDesignSystemDoc } from '../designer/designSystemDoc';
 
 const rec = (v: unknown): Record<string, unknown> => (v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 
-//? Render a Studio artifact's kind-specific content into a short markdown block (bounded — never dumps
-//? full landing HTML at the agent; it points at the intent + any copy).
+//? DESIGN_DOCS_PROGRAM 3.3 — the Studio artifact's HTML is the ONE artifact carrying real premium detail
+//? (spacing, hierarchy, component styling), so hand the agent the ACTUAL markup (bounded) to match — not a
+//? "HTML omitted" pointer that made it re-imagine the design from a sentence.
+const STUDIO_HTML_CAP = 8000;
 function renderStudio(kind: string, content: unknown): string {
   const c = rec(content);
   if (typeof c.markdown === 'string') return c.markdown.slice(0, 3000);
   if (Array.isArray(c.items)) return c.items.filter((i): i is string => typeof i === 'string').map((i) => `- ${i}`).join('\n').slice(0, 3000);
-  if (typeof c.html === 'string') return `A ${kind} visual design exists in the Studio module (HTML omitted here; match its structure + copy).`;
+  if (typeof c.html === 'string') return `The ${kind}'s reference HTML (match its structure, spacing, hierarchy, and component styling):\n\n\`\`\`html\n${c.html.slice(0, STUDIO_HTML_CAP)}\n\`\`\``;
   return JSON.stringify(content).slice(0, 2000);
+}
+
+//? DESIGN_DOCS_PROGRAM 3.3 — render a linked ANIMATION artifact's motion spec (previously dropped: a linked
+//? animation fell into the style branch → an empty style doc, losing the anim data entirely).
+function renderAnim(name: string, description: string, content: unknown): string {
+  const c = rec(content);
+  return `# Animation — "${name}"\n${description}\n\nApply this motion to entrances/transitions/interactions. Spec:\n\`\`\`json\n${JSON.stringify(c)}\n\`\`\``;
 }
 
 export async function loadTicketArtifactContext(prisma: PrismaClient, workspaceId: string, ticketId: string): Promise<{ name: string; content: string }[]> {
@@ -28,7 +37,10 @@ export async function loadTicketArtifactContext(prisma: PrismaClient, workspaceI
       const a = await prisma.designArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, name: true, description: true, content: true } });
       if (!a) continue;
       const meta = { name: a.name, description: a.description ?? '', content: a.content };
-      const doc = a.kind === 'theme' ? buildDesignSystemDoc(meta, null) : buildDesignSystemDoc(null, meta);
+      //? Render by kind — theme + style via the design-system doc; animation via its own motion block (3.3).
+      const doc = a.kind === 'theme'
+        ? buildDesignSystemDoc(meta, null)
+        : (a.kind === 'animation' ? renderAnim(a.name, a.description ?? '', a.content) : buildDesignSystemDoc(null, meta));
       out.push({ name: `Linked design: ${a.name}`, content: doc });
     } else {
       const a = await prisma.studioArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, title: true, content: true } });

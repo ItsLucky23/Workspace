@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 249,
     "edges": 377,
-    "symbols": 321,
-    "callEdges": 46
+    "symbols": 322,
+    "callEdges": 47
   },
   "nodes": [
     {
@@ -4312,6 +4312,12 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_api/designerInspiration_v1.ts::asViewport",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "asViewport",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/designerInspiration_v1.ts::main",
       "file": "workspaces/_api/designerInspiration_v1.ts",
       "name": "main",
@@ -5813,6 +5819,10 @@
     },
     {
       "from": "workspaces/_api/designerInspiration_v1.ts::main",
+      "to": "workspaces/_api/designerInspiration_v1.ts::asViewport"
+    },
+    {
+      "from": "workspaces/_api/designerInspiration_v1.ts::main",
       "to": "workspaces/_api/designerInspiration_v1.ts::resolveSide"
     },
     {
@@ -5976,6 +5986,9 @@
     "settings/_api/listSessions_v1.ts::sessionHandle": [
       "settings/_api/listSessions_v1.ts::main",
       "settings/_api/revokeSession_v1.ts::main"
+    ],
+    "workspaces/_api/designerInspiration_v1.ts::asViewport": [
+      "workspaces/_api/designerInspiration_v1.ts::main"
     ],
     "workspaces/_api/designerInspiration_v1.ts::resolveSide": [
       "workspaces/_api/designerInspiration_v1.ts::main"

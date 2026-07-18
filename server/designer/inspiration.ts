@@ -19,13 +19,19 @@ import { docker } from '../container/runtime';
 import { persistMediaBytes } from '../media/store';
 import { runAiCompletion } from '../ai/registry';
 import { parseTheme, type GeneratedTheme } from './generateTheme';
+import { parseAsset } from './generateAsset';
 import { saveDesignArtifact } from './library';
 
 const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenika/alpine-chrome:124';
 
-//? Screenshot a URL in a throwaway chromium container (full-page-ish tall viewport). Networked (the
-//? target is external); output lands in the media store. null on any failure — callers surface it.
-export async function captureUrlScreenshot(url: string): Promise<string | null> {
+//? DESIGN_DOCS_PROGRAM 3.2 — capture viewports. Desktop (the default, unchanged) + a phone form factor so
+//? "compare/extract" also sees the mobile look the product's own output targets.
+export type CaptureViewport = 'desktop' | 'mobile';
+const VIEWPORT_SIZE: Record<CaptureViewport, string> = { desktop: '1440,2200', mobile: '390,1600' };
+
+//? Screenshot a URL in a throwaway chromium container. Networked (the target is external); output lands in
+//? the media store. null on any failure — callers surface it. `viewport` selects desktop (default) or phone.
+export async function captureUrlScreenshot(url: string, viewport: CaptureViewport = 'desktop'): Promise<string | null> {
   if (!/^(https?:|data:)/.test(url)) return null;
   //? Percent-encode spaces/quotes: Windows spawn quotes args with spaces and chromium mangles the
   //? embedded quotes (a data: URL test-case artifact; harmless for real http(s) URLs).
@@ -33,10 +39,10 @@ export async function captureUrlScreenshot(url: string): Promise<string | null> 
   const dir = mkdtempSync(path.join(tmpdir(), 'ws-inspire-'));
   const [err, saved] = await tryCatch(async () => {
     const mount = `${dir.replaceAll('\\', '/')}:/data`;
-    const res = await docker(['run', '--rm', '-v', mount, CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--window-size=1440,2200', '--screenshot=/data/shot.png', safeUrl]);
+    const res = await docker(['run', '--rm', '-v', mount, CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars', `--window-size=${VIEWPORT_SIZE[viewport]}`, '--screenshot=/data/shot.png', safeUrl]);
     if (res.code !== 0) throw new Error(`capture container exited ${String(res.code)}`);
     const bytes = readFileSync(path.join(dir, 'shot.png'));
-    return persistMediaBytes(bytes, 'png', `inspire-${randomUUID().slice(0, 8)}`).url;
+    return persistMediaBytes(bytes, 'png', `inspire-${viewport}-${randomUUID().slice(0, 8)}`).url;
   });
   tryCatchSync(() => { rmSync(dir, { recursive: true, force: true }); });
   return err ? null : saved;
@@ -64,6 +70,32 @@ export async function saveThemeProposal(prisma: PrismaClient, workspaceId: strin
   return saveDesignArtifact(prisma, workspaceId, {
     kind: 'theme', name: theme.name, description: `${theme.description}${origin ? ` (from ${origin})` : ''}`,
     content: { light: theme.light, dark: theme.dark }, source: 'ai',
+  });
+}
+
+//? DESIGN_DOCS_PROGRAM 3.1 — a look is more than colour. Extract the STYLE dimensions (radius/shadow/border/
+//? density/fonts/weight/tracking/motion/blur) from the same screenshot so an imported look actually RESEMBLES
+//? the reference once applied (the client `coerceStyle` fills any omission from a seed). null on failure.
+const EXTRACT_STYLE_SYSTEM = [
+  'You are a design-system analyst. You get a screenshot of a UI/website. Extract its STYLE (the visual language around colour: shape, elevation, density, type, motion feel).',
+  'Output ONE ```json code block only, matching exactly: {"name":string,"description":string,"radius":number,"radiusLg":number,"pill":boolean,"shadow":string,"shadowSm":string,"border":"none"|"hairline"|"solid"|"bold","density":"compact"|"cozy"|"comfortable","fontHeading":string,"fontBody":string,"weightHeading":number,"tracking":string,"motion":"none"|"snappy"|"smooth"|"bouncy","blur":number}.',
+  'radius/radiusLg/blur are px numbers; shadow/shadowSm are CSS box-shadow strings; fonts are CSS font-family stacks that MATCH what the site appears to use; weightHeading 400-900; tracking a CSS letter-spacing like "-0.02em". Infer honestly from the screenshot.',
+].join('\n');
+
+export async function extractStyleFromScreenshot(workspaceId: string, imageUrl: string): Promise<Record<string, unknown> | null> {
+  const [err, res] = await tryCatch(() => runAiCompletion('image-critique', { prompt: 'Extract the visual STYLE of this UI (shape, elevation, density, type, motion).', system: EXTRACT_STYLE_SYSTEM, imageUrls: [imageUrl], workspaceId, label: 'Inspiration → style', timeoutMs: 180_000 }));
+  if (err || !res?.ok) return null;
+  const obj = parseAsset(res.text);
+  return Object.keys(obj).length > 0 ? obj : null;
+}
+
+//? Save an extracted style as an INACTIVE proposal (kind 'style'); the client coerces it to a full DesignStyle.
+export async function saveStyleProposal(prisma: PrismaClient, workspaceId: string, style: Record<string, unknown>, origin: string): Promise<string | null> {
+  const name = typeof style.name === 'string' && style.name.trim().length > 0 ? style.name : 'Inspiration style';
+  const description = typeof style.description === 'string' ? style.description : '';
+  return saveDesignArtifact(prisma, workspaceId, {
+    kind: 'style', name, description: `${description}${origin ? ` (from ${origin})` : ''}`,
+    content: style, source: 'ai',
   });
 }
 

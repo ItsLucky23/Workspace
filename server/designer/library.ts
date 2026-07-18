@@ -4,7 +4,10 @@
 
 import type { PrismaClient, Prisma } from '@prisma/client';
 
+import { tryCatch } from '@luckystack/core';
+
 import { rebuildDesignSystemDoc } from './designSystemDoc';
+import { indexDesignArtifact, removeDesignArtifactIndex } from './designLibraryRag';
 
 //? Bridge a genuinely-JSON value to Prisma's Json WRITE type (mirrors server/studio/generate.ts).
 const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
@@ -31,6 +34,8 @@ export async function saveDesignArtifact(prisma: PrismaClient, workspaceId: stri
   }
   //? Refresh the design-system doc so the saved look joins the named-looks catalog the coding agent reads.
   await rebuildDesignSystemDoc(prisma, workspaceId);
+  //? 3.6 — index the look into the design-library corpus so future generations can build on it (best-effort).
+  await tryCatch(() => indexDesignArtifact(prisma, workspaceId, id, a.kind, name, a.description ?? ''));
   return id;
 }
 
@@ -48,4 +53,5 @@ export async function deleteDesignArtifact(prisma: PrismaClient, workspaceId: st
   await prisma.designArtifact.deleteMany({ where: { workspaceId, id } });
   //? Always rebuild — the deleted look must leave the named-looks catalog too, not only when it was active.
   await rebuildDesignSystemDoc(prisma, workspaceId);
+  await tryCatch(() => removeDesignArtifactIndex(prisma, workspaceId, id));
 }

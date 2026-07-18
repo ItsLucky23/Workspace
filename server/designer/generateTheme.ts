@@ -4,7 +4,7 @@
 //? config choice, never hardcoded. Pure prompt-builder + parser (unit-testable); the one impure step
 //? is the AI call. Stateless: it returns a token-set the client adds to its theme library (no DB yet).
 
-import { tryCatch, tryCatchSync } from '@luckystack/core';
+import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { runAiCompletion } from '../ai/registry';
 
 //? The 30 token roles (kept in sync with `src/index.css` + `src/workspaces/designer/themes.ts`).
@@ -112,7 +112,16 @@ export function parseTheme(text: string, fallbackName: string): GeneratedTheme {
 //? Generate a theme from a brief. Returns null on ANY provider error — including a thrown
 //? exception (a PTY spawn failure must surface as a clean handled error, never a 500).
 export async function generateTheme(brief: string, workspaceId?: string): Promise<GeneratedTheme | null> {
-  const { system, prompt } = buildThemePrompt(brief);
+  const { system: baseSystem, prompt } = buildThemePrompt(brief);
+  //? 3.6 — ground on the workspace's existing visual language (saved looks + captured inspiration) so a new
+  //? theme builds on it, not a one-off. Best-effort; skipped without a workspace.
+  let system = baseSystem;
+  if (workspaceId) {
+    const { retrieveDesignLibrary } = await import('./designLibraryRag');
+    const [, hits] = await tryCatch(() => retrieveDesignLibrary(getPrismaClient(), workspaceId, brief, 4));
+    const lib = (hits ?? []).map((h) => h.content).join('\n').slice(0, 1200);
+    if (lib.length > 0) system = `${baseSystem}\n\nThe workspace's existing visual language (build on it, stay coherent with these named looks):\n${lib}`;
+  }
   const [error, res] = await tryCatch(() => runAiCompletion('designer-theme', { prompt, system, timeoutMs: 180_000, ...(workspaceId ? { workspaceId, label: `Theme · ${brief.slice(0, 40)}` } : {}) }));
   if (error || !res?.ok) return null;
   return parseTheme(res.text, 'AI theme');

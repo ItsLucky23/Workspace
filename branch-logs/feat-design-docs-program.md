@@ -53,3 +53,30 @@ Building `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md` (Design tool: UI-from-0 +
 *Verification:* typecheck 0 · lint 0 errors · ai:lint clean · templates unit 17/17 · op-parity 53/53. generateArtifacts re-run (snapshot gained `documentTemplates` + `kind`, route gained the template ops/params). Live AI generation of a full templated doc needs the running stack — not E2E-run here; the structure/skeleton/parse logic is unit-proven and the AI path is typechecked on the proven runDocumentAi pattern.
 
 **Document tool status:** Phase 1 (ingestion) + Phase 2 (2.1 templates, 2.4 export fidelity, 2.5 diff+restore) done. 2.2 (mermaid rendering in export/editor) + 2.3 (a dedicated humanize preset — the humanizer skill already injects at document-generate when enabled) remain.
+
+## 2026-07-18 12:27 — All-in-one product-gap scan
+
+**User prompt (summary)**: Reconstruct what Workspaces really is, then use mainly Terra 5.6 and several Sol 5.6 models to scan the entire product for missing modules, module polish and especially missing cross-module links, including the phone-first all-in-one vision.
+
+**What I did**:
+- Ran a read-only dynamic workflow: one Sol 5.6 product-map, twelve Terra 5.6 dimension scans, three Sol 5.6 synth/verification passes and one Sol 5.6 final editor.
+- Reconciled the historical narrow V1 docs against current code, recent ADRs and the expanded Development/Content/Design/Documents product scope.
+- Adversarially verified 45 active high-value claim clusters and separated confirmed gaps, needs-live checks, roadmap ideas and stale/fixed findings.
+- Added a standalone 983-line audit with 60 unique coupling edges, stop-ship/foundation findings, module polish, new tool candidates, target journeys, phased roadmap and live-verification matrix.
+- Rechecked the Document findings against the concurrently landed Phase 2.1/2.4/2.5 commits so templates, export fidelity, draft diff and revision restore are not incorrectly reported as open.
+
+**Files touched**: `src/workspaces/_docs/PRODUCT_GAP_SCAN_2026-07-18.md`, `branch-logs/feat-design-docs-program.md`, `branch-logs/INDEX.md`
+
+**Notes / decisions**: This report records findings and roadmap candidates, not accepted architecture decisions. `npm run ai:index` could not run because this project no longer defines that script, despite the root contract still requiring it after significant docs changes.
+
+## 2026-07-18 — Phase 3 (design premium loop: full-look extraction · mobile capture · lossless handoff · design-library RAG)
+
+*What I did:*
+- **3.1 full-look extraction** — inspiration import now also extracts the STYLE (radius/shadow/border/density/fonts/weight/tracking/motion/blur) via `extractStyleFromScreenshot` + `saveStyleProposal`, saved alongside the theme proposal, so an imported look resembles the reference once applied (not colour-only). Wired into `inspire-url`/`inspire-image`.
+- **3.2 mobile capture** — `captureUrlScreenshot(url, viewport)` (desktop default + a 390px phone form factor); the inspiration route takes a `viewport` param (capture + compare).
+- **3.3 lossless handoff** — `artifactContext.ts` now hands the coding agent the Studio artifact's ACTUAL HTML (bounded) instead of an "HTML omitted" pointer, and renders a linked ANIMATION artifact's motion spec (was silently dropped into an empty style doc).
+- **3.6 design-library RAG** — new `design-library` corpus (`designLibraryRag.ts`); saving/deleting a look indexes/de-indexes it; `generateTheme` retrieves the workspace's existing looks and grounds on them (builds on the visual language instead of one-offs).
+
+*Files touched:* `server/designer/inspiration.ts`, `server/designer/designLibraryRag.ts` (new), `server/designer/library.ts`, `server/designer/generateTheme.ts`, `server/orchestrator/artifactContext.ts`, `server/rag/index.ts`, `src/workspaces/_api/designerInspiration_v1.ts`, `tests/integration/designPremiumLoop.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 · ai:lint clean · designPremiumLoop integration **6/6 against real Mongo** (index+retrieve+de-index, animation motion-spec handoff, Studio HTML handoff). Remaining Phase 3: 3.4 (apply-active-design-tokens op — repo-mutating) + 3.5 (web-discovery via headless browser). Frontend viewport/before-after toggles are follow-ups on this backend.
