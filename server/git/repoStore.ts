@@ -11,7 +11,7 @@
 //? clean `gitUrl` is stored on `Project`.
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -98,7 +98,7 @@ export function isLinked(workspaceId: string, projectId: string): boolean {
 
 //? Run a git command, capturing stdout. Rejects with a token-scrubbed message on
 //? non-zero exit so a bad URL/token surfaces without leaking the credential.
-function git(args: string[], opts: { cwd?: string; env?: Record<string, string> } = {}): Promise<string> {
+function git(args: string[], opts: { cwd?: string; env?: Record<string, string>; trimOutput?: boolean } = {}): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn('git', args, { cwd: opts.cwd, windowsHide: true, ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}) });
     let out = '';
@@ -107,7 +107,7 @@ function git(args: string[], opts: { cwd?: string; env?: Record<string, string> 
     proc.stderr.on('data', (d) => { err += String(d); });
     proc.on('error', (e) => { reject(new Error(scrub(e.message))); });
     proc.on('close', (code) => {
-      if (code === 0) resolve(out.trim());
+      if (code === 0) resolve(opts.trimOutput === false ? out : out.trim());
       else reject(new Error(scrub(err.trim() || `git exited ${String(code)}`)));
     });
   });
@@ -326,34 +326,112 @@ export async function initGreenfieldRepo(workspaceId: string, projectId: string,
   return repoStatus(workspaceId, projectId);
 }
 
-//? DESIGN_DOCS_PROGRAM 3.4 — commit files DIRECTLY to the repo's default branch (main) via a throwaway
-//? clone (mirrors initGreenfieldRepo in reverse). Used for the fast design-token apply: a mechanical write
-//? the Conductor commits without a full pipeline run. Returns false when no repo is linked or nothing changed.
-export async function commitFilesToMain(workspaceId: string, projectId: string, files: { path: string; content: string }[], message: string): Promise<boolean> {
+//? @adr 0276
+//? A09 — revision-safe direct commits for small Conductor-owned mechanical patches. The caller reads
+//? the target file at `expectedHead`, computes a surgical patch, then this helper compares the branch tip
+//? again immediately before commit and uses `--force-with-lease=<expected>` as the final CAS at push.
+export type RepoPatchError = 'repo.notLinked' | 'repo.invalidTarget' | 'repo.branchMissing' | 'repo.fileMissing' | 'repo.headChanged' | 'repo.commitFailed';
+export type RepoBranchFileResult =
+  | { ok: true; head: string; content: string }
+  | { ok: false; error: RepoPatchError };
+export type RepoCommitFilesResult =
+  | { ok: true; status: 'committed' | 'unchanged'; sha: string }
+  | { ok: false; error: RepoPatchError };
+
+function validRepoPath(filePath: string): boolean {
+  const normalized = filePath.replaceAll('\\', '/');
+  let hasControlCharacter = false;
+  for (const char of normalized) if ((char.codePointAt(0) ?? 32) < 32) hasControlCharacter = true;
+  if (normalized.length === 0 || normalized.startsWith('/') || /^[A-Za-z]:/.test(normalized) || hasControlCharacter) return false;
+  return normalized.split('/').every((part) => part.length > 0 && part !== '.' && part !== '..' && !part.includes(':'));
+}
+
+async function validBranch(branch: string): Promise<boolean> {
+  const [error] = await tryCatch(() => git(['check-ref-format', '--branch', branch]));
+  return error === null;
+}
+
+async function headAtBranch(bare: string, branch: string): Promise<string | null> {
+  const [error, head] = await tryCatch(() => git(['--git-dir', bare, 'rev-parse', '--verify', `refs/heads/${branch}`]));
+  return error || !head ? null : head;
+}
+
+//? Read without `.trim()`: leading/trailing whitespace, comments, BOM and final newline are part of the
+//? stylesheet revision the patch must preserve. The SHA is resolved first and then used for `git show`,
+//? so a concurrent branch move cannot mix content from one revision with the HEAD of another.
+export async function readRepoBranchFile(workspaceId: string, projectId: string, branch: string, filePath: string): Promise<RepoBranchFileResult> {
   const bare = bareRepoPath(workspaceId, projectId);
-  if (!existsSync(bare) || files.length === 0) return false;
+  if (!existsSync(bare)) return { ok: false, error: 'repo.notLinked' };
+  if (!validRepoPath(filePath) || !(await validBranch(branch))) return { ok: false, error: 'repo.invalidTarget' };
+  const head = await headAtBranch(bare, branch);
+  if (!head) return { ok: false, error: 'repo.branchMissing' };
+  const [fileError, content] = await tryCatch(() => git(['--git-dir', bare, 'show', `${head}:${filePath}`], { trimOutput: false }));
+  if (fileError || content === null) return { ok: false, error: 'repo.fileMissing' };
+  return { ok: true, head, content };
+}
+
+function pathContainsSymlink(root: string, filePath: string): boolean {
+  let current = root;
+  for (const part of filePath.replaceAll('\\', '/').split('/')) {
+    current = path.join(current, part);
+    if (existsSync(current) && lstatSync(current).isSymbolicLink()) return true;
+  }
+  return false;
+}
+
+export async function commitFilesToBranch(input: {
+  workspaceId: string;
+  projectId: string;
+  branch: string;
+  expectedHead: string;
+  files: { path: string; content: string }[];
+  message: string;
+}): Promise<RepoCommitFilesResult> {
+  const { workspaceId, projectId, branch, expectedHead, files, message } = input;
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (!existsSync(bare)) return { ok: false, error: 'repo.notLinked' };
+  if (files.length === 0 || !/^[0-9a-f]{40,64}$/i.test(expectedHead) || files.some((file) => !validRepoPath(file.path)) || !(await validBranch(branch))) {
+    return { ok: false, error: 'repo.invalidTarget' };
+  }
+  if ((await headAtBranch(bare, branch)) !== expectedHead) return { ok: false, error: 'repo.headChanged' };
+
   const dir = projectDataDir(workspaceId, projectId);
   mkdirSync(dir, { recursive: true });
   const work = path.join(dir, `apply-${randomUUID().slice(0, 8)}`);
   rmSync(work, { recursive: true, force: true });
-  const [err, changed] = await tryCatch(async () => {
-    await git(['clone', '--branch', 'main', '--single-branch', bare, work]);
+  const [operationError, result] = await tryCatch<RepoCommitFilesResult>(async () => {
+    await git(['clone', '--no-checkout', bare, work]);
+    await git(['checkout', '--detach', expectedHead], { cwd: work });
     await git(['config', 'user.email', 'workspaces@local'], { cwd: work });
     await git(['config', 'user.name', 'Workspaces'], { cwd: work });
-    for (const f of files) {
-      const full = path.join(work, f.path);
+    for (const file of files) {
+      if (pathContainsSymlink(work, file.path)) return { ok: false, error: 'repo.invalidTarget' };
+      const full = path.join(work, file.path);
       mkdirSync(path.dirname(full), { recursive: true });
-      writeFileSync(full, f.content);
+      writeFileSync(full, file.content);
     }
-    await git(['add', '-A'], { cwd: work });
+    await git(['add', '--', ...files.map((file) => file.path)], { cwd: work });
     const status = await git(['status', '--porcelain'], { cwd: work });
-    if (status.trim().length === 0) return false; // nothing to commit (tokens unchanged)
+
+    //? CAS immediately before commit: a stale patch never even creates a candidate commit. A move in
+    //? the tiny commit→push window is caught by the force-with-lease below.
+    if ((await headAtBranch(bare, branch)) !== expectedHead) return { ok: false, error: 'repo.headChanged' };
+    if (status.length === 0) return { ok: true, status: 'unchanged', sha: expectedHead };
+
     await git(['commit', '-m', message], { cwd: work });
-    await git(['push', 'origin', 'main'], { cwd: work });
-    return true;
+    const sha = await git(['rev-parse', 'HEAD'], { cwd: work });
+    const [pushError] = await tryCatch(() => git([
+      'push', `--force-with-lease=refs/heads/${branch}:${expectedHead}`, 'origin', `HEAD:refs/heads/${branch}`,
+    ], { cwd: work }));
+    if (pushError) {
+      if ((await headAtBranch(bare, branch)) === expectedHead) return { ok: false, error: 'repo.commitFailed' };
+      return { ok: false, error: 'repo.headChanged' };
+    }
+    return { ok: true, status: 'committed', sha };
   });
   rmSync(work, { recursive: true, force: true });
-  return err ? false : changed === true;
+  if (operationError || !result) return { ok: false, error: 'repo.commitFailed' };
+  return result;
 }
 
 //? Add the ticket's worktree off the bare clone (07 §A step 5), freezing the default-branch

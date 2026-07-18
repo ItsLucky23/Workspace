@@ -145,3 +145,19 @@ all keys to en/de/fr (English) + nl (Dutch), key-parity green (`localeIntegrity`
 browser: labels now render ("Blank", "Templates", "Apply tokens", …).
 
 *Files touched:* `src/_locales/en.json`, `src/_locales/de.json`, `src/_locales/fr.json`, `src/_locales/nl.json`.
+
+## 2026-07-18 17:41 — A09 apply-tokens non-destructief + revision-safe
+
+*User prompt:* Fix A09 design-token apply: behoud bestaande CSS en concurrente edits; target project/service/configured branch; expected-HEAD CAS; typed fail-closed; eerlijke ACK; tests/docs/generators/commit.
+
+*What I did:*
+- Vervangen van heel `src/index.css` is verwijderd. De active theme wordt nu gevalideerde token-data; alleen `--color-*`-declaraties in exact één top-level Tailwind `@theme` en (indien nodig) `.dark` block worden gepatcht. Alle overige bytes/comments blijven intact; non-Tailwind, missing/ambiguous managed blocks en onveilige servicepaden falen typed en closed.
+- De bestaande repo-helper is branch-aware gemaakt: raw file-read op één SHA, configured `gitConfig.targetBranch`, project/servicepad, HEAD-check direct vóór commit en `--force-with-lease=<expected SHA>` als push-CAS. Unchanged is een succesvolle no-op; een race geeft `repo.headChanged` zonder overwrite.
+- De Conductor resolveert nu `target.projectId` (de sync-route zette het al daar), optionele `serviceId`/`Service.path`, configured branch en geeft typed semantic/git failures door aan de bestaande control-failureketen. Designer-feedback wacht op de echte sync-ACK i.p.v. een timer.
+- ADR 0276 + DESIGN_DOCS_PROGRAM-bewijs bijgewerkt; artifacts/generators vernieuwd.
+
+*Files touched:* `server/designer/applyTokens.ts`, `server/git/repoStore.ts`, `server/orchestrator/conductor.ts`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/designer/page.tsx`, `tests/integration/applyDesignTokens.test.mts`, `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md`, `docs/decisions/0276-revision-safe-managed-design-token-apply.md`, gegenereerde AI-indexen, branch-log/index.
+
+*Verification:* applyDesignTokens integration **35/35** tegen echte Mongo + echte git; `npm run typecheck` groen; target ESLint 0; `npm run build` groen; `npm run ai:lint` schoon; generateArtifacts + decisions/capabilities/project-index/graph/product/context-budget groen. Volledige lint: 0 errors, 22 reeds aanwezige warnings in andere gelijktijdig gewijzigde document/content/settings-files (niet drive-by gefixt).
+
+*Notes:* Geen nieuw control-verb/schema/productkeuze. De werkboom bevat omvangrijke gelijktijdige wijzigingen van andere A0x-prompts; die zijn niet door A09 overschreven.

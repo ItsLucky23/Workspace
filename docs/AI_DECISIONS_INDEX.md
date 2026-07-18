@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (193)
+## Decisions (194)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -206,6 +206,7 @@
 | 0273 | comment inbox read only youtube tiktok | 🟢 accepted | content, comments, oauth, documents-and-skills | — | `docs/decisions/0273-comment-inbox-read-only-youtube-tiktok.md` |
 | 0274 | pipeline role prompt eval replay harness | 🟢 accepted | eval, pipeline, testing, documents-and-skills | — | `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md` |
 | 0275 | voice interface provider abstracted stt plus tts | 🟢 accepted | voice, ai, provider-abstraction, documents-and-skills | — | `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md` |
+| 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS | 🟢 accepted | designer, git, css, tailwind, concurrency, b-23 | — | `docs/decisions/0276-revision-safe-managed-design-token-apply.md` |
 
 ## Summaries
 
@@ -1765,6 +1766,16 @@ STT rijdt op de bestaande AI-provider-abstractie (ADR 0007): nieuwe `AiFeature '
 
 → `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md`
 
+### 0276 — Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS
+
+**0276** · accepted · tags: designer, git, css, tailwind, concurrency, b-23 · 2026-07-18
+
+The existing control op remains the only product/control surface; the Conductor remains the only writer (B-23). Its implementation is now fail-closed and revision-safe:
+
+**Governs** (`//? @adr 0276`): `server/designer/applyTokens.ts`
+
+→ `docs/decisions/0276-revision-safe-managed-design-token-apply.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1777,6 +1788,7 @@ STT rijdt op de bestaande AI-provider-abstractie (ADR 0007): nieuwe `AiFeature '
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
 | `server/content/commentInbox.ts` | 0273 | comment inbox read only youtube tiktok |
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |
+| `server/designer/applyTokens.ts` | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS |
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |

@@ -14,7 +14,7 @@
 > | 2.2 mermaid | ✅ preview (client) + **export (real-Docker PDF render verified: node labels rendered, raw syntax gone)** | — |
 > | 2.3 humanize | ✅ (existing humanizer skill injects at document-generate) | — |
 > | 3.1 full-look · 3.2 mobile-capture · 3.3 lossless handoff · 3.6 design-library RAG | ✅ | designPremiumLoop integration (6/6) |
-> | 3.4 apply-tokens | ✅ | applyDesignTokens integration (5/5, real repo commit) |
+> | 3.4 apply-tokens | ✅ hardened (ADR 0276) | applyDesignTokens integration (35/35: existing CSS preserved, main/master/configured branch, service path, typed fail-closed + HEAD race) |
 > | 3.5 web-discovery | ✅ **LIVE** (AI-suggestion primary via the provider layer + scrape fallback behind the seam) | webDiscoveryLive (real AI → 5 distinct sites) + parse unit 13/13 |
 > | 4.1–4.3 UI from 0 | ✅ | uiFromZero integration (6/6, real greenfield repo) |
 >
@@ -96,7 +96,7 @@ The premium loop exists but leaks at every seam. Close them so an imported/refer
 | 3.1 | **Full-look extraction** — inspiration extracts style + animation (radius/shadow/border/density/font/weight/tracking/motion), not color-only | `inspiration.ts` EXTRACT_SYSTEM (color-only); `generateAsset.ts` `DesignStyle`/`AnimSpec` schema already exists | Importing a reference yields a full `DesignStyle`+`AnimSpec`, not just 30 colors; applied result visibly matches the reference's spacing/type/motion | M |
 | 3.2 | **Mobile-viewport capture + rendered before/after** — capture at phone width too; before/after via `LookPreview` → page-level re-capture | capture hardcoded `1440x2200`; compare is prose-only | Compare shows a rendered before/after at both desktop AND phone width (uses 0.4 background-job for the ~3-min capture) | M |
 | 3.3 | **Lossless handoff to the coding agent** — stop stripping the linked Studio HTML + animation data; link the structured artifact into redesign tickets | `artifactContext.ts` (strips artifact, drops anim data), `designSystemDoc.ts`, `TicketArtifactLink` | A redesign ticket carries a named look / `TicketArtifactLink` with full style+motion; the agent no longer re-derives premium-ness from prose | S + M |
-| 3.4 | **Fast `apply-active-design-tokens` control op** — mechanical token swap without a full pipeline run | today: full pipeline run or ungoverned copy-paste | A one-tap control op applies the active design tokens to the target project (Conductor-written, B-23); round-trips in seconds from a phone | M |
+| 3.4 | **Fast `apply-active-design-tokens` control op** — mechanical token swap without a full pipeline run | today: full pipeline run or ungoverned copy-paste | A one-tap control op patches only an existing managed Tailwind token block in the target project/service on the configured branch (Conductor-written, B-23); all other CSS bytes survive and expected-HEAD CAS rejects races (ADR 0276) | M |
 | 3.5 | **Web-discovery of reference sites** — a search step (behind the provider abstraction) that FINDS candidate reference UIs from a description | no discovery today; user must paste a URL | From "premium fintech dashboard" the tool returns candidate sites to capture; search runs through the provider registry (ADR 0007), not hardcoded | M–L |
 | 3.6 | **Design-library RAG corpus** — index saved themes + captured inspiration so `generateTheme` builds on them | via 0.7; `RESERVED_CORPUS_COMMITS` already reserves the slot | A new generation demonstrably reuses the workspace's saved visual language (test: a saved motif recurs) | M |
 

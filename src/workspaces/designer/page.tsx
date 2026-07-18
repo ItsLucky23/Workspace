@@ -142,8 +142,9 @@ function InspirationForm() {
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const { activeWorkspace, uiReviews, uiReviewAction, applyDesignTokens } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, uiReviews, uiReviewAction, applyDesignTokens } = useWorkspaces();
   const [applyBusy, setApplyBusy] = useState(false);
+  const [applyResult, setApplyResult] = useState<'ok' | 'error' | null>(null);
   //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
   //? development module is on, so a design-focused workspace gets a cleaner section strip (the visual-authoring
   //? sections only). The other five sections are always available.
@@ -181,6 +182,14 @@ function DesignerShell() {
     void d.saveToLibrary(section === 'themes' ? 'theme' : 'style').then(() => { setSaveBusy(false); });
   };
   const activeName = section === 'themes' ? d.activeThemeName : d.activeStyleName;
+  const applyTokensNow = () => {
+    if (applyBusy || !activeProjectId) return;
+    setApplyBusy(true); setApplyResult(null);
+    void applyDesignTokens(activeProjectId).then((error) => {
+      setApplyBusy(false);
+      setApplyResult(error === null ? 'ok' : 'error');
+    });
+  };
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -282,8 +291,10 @@ function DesignerShell() {
           {/* #166 — save to library (no activation), separate from Use-in-project. */}
           <WsButton variant="ghost" icon={saveBusy ? 'spinner' : 'floppy-disk'} disabled={saveBusy} className={saveBusy ? '[&_svg]:animate-spin' : ''} onClick={saveToLibNow}>{translate({ key: 'workspaces.designer.saveToLibrary' })}</WsButton>
           <WsButton variant="secondary" icon={useBusy ? 'spinner' : 'circle-check'} disabled={useBusy} className={useBusy ? '[&_svg]:animate-spin' : ''} onClick={useInProjectNow}>{translate({ key: 'workspaces.designer.useInProject' })}</WsButton>
-          {/* DESIGN_DOCS_PROGRAM 3.4 — fast mechanical apply of the ACTIVE tokens to the project's src/index.css. */}
-          <WsButton variant="secondary" icon={applyBusy ? 'spinner' : 'bolt'} disabled={applyBusy} className={applyBusy ? '[&_svg]:animate-spin' : ''} onClick={() => { setApplyBusy(true); applyDesignTokens(); setTimeout(() => { setApplyBusy(false); }, 1500); }}>{translate({ key: 'workspaces.designer.applyTokens' })}</WsButton>
+          {/* A09 — revision-safe managed-token patch; the real control ACK drives direct feedback. */}
+          {applyResult === 'ok' && <span className="text-xs text-correct inline-flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.designer.applied' })}</span>}
+          {applyResult === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.designer.applyFailed' })}</span>}
+          <WsButton variant="secondary" icon={applyBusy ? 'spinner' : 'bolt'} disabled={applyBusy || !activeProjectId} className={applyBusy ? '[&_svg]:animate-spin' : ''} onClick={applyTokensNow}>{translate({ key: 'workspaces.designer.applyTokens' })}</WsButton>
         </div>
       )}
 

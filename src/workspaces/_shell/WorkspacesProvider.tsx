@@ -738,11 +738,22 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     })();
   }, [snap.activeWorkspaceId, refetch]);
   //? Greenfield scaffolding (ADR 0046): create a fresh project from a curated stack template.
-  const applyDesignTokensApi = useCallback((projectId?: string) => {
+  const applyDesignTokensApi = useCallback((projectId?: string, serviceId?: string): Promise<string | null> => {
     const room = snap.activeWorkspaceId;
-    if (!room) return;
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'apply-design-tokens', ...(projectId ? { projectId } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
-  }, [snap.activeWorkspaceId, refetch]);
+    const targetProjectId = projectId ?? snap.activeProjectId;
+    if (!room || !targetProjectId) return Promise.resolve('sync.missingReceiver');
+    return tryCatch(() => syncRequest({
+      name: 'workspaces/projectAdmin', version: 'v1',
+      data: { op: 'apply-design-tokens', projectId: targetProjectId, ...(serviceId ? { serviceId } : {}), clientRequestId: nextReqId() },
+      receiver: room,
+    })).then(([error, response]) => {
+      if (error || !response) return 'design.applyFailed';
+      if (response.status !== 'success') return response.errorCode;
+      if (response.result.status !== 'success') return response.result.errorCode;
+      refetch();
+      return null;
+    });
+  }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
   const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || input.name.trim().length === 0) return;
