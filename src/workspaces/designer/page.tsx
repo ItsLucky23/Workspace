@@ -142,7 +142,8 @@ function InspirationForm() {
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const { activeWorkspace, uiReviews, uiReviewAction } = useWorkspaces();
+  const { activeWorkspace, uiReviews, uiReviewAction, applyDesignTokens } = useWorkspaces();
+  const [applyBusy, setApplyBusy] = useState(false);
   //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
   //? development module is on, so a design-focused workspace gets a cleaner section strip (the visual-authoring
   //? sections only). The other five sections are always available.
@@ -281,6 +282,8 @@ function DesignerShell() {
           {/* #166 — save to library (no activation), separate from Use-in-project. */}
           <WsButton variant="ghost" icon={saveBusy ? 'spinner' : 'floppy-disk'} disabled={saveBusy} className={saveBusy ? '[&_svg]:animate-spin' : ''} onClick={saveToLibNow}>{translate({ key: 'workspaces.designer.saveToLibrary' })}</WsButton>
           <WsButton variant="secondary" icon={useBusy ? 'spinner' : 'circle-check'} disabled={useBusy} className={useBusy ? '[&_svg]:animate-spin' : ''} onClick={useInProjectNow}>{translate({ key: 'workspaces.designer.useInProject' })}</WsButton>
+          {/* DESIGN_DOCS_PROGRAM 3.4 — fast mechanical apply of the ACTIVE tokens to the project's src/index.css. */}
+          <WsButton variant="secondary" icon={applyBusy ? 'spinner' : 'bolt'} disabled={applyBusy} className={applyBusy ? '[&_svg]:animate-spin' : ''} onClick={() => { setApplyBusy(true); applyDesignTokens(); setTimeout(() => { setApplyBusy(false); }, 1500); }}>{translate({ key: 'workspaces.designer.applyTokens' })}</WsButton>
         </div>
       )}
 

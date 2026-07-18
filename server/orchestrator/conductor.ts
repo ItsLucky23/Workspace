@@ -44,7 +44,7 @@ import { publishAsset, isPublishPlatform, deletePlatformPost } from '../content/
 import { indexChannelBrand } from '../content/brandMemory';
 import { recordAiRun } from '../ai/activity';
 import { jsonInput } from '../util/json';
-import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo } from '../git/repoStore';
+import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo, commitFilesToMain } from '../git/repoStore';
 import { runPipeline } from '../ci/runner';
 import { postAiReviewFindings } from '../mr/reviewRole';
 import { getAgentRole } from '../automation/agentRoles';
@@ -79,6 +79,7 @@ import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevis
 import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
 import { extractUploadText, isParseableUpload } from '../documents/parseUpload';
 import { resolveTemplate, buildSkeleton, buildTemplateStructure, parseSections } from '../documents/templates';
+import { activeThemeCss } from '../designer/applyTokens';
 import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
@@ -2605,6 +2606,18 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         }
       }
       return created;
+    }
+    //? DESIGN_DOCS_PROGRAM 3.4 — apply the workspace's ACTIVE theme tokens to a project's src/index.css as a
+    //? fast mechanical commit (no full pipeline run). Single writer (B-23); no-op without a linked repo/active theme.
+    case 'apply-design-tokens': {
+      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      if (!projectId) return { ok: false, status: 'error', error: 'project.unknown' };
+      const css = await activeThemeCss(prisma, action.workspaceId);
+      if (!css) return { ok: false, status: 'error', error: 'design.noActiveTheme' };
+      const committed = await commitFilesToMain(action.workspaceId, projectId, [{ path: 'src/index.css', content: css }], 'chore: apply active design tokens');
+      if (!committed) return { ok: false, status: 'error', error: 'design.applyFailed' };
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true };
     }
     //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).
     case 'env-deploy': {

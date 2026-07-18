@@ -94,3 +94,20 @@ projectAdmin sync route → op.
 *Files touched:* `server/orchestrator/conductor.ts` (project-from-template), `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/_shell/Shell.tsx`, `tests/integration/uiFromZero.test.mts` (new).
 
 *Verification:* typecheck 0 · lint 0 · ai:lint clean · uiFromZero integration **6/6 vs real Mongo + a real greenfield repo** (project + linked repo + APP_BRIEF doc + scaffold ticket auto-advanced to an AI stage). The agent turn itself is the existing pipeline (torn down in the test).
+
+## 2026-07-18 — Phase 3 completion (3.4 apply-tokens · 3.5 web-discovery)
+
+*3.4 apply-active-design-tokens:* a new control op turns the workspace's ACTIVE theme into the project's
+`src/index.css` (`buildIndexCss` → `@theme` light + `.dark` overrides) and commits it directly to main via a
+new `commitFilesToMain` repoStore helper (throwaway clone → write → commit → push) — a fast mechanical apply,
+no pipeline run (single writer, B-23; no-op without a linked repo/active theme). Wired: op + rbac + opCatalog +
+projectAdmin route + provider action + a "Apply tokens" button in the designer.
+
+*3.5 web-discovery:* `discoverReferenceSites(brief)` FINDS candidate reference sites from a brief via a
+static-fetchable search endpoint (DDG html), following the scraper egress pattern (AbortController + withRetry
++ guards), behind a documented SWAP SEAM (`fetchSearch`) where a headless-browser backend can replace it. A
+`discover` op on the inspiration route returns candidates; the user picks one → the existing capture+extract.
+
+*Files touched:* `server/designer/applyTokens.ts` (new), `server/designer/webDiscovery.ts` (new), `server/git/repoStore.ts` (commitFilesToMain), `server/orchestrator/conductor.ts` (apply-design-tokens op), `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/designer/page.tsx`, `src/workspaces/_api/designerInspiration_v1.ts`, `tests/integration/applyDesignTokens.test.mts` (new), `tests/unit/webDiscovery.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 · ai:lint clean · applyDesignTokens integration **5/5 vs real Mongo + a real greenfield repo** (buildIndexCss + a real src/index.css commit) · webDiscovery parse unit **8/8**. Live web-discovery depends on outbound to the search endpoint (unreliable from this sandbox, like the mermaid-cli/puppeteer path) — the parse is unit-proven and the fetch is a swappable seam.

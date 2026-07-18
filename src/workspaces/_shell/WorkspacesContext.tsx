@@ -84,6 +84,7 @@ export interface WorkspacesCtx {
   //? Greenfield scaffolding (ADR 0046): the curated stack templates + create-from-template.
   templates: { key: string; label: string; description: string }[];
   createFromTemplate: (input: { name: string; template: string; brief?: string }) => void;
+  applyDesignTokens: (projectId?: string) => void;
   createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
   deleteService: (serviceId: string) => void;
   //? K1/K3 — provisioned third-party service stacks (Kafka/Postgres/…) + provision/teardown.

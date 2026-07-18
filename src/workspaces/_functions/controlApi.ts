@@ -43,7 +43,7 @@ export type ControlOp =
   | 'skill-toggle' | 'save-stage-config' | 'stage-create' | 'stage-delete' | 'stage-reorder'
   | 'trigger-save' | 'trigger-toggle' | 'trigger-delete' | 'trigger-run'
   | 'finding-to-ticket' | 'finding-dismiss'
-  | 'ticket-link-artifact' | 'ticket-unlink-artifact'
+  | 'ticket-link-artifact' | 'ticket-unlink-artifact' | 'apply-design-tokens'
   // multi-project / multi-service (ADR 0035) + scaffolding (ADR 0046)
   | 'project-create' | 'service-create' | 'service-delete' | 'project-from-template'
   // environments / deploy (ADR 0037/0038)

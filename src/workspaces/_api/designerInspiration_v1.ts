@@ -10,6 +10,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { captureUrlScreenshot, extractThemeFromScreenshot, extractStyleFromScreenshot, saveThemeProposal, saveStyleProposal, compareDesigns, type CaptureViewport } from '../../../server/designer/inspiration';
+import { discoverReferenceSites } from '../../../server/designer/webDiscovery';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -17,7 +18,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; op: string; url?: string; imageUrl?: string; hint?: string; ownUrl?: string; inspirationUrl?: string; viewport?: string };
+  data: { workspaceId: string; op: string; url?: string; imageUrl?: string; hint?: string; ownUrl?: string; inspirationUrl?: string; viewport?: string; query?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -31,6 +32,14 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const prisma = functions.db.prisma;
   const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
   if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
+
+  if (op === 'discover') {
+    //? 3.5 — find candidate reference sites from a brief; the user picks one → inspire-url captures it.
+    const query = (data.query ?? '').trim();
+    if (query.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
+    const sites = await discoverReferenceSites(query, 6);
+    return { status: 'success', result: { sites } };
+  }
 
   if (op === 'inspire-url') {
     const url = (data.url ?? '').trim();

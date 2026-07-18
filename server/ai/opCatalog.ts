@@ -168,6 +168,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { triggerId: { kind: 'triggerId', required: true } },
   },
   'finding-to-ticket': LATER, 'finding-dismiss': LATER,
+  'apply-design-tokens': LATER,
   'ticket-link-artifact': LATER, 'ticket-unlink-artifact': LATER,
   // ---- projects / services / greenfield
   'project-create': {

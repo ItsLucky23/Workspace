@@ -186,6 +186,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'trigger-run': CAP.editPipeline,
   'finding-to-ticket': CAP.workTickets,
   'finding-dismiss': CAP.workTickets,
+  'apply-design-tokens': CAP.workTickets,
   'ticket-link-artifact': CAP.workTickets,
   'ticket-unlink-artifact': CAP.workTickets,
   'project-create': CAP.workspaceSettings,

@@ -738,6 +738,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     })();
   }, [snap.activeWorkspaceId, refetch]);
   //? Greenfield scaffolding (ADR 0046): create a fresh project from a curated stack template.
+  const applyDesignTokensApi = useCallback((projectId?: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'apply-design-tokens', ...(projectId ? { projectId } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+  }, [snap.activeWorkspaceId, refetch]);
   const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || input.name.trim().length === 0) return;
@@ -1146,6 +1151,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       templates: snap.templates,
       createProject: createProjectApi,
       createFromTemplate: createFromTemplateApi,
+      applyDesignTokens: applyDesignTokensApi,
       createService: createServiceApi,
       deleteService: deleteServiceApi,
       serviceStacks: snap.serviceStacks,
@@ -1476,7 +1482,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

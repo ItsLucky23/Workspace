@@ -13,6 +13,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
@@ -323,6 +324,36 @@ export async function initGreenfieldRepo(workspaceId: string, projectId: string,
   await git(['clone', '--bare', seed, bare]);
   rmSync(seed, { recursive: true, force: true });
   return repoStatus(workspaceId, projectId);
+}
+
+//? DESIGN_DOCS_PROGRAM 3.4 — commit files DIRECTLY to the repo's default branch (main) via a throwaway
+//? clone (mirrors initGreenfieldRepo in reverse). Used for the fast design-token apply: a mechanical write
+//? the Conductor commits without a full pipeline run. Returns false when no repo is linked or nothing changed.
+export async function commitFilesToMain(workspaceId: string, projectId: string, files: { path: string; content: string }[], message: string): Promise<boolean> {
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (!existsSync(bare) || files.length === 0) return false;
+  const dir = projectDataDir(workspaceId, projectId);
+  mkdirSync(dir, { recursive: true });
+  const work = path.join(dir, `apply-${randomUUID().slice(0, 8)}`);
+  rmSync(work, { recursive: true, force: true });
+  const [err, changed] = await tryCatch(async () => {
+    await git(['clone', '--branch', 'main', '--single-branch', bare, work]);
+    await git(['config', 'user.email', 'workspaces@local'], { cwd: work });
+    await git(['config', 'user.name', 'Workspaces'], { cwd: work });
+    for (const f of files) {
+      const full = path.join(work, f.path);
+      mkdirSync(path.dirname(full), { recursive: true });
+      writeFileSync(full, f.content);
+    }
+    await git(['add', '-A'], { cwd: work });
+    const status = await git(['status', '--porcelain'], { cwd: work });
+    if (status.trim().length === 0) return false; // nothing to commit (tokens unchanged)
+    await git(['commit', '-m', message], { cwd: work });
+    await git(['push', 'origin', 'main'], { cwd: work });
+    return true;
+  });
+  rmSync(work, { recursive: true, force: true });
+  return err ? false : changed === true;
 }
 
 //? Add the ticket's worktree off the bare clone (07 §A step 5), freezing the default-branch
