@@ -1118,7 +1118,8 @@
       "allCaughtUp": "Tout est à jour ✨",
       "accept": "Accepter",
       "dismiss": "Ignorer",
-      "snooze": "Reporter"
+      "snooze": "Reporter",
+      "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
     },
     "publish": {
       "title": "Publier sur {platform}",
@@ -2019,7 +2020,8 @@
       "mediaHero": "Hero image",
       "elevation": "Elevation",
       "radiusScale": "Radius scale",
-      "spacing": "Spacing"
+      "spacing": "Spacing",
+      "applyTokens": "Apply tokens"
     },
     "interviewer": {
       "title": "Interviewer",
@@ -2327,7 +2329,24 @@
         "pdf": "PDF",
         "docx": "Word",
         "xlsx": "Excel"
-      }
+      },
+      "templateBlank": "Blank",
+      "manageTemplates": "Templates",
+      "templateBuiltin": "built-in",
+      "templateDuplicate": "Duplicate",
+      "templateEdit": "Edit",
+      "templateDelete": "Delete",
+      "templateNew": "New template",
+      "templateNamePlaceholder": "Template name",
+      "templateDescPlaceholder": "Description (optional)",
+      "templateSectionsPlaceholder": "One section per line — \"Heading | hint\"",
+      "templateSave": "Save template",
+      "draftDiff": "Diff",
+      "draftPreview": "Preview",
+      "historyTitle": "History",
+      "restore": "Restore",
+      "restoreConfirmTitle": "Restore this version?",
+      "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first."
     },
     "inspire": {
       "title": "Inspiration",

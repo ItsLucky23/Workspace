@@ -128,3 +128,20 @@ distinct sites (Stripe/Mercury/Ramp/Brex/N26).
 *Files touched:* `server/documents/export.ts` (mermaid runtime + render), `server/designer/webDiscovery.ts` (AI discovery + parseAiSites), `src/workspaces/_api/designerInspiration_v1.ts` (workspaceId), `tests/unit/documentExportFidelity.test.mts`, `tests/unit/webDiscovery.test.mts`, `tests/integration/webDiscoveryLive.test.mts` (new).
 
 *Verification:* typecheck 0 · lint 0 · ai:lint clean · export-fidelity unit 20/20 · webDiscovery unit 13/13 · webDiscoveryLive 3/3 (real AI) · real-Docker mermaid PDF render proven. **All DESIGN_DOCS_PROGRAM phases now complete + live-verified.**
+
+## 2026-07-18 — Live browser E2E (Chrome DevTools MCP) + i18n fix
+
+Ran a real browser pass against the running stack (server :4787 + client :5391): register → onboarding (module
+picker incl. Documents + Design) → **Documents**: the template picker shows "Blank" + "Technical Design",
+create-with-template opens the editor pre-filled with the FULL 9-section technical-design skeleton; the AI bar,
+diff/preview, export (MD/HTML/PDF/Word/Excel), attachments + Templates manager all render → **Designer**:
+gallery (8 looks, live previews) + Inspiration tab + Themes editor with the new **Apply tokens** button. 0
+console errors.
+
+*Bug found + fixed:* the new UI strings (template picker, manage-templates, diff/preview, history/restore,
+designer "Apply tokens", the project-brief placeholder) were referenced by key but not defined in the
+`src/_locales/*.json` bundles → they rendered as raw keys (e.g. "workspaces.documents.templateBlank"). Added
+all keys to en/de/fr (English) + nl (Dutch), key-parity green (`localeIntegrity` 8/8). Re-verified in the
+browser: labels now render ("Blank", "Templates", "Apply tokens", …).
+
+*Files touched:* `src/_locales/en.json`, `src/_locales/de.json`, `src/_locales/fr.json`, `src/_locales/nl.json`.

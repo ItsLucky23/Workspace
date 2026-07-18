@@ -1118,7 +1118,8 @@
       "allCaughtUp": "Helemaal bij ✨",
       "accept": "Accepteren",
       "dismiss": "Negeren",
-      "snooze": "Snoozen"
+      "snooze": "Snoozen",
+      "projectBriefPh": "Beschrijf de app om de start-UI te genereren (optioneel)…"
     },
     "publish": {
       "title": "Publiceren naar {platform}",
@@ -2019,7 +2020,8 @@
       "mediaHero": "Hero-afbeelding",
       "elevation": "Elevatie",
       "radiusScale": "Radius-schaal",
-      "spacing": "Witruimte"
+      "spacing": "Witruimte",
+      "applyTokens": "Tokens toepassen"
     },
     "interviewer": {
       "title": "Interviewer",
@@ -2327,7 +2329,24 @@
         "pdf": "PDF",
         "docx": "Word",
         "xlsx": "Excel"
-      }
+      },
+      "templateBlank": "Blanco",
+      "manageTemplates": "Templates",
+      "templateBuiltin": "ingebouwd",
+      "templateDuplicate": "Dupliceren",
+      "templateEdit": "Bewerken",
+      "templateDelete": "Verwijderen",
+      "templateNew": "Nieuw template",
+      "templateNamePlaceholder": "Templatenaam",
+      "templateDescPlaceholder": "Omschrijving (optioneel)",
+      "templateSectionsPlaceholder": "Eén sectie per regel — \"Kop | hint\"",
+      "templateSave": "Template opslaan",
+      "draftDiff": "Verschil",
+      "draftPreview": "Voorbeeld",
+      "historyTitle": "Geschiedenis",
+      "restore": "Herstellen",
+      "restoreConfirmTitle": "Deze versie herstellen?",
+      "restoreConfirmBody": "Deze revisie als huidige inhoud herstellen? De huidige versie wordt eerst in de geschiedenis bewaard."
     },
     "inspire": {
       "title": "Inspiratie",
