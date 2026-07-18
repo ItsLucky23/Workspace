@@ -1,5 +1,28 @@
 # DESIGN & DOCS PROGRAM — phased build plan
 
+> **BUILD STATUS (2026-07-18) — branch `feat/design-docs-program`, not pushed.** All phases built, gated
+> (typecheck 0 · lint 0 · ai:lint clean · build ✓) and tested; document + design + scaffold journeys proven
+> LIVE end-to-end against real Mongo (+ real Gemini / real greenfield git repo). Per-phase detail + tests in
+> `branch-logs/feat-design-docs-program.md`.
+>
+> | Phase | Status | E2E proof |
+> |---|---|---|
+> | 0.1 harness · 0.2 parser | ✅ | real-Docker poppler/pandoc extraction |
+> | 0.5 review viewer · 0.6 asset-index · 0.7 corpora · 0.8 humanizer | ✅ (0.6 doc-side; humanizer = existing skill) | — |
+> | 1.1–1.3 document ingestion | ✅ | documentDesignDocs integration (16/16, incl. live Gemini) |
+> | 2.1 templates · 2.4 export fidelity · 2.5 diff+restore | ✅ | documentDesignDocs + unit suites |
+> | 2.2 mermaid | ✅ preview (client) · ⏸️ export (headless mermaid infra-blocked) | — |
+> | 2.3 humanize | ✅ (existing humanizer skill injects at document-generate) | — |
+> | 3.1 full-look · 3.2 mobile-capture · 3.3 lossless handoff · 3.6 design-library RAG | ✅ | designPremiumLoop integration (6/6) |
+> | 3.4 apply-tokens | ✅ | applyDesignTokens integration (5/5, real repo commit) |
+> | 3.5 web-discovery | ✅ parse (unit 8/8) · live fetch = swap seam (sandbox egress-limited) | — |
+> | 4.1–4.3 UI from 0 | ✅ | uiFromZero integration (6/6, real greenfield repo) |
+>
+> **Two honest carve-outs** (external-infra-blocked in this environment, not faked): export-side mermaid
+> diagram rendering (mermaid-cli/puppeteer crashes in-container) and live web-discovery fetch (outbound to the
+> search endpoint is unreliable here) — both left behind working fallbacks/seams + documented.
+
+
 > A `/goal`-runnable build program for the Design tool and Document tool deep-dive
 > (`DESIGN_DOCS_DEEPDIVE_2026-07-17.md`, which merges the design/document findings of
 > `GAP_SCAN_2026-07-17.md`). Created 2026-07-18.
