@@ -35,6 +35,7 @@ The scan's #1, #3 and the publishing-reliability cluster. Today the autopilot ch
 | A4 | **Dead-OAuth detection + reconnect CTA** — `getValidConnection` marks a connection unhealthy instead of silently returning a stale token | M | A revoked account surfaces "reconnect" in the UI instead of a generic failure |
 | A5 | **Per-channel publish health** — an at-a-glance "are all N channels still posting?" panel | M | The insights/settings view shows per-channel last-success + failure count |
 | A6 | **Burst/quota staggering** — spread posts that fire in one cron tick | S | Many same-tick posts are spaced; no platform-quota rejections in a burst test |
+| A7 | **Platform app-credentials in-app** (decision 4) — move `YOUTUBE_CLIENT_ID/SECRET`, `TIKTOK_CLIENT_KEY/SECRET` out of `.env` into per-workspace encrypted settings (the `save-media-provider` pattern: secretBox at rest, RBAC `workspaceSettings`, write-only in the UI — never echoed back), with `.env` kept as a fallback so existing installs keep working | M | A self-hoster pastes YouTube credentials in the UI, connects an account and publishes — with `.env` empty; the secret never leaves the server in plaintext |
 
 **Exit:** configure a channel on a cron timer from the UI → it publishes → a failure is visible, retried, and
 notified.
@@ -149,6 +150,9 @@ These were code-verified but deliberately kept out of the feature sections.
    **channel-set** on the task + a per-channel publish fan-out with per-channel status. See the note below.
 3. **F1 thumbnails** — **both**: a template composite (frame/background + bold headline + logo) as the base,
    with an optional **AI-generated background**.
+4. **Platform APP credentials move OUT of `.env` and into the app** (see A7). A self-hoster pastes their
+   YouTube/TikTok app credentials in the UI instead of editing `.env`; stored encrypted per workspace, exactly
+   like the media-provider keys. `.env` stays a fallback so existing installs keep working.
 
 ### Note on A1 — what "channels in-app, not env keys" means in this codebase
 
@@ -158,14 +162,12 @@ Worth splitting, because two different things are env-based today:
   tokens + `channel-create/edit/delete` ops). Nothing to move here — A1 is about *targeting* them from a
   scheduled task and fanning out.
 - **The platform APP credentials are env-based** (`YOUTUBE_CLIENT_ID/SECRET`, `TIKTOK_*`). These are the
-  once-per-app registrations each platform requires. They CAN be moved in-app (stored encrypted per
-  workspace, exactly like the media-provider keys already are) if you want a self-hosted user to paste them
-  in the UI instead of editing `.env`. **Open — confirm before Phase A starts** whether that move is in scope.
+  once-per-app registrations each platform requires. **DECIDED (decision 4): they move in-app** — see A7.
+  Security bar for that item: encrypted at rest (`WORKSPACES_ENC_KEY`), RBAC-gated to `workspaceSettings`,
+  write-only in the UI (the snapshot returns "configured ✓", never the secret), and `.env` stays a fallback.
 
 ## Still-open product questions (needed before their phase starts)
 
 1. **F6 / G6 platforms** — which next publish target matters most (Instagram Reels, LinkedIn, X, podcast RSS)?
 2. **G1 newsletter** — sending backend (Resend is already a dependency) and do you need list management in-app
    or just send-to-an-imported-list?
-3. **A1 follow-up** — move the platform APP credentials (`YOUTUBE_CLIENT_*`, `TIKTOK_*`) into the in-app
-   encrypted settings too, or leave them in `.env`? (See the note above.)
