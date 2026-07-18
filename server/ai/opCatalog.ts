@@ -141,6 +141,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER, 'document-export': LATER,
   'document-set-asset-text': EXCLUDED, // server-internal (extraction persist); never AI-proposed
   'document-restore-revision': LATER,
+  'doc-template-save': LATER, 'doc-template-delete': LATER_D,
 
   //? CI — the read-only comment inbox.
   'comments-refresh': LATER, 'comments-mark-read': LATER,

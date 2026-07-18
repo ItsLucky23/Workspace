@@ -137,6 +137,7 @@ export function sourceMaterialBlock(assets: DocumentAssetEntry[]): string {
 export async function runDocumentAi(
   prisma: PrismaClient, workspaceId: string,
   doc: { id: string; title: string; content: string; assets?: DocumentAssetEntry[] }, mode: DocumentAiMode, instruction: string,
+  structure?: string,
 ): Promise<{ ok: boolean; text: string; error?: string }> {
   const query = `${doc.title}\n${instruction}`.trim();
   const sourceMaterial = sourceMaterialBlock(doc.assets ?? []);
@@ -147,6 +148,7 @@ export async function runDocumentAi(
   const system = [
     'You are the workspace document writer. Output ONLY the full markdown document — no preamble, no code fences around the whole document.',
     'Use clean markdown: a single H1 title, clear section headings, tables where data is tabular (tables also drive the spreadsheet export).',
+    structure && structure.length > 0 ? `REQUIRED STRUCTURE (follow it exactly):\n${structure}` : '',
     sourceMaterial.length > 0 ? `PRIMARY SOURCE MATERIAL the user uploaded — base the document on these, cite/reflect their actual content, do not invent facts that contradict them:\n${sourceMaterial}` : '',
     otherDocs.length > 0 ? `Related workspace documents (ground on these, do not contradict them):\n${otherDocs}` : '',
     productDoc.length > 0 ? `Product context:\n${productDoc}` : '',

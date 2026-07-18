@@ -7,9 +7,23 @@ import { useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
 
+import Dropdown from 'src/_components/dropdown/Dropdown';
+
+import type { DocumentTemplateSection } from '../_data/types';
 import Icon from '../_components/Icon';
 import { EmptyState, WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+
+//? Textarea ("Heading | hint" per line) ↔ typed sections, for the compact template editor.
+function parseSectionLines(text: string): DocumentTemplateSection[] {
+  return text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0).map((l) => {
+    const parts = l.split('|');
+    return { heading: (parts[0] ?? '').trim(), hint: parts.slice(1).join('|').trim() };
+  }).filter((s) => s.heading.length > 0);
+}
+function sectionsToLines(sections: DocumentTemplateSection[]): string {
+  return sections.map((s) => (s.hint.length > 0 ? `${s.heading} | ${s.hint}` : s.heading)).join('\n');
+}
 
 export const template = 'workspaces';
 
@@ -26,13 +40,42 @@ function timeAgo(ms: number): string {
 
 export default function DocumentsPage() {
   const translate = useTranslator();
-  const { documents, createDocument, deleteDocument, navigate } = useWorkspaces();
+  const { documents, documentTemplates, createDocument, deleteDocument, saveDocTemplate, deleteDocTemplate, navigate } = useWorkspaces();
   const [newTitle, setNewTitle] = useState('');
+  const [templateSlug, setTemplateSlug] = useState('');
+  //? Template manager (option B — user-authorable). editSlug: '' = new, else editing/overriding that slug.
+  const [showTpl, setShowTpl] = useState(false);
+  const [editSlug, setEditSlug] = useState('');
+  const [tplName, setTplName] = useState('');
+  const [tplDesc, setTplDesc] = useState('');
+  const [tplSections, setTplSections] = useState('');
+
+  const startNewTpl = (): void => { setEditSlug(''); setTplName(''); setTplDesc(''); setTplSections(''); setShowTpl(true); };
+  const startEditTpl = (slug: string): void => {
+    const t = documentTemplates.find((x) => x.slug === slug);
+    if (!t) return;
+    setEditSlug(t.builtin ? '' : t.slug);   // a builtin edit is saved as a NEW override; keep its slug only for user templates
+    setTplName(t.builtin ? `${t.name} (copy)` : t.name);
+    setTplDesc(t.description); setTplSections(sectionsToLines(t.sections)); setShowTpl(true);
+  };
+  const saveTpl = (): void => {
+    const name = tplName.trim();
+    const sections = parseSectionLines(tplSections);
+    if (name.length === 0 || sections.length === 0) return;
+    saveDocTemplate({ ...(editSlug ? { slug: editSlug } : {}), name, description: tplDesc.trim(), sections });
+    setShowTpl(false);
+  };
+
+  //? Blank + one item per template (builtins virtual + user); picking one seeds the doc's kind + skeleton.
+  const templateItems = [
+    { id: '', value: '', item: translate({ key: 'workspaces.documents.templateBlank' }) },
+    ...documentTemplates.map((t) => ({ id: t.slug, value: t.slug, item: t.name })),
+  ];
 
   const create = (): void => {
     const title = newTitle.trim();
     if (!title) return;
-    createDocument(title);
+    createDocument(title, undefined, templateSlug || undefined);
     setNewTitle('');
   };
 
@@ -51,8 +94,39 @@ export default function DocumentsPage() {
           onKeyDown={(e) => { if (e.key === 'Enter') create(); }}
           placeholder={translate({ key: 'workspaces.documents.newPlaceholder' })} className={`${fieldCls} flex-1 max-w-sm`}
         />
+        <div className="w-44 shrink-0">
+          <Dropdown size="sm" value={templateItems.find((t) => t.id === templateSlug)} items={templateItems} onChange={(it) => { setTemplateSlug(String(it.id)); }} />
+        </div>
         <WsButton icon="plus" onClick={create} disabled={newTitle.trim().length === 0}>{translate({ key: 'workspaces.documents.create' })}</WsButton>
+        <WsButton variant="ghost" icon="sliders" onClick={() => { setShowTpl((v) => !v); }}>{translate({ key: 'workspaces.documents.manageTemplates' })}</WsButton>
       </div>
+
+      {/* Template manager (option B — user-authorable). Inline (no portal) so it has context access. */}
+      {showTpl && (
+        <div className="rounded-lg border border-container1-border bg-container1 p-3 flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            {documentTemplates.map((t) => (
+              <div key={t.slug} className="flex items-center justify-between gap-2 text-sm rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
+                <span className="truncate">{`${t.name} · ${String(t.sections.length)}`}{t.builtin ? ` · ${translate({ key: 'workspaces.documents.templateBuiltin' })}` : ''}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <WsButton variant="ghost" icon={t.builtin ? 'copy' : 'pen'} onClick={() => { startEditTpl(t.slug); }} title={translate({ key: t.builtin ? 'workspaces.documents.templateDuplicate' : 'workspaces.documents.templateEdit' })} />
+                  {!t.builtin && <WsButton variant="ghost" icon="trash" onClick={() => { deleteDocTemplate(t.slug); }} title={translate({ key: 'workspaces.documents.templateDelete' })} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 border-t border-divider pt-2">
+            <div className="text-xs font-semibold text-title">{translate({ key: editSlug ? 'workspaces.documents.templateEdit' : 'workspaces.documents.templateNew' })}</div>
+            <input value={tplName} onChange={(e) => { setTplName(e.target.value); }} placeholder={translate({ key: 'workspaces.documents.templateNamePlaceholder' })} className={fieldCls} />
+            <input value={tplDesc} onChange={(e) => { setTplDesc(e.target.value); }} placeholder={translate({ key: 'workspaces.documents.templateDescPlaceholder' })} className={fieldCls} />
+            <textarea value={tplSections} onChange={(e) => { setTplSections(e.target.value); }} rows={6} placeholder={translate({ key: 'workspaces.documents.templateSectionsPlaceholder' })} className={`${fieldCls} py-2 font-mono text-[13px] resize-y`} />
+            <div className="flex items-center gap-2">
+              <WsButton icon="check" onClick={saveTpl} disabled={tplName.trim().length === 0 || parseSectionLines(tplSections).length === 0}>{translate({ key: 'workspaces.documents.templateSave' })}</WsButton>
+              <WsButton variant="ghost" icon="plus" onClick={startNewTpl}>{translate({ key: 'workspaces.documents.templateNew' })}</WsButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {documents.length === 0 && (
         <EmptyState icon="file-lines" title={translate({ key: 'workspaces.documents.emptyTitle' })} sub={translate({ key: 'workspaces.documents.emptySub' })} />

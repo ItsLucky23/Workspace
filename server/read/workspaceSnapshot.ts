@@ -33,10 +33,11 @@ import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
 import { computeAnalytics } from '../obs/analytics';
 import { computeContentAnalytics } from '../content/contentAnalytics';
+import { listWorkspaceTemplates } from '../documents/templates';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
-  AiSkillEntry, DocumentEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
+  AiSkillEntry, DocumentEntry, DocumentTemplateEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
@@ -176,6 +177,7 @@ export interface WorkspaceSnapshot {
   aiSkills: AiSkillEntry[];
   //? DOC1 — the Documents module.
   documents: DocumentEntry[];
+  documentTemplates: DocumentTemplateEntry[];
   sprints: Sprint[];
   suggestions: AiSuggestion[];
   budget: WorkspaceBudget | null;
@@ -241,7 +243,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], sprints: [], suggestions: [], budget: null, budgets: [],
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -366,6 +368,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const revisionRows = await prisma.documentRevision.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' }, select: { id: true, documentId: true, note: true, createdAt: true }, take: 500 });
     const revisionsByDoc = new Map<string, { id: string; note: string; createdAt: number }[]>();
     for (const r of revisionRows) { const list = revisionsByDoc.get(r.documentId) ?? []; list.push({ id: r.id, note: r.note, createdAt: r.createdAt.getTime() }); revisionsByDoc.set(r.documentId, list); }
+    //? DESIGN_DOCS_PROGRAM 2.1 — the workspace's document templates (virtual builtins + user rows).
+    const documentTemplates = await listWorkspaceTemplates(prisma, currentWorkspaceId());
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
@@ -558,8 +562,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? SK1 — the universal AI-skills layer.
       aiSkills: aiSkillRows.map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
       //? DOC1 — the Documents module (assets JSON → typed list; unknown shapes dropped).
+      documentTemplates,
       documents: documentRows.map((d) => ({
-        id: d.id, title: d.title, content: d.content, aiDraft: d.aiDraft, aiDraftLabel: d.aiDraftLabel,
+        id: d.id, title: d.title, kind: d.kind, content: d.content, aiDraft: d.aiDraft, aiDraftLabel: d.aiDraftLabel,
         assets: (Array.isArray(d.assets) ? d.assets : []).flatMap((a) => {
           if (a === null || typeof a !== 'object') return [];
           const rec = a as { url?: unknown; kind?: unknown; label?: unknown; stub?: unknown; extractStatus?: unknown };

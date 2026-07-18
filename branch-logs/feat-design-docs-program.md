@@ -38,3 +38,18 @@ Building `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md` (Design tool: UI-from-0 +
 *Files touched:* `server/documents/export.ts`, `tests/unit/documentExportFidelity.test.mts` (new).
 
 *Verification:* typecheck 0 · lint 0 errors · ai:lint clean · export-fidelity unit 16/16 (incl. XSS-url, code-fence-isolation, TOC-ignores-code, bare-number-safety). docx keeps pandoc's native md rendering. Known limits (headless-chromium): CSS margin-box page numbers aren't supported → no per-page numbers; footnotes not yet handled.
+
+## 2026-07-18 — Phase 2.1 (document kind + user-authorable templates + template-guided generation)
+
+*What I did:* the "detailed technical design" core.
+- **Schema (additive, Mongo):** `Document.kind` + a `DocumentTemplate` model (`slug/name/description/sections[]/builtin`). `prisma generate` re-run.
+- **Templates module** (`server/documents/templates.ts`): a built-in **Technical Design** template (Overview, Goals/non-goals, Requirements, Architecture, Data model, Wireframes & UX, System decisions, Risks & open questions, Milestones) — builtins are **virtual** (no seeding; a DB row with the same slug overrides one) so existing workspaces get them free. `parseSections` (safe), `buildSkeleton` (blank doc from a template), `buildTemplateStructure` (the outline-then-sections generation instruction), `listWorkspaceTemplates` (virtual-merge), `resolveTemplate`.
+- **Generation:** `runDocumentAi` gained an optional `structure`; a templated doc (kind = a template slug) generates against the template's required section set, grounded on the uploaded source material (Phase 1). 
+- **Create-with-template:** `document-create` takes `templateSlug` → seeds `kind` + a section skeleton. Documents list page gets a template picker (Blank + each template).
+- **Authoring (option B):** control-ops `doc-template-save` / `doc-template-delete` (single-writer) + provider actions + a compact inline template manager (list/edit/duplicate-builtin/delete + a "Heading | hint" section editor).
+
+*Files touched:* `prisma/schema.prisma`, `server/documents/templates.ts` (new), `server/documents/docs.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/documentsControl_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/documents/page.tsx`, `tests/unit/documentTemplates.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 errors · ai:lint clean · templates unit 17/17 · op-parity 53/53. generateArtifacts re-run (snapshot gained `documentTemplates` + `kind`, route gained the template ops/params). Live AI generation of a full templated doc needs the running stack — not E2E-run here; the structure/skeleton/parse logic is unit-proven and the AI path is typechecked on the proven runDocumentAi pattern.
+
+**Document tool status:** Phase 1 (ingestion) + Phase 2 (2.1 templates, 2.4 export fidelity, 2.5 diff+restore) done. 2.2 (mermaid rendering in export/editor) + 2.3 (a dedicated humanize preset — the humanizer skill already injects at document-generate when enabled) remain.

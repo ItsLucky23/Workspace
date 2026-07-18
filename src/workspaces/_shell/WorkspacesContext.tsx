@@ -9,7 +9,7 @@ import { createContext, use } from 'react';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, DocumentTemplateSection, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
@@ -240,7 +240,10 @@ export interface WorkspacesCtx {
   resetAiSkill: (skillId: string) => void;
   //? DOC — the Documents module (AI output lands as aiDraft; applyDocumentDraft is the consent, B-23).
   documents: DocumentEntry[];
-  createDocument: (title: string, content?: string) => void;
+  documentTemplates: DocumentTemplateEntry[];
+  createDocument: (title: string, content?: string, templateSlug?: string) => void;
+  saveDocTemplate: (input: { slug?: string; name: string; description?: string; sections: DocumentTemplateSection[] }) => void;
+  deleteDocTemplate: (slug: string) => void;
   editDocument: (input: { documentId: string; title?: string; content?: string; addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string }) => void;
   deleteDocument: (documentId: string) => void;
   runDocumentAi: (documentId: string, mode: string, instruction: string) => void;

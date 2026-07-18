@@ -1597,6 +1597,7 @@ model Document {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId  String   @db.ObjectId
   title        String
+  kind         String   @default("")               // DESIGN_DOCS_PROGRAM 2.1 — doc type slug (e.g. 'technical-design'); '' = freeform
   content      String   @default("")               // markdown source (tables inside feed the xlsx export)
   aiDraft      String?                             // pending AI proposal; null = none
   aiDraftLabel String   @default("")               // what produced the draft (mode + instruction)
@@ -1606,6 +1607,23 @@ model Document {
   updatedAt    DateTime @updatedAt
 
   @@index([workspaceId, archived])
+}
+
+//? DESIGN_DOCS_PROGRAM 2.1 — a user-authorable document template (option B): a named section skeleton the
+//? AI fills outline-then-section. `sections` is [{ heading, hint }]. `builtin` rows are seeded (e.g. the
+//? Technical Design template) and resettable but never the only option — users add/edit/duplicate their own.
+model DocumentTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  slug        String                                // stable id within the workspace ('technical-design', …)
+  name        String
+  description String   @default("")
+  sections    Json                                 // [{ heading: string, hint: string }]
+  builtin     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
 }
 
 //? DOC1 — an applied-change snapshot (the content BEFORE an apply/manual overwrite). Bounded per

@@ -667,9 +667,13 @@ export interface AiSkillEntry {
 //? DOC1 (DOCUMENTS_AND_SKILLS) — a workspace document (markdown source + optional AI draft + assets).
 export interface DocumentAsset { kind: string; url: string; label: string; stub?: boolean; extractStatus?: string; extractedText?: string }
 export interface DocumentRevisionMeta { id: string; note: string; createdAt: number }
+//? DESIGN_DOCS_PROGRAM 2.1 — a document template (section skeleton the AI fills); builtins are virtual.
+export interface DocumentTemplateSection { heading: string; hint: string }
+export interface DocumentTemplateEntry { slug: string; name: string; description: string; sections: DocumentTemplateSection[]; builtin: boolean }
 export interface DocumentEntry {
   id: string;
   title: string;
+  kind: string;                // template slug this doc follows ('' = freeform)
   content: string;
   aiDraft: string | null;      // pending AI proposal (apply = consent, B-23)
   aiDraftLabel: string;

@@ -78,6 +78,7 @@ import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
 import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions, indexDocumentAsset, clearDocumentAssets, parseAssetEntries } from '../documents/docs';
 import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
 import { extractUploadText, isParseableUpload } from '../documents/parseUpload';
+import { resolveTemplate, buildSkeleton, buildTemplateStructure, parseSections } from '../documents/templates';
 import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
@@ -2171,7 +2172,15 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'document-create': {
       const title = (str(payload, 'title') ?? '').trim();
       if (!title) return;
-      const created = await prisma.document.create({ data: { workspaceId: action.workspaceId, title, content: str(payload, 'content') ?? '' } });
+      //? DESIGN_DOCS_PROGRAM 2.1 — an optional template seeds the doc's `kind` + a starting section skeleton.
+      const templateSlug = str(payload, 'templateSlug') ?? '';
+      let content = str(payload, 'content') ?? '';
+      let kind = str(payload, 'kind') ?? '';
+      if (templateSlug) {
+        const tpl = await resolveTemplate(prisma, action.workspaceId, templateSlug);
+        if (tpl) { content = content.trim().length > 0 ? content : buildSkeleton(title, tpl.sections); kind = templateSlug; }
+      }
+      const created = await prisma.document.create({ data: { workspaceId: action.workspaceId, title, content, ...(kind ? { kind } : {}) } });
       await tryCatch(() => indexDocument(prisma, action.workspaceId, created.id, created.title, created.content));
       broadcastContentDirty(action.workspaceId);
       return { id: created.id };
@@ -2244,7 +2253,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const mode = (['generate', 'rewrite', 'summarize', 'extend'] as const).find((m) => m === str(payload, 'mode')) ?? 'rewrite';
       const instruction = str(payload, 'instruction') ?? '';
       const docAssets = parseAssetEntries(doc.assets);
-      const res = await runDocumentAi(prisma, action.workspaceId, { id: doc.id, title: doc.title, content: doc.content, assets: docAssets }, mode, instruction);
+      //? DESIGN_DOCS_PROGRAM 2.1 — a templated doc (kind = a template slug) generates against the template's
+      //? required section structure (outline-then-sections).
+      let structure: string | undefined;
+      if (doc.kind) { const tpl = await resolveTemplate(prisma, action.workspaceId, doc.kind); if (tpl) structure = buildTemplateStructure(tpl); }
+      const res = await runDocumentAi(prisma, action.workspaceId, { id: doc.id, title: doc.title, content: doc.content, assets: docAssets }, mode, instruction, structure);
       if (!res.ok) return { ok: false, status: 'error', error: res.error ?? 'ai.failed' };
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: res.text, aiDraftLabel: `${mode}${instruction.trim() ? `: ${instruction.trim().slice(0, 80)}` : ''}` } });
       broadcastContentDirty(action.workspaceId);
@@ -2286,6 +2299,32 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       }
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { content: rev.content, aiDraft: null, aiDraftLabel: '' } });
       await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, doc.title, rev.content));
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    //? DESIGN_DOCS_PROGRAM 2.1 — user-authorable document templates (option B). Save = upsert by slug (a
+    //? builtin slug gets a workspace override row); delete removes the row (for a builtin slug that reverts
+    //? it to the virtual builtin, i.e. a reset). Single writer (B-23).
+    case 'doc-template-save': {
+      const name = (str(payload, 'name') ?? '').trim();
+      if (!name) return;
+      const parsed = parseSections(payload.sections);
+      if (parsed.length === 0) return;
+      //? Plain-object array for the Json column (a named interface isn't InputJsonValue-assignable).
+      const sections = parsed.map((s) => ({ heading: s.heading, hint: s.hint }));
+      const description = str(payload, 'description') ?? '';
+      const slug = (str(payload, 'slug') ?? '').trim() || `tpl-${randomUUID().slice(0, 8)}`;
+      const existing = await prisma.documentTemplate.findFirst({ where: { workspaceId: action.workspaceId, slug } });
+      await (existing
+        ? prisma.documentTemplate.updateMany({ where: { workspaceId: action.workspaceId, slug }, data: { name, description, sections } })
+        : prisma.documentTemplate.create({ data: { workspaceId: action.workspaceId, slug, name, description, sections, builtin: false } }));
+      broadcastContentDirty(action.workspaceId);
+      return { slug };
+    }
+    case 'doc-template-delete': {
+      const slug = (str(payload, 'slug') ?? '').trim();
+      if (!slug) return;
+      await prisma.documentTemplate.deleteMany({ where: { workspaceId: action.workspaceId, slug } });
       broadcastContentDirty(action.workspaceId);
       return;
     }
