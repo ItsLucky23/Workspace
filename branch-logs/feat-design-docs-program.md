@@ -30,3 +30,11 @@ Building `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md` (Design tool: UI-from-0 +
 *Files touched:* `src/workspaces/documents/lineDiff.ts` (new), `tests/unit/documentLineDiff.test.mts` (new), `src/workspaces/documents/[docId]/page.tsx`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_data/types.ts`, `server/orchestrator/conductor.ts`, `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/documentsControl_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`.
 
 *Verification:* typecheck 0 · lint 0 errors · ai:lint clean · line-diff unit 9/9 · grounding 15/15 · op-parity 53/53. generateArtifacts re-run for the new snapshot field + op param.
+
+## 2026-07-18 — Phase 2.4 (export fidelity: links · images · code · TOC)
+
+*What I did:* upgraded the md→html export renderer (`server/documents/export.ts`) so the HTML/PDF export is genuinely submission-grade: markdown **links** + **images** (with a `safeUrl` gate — `javascript:` etc. dropped), **fenced code blocks** (escaped, language-tagged, not inline-parsed; markdown inside a fence stays literal), **horizontal rules**, **heading anchor ids**, a generated **table of contents** (≥3 headings), and **self-contained images** — any local `/media/` image is inlined as a data URI so the downloaded HTML + the `--network none` chromium PDF render both show it. Print CSS avoids breaking code/tables/images across pages. Rewrote `inline()` to escape-first (no placeholder scheme → removed stray NUL bytes + a `" 3 "`-in-prose corruption bug).
+
+*Files touched:* `server/documents/export.ts`, `tests/unit/documentExportFidelity.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 errors · ai:lint clean · export-fidelity unit 16/16 (incl. XSS-url, code-fence-isolation, TOC-ignores-code, bare-number-safety). docx keeps pandoc's native md rendering. Known limits (headless-chromium): CSS margin-box page numbers aren't supported → no per-page numbers; footnotes not yet handled.

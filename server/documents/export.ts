@@ -1,9 +1,9 @@
 /** @docs owner ItsLucky23 */
 //? EXP (DOCUMENTS_AND_SKILLS) — the document EXPORT layer. Markdown is the single source (ADR 0271);
 //? every format is a RENDER TARGET: md (verbatim) + html (own safe md→html subset, standalone page
-//? with optional brand logo) + xlsx (markdown tables → a dependency-free minimal OOXML workbook) run
-//? natively; docx (pandoc) + pdf (headless-chromium print of the html) run in throwaway Docker
-//? containers (images overridable via WS_EXPORT_PANDOC_IMAGE / WS_EXPORT_CHROME_IMAGE). Outputs land
+//? with optional brand logo + TOC + inlined images) + xlsx (markdown tables → a dependency-free minimal
+//? OOXML workbook) run natively; docx (pandoc) + pdf (headless-chromium print of the html) run in throwaway
+//? Docker containers (images overridable via WS_EXPORT_PANDOC_IMAGE / WS_EXPORT_CHROME_IMAGE). Outputs land
 //? in the media store (`/media/<file>`) and are appended to Document.assets by the Conductor op.
 //? @adr 0271
 
@@ -29,16 +29,34 @@ const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenik
 function esc(s: string): string {
   return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
+//? A safe href/src: only http(s), mailto, anchors, and (post-inlining) data: image URIs. Anything else
+//? (javascript:, file:, a relative /media that never inlined) is dropped to '#'.
+function safeUrl(url: string): string {
+  const u = url.trim();
+  if (/^(https?:\/\/|mailto:|#|data:image\/)/i.test(u)) return u.replaceAll('"', '%22');
+  return '#';
+}
+//? EXP (2.4) — inline markdown: images, links, bold, inline code. Escape FIRST, then apply the inline
+//? regexes on the escaped text: markdown syntax chars (`![]()*`) survive esc(), and a url's `&`→`&amp;` is
+//? exactly right inside an HTML attribute. Images before links (an image is a link with a leading `!`).
+//? `alt`/text are already escaped by esc(); urls are gated by safeUrl. No placeholders → no collisions.
 function inline(s: string): string {
   return esc(s)
+    .replaceAll(/!\[([^\]]*)]\(([^)]+)\)/g, (_m, alt: string, url: string) => `<img src="${safeUrl(url)}" alt="${alt}" />`)
+    .replaceAll(/\[([^\]]+)]\(([^)]+)\)/g, (_m, text: string, url: string) => `<a href="${safeUrl(url)}">${text}</a>`)
     .replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replaceAll(/`(.+?)`/g, '<code>$1</code>');
 }
+//? A URL-safe heading anchor id (for the TOC links + deep links).
+function slug(s: string): string {
+  return s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 60) || 'section';
+}
+
 const isRow = (l: string): boolean => { const t = l.trim(); return t.startsWith('|') && t.endsWith('|') && t.length > 2; };
 const isDivider = (l: string): boolean => isRow(l) && /^\|[\s:|-]+\|$/.test(l.trim());
 const cells = (l: string): string[] => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
 
-//? The same markdown subset MarkdownView renders: headings, bullets, numbered lists, quotes, tables.
+//? The same markdown subset MarkdownView renders + fenced code, horizontal rules, links, images, anchors.
 export function mdToHtmlBody(markdown: string): string {
   const lines = markdown.split('\n');
   const out: string[] = [];
@@ -47,6 +65,20 @@ export function mdToHtmlBody(markdown: string): string {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i] ?? '';
+    //? EXP (2.4) — fenced code block: consume verbatim until the closing fence (never inline-processed).
+    const fence = /^```+\s*([\w-]*)\s*$/.exec(line.trim());
+    if (fence) {
+      closeList();
+      const lang = fence[1] ?? '';
+      const body: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && !/^```+\s*$/.test((lines[j] ?? '').trim())) { body.push(lines[j] ?? ''); j += 1; }
+      out.push(`<pre class="code"${lang ? ` data-lang="${esc(lang)}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
+      i = j + 1;
+      continue;
+    }
+    //? Horizontal rule.
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { closeList(); out.push('<hr />'); i += 1; continue; }
     if (isRow(line) && isDivider(lines[i + 1] ?? '')) {
       closeList();
       const header = cells(line);
@@ -71,10 +103,10 @@ export function mdToHtmlBody(markdown: string): string {
     } else {
       closeList();
       if (t.length === 0) { /* paragraph gap */ }
-      else if (t.startsWith('#### ')) out.push(`<h4>${inline(t.slice(5))}</h4>`);
-      else if (t.startsWith('### ')) out.push(`<h3>${inline(t.slice(4))}</h3>`);
-      else if (t.startsWith('## ')) out.push(`<h2>${inline(t.slice(3))}</h2>`);
-      else if (t.startsWith('# ')) out.push(`<h1>${inline(t.slice(2))}</h1>`);
+      else if (t.startsWith('#### ')) { const x = t.slice(5); out.push(`<h4 id="${slug(x)}">${inline(x)}</h4>`); }
+      else if (t.startsWith('### ')) { const x = t.slice(4); out.push(`<h3 id="${slug(x)}">${inline(x)}</h3>`); }
+      else if (t.startsWith('## ')) { const x = t.slice(3); out.push(`<h2 id="${slug(x)}">${inline(x)}</h2>`); }
+      else if (t.startsWith('# ')) { const x = t.slice(2); out.push(`<h1 id="${slug(x)}">${inline(x)}</h1>`); }
       else if (t.startsWith('> ')) out.push(`<blockquote>${inline(t.slice(2))}</blockquote>`);
       else out.push(`<p>${inline(t)}</p>`);
     }
@@ -84,18 +116,49 @@ export function mdToHtmlBody(markdown: string): string {
   return out.join('\n');
 }
 
-//? EXP3 — standalone shareable page: inline CSS, print-friendly, optional brand-logo header.
+//? EXP (2.4) — a table of contents from the document's ## / ### headings (only when there are ≥3, so a short
+//? doc isn't cluttered). Links to the heading anchors emitted by mdToHtmlBody. Ignores headings inside code.
+export function buildToc(markdown: string): string {
+  const lines = markdown.split('\n');
+  const entries: { level: number; text: string }[] = [];
+  let inFence = false;
+  for (const line of lines) {
+    if (/^```+/.test(line.trim())) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const m = /^(#{2,3})\s+(.*)$/.exec(line.trim());
+    if (m) entries.push({ level: m[1]!.length, text: m[2]!.trim() });
+  }
+  if (entries.length < 3) return '';
+  const items = entries.map((e) => `<li class="toc-l${String(e.level)}"><a href="#${slug(e.text)}">${inline(e.text)}</a></li>`).join('');
+  return `<nav class="toc"><div class="toc-title">Contents</div><ul>${items}</ul></nav>`;
+}
+
+//? EXP (2.4) — self-contained export: inline any local /media/ image referenced in the markdown as a data URI
+//? (the chromium PDF render runs --network none, and a downloaded HTML must not depend on the app being up).
+//? Remote (http) images are left as-is. Best-effort per image.
+export function inlineMediaImages(markdown: string): string {
+  return markdown.replaceAll(/(!\[[^\]]*]\()(\/media\/[^)\s]+)(\))/g, (whole, pre: string, url: string, post: string) => {
+    const uri = brandLogoDataUri(url);
+    return uri ? `${pre}${uri}${post}` : whole;
+  });
+}
+
+//? EXP3 — standalone shareable page: inline CSS, print-friendly, optional brand-logo header + a TOC.
 export function standaloneHtml(title: string, markdown: string, brandLogoDataUri?: string): string {
   const css = [
     'body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1.25rem;color:#1f2430;line-height:1.6}',
     'h1{font-size:1.7rem;margin:1.2rem 0 .6rem}h2{font-size:1.3rem;margin:1.1rem 0 .5rem}h3{font-size:1.1rem;margin:1rem 0 .4rem}h4{font-size:1rem;margin:.9rem 0 .3rem}',
     'table{border-collapse:collapse;margin:.8rem 0;width:100%}th,td{border:1px solid #d5d9e2;padding:.45rem .6rem;text-align:left;vertical-align:top}th{background:#f2f4f8}',
     'code{background:#f2f4f8;border-radius:4px;padding:.1rem .3rem;font-size:.9em}blockquote{border-left:3px solid #d5d9e2;margin:.6rem 0;padding:.1rem .9rem;color:#5a6172;font-style:italic}',
-    'header.brand{display:flex;justify-content:flex-end;margin-bottom:.5rem}header.brand img{max-height:44px}',
-    '@media print{body{margin:0 auto}}',
+    'pre.code{background:#1f2430;color:#e6e9f0;border-radius:6px;padding:.8rem 1rem;overflow-x:auto;font-size:.85em;line-height:1.5}pre.code code{background:none;padding:0;color:inherit}',
+    'img{max-width:100%;height:auto;border-radius:6px}hr{border:none;border-top:1px solid #d5d9e2;margin:1.2rem 0}a{color:#2b62d9}',
+    '.toc{border:1px solid #d5d9e2;border-radius:8px;padding:.6rem 1rem;margin:1rem 0;background:#f8fafc}.toc-title{font-weight:600;margin-bottom:.3rem}.toc ul{list-style:none;padding-left:0;margin:0}.toc li{margin:.15rem 0}.toc-l3{padding-left:1rem;font-size:.95em}',
+    'header.brand{display:flex;justify-content:flex-end;margin-bottom:.5rem}header.brand img{max-height:44px;border-radius:0}',
+    '@media print{body{margin:0 auto}.toc{break-inside:avoid}pre.code,table,img{break-inside:avoid}}',
   ].join('');
   const logo = brandLogoDataUri ? `<header class="brand"><img src="${brandLogoDataUri}" alt=""/></header>` : '';
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title><style>${css}</style></head><body>${logo}${mdToHtmlBody(markdown)}</body></html>`;
+  const md = inlineMediaImages(markdown);
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title><style>${css}</style></head><body>${logo}${buildToc(md)}${mdToHtmlBody(md)}</body></html>`;
 }
 
 /* ----------------------------------------------------------------- markdown tables → xlsx */
@@ -210,7 +273,7 @@ export function xlsxFromMarkdown(title: string, markdown: string): Buffer {
 /* ----------------------------------------------------------------- container renders */
 
 //? Both renders run in a throwaway `--network none` container over a temp dir (the shared Phase 0.1
-//? harness `runToolContainer`): the render never needs egress (inputs are mounted, the logo is a data URI).
+//? harness `runToolContainer`): the render never needs egress (inputs are mounted, images are data URIs).
 export async function renderDocx(markdown: string): Promise<Buffer | null> {
   return runToolContainer({
     buildInput: (dir) => { writeFileSync(path.join(dir, 'in.md'), markdown, 'utf8'); },
