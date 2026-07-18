@@ -2048,7 +2048,8 @@
     "scheduledPosts": {
       "title": "Geplante Beiträge",
       "tagline": "Veröffentlichungen, die für einen bestimmten Zeitpunkt eingeplant sind.",
-      "empty": "Noch keine geplanten Beiträge. Plane eine Veröffentlichung aus einem Content-Stück, um sie hier zu sehen."
+      "empty": "Noch keine geplanten Beiträge. Plane eine Veröffentlichung aus einem Content-Stück, um sie hier zu sehen.",
+      "failed": "failed"
     },
     "scheduled": {
       "title": "Scheduled tasks",
@@ -2082,7 +2083,11 @@
       "runsAt": "Runs on: {{cron}}",
       "create": "Create task",
       "actNotify": "Notification",
-      "lastRun": "last run {{when}}"
+      "lastRun": "last run {{when}}",
+      "channels": "Channels",
+      "channelsPlaceholder": "All channels (none selected)",
+      "channelsSelected": "{count} channels",
+      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
       "title": "Automatisierung",
@@ -2350,15 +2355,15 @@
     },
     "inspire": {
       "title": "Inspiration",
-      "desc": "Importiere einen Look, den du liebst: Site-URL einfügen (wir screenshotten + extrahieren den Stil als Theme-Vorschlag), Screenshot hochladen, oder deine Seite mit einer Inspiration vergleichen – die Analyse landet in der Review-Inbox.",
+      "desc": "Importiere einen Look, den du liebst, indem du einen Screenshot hochlädst, oder vergleiche Screenshots deiner Seite und einer Inspiration – die Analyse landet in der Review-Inbox.",
       "urlPlaceholder": "https://eine-site-die-du-magst.de",
       "captureExtract": "Erfassen & extrahieren",
       "uploadShot": "Screenshot hochladen",
-      "ownPlaceholder": "Deine Seite (URL)",
-      "inspPlaceholder": "Inspiration (URL)",
+      "ownPlaceholder": "Screenshot deiner Seite",
+      "inspPlaceholder": "Screenshot der Inspiration",
       "compare": "Vergleichen",
       "done": "Fertig - siehe Theme-Bibliothek / Review-Inbox.",
-      "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert und die URL erreichbar?"
+      "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert?"
     },
     "comments": {
       "tab": "Kommentare",

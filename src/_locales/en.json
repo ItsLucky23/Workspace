@@ -2048,7 +2048,8 @@
     "scheduledPosts": {
       "title": "Scheduled posts",
       "tagline": "Publishes queued to go out at a set time.",
-      "empty": "No scheduled posts yet. Schedule a publish from a content piece to see it here."
+      "empty": "No scheduled posts yet. Schedule a publish from a content piece to see it here.",
+      "failed": "failed"
     },
     "scheduled": {
       "title": "Scheduled tasks",
@@ -2082,7 +2083,11 @@
       "runsAt": "Runs on: {{cron}}",
       "create": "Create task",
       "actNotify": "Notification",
-      "lastRun": "last run {{when}}"
+      "lastRun": "last run {{when}}",
+      "channels": "Channels",
+      "channelsPlaceholder": "All channels (none selected)",
+      "channelsSelected": "{count} channels",
+      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
       "title": "Automation",
@@ -2350,15 +2355,15 @@
     },
     "inspire": {
       "title": "Inspiration",
-      "desc": "Import a look you love: paste a site URL (we screenshot + extract its style into a theme proposal), upload a screenshot, or compare your page against an inspiration - the analysis lands in the review inbox.",
+      "desc": "Import a look you love by uploading a screenshot, or compare screenshots of your page and an inspiration - the analysis lands in the review inbox.",
       "urlPlaceholder": "https://a-site-you-admire.com",
       "captureExtract": "Capture & extract",
       "uploadShot": "Upload screenshot",
-      "ownPlaceholder": "Your page (URL or upload first)",
-      "inspPlaceholder": "Inspiration (URL)",
+      "ownPlaceholder": "Your page screenshot",
+      "inspPlaceholder": "Inspiration screenshot",
       "compare": "Compare",
       "done": "Done - check your theme library / review inbox.",
-      "failed": "Failed - is the vision AI configured and the URL reachable?"
+      "failed": "Failed - is the vision AI configured?"
     },
     "comments": {
       "tab": "Comments",

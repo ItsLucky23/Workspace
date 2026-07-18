@@ -52,7 +52,21 @@ export interface PublishResult {
 //? the platform, this runs a REAL upload with the decrypted token; otherwise it degrades to a dummy post.
 //? The honest result of an upload attempt: a REAL post, a STUB (not connected — a dummy), or an ERROR (an
 //? attempted upload that failed). The audit found the old code collapsed stub+error into a fake 'done'.
-type UploadOutcome = { kind: 'real'; externalUrl: string } | { kind: 'stub' } | { kind: 'error' };
+//? A3 — the error carries the transport's reason so the retry can tell a rate-limit (429) from a hard failure.
+type UploadOutcome = { kind: 'real'; externalUrl: string } | { kind: 'stub' } | { kind: 'error'; reason?: string };
+
+//? GAP_SCAN A3 — bounded retry for a failed scheduled publish: exponential backoff, with a much longer base
+//? when the platform rate-limited us (429). Pure + exported for tests.
+export const MAX_PUBLISH_ATTEMPTS = 3;
+const RETRY_BASE_MS = 5 * 60_000;
+const RETRY_RATE_LIMITED_BASE_MS = 30 * 60_000;
+export function isRateLimitReason(reason?: string): boolean {
+  return typeof reason === 'string' && /\b429\b|rate.?limit|too many requests/i.test(reason);
+}
+export function publishRetryDelayMs(attempts: number, reason?: string): number {
+  const base = isRateLimitReason(reason) ? RETRY_RATE_LIMITED_BASE_MS : RETRY_BASE_MS;
+  return base * 2 ** Math.max(0, attempts - 1);
+}
 
 //? Do the actual upload (no job write) — real post when connected, else a stub/error outcome. Extracted so
 //? both the immediate path and the scheduled-fire path (O3) share one posting implementation.
@@ -74,7 +88,7 @@ async function performUpload(
   if (!connection) return { kind: 'stub' };
   const transport = opts.uploadTransport ?? realUploadTransport;
   const [err, uploaded] = await tryCatch(() => transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }));
-  if (err || !uploaded) return { kind: 'error' };
+  if (err || !uploaded) return { kind: 'error', ...(err ? { reason: err.message } : {}) };
   return { kind: 'real', externalUrl: uploaded.externalUrl };
 }
 
@@ -84,16 +98,17 @@ export async function publishAsset(
   args: { contentProjectId: string; assetId: string; platform: PublishPlatform; scheduledAt?: Date | null; accountId?: string },
   opts: { uploadTransport?: PublishUploadTransport; refreshTransport?: OAuthRefreshTransport; now?: number } = {},
 ): Promise<PublishResult> {
+  const selectedAccount = args.accountId === undefined ? {} : { accountId: args.accountId };
   //? A future-ready platform: record the intent as an error job (no posting adapter yet).
   if (!BUILT_PLATFORMS.includes(args.platform)) {
-    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: 'error', error: 'platform.notBuilt' } });
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: 'error', error: 'platform.notBuilt' } });
     return { ok: false, publishJobId: job.id, stub: false, error: 'platform.notBuilt' };
   }
 
   //? O3 — a future schedule: park the intent as a 'scheduled' job; the leader loop fires it when due.
   const now = opts.now ?? Date.now();
   if (args.scheduledAt && args.scheduledAt.getTime() > now) {
-    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...(args.accountId ? { accountId: args.accountId } : {}), status: 'scheduled', scheduledAt: args.scheduledAt } });
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: 'scheduled', scheduledAt: args.scheduledAt } });
     return { ok: true, publishJobId: job.id, stub: false, scheduled: true };
   }
 
@@ -101,33 +116,77 @@ export async function publishAsset(
   //? not-connected dummy, 'error' for an attempted-but-failed upload (was silently 'done' before).
   const outcome = await performUpload(prisma, workspaceId, args, { ...opts, now });
   if (outcome.kind === 'error') {
-    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: 'error', error: 'publish.uploadFailed' } });
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: 'error', error: 'publish.uploadFailed' } });
     return { ok: false, publishJobId: job.id, stub: false, error: 'publish.uploadFailed' };
   }
   const isReal = outcome.kind === 'real';
   const externalUrl = isReal ? outcome.externalUrl : `stub://${args.platform}/${args.assetId}`;
   //? C3 — record the platform post id on a real post so audience-metrics ingest can query it later.
   const externalId = isReal ? extractExternalId(args.platform, externalUrl) : '';
-  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, status: isReal ? 'done' : 'stub', externalUrl, ...(externalId ? { externalId } : {}) } });
+  const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: isReal ? 'done' : 'stub', externalUrl, ...(externalId ? { externalId } : {}) } });
   return { ok: isReal, publishJobId: job.id, externalUrl, stub: !isReal };
 }
 
-//? O3 — fire every scheduled post that is now due (leader-gated by the caller). Best-effort per job; a failed
-//? upload marks the job 'error' (not lost). `now` injected for deterministic tests. Returns the fired count.
+//? O3 — fire every scheduled post that is now due (leader-gated by the caller). Each job is atomically claimed
+//? before external I/O, so overlapping scheduler runs cannot publish it twice. A failed upload persists 'error';
+//? a failed terminal write propagates and leaves the claimed job in 'processing' for separate recovery work.
+//? GAP_SCAN A2 — a terminally-failed scheduled publish notifies the workspace owner (in-app + web push,
+//? deep-linked to the publish queue) instead of failing silently. Best-effort: never breaks the run loop.
+async function notifyPublishFailure(prisma: PrismaClient, workspaceId: string, contentProjectId: string, platform: string): Promise<void> {
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } });
+  const userId = ws?.ownerId;
+  if (!userId) return;
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId, id: contentProjectId }, select: { title: true } });
+  const title = 'Publish failed';
+  const body = `"${piece?.title ?? 'A post'}" could not be published to ${platform} after ${String(MAX_PUBLISH_ATTEMPTS)} attempts.`;
+  await prisma.notification.create({
+    data: { workspaceId, userId, type: 'publish-failure', title, body, deepLink: { view: 'scheduled-posts' }, read: false },
+  });
+  const { sendWebPush } = await import('../hooks/webPush');
+  await sendWebPush(prisma, userId, { title, body, url: '/?view=scheduled-posts', tag: `publish-${contentProjectId}` }, 'automation');
+}
+
 export async function runScheduledPublish(prisma: PrismaClient, now: number, opts: { uploadTransport?: PublishUploadTransport; refreshTransport?: OAuthRefreshTransport } = {}): Promise<{ fired: number }> {
-  const due = await prisma.publishJob.findMany({ where: { status: 'scheduled', scheduledAt: { lte: new Date(now) } } });
+  const dueAt = new Date(now);
+  const due = await prisma.publishJob.findMany({ where: { status: 'scheduled', scheduledAt: { lte: dueAt } } });
   let fired = 0;
   for (const job of due) {
+    const claim = await prisma.publishJob.updateMany({
+      where: { id: job.id, status: 'scheduled', scheduledAt: { lte: dueAt } },
+      data: { status: 'processing' },
+    });
+    if (claim.count !== 1) continue;
+
     const platform = job.platform;
-    if (!BUILT_PLATFORMS.includes(platform as PublishPlatform)) { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } }).catch(() => null); continue; }
+    if (!isPublishPlatform(platform) || !BUILT_PLATFORMS.includes(platform)) {
+      await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } });
+      continue;
+    }
     //? F1 — a scheduled post fires long after connect, so refresh the (likely-expired) token before uploading.
     //? A3 — route to the account the job was scheduled for.
-    const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform: platform as PublishPlatform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now }));
-    if (err || !res || res.kind === 'error') { await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'publish.uploadFailed' } }).catch(() => null); continue; }
+    const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now }));
+    if (err || !res || res.kind === 'error') {
+      //? A3 — bounded retry with backoff; only the LAST attempt becomes a terminal error (+ A2 notify).
+      const reason = res?.kind === 'error' ? res.reason : err?.message;
+      const attempts = job.attempts + 1;
+      if (attempts < MAX_PUBLISH_ATTEMPTS) {
+        const retryAt = new Date(now + publishRetryDelayMs(attempts, reason));
+        await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'scheduled', scheduledAt: retryAt, attempts, error: `publish.retrying:${String(attempts)}/${String(MAX_PUBLISH_ATTEMPTS)}` } });
+        continue;
+      }
+      await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', attempts, error: 'publish.uploadFailed' } });
+      //? A2 — a failed autopilot post used to be SILENT. Notify + push so a stopped channel is visible.
+      await tryCatch(() => notifyPublishFailure(prisma, job.workspaceId, job.contentProjectId, platform));
+      continue;
+    }
     //? A scheduled post with no connection is 'stub' (honest), a real one is 'done'.
     const externalUrl = res.kind === 'real' ? res.externalUrl : `stub://${platform}/${job.assetId}`;
-    await prisma.publishJob.update({ where: { id: job.id }, data: { status: res.kind === 'real' ? 'done' : 'stub', externalUrl } }).catch(() => null);
-    //? `fired` = due jobs the scheduler PROCESSED (real or stub); the job status tells the real-vs-stub truth.
+    //? Keep the same post lineage as an immediate publish: a real scheduled upload stores its
+    //? platform id, while a stub deliberately has no external id. `accountId` is intentionally
+    //? not written here, so the account selected when scheduling remains attached to the job.
+    const externalId = res.kind === 'real' ? extractExternalId(platform, externalUrl) : '';
+    await prisma.publishJob.update({ where: { id: job.id }, data: { status: res.kind === 'real' ? 'done' : 'stub', externalUrl, error: null, ...(externalId ? { externalId } : {}) } });
+    //? Count only externally-resolved jobs whose terminal done/stub state was persisted successfully.
     fired += 1;
   }
   return { fired };
@@ -167,9 +226,11 @@ export const METRICS_INTERVAL_MS = Number(process.env.WS_METRICS_INGEST_INTERVAL
 //? #141 — the LIVE metrics-fetch transport for one workspace: use the platform's valid OAuth connection to
 //? call its stats endpoint. No connection / no keys ⇒ `undefined` (ingest skips that job — never blocks).
 export function buildLiveMetricsFetch(prisma: PrismaClient, workspaceId: string): MetricsFetch {
-  return async (platform, externalId) => {
+  return async (platform, externalId, accountId) => {
     if (platform !== 'youtube' && platform !== 'tiktok') return;
-    const conn = await getValidConnection(prisma, workspaceId, platform);
+    //? Metrics must read with the same connection that created the post. Legacy/default jobs
+    //? have no accountId and retain the existing default-connection behaviour.
+    const conn = await getValidConnection(prisma, workspaceId, platform, { accountId });
     if (!conn) return;
     const req = buildMetricsRequest(platform, externalId, conn.accessToken);
     if (!req) return;

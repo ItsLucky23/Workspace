@@ -76,7 +76,7 @@ export interface Workspace {
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
-  webhookSecret?: string;         // #27 — per-workspace inbound-webhook secret (paste into the forge); empty ⇒ env fallback / not yet minted
+  webhookConfigured?: boolean;    // #27 — metadata only; the inbound-webhook secret never enters snapshot/realtime state
   webhookLastEventAt?: string;    // #27 — ISO timestamp of the last accepted inbound webhook (settings-card "last event" chip)
   allowMergeOnRedCI?: boolean;    // ci-allow-red: let a human merge while CI is red
   enabledSections?: string[];     // module gating: gateable nav-section ids that are ON; [] ⇒ all shown (modules.ts)
@@ -313,7 +313,7 @@ export interface ContentAssetSummary {
   critique?: string;     // F5: a stored AI critique of an image asset (content-critique-image)
   posterUrl?: string;    // F4: a poster frame extracted from a rendered mp4 (the gallery/publish thumbnail)
   publishedOn?: string[]; // S2: platforms this asset is currently published on (drives the unpublish control)
-  publishJobs?: { platform: string; status: string; externalUrl?: string; scheduledAt?: string }[]; // #143: honest per-job status (done/stub/error/scheduled/unpublished) + external link
+  publishJobs?: { platform: string; status: string; externalUrl?: string; scheduledAt?: string; error?: string; attempts?: number }[]; // #143: honest per-job status (done/stub/error/scheduled/unpublished) + external link
 }
 
 //? V1 — a timeline VIDEO SCENE surfaced to the editor: a real clip (or a still) with trim + a transition.
@@ -496,7 +496,7 @@ export interface TicketNote {
 
 export interface NotificationItem {
   id: string;
-  type: 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure' | 'assignment';
+  type: 'needs-input' | 'merge' | 'ai-suggestion' | 'container-failure' | 'assignment' | 'publish-failure';
   title: string;
   body: string;
   ticketId?: string;
@@ -898,7 +898,8 @@ export interface StageToolCfg { toolId: string; tier: ToolTier }
 //? Env vars hold the actual secrets/config; an integration tool maps its config
 //? fields to env vars + (optionally) exposes itself to the AI via an MCP server.
 //? The pipeline then just SELECTS which tools a stage may use.
-export interface EnvVar { id: string; key: string; value: string; secret: boolean }
+//? Secret values are write-only: `value` is always an empty replacement buffer when `secret` is true.
+export interface EnvVar { id: string; key: string; value: string; secret: boolean; configured?: boolean }
 export interface IntegrationField { id: string; label: string; placeholder?: string; envVarId: string | null }
 export interface IntegrationTool {
   id: string;
@@ -928,6 +929,7 @@ export interface StageNetworkCfg { enabled: boolean; mode: NetworkMode; categori
 //? `id` is a free string (not a fixed StageId) so custom stages can be added in
 //? the editor; `kind` is the typed semantic role (04b §12).
 export interface PipelineStageCfg {
+  projectId: string;
   id: string;
   kind: StageKind;
   name: string;
@@ -1096,12 +1098,12 @@ export interface InterviewFinding {
   createdAt: string;
 }
 
-//? Ticket ↔ artifact link (ADR 0034) — a design/Studio artifact a ticket implements.
+//? Ticket ↔ artifact link (ADR 0034) — a design/Studio/UI-review artifact a ticket implements.
 export interface TicketArtifactLink {
   id: string;
   ticketId: string;                    // DEV-#### key
   artifactId: string;
-  artifactKind: string;                // 'design' | 'studio'
+  artifactKind: string;                // 'design' | 'studio' | 'ui-review'
   name: string;
   label: string | null;
 }

@@ -1721,8 +1721,9 @@ model PublishJob {
   assetId          String   @db.ObjectId
   platform         String                            // 'youtube' | 'tiktok' | 'instagram' | 'linkedin'
   accountId        String?                            // A3 — which connected account to publish with (null = default)
-  status           String   @default("queued")       // 'queued' | 'scheduled' | 'done' | 'error'
-  scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now)
+  status           String   @default("queued")       // 'queued' | 'scheduled' | 'processing' | 'done' | 'stub' | 'error'
+  attempts         Int      @default(0)               // GAP_SCAN A3 — publish tries so far; drives the bounded retry/backoff
+  scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now); also the retry time
   externalUrl      String?
   error            String?
   metrics          Json?                             // C3 — ingested audience metrics {views,likes,comments,shares,watchTimeSec,ctr,fetchedAt}

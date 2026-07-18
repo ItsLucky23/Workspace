@@ -2048,7 +2048,8 @@
     "scheduledPosts": {
       "title": "Geplande posts",
       "tagline": "Publicaties die klaarstaan om op een ingesteld moment te verschijnen.",
-      "empty": "Nog geen geplande posts. Plan een publicatie vanuit een contentstuk om het hier te zien."
+      "empty": "Nog geen geplande posts. Plan een publicatie vanuit een contentstuk om het hier te zien.",
+      "failed": "mislukt"
     },
     "scheduled": {
       "title": "Geplande taken",
@@ -2082,7 +2083,11 @@
       "runsAt": "Draait op: {{cron}}",
       "create": "Taak aanmaken",
       "actNotify": "Notificatie",
-      "lastRun": "laatst gedraaid {{when}}"
+      "lastRun": "laatst gedraaid {{when}}",
+      "channels": "Kanalen",
+      "channelsPlaceholder": "Alle kanalen (niets geselecteerd)",
+      "channelsSelected": "{count} kanalen",
+      "channelsHint": "De rol draait één keer per geselecteerd kanaal — een kanaal dat faalt blokkeert de rest nooit."
     },
     "automation": {
       "title": "Automatisering",
@@ -2350,15 +2355,15 @@
     },
     "inspire": {
       "title": "Inspiratie",
-      "desc": "Importeer een stijl die je mooi vindt: plak een site-URL (wij screenshotten + destilleren de stijl naar een theme-voorstel), upload een screenshot, of vergelijk jouw pagina met een inspiratie - de analyse landt in de review-inbox.",
+      "desc": "Importeer een stijl die je mooi vindt door een screenshot te uploaden, of vergelijk screenshots van jouw pagina en een inspiratie - de analyse landt in de review-inbox.",
       "urlPlaceholder": "https://een-site-die-je-bewondert.nl",
       "captureExtract": "Vastleggen & extraheren",
       "uploadShot": "Screenshot uploaden",
-      "ownPlaceholder": "Jouw pagina (URL)",
-      "inspPlaceholder": "Inspiratie (URL)",
+      "ownPlaceholder": "Screenshot van jouw pagina",
+      "inspPlaceholder": "Screenshot van inspiratie",
       "compare": "Vergelijken",
       "done": "Klaar - kijk in je theme-bibliotheek / review-inbox.",
-      "failed": "Mislukt - is de vision-AI geconfigureerd en de URL bereikbaar?"
+      "failed": "Mislukt - is de vision-AI geconfigureerd?"
     },
     "comments": {
       "tab": "Reacties",

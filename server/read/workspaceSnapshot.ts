@@ -21,12 +21,11 @@ import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { ensureBuiltinSkills } from '../ai/skills';
 import { ensureStyleGallery } from '../designer/inspiration';
-import { formatTime, toContentAssetSummary, toInfoDoc, toTicket } from './mappers';
+import { formatTime, toContentAssetSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
-import { decryptSecret } from '../crypto/secretBox';
 import { parseTokenKey } from '../content/publishOAuth';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
@@ -71,7 +70,7 @@ const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s ==
 const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' || s === 'copilot' ? s : 'maintenance');
 const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' || s === 'ci' ? s : 'ai-message');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
-const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' ? s : 'container-failure');
+const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' || s === 'publish-failure' ? s : 'container-failure');
 const asCommandMode = (s: string): CommandMode => (s === 'allow' || s === 'deny' ? s : 'ask');
 const asToolTier = (s: string): ToolTier => (s === 'rw' ? s : 'ro');
 const asStatusKind = (s: string): StageStatusCfg['kind'] => (s === 'base' ? s : 'custom');
@@ -104,6 +103,7 @@ const asHooks = (v: unknown): Record<string, boolean> => {
 //? delta matches the initial-load shape exactly (no divergence, no refetch).
 export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
   return {
+    projectId: s.projectId,
     id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
     customInstructions: s.customInstructions, promptTemplate: s.promptTemplate, definitionOfDone: s.definitionOfDone,
     systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
@@ -145,7 +145,7 @@ export function stageConfigDelta(result: unknown): PipelineStageCfg | null {
 }
 
 export interface WorkspaceSnapshot {
-  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType'>)[];
+  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType' | 'webhookConfigured' | 'webhookLastEventAt' | 'allowMergeOnRedCI' | 'enabledSections' | 'productContext' | 'aiInstruction' | 'outputLanguage' | 'geminiModel' | 'geminiTemperature' | 'geminiBaseUrl' | 'autonomyLevel'>)[];
   activeWorkspaceId: string | null;
   //? Multi-project (ADR 0035): the active workspace's projects + the selected one.
   //? board/pipeline/tickets/sprints below are scoped to `activeProjectId`.
@@ -269,7 +269,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const wsIds = memberships.map((m) => m.workspaceId);
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, webhookSecret: w.webhookSecret ?? '', webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, geminiModel: w.geminiModel, geminiTemperature: w.geminiTemperature, geminiBaseUrl: w.geminiBaseUrl, autonomyLevel: w.autonomyLevel }));
+  //? Webhook secrets are write-once credentials: the snapshot exposes only configured state.
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, geminiModel: w.geminiModel, geminiTemperature: w.geminiTemperature, geminiBaseUrl: w.geminiBaseUrl, autonomyLevel: w.autonomyLevel }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
@@ -285,12 +286,14 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   if (!activeWorkspaceId) return { workspaces, activeWorkspaceId: null, activeProjectId: null, ...EMPTY, myInvites };
 
   return runInTenant(activeWorkspaceId, async () => {
-    //? Multi-project (ADR 0035): resolve the ACTIVE project first — the requested one
-    //? if it belongs to this workspace, else the oldest (the single-project era's only
-    //? project). board/pipeline/tickets/sprints are then scoped to it. A sentinel
-    //? ObjectId scopes to "nothing" for the (defensive) zero-project workspace.
+    //? Multi-project (ADR 0035): an explicit requested project is validated strictly;
+    //? stale/foreign targets scope to nothing rather than falling through to project #1.
+    //? Only an omitted target gets the oldest-project legacy default. A sentinel ObjectId
+    //? scopes to nothing for either invalid-target or genuinely project-less snapshots.
     const projectRows = await tenantDb.project.findMany({ orderBy: { createdAt: 'asc' } });
-    const activeProjectId = wantProjectId && projectRows.some((p) => p.id === wantProjectId) ? wantProjectId : (projectRows[0]?.id ?? null);
+    const activeProjectId = wantProjectId === undefined
+      ? (projectRows[0]?.id ?? null)
+      : (projectRows.some((project) => project.id === wantProjectId) ? wantProjectId : null);
     const projectScope = { projectId: activeProjectId ?? '000000000000000000000000' };
     const serviceRows = activeProjectId ? await tenantDb.service.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const environmentRows = activeProjectId ? await tenantDb.environment.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
@@ -456,10 +459,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     }
     //? #143 — the honest per-job status per asset (all statuses, not just done) so the piece page can
     //? render done/scheduled/error/stub chips with the external link (was only aggregate counts).
-    const publishJobsByAsset = new Map<string, { platform: string; status: string; externalUrl?: string; scheduledAt?: string }[]>();
+    const publishJobsByAsset = new Map<string, { platform: string; status: string; externalUrl?: string; scheduledAt?: string; error?: string; attempts?: number }[]>();
     for (const j of publishJobRows) {
       const list = publishJobsByAsset.get(j.assetId) ?? [];
-      list.push({ platform: j.platform, status: j.status, ...(j.externalUrl ? { externalUrl: j.externalUrl } : {}), ...(j.scheduledAt ? { scheduledAt: j.scheduledAt.toISOString() } : {}) });
+      list.push({ platform: j.platform, status: j.status, ...(j.externalUrl ? { externalUrl: j.externalUrl } : {}), ...(j.scheduledAt ? { scheduledAt: j.scheduledAt.toISOString() } : {}), ...(j.error ? { error: j.error } : {}), ...(j.attempts > 0 ? { attempts: j.attempts } : {}) });
       publishJobsByAsset.set(j.assetId, list);
     }
     const assetsByPiece = new Map<string, ContentAssetSummary[]>();
@@ -511,9 +514,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       unreadComments,
     };
 
-    const docs: InfoDoc[] = sourceRows.filter((s) => s.mode === 'context-doc').map((s) => toInfoDoc(s));
-    const skills: SkillEntry[] = sourceRows.filter((s) => s.mode === 'skill').map((s) => ({
-      id: s.id, name: s.name, kind: asSkillKind(s.kind), status: s.summary ?? '', model: s.model ?? undefined, on: s.enabled, description: s.summary ?? undefined, usedByStages: s.usedByStages,
+    //? Project-owned context follows the selected project. Null-project sources and the ADR 0034
+    //? design-system remain workspace-wide; sibling project docs/skills never enter this snapshot.
+    const visibleSourceRows = sourceRows.filter((source) => source.source === 'design-system' || source.projectId === null || source.projectId === activeProjectId);
+    const docs: InfoDoc[] = visibleSourceRows.filter((source) => source.mode === 'context-doc').map((source) => toInfoDoc(source));
+    const skills: SkillEntry[] = visibleSourceRows.filter((source) => source.mode === 'skill').map((source) => ({
+      id: source.id, name: source.name, kind: asSkillKind(source.kind), status: source.summary ?? '', model: source.model ?? undefined, on: source.enabled, description: source.summary ?? undefined, usedByStages: source.usedByStages,
     }));
 
     //? Register-flow step A: the ACTIVE project's linked-repo status (on-disk bare
@@ -618,24 +624,29 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       designArtifacts: designArtifactRows.map((d) => ({
         id: d.id, kind: d.kind, name: d.name, description: d.description ?? '', content: d.content, source: d.source, active: d.active, createdAt: d.createdAt.toISOString(),
       })),
-      interviewFindings: interviewFindingRows.map((f) => ({
-        id: f.id, area: f.area, severity: f.severity, title: f.title, summary: f.summary, status: f.status, ticketId: f.ticketId ?? null, createdAt: f.createdAt.toISOString(),
+      interviewFindings: interviewFindingRows.map((finding) => ({
+        id: finding.id, area: finding.area, severity: finding.severity, title: finding.title, summary: finding.summary, status: finding.status,
+        ticketId: finding.ticketId ? (ticketKeyById.get(finding.ticketId) ?? null) : null,
+        createdAt: finding.createdAt.toISOString(),
       })),
       uiReviews: uiReviewRows.map((r) => ({
         id: r.id, page: r.page ?? null, problems: r.problems, screenshots: r.screenshots, notes: r.notes ?? null, createdAt: r.createdAt.toISOString(),
       })),
-      ticketArtifactLinks: artifactLinkRows.map((l) => {
-        const name = l.artifactKind === 'design'
-          ? (designArtifactRows.find((d) => d.id === l.artifactId)?.name ?? '—')
-          : (studioArtifactRows.find((s) => s.id === l.artifactId)?.title ?? '—');
-        return { id: l.id, ticketId: ticketKeyById.get(l.ticketId) ?? l.ticketId, artifactId: l.artifactId, artifactKind: l.artifactKind, name, label: l.label ?? null };
+      ticketArtifactLinks: artifactLinkRows.flatMap((link) => {
+        const ticketKey = ticketKeyById.get(link.ticketId);
+        if (!ticketKey) return [];
+        const name = link.artifactKind === 'design'
+          ? (designArtifactRows.find((artifact) => artifact.id === link.artifactId)?.name ?? '—')
+          : (link.artifactKind === 'studio'
+            ? (studioArtifactRows.find((artifact) => artifact.id === link.artifactId)?.title ?? '—')
+            : 'UI review');
+        return [{ id: link.id, ticketId: ticketKey, artifactId: link.artifactId, artifactKind: link.artifactKind, name, label: link.label ?? null }];
       }),
       sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: sp.startAt ? sp.startAt.toISOString().slice(0, 10) : null, end: sp.endAt ? sp.endAt.toISOString().slice(0, 10) : null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: sp.endAt ? Math.max(0, Math.ceil((sp.endAt.getTime() - Date.now()) / 86_400_000)) : null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id), ...(s.patch === null ? {} : { patch: s.patch }) })),
-      //? RS-B1 (SECURITY) — internal `__`-rows (provider keys, OAuth-token JSON, per-feature
-      //? overrides) NEVER reach the client env list (mirrors serviceEnv.ts's container filter).
-      //? The derived aiOverrides/mediaModels projections above expose only feature→id mappings.
-      envVars: envRows.filter((e) => !e.key.startsWith('__')).map((e): EnvVar => ({ id: e.id, key: e.key, value: e.secret ? (decryptSecret(e.value) ?? e.value) : e.value, secret: e.secret })),
+      //? Internal `__` rows stay server-only; secret EnvVars are write-only metadata. The mapper
+      //? deliberately emits neither plaintext nor ciphertext, including on legacy rows.
+      envVars: envRows.map((envRow) => toEnvVar(envRow)).filter((envVar): envVar is EnvVar => envVar !== null),
       integrations: integrationRows.map((it): IntegrationTool => ({ id: it.id, name: it.name, type: it.type, fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })), mcp: it.mcp })),
       invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null })),
       //? Events store ticket ObjectIds, but the frontend keys tickets by their

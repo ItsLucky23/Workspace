@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+import MultiSelectDropdown from 'src/_components/dropdown/MultiSelectDropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
@@ -93,7 +94,7 @@ export default function Scheduled() {
 
 function CreateForm({ onDone }: { onDone: () => void }) {
   const translate = useTranslator();
-  const { agentRoles, saveTrigger } = useWorkspaces();
+  const { agentRoles, saveTrigger, content } = useWorkspaces();
   const [name, setName] = useState('');
   const [cadence, setCadence] = useState('daily');
   const [customCron, setCustomCron] = useState('0 9 * * *');
@@ -102,6 +103,9 @@ function CreateForm({ onDone }: { onDone: () => void }) {
   const [focus, setFocus] = useState('');
   const [notifyTitle, setNotifyTitle] = useState('');
   const [notifyBody, setNotifyBody] = useState('');
+  //? GAP_SCAN A1 — a scheduled task can target MANY channels; the role fans out per channel with an
+  //? independent result, so "N channels on a cron timer" is configurable from here.
+  const [channelIds, setChannelIds] = useState<string[]>([]);
 
   const cron = cadence === 'custom' ? customCron.trim() : (CADENCES.find((c) => c.id === cadence)?.cron ?? '0 9 * * *');
   const role = agentRoles.find((r) => r.key === roleKey);
@@ -109,11 +113,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   const roleItems: DropdownItem[] = agentRoles.map((r) => ({ id: r.key, value: r.key, item: r.label, searchText: r.label }));
   const activeRoleItem = roleItems.find((i) => i.id === roleKey);
+  const channelItems: DropdownItem[] = content.channels.map((c) => ({ id: c.id, value: c.id, item: `${c.name}${c.platform && c.platform !== 'none' ? ` · ${c.platform}` : ''}${c.autopilot ? ' · autopilot' : ''}`, searchText: c.name }));
 
   const save = () => {
     if (!canSave) return;
     const params = mode === 'role'
-      ? { role: roleKey, ...(focus.trim() ? { focus: focus.trim() } : {}) }
+      ? { role: roleKey, ...(focus.trim() ? { focus: focus.trim() } : {}), ...(channelIds.length > 0 ? { channelIds } : {}) }
       : { title: notifyTitle.trim(), body: notifyBody.trim() };
     saveTrigger({
       name: name.trim(), on: 'cron', cron,
@@ -153,6 +158,20 @@ function CreateForm({ onDone }: { onDone: () => void }) {
             <Field label={translate({ key: 'workspaces.scheduled.focus' })}>
               <input value={focus} onChange={(e) => { setFocus(e.target.value); }} placeholder={translate({ key: 'workspaces.scheduled.focusPlaceholder' })} className={inputCls} />
             </Field>
+            {/* A1 — target N channels; the role runs once per channel with an independent result. */}
+            {content.channels.length > 0 && (
+              <Field label={translate({ key: 'workspaces.scheduled.channels' })}>
+                <MultiSelectDropdown
+                  items={channelItems}
+                  value={channelItems.filter((i) => channelIds.includes(String(i.id)))}
+                  onChange={(sel) => { setChannelIds(sel.map((i) => String(i.id))); }}
+                  placeholder={translate({ key: 'workspaces.scheduled.channelsPlaceholder' })}
+                  size="lg" showSearch
+                  selectedCountText={(n) => translate({ key: 'workspaces.scheduled.channelsSelected', params: [{ key: 'count', value: String(n) }] })}
+                />
+                <div className="text-xs text-muted mt-1">{translate({ key: 'workspaces.scheduled.channelsHint' })}</div>
+              </Field>
+            )}
           </>
         ) : (
           <>

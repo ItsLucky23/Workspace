@@ -2048,7 +2048,8 @@
     "scheduledPosts": {
       "title": "Publications planifiées",
       "tagline": "Publications programmées pour une heure définie.",
-      "empty": "Aucune publication planifiée. Planifiez une publication depuis un contenu pour la voir ici."
+      "empty": "Aucune publication planifiée. Planifiez une publication depuis un contenu pour la voir ici.",
+      "failed": "failed"
     },
     "scheduled": {
       "title": "Scheduled tasks",
@@ -2082,7 +2083,11 @@
       "runsAt": "Runs on: {{cron}}",
       "create": "Create task",
       "actNotify": "Notification",
-      "lastRun": "last run {{when}}"
+      "lastRun": "last run {{when}}",
+      "channels": "Channels",
+      "channelsPlaceholder": "All channels (none selected)",
+      "channelsSelected": "{count} channels",
+      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
       "title": "Automatisation",
@@ -2350,15 +2355,15 @@
     },
     "inspire": {
       "title": "Inspiration",
-      "desc": "Importez un style que vous aimez : collez une URL (nous capturons + extrayons le style en proposition de thème), téléversez une capture, ou comparez votre page à une inspiration – l'analyse arrive dans la boîte de revue.",
+      "desc": "Importez un style que vous aimez en téléversant une capture, ou comparez les captures de votre page et d'une inspiration – l'analyse arrive dans la boîte de revue.",
       "urlPlaceholder": "https://un-site-que-vous-admirez.fr",
       "captureExtract": "Capturer & extraire",
       "uploadShot": "Téléverser une capture",
-      "ownPlaceholder": "Votre page (URL)",
-      "inspPlaceholder": "Inspiration (URL)",
+      "ownPlaceholder": "Capture de votre page",
+      "inspPlaceholder": "Capture de l'inspiration",
       "compare": "Comparer",
       "done": "Terminé – voir la bibliothèque de thèmes / boîte de revue.",
-      "failed": "Échec – l'IA vision est-elle configurée et l'URL accessible ?"
+      "failed": "Échec – l'IA vision est-elle configurée ?"
     },
     "comments": {
       "tab": "Commentaires",

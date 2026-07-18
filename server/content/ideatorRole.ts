@@ -64,29 +64,61 @@ export async function runAutopilotChain(workspaceId: string, channel: { id: stri
   return `Autopilot for ${channel.name}: "${title}" → rendered → ${outcome}.`;
 }
 
+//? GAP_SCAN A1 — a scheduled task may target MANY channels. Accepts the new `channelIds[]` and the legacy
+//? single `channelId`, de-duped and order-preserving. Pure + exported for tests.
+export function paramChannelIds(params: Record<string, unknown>): string[] {
+  const raw = params.channelIds;
+  const many = Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && v.trim().length > 0) : [];
+  const one = typeof params.channelId === 'string' && params.channelId.trim().length > 0 ? [params.channelId] : [];
+  return [...new Set([...many, ...one])];
+}
+
+interface IdeatorChannel { id: string; name: string; platform: string; brandVoice: string | null; autopilot: boolean }
+
+//? One channel's run: grounded idea → (autopilot) the whole chain. Throws on failure so the caller can
+//? record THIS channel as failed without touching the others (A1: independent per-channel status).
+async function runForChannel(workspaceId: string, channel: IdeatorChannel): Promise<string> {
+  const theme = `the "${channel.name}" channel (${channel.platform})${channel.brandVoice ? ` — brand voice: ${channel.brandVoice}` : ''}`;
+  const winners = await recentWinnersLine(workspaceId, channel.id);
+  const res = await runAiCompletion('script', { prompt: `Propose ONE fresh short-form content idea for ${theme}: a hook + a one-line premise.${winners}`, workspaceId, label: 'Content idea' });
+  const body = res.ok && res.text ? res.text : `A fresh idea for ${theme}: a 45-second explainer opening on a bold question, then a punchy 3-beat payoff.`;
+  //? AUTOPILOT: the channel's explicit opt-in replaces the per-step approval — run the whole chain.
+  if (channel.autopilot) return runAutopilotChain(workspaceId, channel, body);
+  return `${channel.name}: ${body}`;
+}
+
 export function registerContentIdeatorRole(): void {
   registerAgentRole({
     key: 'content-ideator',
     label: 'Content ideator',
-    description: 'Proposes a fresh content idea for a channel on a schedule (gated to a suggestion — B-23; an autopilot channel runs the whole chain).',
+    description: 'Proposes a fresh content idea per targeted channel on a schedule (gated to a suggestion — B-23; an autopilot channel runs the whole chain).',
     mutates: true,
     run: async (ctx) => {
       const prisma = getPrismaClient();
-      //? Channel-aware grounding: name + brand voice + per-channel winners when a channelId is bound.
-      const channelId = typeof ctx.params.channelId === 'string' ? ctx.params.channelId : undefined;
-      const channel = channelId ? await prisma.channel.findFirst({ where: { workspaceId: ctx.workspaceId, id: channelId } }) : null;
-      const theme = channel
-        ? `the "${channel.name}" channel (${channel.platform})${channel.brandVoice ? ` — brand voice: ${channel.brandVoice}` : ''}`
-        : (typeof ctx.params.theme === 'string' && ctx.params.theme ? ctx.params.theme : 'your channel');
-      const winners = await recentWinnersLine(ctx.workspaceId, channel?.id);
-      const res = await runAiCompletion('script', { prompt: `Propose ONE fresh short-form content idea for ${theme}: a hook + a one-line premise.${winners}`, workspaceId: ctx.workspaceId, label: 'Content idea' });
-      const body = res.ok && res.text ? res.text : `A fresh idea for ${theme}: a 45-second explainer opening on a bold question, then a punchy 3-beat payoff.`;
-      //? AUTOPILOT: the channel's explicit opt-in replaces the per-step approval — run the whole chain.
-      if (channel?.autopilot) {
-        const [chainErr, report] = await tryCatch(() => runAutopilotChain(ctx.workspaceId, channel, body));
-        return { kind: 'content-idea', title: `Autopilot run · ${channel.name}`, body: chainErr ? `Autopilot failed: ${chainErr.message}` : (report ?? '') };
+      //? A1 — resolve the targeted channel SET. No channel bound ⇒ the original theme-only behaviour.
+      const ids = paramChannelIds(ctx.params);
+      if (ids.length === 0) {
+        const theme = typeof ctx.params.theme === 'string' && ctx.params.theme ? ctx.params.theme : 'your channel';
+        const winners = await recentWinnersLine(ctx.workspaceId);
+        const res = await runAiCompletion('script', { prompt: `Propose ONE fresh short-form content idea for ${theme}: a hook + a one-line premise.${winners}`, workspaceId: ctx.workspaceId, label: 'Content idea' });
+        const body = res.ok && res.text ? res.text : `A fresh idea for ${theme}: a 45-second explainer opening on a bold question, then a punchy 3-beat payoff.`;
+        return { kind: 'content-idea', title: `Content idea for ${theme}`, body };
       }
-      return { kind: 'content-idea', title: `Content idea for ${theme}`, body };
+      const channels = await prisma.channel.findMany({ where: { workspaceId: ctx.workspaceId, id: { in: ids } } });
+      if (channels.length === 0) return { kind: 'content-idea', title: 'Content idea', body: 'None of the targeted channels exist any more — nothing ran.' };
+      //? Fan out per channel, each in its OWN tryCatch: one channel failing must never block the rest.
+      const lines: string[] = [];
+      let failed = 0;
+      for (const c of channels) {
+        const [err, line] = await tryCatch(() => runForChannel(ctx.workspaceId, { id: c.id, name: c.name, platform: c.platform, brandVoice: c.brandVoice, autopilot: c.autopilot }));
+        if (err) { failed += 1; lines.push(`${c.name}: FAILED — ${err.message}`); }
+        else lines.push(line ?? `${c.name}: (no output)`);
+      }
+      const ok = channels.length - failed;
+      const title = channels.length === 1
+        ? `Content idea · ${channels[0]?.name ?? ''}`
+        : `Content run · ${String(ok)}/${String(channels.length)} channels`;
+      return { kind: 'content-idea', title, body: lines.join('\n\n') };
     },
   });
 }

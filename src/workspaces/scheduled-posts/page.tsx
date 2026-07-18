@@ -19,6 +19,10 @@ interface ScheduledRow {
   platform: string;
   channelName: string | null;
   when: number;   // epoch ms of scheduledAt
+  //? GAP_SCAN A2 — a FAILED post stays visible here (it used to be filtered out and vanish silently).
+  failed: boolean;
+  error?: string;
+  attempts?: number;
 }
 
 export default function ScheduledPosts() {
@@ -32,10 +36,16 @@ export default function ScheduledPosts() {
     for (const piece of content.pieces) {
       for (const asset of piece.assets) {
         for (const job of asset.publishJobs ?? []) {
-          if (job.status !== 'scheduled' || !job.scheduledAt) continue;
+          //? A2 — show queued AND failed jobs; a stopped channel must be visible, not filtered away.
+          if (job.status !== 'scheduled' && job.status !== 'error') continue;
+          if (!job.scheduledAt) continue;
           const when = new Date(job.scheduledAt).getTime();
           if (!Number.isFinite(when)) continue;
-          out.push({ pieceId: piece.id, pieceTitle: piece.title, platform: job.platform, channelName: channelName(piece.channelId), when });
+          out.push({
+            pieceId: piece.id, pieceTitle: piece.title, platform: job.platform,
+            channelName: channelName(piece.channelId), when, failed: job.status === 'error',
+            ...(job.error ? { error: job.error } : {}), ...(job.attempts ? { attempts: job.attempts } : {}),
+          });
         }
       }
     }
@@ -77,9 +87,12 @@ export default function ScheduledPosts() {
             <div className="flex flex-col gap-2">
               {g.items.map((r, i) => (
                 <button key={`${r.pieceId}-${r.platform}-${String(i)}`} type="button" onClick={() => { navigate(`content/${r.pieceId}`); }} className="text-left rounded-2xl border border-container1-border bg-container1 hover:bg-container2 p-4 flex items-center gap-3 cursor-pointer transition-colors">
-                  <span className="w-9 h-9 shrink-0 rounded-xl bg-primary/12 text-primary flex items-center justify-center"><Icon name="paper-plane" /></span>
+                  <span className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${r.failed ? 'bg-wrong/12 text-wrong' : 'bg-primary/12 text-primary'}`}><Icon name={r.failed ? 'triangle-exclamation' : 'paper-plane'} /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-title truncate">{r.pieceTitle}</div>
+                    <div className="text-sm font-medium text-title truncate flex items-center gap-2">
+                      <span className="truncate">{r.pieceTitle}</span>
+                      {r.failed && <span className="shrink-0 text-[10px] uppercase tracking-wide rounded-full bg-wrong/15 text-wrong px-1.5 py-0.5">{translate({ key: 'workspaces.scheduledPosts.failed' })}</span>}
+                    </div>
                     <div className="text-xs text-muted truncate">
                       {r.platform}
                       {r.channelName ? ` · ${r.channelName}` : ''}
