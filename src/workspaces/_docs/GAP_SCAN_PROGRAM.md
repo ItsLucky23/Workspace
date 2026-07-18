@@ -48,7 +48,7 @@ The approve/answer loop is the product's core model; today it is silently lossy 
 
 | # | Item | Effort | Verifiable goal |
 |---|---|---|---|
-| B1 | **Approve/answer ack + offline banner** — `.catch`/ack on the answer-input `syncRequest` + a visible offline/reconnecting state | M | Approving while the socket is down surfaces a retry state instead of silently vanishing |
+| B1 | **Approve/answer offline banner + retry affordance** — NARROWED: the parallel pass's items 08/09 fix the *server-side* false-success ACK + enqueue idempotency, so the truthful failure now reaches the client. What remains is the **client half**: surface it (visible offline/reconnecting state + a retry affordance) instead of a silent no-op | S | Approving while the socket is down shows a retry state instead of silently vanishing |
 | B2 | **Create a 2nd/3rd workspace from a phone** — the switcher+create currently lives in a `hidden md:flex` header | S | A phone-width viewport can create and switch workspaces |
 | B3 | **Notification deep-links** — populate `deepLink`/push `url?view=` for the non-ticket roles (interviewer findings, publish failures) | S | Tapping a notification lands on the right page, not app root |
 | B4 | **iOS PWA install + push fallback** — `beforeinstallprompt`-only today; `togglePush` snaps back with no error | S | iOS Safari shows an install path + an honest push-unsupported message |
@@ -100,9 +100,9 @@ These were code-verified but deliberately kept out of the feature sections.
 | # | Item | Effort | Verifiable goal |
 |---|---|---|---|
 | E1 | **Redeploy serves stale code** — the DB says the new build shipped, the container keeps the old one | M | A redeploy demonstrably serves the new commit (regression test) |
-| E2 | **`runInTenant` gaps** — enforced at the Conductor's outer wrap, but cron / GitLab-sync / RAG-write paths bypass it | M | Every background writer runs tenant-scoped; a cross-tenant attempt loud-fails |
-| E3 | **Worker egress closed by default** — currently unrestricted unless opted in | M | A worker container can only reach the allowlist |
-| E4 | **Constant-time webhook auth** | S | The HMAC compare is constant-time (unit-proven) |
+| E2 | **`runInTenant` gaps in BACKGROUND WRITERS** — verified still open: `server/automation/executor.ts`, `server/content/publish.ts` and `server/rag/memory.ts` contain no `runInTenant` wrap. (The parallel pass's item 02 covers the MCP-EnvVar / ServiceStack tenant guard — a different surface) | M | Every background writer runs tenant-scoped; a cross-tenant attempt loud-fails |
+| E3 | **Worker-container egress closed by default** — verified still opt-in (`WS_EGRESS=1`, default OFF ⇒ workers keep full network). NOTE: the server-side SSRF/outbound half is NOT mine — the parallel pass shipped `server/security/{safeHttp,outboundUrl}.ts` (their items 14/19) | M | A worker container can only reach the allowlist by default |
+| ~~E4~~ | ~~**Constant-time webhook auth**~~ — **ALREADY DONE by the parallel pass** (verified: `timingSafeEqual` in `server/git/webhookRoute.ts`) | — | — |
 
 ---
 
@@ -158,6 +158,27 @@ These were code-verified but deliberately kept out of the feature sections.
 4. **Platform APP credentials move OUT of `.env` and into the app** (see A7). A self-hoster pastes their
    YouTube/TikTok app credentials in the UI instead of editing `.env`; stored encrypted per workspace, exactly
    like the media-provider keys. `.env` stays a fallback so existing installs keep working.
+
+## Overlap with the parallel hardening pass (`PRODUCT_GAP_SCAN_2026-07-18.md`)
+
+A second agent is running a 23-item **security/correctness** pass (`impl-prompts/01..23`). Its scope and this
+program's barely intersect — theirs is hardening + regression fixes, this one is features + couplings. Verified
+against the code on disk, the only overlaps are:
+
+| Their item | Effect on this plan |
+|---|---|
+| 08 false-success control ACK · 09 enqueue idempotency | **B1 narrowed** to the client-side offline/retry UI (the server ACK truthfulness is theirs) |
+| 12 rotate-webhook polish (`timingSafeEqual`) | **E4 dropped** — already done |
+| 14 + 19 central outbound URL security (`server/security/*`) | **E3 narrowed** to the *worker-container* egress default (their work is server-side SSRF, a different surface) |
+| 02 MCP EnvVar / ServiceStack tenant guard | **E2 kept** — a different surface; the background writers (`automation/executor`, `content/publish`, `rag/memory`) are verified still unscoped |
+| 17 apply-tokens · 04 documents polish · 03 gallery · 06 compare-writer | Already-delivered DESIGN_DOCS work that they hardened — nothing for this plan |
+
+**Everything else in this program is untouched by them** — all of Phase A (autopilot), B2–B5, Phase C, Phase D,
+E1–E3, Phase F and Phase G remain fully mine.
+
+**Sequencing:** their items 05/11 (publish lineage, duplicate-claim) and 23 (project-scope threading) touch
+`publish.ts`, `conductor.ts`, `stageRunner.ts`, `WorkspacesProvider.tsx` and the snapshot — exactly the files
+Phase A/B start in. So this program starts only once their pass is committed, to avoid clobbering.
 
 ## Working agreements (2026-07-18)
 
