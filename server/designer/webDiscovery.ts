@@ -13,6 +13,7 @@
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
 import { withRetry } from '../util/retry';
+import { runAiCompletion } from '../ai/registry';
 
 export interface DiscoveredSite { url: string; title: string }
 
@@ -70,11 +71,49 @@ export function parseSearchResults(html: string, limit = 6): DiscoveredSite[] {
   return out;
 }
 
-//? Discover up to `limit` candidate reference sites for a design brief. Returns [] on any failure (never throws).
-export async function discoverReferenceSites(query: string, limit = 6): Promise<DiscoveredSite[]> {
+//? Parse the AI's suggested sites (one "url — title" per line, or a JSON array) into candidates. Pure + exported.
+export function parseAiSites(text: string, limit = 6): DiscoveredSite[] {
+  const out: DiscoveredSite[] = [];
+  const seen = new Set<string>();
+  //? Accept both a JSON array of {url,title} and plain "https://… — Title" lines.
+  const [, arr] = tryCatchSync(() => { const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text); const s = fenced?.[1] ?? text; const j = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1)) as unknown; return Array.isArray(j) ? j : null; });
+  const push = (rawUrl: string, rawTitle: string): void => {
+    const url = rawUrl.trim();
+    if (!/^https?:\/\//.test(url)) return;
+    const host = hostOf(url);
+    if (!host || host.length === 0 || seen.has(host) || out.length >= limit) return;
+    seen.add(host);
+    out.push({ url, title: rawTitle.trim().slice(0, 120) || host });
+  };
+  if (Array.isArray(arr)) {
+    for (const it of arr) { if (it && typeof it === 'object') { const r = it as Record<string, unknown>; if (typeof r.url === 'string') push(r.url, typeof r.title === 'string' ? r.title : ''); } }
+  }
+  if (out.length === 0) {
+    for (const line of text.split('\n')) {
+      const m = /(https?:\/\/[^\s)]+)(?:\s*[—:-]\s*(.*))?/.exec(line.trim());
+      if (m) push(m[1] ?? '', m[2] ?? '');
+    }
+  }
+  return out;
+}
+
+//? AI-backed discovery (the reliable default): the model suggests real, well-designed reference sites for the
+//? brief. Uses the pluggable AI layer (feature `scraper`), so the backend is a per-workspace config choice.
+async function discoverViaAi(query: string, workspaceId: string | undefined, limit: number): Promise<DiscoveredSite[]> {
+  const system = 'You are a design researcher. Given a design brief, suggest real, existing, well-designed websites/products that exemplify it (their PUBLIC marketing/app pages). Output ONLY a JSON array of objects {"url": string (a real https URL), "title": string (site name + why it fits, short)}. No prose. Prefer distinct hosts.';
+  const prompt = `Design brief: "${query}"\n\nSuggest ${String(limit)} reference sites as a JSON array.`;
+  const [err, res] = await tryCatch(() => runAiCompletion('scraper', { prompt, system, timeoutMs: 60_000, ...(workspaceId ? { workspaceId, label: `Design discovery · ${query.slice(0, 40)}` } : {}) }));
+  if (err || !res?.ok) return [];
+  return parseAiSites(res.text, limit);
+}
+
+//? Discover up to `limit` candidate reference sites for a design brief. Primary path = AI suggestion (reliable,
+//? uses the working provider layer); falls back to the static search-endpoint scrape. Returns [] on failure.
+export async function discoverReferenceSites(query: string, limit = 6, workspaceId?: string): Promise<DiscoveredSite[]> {
   const q = query.trim();
   if (q.length === 0) return [];
+  const viaAi = await discoverViaAi(q, workspaceId, limit);
+  if (viaAi.length > 0) return viaAi;
   const html = await fetchSearch(q);
-  if (!html) return [];
-  return parseSearchResults(html, limit);
+  return html ? parseSearchResults(html, limit) : [];
 }

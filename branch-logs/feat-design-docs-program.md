@@ -111,3 +111,20 @@ static-fetchable search endpoint (DDG html), following the scraper egress patter
 *Files touched:* `server/designer/applyTokens.ts` (new), `server/designer/webDiscovery.ts` (new), `server/git/repoStore.ts` (commitFilesToMain), `server/orchestrator/conductor.ts` (apply-design-tokens op), `server/control/rbac.ts`, `server/ai/opCatalog.ts`, `src/workspaces/_functions/controlApi.ts`, `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/designer/page.tsx`, `src/workspaces/_api/designerInspiration_v1.ts`, `tests/integration/applyDesignTokens.test.mts` (new), `tests/unit/webDiscovery.test.mts` (new).
 
 *Verification:* typecheck 0 · lint 0 · ai:lint clean · applyDesignTokens integration **5/5 vs real Mongo + a real greenfield repo** (buildIndexCss + a real src/index.css commit) · webDiscovery parse unit **8/8**. Live web-discovery depends on outbound to the search endpoint (unreliable from this sandbox, like the mermaid-cli/puppeteer path) — the parse is unit-proven and the fetch is a swappable seam.
+
+## 2026-07-18 — Carve-outs closed (mermaid export + live web-discovery)
+
+*Mermaid export (2.2):* the earlier mermaid-cli/puppeteer crash is bypassed — the export now renders diagrams
+in the WORKING chromium container by inlining the mermaid runtime (an IIFE global, no bundler) + init and
+letting the print pass run it via `--virtual-time-budget`. `mdToHtmlBody` emits ```mermaid as
+`<pre class="mermaid">`; `standaloneHtml` injects the runtime only when a diagram is present. **Verified real:**
+a PDF of a flowchart contains the rendered node labels (Brief/Plan/ShipIt) and NO raw `flowchart TB` syntax.
+
+*Web-discovery (3.5) LIVE:* discovery's primary path is now AI suggestion via the working provider layer
+(`runAiCompletion('scraper')` → real reference URLs), with the static-search scrape kept as a fallback behind
+the `fetchSearch` seam. **Verified live:** the brief "premium minimal fintech dashboard UI" returned 5 real
+distinct sites (Stripe/Mercury/Ramp/Brex/N26).
+
+*Files touched:* `server/documents/export.ts` (mermaid runtime + render), `server/designer/webDiscovery.ts` (AI discovery + parseAiSites), `src/workspaces/_api/designerInspiration_v1.ts` (workspaceId), `tests/unit/documentExportFidelity.test.mts`, `tests/unit/webDiscovery.test.mts`, `tests/integration/webDiscoveryLive.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 · ai:lint clean · export-fidelity unit 20/20 · webDiscovery unit 13/13 · webDiscoveryLive 3/3 (real AI) · real-Docker mermaid PDF render proven. **All DESIGN_DOCS_PROGRAM phases now complete + live-verified.**

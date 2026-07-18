@@ -53,4 +53,14 @@ assert(page.includes('pre.code{') && page.includes('.toc{'), 'standalone CSS cov
 //? A remote image is left as-is by the media-inliner (only local /media/ is embedded).
 assert(inlineMediaImages('![x](https://cdn/x.png)') === '![x](https://cdn/x.png)', 'remote images are not touched by the inliner');
 
+/* -------------------------------------------------------------- mermaid (2.2 export) */
+
+const mmd = mdToHtmlBody('```mermaid\nflowchart TB\n  A --> B\n```');
+assert(mmd.includes('<pre class="mermaid">') && mmd.includes('flowchart TB'), 'a mermaid fence becomes a <pre class="mermaid"> (not a code block)');
+assert(!mmd.includes('data-lang="mermaid"'), 'a mermaid fence is NOT emitted as a plain code block');
+const mermaidPage = standaloneHtml('Diagram doc', '# D\n\n```mermaid\nflowchart TB\n  A --> B\n```');
+assert(mermaidPage.includes('class="mermaid"') && mermaidPage.includes('initialize'), 'a doc with mermaid injects the render runtime + init into the export');
+const plainPage = standaloneHtml('Plain', '# No diagrams here\n\nJust text.');
+assert(!plainPage.includes('__esbuild_esm_mermaid_nm') && !plainPage.includes('initialize'), 'a doc without mermaid injects no runtime (no overhead)');
+
 report('documentExportFidelity');

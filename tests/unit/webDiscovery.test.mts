@@ -1,7 +1,7 @@
 //? DESIGN_DOCS_PROGRAM 3.5 — the pure parse of search-results HTML into candidate reference sites
 //? (de-dupes hosts, decodes DDG's uddg redirect, drops the engine's own links). No network.
 
-import { parseSearchResults } from '../../server/designer/webDiscovery.ts';
+import { parseSearchResults, parseAiSites } from '../../server/designer/webDiscovery.ts';
 import { assert, report } from '../_helpers.mts';
 
 //? A representative DuckDuckGo html-endpoint result fragment (uddg-wrapped hrefs + one dup host + a DDG self-link).
@@ -24,5 +24,14 @@ assert(parseSearchResults(html, 1).length === 1, 'limit caps the result count');
 //? empty / junk html → [].
 assert(parseSearchResults('', 6).length === 0, 'empty html → no sites');
 assert(parseSearchResults('<a href="https://x.com">no result class</a>', 6).length === 0, 'links without result__a are ignored');
+
+//? parseAiSites — the AI-suggestion path (primary). JSON array form + plain-line form, de-duped by host.
+const aiJson = parseAiSites('```json\n[{"url":"https://stripe.com","title":"Stripe — clean fintech"},{"url":"https://www.stripe.com/x","title":"dup host"},{"url":"not-a-url","title":"junk"},{"url":"https://linear.app","title":"Linear"}]\n```', 6);
+assert(aiJson.length === 2, 'AI JSON: 2 distinct valid hosts (dup + non-url dropped)');
+assert(aiJson[0]?.url === 'https://stripe.com' && aiJson[0].title.includes('Stripe'), 'AI JSON: url + title parsed');
+const aiLines = parseAiSites('Here are sites:\nhttps://vercel.com — Vercel, crisp dev marketing\nhttps://railway.app : Railway\nnope', 6);
+assert(aiLines.length === 2, 'AI plain-lines: 2 urls parsed, prose ignored');
+assert(aiLines.some((s) => s.url === 'https://vercel.com'), 'AI plain-lines: url extracted');
+assert(parseAiSites('no urls here at all', 6).length === 0, 'AI: no urls → []');
 
 report('webDiscovery');

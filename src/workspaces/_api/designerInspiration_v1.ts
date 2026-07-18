@@ -37,7 +37,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     //? 3.5 — find candidate reference sites from a brief; the user picks one → inspire-url captures it.
     const query = (data.query ?? '').trim();
     if (query.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const sites = await discoverReferenceSites(query, 6);
+    const sites = await discoverReferenceSites(query, 6, workspaceId);
     return { status: 'success', result: { sites } };
   }
 

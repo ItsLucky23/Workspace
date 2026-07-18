@@ -11,16 +11,16 @@
 > | 0.5 review viewer · 0.6 asset-index · 0.7 corpora · 0.8 humanizer | ✅ (0.6 doc-side; humanizer = existing skill) | — |
 > | 1.1–1.3 document ingestion | ✅ | documentDesignDocs integration (16/16, incl. live Gemini) |
 > | 2.1 templates · 2.4 export fidelity · 2.5 diff+restore | ✅ | documentDesignDocs + unit suites |
-> | 2.2 mermaid | ✅ preview (client) · ⏸️ export (headless mermaid infra-blocked) | — |
+> | 2.2 mermaid | ✅ preview (client) + **export (real-Docker PDF render verified: node labels rendered, raw syntax gone)** | — |
 > | 2.3 humanize | ✅ (existing humanizer skill injects at document-generate) | — |
 > | 3.1 full-look · 3.2 mobile-capture · 3.3 lossless handoff · 3.6 design-library RAG | ✅ | designPremiumLoop integration (6/6) |
 > | 3.4 apply-tokens | ✅ | applyDesignTokens integration (5/5, real repo commit) |
-> | 3.5 web-discovery | ✅ parse (unit 8/8) · live fetch = swap seam (sandbox egress-limited) | — |
+> | 3.5 web-discovery | ✅ **LIVE** (AI-suggestion primary via the provider layer + scrape fallback behind the seam) | webDiscoveryLive (real AI → 5 distinct sites) + parse unit 13/13 |
 > | 4.1–4.3 UI from 0 | ✅ | uiFromZero integration (6/6, real greenfield repo) |
 >
-> **Two honest carve-outs** (external-infra-blocked in this environment, not faked): export-side mermaid
-> diagram rendering (mermaid-cli/puppeteer crashes in-container) and live web-discovery fetch (outbound to the
-> search endpoint is unreliable here) — both left behind working fallbacks/seams + documented.
+> **All phases complete + live-verified.** Mermaid export now renders via the working chromium container
+> (inlined runtime + `--virtual-time-budget`), and web-discovery runs live via the AI provider (with the
+> static-search scrape as a fallback behind the `fetchSearch` seam).
 
 
 > A `/goal`-runnable build program for the Design tool and Document tool deep-dive

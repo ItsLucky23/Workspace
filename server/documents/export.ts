@@ -24,6 +24,19 @@ export const DOCUMENT_EXPORT_FORMATS: DocumentExportFormat[] = ['md', 'html', 'p
 const PANDOC_IMAGE = (process.env.WS_EXPORT_PANDOC_IMAGE ?? '').trim() || 'pandoc/core:3.2';
 const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenika/alpine-chrome:124';
 
+//? DESIGN_DOCS_PROGRAM 2.2 (export side) — mermaid diagrams render in the HTML/PDF export by inlining the
+//? mermaid runtime (an IIFE global, no bundler needed) + init; the chromium print pass runs it via
+//? --virtual-time-budget before printing. Read once, cached; '' if mermaid isn't installed (→ code-block fallback).
+let mermaidRuntimeCache: string | null = null;
+function mermaidRuntime(): string {
+  if (mermaidRuntimeCache === null) {
+    const [err, js] = tryCatchSync(() => readFileSync(path.join(process.cwd(), 'node_modules', 'mermaid', 'dist', 'mermaid.min.js'), 'utf8'));
+    mermaidRuntimeCache = err || js === null ? '' : js;
+  }
+  return mermaidRuntimeCache;
+}
+function hasMermaid(markdown: string): boolean { return /```+\s*mermaid\b/.test(markdown); }
+
 /* ----------------------------------------------------------------- md → html */
 
 function esc(s: string): string {
@@ -73,7 +86,9 @@ export function mdToHtmlBody(markdown: string): string {
       const body: string[] = [];
       let j = i + 1;
       while (j < lines.length && !/^```+\s*$/.test((lines[j] ?? '').trim())) { body.push(lines[j] ?? ''); j += 1; }
-      out.push(`<pre class="code"${lang ? ` data-lang="${esc(lang)}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
+      out.push(lang === 'mermaid'
+        ? `<pre class="mermaid">${esc(body.join('\n'))}</pre>`
+        : `<pre class="code"${lang ? ` data-lang="${esc(lang)}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
       i = j + 1;
       continue;
     }
@@ -154,11 +169,17 @@ export function standaloneHtml(title: string, markdown: string, brandLogoDataUri
     'img{max-width:100%;height:auto;border-radius:6px}hr{border:none;border-top:1px solid #d5d9e2;margin:1.2rem 0}a{color:#2b62d9}',
     '.toc{border:1px solid #d5d9e2;border-radius:8px;padding:.6rem 1rem;margin:1rem 0;background:#f8fafc}.toc-title{font-weight:600;margin-bottom:.3rem}.toc ul{list-style:none;padding-left:0;margin:0}.toc li{margin:.15rem 0}.toc-l3{padding-left:1rem;font-size:.95em}',
     'header.brand{display:flex;justify-content:flex-end;margin-bottom:.5rem}header.brand img{max-height:44px;border-radius:0}',
-    '@media print{body{margin:0 auto}.toc{break-inside:avoid}pre.code,table,img{break-inside:avoid}}',
+    'pre.mermaid{background:none;border:none;padding:0;text-align:center;overflow-x:auto}',
+    '@media print{body{margin:0 auto}.toc{break-inside:avoid}pre.code,pre.mermaid,table,img{break-inside:avoid}}',
   ].join('');
   const logo = brandLogoDataUri ? `<header class="brand"><img src="${brandLogoDataUri}" alt=""/></header>` : '';
   const md = inlineMediaImages(markdown);
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title><style>${css}</style></head><body>${logo}${buildToc(md)}${mdToHtmlBody(md)}</body></html>`;
+  //? 2.2 export — when the doc has mermaid, inline the runtime + init so chromium renders the diagrams
+  //? (the print pass waits via --virtual-time-budget). No mermaid → nothing injected (no 3.5MB overhead).
+  const mermaid = hasMermaid(md) && mermaidRuntime().length > 0
+    ? `<script>${mermaidRuntime()}</script><script>(function(){var a=(window.__esbuild_esm_mermaid_nm||{}).mermaid;var m=a&&(a.default||a);if(m&&m.initialize){m.initialize({startOnLoad:true,securityLevel:'strict',theme:'neutral'});}})();</script>`
+    : '';
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title><style>${css}</style></head><body>${logo}${buildToc(md)}${mdToHtmlBody(md)}${mermaid}</body></html>`;
 }
 
 /* ----------------------------------------------------------------- markdown tables → xlsx */
@@ -286,7 +307,8 @@ export async function renderDocx(markdown: string): Promise<Buffer | null> {
 export async function renderPdf(title: string, markdown: string, logoDataUri?: string): Promise<Buffer | null> {
   return runToolContainer({
     buildInput: (dir) => { writeFileSync(path.join(dir, 'in.html'), standaloneHtml(title, markdown, logoDataUri), 'utf8'); },
-    imageAndArgs: [CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--print-to-pdf=/data/out.pdf', '--no-pdf-header-footer', 'file:///data/in.html'],
+    //? --virtual-time-budget lets inlined mermaid render before the print pass; harmless when there's none.
+    imageAndArgs: [CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--virtual-time-budget=8000', '--print-to-pdf=/data/out.pdf', '--no-pdf-header-footer', 'file:///data/in.html'],
     outFile: 'out.pdf',
     tmpPrefix: 'ws-export-',
   });
