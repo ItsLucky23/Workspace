@@ -10,7 +10,7 @@
 > (full-look, mobile viewport) · coupling C21 (design-library grounds generation) + C20 partially (lossless
 > ticket→agent artifact handoff).
 >
-> **Scale, honestly:** ~40 items across 7 phases, several M/L. This is multi-week engineering, not a single
+> **Scale, honestly:** ~37 items across 7 phases (3 descoped by the owner — see the end), several M/L. This is multi-week engineering, not a single
 > sitting. Phases are ordered so the highest-leverage, lowest-risk work lands first, and EACH phase is gated
 > (typecheck · lint · ai:lint · build · tests) and committed on its own before the next starts.
 >
@@ -115,7 +115,7 @@ These were code-verified but deliberately kept out of the feature sections.
 | F3 | **SEO layer** — title/description/tag optimizer fed by the already-ingested publish metrics | S | Titles/tags get scored suggestions grounded in real performance |
 | F4 | **Analytics over time** — snapshot `PublishJob.metrics` instead of overwriting; per-channel/piece trends | S | A trend chart shows growth over time, not just current totals |
 | F5 | **Community action layer** — reply / AI-suggested reply + sentiment aggregation (inbox is read-only today) | M | You can reply from the inbox; sentiment feeds the ideator (C6) |
-| F6 | **Publish-platform expansion** — Instagram Reels first (reuses the TikTok short-form shape), then LinkedIn/X | L | A piece publishes to Instagram end-to-end |
+| ~~F6~~ | ~~**Publish-platform expansion** (Instagram/LinkedIn/X)~~ — **OUT OF SCOPE** (owner, 2026-07-18: "geen andere publicatie platformen voor nu"). YouTube + TikTok stay the supported set | — | — |
 
 ---
 
@@ -123,12 +123,12 @@ These were code-verified but deliberately kept out of the feature sections.
 
 | # | Item | Effort | Verifiable goal |
 |---|---|---|---|
-| G1 | **Newsletter / email delivery** — Studio already writes the copy; the list + send + open/click tracking are missing | M | A campaign sends to a list and reports opens/clicks |
+| ~~G1~~ | ~~**Newsletter / email delivery**~~ — **OUT OF SCOPE** (owner, 2026-07-18: "ik hoef geen newsletter module"). Studio may still WRITE campaign copy; there is simply no send/list layer | — | — |
 | G2 | **Workspace cloning** — documented as D9, zero implementation; deep-duplicate skills/sources/tools/env/channels/triggers | M | A new workspace starts from an existing one, no re-onboarding |
 | G3 | **Ship-it-live for Studio/Designer artifacts** — reuse `ensureEnvironment` (project/service-scoped today) | M | A generated landing page goes live on a subdomain in one click |
 | G4 | **Workspace-wide asset library** — assets are siloed per content piece | M | A brand mascot/logo/voice is reusable across pieces + channels (pairs with C2) |
 | G5 | **Pipeline presets** — `presetKey` (simple/advanced/professional) is dead data; every workspace gets the heavy 7-stage pipeline | M | Creation offers a tier; a content-only workspace isn't given a dev pipeline |
-| G6 | **Podcast / audio-only distribution** — voice+music exist; no RSS/audio publish target | M | An audio episode publishes via an RSS feed |
+| ~~G6~~ | ~~**Podcast / audio-only distribution**~~ — **OUT OF SCOPE** (owner, 2026-07-18 — read as covered by "geen andere publicatie platformen voor nu", since an RSS/audio feed is another publish target. Say so if you want this one kept) | — | — |
 | G7 | **Prompt-quality eval / PromptVersion A-B** — only the deterministic replay scorer exists | L | A prompt change is measured, not vibed |
 | G8 | **Competitor / site monitoring over time** — the scraper fetches once, no snapshots/diff | S | A watched site reports what changed since last run |
 
@@ -184,8 +184,10 @@ Worth splitting, because two different things are env-based today:
   Security bar for that item: encrypted at rest (`WORKSPACES_ENC_KEY`), RBAC-gated to `workspaceSettings`,
   write-only in the UI (the snapshot returns "configured ✓", never the secret), and `.env` stays a fallback.
 
-## Still-open product questions (needed before their phase starts)
+## Descoped by the owner (2026-07-18)
 
-1. **F6 / G6 platforms** — which next publish target matters most (Instagram Reels, LinkedIn, X, podcast RSS)?
-2. **G1 newsletter** — sending backend (Resend is already a dependency) and do you need list management in-app
-   or just send-to-an-imported-list?
+- **F6 — more publish platforms** (Instagram / LinkedIn / X): not now. YouTube + TikTok remain the set.
+- **G6 — podcast / audio-only distribution**: not now (same reason — another publish target).
+- **G1 — newsletter module**: not wanted in this product at all.
+
+No product questions are outstanding; the plan is fully specified.
