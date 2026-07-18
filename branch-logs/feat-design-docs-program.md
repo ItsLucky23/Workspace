@@ -80,3 +80,17 @@ Building `src/workspaces/_docs/DESIGN_DOCS_PROGRAM.md` (Design tool: UI-from-0 +
 *Files touched:* `server/designer/inspiration.ts`, `server/designer/designLibraryRag.ts` (new), `server/designer/library.ts`, `server/designer/generateTheme.ts`, `server/orchestrator/artifactContext.ts`, `server/rag/index.ts`, `src/workspaces/_api/designerInspiration_v1.ts`, `tests/integration/designPremiumLoop.test.mts` (new).
 
 *Verification:* typecheck 0 · lint 0 · ai:lint clean · designPremiumLoop integration **6/6 against real Mongo** (index+retrieve+de-index, animation motion-spec handoff, Studio HTML handoff). Remaining Phase 3: 3.4 (apply-active-design-tokens op — repo-mutating) + 3.5 (web-discovery via headless browser). Frontend viewport/before-after toggles are follow-ups on this backend.
+
+## 2026-07-18 — Phase 4 (UI from 0 — generative scaffold at project creation)
+
+*What I did:* the "describe an app → real starting UI" journey, routed through the EXISTING coding pipeline
+(no new generator, per the deep-dive's recommendation). `project-from-template` gains an optional **brief**:
+after the greenfield repo is initialised it seeds an **APP_BRIEF.md** context-doc and files a **scaffold
+ticket** (`labels:['scaffold']`) auto-advanced to the first AI stage (start-with-AI) — so the ticket→stage→
+in-container-agent pipeline generates the initial UI from the brief (single writer, B-23; no-op without a
+linked repo). Brief threaded through the create form (a textarea in the template flow) → provider →
+projectAdmin sync route → op.
+
+*Files touched:* `server/orchestrator/conductor.ts` (project-from-template), `src/workspaces/_sync/projectAdmin_server_v1.ts`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/_shell/Shell.tsx`, `tests/integration/uiFromZero.test.mts` (new).
+
+*Verification:* typecheck 0 · lint 0 · ai:lint clean · uiFromZero integration **6/6 vs real Mongo + a real greenfield repo** (project + linked repo + APP_BRIEF doc + scaffold ticket auto-advanced to an AI stage). The agent turn itself is the existing pipeline (torn down in the test).

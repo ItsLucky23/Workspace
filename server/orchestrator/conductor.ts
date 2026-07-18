@@ -2587,6 +2587,23 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const [gitErr, status] = await tryCatch(() => initGreenfieldRepo(action.workspaceId, created.id, template.files));
       if (gitErr) console.error(`[greenfield] repo init for ${name} failed:`, gitErr.message);
       else if (status?.linked && !created.gitUrl) await prisma.project.updateMany({ where: { id: created.id, workspaceId: action.workspaceId }, data: { gitUrl: `greenfield://${action.workspaceId}` } });
+      //? DESIGN_DOCS_PROGRAM 4.1–4.3 — "UI from 0": an optional brief seeds an APP_BRIEF.md context-doc and
+      //? files a scaffold ticket auto-started with AI, so the EXISTING ticket→stage→agent pipeline generates
+      //? the real starting UI from the brief (single writer, B-23). No-op without a linked repo (nothing to build).
+      const brief = (str(payload, 'brief') ?? '').trim();
+      if (brief.length > 0 && !gitErr && status?.linked) {
+        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: `# App brief\n\n${brief}`, summary: 'App brief', note: 'brief', enabled: true, usedByStages: [] } });
+        const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
+        const number = (last?.number ?? 0) + 1;
+        const ticket = await prisma.ticket.create({ data: { workspaceId: action.workspaceId, projectId: created.id, key: `DEV-${String(number)}`, number, title: 'Build the initial UI from the brief', description: brief, stageId: 'unrefined', status: 'idle', labels: ['scaffold'], creatorId: userId, priority: 'high' } });
+        await recordTicketEvent(action.workspaceId, ticket.id, 'status-change', userId, 'created the scaffold ticket from the brief');
+        const firstAi = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId: created.id, aiEnabled: true }, orderBy: { order: 'asc' }, select: { key: true } });
+        if (firstAi) {
+          await prisma.ticket.update({ where: { id: ticket.id }, data: { stageId: firstAi.key } });
+          await recordTicketEvent(action.workspaceId, ticket.id, 'status-change', userId, `auto-started AI at ${firstAi.key}`);
+          await activateWorktreesForStage(action.workspaceId, [ticket.key], firstAi.key);
+        }
+      }
       return created;
     }
     //? Environments / deploy (ADR 0037) — B-23: the Conductor deploys (the leader holds the lease).

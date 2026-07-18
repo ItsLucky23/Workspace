@@ -738,11 +738,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     })();
   }, [snap.activeWorkspaceId, refetch]);
   //? Greenfield scaffolding (ADR 0046): create a fresh project from a curated stack template.
-  const createFromTemplateApi = useCallback((input: { name: string; template: string }) => {
+  const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || input.name.trim().length === 0) return;
     void (async () => {
-      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, clientRequestId: nextReqId() }, receiver: room });
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, ...(input.brief && input.brief.trim().length > 0 ? { brief: input.brief.trim() } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);

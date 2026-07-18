@@ -399,17 +399,18 @@ function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSec
 //? templates + onCreateFromTemplate are PASSED IN (not via useWorkspaces): this form renders inside the
 //? menuHandler portal, which lives ABOVE the WorkspacesProvider (MenuHandlerProvider > Router), so calling
 //? useWorkspaces() here throws. The call site (ProjectSwitcher, inside the provider) injects both.
-function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string }) => void }) {
+function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string; brief?: string }) => void }) {
   const translate = useTranslator();
   const [mode, setMode] = useState<'template' | 'link'>('template');
   const [name, setName] = useState('');
   const [gitUrl, setGitUrl] = useState('');
   const [template, setTemplate] = useState(templates[0]?.key ?? '');
+  const [brief, setBrief] = useState('');
   const canSubmit = name.trim().length > 0 && (mode === 'link' || template.length > 0);
   const submit = () => {
     const n = name.trim();
     if (!n) return;
-    if (mode === 'template') { if (template.length === 0) return; onCreateFromTemplate({ name: n, template }); }
+    if (mode === 'template') { if (template.length === 0) return; onCreateFromTemplate({ name: n, template, ...(brief.trim() ? { brief: brief.trim() } : {}) }); }
     else onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) });
     void menuHandler.close();
   };
@@ -434,6 +435,12 @@ function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCr
               <span className="text-xs text-muted">{t.description}</span>
             </button>
           ))}
+          {/* DESIGN_DOCS_PROGRAM 4.1 — describe the app → the AI scaffolds the real starting UI from it. */}
+          <textarea
+            value={brief} onChange={(e) => { setBrief(e.target.value); }}
+            placeholder={translate({ key: 'workspaces.shell.projectBriefPh' })} rows={3}
+            className="px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title resize-y focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          />
         </div>
       ) : (
         <input
