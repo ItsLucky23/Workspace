@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `3bf34b39612f74eb` · 17 capabilities · 195 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `66d37b22dd80e4c5` · 17 capabilities · 196 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -221,3 +221,4 @@
 - `adr-0275` 0275-voice-interface-provider-abstracted-stt-plus-tts
 - `adr-0276` Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS
 - `adr-0277` Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing
+- `adr-0278` GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops

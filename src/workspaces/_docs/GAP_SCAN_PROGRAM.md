@@ -22,6 +22,39 @@
 
 ---
 
+## STATUS — COMPLETE (2026-07-18)
+
+Every non-descoped item in this program is built, tested and committed on `feat/design-docs-program`.
+
+| Phase | Items | Commit | Verification |
+|---|---|---|---|
+| A — Autopilot | A1–A7 | `58568a7`, `7ee6fc1`, `219afa6` | publishHealthStagger 21/21 · publishHealth 16/16 · platformCredentials 22/22 · scheduledPublish 32/32 |
+| B — Phone-first | B1–B5 | `f75789c` | phoneLoopIntegrity 33/33 |
+| C — Coupling bridges | C1–C8 | `ef50bd8` | couplingBridges 42/42 unit + 13/13 integration |
+| D — Reliability | D1–D4 | `b19f071` | reliabilityGuards 50/50 · deployAudit 16/16 |
+| E — Security/ops | E1–E3 (E4 already done) | `b19f071` | reliabilityGuards (guard + posture assertions) |
+| F — Content depth | F1–F5 | `b19f071` | contentDepth 74/74 |
+| G — New modules | G2–G5, G7, G8 | `fb89898` | newModules 57/57 unit + 48/48 integration |
+
+Gate at each commit: `npm run typecheck`, `npm run lint` (0 errors), `npm run ai:lint` (clean), `npm run build`.
+
+**Programme-wide decisions are recorded in ADR 0278** (report-first security guards · close gaps with ops,
+never new verbs · honest no-ops where a platform genuinely cannot do the thing).
+
+**Two things found while building, worth knowing:**
+
+1. The workspace-deletion cascade left `AuditLog` and `DeployHistory` rows ORPHANED (not, as the scan
+   assumed, deleted). Both are now cascaded, and the durable governance trail lives in the platform-level
+   `AuditArchive` instead.
+2. `isModuleEnabled` is deliberately loose (any section of a module counts), and modules SHARE sections —
+   `scheduled` belongs to development, content and design — so a content-only workspace read as
+   "development on". Op-gating (C4) therefore keys on each module's defining section, not `isModuleEnabled`.
+
+**Still deliberately open:** E2/E3 ship in report mode. Reading those reports and flipping
+`WS_TENANT_ENFORCE=1` / `WS_EGRESS=1` per install is an operator decision, not a coding task.
+
+---
+
 ## Phase A — Autopilot flagship (unblocks "10 channels on cron")
 
 The scan's #1, #3 and the publishing-reliability cluster. Today the autopilot chain exists but is

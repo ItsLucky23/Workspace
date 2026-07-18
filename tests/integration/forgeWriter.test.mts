@@ -298,6 +298,17 @@ const [runError] = await tryCatch(async () => {
   eq(forgeTouchedKeys(afterOutcomeTtl.result), [], 'same dataset in a later dedup window performs no ticket mutation');
   eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-88' }, select: { updatedAt: true } }))?.updatedAt.getTime(), firstUpdatedAt, 'same dataset in a later dedup window leaves updatedAt unchanged');
 
+  await prisma.ticket.create({
+    data: {
+      workspaceId,
+      projectId: projectB.id,
+      key: 'DEV-94',
+      number: 94,
+      title: 'Local-only ticket',
+      stageId: 'unrefined',
+      status: 'idle',
+    },
+  });
   const initialOpenSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [
     { iid: 92, title: 'Still open', state: 'opened', web_url: 'https://gitlab.example/acme/b/-/issues/92' },
     { iid: 93, title: 'Will disappear', state: 'opened', web_url: 'https://gitlab.example/acme/b/-/issues/93' },
@@ -346,6 +357,7 @@ const [runError] = await tryCatch(async () => {
   });
   eq(forgeTouchedKeys(emptyFull.result), ['DEV-92'], 'a later complete snapshot reports the final missed-close heal key');
   eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-92' }, select: { archived: true } }))?.archived, true, 'an uncapped empty open snapshot archives the remaining forge-linked ticket');
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-94' }, select: { archived: true } }))?.archived, false, 'full forge snapshots never archive an absent local-only ticket');
 
   const signalText = JSON.stringify(await prisma.workspaceSignal.findMany({
     where: { workspaceId, kind: { in: ['forge-event-apply', 'forge-snapshot-apply'] } },

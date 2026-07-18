@@ -1,6 +1,6 @@
 {
-  "hash": "3bf34b39612f74eb",
-  "chunkCount": 212,
+  "hash": "66d37b22dd80e4c5",
+  "chunkCount": 213,
   "chunks": [
     {
       "id": "cap-001",
@@ -1273,6 +1273,12 @@
       "kind": "decision",
       "title": "Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing",
       "text": "ADR 0277: Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing. ADR 0015 put the complete workspace-scoped Conductor critical section behind a fixed 15-second Redis lease, but did not renew it. If an action exceeded that TTL, a second instance could acquire the lease while the original callback kept running. The original caller could then complete successfully without observing that ownership had expired. Owner-checked release already prevented the stale owner from deleting its successor's lease, but it did not prevent or surface the overlapping work. ADR 0031 verified only short critical sections (60–80 ms) and leader exclusivity. Its broad conclusion that the engine was proven safe for N instances did not cover a greater-than-TTL action, lease loss mid-action, or cross-store fencing. Those claims must now be read through the limitations below. Decision: Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and an explicit fail-closed lease guard; this strengthens mutual exclusion for normal asynchronous actions but is not database fencing. 1. `withWorkspaceLease` renews sequentially every 5 seconds for a 15-second TTL. The next renewal is not scheduled until the previous owner-checked renewal settles. Production timings stay fixed by default; the full timing set is injectable so real-Redis expiry tests run in hundreds of milliseconds. 2. The lease callback receives `WorkspaceLeaseGuard { assertHeld, signal }`. "
+    },
+    {
+      "id": "adr-0278",
+      "kind": "decision",
+      "title": "GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops",
+      "text": "ADR 0278: GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops. The `GAP_SCAN_2026-07-17` audit produced ~37 open items spanning the autopilot chain, the phone-first approve/answer loop, eight orphaned couplings, reliability/observability, two security postures, content depth and six new modules. Delivering them raised three questions that recur across the whole program, and answering them once (here) is what keeps the individual changes consistent. Decision: **1. Security posture changes ship report-first, not enforce-first.** Two items change what is ALLOWED at runtime: tenant scoping on background writers (E2) and worker-container egress (E3). Both now run in a mode that *records* what strict enforcement would have rejected — `tenantGuardReport()` counts unscoped and cross-tenant calls, `egressReport()` counts unconfined worker launches — and an env flag (`WS_TENANT_ENFORCE=1`, `WS_EGRESS=1`) flips each to enforcement. The default for egress changed from *silently open* to *reported open*: the previous default hid the posture entirely, which is the actual defect. Nothing is blocked that was not blocked before. **2. Closing a feature gap adds OPS, never verbs.** The frozen 7+6 structured-channel surface is untouched. Every new capability in this program is a `ControlOp` behind the existing propose→accept→Conductor path: `save-platform-credentials`, `env-rollback`, `document-archive`/`-unarchive`, `content-gen-thumbnail`, `content-reply-c"
     }
   ]
 }

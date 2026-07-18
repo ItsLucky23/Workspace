@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (195)
+## Decisions (196)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -208,6 +208,7 @@
 | 0275 | voice interface provider abstracted stt plus tts | 🟢 accepted | voice, ai, provider-abstraction, documents-and-skills | — | `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md` |
 | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS | 🟢 accepted | designer, git, css, tailwind, concurrency, b-23 | — | `docs/decisions/0276-revision-safe-managed-design-token-apply.md` |
 | 0277 | Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing | 🟢 accepted | multi-instance, conductor, redis, lease, fencing, correctness | 0015 | `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md` |
+| 0278 | GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops | 🟢 accepted | security, tenancy, control-api, content, deploy | — | `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md` |
 
 ## Summaries
 
@@ -1784,6 +1785,14 @@ The existing control op remains the only product/control surface; the Conductor 
 Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and an explicit fail-closed lease guard; this strengthens mutual exclusion for normal asynchronous actions but is not database fencing.
 
 → `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md`
+
+### 0278 — GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops
+
+**0278** · accepted · tags: security, tenancy, control-api, content, deploy · 2026-07-18
+
+*1. Security posture changes ship report-first, not enforce-first.**
+
+→ `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md`
 
 ## Code governed by decisions
 
