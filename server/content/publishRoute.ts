@@ -12,7 +12,7 @@ import { registerCustomRoute, registerOriginExemptPath } from '@luckystack/serve
 
 import { encryptSecret, decryptSecret } from '../crypto/secretBox';
 import { hasCapability, CAP } from '../control/rbac';
-import { buildAuthUrl, connectPublishPlatform, type OAuthPlatform } from './publishOAuth';
+import { buildAuthUrl, connectPublishPlatform, getPlatformCredentials, type OAuthPlatform } from './publishOAuth';
 
 export const OAUTH_PREFIX = '/content/oauth/';
 const PLATFORMS: OAuthPlatform[] = ['youtube', 'tiktok'];
@@ -84,7 +84,9 @@ export function registerPublishOAuthRoutes(): void {
       //? encrypted state through the round-trip (sanitized to a docker/env-safe slug so the token key is clean).
       const accountIdRaw = (query.get('accountId') ?? '').trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40);
       const state = encodeOAuthState({ workspaceId, userId: session.id, platform, exp: Date.now() + STATE_TTL_MS, ...(accountIdRaw ? { accountId: accountIdRaw } : {}) });
-      redirect(res, buildAuthUrl(platform, { redirectUri, state }));
+      //? A7 — the authorize URL carries the workspace's own app credentials when configured (else `.env`).
+      const creds = await getPlatformCredentials(getPrismaClient(), workspaceId, platform);
+      redirect(res, buildAuthUrl(platform, { redirectUri, state }, creds));
       return true;
     }
 

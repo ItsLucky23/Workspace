@@ -8,6 +8,7 @@ import { tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
+import { staggerPlan } from './publishHealth';
 import { extractExternalId, ingestPublishMetrics, buildMetricsRequest, type MetricsFetch } from './publishMetrics';
 
 //? O2 — pull a validated per-platform variant out of a piece's `publishVariants` JSON. Unknown/garbage → null
@@ -149,8 +150,17 @@ async function notifyPublishFailure(prisma: PrismaClient, workspaceId: string, c
 export async function runScheduledPublish(prisma: PrismaClient, now: number, opts: { uploadTransport?: PublishUploadTransport; refreshTransport?: OAuthRefreshTransport } = {}): Promise<{ fired: number }> {
   const dueAt = new Date(now);
   const due = await prisma.publishJob.findMany({ where: { status: 'scheduled', scheduledAt: { lte: dueAt } } });
+  //? GAP_SCAN A6 — a cron tick can make many autopilot posts due at once. Firing them back-to-back on the
+  //? same connected account is what platform quotas punish, so all but the first per account are spaced out.
+  //? Deferring is NOT a failure: `attempts` and `error` stay untouched and the job fires on a later tick.
+  const deferred = staggerPlan(due.map((j) => ({ id: j.id, platform: j.platform, accountId: j.accountId })), now);
   let fired = 0;
   for (const job of due) {
+    const deferUntil = deferred.get(job.id);
+    if (deferUntil !== undefined) {
+      await prisma.publishJob.updateMany({ where: { id: job.id, status: 'scheduled' }, data: { scheduledAt: new Date(deferUntil) } });
+      continue;
+    }
     const claim = await prisma.publishJob.updateMany({
       where: { id: job.id, status: 'scheduled', scheduledAt: { lte: dueAt } },
       data: { status: 'processing' },

@@ -100,6 +100,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'edit-media-budget': CAP.workspaceSettings,
   'save-style': CAP.workspaceSettings,
   'save-media-provider': CAP.workspaceSettings,
+  //? A7 — the platform APP credentials are workspace-level secrets, same bar as the provider keys.
+  'save-platform-credentials': CAP.workspaceSettings,
   'content-edit-brand': CAP.workspaceSettings,
   'content-edit-product': CAP.workspaceSettings,
   'delete-style': CAP.workspaceSettings,

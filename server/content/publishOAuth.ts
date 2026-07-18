@@ -43,23 +43,60 @@ const CFG: Record<OAuthPlatform, PlatformCfg> = {
 
 const env = (name: string): string => (process.env[name] ?? '').trim();
 
+//? GAP_SCAN A7 — the platform APP credentials (the once-per-app registration each platform requires) used
+//? to live ONLY in `.env`, so a self-hoster had to edit a file and restart to connect a channel. They can
+//? now be stored per workspace, encrypted at rest (secretBox) under `__platformcred_<platform>_<id|secret>`,
+//? RBAC-gated to workspaceSettings and write-only in the UI. `.env` stays a FALLBACK so existing installs
+//? keep working; nothing is auto-migrated (owner decision — they re-enter by hand).
+export interface PlatformCredentials { clientId: string; clientSecret: string }
+export type PlatformCredentialSource = 'workspace' | 'env' | 'none';
+
+const CRED_PREFIX = '__platformcred_';
+export const credentialKey = (platform: OAuthPlatform, part: 'id' | 'secret'): string => `${CRED_PREFIX}${platform}_${part}`;
+
+export function envCredentials(platform: OAuthPlatform): PlatformCredentials {
+  const cfg = CFG[platform];
+  return { clientId: env(cfg.clientIdEnv), clientSecret: env(cfg.clientSecretEnv) };
+}
+
+//? Which source a platform's credentials come from — the snapshot shows this ("configured ✓"), never the
+//? values themselves.
+export function credentialSource(stored: Partial<PlatformCredentials>, fromEnv: PlatformCredentials): PlatformCredentialSource {
+  if ((stored.clientId ?? '').length > 0 && (stored.clientSecret ?? '').length > 0) return 'workspace';
+  if (fromEnv.clientId.length > 0 && fromEnv.clientSecret.length > 0) return 'env';
+  return 'none';
+}
+
+export async function getPlatformCredentials(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform): Promise<PlatformCredentials> {
+  const rows = await prisma.envVar.findMany({ where: { workspaceId, key: { in: [credentialKey(platform, 'id'), credentialKey(platform, 'secret')] } }, select: { key: true, value: true } });
+  const read = (part: 'id' | 'secret'): string => {
+    const row = rows.find((r) => r.key === credentialKey(platform, part));
+    return row ? (decryptSecret(row.value) ?? '') : '';
+  };
+  const stored = { clientId: read('id'), clientSecret: read('secret') };
+  const fromEnv = envCredentials(platform);
+  return credentialSource(stored, fromEnv) === 'workspace' ? stored : fromEnv;
+}
+
 //? Build the OAuth authorize URL the user is redirected to (connect flow). Pure + exported.
-export function buildAuthUrl(platform: OAuthPlatform, input: { redirectUri: string; state: string }): string {
+export function buildAuthUrl(platform: OAuthPlatform, input: { redirectUri: string; state: string }, creds?: PlatformCredentials): string {
   const cfg = CFG[platform];
   const idParam = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const resolved = creds ?? envCredentials(platform);
   const params = new URLSearchParams({
-    [idParam]: env(cfg.clientIdEnv), redirect_uri: input.redirectUri, response_type: 'code', scope: cfg.scope, state: input.state,
+    [idParam]: resolved.clientId, redirect_uri: input.redirectUri, response_type: 'code', scope: cfg.scope, state: input.state,
     ...(platform === 'youtube' ? { access_type: 'offline', prompt: 'consent' } : {}),
   });
   return `${cfg.authUrl}?${params.toString()}`;
 }
 
 //? Build the code→token exchange request. Pure + exported.
-export function buildExchangeRequest(platform: OAuthPlatform, input: { code: string; redirectUri: string }): HttpRequest {
+export function buildExchangeRequest(platform: OAuthPlatform, input: { code: string; redirectUri: string }, creds?: PlatformCredentials): HttpRequest {
   const cfg = CFG[platform];
   const idKey = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const resolved = creds ?? envCredentials(platform);
   const body = new URLSearchParams({
-    [idKey]: env(cfg.clientIdEnv), client_secret: env(cfg.clientSecretEnv), code: input.code,
+    [idKey]: resolved.clientId, client_secret: resolved.clientSecret, code: input.code,
     grant_type: 'authorization_code', redirect_uri: input.redirectUri,
   });
   return { url: cfg.tokenUrl, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() };
@@ -68,11 +105,12 @@ export function buildExchangeRequest(platform: OAuthPlatform, input: { code: str
 //? F1 — build the refresh-token grant (both providers reuse their token endpoint with grant_type=refresh_token;
 //? Google keys on client_id, TikTok on client_key). Pure + exported. The audit found stored refresh tokens were
 //? never used, so any post >~1h after connect (incl. every scheduled post) failed silently — this closes it.
-export function buildRefreshRequest(platform: OAuthPlatform, refreshToken: string): HttpRequest {
+export function buildRefreshRequest(platform: OAuthPlatform, refreshToken: string, creds?: PlatformCredentials): HttpRequest {
   const cfg = CFG[platform];
   const idKey = platform === 'tiktok' ? 'client_key' : 'client_id';
+  const resolved = creds ?? envCredentials(platform);
   const body = new URLSearchParams({
-    [idKey]: env(cfg.clientIdEnv), client_secret: env(cfg.clientSecretEnv),
+    [idKey]: resolved.clientId, client_secret: resolved.clientSecret,
     grant_type: 'refresh_token', refresh_token: refreshToken,
   });
   return { url: cfg.tokenUrl, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() };
@@ -183,8 +221,8 @@ async function readAssetBytes(assetUrl: string): Promise<Buffer | null> {
 
 // --- transports (injectable) ---------------------------------------------------
 
-export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }) => Promise<StoredTokens | null> }
-export interface OAuthRefreshTransport { refresh: (platform: OAuthPlatform, refreshToken: string) => Promise<StoredTokens | null> }
+export interface OAuthTransport { exchange: (platform: OAuthPlatform, input: { code: string; redirectUri: string }, creds?: PlatformCredentials) => Promise<StoredTokens | null> }
+export interface OAuthRefreshTransport { refresh: (platform: OAuthPlatform, refreshToken: string, creds?: PlatformCredentials) => Promise<StoredTokens | null> }
 export interface PublishUploadTransport { upload: (platform: OAuthPlatform, input: { accessToken: string; assetUrl: string; title: string; variant?: PublishVariant | null }) => Promise<{ externalUrl: string } | null> }
 
 //? Run a pure-built HttpRequest and return the parsed JSON.
@@ -200,12 +238,12 @@ async function runJson(reqShape: HttpRequest): Promise<unknown> {
 }
 
 export const realOAuthTransport: OAuthTransport = {
-  exchange: async (platform, input) => parseTokenResponse(await runJson(buildExchangeRequest(platform, input))),
+  exchange: async (platform, input, creds) => parseTokenResponse(await runJson(buildExchangeRequest(platform, input, creds))),
 };
 
 //? F1 — the REAL refresh transport: run the refresh grant + parse the new tokens.
 export const realRefreshTransport: OAuthRefreshTransport = {
-  refresh: async (platform, refreshToken) => parseTokenResponse(await runJson(buildRefreshRequest(platform, refreshToken))),
+  refresh: async (platform, refreshToken, creds) => parseTokenResponse(await runJson(buildRefreshRequest(platform, refreshToken, creds))),
 };
 
 //? D1 — the REAL YouTube resumable upload, all three legs: (1) POST the metadata → read the session URI from
@@ -333,7 +371,9 @@ export async function getValidConnection(
   const refreshToken = stored.refreshToken;
   if (!isTokenExpired(stored, now) || refreshToken === undefined || refreshToken.length === 0) return stored;
   const transport = opts.refreshTransport ?? realRefreshTransport;
-  const [err, refreshed] = await tryCatch(() => transport.refresh(platform, refreshToken));
+  //? A7 — per-workspace app credentials (falling back to `.env`) sign the refresh grant.
+  const creds = await getPlatformCredentials(prisma, workspaceId, platform);
+  const [err, refreshed] = await tryCatch(() => transport.refresh(platform, refreshToken, creds));
   //? GAP_SCAN A4 — the refresh of an EXPIRED token failed: this connection is DEAD (revoked/expired
   //? refresh token). It used to silently hand back the stale token, so every later post failed with a
   //? generic error and the user was never told to reconnect. Mark it unhealthy (the UI shows a reconnect
@@ -387,7 +427,9 @@ export async function connectPublishPlatform(
   input: { code: string; redirectUri: string }, opts: { transport?: OAuthTransport; accountId?: string | null } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const transport = opts.transport ?? realOAuthTransport;
-  const [err, tokens] = await tryCatch(() => transport.exchange(platform, input));
+  //? A7 — same credentials the authorize URL was built with (workspace store, else `.env`).
+  const creds = await getPlatformCredentials(prisma, workspaceId, platform);
+  const [err, tokens] = await tryCatch(() => transport.exchange(platform, input, creds));
   if (err || !tokens) return { ok: false, error: `publish.oauthFailed: ${err?.message ?? 'no-token'}` };
   //? #140 — store under the per-account key when an accountId is supplied (multi-account), else the legacy
   //? single-account key (back-compat).

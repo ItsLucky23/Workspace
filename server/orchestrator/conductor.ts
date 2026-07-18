@@ -18,6 +18,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
+import { credentialKey } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { sanitizeSections } from '../../src/workspaces/_data/modules';
@@ -1454,6 +1455,26 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const key = str(payload, 'key');
       if (!feature || !key) return;
       await prisma.stylePreset.deleteMany({ where: { workspaceId: action.workspaceId, feature, key, builtin: false } });
+      return;
+    }
+    //? GAP_SCAN A7 — store this workspace's platform APP credentials (the once-per-app YouTube/TikTok
+    //? registration) encrypted at rest, so a self-hoster never has to edit `.env` + restart. Write-only:
+    //? the snapshot reports "configured" and never the values. An empty value CLEARS that half, which falls
+    //? the resolver back to `.env`. Nothing is auto-migrated (owner decision).
+    case 'save-platform-credentials': {
+      const platform = str(payload, 'platform');
+      if (platform !== 'youtube' && platform !== 'tiktok') return;
+      const parts: { part: 'id' | 'secret'; value: string | undefined }[] = [
+        { part: 'id', value: str(payload, 'clientId') },
+        { part: 'secret', value: str(payload, 'clientSecret') },
+      ];
+      for (const { part, value } of parts) {
+        if (value === undefined) continue;
+        const key = credentialKey(platform, part);
+        await (value.trim().length === 0
+          ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
+          : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: encryptSecret(value.trim()), secret: true }, update: { value: encryptSecret(value.trim()) } }));
+      }
       return;
     }
     //? Save per-workspace media settings (U3): an ENCRYPTED provider API key and/or a per-feature

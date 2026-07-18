@@ -26,7 +26,8 @@ import { questionPrompt } from '../../src/workspaces/_functions/structuredQuesti
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
-import { parseTokenKey, parseHealthKey } from '../content/publishOAuth';
+import { parseTokenKey, parseHealthKey, credentialKey, envCredentials, credentialSource } from '../content/publishOAuth';
+import { buildChannelHealth, accountKey } from '../content/publishHealth';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
@@ -249,7 +250,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -422,7 +423,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
       prisma.channel.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.contentAsset.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
-      prisma.envVar.findMany({ where: { workspaceId: contentWsId, key: { startsWith: '__publish' } }, select: { key: true } }), //? A4: '__publish' (no trailing _) also captures the '__publishhealth_' markers; each parser ignores the other's keys
+      //? A4: '__publish' (no trailing _) also captures the '__publishhealth_' markers; A7 adds the
+      //? '__platformcred_' app credentials (KEYS only — the values never leave the server). Each parser
+      //? ignores the other prefixes.
+      prisma.envVar.findMany({ where: { workspaceId: contentWsId, OR: [{ key: { startsWith: '__publish' } }, { key: { startsWith: '__platformcred_' } }] }, select: { key: true } }),
       prisma.mediaJob.findMany({ where: { workspaceId: contentWsId } }),
       prisma.referenceExample.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.shortLink.findMany({ where: { workspaceId: contentWsId }, orderBy: { clicks: 'desc' } }),
@@ -450,6 +454,23 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       const h = parseHealthKey(r.key);
       if (h) unhealthy.add(`${h.platform}::${h.accountId ?? ''}`);
     }
+    //? GAP_SCAN A5 — fold the publish-job history back onto the channels: one at-a-glance answer to
+    //? "are all my channels still posting?", instead of noticing a dead channel a week later.
+    const channelHealth = buildChannelHealth(
+      channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, defaultAccountId: c.defaultAccountId ?? null })),
+      publishJobRows.map((j) => ({ platform: j.platform, accountId: j.accountId ?? null, status: j.status, error: j.error ?? null, updatedAt: j.updatedAt })),
+      new Set([...unhealthy].map((k) => { const [platform, account] = k.split('::'); return accountKey(platform ?? '', account === '' ? null : account); })),
+    );
+    //? GAP_SCAN A7 — WHERE each platform's app credentials come from ('workspace' | 'env' | 'none').
+    //? Write-only by design: the values themselves never leave the server.
+    const credKeys = new Set(publishConnRows.map((r) => r.key));
+    const platformCredentials = (['youtube', 'tiktok'] as const).map((platform) => ({
+      platform,
+      source: credentialSource(
+        { clientId: credKeys.has(credentialKey(platform, 'id')) ? 'set' : '', clientSecret: credKeys.has(credentialKey(platform, 'secret')) ? 'set' : '' },
+        envCredentials(platform),
+      ),
+    }));
     const publishTargets = ['youtube', 'tiktok'].map((platform) => {
       const accts = accountsByPlatform.get(platform) ?? [];
       return {
@@ -514,6 +535,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       references: referenceRows.map((r) => ({ id: r.id, kind: r.kind, title: r.title, description: r.description, assetUrl: r.assetUrl, tags: r.tags })),
       channels: channelRows.map((c) => ({ id: c.id, name: c.name, platform: c.platform, handle: c.handle, brandVoice: c.brandVoice ?? '', defaultStyleId: c.defaultStyleId ?? null, aiDisclosureDefault: c.aiDisclosureDefault, defaultAccountId: c.defaultAccountId ?? null, autopilot: c.autopilot })),
       publishTargets,
+      channelHealth,
+      platformCredentials,
       mediaCosts: mediaCostTable(),
       //? H2/H3 (ads) — the workspace's trackable links (clicks desc, so the top A/B variant leads).
       shortLinks: shortLinkRows.map((l) => ({ id: l.id, contentProjectId: l.contentProjectId, slug: l.slug, targetUrl: l.targetUrl, variant: l.variant, clicks: l.clicks })),

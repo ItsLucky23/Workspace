@@ -246,6 +246,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'delete-style': LATER_D,
   'save-media-provider': EXCLUDED, // provider API keys
+  'save-platform-credentials': EXCLUDED, // A7 — platform app credentials (secrets never pass through chat)
   'content-edit-brand': {
     mode: 'enabled',
     hint: "set a CHANNEL's brand voice ('set the brand voice for <channel> to X'). params: channelId (from the channel list below), brandVoice (the voice, e.g. 'bold, playful')",

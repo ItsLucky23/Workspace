@@ -21,6 +21,10 @@ const mediaSrc = (url: string): string => (url.startsWith('/media/') ? `${backen
 export const template = 'workspaces';
 
 //? Publish platforms that have a real connect + upload flow (M5). Instagram/LinkedIn are future-ready.
+//? A5 — health state → icon/colour (tokens only, Rule 14).
+const HEALTH_ICON: Record<'ok' | 'warn' | 'down' | 'idle', string> = { ok: 'circle-check', warn: 'triangle-exclamation', down: 'circle-xmark', idle: 'circle-minus' };
+const HEALTH_TEXT: Record<'ok' | 'warn' | 'down' | 'idle', string> = { ok: 'text-correct', warn: 'text-warning', down: 'text-wrong', idle: 'text-muted' };
+
 const PUBLISH_PLATFORMS: { id: string; nameKey: string }[] = [
   { id: 'youtube', nameKey: 'workspaces.content.platformYoutube' },
   { id: 'tiktok', nameKey: 'workspaces.content.platformTiktok' },
@@ -37,6 +41,45 @@ const MEDIA_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
 const AI_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'gemini', nameKey: 'workspaces.content.providerGemini', descKey: 'workspaces.content.providerGeminiDesc' },
 ];
+
+//? GAP_SCAN A7 — the platform APP credentials (the once-per-app YouTube/TikTok registration). Write-only:
+//? the snapshot only says WHERE the credentials come from ('workspace' | 'env' | 'none'), never their value,
+//? and the server stores them encrypted. Clearing both fields falls back to `.env`.
+function PlatformCredentialsForm() {
+  const translate = useTranslator();
+  const { content, savePlatformCredentials } = useWorkspaces();
+  const [platform, setPlatform] = useState('youtube');
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const [saved, setSaved] = useState(false);
+  const source = content.platformCredentials.find((c) => c.platform === platform)?.source ?? 'none';
+  const platformItems: DropdownItem[] = PUBLISH_PLATFORMS.map((p) => ({ id: p.id, value: p.id, item: translate({ key: p.nameKey }) }));
+  const inputCls = 'flex-1 min-w-40 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-base md:text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
+  return (
+    <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.appCredTitle' })}</div>
+        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.appCredDesc' })}</div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Dropdown size="md" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); setSaved(false); }} />
+          <span className={`text-xs ${source === 'none' ? 'text-muted' : 'text-correct'}`}>{translate({ key: `workspaces.content.appCredSource_${source}` })}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="text" autoComplete="off" value={clientId} onChange={(e) => { setClientId(e.target.value); setSaved(false); }} placeholder={translate({ key: 'workspaces.content.appCredId' })} className={inputCls} />
+          <input type="password" autoComplete="new-password" value={clientSecret} onChange={(e) => { setClientSecret(e.target.value); setSaved(false); }} placeholder={translate({ key: 'workspaces.content.appCredSecret' })} className={inputCls} />
+          <button
+            type="button" disabled={clientId.trim().length === 0 || clientSecret.trim().length === 0}
+            onClick={() => { savePlatformCredentials(platform, clientId.trim(), clientSecret.trim()); setClientId(''); setClientSecret(''); setSaved(true); }}
+            className="min-h-11 rounded-lg bg-primary text-title-primary px-4 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >{translate({ key: 'workspaces.content.saveKey' })}</button>
+        </div>
+        {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.appCredSaved' })}</span>}
+      </div>
+    </section>
+  );
+}
 
 function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (key: string) => void }) {
   const translate = useTranslator();
@@ -635,6 +678,36 @@ export default function ContentSettings() {
               {budgetSaved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.content.budgetSaved' })}</span>}
             </div>
           </section>
+
+          <PlatformCredentialsForm />
+
+          {/* GAP_SCAN A5 — per-channel publish health: one glance answers "is every channel still posting?".
+              Derived from the publish-job history + the A4 connection markers; read-only. */}
+          {content.channelHealth.length > 0 && (
+            <section className="rounded-2xl border border-container1-border bg-container1 p-5">
+              <div className="mb-3">
+                <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.content.healthTitle' })}</div>
+                <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.content.healthDesc' })}</div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {content.channelHealth.map((h) => (
+                  <div key={h.channelId} className="rounded-xl border border-container2-border bg-container2 px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon name={HEALTH_ICON[h.state]} className={HEALTH_TEXT[h.state]} />
+                      <span className="text-sm font-medium text-title truncate">{h.name}</span>
+                      <span className="text-xs text-muted">{h.platform}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted">
+                      <span>{translate({ key: `workspaces.content.health_${h.state}` })}</span>
+                      <span className="tabular-nums">{translate({ key: 'workspaces.content.healthPosts' })}{': '}{String(h.posts)}</span>
+                      {h.failures > 0 && <span className="tabular-nums text-wrong">{translate({ key: 'workspaces.content.healthFailures' })}{': '}{String(h.failures)}</span>}
+                      <span>{h.lastSuccessAt === null ? translate({ key: 'workspaces.content.healthNever' }) : new Date(h.lastSuccessAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Publishing connections (FIX-C) — connect an account so a finished render can be posted (B-23 gated). */}
           <section className="rounded-2xl border border-container1-border bg-container1 p-5">

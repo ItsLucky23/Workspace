@@ -367,6 +367,14 @@ export interface ContentChannelSummary { id: string; name: string; platform: str
 //? #140 — one connected account under a platform (accountId null = the legacy single-account connection).
 export interface PublishAccountSummary { accountId: string | null; needsReconnect?: boolean }
 export interface PublishTargetSummary { platform: string; connected: boolean; accounts: PublishAccountSummary[] }
+//? GAP_SCAN A5 — per-channel publish health: is this channel still posting, and if not, since when?
+export interface ChannelHealthSummary {
+  channelId: string; name: string; platform: string; accountId: string | null;
+  state: 'ok' | 'warn' | 'down' | 'idle';
+  posts: number; failures: number;
+  lastSuccessAt: number | null; lastFailureAt: number | null; lastError: string | null;
+  needsReconnect: boolean;
+}
 
 export interface ContentSnapshot {
   pieces: ContentPieceSummary[];
@@ -376,6 +384,9 @@ export interface ContentSnapshot {
   references: ContentReferenceSummary[]; // inspiration library (example ads/thumbnails/intros)
   channels: ContentChannelSummary[];    // U4: channels + their brand voice
   publishTargets: PublishTargetSummary[];   // FIX-C: youtube/tiktok + connected?
+  channelHealth: ChannelHealthSummary[];   // A5: per-channel last-success/failure roll-up
+  //? A7: where each platform's APP credentials come from — never the values themselves.
+  platformCredentials: { platform: string; source: 'workspace' | 'env' | 'none' }[];
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
   mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
   shortLinks: ShortLinkSummary[];       // H2/H3 (ads): trackable links + clicks (the A/B comparison data)

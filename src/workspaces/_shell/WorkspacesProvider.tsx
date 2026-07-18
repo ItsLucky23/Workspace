@@ -118,7 +118,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -1572,6 +1572,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? A7 — store this workspace's platform APP credentials (write-only; server-encrypted) via B-23.
+      savePlatformCredentials: (platform, clientId, clientSecret) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-platform-credentials', platform, clientId, clientSecret, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Edit a channel's brand voice (U4) → updates the channel + re-indexes brand-RAG (B-23).
       editChannelBrand: (channelId, brandVoice) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-brand', channelId, brandVoice, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       saveProductContext: (productContext) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'content-edit-product', productContext, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

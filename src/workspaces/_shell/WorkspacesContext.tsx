@@ -333,6 +333,8 @@ export interface WorkspacesCtx {
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string }) => void;
+  //? A7 — platform app credentials (write-only; an empty string clears that half → `.env` fallback).
+  savePlatformCredentials: (platform: string, clientId: string, clientSecret: string) => void;
   editChannelBrand: (channelId: string, brandVoice: string) => void;
   //? Q2 — the per-workspace product/brand context folded into every creative generation.
   saveProductContext: (productContext: string) => void;
