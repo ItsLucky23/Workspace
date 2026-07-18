@@ -18,6 +18,10 @@ const MIME: Record<string, string> = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
   '.gif': 'image/gif', '.glb': 'model/gltf-binary',
+  //? Documents (DESIGN_DOCS_PROGRAM 1.1) — uploaded source files + exports served with correct types.
+  '.pdf': 'application/pdf', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
 //? Resolve a `/media/<file>` request to an absolute path UNDER `MEDIA_DIR`, or null if the name is

@@ -13,8 +13,11 @@ const MIME_EXT: Record<string, string> = {
   'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
   //? VO — voice clips: MediaRecorder emits audio/webm or audio/ogg; also accept common audio uploads.
   'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
+  //? Documents (DESIGN_DOCS_PROGRAM 1.1) — source files the AI extracts text from (PDF/docx/txt/md).
+  'application/pdf': 'pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'text/plain': 'txt', 'text/markdown': 'md',
 };
-const ALLOWED = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'aac']);
+const ALLOWED = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'aac', 'pdf', 'docx', 'txt', 'md']);
 
 export interface UploadedMedia { url: string; kind: string }
 

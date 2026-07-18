@@ -21,6 +21,14 @@ const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-contain
 
 const AI_MODES = ['generate', 'rewrite', 'summarize', 'extend'] as const;
 
+//? Icon for a non-image asset tile, reflecting the uploaded-source extract state (pending/failed/ok).
+function fileAssetIcon(stub: boolean, extractStatus?: string): string {
+  if (stub) return 'circle-question';
+  if (extractStatus === 'pending') return 'clock';
+  if (extractStatus === 'failed') return 'triangle-exclamation';
+  return 'file-lines';
+}
+
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
@@ -146,7 +154,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
             <a key={`${a.url}-${String(i)}`} href={a.url} target="_blank" rel="noreferrer" className="block w-28">
               {a.kind === 'image' && !a.stub
                 ? <img src={a.url} alt={a.label} className="w-28 h-20 object-cover rounded-lg border border-container1-border" />
-                : <span className="w-28 h-20 rounded-lg border border-container1-border bg-container2 flex items-center justify-center text-muted"><Icon name={a.stub ? 'circle-question' : 'file-lines'} /></span>}
+                : <span className={`w-28 h-20 rounded-lg border border-container1-border bg-container2 flex items-center justify-center ${a.extractStatus === 'failed' ? 'text-warning' : 'text-muted'}`}><Icon name={fileAssetIcon(a.stub === true, a.extractStatus)} /></span>}
               <span className="text-[11px] text-muted truncate block mt-0.5">{a.label}</span>
             </a>
           ))}
@@ -154,7 +162,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         <div className="flex items-center gap-2 flex-wrap">
           <input value={imgPrompt} onChange={(e) => { setImgPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.documents.imagePromptPlaceholder' })} className={`${fieldCls} flex-1 min-w-52 max-w-md`} />
           <WsButton icon="image" disabled={imgPrompt.trim().length === 0} onClick={() => { genDocumentImage(doc.id, imgPrompt.trim()); setImgPrompt(''); }}>{translate({ key: 'workspaces.documents.genImage' })}</WsButton>
-          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,application/pdf" labelKey="workspaces.documents.upload" icon="plus" onUploaded={(url, kind) => { editDocument({ documentId: doc.id, addAssetUrl: url, addAssetKind: kind, addAssetLabel: translate({ key: 'workspaces.documents.uploadedLabel' }) }); }} />
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,.pdf,.docx,.txt,.md" labelKey="workspaces.documents.upload" icon="plus" onUploaded={(url, kind) => { editDocument({ documentId: doc.id, addAssetUrl: url, addAssetKind: kind, addAssetLabel: translate({ key: 'workspaces.documents.uploadedLabel' }) }); }} />
         </div>
       </div>
     </div>

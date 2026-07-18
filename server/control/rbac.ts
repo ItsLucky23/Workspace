@@ -169,6 +169,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'document-discard-draft': CAP.workTickets,
   'document-gen-image': CAP.workTickets,
   'document-export': CAP.workTickets,
+  'document-set-asset-text': CAP.workTickets,
   //? CI — the read-only comment inbox.
   'comments-refresh': CAP.workTickets,
   'comments-mark-read': CAP.workTickets,

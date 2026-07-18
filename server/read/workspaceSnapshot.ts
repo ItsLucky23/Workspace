@@ -557,9 +557,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: d.id, title: d.title, content: d.content, aiDraft: d.aiDraft, aiDraftLabel: d.aiDraftLabel,
         assets: (Array.isArray(d.assets) ? d.assets : []).flatMap((a) => {
           if (a === null || typeof a !== 'object') return [];
-          const rec = a as { url?: unknown; kind?: unknown; label?: unknown; stub?: unknown };
+          const rec = a as { url?: unknown; kind?: unknown; label?: unknown; stub?: unknown; extractStatus?: unknown };
           if (typeof rec.url !== 'string') return [];
-          return [{ kind: typeof rec.kind === 'string' ? rec.kind : 'file', url: rec.url, label: typeof rec.label === 'string' ? rec.label : '', ...(rec.stub === true ? { stub: true } : {}) }];
+          //? extractStatus surfaces the upload-parse state (pending/ok/failed) for a badge; extractedText is
+          //? deliberately NOT sent to the client (it can be huge — the server uses it only for grounding).
+          return [{ kind: typeof rec.kind === 'string' ? rec.kind : 'file', url: rec.url, label: typeof rec.label === 'string' ? rec.label : '', ...(rec.stub === true ? { stub: true } : {}), ...(typeof rec.extractStatus === 'string' ? { extractStatus: rec.extractStatus } : {}) }];
         }),
         updatedAt: d.updatedAt.getTime(),
       })),

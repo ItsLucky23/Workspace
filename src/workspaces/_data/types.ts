@@ -665,7 +665,7 @@ export interface AiSkillEntry {
 }
 
 //? DOC1 (DOCUMENTS_AND_SKILLS) — a workspace document (markdown source + optional AI draft + assets).
-export interface DocumentAsset { kind: string; url: string; label: string; stub?: boolean }
+export interface DocumentAsset { kind: string; url: string; label: string; stub?: boolean; extractStatus?: string; extractedText?: string }
 export interface DocumentEntry {
   id: string;
   title: string;

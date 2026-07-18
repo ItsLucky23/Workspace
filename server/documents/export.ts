@@ -7,16 +7,15 @@
 //? in the media store (`/media/<file>`) and are appended to Document.assets by the Conductor op.
 //? @adr 0271
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import { deflateRawSync } from 'node:zlib';
 
-import { tryCatch, tryCatchSync } from '@luckystack/core';
+import { tryCatchSync } from '@luckystack/core';
 
-import { docker } from '../container/runtime';
+import { runToolContainer } from '../container/toolHarness';
 import { persistMediaBytes, MEDIA_DIR } from '../media/store';
 
 export type DocumentExportFormat = 'md' | 'html' | 'pdf' | 'docx' | 'xlsx';
@@ -210,36 +209,24 @@ export function xlsxFromMarkdown(title: string, markdown: string): Buffer {
 
 /* ----------------------------------------------------------------- container renders */
 
-//? One throwaway container run over a temp dir (mounted as /data). Returns the produced bytes.
-//? `--network none`: the render never needs egress (inputs are mounted, the logo is a data URI).
-async function containerRender(buildInput: (dir: string) => void, imageAndArgs: string[], outFile: string): Promise<Buffer | null> {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ws-export-'));
-  const [err, bytes] = await tryCatch(async () => {
-    buildInput(dir);
-    //? Docker on Windows accepts C:\… bind paths; normalize to forward slashes for safety.
-    const mount = `${dir.replaceAll('\\', '/')}:/data`;
-    const res = await docker(['run', '--rm', '--network', 'none', '-v', mount, ...imageAndArgs]);
-    if (res.code !== 0) throw new Error(`export container exited ${String(res.code)}`);
-    return readFileSync(path.join(dir, outFile));
-  });
-  tryCatchSync(() => { rmSync(dir, { recursive: true, force: true }); });
-  return err ? null : bytes;
-}
-
+//? Both renders run in a throwaway `--network none` container over a temp dir (the shared Phase 0.1
+//? harness `runToolContainer`): the render never needs egress (inputs are mounted, the logo is a data URI).
 export async function renderDocx(markdown: string): Promise<Buffer | null> {
-  return containerRender(
-    (dir) => { writeFileSync(path.join(dir, 'in.md'), markdown, 'utf8'); },
-    [PANDOC_IMAGE, '/data/in.md', '-f', 'markdown', '-t', 'docx', '-o', '/data/out.docx'],
-    'out.docx',
-  );
+  return runToolContainer({
+    buildInput: (dir) => { writeFileSync(path.join(dir, 'in.md'), markdown, 'utf8'); },
+    imageAndArgs: [PANDOC_IMAGE, '/data/in.md', '-f', 'markdown', '-t', 'docx', '-o', '/data/out.docx'],
+    outFile: 'out.docx',
+    tmpPrefix: 'ws-export-',
+  });
 }
 
 export async function renderPdf(title: string, markdown: string, logoDataUri?: string): Promise<Buffer | null> {
-  return containerRender(
-    (dir) => { writeFileSync(path.join(dir, 'in.html'), standaloneHtml(title, markdown, logoDataUri), 'utf8'); },
-    [CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--print-to-pdf=/data/out.pdf', '--no-pdf-header-footer', 'file:///data/in.html'],
-    'out.pdf',
-  );
+  return runToolContainer({
+    buildInput: (dir) => { writeFileSync(path.join(dir, 'in.html'), standaloneHtml(title, markdown, logoDataUri), 'utf8'); },
+    imageAndArgs: [CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--print-to-pdf=/data/out.pdf', '--no-pdf-header-footer', 'file:///data/in.html'],
+    outFile: 'out.pdf',
+    tmpPrefix: 'ws-export-',
+  });
 }
 
 /* ----------------------------------------------------------------- the export entry */

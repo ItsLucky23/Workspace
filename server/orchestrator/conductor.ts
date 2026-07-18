@@ -14,7 +14,7 @@
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
 import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/client';
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import { runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
@@ -75,8 +75,9 @@ import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
-import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions } from '../documents/docs';
+import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions, indexDocumentAsset, clearDocumentAssets, parseAssetEntries } from '../documents/docs';
 import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
+import { extractUploadText, isParseableUpload } from '../documents/parseUpload';
 import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
@@ -566,6 +567,18 @@ export async function enqueueControlAction(action: ControlAction): Promise<{ sig
   await link;
 
   return { signalSeq, result };
+}
+
+//? DESIGN_DOCS_PROGRAM 1.2 — extract an uploaded file's text OUTSIDE the write lock (a container parse can
+//? take seconds/minutes), then enqueue the single-writer op that persists it onto the asset + indexes it
+//? into RAG. Fire-and-forget from document-edit so the attach op returns immediately (asset shows 'pending').
+async function extractDocumentAssetText(workspaceId: string, documentId: string, url: string, userId: string): Promise<void> {
+  const [, parsed] = await tryCatch(() => extractUploadText(url));
+  await enqueueControlAction({
+    workspaceId, op: 'document-set-asset-text', userId,
+    target: { documentId }, payload: { url, text: parsed?.text ?? '', status: parsed?.status ?? 'failed' },
+    clientRequestId: `docasset-${randomUUID()}`,
+  });
 }
 
 //? SEC1/SEC2 (COMPLETION FASE SEC) — RBAC-hardening helpers. Positional capability indices
@@ -2175,12 +2188,40 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         await prisma.documentRevision.create({ data: { workspaceId: action.workspaceId, documentId, content: doc.content, note: 'edit' } });
         await pruneDocumentRevisions(prisma, action.workspaceId, documentId);
       }
-      //? Optional asset attach (uploaded via /media/upload) — appended alongside the text fields.
+      //? Optional asset attach (uploaded via /media/upload) — appended alongside the text fields. A
+      //? parseable source file (pdf/docx/txt/md) starts as extractStatus 'pending'; its text is extracted
+      //? off the write lock (1.2) and persisted by document-set-asset-text.
       const addUrl = str(payload, 'addAssetUrl');
+      const addExt = addUrl ? (addUrl.split('.').pop() ?? '').toLowerCase() : '';
+      const willExtract = addUrl !== undefined && isParseableUpload(addExt);
       const prevAssets = Array.isArray(doc.assets) ? doc.assets : [];
-      const assets = addUrl ? [...prevAssets, { kind: str(payload, 'addAssetKind') ?? 'file', url: addUrl, label: str(payload, 'addAssetLabel') ?? '' }] : undefined;
+      const assets = addUrl ? [...prevAssets, { kind: str(payload, 'addAssetKind') ?? 'file', url: addUrl, label: str(payload, 'addAssetLabel') ?? '', ...(willExtract ? { extractStatus: 'pending' } : {}) }] : undefined;
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { title, content, ...(assets ? { assets } : {}) } });
       await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, title, content));
+      //? Fire-and-forget: parse the uploaded source, then enqueue the persist+index op (never blocks the write).
+      if (willExtract) void extractDocumentAssetText(action.workspaceId, documentId, addUrl, userId);
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
+    //? DESIGN_DOCS_PROGRAM 1.2/1.3 — persist an uploaded file's extracted text onto its Document.assets
+    //? entry + index it into the doc-assets corpus. Enqueued by extractDocumentAssetText (server-internal).
+    case 'document-set-asset-text': {
+      const documentId = str(payload, 'documentId') ?? str(target, 'documentId');
+      const url = str(payload, 'url');
+      if (!documentId || !url) return;
+      const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
+      if (!doc) return;
+      const status = str(payload, 'status') ?? 'failed';
+      const text = str(payload, 'text') ?? '';
+      const prevRaw = Array.isArray(doc.assets) ? doc.assets : [];
+      const next = prevRaw.map((a) => {
+        if (a === null || typeof a !== 'object' || Array.isArray(a)) return a;
+        const rec = a as Record<string, unknown>;
+        if (rec.url !== url) return a;
+        return { ...rec, extractStatus: status, ...(status === 'ok' ? { extractedText: text } : {}) };
+      });
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets: next } });
+      if (status === 'ok' && text.trim().length > 0) await tryCatch(() => indexDocumentAsset(prisma, action.workspaceId, documentId, url, text));
       broadcastContentDirty(action.workspaceId);
       return;
     }
@@ -2189,8 +2230,9 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!documentId) return;
       await prisma.documentRevision.deleteMany({ where: { workspaceId: action.workspaceId, documentId } });
       await prisma.document.deleteMany({ where: { workspaceId: action.workspaceId, id: documentId } });
-      //? Clear its RAG rows (best-effort — a failed cleanup must not fail the delete).
+      //? Clear its RAG rows (content + uploaded-source corpora; best-effort — a failed cleanup must not fail the delete).
       await tryCatch(() => indexDocument(prisma, action.workspaceId, documentId, '', ''));
+      await tryCatch(() => clearDocumentAssets(prisma, action.workspaceId, documentId));
       broadcastContentDirty(action.workspaceId);
       return;
     }
@@ -2201,7 +2243,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!doc) return;
       const mode = (['generate', 'rewrite', 'summarize', 'extend'] as const).find((m) => m === str(payload, 'mode')) ?? 'rewrite';
       const instruction = str(payload, 'instruction') ?? '';
-      const res = await runDocumentAi(prisma, action.workspaceId, { id: doc.id, title: doc.title, content: doc.content }, mode, instruction);
+      const docAssets = parseAssetEntries(doc.assets);
+      const res = await runDocumentAi(prisma, action.workspaceId, { id: doc.id, title: doc.title, content: doc.content, assets: docAssets }, mode, instruction);
       if (!res.ok) return { ok: false, status: 'error', error: res.error ?? 'ai.failed' };
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { aiDraft: res.text, aiDraftLabel: `${mode}${instruction.trim() ? `: ${instruction.trim().slice(0, 80)}` : ''}` } });
       broadcastContentDirty(action.workspaceId);

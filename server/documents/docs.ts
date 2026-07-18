@@ -7,6 +7,8 @@
 //? the Conductor is the single writer).
 //? @adr 0271
 
+import { createHash } from 'node:crypto';
+
 import type { PrismaClient } from '@prisma/client';
 import { tryCatch } from '@luckystack/core';
 
@@ -18,6 +20,35 @@ import { estimateMediaCostCents, runMediaGeneration } from '../media/registry';
 import { checkMediaBudget, recordMediaSpend } from '../media/budget';
 
 export const DOCUMENTS_CORPUS = 'workspace-documents';
+//? DESIGN_DOCS_PROGRAM 0.7/1.3 — uploaded source files (extracted text) index into their OWN corpus so
+//? OTHER documents + workspace-chat can ground on them, without polluting the document-content corpus.
+export const DOC_ASSETS_CORPUS = 'workspace-doc-assets';
+
+//? A Document.assets entry (kind/url/label + the extracted-source fields added by the upload pipeline).
+export interface DocumentAssetEntry { kind: string; url: string; label?: string; extractedText?: string; extractStatus?: string; stub?: boolean }
+
+//? Parse the Prisma `Document.assets` Json into typed entries (validated, unknown shapes dropped) — avoids a
+//? forbidden Json→interface cast (Rule 21) at every call site.
+export function parseAssetEntries(raw: unknown): DocumentAssetEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DocumentAssetEntry[] = [];
+  for (const a of raw) {
+    if (a === null || typeof a !== 'object' || Array.isArray(a)) continue;
+    const rec = a as Record<string, unknown>;
+    if (typeof rec.url !== 'string' || typeof rec.kind !== 'string') continue;
+    out.push({
+      kind: rec.kind, url: rec.url,
+      ...(typeof rec.label === 'string' ? { label: rec.label } : {}),
+      ...(typeof rec.extractedText === 'string' ? { extractedText: rec.extractedText } : {}),
+      ...(typeof rec.extractStatus === 'string' ? { extractStatus: rec.extractStatus } : {}),
+      ...(rec.stub === true ? { stub: true } : {}),
+    });
+  }
+  return out;
+}
+
+//? Stable short key for one asset url, so its RAG rows can be replaced/removed 1:1.
+function assetKey(url: string): string { return createHash('sha1').update(url).digest('hex').slice(0, 12); }
 
 //? Split markdown into ~1200-char chunks on paragraph boundaries (mirrors the other corpora).
 export function chunkDocument(content: string, max = 1200): string[] {
@@ -44,6 +75,24 @@ export async function indexDocument(prisma: PrismaClient, workspaceId: string, d
   return chunks.length;
 }
 
+//? DESIGN_DOCS_PROGRAM 1.3 — (re)index ONE uploaded source file's extracted text into the doc-assets
+//? corpus (filePath `docasset/<documentId>/<assetKey>/<n>`), so cross-document generation + chat can
+//? retrieve it. Best-effort at call sites. Empty text just clears the asset's rows (used on delete/replace).
+export async function indexDocumentAsset(prisma: PrismaClient, workspaceId: string, documentId: string, assetUrl: string, text: string): Promise<number> {
+  const key = assetKey(assetUrl);
+  await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: { startsWith: `docasset/${documentId}/${key}/` } } });
+  const chunks = chunkDocument(text).map((c, i) => ({ filePath: `docasset/${documentId}/${key}/${String(i)}`, content: c }));
+  if (chunks.length === 0) return 0;
+  const vectors = await embedTexts(chunks.map((c) => c.content), { workspaceId, feature: 'rag-index' });
+  await prisma.ragEntry.createMany({ data: chunks.map((c, i) => ({ workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: c.filePath, chunkId: '0', content: c.content, embedding: vectors[i] ?? [] })) });
+  return chunks.length;
+}
+
+//? Remove ALL of a document's uploaded-source RAG rows (called on document delete).
+export async function clearDocumentAssets(prisma: PrismaClient, workspaceId: string, documentId: string): Promise<void> {
+  await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: { startsWith: `docasset/${documentId}/` } } });
+}
+
 //? Bound the per-document history: keep the newest 20 revisions, prune the rest.
 export async function pruneDocumentRevisions(prisma: PrismaClient, workspaceId: string, documentId: string, keep = 20): Promise<void> {
   const rows = await prisma.documentRevision.findMany({ where: { workspaceId, documentId }, orderBy: { createdAt: 'desc' }, select: { id: true }, skip: keep });
@@ -59,27 +108,52 @@ const MODE_TASK: Record<DocumentAiMode, string> = {
   extend: 'Extend the current document per the instruction (add the requested sections where they fit). Output the COMPLETE new markdown document.',
 };
 
-//? DOC2 — one AI draft run: grounded on the workspace's OWN documents + product knowledge; skills
-//? ('documents' apply-point) inject automatically at the completion choke-point. Returns the draft
-//? text or an error code — the CALLER (Conductor) stores it as aiDraft.
+//? Per-asset + total caps for inlined uploaded source text (J-Doc1 needs the WHOLE brief, not a top-k gist,
+//? but still bounded so a huge PDF can't blow the context window).
+const SOURCE_PER_ASSET = 12_000;
+const SOURCE_TOTAL = 40_000;
+
+//? Build the "uploaded source material" block from THIS document's attached files (full extracted text,
+//? not RAG top-k — the doc must be grounded on the entire brief/rubric the user uploaded). Exported for tests.
+export function sourceMaterialBlock(assets: DocumentAssetEntry[]): string {
+  const files = assets.filter((a) => a.kind === 'file' && a.extractStatus === 'ok' && typeof a.extractedText === 'string' && a.extractedText.trim().length > 0);
+  if (files.length === 0) return '';
+  let total = 0;
+  const parts: string[] = [];
+  for (const a of files) {
+    if (total >= SOURCE_TOTAL) break;
+    const budget = Math.min(SOURCE_PER_ASSET, SOURCE_TOTAL - total);
+    const body = (a.extractedText ?? '').slice(0, budget);
+    total += body.length;
+    parts.push(`### Source: ${a.label && a.label.length > 0 ? a.label : a.url.split('/').pop() ?? 'file'}\n${body}`);
+  }
+  return parts.join('\n\n');
+}
+
+//? DOC2 — one AI draft run: grounded (in priority order) on the document's OWN UPLOADED SOURCE FILES
+//? (full text — the brief/rubric/sources), the workspace's other documents, and product knowledge; skills
+//? ('documents' apply-point) inject automatically at the completion choke-point. Returns the draft text or
+//? an error code — the CALLER (Conductor) stores it as aiDraft.
 export async function runDocumentAi(
   prisma: PrismaClient, workspaceId: string,
-  doc: { id: string; title: string; content: string }, mode: DocumentAiMode, instruction: string,
+  doc: { id: string; title: string; content: string; assets?: DocumentAssetEntry[] }, mode: DocumentAiMode, instruction: string,
 ): Promise<{ ok: boolean; text: string; error?: string }> {
   const query = `${doc.title}\n${instruction}`.trim();
-  const [, docHits] = await tryCatch(() => retrieve(prisma, workspaceId, query, 4, DOCUMENTS_CORPUS));
-  const otherDocs = (docHits ?? []).filter((h) => !h.filePath.startsWith(`doc/${doc.id}/`)).map((h) => h.content).join('\n\n').slice(0, 2500);
+  const sourceMaterial = sourceMaterialBlock(doc.assets ?? []);
+  const [, docHits] = await tryCatch(() => retrieve(prisma, workspaceId, query, 6, DOCUMENTS_CORPUS));
+  const otherDocs = (docHits ?? []).filter((h) => !h.filePath.startsWith(`doc/${doc.id}/`)).map((h) => h.content).join('\n\n').slice(0, 4000);
   const [, pkChunks] = await tryCatch(() => retrieveProductKnowledge(prisma, query, 2));
   const productDoc = (pkChunks ?? []).map((c) => c.content).join('\n\n').slice(0, 1500);
   const system = [
     'You are the workspace document writer. Output ONLY the full markdown document — no preamble, no code fences around the whole document.',
     'Use clean markdown: a single H1 title, clear section headings, tables where data is tabular (tables also drive the spreadsheet export).',
+    sourceMaterial.length > 0 ? `PRIMARY SOURCE MATERIAL the user uploaded — base the document on these, cite/reflect their actual content, do not invent facts that contradict them:\n${sourceMaterial}` : '',
     otherDocs.length > 0 ? `Related workspace documents (ground on these, do not contradict them):\n${otherDocs}` : '',
     productDoc.length > 0 ? `Product context:\n${productDoc}` : '',
   ].filter((s) => s.length > 0).join('\n\n');
   const prompt = [
     `Task: ${MODE_TASK[mode]}`,
-    `Instruction: ${instruction.trim().length > 0 ? instruction.trim() : '(none — use the title and current content)'}`,
+    `Instruction: ${instruction.trim().length > 0 ? instruction.trim() : '(none — use the title, the uploaded source material, and current content)'}`,
     `Document title: ${doc.title}`,
     mode === 'generate' ? '' : `Current document:\n${doc.content}`,
   ].filter((s) => s.length > 0).join('\n\n');

@@ -25,6 +25,10 @@ const ALLOWED_EXT: Record<string, string> = {
   mp4: 'video', webm: 'video', mov: 'video',
   //? VO — voice clips (browser MediaRecorder → audio/webm; also common upload formats) for speech-to-text.
   mp3: 'audio', wav: 'audio', ogg: 'audio', m4a: 'audio', aac: 'audio',
+  //? Documents (DESIGN_DOCS_PROGRAM 1.1) — source files attached to a Document; kind 'file' so the
+  //? document-edit asset-attach path stores them (the AI then extracts their text, 1.2). Never treated
+  //? as image/video by content-import (which coerces to image/video anyway).
+  pdf: 'file', docx: 'file', txt: 'file', md: 'file',
 };
 
 const sendJson = (res: ServerResponse, code: number, body: Record<string, unknown>): void => {
