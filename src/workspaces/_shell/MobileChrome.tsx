@@ -12,12 +12,14 @@ import Icon from '../_components/Icon';
 import { SPRING_SHEET } from '../_components/motion';
 import { AvatarBubble } from '../_components/primitives';
 import { isSectionEnabled } from '../_data/modules';
-import { NAV_BOTTOM, NAV_ITEMS } from './Shell';
+import { menuHandler } from 'src/_functions/menuHandler';
+
+import { CreateWorkspaceForm, NAV_BOTTOM, NAV_ITEMS } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
   const translate = useTranslator();
-  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
+  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, createWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
   const [drawer, setDrawer] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const onTicket = isTicketView(view);
@@ -40,7 +42,9 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
         ) : (
           <button type="button" aria-label="Menu" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
         )}
-        <button type="button" className="flex items-center gap-2 ml-1 text-sm font-semibold text-title">
+        {/* GAP_SCAN B2 — this had a caret but no handler: on a phone there was no way to reach the
+            workspace list at all. It now opens the drawer, which owns switching AND creating. */}
+        <button type="button" onClick={() => { setDrawer(true); }} className="flex items-center gap-2 ml-1 min-h-11 text-sm font-semibold text-title cursor-pointer">
           <span className="w-5 h-5 rounded-md bg-primary text-title-primary text-[11px] font-bold flex items-center justify-center">{activeWorkspace.name[0]}</span>
           {activeWorkspace.name} <Icon name="caret-down" className="text-xs text-muted" />
         </button>
@@ -101,8 +105,10 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
               </div>
               {/* Gap-fix: the phone had NO way to switch workspace (desktop-only dropdown) — the drawer
                   now lists them; the active one is highlighted. */}
-              {workspaces.length > 1 && (
-                <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1 max-h-48 overflow-y-auto">
+              {/* B2 — the workspace section is no longer gated on having 2+: a phone can now CREATE a
+                  second/third workspace, which previously required a desktop (the switcher lived in a
+                  `hidden md:flex` header). */}
+              <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1 max-h-56 overflow-y-auto">
                   <span className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{translate({ key: 'workspaces.mobileChrome.switchWorkspace' })}</span>
                   {workspaces.map((w) => (
                     <button key={w.id} type="button" onClick={() => { setActiveWorkspace(w.id); setDrawer(false); }}
@@ -112,8 +118,12 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                       {w.id === activeWorkspace.id && <Icon name="check" className="ml-auto text-xs text-primary" />}
                     </button>
                   ))}
-                </div>
-              )}
+                  <button type="button" onClick={() => { setDrawer(false); void menuHandler.open(<CreateWorkspaceForm onCreate={createWorkspace} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}
+                    className="flex items-center gap-2.5 rounded-xl h-11 px-3 text-sm font-medium text-common hover:bg-container2 transition-colors cursor-pointer">
+                    <span className="w-6 h-6 flex items-center justify-center shrink-0"><Icon name="plus" /></span>
+                  <span className="truncate">{translate({ key: 'workspaces.shell.createWorkspace' })}</span>
+                </button>
+              </div>
             </motion.div>
           </>
         )}

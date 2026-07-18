@@ -988,7 +988,13 @@
       "importInvalid": "Diese Datei ist kein gültiges JSON.",
       "importFailed": "Import fehlgeschlagen — ist das ein Workspace-Export-Bundle?",
       "importDone": "Workspace importiert — wird neu geladen…",
-      "export": "Exportieren"
+      "export": "Exportieren",
+      "push_unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
+      "push_unconfigured": "Push ist auf diesem Server nicht konfiguriert (keine VAPID-Schlüssel).",
+      "push_denied": "Benachrichtigungen sind blockiert — erlaube sie in den Browsereinstellungen.",
+      "push_error": "Push konnte nicht aktiviert werden. Bitte erneut versuchen.",
+      "pushIosHint": "Füge die App auf dem iPhone zuerst zum Home-Bildschirm hinzu.",
+      "installIos": "Teilen → Zum Home-Bildschirm"
     },
     "modules": {
       "pickHeading": "Welche Module möchtest du?",
@@ -2307,7 +2313,11 @@
       "fabNewPiece": "Neues Content-Element",
       "fabTitlePlaceholder": "Titel…",
       "fabCreate": "Erstellen",
-      "fabCancel": "Abbrechen"
+      "fabCancel": "Abbrechen",
+      "offline": "Keine Verbindung — deine Aktionen werden gespeichert und gesendet, sobald du wieder online bist.",
+      "offlineReconnected": "Wieder verbunden.",
+      "offlineQueued": "wartend",
+      "offlineRetry": "Jetzt erneut senden"
     },
     "documents": {
       "title": "Dokumente",

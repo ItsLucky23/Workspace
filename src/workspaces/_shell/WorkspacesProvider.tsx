@@ -285,6 +285,25 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const { socketStatus } = useSocketStatus();
   const socketStatusValue = socketStatus.self.status;
   const prevSocketStatus = useRef(socketStatusValue);
+  //? GAP_SCAN B1 — the phone-first loop is approve/answer, and a tap made while the socket is down used to
+  //? vanish silently (fire-and-forget `syncRequest`). Those two writes are now PARKED in an offline queue,
+  //? surfaced by the shell banner, and replayed the moment the socket is back (or when the user taps retry).
+  //? The ops are idempotent on `clientRequestId`, so a replay can never double-apply.
+  const offline = socketStatusValue !== 'CONNECTED' && socketStatusValue !== 'STARTUP';
+  const offlineRef = useRef(offline);
+  offlineRef.current = offline;
+  const offlineQueueRef = useRef<(() => void)[]>([]);
+  const [queuedWrites, setQueuedWrites] = useState(0);
+  const parkWrite = useCallback((run: () => void) => {
+    offlineQueueRef.current.push(run);
+    setQueuedWrites(offlineQueueRef.current.length);
+  }, []);
+  const retryQueuedWrites = useCallback(() => {
+    const pending = offlineQueueRef.current;
+    offlineQueueRef.current = [];
+    setQueuedWrites(0);
+    for (const run of pending) run();
+  }, []);
   useEffect(() => {
     const prev = prevSocketStatus.current;
     prevSocketStatus.current = socketStatusValue;
@@ -292,8 +311,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       const room = snap.activeWorkspaceId;
       if (room) void joinRoom(room);
       refetch();
+      retryQueuedWrites();
     }
-  }, [socketStatusValue, snap.activeWorkspaceId, refetch]);
+  }, [socketStatusValue, snap.activeWorkspaceId, refetch, retryQueuedWrites]);
 
   //? Shared realtime reducer: UPSERT the broadcast ticket(s) by id (an archive is
   //? just an upsert with `archived:true` — the board/backlog derive visibility from
@@ -1173,11 +1193,20 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       isMobile,
       theme: theme === 'dark' ? 'dark' : 'light',
       setTheme,
+      offline,
+      queuedWrites,
+      retryQueuedWrites,
       suggestions: activeSuggestions,
       dismissSuggestion: (id) => { setLocalSuggestionsDismissed((prev) => [...prev, id]); },
       acceptSuggestion: (id) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, clientRequestId: nextReqId() }, receiver: room });
+        if (room) {
+          //? B1 — park instead of dropping when the socket is down; the reqId is minted NOW so the replay
+          //? stays idempotent.
+          const reqId = nextReqId();
+          const send = () => { void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, clientRequestId: reqId }, receiver: room }); };
+          if (offlineRef.current) parkWrite(send); else send();
+        }
         //? #109 — a COPILOT suggestion ("AI drives the UI") carries a { navigate } directive in its patch:
         //? on accept, drive the client there (the accept-suggestion op above flips its status server-side).
         const sug = snap.suggestions.find((s) => s.id === id);
@@ -1398,7 +1427,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Realtime writes — per-action `_sync` event → delta broadcast → client merge.
       editTicket: (id, patch) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketEdit', version: 'v1', data: { ticketId: id, ...patch, clientRequestId: nextReqId() }, receiver: room }); },
       addComment: (ticketId, body) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId, body, clientRequestId: nextReqId() }, receiver: room }); },
-      answerInput: (ticketId, answer, advisoryIndex) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: nextReqId() }, receiver: room }); },
+      //? B1 — the other half of the phone loop: an answer typed while offline is parked + replayed.
+      answerInput: (ticketId, answer, advisoryIndex) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return;
+        const reqId = nextReqId();
+        const send = () => { void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: reqId }, receiver: room }); };
+        if (offlineRef.current) parkWrite(send); else send();
+      },
       setTicketPresence,
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).
@@ -1587,7 +1623,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

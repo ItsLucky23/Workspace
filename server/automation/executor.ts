@@ -68,6 +68,16 @@ export function isBlockedWebhookTarget(rawUrl: string): boolean {
   return isObviouslyUnsafeOutboundUrl(rawUrl);
 }
 
+//? GAP_SCAN B3 — a notification without a ticket used to carry NO deepLink, so tapping it (in-app or from a
+//? push) dumped the user at the app root with no idea what it was about. Every non-ticket sender now names a
+//? destination view: the role's own page when it has one, else the activity feed where automation output lives.
+const ROLE_VIEW: Record<string, string> = { interviewer: 'interviewer', scraper: 'knowledge', designer: 'designer' };
+export function notificationTarget(input: { ticketKey?: string; roleKey?: string }): { deepLink: { view: string; ticketId?: string }; url: string } {
+  if (input.ticketKey) return { deepLink: { view: 'board', ticketId: input.ticketKey }, url: `/?ticket=${input.ticketKey}` };
+  const view = (input.roleKey ? ROLE_VIEW[input.roleKey] : undefined) ?? 'activity';
+  return { deepLink: { view }, url: `/?view=${view}` };
+}
+
 //? Directly run an action (past any gate). Best-effort per action; a bad action is a noop, never a
 //? throw, so one misconfigured trigger can't wedge the pipeline.
 export async function executeTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
@@ -78,9 +88,10 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       const title = str(a.params, 'title') ?? a.triggerName ?? 'Automation';
       const body = str(a.params, 'body') ?? '';
       if (members.length === 0) return { status: 'noop' };
-      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'automation', title, body, ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
+      const notifyTarget = notificationTarget({ ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}) });
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'automation', title, body, deepLink: notifyTarget.deepLink })) });
       //? A2 — also push it to every member's devices (best-effort; no-op without VAPID/subscriptions).
-      await sendWebPushMany(prisma, members.map((m) => m.userId), { title, body, url: a.ticketKey ? `/?ticket=${a.ticketKey}` : '/', ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'automation');
+      await sendWebPushMany(prisma, members.map((m) => m.userId), { title, body, url: notifyTarget.url, ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'automation');
       return { status: 'executed', detail: `notified ${String(members.length)}` };
     }
     case 'webhook': {
@@ -127,9 +138,12 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       const artifact = await role.run({ workspaceId, ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}), params: a.params });
       if (!artifact) return { status: 'executed', detail: 'no-artifact' };
       const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
-      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'ai-suggestion', title: `${role.label}: ${artifact.title}`, body: artifact.body, ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
+      //? B3 — a role artifact without a ticket deep-links to that ROLE's page (interviewer findings land on
+      //? the interviewer, not the app root).
+      const roleTarget = notificationTarget({ ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}), roleKey: role.key });
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'ai-suggestion', title: `${role.label}: ${artifact.title}`, body: artifact.body, deepLink: roleTarget.deepLink })) });
       //? A2 — push the AI suggestion to every member's devices too (best-effort).
-      await sendWebPushMany(prisma, members.map((m) => m.userId), { title: `${role.label}: ${artifact.title}`, body: artifact.body, url: a.ticketKey ? `/?ticket=${a.ticketKey}` : '/', ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'aiSuggestion');
+      await sendWebPushMany(prisma, members.map((m) => m.userId), { title: `${role.label}: ${artifact.title}`, body: artifact.body, url: roleTarget.url, ...(a.ticketKey ? { tag: `ticket-${a.ticketKey}` } : {}) }, 'aiSuggestion');
       return { status: 'executed', detail: role.key };
     }
     case 'run-command': {
@@ -145,7 +159,7 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       const combined = [res.out, res.err].filter((s) => s.length > 0).join('\n').slice(0, 2000);
       const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
       const title = `${a.triggerName ?? 'Command'} · exit ${String(res.code)}`;
-      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'automation', title, body: combined || '(no output)', ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'automation', title, body: combined || '(no output)', deepLink: notificationTarget({ ticketKey: a.ticketKey }).deepLink })) });
       return res.code === 0 ? { status: 'executed', detail: `exit 0` } : { status: 'error', detail: `exit ${String(res.code)}` };
     }
     case 'invoke-workspace-ai': {
@@ -158,8 +172,9 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       if (!completion.ok) return { status: 'error', detail: completion.error ?? 'ai-failed' };
       const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
       const body = completion.text.slice(0, 2000);
-      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'ai-suggestion', title: a.triggerName ?? 'Workspace-AI', body, ...(a.ticketKey ? { deepLink: { view: 'board', ticketId: a.ticketKey } } : {}) })) });
-      await sendWebPushMany(prisma, members.map((m) => m.userId), { title: a.triggerName ?? 'Workspace-AI', body, url: a.ticketKey ? `/?ticket=${a.ticketKey}` : '/' }, 'aiSuggestion');
+      const aiTarget = notificationTarget({ ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}) });
+      await prisma.notification.createMany({ data: members.map((m) => ({ workspaceId, userId: m.userId, type: 'ai-suggestion', title: a.triggerName ?? 'Workspace-AI', body, deepLink: aiTarget.deepLink })) });
+      await sendWebPushMany(prisma, members.map((m) => m.userId), { title: a.triggerName ?? 'Workspace-AI', body, url: aiTarget.url }, 'aiSuggestion');
       return { status: 'executed', detail: 'answered' };
     }
     default: {

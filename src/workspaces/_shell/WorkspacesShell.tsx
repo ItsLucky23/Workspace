@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 
-import { AIPanel, MobileBottomBar, NavRail, NAV_ITEMS, PausedBanner, TabBar, TopBar } from './Shell';
+import { AIPanel, MobileBottomBar, NavRail, NAV_ITEMS, OfflineBanner, PausedBanner, TabBar, TopBar } from './Shell';
 import { MobileHeader } from './MobileChrome';
 import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
@@ -113,6 +113,8 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
           <div className="flex-1 flex min-h-0">
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
               {/* emergency-stop banner — persistent across every view, mobile + desktop */}
+              {/* B1 — connection/queued-write state, above every view (phone + desktop). */}
+              <OfflineBanner />
               <PausedBanner />
               {/* open-ticket tabs — inside the content column so they don't overlap the AI panel */}
               <TabBar />

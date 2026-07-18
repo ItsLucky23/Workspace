@@ -37,3 +37,21 @@ export async function promptInstall(): Promise<boolean> {
 
 //? Subscribe to availability changes (for useSyncExternalStore).
 export function subscribeInstall(fn: () => void): () => void { listeners.add(fn); return () => { listeners.delete(fn); }; }
+
+//? GAP_SCAN B4 — iOS Safari never fires `beforeinstallprompt`, so `canInstall()` is permanently false there
+//? and the phone-first install path silently didn't exist. iOS CAN install (Share → Add to Home Screen) and
+//? only delivers web-push to an ALREADY-installed PWA, so the UI needs both facts.
+export function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+  return iOS && !/CriOS|FxiOS|EdgiOS/.test(ua);
+}
+
+//? Already running as an installed app (home-screen / standalone display mode)?
+export function isStandalone(): boolean {
+  if (typeof globalThis.matchMedia !== 'function') return false;
+  //? `navigator.standalone` is iOS-only and absent from the TS DOM lib — read it reflectively (no cast).
+  const legacyStandalone: unknown = Reflect.get(navigator, 'standalone');
+  return globalThis.matchMedia('(display-mode: standalone)').matches || legacyStandalone === true;
+}

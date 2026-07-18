@@ -988,7 +988,13 @@
       "importInvalid": "Dat bestand is geen geldige JSON.",
       "importFailed": "Import mislukt — is dit een workspace-export-bundel?",
       "importDone": "Workspace geïmporteerd — herladen…",
-      "export": "Exporteren"
+      "export": "Exporteren",
+      "push_unsupported": "Deze browser ondersteunt geen pushmeldingen.",
+      "push_unconfigured": "Push is niet ingesteld op deze server (geen VAPID-sleutels).",
+      "push_denied": "Meldingen zijn geblokkeerd — sta ze toe in je browserinstellingen.",
+      "push_error": "Push kon niet worden ingeschakeld. Probeer opnieuw.",
+      "pushIosHint": "Zet de app op een iPhone eerst op je beginscherm.",
+      "installIos": "Deel → Zet op beginscherm"
     },
     "modules": {
       "pickHeading": "Welke modules wil je?",
@@ -2307,7 +2313,11 @@
       "fabNewPiece": "Nieuw content-item",
       "fabTitlePlaceholder": "Titel…",
       "fabCreate": "Aanmaken",
-      "fabCancel": "Annuleren"
+      "fabCancel": "Annuleren",
+      "offline": "Geen verbinding — je acties worden bewaard en verstuurd zodra je weer online bent.",
+      "offlineReconnected": "Weer verbonden.",
+      "offlineQueued": "in de wacht",
+      "offlineRetry": "Nu opnieuw proberen"
     },
     "documents": {
       "title": "Documenten",

@@ -316,6 +316,30 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
 //? the persistent shell chrome above the routed page and is reachable on EVERY view on
 //? BOTH mobile + desktop. Resume-all is non-destructive → direct call (no confirm).
 //? Renders nothing when the workspace isn't paused.
+//? GAP_SCAN B1 — realtime write reliability. An approve/answer tap made while the socket is down used to
+//? vanish silently; those writes are now parked (WorkspacesProvider) and this banner is the visible half:
+//? it says the connection is gone, how many actions are waiting, and offers an explicit retry. The parked
+//? writes also replay automatically on reconnect.
+export function OfflineBanner() {
+  const { offline, queuedWrites, retryQueuedWrites } = useWorkspaces();
+  const translate = useTranslator();
+  if (!offline && queuedWrites === 0) return null;
+  return (
+    <div className="flex items-center gap-3 px-4 md:px-6 py-2 border-b border-warning/40 bg-warning/10 shrink-0">
+      <Icon name={offline ? 'wifi' : 'rotate'} className="text-warning shrink-0" />
+      <span className="flex-1 min-w-0 text-sm text-title">
+        {translate({ key: offline ? 'workspaces.wsShell.offline' : 'workspaces.wsShell.offlineReconnected' })}
+        {queuedWrites > 0 ? ` · ${translate({ key: 'workspaces.wsShell.offlineQueued' })}: ${String(queuedWrites)}` : ''}
+      </span>
+      {queuedWrites > 0 && (
+        <button type="button" onClick={retryQueuedWrites} className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-primary px-3 min-h-11 md:h-8 md:min-h-0 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer">
+          <Icon name="rotate" /> {translate({ key: 'workspaces.wsShell.offlineRetry' })}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function PausedBanner() {
   const { workspacePaused, resumeAll } = useWorkspaces();
   const translate = useTranslator();
@@ -366,7 +390,7 @@ export function TabBar() {
 //? Opened via menuHandler (outside the WorkspacesProvider tree), so it can't use
 //? the context — it receives the create callback as a prop. Kept intentionally
 //? simple: one project = one workspace, add the team afterwards.
-function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[]) => void }) {
+export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[]) => void }) {
   const translate = useTranslator();
   const [name, setName] = useState('');
   //? Default all modules on (full experience); deselect the lanes you don't want.

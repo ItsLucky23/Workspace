@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 252,
-    "edges": 379,
+    "edges": 380,
     "symbols": 334,
     "callEdges": 55
   },
@@ -1701,6 +1701,10 @@
     {
       "from": "workspaces/_functions/priority.ts",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_shell/MobileChrome.tsx",
+      "to": "_functions/menuHandler.ts"
     },
     {
       "from": "workspaces/_shell/MobileChrome.tsx",
@@ -3761,7 +3765,7 @@
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
       "dependents": 32,
-      "directDependents": 24
+      "directDependents": 25
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",

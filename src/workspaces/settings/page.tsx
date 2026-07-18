@@ -18,7 +18,7 @@ import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primit
 import { isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
-import { canInstall, promptInstall, subscribeInstall } from '../_functions/installPrompt';
+import { canInstall, isIosSafari, isStandalone, promptInstall, subscribeInstall } from '../_functions/installPrompt';
 import type { SessionLayout } from '../../../config';
 
 //? Real session shape from `settings/listSessions` (framework auth session, not
@@ -282,12 +282,22 @@ export default function AccountSettings() {
   useEffect(() => { void hasPushSubscription().then(setPush); }, []);
   //? #123 — the PWA install prompt (captured at boot) becomes available only when the browser offers it.
   const canInstallApp = useSyncExternalStore(subscribeInstall, canInstall, () => false);
+  //? B4 — an iOS browser that is not yet running as an installed PWA: no prompt event, and no push either.
+  const iosNotInstalled = isIosSafari() && !isStandalone();
+  //? GAP_SCAN B4 — the toggle used to snap back with NO explanation when push was unsupported, blocked or
+  //? unconfigured (the most common case on iOS, where push only works from an installed PWA). Keep the
+  //? reason and show it.
+  const [pushProblem, setPushProblem] = useState<string | null>(null);
   const togglePush = (next: boolean) => {
     if (pushBusy) return;
     setPushBusy(true);
+    setPushProblem(null);
     void (async () => {
-      if (next) { const r = await enablePush(); setPush(r === 'ok'); }
-      else { await disablePush(); setPush(false); }
+      if (next) {
+        const r = await enablePush();
+        setPush(r === 'ok');
+        if (r !== 'ok') setPushProblem(r);
+      } else { await disablePush(); setPush(false); }
       setPushBusy(false);
     })();
   };
@@ -665,6 +675,22 @@ export default function AccountSettings() {
               <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
               <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
             </Row>
+            {/* B4 — say WHY it failed instead of silently snapping back. On iOS the honest answer is
+                "install the app first". */}
+            {pushProblem !== null && (
+              <div className="text-xs text-warning px-1 pb-2">
+                {translate({ key: `workspaces.account.push_${pushProblem}` })}
+                {iosNotInstalled ? ` ${translate({ key: 'workspaces.account.pushIosHint' })}` : ''}
+              </div>
+            )}
+            {/* B4 — iOS never fires `beforeinstallprompt`, so the in-app install button never appeared there.
+                Show the manual Share → Add to Home Screen path instead. */}
+            {iosNotInstalled && (
+              <Row>
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
+                <span className="text-xs text-muted text-right">{translate({ key: 'workspaces.account.installIos' })}</span>
+              </Row>
+            )}
             {/* #123 — install the PWA to the home screen (only shown when the browser offers the prompt). */}
             {canInstallApp && (
               <Row>

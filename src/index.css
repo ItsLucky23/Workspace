@@ -195,3 +195,31 @@ html, body {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/*
+ * GAP_SCAN B5 — phone ergonomics, solved ONCE globally instead of per-component (Rule 22).
+ * Two concrete defects the audit found across the app:
+ *   1. iOS Safari auto-zooms the page whenever a focused input's font-size is under 16px, and most
+ *      fields here are `text-sm` (14px) — every tap on a field jumped the layout.
+ *   2. Many controls were 32-36px tall, under the 44px minimum a thumb needs.
+ * Scoped to coarse pointers (touch) so the dense desktop UI is untouched.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button,
+  select,
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+    min-height: 44px;
+  }
+
+  /* Icon-only affordances inside a row (chips, close buttons) keep their own box. */
+  button.min-h-0 {
+    min-height: 0;
+  }
+}

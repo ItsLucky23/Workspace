@@ -38,6 +38,11 @@ export interface WorkspacesCtx {
   isMobile: boolean;
   theme: 'light' | 'dark';
   setTheme: (t: 'light' | 'dark') => void;
+  //? GAP_SCAN B1 — realtime write reliability on a phone: is the socket down, and how many
+  //? approve/answer writes are parked waiting for it?
+  offline: boolean;
+  queuedWrites: number;
+  retryQueuedWrites: () => void;
   suggestions: AiSuggestion[];
   dismissSuggestion: (id: string) => void;
   acceptSuggestion: (id: string) => void;
