@@ -994,7 +994,8 @@
       "push_denied": "Meldingen zijn geblokkeerd — sta ze toe in je browserinstellingen.",
       "push_error": "Push kon niet worden ingeschakeld. Probeer opnieuw.",
       "pushIosHint": "Zet de app op een iPhone eerst op je beginscherm.",
-      "installIos": "Deel → Zet op beginscherm"
+      "installIos": "Deel → Zet op beginscherm",
+      "rollback": "Terugdraaien"
     },
     "modules": {
       "pickHeading": "Welke modules wil je?",

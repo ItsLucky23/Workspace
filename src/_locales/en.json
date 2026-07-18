@@ -994,7 +994,8 @@
       "push_denied": "Notifications are blocked — allow them in your browser settings.",
       "push_error": "Could not enable push. Try again.",
       "pushIosHint": "On iPhone, add the app to your home screen first.",
-      "installIos": "Share → Add to Home Screen"
+      "installIos": "Share → Add to Home Screen",
+      "rollback": "Roll back"
     },
     "modules": {
       "pickHeading": "Which modules do you want?",

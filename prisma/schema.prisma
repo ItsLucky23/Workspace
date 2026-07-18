@@ -341,6 +341,62 @@ model UiReviewRequest {
 //? removal, ownership transfer, workspace deletion, invites) left ZERO trace — an admin couldn't answer "who did
 //? what". This append-only log records every such op: WHO (actor userId), WHAT (action), on WHICH target, WHEN.
 //? Conductor-only writer (the ops it records already run there).
+//? GAP_SCAN D4 — the DURABLE governance sink. `AuditLog` lives under the workspace and is therefore
+//? deleted by the very workspace-deletion it is supposed to record (ADR 0167 open follow-up). This mirror
+//? is PLATFORM-level: nothing in the tenant cascade touches it, so the trail of who deleted what survives
+//? the tenant. It holds only the governance FACT (never a secret value), and it is append-only.
+//? GAP_SCAN D3 — one row per DEPLOY ATTEMPT (live or error). The Environment row only ever knew its
+//? current state, so a bad deploy erased the memory of the last good one. This is what makes "roll prod
+//? back to what was working" answerable — and it is append-only, so the history cannot be rewritten.
+//? GAP_SCAN F4 — analytics OVER TIME. `PublishJob.metrics` is overwritten on every ingest, so the system
+//? only ever knew the CURRENT totals: no growth curve, no "which post is still climbing", no before/after
+//? for a thumbnail A/B. One immutable row per ingest per post gives every trend question a real answer.
+model PublishMetricSnapshot {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId
+  publishJobId String   @db.ObjectId
+  platform     String
+  views        Int      @default(0)
+  likes        Int      @default(0)
+  comments     Int      @default(0)
+  shares       Int      @default(0)
+  watchTimeSec Int      @default(0)
+  ctr          Float    @default(0)
+  fetchedAt    DateTime @default(now())
+
+  @@index([workspaceId, publishJobId, fetchedAt])
+}
+
+model DeployHistory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  envId       String   @db.ObjectId
+  projectId   String   @db.ObjectId
+  kind        String                              // 'dev' | 'staging' | 'prod' | 'demo'
+  branch      String
+  commit      String                              // what actually ran (read back from the container)
+  imageRef    String?
+  status      String                              // 'live' | 'error'
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, envId, createdAt])
+}
+
+model AuditArchive {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId  String   @db.ObjectId               // NOT a tenant scope here — just which workspace it was
+  workspaceName String?                            // resolved at write time, so the name survives the delete
+  actorId      String?  @db.ObjectId
+  action       String
+  target       String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([action, createdAt])
+}
+
 model AuditLog {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId

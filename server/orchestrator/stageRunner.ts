@@ -35,10 +35,13 @@ import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHando
 import { killClaudeByContainer } from './agentControl';
 import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
+import { parseToolTrail } from './toolTrail';
 import { resolveModelChoice, buildTurnArgs } from './modelSelect';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
 const CAPTURE = '/work/.claude/turn-stop.json';
+//? GAP_SCAN D2 — the PostToolUse hook appends one JSON line per tool call here; drained after each turn.
+const TOOL_TRAIL = '/work/.claude/tool-calls.jsonl';
 
 //? Write a small text file INTO the container volume as `agent` (the worktree is a docker
 //? volume, not a host path — 07b §4). base64 round-trip so any content is shell-safe.
@@ -87,7 +90,7 @@ async function projectAuth(container: string): Promise<void> {
   await docker(['exec', container, 'sh', '-c',
     'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; '
     + 'git -C /work config user.name "Workspaces AI" 2>/dev/null; git -C /work config user.email "ai@workspaces.local" 2>/dev/null; '
-    + 'rm -f ' + CAPTURE + '; true']);
+    + 'rm -f ' + CAPTURE + ' ' + TOOL_TRAIL + '; true']);
 }
 
 //? Drive ONE interactive `claude` turn inside the container and return its final message.
@@ -159,6 +162,33 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   const message = (payload && typeof payload.last_assistant_message === 'string') ? payload.last_assistant_message : '';
   const claudeSessionId = (payload && typeof payload.session_id === 'string') ? payload.session_id : undefined;
   return { ok: true, message, ...(claudeSessionId ? { claudeSessionId } : {}) };
+}
+
+//? GAP_SCAN D2 — drain the turn's tool-call trail into ordered TicketEvents, then truncate the file so the
+//? next turn starts clean. Best-effort in every direction: no container, no file, or a malformed line just
+//? means a thinner feed — an audit trail must never be able to fail the turn it is describing.
+export async function persistToolTrail(input: { container: string; workspaceId: string; ticketId: string; stageId: string; sessionKey: string }): Promise<number> {
+  const [readErr, res] = await tryCatch(() => docker(['exec', input.container, 'sh', '-c', `cat ${TOOL_TRAIL} 2>/dev/null`]));
+  if (readErr || res?.code !== 0 || res.out.trim().length === 0) return 0;
+  const entries = parseToolTrail(res.out);
+  if (entries.length === 0) return 0;
+  const [writeErr] = await tryCatch(async () => {
+    const prisma = getPrismaClient();
+    const last = await prisma.ticketEvent.findFirst({ where: { workspaceId: input.workspaceId, ticketId: input.ticketId }, orderBy: { seq: 'desc' }, select: { seq: true } });
+    let seq = last?.seq ?? 0;
+    await prisma.ticketEvent.createMany({
+      data: entries.map((e) => {
+        seq += 1;
+        return {
+          workspaceId: input.workspaceId, ticketId: input.ticketId, seq, type: e.type, actor: 'ai',
+          sessionKey: input.sessionKey, stageId: input.stageId, text: e.text, metadata: e.metadata,
+        };
+      }),
+    });
+  });
+  if (writeErr) return 0;
+  await tryCatch(() => docker(['exec', input.container, 'sh', '-c', `: > ${TOOL_TRAIL} 2>/dev/null`]));
+  return entries.length;
 }
 
 export interface StageRunResult { ok: boolean; kind?: TurnResult['kind']; envelope?: CarryOverEnvelope; message?: string; error?: string }
@@ -361,6 +391,9 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   }
   //? Capture the resumable claude session id off the Stop hook.
   if (drive.claudeSessionId) await prisma.agentSession.updateMany({ where: { id: session.id }, data: { claudeSessionId: drive.claudeSessionId } });
+
+  //? D2 — persist WHAT the turn did (files edited, commands run, in order) before anything else can fail.
+  await persistToolTrail({ container: container.name, workspaceId, ticketId: ticket.id, stageId: stageKey, sessionKey });
 
   //? Cost/usage tracking (#16): record this turn's estimated token usage — input ≈ the rendered
   //? CLAUDE.md + stage instructions, output ≈ the assistant message (the CLI exposes no usage field

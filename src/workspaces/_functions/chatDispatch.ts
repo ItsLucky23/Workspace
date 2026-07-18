@@ -84,6 +84,13 @@ const skill = (op: 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-reset') => (p
 };
 
 export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispatchExtras) => void> = {
+  //? F1 — compose a thumbnail for a piece (headline + optional AI background).
+  'content-gen-thumbnail': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const headline = str(p, 'headline');
+    if (!pieceId || !headline) return;
+    const backgroundPrompt = str(p, 'backgroundPrompt');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-gen-thumbnail', contentProjectId: pieceId, headline, ...(backgroundPrompt ? { backgroundPrompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   'ai-skill-save': skill('ai-skill-save'),
   'ai-skill-toggle': skill('ai-skill-toggle'),
   'ai-skill-reset': skill('ai-skill-reset'),
@@ -97,6 +104,10 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const kind = str(p, 'kind'); if (!kind || !x.activeProjectId) return;
     const serviceId = str(p, 'serviceId');
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-deploy', projectId: x.activeProjectId, kind, ...(serviceId ? { serviceId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'env-rollback': (p, x) => {
+    const envId = str(p, 'envId'); if (!envId) return;
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'env-rollback', envId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'env-teardown': (p, x) => {
     const envId = str(p, 'envId'); if (!envId) return;

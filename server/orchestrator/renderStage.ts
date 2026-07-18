@@ -78,6 +78,12 @@ const STOP_HOOK_CMD = "sh -c 'cat > /work/.claude/turn-stop.json'";
 //? #4 PreCompact backstop: when Claude is about to AUTO-compact (genuinely near the limit), drop a
 //? marker so the orchestrator does OUR controlled handoff instead of an opaque auto-compaction.
 const PRECOMPACT_HOOK_CMD = "sh -c 'touch /work/.claude/precompact-signal'";
+//? GAP_SCAN D2 — the per-tool-call AUDIT trail. The spec'd PostToolUse → /hooks/ticket-event path was
+//? never built, so live PTY output was the ONLY record of what a turn did — and it is not persisted.
+//? Each tool call now appends its hook payload as one JSONL line on the /work volume; the stage runner
+//? drains that file after the turn into ordered TicketEvents ("which files/commands, in what order").
+//? Append-only + `sh -c` for the redirect, exactly like the Stop hook.
+const POST_TOOL_HOOK_CMD = "sh -c 'cat >> /work/.claude/tool-calls.jsonl'";
 
 export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageArtifacts {
   //? CLAUDE.md = the stage's task framing (customInstructions verbatim, GOLDEN §4) + any
@@ -138,6 +144,7 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     hooks: {
       Stop: [{ hooks: [{ type: 'command', command: STOP_HOOK_CMD }] }],
       PreCompact: [{ hooks: [{ type: 'command', command: PRECOMPACT_HOOK_CMD }] }],
+      PostToolUse: [{ hooks: [{ type: 'command', command: POST_TOOL_HOOK_CMD }] }],
     },
   }, null, 2);
 

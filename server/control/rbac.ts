@@ -134,6 +134,10 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'content-run-pipeline': CAP.workTickets,
   'content-save-audio-mix': CAP.workTickets,
   'content-trim-audio': CAP.workTickets,
+  //? GAP_SCAN F1 — composing a thumbnail is content work (and may spend on an AI background).
+  'content-gen-thumbnail': CAP.workTickets,
+  //? F5 — replying posts publicly as the channel; content-work capability.
+  'content-reply-comment': CAP.workTickets,
   'content-critique-image': CAP.workTickets,
   'content-video-restyle': CAP.workTickets,
   'content-edit-image': CAP.workTickets,
@@ -199,6 +203,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'service-delete': CAP.workspaceSettings,
   'env-deploy': CAP.workspaceSettings,
   'env-teardown': CAP.workspaceSettings,
+  //? D3 — rolling an environment back ships code; same bar as deploying it.
+  'env-rollback': CAP.workspaceSettings,
   'env-promote': CAP.workspaceSettings,
   'build-export': CAP.workspaceSettings,
   'ci-run': CAP.workTickets,

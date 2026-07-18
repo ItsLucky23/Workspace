@@ -72,6 +72,15 @@ export async function ingestPublishMetrics(prisma: PrismaClient, workspaceId: st
     if (err || raw === undefined) continue;
     const metrics = parsePlatformMetrics(job.platform, raw);
     await prisma.publishJob.updateMany({ where: { id: job.id }, data: { metrics: jsonInput({ ...metrics, fetchedAt: new Date().toISOString() }) } }).catch(() => null);
+    //? GAP_SCAN F4 — ALSO append an immutable snapshot. The line above overwrites the current totals (which
+    //? the UI still reads); this is what makes growth, trends and A/B comparisons possible at all.
+    await prisma.publishMetricSnapshot.create({
+      data: {
+        workspaceId, publishJobId: job.id, platform: job.platform,
+        views: metrics.views, likes: metrics.likes, comments: metrics.comments,
+        shares: metrics.shares, watchTimeSec: metrics.watchTimeSec, ctr: metrics.ctr,
+      },
+    }).catch(() => null);
     updated += 1;
   }
   return { updated };
@@ -85,4 +94,33 @@ export function topPerformers(rows: { platform: string; title: string; metrics: 
     .filter((r) => r.views > 0)
     .toSorted((a, b) => b.views - a.views)
     .slice(0, n);
+}
+
+//? GAP_SCAN F4 — the growth curve for one post: snapshots oldest-first, plus the DELTA between the first
+//? and last reading. Pure over already-fetched rows so the shaping is testable without a DB.
+export interface MetricPoint { at: number; views: number; likes: number; comments: number }
+export interface MetricTrend { points: MetricPoint[]; growth: { views: number; likes: number; comments: number }; perDay: number }
+
+export function buildMetricTrend(rows: { fetchedAt: Date; views: number; likes: number; comments: number }[]): MetricTrend {
+  const points = rows
+    .map((r) => ({ at: r.fetchedAt.getTime(), views: r.views, likes: r.likes, comments: r.comments }))
+    .toSorted((a, b) => a.at - b.at);
+  const first = points[0];
+  const last = points.at(-1);
+  if (!first || !last) return { points, growth: { views: 0, likes: 0, comments: 0 }, perDay: 0 };
+  const growth = { views: last.views - first.views, likes: last.likes - first.likes, comments: last.comments - first.comments };
+  //? Views per day across the observed window — the "is it still climbing?" number. A single reading (or
+  //? two in the same instant) has no window, so the rate is 0 rather than an infinity.
+  const spanMs = last.at - first.at;
+  const perDay = spanMs > 0 ? (growth.views / spanMs) * 86_400_000 : 0;
+  return { points, growth, perDay };
+}
+
+//? Compare two variants (e.g. thumbnail A vs B) on their observed view growth — the honest way to score an
+//? A/B, since raw totals just favour whichever post is older.
+export function compareVariants(a: MetricTrend, b: MetricTrend): { winner: 'a' | 'b' | 'tie'; aPerDay: number; bPerDay: number } {
+  const aPerDay = Math.round(a.perDay * 100) / 100;
+  const bPerDay = Math.round(b.perDay * 100) / 100;
+  if (aPerDay === bPerDay) return { winner: 'tie', aPerDay, bPerDay };
+  return { winner: aPerDay > bPerDay ? 'a' : 'b', aPerDay, bPerDay };
 }

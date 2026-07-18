@@ -13,6 +13,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
 import { sendWebPushMany } from '../hooks/webPush';
+import { withTenant } from '../tenant/tenantGuard';
 import { getAgentRole } from './agentRoles';
 import { docker, dockerAvailable, containerName } from '../container/runtime';
 import { runAiCompletion } from '../ai/registry';
@@ -81,6 +82,13 @@ export function notificationTarget(input: { ticketKey?: string; roleKey?: string
 //? Directly run an action (past any gate). Best-effort per action; a bad action is a noop, never a
 //? throw, so one misconfigured trigger can't wedge the pipeline.
 export async function executeTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
+  //? GAP_SCAN E2 — trigger actions are cron-driven, so they had NO tenant scope: every query they made ran
+  //? unscoped and row isolation never applied. The action body now runs inside the trigger's workspace
+  //? scope (report-first — the guard records what strict enforcement would have rejected).
+  return withTenant(workspaceId, 'automation.action', () => runTriggerActionBody(prisma, workspaceId, a));
+}
+
+async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
   switch (a.action) {
     case 'notify': {
       //? In-app notification to every workspace member (respecting per-user opt-out is the bell's job).

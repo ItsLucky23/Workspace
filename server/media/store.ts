@@ -4,7 +4,7 @@
 //? tiny + pure-ish (one fs write) so the provider adapters stay decoupled from where bytes live.
 
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, opendirSync, lstatSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, opendirSync, lstatSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { tryCatchSync } from '@luckystack/core';
@@ -97,4 +97,15 @@ export function persistMediaBytes(bytes: Buffer, ext: string, id: string): { url
   const abs = path.join(MEDIA_DIR, file);
   writeFileSync(abs, bytes);
   return { url: `/media/${file}`, path: abs };
+}
+
+//? Read a locally-stored `/media/<file>` asset back as bytes (the publish path needs the raw thumbnail to
+//? POST it). Refuses anything that is not a plain file name under the media dir, and returns null instead
+//? of throwing when the file is gone.
+export function readMediaBytes(url: string): Buffer | null {
+  if (!url.startsWith('/media/')) return null;
+  const name = url.slice('/media/'.length);
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name)) return null;
+  const [, bytes] = tryCatchSync(() => readFileSync(path.join(MEDIA_DIR, name)));
+  return bytes;
 }

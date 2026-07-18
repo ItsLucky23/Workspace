@@ -13,6 +13,7 @@ import { waitForContainerReady } from '../container/health';
 import { getProxyProvider, envRoute, baseDomain } from '../proxy';
 import { normalizeGitConfig, deriveHostSlug } from '../git/branchStrategy';
 import { branchHead } from '../git/repoStore';
+import { recordDeploy, listDeployHistory, previousLiveCommit } from './deployHistory';
 import { resolveDevCommand, resolveProdCommand } from '../container/baseImages';
 
 const ENV_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
@@ -109,8 +110,22 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   //? to a fixed commit checks that commit out in /work so it serves a FROZEN demo; otherwise it's the head.
   const head = await branchHead(workspaceId, env.projectId, branch);
   const pin = (env.pinnedCommit ?? '').trim();
-  if (pin.length > 0) await docker(['exec', '-w', '/work', container.name, 'git', 'checkout', pin]);
-  const deployedCommit = pin.length > 0 ? pin : head;
+  const targetCommit = pin.length > 0 ? pin : head;
+
+  //? GAP_SCAN E1 — a redeploy used to serve STALE code while the DB claimed the new commit shipped:
+  //? `launchTicketContainer` REUSES the existing container + volume, so the old checkout stayed on disk and
+  //? the old serve process kept holding the port. Restarting clears the process table (the base image has no
+  //? procps to kill by name), and a hard reset to the target commit makes the working tree match what we are
+  //? about to claim we deployed. Both are no-ops on a freshly created container.
+  await docker(['restart', container.name]);
+  if (targetCommit.length > 0) {
+    await docker(['exec', '-w', '/work', container.name, 'git', 'fetch', '--all', '--prune']);
+    await docker(['exec', '-w', '/work', container.name, 'git', 'reset', '--hard', targetCommit]);
+  }
+  //? Truth comes from the container, not from our intent: whatever HEAD actually is after the sync is what
+  //? this environment serves. A failed fetch/reset therefore records the OLD commit instead of lying.
+  const actualHead = await docker(['exec', '-w', '/work', container.name, 'git', 'rev-parse', 'HEAD']);
+  const deployedCommit = actualHead.code === 0 && actualHead.out.trim().length > 0 ? actualHead.out.trim() : targetCommit;
 
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).
   await docker(['network', 'create', NET]);
@@ -132,10 +147,33 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
     where: { id: envId },
     data: { status, containerName: container.name, branch, imageRef: image ?? null, healthUrl: `http://localhost:${String(ENV_PORT)}`, lastDeployedAt: new Date(), ...(deployedCommit.length > 0 ? { deployedCommit } : {}), ...(ready ? { lastError: null } : { lastError: 'env.notReady' }) },
   });
+  //? GAP_SCAN D3 — every deploy attempt appends to the environment's history, so "what was live before
+  //? this?" is answerable and a rollback has something to roll back TO. Best-effort: history is a record of
+  //? the deploy, never a gate on it.
+  await recordDeploy(prisma, {
+    workspaceId, envId, projectId: env.projectId, kind: env.kind, branch,
+    commit: deployedCommit, imageRef: image ?? null, status, ...(ready ? {} : { error: 'env.notReady' }),
+  });
   const protocol = baseDomain() === 'localhost' ? 'http' : 'https';
   return ready
     ? { ok: true, envId, status, url: `${protocol}://${env.route}/` }
     : { ok: false, envId, status, error: 'env.notReady' };
+}
+
+//? GAP_SCAN D3 — roll an environment back to the last commit that was actually LIVE. Deliberately built on
+//? the SAME deploy path (pin the commit → redeploy) rather than a second shipping mechanism, so readiness,
+//? routing and history behave identically. Refuses when there is no earlier good deploy instead of
+//? "rolling back" to the broken commit already running.
+export async function rollbackEnvironment(prisma: PrismaClient, workspaceId: string, envId: string): Promise<DeployResult & { rolledBackTo?: string }> {
+  const env = await prisma.environment.findFirst({ where: { id: envId, workspaceId }, select: { deployedCommit: true } });
+  if (!env) return { ok: false, status: 'error', error: 'env.notFound' };
+  const history = await listDeployHistory(prisma, workspaceId, envId, 20);
+  const target = previousLiveCommit(history, env.deployedCommit);
+  if (!target) return { ok: false, envId, status: 'error', error: 'rollback.noPreviousDeploy' };
+  //? The pin IS the rollback: the redeploy checks this commit out and records it as the new current state.
+  await prisma.environment.update({ where: { id: envId }, data: { pinnedCommit: target } });
+  const result = await deployEnvironment(prisma, workspaceId, envId);
+  return { ...result, rolledBackTo: target };
 }
 
 async function failEnv(prisma: PrismaClient, envId: string, error: string): Promise<DeployResult> {

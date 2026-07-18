@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 252,
     "edges": 380,
-    "symbols": 334,
-    "callEdges": 55
+    "symbols": 341,
+    "callEdges": 62
   },
   "nodes": [
     {
@@ -5426,6 +5426,48 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::authorize",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "authorize",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::broadcast",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "broadcast",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "defaultForgeResyncDependencies",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::dispatch",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "dispatch",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "dispatchForgeResync",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "fetchSnapshot",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "isProjectAdminOp",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::main",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "main",
@@ -6068,6 +6110,34 @@
       "to": "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp"
     },
     {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::authorize"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::broadcast"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatch"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp"
+    },
+    {
       "from": "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace",
       "to": "workspaces/_sync/saveIntegration_server_v1.ts::isObjectId"
     },
@@ -6236,6 +6306,32 @@
     ],
     "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp": [
       "workspaces/_sync/documentsControl_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::authorize": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::broadcast": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::dispatch": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace": [
       "workspaces/_sync/saveIntegration_server_v1.ts::main",

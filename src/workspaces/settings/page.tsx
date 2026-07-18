@@ -252,7 +252,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
+  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -445,6 +445,8 @@ export default function AccountSettings() {
                     {/* SEC7 — prod has NO direct deploy (it bypasses the approval/CI/security gates); it is only reachable via promote. */}
                     {kind !== 'prod' && <WsButton variant="secondary" disabled={!activeProject || env?.status === 'deploying'} onClick={() => { deployEnv({ kind }); }}>{translate({ key: 'workspaces.account.deploy' })}</WsButton>}
                     {/* SEC8 — teardown kills the container + route: explicit confirm first (B-23). */}
+                    {/* D3 — put this environment back on its last LIVE commit (refused server-side when there is none). */}
+                    {env && <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.account.rollback' }), content: `${kind} — ${env.route}` }).then((ok) => { if (ok) rollbackEnv(env.id); }); }} className="text-xs text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.account.rollback' })}</button>}
                     {env && <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.account.teardown' }), content: `${kind} — ${env.route}` }).then((ok) => { if (ok) teardownEnv(env.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.teardown' })}</button>}
                   </span>
                 </Row>

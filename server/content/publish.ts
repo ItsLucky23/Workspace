@@ -9,6 +9,9 @@ import type { PrismaClient } from '@prisma/client';
 
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
 import { staggerPlan } from './publishHealth';
+import { buildThumbnailUploadRequest } from './thumbnail';
+import { readMediaBytes } from '../media/store';
+import { withTenant } from '../tenant/tenantGuard';
 import { extractExternalId, ingestPublishMetrics, buildMetricsRequest, type MetricsFetch } from './publishMetrics';
 
 //? O2 — pull a validated per-platform variant out of a piece's `publishVariants` JSON. Unknown/garbage → null
@@ -90,7 +93,28 @@ async function performUpload(
   const transport = opts.uploadTransport ?? realUploadTransport;
   const [err, uploaded] = await tryCatch(() => transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }));
   if (err || !uploaded) return { kind: 'error', ...(err ? { reason: err.message } : {}) };
+  //? GAP_SCAN F1 — a composed thumbnail is worthless if it never reaches the platform. Set it right after
+  //? the upload, best-effort: a thumbnail failure must not turn a SUCCESSFUL post into an error (and TikTok
+  //? has no public cover endpoint, so there it is a clean no-op).
+  await tryCatch(() => applyThumbnail(prisma, workspaceId, args.contentProjectId, args.platform, uploaded.externalUrl, connection.accessToken));
   return { kind: 'real', externalUrl: uploaded.externalUrl };
+}
+
+//? F1 — upload the piece's newest ready thumbnail to the just-published post. Returns whether it shipped,
+//? so the caller/tests can assert the honest outcome instead of assuming.
+export async function applyThumbnail(
+  prisma: PrismaClient, workspaceId: string, contentProjectId: string, platform: string, externalUrl: string, accessToken: string,
+): Promise<{ applied: boolean; reason?: string }> {
+  const thumb = await prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId, kind: 'thumbnail', status: 'ready' }, orderBy: { createdAt: 'desc' }, select: { url: true } });
+  if (!thumb?.url) return { applied: false, reason: 'no-thumbnail' };
+  const externalId = extractExternalId(platform, externalUrl);
+  const request = buildThumbnailUploadRequest(platform, externalId, accessToken);
+  if (!request) return { applied: false, reason: 'platform-unsupported' };
+  const bytes = readMediaBytes(thumb.url);
+  if (!bytes) return { applied: false, reason: 'thumbnail-missing' };
+  const [err, res] = await tryCatch(() => fetch(request.url, { method: request.method, headers: request.headers, body: new Uint8Array(bytes) }));
+  if (err || !res?.ok) return { applied: false, reason: err?.message ?? `http-${String(res?.status ?? 0)}` };
+  return { applied: true };
 }
 
 export async function publishAsset(
@@ -167,37 +191,43 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
     });
     if (claim.count !== 1) continue;
 
-    const platform = job.platform;
-    if (!isPublishPlatform(platform) || !BUILT_PLATFORMS.includes(platform)) {
-      await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } });
-      continue;
-    }
-    //? F1 — a scheduled post fires long after connect, so refresh the (likely-expired) token before uploading.
-    //? A3 — route to the account the job was scheduled for.
-    const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now }));
-    if (err || !res || res.kind === 'error') {
-      //? A3 — bounded retry with backoff; only the LAST attempt becomes a terminal error (+ A2 notify).
-      const reason = res?.kind === 'error' ? res.reason : err?.message;
-      const attempts = job.attempts + 1;
-      if (attempts < MAX_PUBLISH_ATTEMPTS) {
-        const retryAt = new Date(now + publishRetryDelayMs(attempts, reason));
-        await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'scheduled', scheduledAt: retryAt, attempts, error: `publish.retrying:${String(attempts)}/${String(MAX_PUBLISH_ATTEMPTS)}` } });
-        continue;
+    //? GAP_SCAN E2 — the SCAN above must span tenants (it looks for every workspace's due work), but the
+    //? per-job work is one workspace's business and now runs inside that workspace's tenant scope.
+    //? Report-first: the guard records what strict enforcement would have rejected (see tenantGuard).
+    const outcome = await withTenant(job.workspaceId, 'publish.scheduled', async (): Promise<'fired' | 'skipped'> => {
+      const platform = job.platform;
+      if (!isPublishPlatform(platform) || !BUILT_PLATFORMS.includes(platform)) {
+        await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', error: 'platform.notBuilt' } });
+        return 'skipped';
       }
-      await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', attempts, error: 'publish.uploadFailed' } });
-      //? A2 — a failed autopilot post used to be SILENT. Notify + push so a stopped channel is visible.
-      await tryCatch(() => notifyPublishFailure(prisma, job.workspaceId, job.contentProjectId, platform));
-      continue;
-    }
-    //? A scheduled post with no connection is 'stub' (honest), a real one is 'done'.
-    const externalUrl = res.kind === 'real' ? res.externalUrl : `stub://${platform}/${job.assetId}`;
-    //? Keep the same post lineage as an immediate publish: a real scheduled upload stores its
-    //? platform id, while a stub deliberately has no external id. `accountId` is intentionally
-    //? not written here, so the account selected when scheduling remains attached to the job.
-    const externalId = res.kind === 'real' ? extractExternalId(platform, externalUrl) : '';
-    await prisma.publishJob.update({ where: { id: job.id }, data: { status: res.kind === 'real' ? 'done' : 'stub', externalUrl, error: null, ...(externalId ? { externalId } : {}) } });
+      //? F1 — a scheduled post fires long after connect, so refresh the (likely-expired) token before uploading.
+      //? A3 — route to the account the job was scheduled for.
+      const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now }));
+      if (err || !res || res.kind === 'error') {
+        //? A3 — bounded retry with backoff; only the LAST attempt becomes a terminal error (+ A2 notify).
+        const reason = res?.kind === 'error' ? res.reason : err?.message;
+        const attempts = job.attempts + 1;
+        if (attempts < MAX_PUBLISH_ATTEMPTS) {
+          const retryAt = new Date(now + publishRetryDelayMs(attempts, reason));
+          await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'scheduled', scheduledAt: retryAt, attempts, error: `publish.retrying:${String(attempts)}/${String(MAX_PUBLISH_ATTEMPTS)}` } });
+          return 'skipped';
+        }
+        await prisma.publishJob.update({ where: { id: job.id }, data: { status: 'error', attempts, error: 'publish.uploadFailed' } });
+        //? A2 — a failed autopilot post used to be SILENT. Notify + push so a stopped channel is visible.
+        await tryCatch(() => notifyPublishFailure(prisma, job.workspaceId, job.contentProjectId, platform));
+        return 'skipped';
+      }
+      //? A scheduled post with no connection is 'stub' (honest), a real one is 'done'.
+      const externalUrl = res.kind === 'real' ? res.externalUrl : `stub://${platform}/${job.assetId}`;
+      //? Keep the same post lineage as an immediate publish: a real scheduled upload stores its
+      //? platform id, while a stub deliberately has no external id. `accountId` is intentionally
+      //? not written here, so the account selected when scheduling remains attached to the job.
+      const externalId = res.kind === 'real' ? extractExternalId(platform, externalUrl) : '';
+      await prisma.publishJob.update({ where: { id: job.id }, data: { status: res.kind === 'real' ? 'done' : 'stub', externalUrl, error: null, ...(externalId ? { externalId } : {}) } });
+      return 'fired';
+    });
     //? Count only externally-resolved jobs whose terminal done/stub state was persisted successfully.
-    fired += 1;
+    if (outcome === 'fired') fired += 1;
   }
   return { fired };
 }

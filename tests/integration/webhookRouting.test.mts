@@ -1,74 +1,109 @@
-//? R3 — webhook issue-routing across MULTIPLE projects (the multi-repo #8 gap: every issue landed on project #1).
-//? Verifies: parseWebhookEvent extracts the source repo (GitHub full_name / GitLab path_with_namespace); and
-//? ingestIssueEvent routes the ticket to the project whose linked repo MATCHES. In a MULTI-project workspace an
-//? unroutable repo is SKIPPED (not dumped on an arbitrary project); a SINGLE-project workspace still falls back
-//? (zero regression).
+//? Webhook issue routing across multiple projects. All mutations run through the
+//? internal Conductor action; repo/provider ambiguity and sibling-key collisions fail closed.
+
+import { tryCatch } from '@luckystack/core';
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { parseWebhookEvent, ingestIssueEvent } = await import('../../server/git/webhookIngest');
+const { parseWebhookEvent } = await import('../../server/git/webhookIngest');
+const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const { forgeTouchedKeys } = await import('../../server/git/gitlabSync');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 
-// Part A — parse extracts the repo identity
-{
-  const gh = parseWebhookEvent({ action: 'opened', repository: { full_name: 'acme/api' }, issue: { number: 7, title: 'GH issue', body: 'x', state: 'open', labels: [] } }, 'issues');
-  eq(gh.repo, 'acme/api', 'GitHub full_name → repo');
-  const gl = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/web' }, object_attributes: { iid: 9, action: 'open', title: 'GL issue', state: 'opened' } });
-  eq(gl.repo, 'acme/web', 'GitLab path_with_namespace → repo');
-}
+const githubParsed = parseWebhookEvent({
+  action: 'opened',
+  repository: { full_name: 'acme/api' },
+  issue: { number: 7, title: 'GH issue', body: 'x', state: 'open', labels: [] },
+}, 'issues');
+eq(githubParsed.repo, 'acme/api', 'GitHub full_name becomes the bounded repo identity');
+const gitlabParsed = parseWebhookEvent({
+  object_kind: 'issue',
+  project: { path_with_namespace: 'acme/web' },
+  object_attributes: { iid: 9, action: 'open', title: 'GL issue', state: 'opened' },
+});
+eq(gitlabParsed.repo, 'acme/web', 'GitLab path_with_namespace becomes the bounded repo identity');
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `wh-${String(stamp)}@youcomm.nl`, name: 'Wh' } });
-let workspaceId: string | null = null;
+let workspaceId = '';
 
-try {
+const [runError] = await tryCatch(async () => {
   const created = await createBlankWorkspace(prisma, owner.id, 'Wh WS');
   workspaceId = created.workspaceId;
-  const wsId = created.workspaceId;
-  const projA = await prisma.project.create({ data: { workspaceId: wsId, name: 'A', gitlabPath: 'acme/api' } });
-  const projB = await prisma.project.create({ data: { workspaceId: wsId, name: 'B', gitlabPath: 'acme/web' } });
+  const projectA = await prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+  assert(projectA !== null, 'the workspace has project A');
+  if (!projectA) return;
+  await prisma.project.update({ where: { id: projectA.id }, data: { name: 'A', gitlabPath: 'acme/api' } });
+  const projectB = await prisma.project.create({ data: { workspaceId, name: 'B', gitlabPath: 'acme/web' } });
 
-  // Part B — an issue from repo acme/web routes to project B (not the first project).
-  const evB = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/web' }, object_attributes: { iid: 42, action: 'open', title: 'For B', state: 'opened' } });
-  const keyB = await ingestIssueEvent(prisma, wsId, evB);
-  eq(keyB, 'DEV-42', 'the issue was ingested');
-  const ticketB = await prisma.ticket.findFirst({ where: { workspaceId: wsId, key: 'DEV-42' }, select: { projectId: true } });
-  eq(ticketB?.projectId, projB.id, 'the issue routed to project B (its linked repo matched)');
-  assert(ticketB?.projectId !== projA.id, 'it did NOT default to project A');
+  const apply = async (event: ReturnType<typeof parseWebhookEvent>, delivery: string): Promise<string[]> => {
+    const result = await enqueueInternalAction({
+      workspaceId,
+      op: 'forge-event-apply',
+      target: {},
+      payload: { event, acceptedAt: Date.now() },
+      userId: 'webhook-routing-test',
+      clientRequestId: delivery,
+    });
+    return forgeTouchedKeys(result.result);
+  };
 
-  // an issue from repo acme/api routes to project A
-  const evA = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/api' }, object_attributes: { iid: 43, action: 'open', title: 'For A', state: 'opened' } });
-  await ingestIssueEvent(prisma, wsId, evA);
-  const ticketA = await prisma.ticket.findFirst({ where: { workspaceId: wsId, key: 'DEV-43' }, select: { projectId: true } });
-  eq(ticketA?.projectId, projA.id, 'the second issue routed to project A');
+  const eventB = parseWebhookEvent({
+    object_kind: 'issue',
+    project: { path_with_namespace: 'acme/web' },
+    object_attributes: { iid: 42, action: 'open', title: 'For B', state: 'opened' },
+  });
+  eq(await apply(eventB, `wh-b-${String(stamp)}`), ['DEV-42'], 'the project-B issue is applied');
+  const ticketB = await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-42' }, select: { projectId: true } });
+  eq(ticketB?.projectId, projectB.id, 'the issue routes to project B');
+  assert(ticketB?.projectId !== projectA.id, 'the issue does not default to project A');
 
-  // an unknown repo in a MULTI-project workspace is SKIPPED, not mis-routed to an arbitrary project.
-  const evX = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/unknown' }, object_attributes: { iid: 44, action: 'open', title: 'Unrouted', state: 'opened' } });
-  const keyX = await ingestIssueEvent(prisma, wsId, evX);
-  eq(keyX, null, 'an unroutable issue in a multi-project workspace is skipped (not dumped on project A)');
-  eq(await prisma.ticket.count({ where: { workspaceId: wsId, key: 'DEV-44' } }), 0, 'no ticket was created for the unroutable issue');
+  const eventA = parseWebhookEvent({
+    object_kind: 'issue',
+    project: { path_with_namespace: 'acme/api' },
+    object_attributes: { iid: 43, action: 'open', title: 'For A', state: 'opened' },
+  });
+  await apply(eventA, `wh-a-${String(stamp)}`);
+  eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-43' }, select: { projectId: true } }))?.projectId, projectA.id, 'the API issue routes to project A');
 
-  // ...but in a SINGLE-project workspace an unknown/absent repo still falls back (zero regression).
-  //? `createBlankWorkspace` seeds exactly ONE project (gitlabPath=''); an event repo that matches nothing
-  //? therefore has a single unambiguous target to fall back to.
+  const unknown = parseWebhookEvent({
+    object_kind: 'issue',
+    project: { path_with_namespace: 'acme/unknown' },
+    object_attributes: { iid: 44, action: 'open', title: 'Unrouted', state: 'opened' },
+  });
+  eq(await apply(unknown, `wh-unknown-${String(stamp)}`), [], 'an unknown repo is skipped');
+  eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-44' } }), 0, 'an unknown repo creates no ticket');
+
   const solo = await createBlankWorkspace(prisma, owner.id, 'Solo WS');
-  const soloWs = solo.workspaceId;
-  try {
-    const soloProj = await prisma.project.findFirst({ where: { workspaceId: soloWs }, select: { id: true } });
-    const evS = parseWebhookEvent({ object_kind: 'issue', project: { path_with_namespace: 'acme/mismatch' }, object_attributes: { iid: 45, action: 'open', title: 'Solo fallback', state: 'opened' } });
-    const keyS = await ingestIssueEvent(prisma, soloWs, evS);
-    eq(keyS, 'DEV-45', 'a single-project workspace still ingests an unroutable issue (fallback)');
-    const ticketS = await prisma.ticket.findFirst({ where: { workspaceId: soloWs, key: 'DEV-45' }, select: { projectId: true } });
-    eq(ticketS?.projectId, soloProj?.id, 'it lands on the single project');
-  } finally {
-    await cleanupWorkspace(prisma, soloWs, [owner.id]).catch(() => undefined);
-  }
-} catch (error) {
-  assert(false, `unexpected error during the run: ${String(error)}`);
-} finally {
-  if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
-  else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
-}
+  const soloWorkspaceId = solo.workspaceId;
+  const [soloError] = await tryCatch(async () => {
+    const soloProject = await prisma.project.findFirst({ where: { workspaceId: soloWorkspaceId }, select: { id: true } });
+    assert(soloProject !== null, 'the solo workspace has a project');
+    if (!soloProject) return;
+    await prisma.project.update({ where: { id: soloProject.id }, data: { gitlabPath: 'acme/solo' } });
+    const mismatch = parseWebhookEvent({
+      object_kind: 'issue',
+      project: { path_with_namespace: 'acme/foreign' },
+      object_attributes: { iid: 45, action: 'open', title: 'Foreign', state: 'opened' },
+    });
+    const result = await enqueueInternalAction({
+      workspaceId: soloWorkspaceId,
+      op: 'forge-event-apply',
+      target: {},
+      payload: { event: mismatch, acceptedAt: Date.now() },
+      userId: 'webhook-routing-test',
+      clientRequestId: `wh-solo-mismatch-${String(stamp)}`,
+    });
+    eq(forgeTouchedKeys(result.result), [], 'even a single-project workspace skips an explicit repo mismatch');
+    eq(await prisma.ticket.count({ where: { workspaceId: soloWorkspaceId, key: 'DEV-45' } }), 0, 'repo mismatch cannot fall back to the only project');
+  });
+  if (soloError) assert(false, `unexpected solo-workspace error: ${soloError.message}`);
+  await cleanupWorkspace(prisma, soloWorkspaceId, [owner.id]);
+});
+
+if (runError) assert(false, `unexpected webhook-routing error: ${runError.message}`);
+if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]);
+else await prisma.user.deleteMany({ where: { id: owner.id } });
 
 report('tests/integration/webhookRouting.test.mts');

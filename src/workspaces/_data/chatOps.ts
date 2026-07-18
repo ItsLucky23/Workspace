@@ -11,6 +11,8 @@ export const CHAT_ENABLED_OPS = [
   'pause', 'resume', 'kill', 'pause-all', 'resume-all',
   // deploy / environments
   'env-deploy', 'env-teardown', 'env-promote', 'build-export',
+  //? D3 — roll an environment back to its last live commit (destructive → extra confirm on accept).
+  'env-rollback',
   // CI + reasoning + memory
   'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'index-memory',
   // user-app DB (db-connect stays excluded — it carries a connection-string secret)
@@ -25,6 +27,8 @@ export const CHAT_ENABLED_OPS = [
   'content-run-pipeline', 'content-advance', 'content-archive', 'content-unarchive', 'content-regenerate',
   // F5 — AI image critique (advisory, no asset write)
   'content-critique-image',
+  //? F1 — compose a thumbnail (template, or with an AI background).
+  'content-gen-thumbnail',
   // F7 — video-to-video restyle (paid gen)
   'content-video-restyle',
   'content-edit-image',

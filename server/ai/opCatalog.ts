@@ -223,6 +223,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'promote the tested image one step up the dev→staging→prod ladder. params: fromKind (dev|staging). Prod promotion is gated on green CI + security and the user’s explicit confirm',
     params: { fromKind: { kind: 'enum', required: true, values: ['dev', 'staging'] } },
   },
+  'env-rollback': {
+    mode: 'enabled', destructive: true,
+    hint: 'roll an environment back to the last commit that was actually live. params: envId',
+    params: { envId: { kind: 'envId', required: true } },
+  },
   'build-export': {
     mode: 'enabled',
     hint: 'export the project as a downloadable production build. params: kind (image|bundle)',
@@ -311,6 +316,14 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'regenerate a media asset (optionally tweaked, costs money — the user confirms). params: assetId, pieceId?, tweak?, count? (1-4)',
     params: { assetId: { kind: 'string', required: true }, pieceId: { kind: 'pieceId' }, tweak: { kind: 'string' }, count: { kind: 'number' } },
   },
+  'content-gen-thumbnail': {
+    mode: 'enabled',
+    hint: 'compose a thumbnail for a piece: bold headline over a background (optionally AI-generated). params: pieceId, headline, backgroundPrompt? (omit for the free template)',
+    params: { pieceId: { kind: 'pieceId', required: true }, headline: { kind: 'string', required: true }, backgroundPrompt: { kind: 'string' } },
+  },
+  //? F5 — the reply text is a human decision (and it posts publicly), so the Assistant does not compose it
+  //? blind from chat; the inbox drafts + the user approves. Kept out of the chat catalog on purpose.
+  'content-reply-comment': LATER,
   'content-critique-image': {
     mode: 'enabled',
     hint: 'AI critique of an image asset ("what should change about this photo") — vision feedback + which edit fixes each point. params: pieceId, assetId, prompt? (a specific question)',
@@ -423,7 +436,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   //? development — code, board, pipeline, deploy, CI, git, services.
   'ticket-edit': 'development', 'stage-create': 'development', 'stage-delete': 'development', 'stage-reorder': 'development',
   'project-create': 'development', 'project-from-template': 'development',
-  'env-deploy': 'development', 'env-teardown': 'development', 'env-promote': 'development', 'build-export': 'development',
+  'env-deploy': 'development', 'env-teardown': 'development', 'env-promote': 'development', 'build-export': 'development', 'env-rollback': 'development',
   'ci-run': 'development', 'ci-allow-red': 'development', 'root-cause': 'development', 'plan-critique': 'development',
   'db-migrate-create': 'development', 'db-introspect': 'development',
   'mr-review': 'development', 'mr-rollback': 'development',
@@ -435,7 +448,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'content-gen-script': 'content', 'content-gen-voice': 'content', 'content-gen-images': 'content', 'content-assemble': 'content',
   'content-gen-shortform': 'content', 'content-gen-avatar': 'content', 'content-gen-music': 'content', 'content-gen-sfx': 'content',
   'content-gen-3d': 'content', 'content-critique-image': 'content', 'content-video-restyle': 'content', 'content-edit-image': 'content',
-  'content-run-pipeline': 'content', 'content-edit-brand': 'content', 'content-edit-product': 'content',
+  'content-run-pipeline': 'content', 'content-gen-thumbnail': 'content', 'content-edit-brand': 'content', 'content-edit-product': 'content',
   'channel-create': 'content', 'channel-edit': 'content', 'channel-delete': 'content',
   'capture-run': 'content', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
 };

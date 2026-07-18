@@ -1,88 +1,206 @@
-//? Forge webhook endpoint (#10). Registers `POST /webhooks/forge/<workspaceId>` as a pre-params
-//? custom route (origin-exempt, like the observability probes) so a forge can POST issue events for
-//? continuous ingest. SECURITY: the request MUST present the shared secret — the per-workspace
-//? `Workspace.webhookSecret` (#27, rotatable) with an env `WS_WEBHOOK_SECRET` fallback — in
-//? `X-Webhook-Secret` (or GitLab's `X-Gitlab-Token`) — if no secret is configured the endpoint
-//? is DISABLED (503), a secure default (no unauthenticated write path). Provider is auto-detected
-//? (GitHub via `X-GitHub-Event`, else GitLab). Best-effort: a bad body is a 400, never a crash.
+//? Forge webhook endpoint. Authentication + bounded parse happen at the HTTP edge;
+//? every accepted event (including ignored kinds) is then handed to the server-only
+//? Conductor writer. The route itself performs no authoritative DB write.
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import type { IncomingHttpHeaders, IncomingMessage } from 'node:http';
 
-import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
+import { getPrismaClient, tryCatch, tryCatchSync } from '@luckystack/core';
+import type { PrismaClient } from '@prisma/client';
 import { registerCustomRoute, registerOriginExemptPath } from '@luckystack/server';
 
+import type { EnqueuedControlAction } from '../orchestrator/conductor';
+import type { ForgeEventInternalAction } from '../orchestrator/internalOps';
 import { broadcastTicketDelta } from '../read/broadcast';
-import { parseWebhookEvent, ingestIssueEvent } from './webhookIngest';
+import { forgeTouchedKeys } from './gitlabSync';
+import { parseWebhookEvent } from './webhookIngest';
 
-//? Verify GitHub's `X-Hub-Signature-256` (`sha256=<hex>` = HMAC-SHA256 of the RAW body with the
-//? shared secret). Constant-time compare; any length/format mismatch is a reject.
-function verifyGithubHmac(secret: string, raw: string, signature: string): boolean {
-  const expected = `sha256=${createHmac('sha256', secret).update(raw).digest('hex')}`;
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+export const MAX_FORGE_WEBHOOK_BYTES = 1_000_000;
+const WEBHOOK_PREFIX = '/webhooks/forge/';
+
+interface Res {
+  statusCode: number;
+  setHeader: (key: string, value: string) => void;
+  end: (body?: string) => void;
 }
 
-interface Res { statusCode: number; setHeader: (k: string, v: string) => void; end: (b?: string) => void }
-const send = (res: Res, code: number, msg: string): void => { res.statusCode = code; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ status: code < 300 ? 'ok' : 'error', message: msg })); };
+interface ProcessWebhookInput {
+  workspaceId: string;
+  headers: IncomingHttpHeaders;
+  rawBody: string;
+}
 
-//? Read the raw request body (bounded) off the Node stream.
-async function readBody(req: { on: (ev: string, cb: (c?: unknown) => void) => void }): Promise<string> {
+export interface ForgeWebhookDependencies {
+  prisma: PrismaClient;
+  enqueue: (action: ForgeEventInternalAction) => Promise<EnqueuedControlAction>;
+  broadcast: (workspaceId: string, keys: string[]) => Promise<void>;
+  now: () => number;
+}
+
+interface WebhookOutcome { code: number; message: string }
+
+function send(res: Res, code: number, message: string): void {
+  res.statusCode = code;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify({ status: code < 300 ? 'ok' : 'error', message }));
+}
+
+function header(headers: IncomingHttpHeaders, key: string): string {
+  const value = headers[key];
+  return (Array.isArray(value) ? value[0] : value) ?? '';
+}
+
+export function verifyGithubHmac(secret: string, raw: string, signature: string): boolean {
+  const expected = `sha256=${createHmac('sha256', secret).update(raw).digest('hex')}`;
+  const suppliedBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  return suppliedBuffer.length === expectedBuffer.length && timingSafeEqual(suppliedBuffer, expectedBuffer);
+}
+
+//? Header ids are hashed before entering the durable signal metadata: still stable
+//? per delivery, but bounded and unable to inject an oversized/hostile request id.
+export function forgeEventRequestId(
+  workspaceId: string,
+  rawBody: string,
+  headers: IncomingHttpHeaders,
+): string {
+  const githubDelivery = header(headers, 'x-github-delivery');
+  const gitlabEventUuid = header(headers, 'x-gitlab-event-uuid');
+  if (githubDelivery.length > 0) {
+    return `forge-event:github:${createHash('sha256').update(githubDelivery).digest('hex')}`;
+  }
+  if (gitlabEventUuid.length > 0) {
+    return `forge-event:gitlab:${createHash('sha256').update(gitlabEventUuid).digest('hex')}`;
+  }
+  const digest = createHash('sha256').update(workspaceId).update('\0').update(rawBody).digest('hex');
+  return `forge-event:body:${digest}`;
+}
+
+function webhookChunkBytes(chunk: unknown): Uint8Array | null {
+  if (Buffer.isBuffer(chunk)) return chunk;
+  if (typeof chunk === 'string') return Buffer.from(chunk);
+  return chunk instanceof Uint8Array ? chunk : null;
+}
+
+async function readBody(req: IncomingMessage): Promise<{ raw: string; tooLarge: boolean; failed: boolean }> {
   return new Promise((resolve) => {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
     let size = 0;
-    req.on('data', (c?: unknown) => { if (c) { const buf = Buffer.from(c as Buffer); size += buf.length; if (size <= 1_000_000) chunks.push(buf); } });
-    req.on('end', () => { resolve(Buffer.concat(chunks).toString('utf8')); });
-    req.on('error', () => { resolve(''); });
+    let tooLarge = false;
+    let settled = false;
+    const finish = (result: { raw: string; tooLarge: boolean; failed: boolean }): void => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    req.on('data', (chunk: unknown) => {
+      const bytes = webhookChunkBytes(chunk);
+      if (!bytes) return;
+      size += bytes.byteLength;
+      if (size > MAX_FORGE_WEBHOOK_BYTES) {
+        tooLarge = true;
+        return;
+      }
+      chunks.push(bytes);
+    });
+    req.on('end', () => {
+      finish({
+        raw: tooLarge ? '' : Buffer.concat(chunks).toString('utf8'),
+        tooLarge,
+        failed: false,
+      });
+    });
+    req.on('error', () => {
+      finish({ raw: '', tooLarge: false, failed: true });
+    });
   });
 }
 
-const WEBHOOK_PREFIX = '/webhooks/forge/';
+function defaultDependencies(): ForgeWebhookDependencies {
+  const prisma = getPrismaClient();
+  return {
+    prisma,
+    enqueue: async (action) => {
+      const { enqueueInternalAction } = await import('../orchestrator/internalOps');
+      return enqueueInternalAction(action);
+    },
+    broadcast: (workspaceId, keys) => broadcastTicketDelta(prisma, workspaceId, keys),
+    now: Date.now,
+  };
+}
 
-//? Register the webhook route (call once at boot). The origin exemption removes the browser-CSRF
-//? origin gate for the dedicated /webhooks/forge prefix (a server-to-server POST has no Origin);
-//? authentication is the shared-secret check below — exemption is NOT auth (ARCHITECTURE_HTTP §origin).
+//? Exported at the post-body boundary so tests can prove the route only enqueues and
+//? that duplicate delivery ids collapse, without booting a custom HTTP server.
+export async function processForgeWebhook(
+  input: ProcessWebhookInput,
+  dependencies?: ForgeWebhookDependencies,
+): Promise<WebhookOutcome> {
+  const deps = dependencies ?? defaultDependencies();
+  if (Buffer.byteLength(input.rawBody) > MAX_FORGE_WEBHOOK_BYTES) {
+    return { code: 413, message: 'body too large' };
+  }
+
+  const [workspaceError, workspace] = await tryCatch(() => deps.prisma.workspace.findUnique({
+    where: { id: input.workspaceId },
+    select: { webhookSecret: true },
+  }));
+  if (workspaceError) return { code: 503, message: 'webhook unavailable' };
+  const secret = (workspace?.webhookSecret ?? '') || (process.env.WS_WEBHOOK_SECRET ?? '');
+  if (secret.length === 0) return { code: 503, message: 'webhook not configured' };
+
+  const githubSignature = header(input.headers, 'x-hub-signature-256');
+  const authenticated = githubSignature.length > 0
+    ? verifyGithubHmac(secret, input.rawBody, githubSignature)
+    : (header(input.headers, 'x-webhook-secret') || header(input.headers, 'x-gitlab-token')) === secret;
+  if (!authenticated) return { code: 401, message: 'bad secret' };
+
+  const [parseError, body] = tryCatchSync((): unknown => JSON.parse(input.rawBody));
+  if (parseError) return { code: 400, message: 'bad json' };
+  const githubEvent = header(input.headers, 'x-github-event') || undefined;
+  const event = parseWebhookEvent(body, githubEvent);
+  const action: ForgeEventInternalAction = {
+    workspaceId: input.workspaceId,
+    op: 'forge-event-apply',
+    target: {},
+    payload: { event, acceptedAt: deps.now() },
+    userId: 'forge-webhook',
+    clientRequestId: forgeEventRequestId(input.workspaceId, input.rawBody, input.headers),
+  };
+  const [enqueueError, enqueued] = await tryCatch(() => deps.enqueue(action));
+  if (enqueueError || !enqueued) return { code: 500, message: 'ingest failed' };
+
+  const keys = forgeTouchedKeys(enqueued.result);
+  if (keys.length > 0) await tryCatch(() => deps.broadcast(input.workspaceId, keys));
+  if (event.kind !== 'issue') return { code: 200, message: 'ignored' };
+  return { code: 200, message: keys.length > 0 ? `ingested ${keys.join(',')}` : 'no-op' };
+}
+
 export function registerForgeWebhook(): void {
   registerOriginExemptPath({ pathPrefix: WEBHOOK_PREFIX });
   registerCustomRoute(async (req, res) => {
     const rawUrl = (req.url ?? '').split('?')[0] ?? '';
     if (!rawUrl.startsWith(WEBHOOK_PREFIX)) return false;
     const workspaceId = rawUrl.slice(WEBHOOK_PREFIX.length).replace(/\/+$/, '');
-    if ((req.method ?? '').toUpperCase() !== 'POST') { send(res, 405, 'method not allowed'); return true; }
+    if ((req.method ?? '').toUpperCase() !== 'POST') {
+      send(res, 405, 'method not allowed');
+      return true;
+    }
+    if (workspaceId.length === 0) {
+      send(res, 400, 'missing workspace');
+      return true;
+    }
 
-    if (workspaceId.length === 0) { send(res, 400, 'missing workspace'); return true; }
-    //? #27 — per-workspace secret (the /webhooks/forge/<id> URL is per-workspace) with an env fallback for
-    //? single-tenant hosts that never rotate. Plain client: this is a server-to-server ingest keyed by the
-    //? URL workspaceId — no session/tenant context exists on a webhook (verification IS the auth below).
-    const [, wsRow] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { webhookSecret: true } }));
-    const secret = (wsRow?.webhookSecret ?? '') || (process.env.WS_WEBHOOK_SECRET ?? '');
-    //? Secure default: no configured secret ⇒ endpoint disabled.
-    if (secret.length === 0) { send(res, 503, 'webhook not configured'); return true; }
-    const headers = req.headers as Record<string, string | string[] | undefined>;
-    const hdr = (k: string): string => { const v = headers[k]; return (Array.isArray(v) ? v[0] : v) ?? ''; };
-
-    //? Read the RAW body first — GitHub's HMAC is computed over it (must verify before parse).
-    const [, raw] = await tryCatch(() => readBody(req as { on: (ev: string, cb: (c?: unknown) => void) => void }));
-    const rawBody = raw ?? '';
-
-    //? Auth: GitHub presents `X-Hub-Signature-256` (HMAC over the body); GitLab/others present the
-    //? shared secret in plaintext (`X-Gitlab-Token` / `X-Webhook-Secret`). Accept whichever matches.
-    const ghSig = hdr('x-hub-signature-256');
-    const authed = ghSig.length > 0 ? verifyGithubHmac(secret, rawBody, ghSig) : (hdr('x-webhook-secret') || hdr('x-gitlab-token')) === secret;
-    if (!authed) { send(res, 401, 'bad secret'); return true; }
-    //? #27 — record the last ACCEPTED (authenticated) event for the settings-card "last event" indicator.
-    void tryCatch(() => getPrismaClient().workspace.update({ where: { id: workspaceId }, data: { webhookLastEventAt: new Date() } }));
-
-    const ghEvent = hdr('x-github-event') || undefined;
-    const [parseErr, body] = tryCatchSync(() => JSON.parse(rawBody) as unknown);
-    if (parseErr) { send(res, 400, 'bad json'); return true; }
-
-    const event = parseWebhookEvent(body, ghEvent);
-    if (event.kind !== 'issue') { send(res, 200, 'ignored'); return true; }
-    const [ingestErr, key] = await tryCatch(() => ingestIssueEvent(getPrismaClient(), workspaceId, event));
-    if (ingestErr) { send(res, 500, 'ingest failed'); return true; }
-    if (key) void tryCatch(() => broadcastTicketDelta(getPrismaClient(), workspaceId, [key]));
-    send(res, 200, key ? `ingested ${key}` : 'no-op');
+    const body = await readBody(req);
+    if (body.tooLarge) {
+      send(res, 413, 'body too large');
+      return true;
+    }
+    if (body.failed) {
+      send(res, 400, 'bad body');
+      return true;
+    }
+    const outcome = await processForgeWebhook({ workspaceId, headers: req.headers, rawBody: body.raw });
+    send(res, outcome.code, outcome.message);
     return true;
   }, { phase: 'pre-params' });
 }

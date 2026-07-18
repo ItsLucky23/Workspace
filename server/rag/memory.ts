@@ -8,6 +8,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { embedTexts } from './embed';
 import { retrieve, type RetrievedChunk } from './index';
+import { withTenant } from '../tenant/tenantGuard';
 
 //? A reserved "commit" that scopes the memory rows (distinct from any real code commit).
 export const MEMORY_COMMIT = 'institutional-memory';
@@ -41,6 +42,13 @@ export interface MemoryIndexResult { ok: boolean; entries: number; error?: strin
 //? (Re-)index the workspace's Handoffs + CarryOvers into the RAG store under `MEMORY_COMMIT`. Replaces the
 //? prior memory rows (frozen-per-"commit" like code indexing). Bounded to the most recent 100 of each.
 export async function indexInstitutionalMemory(prisma: PrismaClient, workspaceId: string): Promise<MemoryIndexResult> {
+  //? GAP_SCAN E2 — the memory indexer writes RagEntry rows from a background path with no request boundary,
+  //? so it ran unscoped. Report-first scoping (see tenantGuard); the queries below stay explicitly
+  //? workspace-filtered either way, so this can only tighten isolation, never change results.
+  return withTenant(workspaceId, 'rag.indexMemory', () => indexMemoryBody(prisma, workspaceId));
+}
+
+async function indexMemoryBody(prisma: PrismaClient, workspaceId: string): Promise<MemoryIndexResult> {
   const [handoffs, carries] = await Promise.all([
     prisma.handoff.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, body: true } }),
     prisma.carryOver.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, envelope: true } }),

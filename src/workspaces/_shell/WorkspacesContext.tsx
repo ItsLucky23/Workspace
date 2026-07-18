@@ -111,6 +111,8 @@ export interface WorkspacesCtx {
   environments: EnvironmentSummary[];
   deployEnv: (input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string }) => void;
   teardownEnv: (envId: string) => void;
+  //? D3 — redeploy the environment's last live commit (rollback).
+  rollbackEnv: (envId: string) => void;
   //? Deploy/CD (ADR 0038): promote up the ladder + export a downloadable build.
   promoteEnv: (input: { fromKind: string; approved?: boolean }) => void;
   buildArtifacts: BuildArtifactSummary[];

@@ -17,15 +17,21 @@ import {
 } from '../../server/orchestrator/writerContext';
 import { assert, eq, report } from '../_helpers.mts';
 
-const INTERNAL_DOCUMENT_OP: InternalOp = 'document-set-asset-text';
+const INTERNAL_OPS: InternalOp[] = [
+  'document-set-asset-text',
+  'forge-event-apply',
+  'forge-snapshot-apply',
+];
 type InternalPublicOverlap = Extract<InternalOp, ControlOp>;
 const noClientUnionOverlap: [InternalPublicOverlap] extends [never] ? true : false = true;
 
 assert(noClientUnionOverlap, 'InternalOp has no compile-time overlap with the client ControlOp union');
-assert(!(INTERNAL_DOCUMENT_OP in OP_CAPABILITY), 'the internal op is absent from PUBLIC RBAC');
-assert(!(INTERNAL_DOCUMENT_OP in PROPOSE_CATALOG), 'the internal op is absent from the PUBLIC proposal catalog');
-assert(!PUBLIC_DOCUMENT_OPS.has(INTERNAL_DOCUMENT_OP), 'the internal op is absent from the public document sync allowlist');
-assert(!isDocumentOp(INTERNAL_DOCUMENT_OP), 'the public document runtime guard rejects the internal op');
+for (const op of INTERNAL_OPS) {
+  assert(!(op in OP_CAPABILITY), `${op} is absent from PUBLIC RBAC`);
+  assert(!(op in PROPOSE_CATALOG), `${op} is absent from the PUBLIC proposal catalog`);
+  assert(!PUBLIC_DOCUMENT_OPS.has(op), `${op} is absent from the public document sync allowlist`);
+  assert(!isDocumentOp(op), `the public document runtime guard rejects ${op}`);
+}
 
 eq(currentWriterScope(), null, 'writer context is absent outside an execute boundary');
 let observedWorkspaceScope: string | null = null;

@@ -10,6 +10,7 @@ const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorksp
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
 const { currentWriterScope } = await import('../../server/orchestrator/writerContext');
+const { claimControlAction, completeControlAction } = await import('../../server/orchestrator/cluster');
 
 function documentAsset(assets: unknown, url: string): { extractStatus: unknown; extractedText: unknown } | null {
   if (!Array.isArray(assets)) return null;
@@ -46,6 +47,21 @@ const [runError] = await tryCatch(async () => {
   const sharedRequestId = `writer-shared-${String(stamp)}`;
 
   eq(currentWriterScope(), null, 'writer context starts absent at the caller boundary');
+
+  //? Rolling-deploy compatibility: public outcomes written before InternalOp namespacing must still replay.
+  const legacyRequestId = `writer-legacy-${String(stamp)}`;
+  const legacyClaim = await claimControlAction(`${workspaceId}:${legacyRequestId}`);
+  assert(legacyClaim.state === 'claimed', 'the legacy public key can be prepared');
+  if (legacyClaim.state === 'claimed') {
+    await completeControlAction(`${workspaceId}:${legacyRequestId}`, legacyClaim.token, { state: 'success', signalSeq: 4242 });
+  }
+  const legacyReplay = await enqueueControlAction({
+    workspaceId, op: 'rename-workspace', target: {}, payload: { name: 'Must not execute' },
+    userId: owner.id, clientRequestId: legacyRequestId,
+  });
+  eq(legacyReplay.signalSeq, 4242, 'a pre-upgrade public terminal outcome replays from the established key');
+  eq((await prisma.workspace.findUnique({ where: { id: workspaceId } }))?.name, 'Writer foundation WS', 'legacy replay does not execute the write again');
+
   const [publicResult, internalResult] = await Promise.all([
     enqueueControlAction({
       workspaceId, op: 'rename-workspace', target: {}, payload: { name: 'Public action completed' },

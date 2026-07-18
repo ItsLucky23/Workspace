@@ -5,7 +5,20 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 
-const { accumulatePages, isTransientForgeError } = await import('../../server/git/gitlabSync.ts');
+const {
+  accumulatePages,
+  buildForgeSnapshot,
+  forgeSnapshotRequestId,
+  forgeTouchedKeys,
+  isTransientForgeError,
+  MAX_FORGE_DESCRIPTION,
+  MAX_FORGE_ISSUES,
+  MAX_FORGE_LABEL,
+  MAX_FORGE_LABELS,
+  MAX_FORGE_SIGNAL_BYTES,
+  MAX_FORGE_TITLE,
+  readForgeSnapshot,
+} = await import('../../server/git/gitlabSync.ts');
 
 // build a fake forge: `total` issues, `perPage` per page
 const fakeForge = (total: number, perPage: number) => async (page: number): Promise<number[]> => {
@@ -39,13 +52,59 @@ const fakeForge = (total: number, perPage: number) => async (page: number): Prom
   assert(capped, 'capped=true so the caller can log the truncation');
 }
 
-// 4) transient-error classification
+// 4) an oversized provider page cannot defeat the configured per-page count
+{
+  const { rows, capped } = await accumulatePages(async () => Array.from({ length: 1_000 }, (_v, i) => i), { perPage: 100, maxPages: 1 });
+  eq(rows.length, 100, 'an oversized provider page is sliced before accumulation');
+  assert(capped, 'the one-page safety bound remains visible');
+}
+
+// 5) transient-error classification
 {
   assert(isTransientForgeError(new Error('gitlab 503')), '5xx is transient');
   assert(isTransientForgeError(new Error('github 429')), '429 is transient');
   assert(isTransientForgeError(new Error('ECONNRESET')), 'a network error (no status) is transient');
   assert(!isTransientForgeError(new Error('github 401')), '401 is NOT retried (bad token)');
   assert(!isTransientForgeError(new Error('gitlab 404')), '404 is NOT retried');
+  assert(!isTransientForgeError(new Error('forge response too large')), 'the local response-size guard is not retried');
+}
+
+// 6) normalized snapshots bound every field, count, and the serialized signal payload
+{
+  const labels = Array.from({ length: MAX_FORGE_LABELS + 10 }, (_v, i) => `label-${String(i)}-${'x'.repeat(MAX_FORGE_LABEL)}`);
+  const rows = Array.from({ length: MAX_FORGE_ISSUES + 10 }, (_v, i) => ({
+    iid: i + 1,
+    title: 't'.repeat(MAX_FORGE_TITLE + 50),
+    description: 'd'.repeat(MAX_FORGE_DESCRIPTION + 50),
+    labels,
+    web_url: 'https://forge.example/' + 'u'.repeat(3_000),
+    state: 'opened',
+  }));
+  const snapshot = buildForgeSnapshot('project-a', 'gitlab', 'Acme/Repo.git', rows);
+  assert(snapshot.capped, 'count/field pressure is surfaced as capped');
+  assert(snapshot.issues.length <= MAX_FORGE_ISSUES, 'snapshot issue count is bounded');
+  eq(snapshot.repo, 'acme/repo', 'repo identity is normalized for stable matching');
+  assert((snapshot.issues[0]?.title.length ?? 0) <= MAX_FORGE_TITLE, 'title is bounded');
+  assert((snapshot.issues[0]?.description?.length ?? 0) <= MAX_FORGE_DESCRIPTION, 'description is bounded');
+  assert((snapshot.issues[0]?.labels.length ?? 0) <= MAX_FORGE_LABELS, 'label count is bounded');
+  assert((snapshot.issues[0]?.labels[0]?.length ?? 0) <= MAX_FORGE_LABEL, 'label length is bounded');
+  assert(Buffer.byteLength(JSON.stringify(snapshot)) <= MAX_FORGE_SIGNAL_BYTES, 'serialized snapshot stays below the safe signal budget');
+}
+
+// 7) dataset ids are stable across provider ordering and result keys are fail-closed
+{
+  const first = buildForgeSnapshot('project-a', 'github', 'acme/repo', [
+    { iid: 2, title: 'B' },
+    { iid: 1, title: 'A' },
+  ]);
+  const reordered = buildForgeSnapshot('project-a', 'github', 'acme/repo', [
+    { iid: 1, title: 'A' },
+    { iid: 2, title: 'B' },
+  ]);
+  eq(forgeSnapshotRequestId(first), forgeSnapshotRequestId(reordered), 'project+dataset digest is order-stable');
+  eq(forgeTouchedKeys({ keys: ['DEV-1', 'bad', 'DEV-2', 3] }), ['DEV-1', 'DEV-2'], 'only safe touched keys reach broadcasts');
+  const oversized = { ...first, issues: Array.from({ length: MAX_FORGE_ISSUES + 1 }, () => first.issues[0]) };
+  eq(readForgeSnapshot(oversized), null, 'an oversized public snapshot fails runtime validation');
 }
 
 report('tests/unit/forgePagination.test.mts');

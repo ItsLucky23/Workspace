@@ -28,9 +28,54 @@ const DEFAULT_ALLOW = [
   '.debian.org', '.ubuntu.com', '.alpinelinux.org', '.anthropic.com', '.googleapis.com',
 ];
 
-export function egressEnabled(): boolean {
-  return (process.env.WS_EGRESS ?? '') === '1';
+//? GAP_SCAN E3 — the egress posture, shipped report-first.
+//?
+//? Worker containers run untrusted, AI-authored code with FULL outbound network by default (`WS_EGRESS`
+//? was opt-in), so the only thing between a prompt-injected turn and the open internet was good intentions.
+//? Closing that in one step can break real builds (a private registry, an internal API), which is why the
+//? working agreement is warn-then-enforce:
+//?
+//?   WS_EGRESS unset  → 'report'  : full network, but every worker launch is RECORDED as "would be confined"
+//?   WS_EGRESS=1      → 'enforce' : the worker only reaches the allowlist through the proxy
+//?   WS_EGRESS=0      → 'off'     : explicitly opted out, no reporting noise
+//?
+//? Default therefore CHANGES from silent-open to reported-open, and the report is what justifies flipping
+//? the switch to enforce for a given install.
+export type EgressMode = 'enforce' | 'report' | 'off';
+
+export function egressMode(): EgressMode {
+  const raw = (process.env.WS_EGRESS ?? '').trim();
+  if (raw === '1') return 'enforce';
+  if (raw === '0') return 'off';
+  return 'report';
 }
+
+export function egressEnabled(): boolean {
+  return egressMode() === 'enforce';
+}
+
+//? What the confinement WOULD have allowed, for the report + the settings UI.
+export function egressAllowlist(): string[] {
+  return allowDomains();
+}
+
+const unconfined: { count: number; lastAt: number } = { count: 0, lastAt: 0 };
+
+//? Record a worker launched with full network access (report mode). Bounded to a counter — one log line
+//? per launch would drown the console on a busy instance.
+export function noteUnconfinedWorker(now = Date.now()): void {
+  unconfined.count += 1;
+  unconfined.lastAt = now;
+  if (unconfined.count === 1 || unconfined.count % 25 === 0) {
+    console.warn(`[egress] ${String(unconfined.count)} worker container(s) launched with UNRESTRICTED network. Set WS_EGRESS=1 to confine them to the allowlist, or WS_EGRESS=0 to silence this.`);
+  }
+}
+
+export function egressReport(): { mode: EgressMode; unconfinedLaunches: number; lastAt: number; allowlist: string[] } {
+  return { mode: egressMode(), unconfinedLaunches: unconfined.count, lastAt: unconfined.lastAt, allowlist: allowDomains() };
+}
+
+export function resetEgressReport(): void { unconfined.count = 0; unconfined.lastAt = 0; }
 
 function allowDomains(): string[] {
   const extra = (process.env.WS_EGRESS_ALLOW ?? '').split(',').map((s) => s.trim()).filter((s) => s.length > 0);

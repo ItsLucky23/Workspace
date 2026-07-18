@@ -15,6 +15,7 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
+import { extractThemes, summarizeSentiment } from './commentActions';
 import { topPerformers } from './publishMetrics';
 import { isPublishPlatform } from './publish';
 
@@ -59,7 +60,16 @@ export async function audienceLine(workspaceId: string, channelId?: string): Pro
     where: { workspaceId, ...(channelId ? { channelId } : {}) },
     orderBy: { publishedAt: 'desc' }, take: 25, select: { text: true },
   }));
-  return audienceThemesLine(rows ?? []);
+  const comments = rows ?? [];
+  //? F5 bridge — the raw comments plus the AGGREGATE: recurring themes and net sentiment say more than any
+  //? single comment ("4 people asked about pricing" is a brief; one person asking is noise).
+  const themes = extractThemes(comments);
+  const mood = summarizeSentiment(comments);
+  const digest = themes.length > 0
+    ? `
+Recurring audience themes (count · tone): ${themes.map((t) => `${t.theme} (${String(t.count)} · ${t.sentiment})`).join('; ')}. Net sentiment: ${String(mood.score)} over ${String(mood.total)} comments.`
+    : '';
+  return `${audienceThemesLine(comments)}${digest}`;
 }
 
 //? The autopilot chain: idea → piece (channel-bound) → full pipeline → publish, all as Conductor ops.

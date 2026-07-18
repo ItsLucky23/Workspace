@@ -12,7 +12,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { tryCatchSync } from '@luckystack/core';
 import { bareMirrorPathFor } from '../git/repoStore';
-import { ensureEgressInfra, egressLaunchArgs } from './egress';
+import { ensureEgressInfra, egressLaunchArgs, egressMode, noteUnconfinedWorker } from './egress';
 import { serviceEnvArgs } from './serviceEnv';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
@@ -168,9 +168,11 @@ export async function launchTicketContainer(args: { workspaceId: string; project
     ? ['-v', `${authDir}:/auth-ro:ro`, '-e', 'CLAUDE_CONFIG_DIR=/home/agent/.claude']
     : [];
 
-  //? Egress control (§6, opt-in WS_EGRESS=1): confine the worker to an allowlist proxy on an
-  //? internal network. Disabled ⇒ no infra + no extra args (full network, unchanged).
+  //? Egress control (§6). WS_EGRESS=1 confines the worker to an allowlist proxy on an internal network.
+  //? GAP_SCAN E3 — when it is NOT enforced the launch is now RECORDED (report mode) instead of silently
+  //? granting the container the open internet; the report is what justifies flipping enforcement on.
   await ensureEgressInfra();
+  if (egressMode() === 'report') noteUnconfinedWorker();
   await docker(['volume', 'create', volume]);
   const run = await docker([
     'run', '-d', '--name', name, '--hostname', safe(ticketKey),

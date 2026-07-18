@@ -17,6 +17,7 @@ import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
+import { runQueued } from './jobQueue';
 
 //? Q4 + K4 — the workspace-wide AI steering prepended to EVERY feature's system prompt at this single
 //? choke-point: the "how the AI should work here" instruction (Workspace.aiInstruction) + a strong output-
@@ -86,10 +87,20 @@ export async function runAiCompletion(
   //? in the AI layer — one transient blip failed the whole feature turn). Only failed results retry;
   //? 'ai.providerUnavailable' is permanent-for-now and never retried. WS_AI_RETRY_ATTEMPTS tunes (min 1).
   const attempts = Math.max(1, Number(process.env.WS_AI_RETRY_ATTEMPTS ?? '2'));
-  let result = await provider.complete(groundedReq);
-  for (let attempt = 1; attempt < attempts && !result.ok && result.error !== 'ai.providerUnavailable'; attempt++) {
+  //? GAP_SCAN D1 — every provider call goes through the shared queue: at most WS_AI_MAX_CONCURRENT run at
+  //? once (N cron triggers no longer spawn N concurrent turns), and a provider that keeps failing trips its
+  //? circuit so later callers fail FAST instead of paying the full timeout twice through the retry ladder.
+  const complete = (): Promise<AiCompletionResult> => runQueued({
+    key: providerId,
+    run: () => provider.complete(groundedReq),
+    isFailure: (r) => !r.ok,
+    onCircuitOpen: () => ({ ok: false, text: '', providerId, error: 'ai.circuitOpen' }),
+  });
+  let result = await complete();
+  //? A tripped circuit is not a transient blip — retrying it is exactly the waste the breaker exists to stop.
+  for (let attempt = 1; attempt < attempts && !result.ok && result.error !== 'ai.providerUnavailable' && result.error !== 'ai.circuitOpen'; attempt++) {
     await sleep(500 * 2 ** (attempt - 1));
-    result = await provider.complete(groundedReq);
+    result = await complete();
   }
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
   recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });

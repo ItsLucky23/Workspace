@@ -103,7 +103,7 @@
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
 | `sync/workspaces/outputTemplate/v1` | yes | — | login | — | **no** | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
 | `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
-| `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). Three control-ops |
+| `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
 | `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
 | `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |

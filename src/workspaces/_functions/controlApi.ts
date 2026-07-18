@@ -47,7 +47,7 @@ export type ControlOp =
   // multi-project / multi-service (ADR 0035) + scaffolding (ADR 0046)
   | 'project-create' | 'service-create' | 'service-delete' | 'project-from-template'
   // environments / deploy (ADR 0037/0038)
-  | 'env-deploy' | 'env-teardown' | 'env-promote' | 'build-export'
+  | 'env-deploy' | 'env-teardown' | 'env-promote' | 'build-export' | 'env-rollback'
   // CI / quality gates (ADR 0039)
   | 'ci-run' | 'ci-allow-red'
   // AI rollback (ADR 0042)
@@ -64,7 +64,7 @@ export type ControlOp =
   | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images' | 'content-assemble'
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
-  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run'
+  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-gen-thumbnail' | 'content-reply-comment' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run'
   | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
   | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role' | 'studio-send-to-content'
   //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (workspace-scoped instruction blocks
@@ -154,4 +154,6 @@ export const CONFIRM_REQUIRED: ReadonlySet<ControlOp> = new Set<ControlOp>([
   'delete-workspace', 'transfer-ownership', 'remove-member', 'kill', 'pause-all',
   //? SEC8 — tearing down an environment kills its container + route (destructive, B-23 confirm).
   'env-teardown',
+  //? D3 — a rollback replaces what is LIVE with an older commit; the user confirms before it ships.
+  'env-rollback',
 ]);

@@ -38,6 +38,9 @@ import { localizeAsset, trimAudioFile, transcodeContainer } from '../content/ren
 import { runCapture, buildCaptureScenario, generateCaptureScenario, coerceScenario } from '../content/capture';
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
+import { renderThumbnail } from '../content/thumbnail';
+import { postReply } from '../content/commentActions';
+import { getValidConnection } from '../content/publishOAuth';
 import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
@@ -57,7 +60,8 @@ import { indexWorkspace } from '../rag';
 import { indexInstitutionalMemory } from '../rag/memory';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
-import { syncForgeIssues } from '../git/gitlabSync';
+import { applyForgeSnapshot, readForgeSnapshot } from '../git/gitlabSync';
+import { applyForgeEvent } from '../git/webhookIngest';
 import {
   withWorkspaceLease,
   claimControlAction,
@@ -75,7 +79,7 @@ import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
 import { recordAudit } from '../control/audit';
 import { runStage } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
-import { ensureEnvironment, deployEnvironment, teardownEnvironment } from '../deploy/environment';
+import { ensureEnvironment, deployEnvironment, teardownEnvironment, rollbackEnvironment } from '../deploy/environment';
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
@@ -270,6 +274,11 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
+  //? GAP_SCAN D4 — these two were left ORPHANED by the cascade (tenant rows outliving their workspace with
+  //? no way to ever read or delete them). They are tenant data and go with it; the governance trail's
+  //? durability is provided by the out-of-tenant `AuditArchive` mirror, not by leaked rows.
+  await prisma.deployHistory.deleteMany({ where: { workspaceId } });
+  await prisma.auditLog.deleteMany({ where: { workspaceId } });
   await prisma.workspace.delete({ where: { id: workspaceId } });
 }
 
@@ -653,9 +662,12 @@ async function enqueueWriterAction(
   if (writerKind === 'internal' && !action.workspaceId) {
     throw new ControlActionEnqueueError('control.executionFailure');
   }
-  //? Public browser retries and deterministic background retries may legitimately reuse the same
-  //? clientRequestId; the writer-kind namespace prevents one terminal outcome swallowing the other.
-  const dedupKey = `${writerKind}:${action.workspaceId}:${action.clientRequestId}`;
+  //? Keep the established public key byte-for-byte compatible across rolling deploys: an in-flight
+  //? retry may still need to replay a terminal outcome written by the previous release. Only the new
+  //? server-internal surface needs a namespace to prevent collisions with browser request ids.
+  const dedupKey = writerKind === 'public'
+    ? `${action.workspaceId}:${action.clientRequestId}`
+    : `internal:${action.workspaceId}:${action.clientRequestId}`;
   const claim = await claimControlAction(dedupKey);
   if (claim.state === 'success' || claim.state === 'failure') {
     return replayTerminalControlAction(claim);
@@ -737,6 +749,14 @@ async function executeAction(action: WriterAction): Promise<unknown> {
   assertWriterContext(writerScope);
   if (action.workspaceId && currentWorkspaceId() !== action.workspaceId) {
     throw new Error('[conductor] writer tenant context does not match the action workspace');
+  }
+  //? Server-only forge inputs are already parsed/fetched and bounded before enqueue.
+  //? These cases perform deterministic DB apply only; no external network can hold the lease.
+  if (action.op === 'forge-event-apply') {
+    return applyForgeEvent(prisma, action.workspaceId, action.payload.event, action.payload.acceptedAt);
+  }
+  if (action.op === 'forge-snapshot-apply') {
+    return applyForgeSnapshot(prisma, action.workspaceId, action.target.projectId, action.payload.snapshot);
   }
   const { op, payload, target, userId } = action;
   switch (op) {
@@ -1124,13 +1144,14 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return;
     }
     case 'gitlab-resync': {
-      //? Pull the ACTIVE project's open forge issues (GitLab | GitHub) + upsert them as tickets
-      //? (ingestion), then broadcast the touched tickets so the board updates live (ADR 0036).
-      const resyncProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
-      if (!resyncProjectId) return { ok: false, synced: 0, keys: [], error: 'forge.notConfigured' };
-      const res = await syncForgeIssues(prisma, action.workspaceId, resyncProjectId);
-      if (res.ok && res.keys.length > 0) await broadcastTicketDelta(prisma, action.workspaceId, res.keys);
-      return res;
+      //? RBAC + external fetch happened in projectAdmin before dispatch. The public
+      //? Conductor case accepts only that bounded snapshot and applies it deterministically.
+      const resyncProjectId = str(target, 'projectId');
+      const snapshot = readForgeSnapshot(payload.snapshot);
+      if (!resyncProjectId || snapshot?.projectId !== resyncProjectId) {
+        return { ok: false, synced: 0, keys: [], error: 'forge.snapshotRequired' };
+      }
+      return applyForgeSnapshot(prisma, action.workspaceId, resyncProjectId, snapshot);
     }
     //? Per-project forge connection (ADR 0036) — B-23: the Conductor writes the ForgeConnection.
     case 'forge-connect': {
@@ -1810,6 +1831,57 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       }
       if (r.assetId) await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, r.assetId);
       return;
+    }
+    //? GAP_SCAN F1 — compose a thumbnail for a piece and attach it as a `thumbnail` ContentAsset. The
+    //? template path is free (solid colour or an existing asset as background); `backgroundPrompt` opts into
+    //? a paid AI background, budget-guarded inside renderThumbnail. The publish path uploads it (YouTube
+    //? thumbnails.set); TikTok has no public cover endpoint, so there it stays an asset.
+    case 'content-gen-thumbnail': {
+      const contentProjectId = str(payload, 'contentProjectId');
+      const headline = str(payload, 'headline');
+      if (!contentProjectId || !headline) return;
+      const piece = await prisma.contentProject.findFirst({ where: { workspaceId: action.workspaceId, id: contentProjectId }, select: { id: true, channelId: true } });
+      if (!piece) return { ok: false, status: 'error', error: 'content.notFound' };
+      //? Prefer an explicitly-supplied background, else the piece's newest ready image.
+      const bgAssetId = str(payload, 'backgroundAssetId');
+      const bg = bgAssetId
+        ? await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: bgAssetId, status: 'ready' }, select: { url: true } })
+        : await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, contentProjectId, kind: 'image', status: 'ready' }, orderBy: { createdAt: 'desc' }, select: { url: true } });
+      const brand = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { brandLogoUrl: true } });
+      const rendered = await renderThumbnail(prisma, action.workspaceId, {
+        headline,
+        ...(bg?.url ? { backgroundUrl: bg.url } : {}),
+        ...(brand?.brandLogoUrl ? { logoUrl: brand.brandLogoUrl } : {}),
+        ...(str(payload, 'backgroundPrompt') ? { backgroundPrompt: str(payload, 'backgroundPrompt') } : {}),
+      });
+      if (!rendered.ok || !rendered.url) return { ok: false, status: 'error', error: rendered.error ?? 'thumbnail.failed' };
+      const asset = await prisma.contentAsset.create({
+        data: {
+          workspaceId: action.workspaceId, contentProjectId, kind: 'thumbnail', url: rendered.url, status: 'ready',
+          metadata: jsonInput({ headline, aiBackground: rendered.aiBackground, costCents: rendered.costCents }),
+        },
+      });
+      broadcastContentDirty(action.workspaceId);
+      return { id: asset.id, url: rendered.url, aiBackground: rendered.aiBackground };
+    }
+    //? GAP_SCAN F5 — post a reply to an inbox comment. The TEXT is the user's (drafted in the inbox,
+    //? edited, then approved) — the Conductor only ships it, so an AI draft never posts itself (B-23).
+    case 'content-reply-comment': {
+      const commentId = str(payload, 'commentId');
+      const replyText = (str(payload, 'replyText') ?? '').trim();
+      if (!commentId || replyText.length === 0) return { ok: false, status: 'error', error: 'reply.invalidRequest' };
+      const posted = await postReply(prisma, action.workspaceId, { commentId, text: replyText }, {
+        accessTokenFor: async (platform, accountId) => {
+          if (platform !== 'youtube' && platform !== 'tiktok') return null;
+          const conn = await getValidConnection(prisma, action.workspaceId, platform, { ...(accountId ? { accountId } : {}) });
+          return conn?.accessToken ?? null;
+        },
+      });
+      if (!posted.ok) return { ok: false, status: 'error', error: posted.error ?? 'reply.failed' };
+      //? A replied-to comment is handled: mark it read so the inbox reflects reality.
+      await prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, id: commentId }, data: { read: true } });
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true };
     }
     case 'content-critique-image': {
       //? F5 — AI critique of an existing IMAGE asset ("what should change about this photo"). A vision model
@@ -2883,6 +2955,12 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const envId = await ensureEnvironment(prisma, action.workspaceId, deployProjectId, serviceId, kind, { ...(pinnedCommit ? { pinnedCommit } : {}), ...('autoRedeploy' in payload ? { autoRedeploy: bool(payload, 'autoRedeploy') } : {}), ...(subdomain ? { subdomain } : {}), ...(customDomain ? { customDomain } : {}) });
       if (!envId) return { ok: false, status: 'error', error: 'env.noProject' };
       return deployEnvironment(prisma, action.workspaceId, envId);
+    }
+    //? D3 — roll an environment back to its last LIVE commit (refuses when there is no earlier good deploy).
+    case 'env-rollback': {
+      const envId = str(target, 'envId') ?? str(payload, 'envId');
+      if (!envId) return { ok: false };
+      return rollbackEnvironment(prisma, action.workspaceId, envId);
     }
     case 'env-teardown': {
       const envId = str(target, 'envId') ?? str(payload, 'envId');
