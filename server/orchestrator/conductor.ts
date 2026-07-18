@@ -16,7 +16,7 @@ import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/clie
 
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { runInTenant } from '../tenant/tenantContext';
+import { currentWorkspaceId, runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { credentialKey } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
@@ -97,6 +97,8 @@ import { fireEvent } from '../automation/triggers';
 import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
+import type { InternalAction, InternalOp } from './internalOps';
+import { assertWriterContext, GLOBAL_WRITER_SCOPE, runInWriterContext } from './writerContext';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
 //? the plain client with an EXPLICIT `workspaceId` (type-correct; Prisma's input
@@ -285,6 +287,10 @@ export interface ControlAction {
   userId: string;          // the authenticated caller (already RBAC-checked at the route)
   clientRequestId: string;
 }
+
+export type WriterOp = ControlOp | InternalOp;
+type WriterAction = ControlAction | InternalAction;
+type WriterActionKind = 'public' | 'internal';
 
 //? Monotonic per-workspace signal seq (Redis INCR) — the client's merge-on-`seq`
 //? key (CONTROL_API §6.3). Durable across restart; identical shape in Fase 2.
@@ -577,19 +583,20 @@ function replayTerminalControlAction(outcome: ControlActionTerminalOutcome): Enq
   return { signalSeq: outcome.signalSeq };
 }
 
-//? Run the already-claimed action through the original serial queues. Keeping the lease runner
-//? injectable makes lease-failure verification instant while the production default stays identical.
-async function enqueueClaimedControlAction(
-  action: ControlAction,
+//? Run an already-claimed public or internal action through the original serial queues. Keeping the
+//? lease runner injectable makes lease-failure verification instant while production stays identical.
+async function enqueueClaimedWriterAction(
+  action: WriterAction,
   options: EnqueueControlActionOptions,
 ): Promise<EnqueuedControlAction> {
-  //? Login-only ops (create-workspace / accept-invite) carry NO workspace yet: there is no
-  //? per-workspace audit log to append to, and `workspaceId: ''` is not a valid ObjectId (the
-  //? signal write would throw and the chain would swallow it, silently dropping the op). Run them
-  //? on the global serial chain WITHOUT a signal or workspace-lease (independent rows; no tenant).
+  //? Login-only public ops (create-workspace / accept-invite) carry NO workspace yet: there is no
+  //? per-workspace signal or lease. They serialize on the global chain and receive the explicit
+  //? global writer context only around executeAction; internal actions are always workspace-scoped.
   if (!action.workspaceId) {
     let result: unknown;
-    const actionPromise = globalChain.then(async () => { result = await executeAction(action); });
+    const actionPromise = globalChain.then(async () => {
+      result = await runInWriterContext(GLOBAL_WRITER_SCOPE, () => executeAction(action));
+    });
     //? Keep the queue tail recovered for later actions, but await the UNRECOVERED action promise
     //? below so this caller observes execute failures instead of receiving a false-success ACK.
     globalChain = actionPromise.catch((error: unknown) => {
@@ -622,7 +629,7 @@ async function enqueueClaimedControlAction(
         data: { workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
       });
       lease.assertHeld(); // before authoritative action execution
-      result = await executeAction(action);
+      result = await runInWriterContext(workspaceId, () => executeAction(action));
       lease.assertHeld(); // before successful completion / ACK outcome
     });
   }));
@@ -638,13 +645,17 @@ async function enqueueClaimedControlAction(
   return { signalSeq, result };
 }
 
-//? Enqueue a control action + return the allocated signal seq (the ack payload). The Redis outcome
-//? state is namespaced by workspace + clientRequestId and replays terminal failure as failure.
-export async function enqueueControlAction(
-  action: ControlAction,
-  options: EnqueueControlActionOptions = {},
+async function enqueueWriterAction(
+  action: WriterAction,
+  writerKind: WriterActionKind,
+  options: EnqueueControlActionOptions,
 ): Promise<EnqueuedControlAction> {
-  const dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
+  if (writerKind === 'internal' && !action.workspaceId) {
+    throw new ControlActionEnqueueError('control.executionFailure');
+  }
+  //? Public browser retries and deterministic background retries may legitimately reuse the same
+  //? clientRequestId; the writer-kind namespace prevents one terminal outcome swallowing the other.
+  const dedupKey = `${writerKind}:${action.workspaceId}:${action.clientRequestId}`;
   const claim = await claimControlAction(dedupKey);
   if (claim.state === 'success' || claim.state === 'failure') {
     return replayTerminalControlAction(claim);
@@ -655,7 +666,7 @@ export async function enqueueControlAction(
     return replayTerminalControlAction(outcome);
   }
 
-  const [executionError, enqueued] = await tryCatch(() => enqueueClaimedControlAction(action, options));
+  const [executionError, enqueued] = await tryCatch(() => enqueueClaimedWriterAction(action, options));
   if (executionError || !enqueued) {
     await completeControlAction(dedupKey, claim.token, {
       state: 'failure',
@@ -674,12 +685,29 @@ export async function enqueueControlAction(
   return enqueued;
 }
 
+//? Public control entry point: compile-time restricted to client-visible ControlOp.
+export function enqueueControlAction(
+  action: ControlAction,
+  options: EnqueueControlActionOptions = {},
+): Promise<EnqueuedControlAction> {
+  return enqueueWriterAction(action, 'public', options);
+}
+
+//? Server-only bridge used by internalOps.ts; it cannot accept a public ControlAction.
+export function enqueueInternalWriterAction(
+  action: InternalAction,
+  options: EnqueueControlActionOptions = {},
+): Promise<EnqueuedControlAction> {
+  return enqueueWriterAction(action, 'internal', options);
+}
+
 //? DESIGN_DOCS_PROGRAM 1.2 — extract an uploaded file's text OUTSIDE the write lock (a container parse can
-//? take seconds/minutes), then enqueue the single-writer op that persists it onto the asset + indexes it
-//? into RAG. Fire-and-forget from document-edit so the attach op returns immediately (asset shows 'pending').
+//? take seconds/minutes), then enqueue the server-only writer op that persists it onto the asset + indexes
+//? it into RAG. Fire-and-forget from document-edit so the attach op returns immediately (asset is pending).
 async function extractDocumentAssetText(workspaceId: string, documentId: string, url: string, userId: string): Promise<void> {
   const [, parsed] = await tryCatch(() => extractUploadText(url));
-  await enqueueControlAction({
+  const { enqueueInternalAction } = await import('./internalOps');
+  await enqueueInternalAction({
     workspaceId, op: 'document-set-asset-text', userId,
     target: { documentId }, payload: { url, text: parsed?.text ?? '', status: parsed?.status ?? 'failed' },
     clientRequestId: `docasset-${randomUUID()}`,
@@ -702,10 +730,14 @@ async function actorPerms(workspaceId: string, userId: string): Promise<boolean[
   return role?.perms ?? null;
 }
 
-//? The op dispatch. Runs INSIDE runInTenant(workspaceId). Fase 1 implements the
-//? self-contained non-AI writes; the rest are scaffolded (logged no-op) until their
-//? slice lands (member/settings/board breadth + the Fase-2 AI-session ops).
-async function executeAction(action: ControlAction): Promise<unknown> {
+//? The public+internal writer dispatch. Workspace actions run inside runInTenant + the renewable
+//? workspace lease; login-only tenant bootstrap runs in the serialized global writer scope.
+async function executeAction(action: WriterAction): Promise<unknown> {
+  const writerScope = action.workspaceId || GLOBAL_WRITER_SCOPE;
+  assertWriterContext(writerScope);
+  if (action.workspaceId && currentWorkspaceId() !== action.workspaceId) {
+    throw new Error('[conductor] writer tenant context does not match the action workspace');
+  }
   const { op, payload, target, userId } = action;
   switch (op) {
     case 'change-role': {
@@ -2383,6 +2415,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       broadcastContentDirty(action.workspaceId);
       return;
     }
+    //? GAP_SCAN C7 — the `archived` column existed with NO op to write it: a finished document could only
+    //? be deleted (losing its revisions + RAG rows) or kept cluttering the list forever. Archive hides it
+    //? from the default list; restore brings it back. Both keep every revision.
+    case 'document-archive':
+    case 'document-unarchive': {
+      const documentId = str(payload, 'documentId');
+      if (!documentId) return;
+      await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { archived: action.op === 'document-archive' } });
+      broadcastContentDirty(action.workspaceId);
+      return;
+    }
     case 'document-delete': {
       const documentId = str(payload, 'documentId');
       if (!documentId) return;
@@ -2508,9 +2551,23 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     case 'document-gen-image': {
       const documentId = str(payload, 'documentId');
       const prompt = (str(payload, 'prompt') ?? '').trim();
-      if (!documentId || !prompt) return;
+      //? GAP_SCAN C2 — REUSE before regenerate: the workspace is full of already-approved media
+      //? (ContentAsset renders/images), and paying an image-gen for something that exists is pure waste.
+      //? An `assetId` picked in the UI attaches that asset directly — no provider call, no spend. The
+      //? asset must belong to THIS workspace and be ready (tenant + state check, not a client promise).
+      const assetId = str(payload, 'assetId');
+      if (!documentId || (!prompt && !assetId)) return;
       const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
       if (!doc) return;
+      if (assetId) {
+        const existing = await prisma.contentAsset.findFirst({ where: { workspaceId: action.workspaceId, id: assetId, status: 'ready' }, select: { url: true, kind: true } });
+        if (!existing?.url) return { ok: false, status: 'error', error: 'asset.notFound' };
+        const prevAssets = Array.isArray(doc.assets) ? doc.assets : [];
+        const reused = [...prevAssets, { kind: existing.kind === 'video' ? 'file' : 'image', url: existing.url, label: prompt.slice(0, 80) || existing.kind }];
+        await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets: reused } });
+        broadcastContentDirty(action.workspaceId);
+        return { url: existing.url };
+      }
       const img = await generateDocumentImage(prisma, action.workspaceId, doc.title, prompt);
       if (!img.ok || !img.url) return { ok: false, status: 'error', error: img.blocked ? 'media.budgetExceeded' : 'media.failed' };
       const prev = Array.isArray(doc.assets) ? doc.assets : [];
@@ -3103,10 +3160,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
   }
 }
 
-//? First-run + explicit workspace creation. NOT routed through the serial chain
-//? because it CREATES the tenant (there is no workspaceId to scope by yet); it is a
-//? direct, RBAC-gated (login-only) bootstrap write (MIGRATION §5, CONTROL_API §9).
-//? Creates the Workspace + the 3 built-in roles + the caller's Owner membership.
+//? Legacy first-run/bootstrap seam used before a tenant exists. It intentionally has no workspace
+//? writer context or lease; the user-facing `create-workspace` ControlOp instead serializes on the
+//? global Conductor chain and enters the explicit global writer scope around executeAction. Do not use
+//? this seam for post-bootstrap domain writes. Creates Workspace + built-in roles + Owner membership.
 export async function bootstrapWorkspace(input: { name: string; ownerId: string }): Promise<{ workspaceId: string }> {
   const slug = input.name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || 'workspace';
   const ws = await prisma.workspace.create({

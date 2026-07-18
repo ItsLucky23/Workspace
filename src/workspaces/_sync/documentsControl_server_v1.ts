@@ -14,13 +14,15 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image', 'document-export', 'document-restore-revision', 'doc-template-save', 'doc-template-delete']);
-const isDocumentOp = (op: string): op is ControlOp => DOCUMENT_OPS.has(op);
+export const PUBLIC_DOCUMENT_OPS = new Set<string>(['document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft', 'document-discard-draft', 'document-gen-image', 'document-export', 'document-restore-revision', 'document-archive', 'document-unarchive', 'doc-template-save', 'doc-template-delete']);
+export const isDocumentOp = (op: string): op is ControlOp => PUBLIC_DOCUMENT_OPS.has(op);
 
 export interface SyncParams {
   clientInput: {
     op: string; clientRequestId: string;
     documentId?: string; title?: string; content?: string;
+    //? C2 — attach an EXISTING approved asset instead of generating a new one.
+    assetId?: string;
     mode?: string; instruction?: string; prompt?: string; format?: string;
     addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string;
     revisionId?: string;

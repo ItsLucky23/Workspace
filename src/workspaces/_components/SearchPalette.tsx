@@ -77,6 +77,9 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
   const query = q.trim().toLowerCase();
   const tickets = useMemo(() => (query ? ctx.tickets.filter((t) => `${t.id} ${t.title}`.toLowerCase().includes(query)).slice(0, 8) : []), [query, ctx.tickets]);
   const docs = useMemo(() => (query ? ctx.docs.filter((d) => `${d.name} ${d.summary}`.toLowerCase().includes(query)).slice(0, 5) : []), [query, ctx.docs]);
+  //? GAP_SCAN C7 — the Documents module was invisible to ⌘K (only tickets + Sources context-docs were
+  //? indexed), so the fastest way to a document was always the sidebar. Archived docs stay out.
+  const documents = useMemo(() => (query ? ctx.documents.filter((d) => d.archived !== true && `${d.title} ${d.content}`.toLowerCase().includes(query)).slice(0, 5) : []), [query, ctx.documents]);
   const recentTickets = ctx.recent.map((id) => ctx.tickets.find((t) => t.id === id)).filter((t): t is Ticket => t !== undefined);
 
   const go = (view: WsView) => { ctx.navigate(view); onClose(); };
@@ -135,9 +138,16 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                 )}
                 {query && (
                   <>
-                    {tickets.length === 0 && docs.length === 0 && <div className="text-center text-sm text-muted py-8">{translate({ key: 'workspaces.search.noMatches' })}</div>}
+                    {tickets.length === 0 && docs.length === 0 && documents.length === 0 && <div className="text-center text-sm text-muted py-8">{translate({ key: 'workspaces.search.noMatches' })}</div>}
                     {tickets.length > 0 && <Section title={translate({ key: 'workspaces.search.tickets' })} />}
                     {tickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
+                    {documents.length > 0 && <Section title={translate({ key: 'workspaces.search.documents' })} />}
+                    {documents.map((d) => (
+                      <button key={d.id} type="button" onClick={() => { go(`documents/${d.id}`); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
+                        <span className="w-5 text-center text-muted"><Icon name="file-lines" /></span>
+                        <div className="min-w-0 flex-1"><div className="text-sm text-title truncate">{d.title}</div><div className="text-xs text-muted truncate">{d.content.split('\n').find((l) => l.trim().length > 0) ?? ''}</div></div>
+                      </button>
+                    ))}
                     {docs.length > 0 && <Section title={translate({ key: 'workspaces.search.sources' })} />}
                     {docs.map((d) => (
                       <button key={d.id} type="button" onClick={() => { go('sources'); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">

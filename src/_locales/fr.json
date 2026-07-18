@@ -2298,7 +2298,8 @@
       "pipeline": "Pipeline",
       "usage": "Utilisation",
       "hideWorkspaceAi": "Masquer Workspace-AI",
-      "openWorkspaceAi": "Ouvrir Workspace-AI"
+      "openWorkspaceAi": "Ouvrir Workspace-AI",
+      "documents": "Documents"
     },
     "mobileChrome": {
       "board": "Board",
@@ -2378,9 +2379,15 @@
       "draftDiff": "Diff",
       "draftPreview": "Preview",
       "historyTitle": "History",
-      "restore": "Restore",
+      "restore": "Restaurer",
       "restoreConfirmTitle": "Restore this version?",
-      "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first."
+      "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first.",
+      "archive": "Archiver",
+      "showArchived": "Afficher les archives",
+      "hideArchived": "Masquer les archives",
+      "reuseExisting": "Réutiliser une image existante",
+      "reuseHide": "Masquer les images existantes",
+      "reuseThis": "Joindre cet élément"
     },
     "inspire": {
       "title": "Inspiration",
@@ -2392,7 +2399,8 @@
       "inspPlaceholder": "Capture de l'inspiration",
       "compare": "Comparer",
       "done": "Terminé – voir la bibliothèque de thèmes / boîte de revue.",
-      "failed": "Échec – l'IA vision est-elle configurée ?"
+      "failed": "Échec – l'IA vision est-elle configurée ?",
+      "useLive": "utiliser le site en ligne"
     },
     "comments": {
       "tab": "Commentaires",

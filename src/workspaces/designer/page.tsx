@@ -104,7 +104,7 @@ function UiReviewForm() {
 //? no menuHandler-portal gotcha, lesson 0011).
 function InspirationForm() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProjectId, refetch } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, environments, refetch } = useWorkspaces();
   const [ownImage, setOwnImage] = useState('');
   const [inspirationImage, setInspirationImage] = useState('');
   const [busy, setBusy] = useState<'image' | 'compare' | null>(null);
@@ -124,6 +124,11 @@ function InspirationForm() {
     });
   };
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  //? GAP_SCAN C8 — "our page" had to be uploaded by hand even when this project is already DEPLOYED.
+  //? Offer the live environment's URL (prod > staging > dev) as a one-tap fill; compare captures URLs itself.
+  const liveEnv = ['prod', 'staging', 'dev']
+    .map((kind) => environments.find((e) => e.projectId === activeProjectId && e.status === 'live' && e.kind === kind))
+    .find((e) => e?.url !== undefined && e.url.length > 0);
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted">{translate({ key: 'workspaces.inspire.desc' })}</div>
@@ -132,8 +137,10 @@ function InspirationForm() {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
-          <span className="text-muted">{translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
+          <span className="text-muted">{ownImage.startsWith('http') ? ownImage.replace(/^https?:\/\//, '').slice(0, 28) : translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { setOwnImage(uploaded); setResult(null); }} />
+          {/* C8 — one tap fills our DEPLOYED page; the compare op screenshots the URL server-side. */}
+          {liveEnv?.url !== undefined && <button type="button" onClick={() => { setOwnImage(liveEnv.url ?? ''); setResult(null); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.inspire.useLive' })}</button>}
         </div>
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
           <span className="text-muted">{translate({ key: 'workspaces.inspire.inspPlaceholder' })}</span>

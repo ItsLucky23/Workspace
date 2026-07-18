@@ -9,6 +9,7 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieve } from '../rag/index';
+import { retrieveMemory } from '../rag/memory';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { resolveProjectId } from '../orchestrator/projectResolve';
 import { parseFindings, recordFindings } from './findings';
@@ -20,7 +21,7 @@ import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untruste
 //? `productContext` (zelf-bewuste-AI-brug) is the PRODUCT-knowledge corpus — what THIS platform can
 //? do — kept as a separate section so ideas can lean on real platform capabilities, which matters
 //? most for content/design workspaces that have no code index at all.
-export function buildInterviewerPrompt(focus: string, context = '', productContext = ''): { system: string; prompt: string } {
+export function buildInterviewerPrompt(focus: string, context = '', productContext = '', memoryContext = ''): { system: string; prompt: string } {
   const scope = focus.trim().length > 0 ? focus.trim() : 'the whole project';
   const grounding = context.trim().length > 0
     ? `\n\nGROUND your ideas in these real excerpts from the codebase (cite the file when relevant):\n${renderUntrustedContext({ provenance: 'RAG chunks: repository excerpts', content: context.trim(), maxChars: 6000 })}`
@@ -28,9 +29,16 @@ export function buildInterviewerPrompt(focus: string, context = '', productConte
   const productGrounding = productContext.trim().length > 0
     ? `\n\nPLATFORM CAPABILITIES (what this workspace platform itself offers — use these when an idea can be realised with an existing module):\n${renderUntrustedContext({ provenance: 'RAG chunks: product capabilities', content: productContext.trim(), maxChars: 3000 })}`
     : '';
+  //? C1 — prior learnings: what was already tried, decided or ruled out (institutional memory).
+  const memoryGrounding = memoryContext.trim().length > 0
+    ? `
+
+PRIOR LEARNINGS from earlier sessions (do NOT re-propose something already tried and rejected):
+${renderUntrustedContext({ provenance: 'RAG chunks: institutional memory', content: memoryContext.trim(), maxChars: 3000 })}`
+    : '';
   return {
     system: 'You are a sharp senior engineer reviewing a software project and proposing improvements. Output 3–5 concise, concrete, actionable ideas as a short markdown list. Each line MUST be exactly: `- [area] **Title** — one sentence on why it matters`, where area is ONE of reliability, dx, ux, performance, security, product. No preamble, no filler.',
-    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}${productGrounding}${grounding || productGrounding ? `\n\n${UNTRUSTED_CONTEXT_POLICY}` : ''}`,
+    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}${productGrounding}${memoryGrounding}${grounding || productGrounding || memoryGrounding ? `\n\n${UNTRUSTED_CONTEXT_POLICY}` : ''}`,
   };
 }
 
@@ -53,7 +61,10 @@ export function registerInterviewerRole(): void {
       //? for content/design workspaces (no code index) stop being generic bullets.
       const [, pk] = await tryCatch(() => retrieveProductKnowledge(getPrismaClient(), query, 3));
       const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 3000);
-      const { system, prompt } = buildInterviewerPrompt(focus, context, productContext);
+      //? C1 — weigh what was already tried/decided, so the interviewer stops re-proposing known dead ends.
+      const [, mem] = await tryCatch(() => retrieveMemory(getPrismaClient(), ctx.workspaceId, query, 4));
+      const memoryContext = (mem ?? []).map((m) => `- ${m.content}`).join('\n').slice(0, 3000);
+      const { system, prompt } = buildInterviewerPrompt(focus, context, productContext, memoryContext);
       const [error, res] = await tryCatch(() => runAiCompletion('interviewer', { prompt, system, timeoutMs: 180_000, workspaceId: ctx.workspaceId, label: 'Interviewer · improvement ideas' }));
       if (error || !res?.ok || res.text.trim().length === 0) return { kind: 'interview-result', title: 'Interviewer', body: 'Could not generate ideas this run — try again.' };
       //? Persist the ideas as CATEGORISED findings (ADR 0034) so they survive + can become tickets.

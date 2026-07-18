@@ -72,7 +72,7 @@ export type ControlOp =
   | 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-delete' | 'ai-skill-reset'
   //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. AI output lands as aiDraft; apply-draft is the
   //? consent that writes content (B-23). gen-image reuses the media pipeline into document assets.
-  | 'document-create' | 'document-edit' | 'document-delete' | 'document-ai' | 'document-apply-draft' | 'document-discard-draft' | 'document-gen-image' | 'document-export' | 'document-set-asset-text' | 'document-restore-revision' | 'doc-template-save' | 'doc-template-delete'
+  | 'document-create' | 'document-edit' | 'document-delete' | 'document-ai' | 'document-apply-draft' | 'document-discard-draft' | 'document-gen-image' | 'document-export' | 'document-restore-revision' | 'document-archive' | 'document-unarchive' | 'doc-template-save' | 'doc-template-delete'
   //? CI (DOCUMENTS_AND_SKILLS) — the read-only comment inbox (refresh + mark read; replies are a non-goal).
   | 'comments-refresh' | 'comments-mark-read'
   // notifications (18)

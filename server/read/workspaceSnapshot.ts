@@ -366,7 +366,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     await tryCatch(() => ensureBuiltinSkills(currentWorkspaceId()));
     const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
     //? DOC1 — the workspace's documents (newest-edited first; bounded).
-    const documentRows = await prisma.document.findMany({ where: { workspaceId: currentWorkspaceId(), archived: false }, orderBy: { updatedAt: 'desc' }, take: 100 });
+    //? C7 — archived documents ship too (flagged), so the list can offer a restore instead of hiding them forever.
+    const documentRows = await prisma.document.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { updatedAt: 'desc' }, take: 100 });
     //? DESIGN_DOCS_PROGRAM 2.5 — per-document revision history (id/note/date only; content is fetched on
     //? restore, never shipped in the snapshot) so the editor can list + restore prior versions.
     const revisionRows = await prisma.documentRevision.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' }, select: { id: true, documentId: true, note: true, createdAt: true }, take: 500 });
@@ -614,6 +615,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         }),
         revisions: revisionsByDoc.get(d.id) ?? [],
         updatedAt: d.updatedAt.getTime(),
+        ...(d.archived ? { archived: true } : {}),
       })),
       tickets: ticketRows.map((t) => {
         const mapped = toTicket(t);

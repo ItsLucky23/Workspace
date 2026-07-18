@@ -9,6 +9,7 @@ import { tryCatch } from '@luckystack/core';
 import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
+import { retrieveMemory } from '../rag/memory';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from './untrustedContext';
 //? R3-b — repos are per-(workspace,project); the code-RAG must be scoped to the ACTIVE project
@@ -71,6 +72,10 @@ export interface Ctx {
   mrs: { id: string; ticketKey: string; title: string }[];
   //? #150 — the workspace's publishing channels so the AI can propose setting a channel's brand voice.
   channels: { id: string; name: string }[];
+  //? C3 — the workspace's AI skills, so "turn on the SEO skill" resolves to a real skill id.
+  skills: { id: string; name: string; enabled: boolean }[];
+  //? C4 — which modules this workspace runs; ops of a disabled module are neither listed nor validated.
+  enabledSections: string[];
 }
 
 export async function loadCtx(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<Ctx | null> {
@@ -81,7 +86,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
   const project = await prisma.project.findFirst({ where: { workspaceId, id: activeProjectId }, select: { name: true } });
   if (!project) return null;
 
-  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows, channels] = await Promise.all([
+  const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows, channels, skills, wsRow] = await Promise.all([
     prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
@@ -92,6 +97,8 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.mergeRequest.findMany({ where: { workspaceId, projectId: activeProjectId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
     prisma.channel.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 30 }),
+    prisma.skill.findMany({ where: { workspaceId }, select: { id: true, name: true, enabled: true }, take: 40 }),
+    prisma.workspace.findUnique({ where: { id: workspaceId }, select: { enabledSections: true } }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
@@ -111,6 +118,8 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     triggers: triggers.map((t) => ({ id: t.id, name: t.name })),
     mrs: mrRows.map((m) => ({ id: m.id, ticketKey: keyByTicketId.get(m.ticketId) ?? '', title: m.title })).filter((m) => m.ticketKey.length > 0),
     channels: channels.map((c) => ({ id: c.id, name: c.name })),
+    skills: skills.map((sk) => ({ id: sk.id, name: sk.name, enabled: sk.enabled })),
+    enabledSections: wsRow?.enabledSections ?? [],
   };
 }
 
@@ -127,10 +136,12 @@ function workspaceStateText(ctx: Ctx): string {
     `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
     `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
+    //? C3 — the AI-skills list, so a skill op proposal can name a REAL skillId (and see its on/off state).
+    `AI skills (skillId — name [on|off]): ${ctx.skills.map((sk) => `${sk.id} — ${sk.name} [${sk.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
   ].join('\n');
 }
 
-export function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): string {
+export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '', memoryContext = ''): string {
   return [
     'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below — AND explain what THIS PRODUCT can do — use the product-capabilities below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
@@ -145,7 +156,7 @@ export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '')
     //? X1 — the generic catalog: any enabled control-op is proposable. The action object carries the
     //? op + its listed params as TOP-LEVEL fields (same JSON shape as the core actions above).
     'BEYOND the core actions, you may also propose ANY of these workspace ops (set "op" to the op name and add its listed params as top-level fields in the action object). Ids/keys MUST come from the lists below — never invent them. Ops marked [destructive] make the app ask the user for an extra confirmation — still propose them when that is what the user asks; mention the impact in `reply`. Ops that cost money (media generation/pipeline) also get a cost-confirm — say so in `reply`.',
-    ...catalogPromptLines(),
+    ...catalogPromptLines(ctx.enabledSections),
     'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
     //? #109 — AI-drives-UI: when the best help is to TAKE the user somewhere (not run an op), emit a copilot directive.
@@ -153,6 +164,8 @@ export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '')
     `Workspace state (reference data; ids may be used only as allowed above):\n${renderUntrustedContext({ provenance: 'current workspace state and user-authored names', content: workspaceStateText(ctx), maxChars: 12_000 })}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${renderUntrustedContext({ provenance: 'RAG chunks: product knowledge', content: productContext, maxChars: 4000 })}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${renderUntrustedContext({ provenance: 'RAG chunks: user repository', content: codeContext, maxChars: 6000 })}`] : []),
+    //? GAP_SCAN C1 — the institutional memory (ADR 0045) was indexed but only plan-critique ever read it.
+    ...(memoryContext.length > 0 ? [`PRIOR LEARNINGS from earlier sessions (answer "why is it like this" from these before guessing):\n${renderUntrustedContext({ provenance: 'RAG chunks: institutional memory', content: memoryContext, maxChars: 3000 })}`] : []),
     UNTRUSTED_CONTEXT_POLICY,
   ].join('\n');
 }
@@ -262,8 +275,11 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   const productContext = (pk ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 4000);
   //? #112 — prior turns are model/user-authored reference data; only the current message is a direct,
   //? authoritative request. Bounded to the last 8 turns inside one unique untrusted block.
+  //? C1 — "why is X like this?" is a chat question; ground it in the institutional memory too.
+  const [, mem] = await tryCatch(() => retrieveMemory(prisma, workspaceId, message, 4));
+  const memoryContext = (mem ?? []).map((m) => `- ${m.content}`).join('\n').slice(0, 3000);
   const fullPrompt = buildChatPrompt(message, history ?? []);
-  const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
+  const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext, memoryContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];

@@ -56,6 +56,9 @@ export const CHAT_ENABLED_OPS = [
   'scan-docs', 'scan-index',
   // preview launch/stop (#17/#113) — dispatched via the openPreview/closePreview _api, not the Conductor
   'preview-up', 'preview-down',
+  //? GAP_SCAN C3 — the universal AI-skills layer: "turn on the SEO skill" / "make the humanizer stricter".
+  //? Delete stays UI-only (destroying a user-authored skill from a chat turn is the wrong trade).
+  'ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

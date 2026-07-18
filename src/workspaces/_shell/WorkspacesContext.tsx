@@ -254,10 +254,13 @@ export interface WorkspacesCtx {
   deleteDocTemplate: (slug: string) => void;
   editDocument: (input: { documentId: string; title?: string; content?: string; addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string }) => void;
   deleteDocument: (documentId: string) => void;
+  //? C7 — archive (true) or restore (false) a document.
+  archiveDocument: (documentId: string, archived: boolean) => void;
   runDocumentAi: (documentId: string, mode: string, instruction: string) => Promise<string | null>;
   applyDocumentDraft: (documentId: string) => void;
   discardDocumentDraft: (documentId: string) => void;
-  genDocumentImage: (documentId: string, prompt: string) => void;
+  //? C2 — `assetId` attaches an existing approved asset instead of generating a new one.
+  genDocumentImage: (documentId: string, prompt: string, assetId?: string) => void;
   exportDocument: (documentId: string, format: string) => void;
   restoreDocumentRevision: (documentId: string, revisionId: string) => void;
   //? CI — the read-only comment inbox (refresh + mark read; the list lives on content.comments).

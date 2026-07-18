@@ -14,6 +14,7 @@
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import type { ChatProposal } from '../../src/workspaces/_data/types';
 import { listServicePresets } from '../container/servicePresets';
+import { isSectionEnabled, type WorkspaceModuleId } from '../../src/workspaces/_data/modules';
 
 //? The context slice generic validation checks references against (structural subset of
 //? workspaceChat's Ctx — no import to avoid a runtime cycle).
@@ -30,9 +31,13 @@ export interface CatalogCtx {
   triggers: { id: string; name: string }[];
   mrs: { id: string; ticketKey: string }[];
   channels: { id: string; name: string }[];
+  //? C3 — the workspace's AI skills, so "turn on the SEO skill" validates against a REAL skill id.
+  skills: { id: string; name: string }[];
+  //? GAP_SCAN C4 — the workspace's enabled modules. An empty list is the legacy "everything on" state.
+  enabledSections?: string[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -135,13 +140,30 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'raise-cap': LATER_D, 'edit-budget': LATER_D, 'resume-spend': LATER_D,
   'skill-toggle': LATER,
-  //? SK1 — the universal AI-skills layer (flip to enabled once chat proposing them proves useful).
-  'ai-skill-save': LATER, 'ai-skill-toggle': LATER, 'ai-skill-delete': LATER_D, 'ai-skill-reset': LATER,
+  //? SK1 — the universal AI-skills layer. GAP_SCAN C3: toggling/saving a skill is exactly the kind of
+  //? "turn on the SEO skill" ask the Assistant should handle, so save/toggle/reset are ENABLED (delete
+  //? stays `later` — destroying a user-authored skill from a chat turn is a worse trade than a UI click).
+  'ai-skill-save': {
+    mode: 'enabled',
+    hint: 'create or update an AI skill (an instruction block injected into AI runs). params: instruction, name (required when creating), skillId (from the skills list below, to update), examples?, applyPoints? (any of: all|content|studio|designer|dev|interviewer|documents|chat|custom)',
+    params: { instruction: { kind: 'string', required: true }, name: { kind: 'string' }, skillId: { kind: 'skillId' }, examples: { kind: 'string' }, applyPoints: { kind: 'string' } },
+  },
+  'ai-skill-toggle': {
+    mode: 'enabled',
+    hint: 'turn an AI skill on or off. params: skillId (from the skills list below), on (true/false)',
+    params: { skillId: { kind: 'skillId', required: true }, on: { kind: 'boolean', required: true } },
+  },
+  'ai-skill-reset': {
+    mode: 'enabled',
+    hint: 'reset a BUILT-IN AI skill back to its shipped instruction. params: skillId (from the skills list below)',
+    params: { skillId: { kind: 'skillId', required: true } },
+  },
+  'ai-skill-delete': LATER_D,
   //? DOC — the Documents module (draft-based; flip to enabled once chat-proposing documents proves useful).
   'document-create': LATER, 'document-edit': LATER, 'document-delete': LATER_D, 'document-ai': LATER,
   'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER, 'document-export': LATER,
-  'document-set-asset-text': EXCLUDED, // server-internal (extraction persist); never AI-proposed
   'document-restore-revision': LATER,
+  'document-archive': LATER, 'document-unarchive': LATER,
   'doc-template-save': LATER, 'doc-template-delete': LATER_D,
 
   //? CI — the read-only comment inbox.
@@ -394,12 +416,50 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
 };
 
 //? The server-side enabled set (the client twin lives in src/workspaces/_data/chatOps.ts — parity-tested).
+//? GAP_SCAN C4 — which workspace MODULE each ENABLED op needs. A content-only workspace was still offered
+//? board/deploy/CI ops it cannot run, so the model proposed actions that could only fail. Ops absent from
+//? this table are cross-cutting (agent controls, settings, memory, custom tasks) and stay everywhere.
+export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
+  //? development — code, board, pipeline, deploy, CI, git, services.
+  'ticket-edit': 'development', 'stage-create': 'development', 'stage-delete': 'development', 'stage-reorder': 'development',
+  'project-create': 'development', 'project-from-template': 'development',
+  'env-deploy': 'development', 'env-teardown': 'development', 'env-promote': 'development', 'build-export': 'development',
+  'ci-run': 'development', 'ci-allow-red': 'development', 'root-cause': 'development', 'plan-critique': 'development',
+  'db-migrate-create': 'development', 'db-introspect': 'development',
+  'mr-review': 'development', 'mr-rollback': 'development',
+  'scan-docs': 'development', 'scan-index': 'development', 'gitlab-resync': 'development', 'save-git-config': 'development',
+  'service-provision': 'development', 'service-teardown': 'development',
+  'preview-up': 'development', 'preview-down': 'development',
+  //? content — pieces, media generation, channels, publishing.
+  'content-advance': 'content', 'content-archive': 'content', 'content-unarchive': 'content',
+  'content-gen-script': 'content', 'content-gen-voice': 'content', 'content-gen-images': 'content', 'content-assemble': 'content',
+  'content-gen-shortform': 'content', 'content-gen-avatar': 'content', 'content-gen-music': 'content', 'content-gen-sfx': 'content',
+  'content-gen-3d': 'content', 'content-critique-image': 'content', 'content-video-restyle': 'content', 'content-edit-image': 'content',
+  'content-run-pipeline': 'content', 'content-edit-brand': 'content', 'content-edit-product': 'content',
+  'channel-create': 'content', 'channel-edit': 'content', 'channel-delete': 'content',
+  'capture-run': 'content', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
+};
+
+//? Each module's DEFINING section. `isModuleEnabled` is deliberately loose (any section counts) because
+//? the modules share sections — 'scheduled' belongs to development, content AND design — so a content-only
+//? workspace would read as "development on". For op-gating we need the strict question, so key on the one
+//? section a module cannot be without.
+const MODULE_SECTION: Record<WorkspaceModuleId, string> = { development: 'board', content: 'content', design: 'designer', documents: 'documents' };
+
+//? Is this op available in a workspace with these sections on? An op with no module is always available;
+//? an empty `enabledSections` is the legacy all-on state (see `isSectionEnabled`).
+export function opAvailable(op: ControlOp, enabledSections?: string[]): boolean {
+  const mod = OP_MODULE[op];
+  return mod === undefined || isSectionEnabled(enabledSections ?? [], MODULE_SECTION[mod]);
+}
+
 export const ENABLED_OPS: ControlOp[] = (Object.keys(PROPOSE_CATALOG) as ControlOp[]).filter((op) => PROPOSE_CATALOG[op].mode === 'enabled');
 
 //? Compact prompt lines for the systemPrompt — one line per enabled op (+ the preset keys the
 //? service-provision hint refers to). Grouped output keeps the prompt small (~30 lines).
-export function catalogPromptLines(): string[] {
-  const lines = ENABLED_OPS.map((op) => {
+export function catalogPromptLines(enabledSections?: string[]): string[] {
+  //? C4 — only list ops this workspace can actually run.
+  const lines = ENABLED_OPS.filter((op) => opAvailable(op, enabledSections)).map((op) => {
     const spec = PROPOSE_CATALOG[op];
     return `- ${op}${spec.destructive ? ' [destructive]' : ''}: ${spec.hint ?? ''}`;
   });
@@ -427,6 +487,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'triggerId') return typeof value === 'string' && ctx.triggers.some((t) => t.id === value) ? value : undefined;
   if (kind === 'mrId') return typeof value === 'string' && ctx.mrs.some((m) => m.id === value) ? value : undefined;
   if (kind === 'channelId') return typeof value === 'string' && ctx.channels.some((c) => c.id === value) ? value : undefined;
+  if (kind === 'skillId') return typeof value === 'string' && ctx.skills.some((sk) => sk.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }
@@ -442,6 +503,8 @@ export function validateGenericAction(raw: unknown, ctx: CatalogCtx): ChatPropos
   const typedOp = op as ControlOp;
   const spec = PROPOSE_CATALOG[typedOp];
   if (spec.mode !== 'enabled') return null;
+  //? C4 — a module the workspace turned off is not proposable, even if the model names the op anyway.
+  if (!opAvailable(typedOp, ctx.enabledSections)) return null;
   const params: Record<string, unknown> = {};
   for (const [field, pSpec] of Object.entries(spec.params ?? {})) {
     const value = checkParam(pSpec.kind, a[field], pSpec, ctx);

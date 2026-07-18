@@ -2298,7 +2298,8 @@
       "pipeline": "Pipeline",
       "usage": "Nutzung",
       "hideWorkspaceAi": "Workspace-AI ausblenden",
-      "openWorkspaceAi": "Workspace-AI öffnen"
+      "openWorkspaceAi": "Workspace-AI öffnen",
+      "documents": "Dokumente"
     },
     "mobileChrome": {
       "board": "Board",
@@ -2378,9 +2379,15 @@
       "draftDiff": "Diff",
       "draftPreview": "Preview",
       "historyTitle": "History",
-      "restore": "Restore",
+      "restore": "Wiederherstellen",
       "restoreConfirmTitle": "Restore this version?",
-      "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first."
+      "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first.",
+      "archive": "Archivieren",
+      "showArchived": "Archivierte anzeigen",
+      "hideArchived": "Archivierte ausblenden",
+      "reuseExisting": "Vorhandenes Bild wiederverwenden",
+      "reuseHide": "Vorhandene Bilder ausblenden",
+      "reuseThis": "Dieses Asset anhängen"
     },
     "inspire": {
       "title": "Inspiration",
@@ -2392,7 +2399,8 @@
       "inspPlaceholder": "Screenshot der Inspiration",
       "compare": "Vergleichen",
       "done": "Fertig - siehe Theme-Bibliothek / Review-Inbox.",
-      "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert?"
+      "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert?",
+      "useLive": "Live-Site nutzen"
     },
     "comments": {
       "tab": "Kommentare",

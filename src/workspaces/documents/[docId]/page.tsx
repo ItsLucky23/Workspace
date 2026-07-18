@@ -35,7 +35,7 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
+  const { documents, content: contentSnapshot, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
 
   const [title, setTitle] = useState(doc?.title ?? '');
@@ -46,6 +46,13 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   const [aiInstruction, setAiInstruction] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [imgPrompt, setImgPrompt] = useState('');
+  //? C2 — the workspace's already-approved, ready image assets: reusing one costs nothing.
+  const [showReuse, setShowReuse] = useState(false);
+  const reusableAssets = contentSnapshot.pieces
+    .flatMap((piece) => piece.assets.map((a) => ({ ...a, pieceTitle: piece.title })))
+    .filter((a) => a.status === 'ready' && !a.stub && (a.kind === 'image' || a.kind === 'thumbnail'))
+    .map((a) => ({ id: a.id, url: a.url, label: a.pieceTitle }))
+    .slice(0, 12);
   const [exporting, setExporting] = useState<string | null>(null);
   //? Draft review: rendered preview vs a line diff against the current content (apply = consent, B-23).
   const [draftView, setDraftView] = useState<'diff' | 'preview'>('diff');
@@ -194,7 +201,25 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           <input value={imgPrompt} onChange={(e) => { setImgPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.documents.imagePromptPlaceholder' })} className={`${fieldCls} flex-1 min-w-52 max-w-md`} />
           <WsButton icon="image" disabled={imgPrompt.trim().length === 0} onClick={() => { genDocumentImage(doc.id, imgPrompt.trim()); setImgPrompt(''); }}>{translate({ key: 'workspaces.documents.genImage' })}</WsButton>
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,.pdf,.docx,.txt,.md" labelKey="workspaces.documents.upload" icon="plus" onUploaded={(url, kind) => { editDocument({ documentId: doc.id, addAssetUrl: url, addAssetKind: kind, addAssetLabel: translate({ key: 'workspaces.documents.uploadedLabel' }) }); }} />
+          {/* GAP_SCAN C2 — reuse before regenerate: the workspace's already-approved media is offered
+              first, so an existing visual costs nothing instead of a fresh image-gen. */}
+          {reusableAssets.length > 0 && (
+            <button type="button" onClick={() => { setShowReuse((v) => !v); }} className="text-xs text-primary hover:underline cursor-pointer">
+              {translate({ key: showReuse ? 'workspaces.documents.reuseHide' : 'workspaces.documents.reuseExisting' })} ({String(reusableAssets.length)})
+            </button>
+          )}
         </div>
+        {showReuse && (
+          <div className="flex gap-2 flex-wrap mt-1">
+            {reusableAssets.map((a) => (
+              <button key={a.id} type="button" onClick={() => { genDocumentImage(doc.id, imgPrompt.trim(), a.id); setImgPrompt(''); setShowReuse(false); }}
+                className="w-28 shrink-0 text-left cursor-pointer" title={translate({ key: 'workspaces.documents.reuseThis' })}>
+                <img src={a.url} alt={a.label} className="w-28 h-20 object-cover rounded-lg border border-container1-border hover:border-primary-border transition-colors" />
+                <span className="text-[11px] text-muted truncate block mt-0.5">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* History: prior revisions (restore snapshots current first, so it's undoable). */}

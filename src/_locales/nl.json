@@ -2298,7 +2298,8 @@
       "pipeline": "Pipeline",
       "usage": "Verbruik",
       "hideWorkspaceAi": "Workspace-AI verbergen",
-      "openWorkspaceAi": "Workspace-AI openen"
+      "openWorkspaceAi": "Workspace-AI openen",
+      "documents": "Documenten"
     },
     "mobileChrome": {
       "board": "Board",
@@ -2378,9 +2379,15 @@
       "draftDiff": "Verschil",
       "draftPreview": "Voorbeeld",
       "historyTitle": "Geschiedenis",
-      "restore": "Herstellen",
+      "restore": "Terugzetten",
       "restoreConfirmTitle": "Deze versie herstellen?",
-      "restoreConfirmBody": "Deze revisie als huidige inhoud herstellen? De huidige versie wordt eerst in de geschiedenis bewaard."
+      "restoreConfirmBody": "Deze revisie als huidige inhoud herstellen? De huidige versie wordt eerst in de geschiedenis bewaard.",
+      "archive": "Archiveren",
+      "showArchived": "Toon gearchiveerd",
+      "hideArchived": "Verberg gearchiveerd",
+      "reuseExisting": "Hergebruik bestaande afbeelding",
+      "reuseHide": "Verberg bestaande afbeeldingen",
+      "reuseThis": "Voeg dit bestand toe"
     },
     "inspire": {
       "title": "Inspiratie",
@@ -2392,7 +2399,8 @@
       "inspPlaceholder": "Screenshot van inspiratie",
       "compare": "Vergelijken",
       "done": "Klaar - kijk in je theme-bibliotheek / review-inbox.",
-      "failed": "Mislukt - is de vision-AI geconfigureerd?"
+      "failed": "Mislukt - is de vision-AI geconfigureerd?",
+      "useLive": "gebruik live site"
     },
     "comments": {
       "tab": "Reacties",

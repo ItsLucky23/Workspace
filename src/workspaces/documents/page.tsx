@@ -40,11 +40,15 @@ function timeAgo(ms: number): string {
 
 export default function DocumentsPage() {
   const translate = useTranslator();
-  const { documents, documentTemplates, createDocument, deleteDocument, saveDocTemplate, deleteDocTemplate, navigate } = useWorkspaces();
+  const { documents, documentTemplates, createDocument, deleteDocument, archiveDocument, saveDocTemplate, deleteDocTemplate, navigate } = useWorkspaces();
   const [newTitle, setNewTitle] = useState('');
   const [templateSlug, setTemplateSlug] = useState('');
   //? Template manager (option B — user-authorable). editSlug: '' = new, else editing/overriding that slug.
   const [showTpl, setShowTpl] = useState(false);
+  //? C7 — archived documents are hidden by default but never lost.
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedCount = documents.filter((d) => d.archived === true).length;
+  const visibleDocuments = showArchived ? documents : documents.filter((d) => d.archived !== true);
   const [editSlug, setEditSlug] = useState('');
   const [tplName, setTplName] = useState('');
   const [tplDesc, setTplDesc] = useState('');
@@ -128,12 +132,19 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {documents.length === 0 && (
+      {/* GAP_SCAN C7 — archived documents are kept (with their revisions) and hidden behind this toggle. */}
+      {archivedCount > 0 && (
+        <button type="button" onClick={() => { setShowArchived((v) => !v); }} className="self-start text-xs text-muted hover:text-title cursor-pointer inline-flex items-center gap-1.5">
+          <Icon name={showArchived ? 'eye-slash' : 'box-archive'} /> {translate({ key: showArchived ? 'workspaces.documents.hideArchived' : 'workspaces.documents.showArchived' })} ({String(archivedCount)})
+        </button>
+      )}
+
+      {visibleDocuments.length === 0 && (
         <EmptyState icon="file-lines" title={translate({ key: 'workspaces.documents.emptyTitle' })} sub={translate({ key: 'workspaces.documents.emptySub' })} />
       )}
 
       <div className="flex flex-col gap-2">
-        {documents.map((d) => (
+        {visibleDocuments.map((d) => (
           <div key={d.id} className="rounded-lg border border-container1-border bg-container1 p-3 flex items-center gap-3 hover:border-primary-border transition-colors">
             <button type="button" onClick={() => { navigate(`documents/${d.id}`); }} className="flex-1 min-w-0 text-left cursor-pointer">
               <div className="flex items-center gap-2">
@@ -145,6 +156,14 @@ export default function DocumentsPage() {
               <div className="text-xs text-muted mt-0.5 truncate">
                 {[d.content.split('\n').find((l) => l.trim().length > 0 && !l.trim().startsWith('#'))?.trim() ?? translate({ key: 'workspaces.documents.noContentYet' }), timeAgo(d.updatedAt)].join(' · ')}
               </div>
+            </button>
+            {/* C7 — archive instead of delete: nothing is lost and the list stays clean. */}
+            <button
+              type="button"
+              onClick={() => { archiveDocument(d.id, d.archived !== true); }}
+              className="text-xs text-muted hover:text-title px-1.5 py-1 cursor-pointer shrink-0" aria-label={translate({ key: d.archived === true ? 'workspaces.documents.restore' : 'workspaces.documents.archive' })}
+            >
+              <Icon name={d.archived === true ? 'rotate-left' : 'box-archive'} />
             </button>
             <button
               type="button"

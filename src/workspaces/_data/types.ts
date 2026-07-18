@@ -691,6 +691,7 @@ export interface DocumentEntry {
   assets: DocumentAsset[];
   revisions: DocumentRevisionMeta[];  // history (newest first; id/note/date — content fetched on restore)
   updatedAt: number;           // epoch ms (list sorting + "edited …" display)
+  archived?: boolean;          // C7: hidden from the default list, restorable (never deleted)
 }
 
 //? Account: SSH keys (B-05). For the dummy login the `value` (public-key text)
