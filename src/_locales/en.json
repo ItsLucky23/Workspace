@@ -1415,7 +1415,9 @@
       "transcodeGif": "Convert to GIF (preview loop)",
       "transcodeStarted": "Converting - the new file appears here when done.",
       "webmLabel": "WEBM",
-      "gifLabel": "GIF"
+      "gifLabel": "GIF",
+      "publishNeedsReconnect": "reconnect",
+      "publishReconnect": "Reconnect"
     },
     "knowledge": {
       "title": "Knowledge graph",

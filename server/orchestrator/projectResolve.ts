@@ -4,8 +4,9 @@
 //? `project.findFirst({ where: { workspaceId } })` — safe only while a workspace held
 //? exactly one project. With N projects/workspace (ADR 0035 reverses D12) that pattern
 //? silently picks the OLDEST project, which is wrong for an op that targets another.
-//? This resolver prefers an explicit, workspace-validated `projectId` and falls back to
-//? the first project so legacy callers (and single-project workspaces) keep working.
+//? This resolver prefers an explicit, workspace-validated `projectId`. A supplied target
+//? NEVER falls through to a sibling project when malformed/stale/foreign; only callers that
+//? omit the target entirely retain the legacy first-project fallback.
 
 import type { PrismaClient } from '@prisma/client';
 
@@ -14,12 +15,14 @@ import type { PrismaClient } from '@prisma/client';
 //? of throwing Prisma's "Malformed ObjectID".
 const isObjectId = (s: string): boolean => /^[0-9a-fA-F]{24}$/.test(s);
 
-//? Returns the target projectId (explicit-if-valid, else the workspace's oldest
-//? project), or null only for a genuinely project-less workspace.
+//? Returns the explicit target only when it belongs to the workspace. The oldest-project
+//? fallback is reserved for genuinely unspecified legacy callers; an invalid explicit id
+//? returns null so a typo can never redirect a write to project #1.
 export async function resolveProjectId(prisma: PrismaClient, workspaceId: string, projectId?: string | null): Promise<string | null> {
-  if (projectId && isObjectId(projectId)) {
-    const p = await prisma.project.findFirst({ where: { id: projectId, workspaceId }, select: { id: true } });
-    if (p) return p.id;
+  if (projectId !== undefined && projectId !== null) {
+    if (!isObjectId(projectId)) return null;
+    const project = await prisma.project.findFirst({ where: { id: projectId, workspaceId }, select: { id: true } });
+    return project?.id ?? null;
   }
   const first = await prisma.project.findFirst({ where: { workspaceId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
   return first?.id ?? null;

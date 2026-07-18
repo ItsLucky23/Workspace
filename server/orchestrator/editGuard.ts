@@ -41,9 +41,9 @@ export interface EditGuard { allowed: boolean; reason?: string }
 //? busy `worker` AgentSession) — opening then would race the agent's edits/commit. Intended to
 //? be called at the top of the open-editor flow (openEditor `_api` / `openEditorForTicket`).
 export async function ticketEditGuard(prisma: PrismaClient, workspaceId: string, ticketKey: string): Promise<EditGuard> {
-  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { id: true, stageId: true } });
+  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { id: true, projectId: true, stageId: true } });
   if (!ticket) return { allowed: false, reason: 'editor.ticketNotFound' };
-  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: ticket.stageId }, select: { userEditable: true } });
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: ticket.stageId }, select: { userEditable: true } });
   if (stage?.userEditable === false) return { allowed: false, reason: 'editor.stageLocked' };
   const busy = await prisma.agentSession.findFirst({ where: { workspaceId, ticketId: ticket.id, kind: 'worker', status: 'busy' }, select: { id: true } });
   if (busy) return { allowed: false, reason: 'editor.agentBusy' };

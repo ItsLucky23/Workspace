@@ -14,7 +14,7 @@ import type { ChatProposal, GitConfig } from '../_data/types';
 
 export interface ChatDispatchExtras {
   room: string;                    // workspaceId (the sync receiver)
-  activeProjectId: string | null;  // projectAdmin ops target the active project
+  activeProjectId: string;         // validated current project; stale proposals never reach this layer
   gitConfig: GitConfig;            // #29 — current git strategy, so save-git-config merges (never clobbers)
   nextReqId: () => string;         // idempotency key factory
   refetch: () => void;             // snapshot refresh for slow/rare structural writes
@@ -36,6 +36,12 @@ const strArr = (p: ChatProposal, key: string): string[] | undefined => {
   const v = p.params?.[key];
   return Array.isArray(v) ? v.filter((e): e is string => typeof e === 'string') : undefined;
 };
+
+//? Proposal provenance is a security boundary, not display metadata: after a project
+//? switch an old proposal must not dispatch against the newly active project.
+export function isChatProposalForProject(proposal: ChatProposal, activeProjectId: string | null): boolean {
+  return activeProjectId !== null && proposal.projectId === activeProjectId;
+}
 
 //? agentControl family (pause/resume/kill/pause-all/resume-all) — one small helper.
 const agent = (op: 'pause' | 'resume' | 'kill' | 'pause-all' | 'resume-all') => (p: ChatProposal, x: ChatDispatchExtras): void => {
@@ -79,19 +85,19 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
 
   'ci-run': (p, x) => {
     const ticketKey = str(p, 'ticketKey');
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', ...(x.activeProjectId ? { projectId: x.activeProjectId } : {}), ...(ticketKey ? { ticketKey } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', projectId: x.activeProjectId, ...(ticketKey ? { ticketKey } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'ci-allow-red': (p, x) => {
     const enabled = bool(p, 'enabled'); if (enabled === undefined) return;
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-allow-red', ...(x.activeProjectId ? { projectId: x.activeProjectId } : {}), enabled, clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-allow-red', projectId: x.activeProjectId, enabled, clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'root-cause': (p, x) => {
     const symptom = str(p, 'symptom');
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'root-cause', ...(x.activeProjectId ? { projectId: x.activeProjectId } : {}), ...(symptom ? { symptom } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'root-cause', projectId: x.activeProjectId, ...(symptom ? { symptom } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'plan-critique': (p, x) => {
     const ticketKey = str(p, 'ticketKey');
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'plan-critique', ...(ticketKey ? { ticketKey } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'plan-critique', projectId: x.activeProjectId, ...(ticketKey ? { ticketKey } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'index-memory': (_p, x) => {
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'index-memory', clientRequestId: x.nextReqId() }, receiver: x.room });
@@ -99,11 +105,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
 
   'db-migrate-create': (p, x) => {
     const name = str(p, 'name'); if (!name) return;
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-create', name, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-create', projectId: x.activeProjectId, name, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'db-introspect': (p, x) => {
     const connectionId = str(p, 'connectionId');
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', ...(connectionId ? { connectionId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', projectId: x.activeProjectId, ...(connectionId ? { connectionId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
 
   'project-create': (p, x) => {
@@ -128,17 +134,17 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
 
   'stage-create': (p, x) => {
     const key = str(p, 'key'); const name = str(p, 'name');
-    if (!key || !name) return;
+    if (!key || !name || !x.activeProjectId) return;
     const kind = str(p, 'kind');
-    void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { key, name, ...(kind ? { kind } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { projectId: x.activeProjectId, key, name, ...(kind ? { kind } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'stage-delete': (p, x) => {
-    const stageId = str(p, 'stageId'); if (!stageId) return;
-    void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { stageId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    const stageId = str(p, 'stageId'); if (!stageId || !x.activeProjectId) return;
+    void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { projectId: x.activeProjectId, stageId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'stage-reorder': (p, x) => {
-    const order = strArr(p, 'order'); if (!order || order.length === 0) return;
-    void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { order, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    const order = strArr(p, 'order'); if (!order || order.length === 0 || !x.activeProjectId) return;
+    void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { projectId: x.activeProjectId, order, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
 
   'content-run-pipeline': (p, x) => {
@@ -201,7 +207,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'channel-create': (p, x) => {
     const name = str(p, 'name'); if (!name) return;
     const platform = str(p, 'platform'); const handle = str(p, 'handle');
-    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-create', name, ...(platform ? { platform } : {}), ...(handle ? { handle } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'channel-create', projectId: x.activeProjectId, name, ...(platform ? { platform } : {}), ...(handle ? { handle } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   //? #150 — save a brand/style reference (contentControl route, workspace-level inspiration library).
   'reference-add': (p, x) => {
@@ -223,7 +229,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   },
   //? #29 — on-demand forge issue resync (projectAdmin route; no params).
   'gitlab-resync': (_p, x) => {
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', projectId: x.activeProjectId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   //? #29 — change git strategy / push policy. Only the proposed fields were validated; MERGE them over
   //? the current gitConfig so the untouched fields survive the Conductor's normalize (saveGitConfig route).

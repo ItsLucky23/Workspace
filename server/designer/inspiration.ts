@@ -1,8 +1,9 @@
 /** @docs owner ItsLucky23 */
 //? INS (DOCUMENTS_AND_SKILLS) — designer inspiration import. Three paths into the design library:
-//? (1) URL-capture: a throwaway headless-chromium container screenshots any site → vision-extraction
-//? distills its palette/feel into a full 30-token theme PROPOSAL (saved inactive, source 'ai' — the
-//? user activates it, B-23-style consent); (2) screenshot-upload: same extraction from an uploaded
+//? (1) URL-capture policy: REMOTE URLs fail closed until Chromium has isolated, filtered browser egress;
+//? only the offline data: test seam remains. Vision-extraction distills an uploaded/offline screenshot into
+//? a full 30-token theme PROPOSAL (saved inactive, source 'ai' — the user activates it, B-23-style consent);
+//? (2) screenshot-upload: same extraction from an uploaded
 //? image; (3) side-by-side compare: your page vs the inspiration → a vision difference-analysis that
 //? lands as a UiReviewRequest (the existing review inbox + ui-review-to-ticket flow turns it into a
 //? redesign ticket). Plus the curated STYLE GALLERY presets seeded per workspace (source 'seed').
@@ -28,18 +29,19 @@ const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenik
 //? "compare/extract" also sees the mobile look the product's own output targets.
 export type CaptureViewport = 'desktop' | 'mobile';
 const VIEWPORT_SIZE: Record<CaptureViewport, string> = { desktop: '1440,2200', mobile: '390,1600' };
+const MAX_CAPTURE_DATA_URL_BYTES = 1_000_000;
 
-//? Screenshot a URL in a throwaway chromium container. Networked (the target is external); output lands in
-//? the media store. null on any failure — callers surface it. `viewport` selects desktop (default) or phone.
+//? Remote Chromium cannot be secured by a one-time URL preflight: page subresources, redirects, service
+//? workers and browser DNS would bypass the pinned HTTP policy. Fail remote URLs closed instead of shipping
+//? a false sense of security. The bounded data: seam is offline (`--network none`) and remains for deterministic capture tests.
 export async function captureUrlScreenshot(url: string, viewport: CaptureViewport = 'desktop'): Promise<string | null> {
-  if (!/^(https?:|data:)/.test(url)) return null;
-  //? Percent-encode spaces/quotes: Windows spawn quotes args with spaces and chromium mangles the
-  //? embedded quotes (a data: URL test-case artifact; harmless for real http(s) URLs).
-  const safeUrl = encodeURI(url).replaceAll('"', '%22');
+  if (url.slice(0, 5).toLowerCase() !== 'data:' || Buffer.byteLength(url, 'utf8') > MAX_CAPTURE_DATA_URL_BYTES) return null;
+  const [urlError, safeUrl] = tryCatchSync(() => encodeURI(url).replaceAll('"', '%22'));
+  if (urlError || !safeUrl) return null;
   const dir = mkdtempSync(path.join(tmpdir(), 'ws-inspire-'));
   const [err, saved] = await tryCatch(async () => {
     const mount = `${dir.replaceAll('\\', '/')}:/data`;
-    const res = await docker(['run', '--rm', '-v', mount, CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars', `--window-size=${VIEWPORT_SIZE[viewport]}`, '--screenshot=/data/shot.png', safeUrl]);
+    const res = await docker(['run', '--rm', '--network', 'none', '-v', mount, CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars', `--window-size=${VIEWPORT_SIZE[viewport]}`, '--screenshot=/data/shot.png', safeUrl]);
     if (res.code !== 0) throw new Error(`capture container exited ${String(res.code)}`);
     const bytes = readFileSync(path.join(dir, 'shot.png'));
     return persistMediaBytes(bytes, 'png', `inspire-${viewport}-${randomUUID().slice(0, 8)}`).url;
@@ -105,22 +107,16 @@ const COMPARE_SYSTEM = [
   'Output markdown: a short verdict line, then "## Differences" with 4-8 specific bullets ("their X vs our Y"), then "## Apply to ours" with 3-6 actionable changes ranked by impact. Be specific, never generic.',
 ].join('\n');
 
-//? INS3 — the side-by-side analysis. Both screenshots go to the vision model together; the result
-//? lands as a UiReviewRequest so the EXISTING review inbox + ui-review-to-ticket flow drives the
-//? redesign ticket. Returns the review id, or null when the provider is unavailable.
-export async function compareDesigns(prisma: PrismaClient, workspaceId: string, ownUrl: string, inspirationUrl: string, createdById?: string): Promise<string | null> {
+//? INS3 — the side-by-side analysis. Both screenshots go to the vision model together. This slow AI
+//? work intentionally returns only the bounded result; the API enqueues the existing `ui-review-create`
+//? Conductor op afterwards, so no provider call runs while the workspace writer lease is held.
+export async function compareDesigns(workspaceId: string, ownUrl: string, inspirationUrl: string): Promise<string | null> {
   const [err, res] = await tryCatch(() => runAiCompletion('image-critique', {
     prompt: 'Compare our page (image 1) against the inspiration (image 2).', system: COMPARE_SYSTEM,
     imageUrls: [ownUrl, inspirationUrl], workspaceId, label: 'Inspiration compare', timeoutMs: 180_000,
   }));
   if (err || !res?.ok) return null;
-  const created = await prisma.uiReviewRequest.create({
-    data: {
-      workspaceId, page: 'inspiration-compare', screenshots: [ownUrl, inspirationUrl], problems: [],
-      notes: res.text.trim().slice(0, 8000), ...(createdById ? { createdById } : {}),
-    },
-  });
-  return created.id;
+  return res.text.trim().slice(0, 8000);
 }
 
 /* ----------------------------------------------------------------- INS4: the curated style gallery */

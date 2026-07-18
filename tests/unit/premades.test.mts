@@ -1,7 +1,7 @@
 //? L1 — the premade UI-look catalog. Pure: every look resolves to a real seed theme + style + font stacks,
 //? unknown ids return null, and the catalog is a non-trivial starter set. No DOM, no providers.
 
-import { PREMADE_LOOKS, resolveLook } from '../../src/workspaces/designer/premades.ts';
+import { PREMADE_LOOKS, resolveLook, isActiveLook } from '../../src/workspaces/designer/premades.ts';
 import { SEED_THEMES } from '../../src/workspaces/designer/themes.ts';
 import { SEED_STYLES } from '../../src/workspaces/designer/styles.ts';
 import { assert, report } from '../_helpers.mts';
@@ -26,5 +26,13 @@ assert(resolveLook('does-not-exist') === null, 'an unknown look id returns null'
 
 //? Ids are unique.
 assert(new Set(PREMADE_LOOKS.map((l) => l.id)).size === PREMADE_LOOKS.length, 'look ids are unique');
+
+//? Regression: switching from look A to B must not persist B until BOTH active ids belong to B.
+const lookA = resolveLook(PREMADE_LOOKS[0]?.id ?? '');
+const lookB = resolveLook(PREMADE_LOOKS[1]?.id ?? '');
+if (!lookA || !lookB) throw new Error('the gallery regression needs two resolved looks');
+assert(isActiveLook(lookB, lookA.theme.id, lookA.style.id) === false, 'look B is not active while A remains selected');
+assert(isActiveLook(lookB, lookB.theme.id, lookA.style.id) === false, 'look B is not active with a mixed B-theme/A-style pair');
+assert(isActiveLook(lookB, lookB.theme.id, lookB.style.id) === true, 'look B is active only after its theme and style ids are both selected');
 
 report('tests/unit/premades.test.mts');

@@ -8,7 +8,7 @@
 //? the #1 watchdog reprovisions it) · invoke-agent-role (dispatch a registered non-coding role →
 //? artifact). Self-contained (no Conductor import → no cycle; the Conductor calls fireEvent).
 
-import { tryCatch, tryCatchSync } from '@luckystack/core';
+import { tryCatch } from '@luckystack/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
@@ -16,15 +16,22 @@ import { sendWebPushMany } from '../hooks/webPush';
 import { getAgentRole } from './agentRoles';
 import { docker, dockerAvailable, containerName } from '../container/runtime';
 import { runAiCompletion } from '../ai/registry';
+import { isObviouslyUnsafeOutboundUrl } from '../security/outboundUrl';
+import { safeHttpRequest } from '../security/safeHttp';
 
-//? X2 — outbound webhook poster. Injectable so tests capture the POST without a network. Default = a real
-//? fetch (best-effort; the caller treats a non-2xx / throw as an error outcome, never a pipeline wedge).
-export type WebhookPoster = (url: string, body: string) => Promise<{ ok: boolean; status: number }>;
+//? X2 — outbound webhook poster. Production uses the central DNS-pinned transport; this outer seam remains
+//? injectable so the action-envelope integration test can capture the POST without network access.
+export type WebhookPoster = (url: string, body: string) => Promise<{ ok: boolean; status: number; blocked?: boolean }>;
 let webhookPoster: WebhookPoster = async (url, body) => {
-  //? External user-configured URL — not a framework `/api/*` route.
-  // eslint-disable-next-line luckystack/no-raw-fetch-in-src
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-  return { ok: r.ok, status: r.status };
+  const result = await safeHttpRequest(url, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body,
+    timeoutMs: 15_000, maxRedirects: 3, maxRequestBytes: 256_000, maxResponseBytes: 64_000,
+  });
+  if (!result.ok) {
+    const blocked = result.error.code === 'blocked-address' || result.error.code === 'blocked-hostname' || result.error.code === 'non-default-port' || result.error.code === 'credentials-not-allowed' || result.error.code === 'insecure-http-not-allowed' || result.error.code === 'https-downgrade-redirect' || result.error.code === 'cross-origin-redirect-not-allowed';
+    return { ok: false, status: 0, blocked };
+  }
+  return { ok: result.response.status >= 200 && result.response.status < 300, status: result.response.status };
 };
 export function __setWebhookPoster(p: WebhookPoster): void { webhookPoster = p; }
 
@@ -55,24 +62,10 @@ function str(o: Record<string, unknown>, k: string): string | undefined {
   return typeof v === 'string' ? v : undefined;
 }
 
-//? SEC6 — SSRF guard for the user-configured webhook action: block loopback, private-range,
-//? link-local (incl. cloud metadata 169.254.169.254) and *.internal/*.local targets so a
-//? self-hosted multi-tenant deployment can't be probed from a trigger. Literal/hostname check
-//? only (DNS-rebinding needs a resolving proxy — out of scope here); exported for tests.
+//? Compatibility export for the old pure guard tests. Production I/O additionally resolves every A/AAAA
+//? answer in safeHttpRequest(), so hostnames cannot bypass this preflight through DNS rebinding.
 export function isBlockedWebhookTarget(rawUrl: string): boolean {
-  const [err, parsed] = tryCatchSync(() => new URL(rawUrl));
-  if (err || !parsed) return true;
-  const bare = parsed.hostname.toLowerCase().replaceAll(/^\[|\]$/g, ''); // strip ipv6 brackets
-  if (bare === 'localhost' || bare.endsWith('.localhost') || bare.endsWith('.local') || bare.endsWith('.internal')) return true;
-  if (bare === '::1' || bare === '::' || bare.startsWith('fe80:') || bare.startsWith('fc') || bare.startsWith('fd')) return true;
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(bare);
-  if (!m) return false;
-  const [a, b] = [Number(m[1]), Number(m[2])];
-  if (a === 127 || a === 10 || a === 0) return true;                 // loopback / RFC1918 / unspecified
-  if (a === 169 && b === 254) return true;                           // link-local + cloud metadata
-  if (a === 172 && b >= 16 && b <= 31) return true;                  // RFC1918
-  if (a === 192 && b === 168) return true;                           // RFC1918
-  return false;
+  return isObviouslyUnsafeOutboundUrl(rawUrl);
 }
 
 //? Directly run an action (past any gate). Best-effort per action; a bad action is a noop, never a
@@ -99,7 +92,7 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       if (isBlockedWebhookTarget(url)) return { status: 'error', detail: 'webhook-target-blocked' };
       const payload = { event: a.triggerName ?? 'trigger', ticketKey: a.ticketKey ?? null, payload: a.params.payload ?? null, workspaceId };
       const [err, res] = await tryCatch(() => webhookPoster(url, JSON.stringify(payload)));
-      if (err || !res?.ok) return { status: 'error', detail: 'webhook-failed' };
+      if (err || !res?.ok) return { status: 'error', detail: res?.blocked ? 'webhook-target-blocked' : 'webhook-failed' };
       return { status: 'executed', detail: `posted ${String(res.status)}` };
     }
     case 'emit-signal': {
@@ -117,7 +110,11 @@ export async function executeTriggerAction(prisma: PrismaClient, workspaceId: st
       //? activated ticket in an AI-enabled stage, so no direct engine coupling is needed here.
       const target = str(a.params, 'targetStageId');
       if (!a.ticketKey || !target) return { status: 'noop' };
-      const res = await prisma.ticket.updateMany({ where: { workspaceId, key: a.ticketKey }, data: { stageId: target, status: 'idle' } });
+      const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: a.ticketKey }, select: { id: true, projectId: true } });
+      if (!ticket) return { status: 'noop' };
+      const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: target }, select: { id: true } });
+      if (!stage) return { status: 'noop' };
+      const res = await prisma.ticket.updateMany({ where: { id: ticket.id, workspaceId, projectId: ticket.projectId }, data: { stageId: target, status: 'idle' } });
       if (res.count === 0) return { status: 'noop' };
       await broadcastTicketDelta(prisma, workspaceId, [a.ticketKey]);
       return { status: 'executed', detail: `moved ${a.ticketKey}→${target}` };

@@ -43,7 +43,8 @@ export function extractExternalId(platform: string, externalUrl: string): string
   return '';
 }
 
-export type MetricsFetch = (platform: string, externalId: string) => Promise<unknown>;
+//? `accountId` carries the PublishJob's connection lineage; omitted means the legacy/default account.
+export type MetricsFetch = (platform: string, externalId: string, accountId?: string | null) => Promise<unknown>;
 
 //? #141 — the pure per-platform stats REQUEST builder (transport-free, unit-testable). YouTube reads
 //? `videos.list?part=statistics&id=<id>`; TikTok POSTs the video-query with the id filter. Returns null
@@ -63,11 +64,11 @@ export function buildMetricsRequest(platform: string, externalId: string, access
 //? Ingest metrics for every posted job with an external id. Injectable fetch (fixture/live). Best-effort per
 //? job; a fetch failure leaves the prior metrics untouched. Returns the count updated.
 export async function ingestPublishMetrics(prisma: PrismaClient, workspaceId: string, fetchMetrics: MetricsFetch): Promise<{ updated: number }> {
-  const jobs = await prisma.publishJob.findMany({ where: { workspaceId, status: 'done', externalId: { not: null } }, select: { id: true, platform: true, externalId: true } });
+  const jobs = await prisma.publishJob.findMany({ where: { workspaceId, status: 'done', externalId: { not: null } }, select: { id: true, platform: true, externalId: true, accountId: true } });
   let updated = 0;
   for (const job of jobs) {
     if (!job.externalId) continue;
-    const [err, raw] = await tryCatch(() => fetchMetrics(job.platform, job.externalId ?? ''));
+    const [err, raw] = await tryCatch(() => fetchMetrics(job.platform, job.externalId ?? '', job.accountId));
     if (err || raw === undefined) continue;
     const metrics = parsePlatformMetrics(job.platform, raw);
     await prisma.publishJob.updateMany({ where: { id: job.id }, data: { metrics: jsonInput({ ...metrics, fetchedAt: new Date().toISOString() }) } }).catch(() => null);

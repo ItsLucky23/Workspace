@@ -79,15 +79,37 @@ export function enableLiveProviders(): { fal: boolean; elevenlabs: boolean; suno
   };
 }
 
-//? Delete a workspace + all its tenant rows + the demo member Users it created.
+//? Delete every CURRENT tenant model, then the test users it created. Keep this list explicit so a
+//? Prisma model with `workspaceId` cannot silently survive a test; the guarded indexed delegate fails
+//? loudly when a renamed delegate is missed by Prisma generation.
+const WORKSPACE_DELEGATES = [
+  'ticketEvent', 'ticket', 'ticketLink', 'ticketReference', 'sprint', 'agentSession', 'carryOver', 'handoff', 'questionSet',
+  'workspaceTrigger', 'workspaceSignal', 'workspaceSuggestion', 'workspaceNote', 'workspaceChatMessage', 'workspaceBudget',
+  'spendRecord', 'notification', 'infoSource', 'ragEntry', 'envVar', 'integrationTool', 'invite', 'workspaceRole', 'workspaceMember',
+  'project', 'service', 'serviceStack', 'uiReviewRequest', 'auditLog', 'forgeConnection', 'environment', 'buildArtifact',
+  'pipeline', 'pipelineRun', 'pipelineJob', 'dbConnection', 'migration', 'pipelineStage', 'studioBrief', 'studioBrandLibrary',
+  'personalAccessToken', 'outputTemplate', 'customAiTask', 'studioArtifact', 'designArtifact', 'interviewFinding', 'ticketArtifactLink',
+  'mergeRequest', 'reviewThread', 'reviewComment', 'approval', 'channel', 'contentProject', 'contentAsset', 'script', 'beat',
+  'videoScene', 'mediaJob', 'renderJob', 'stylePreset', 'document', 'documentTemplate', 'documentRevision', 'skill', 'referenceExample',
+  'mediaSpend', 'shortLink', 'publishJob', 'socialComment', 'mediaBudget',
+] as const satisfies readonly (keyof PrismaClient)[];
+
+async function deleteWorkspaceRows(delegate: unknown, workspaceId: string): Promise<void> {
+  if (typeof delegate !== 'object' || delegate === null || !('deleteMany' in delegate) || typeof delegate.deleteMany !== 'function') {
+    throw new Error('Expected a Prisma model delegate with deleteMany');
+  }
+  await delegate.deleteMany({ where: { workspaceId } });
+}
+
 export async function cleanupWorkspace(prisma: PrismaClient, workspaceId: string, extraUserIds: string[] = []): Promise<void> {
   const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
-  for (const m of ['ticketEvent', 'ticket', 'ticketLink', 'ticketReference', 'sprint', 'workspaceSuggestion', 'workspaceNote', 'workspaceBudget', 'workspaceSignal', 'workspaceTrigger', 'carryOver', 'handoff', 'questionSet', 'agentSession', 'spendRecord', 'notification', 'infoSource', 'ragEntry', 'envVar', 'integrationTool', 'invite', 'reviewComment', 'reviewThread', 'approval', 'mergeRequest', 'beat', 'script', 'contentAsset', 'publishJob', 'mediaJob', 'renderJob', 'mediaSpend', 'mediaBudget', 'contentProject', 'channel', 'stylePreset', 'pipelineStage', 'workspaceRole', 'workspaceMember', 'environment', 'buildArtifact', 'pipelineJob', 'pipelineRun', 'pipeline', 'migration', 'dbConnection', 'forgeConnection', 'service', 'project'] as const) {
-    await (prisma as unknown as Record<string, { deleteMany: (a: unknown) => Promise<unknown> }>)[m].deleteMany({ where: { workspaceId } });
-  }
-  await prisma.workspace.delete({ where: { id: workspaceId } }).catch(() => undefined);
-  const ids = new Set([...members.map((x) => x.userId), ...extraUserIds]);
-  for (const id of ids) await prisma.user.delete({ where: { id } }).catch(() => undefined);
+  for (const name of WORKSPACE_DELEGATES) await deleteWorkspaceRows(prisma[name], workspaceId);
+  await prisma.workspace.delete({ where: { id: workspaceId } });
+  const userIds = [...new Set([...members.map((member) => member.userId), ...extraUserIds])];
+  if (userIds.length === 0) return;
+  await prisma.pushSubscription.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.sshKey.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 }
 
 // ---- a tiny assertion runner (per-process counters) ----

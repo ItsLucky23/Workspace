@@ -19,7 +19,7 @@ const modelCfg: StageModelCfg = {
 };
 
 const stageCfg = (cfg: StageModelCfg): PipelineStageCfg => ({
-  id: 'code', kind: 'code', name: 'Code', order: 2, aiEnabled: true,
+  projectId: 'project-test', id: 'code', kind: 'code', name: 'Code', order: 2, aiEnabled: true,
   customInstructions: 'Implement the ticket.', promptTemplate: '{{summary}}', definitionOfDone: '',
   systemPrompt: '', roleKey: 'coder', userEditable: true, gateForApproval: false,
   skillKeys: [], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],

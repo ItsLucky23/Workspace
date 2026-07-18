@@ -1,7 +1,7 @@
 ---
 name: multi-instance-safety-deel-a
 title: Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup
-status: accepted
+status: superseded
 date: 2026-07-03
 deciders: [ItsLucky23]
 tags: [multi-instance, conductor, redis, scale, engine]

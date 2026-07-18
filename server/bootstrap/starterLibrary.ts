@@ -77,7 +77,7 @@ export const STARTER_LIBRARY: StarterDoc[] = [
 //? created DISABLED — the user opts each one in from the Workflow settings / Sources page.
 export async function createStarterLibrary(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<void> {
   for (const d of STARTER_LIBRARY) {
-    const existing = await prisma.infoSource.findFirst({ where: { workspaceId, mode: 'context-doc', name: d.name } });
+    const existing = await prisma.infoSource.findFirst({ where: { workspaceId, projectId, mode: 'context-doc', source: 'starter', name: d.name } });
     if (existing) continue;
     await prisma.infoSource.create({
       data: {

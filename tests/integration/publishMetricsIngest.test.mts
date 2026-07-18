@@ -34,17 +34,21 @@ try {
   const piece = await prisma.contentProject.create({ data: { workspaceId: wsId, projectId: dev?.id ?? '', title: 'Perf piece' } });
   const asset = await prisma.contentAsset.create({ data: { workspaceId: wsId, contentProjectId: piece.id, kind: 'render', url: '/media/x.mp4', status: 'ready' } });
 
-  const yt = await prisma.publishJob.create({ data: { workspaceId: wsId, contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', status: 'done', externalUrl: 'https://youtube.com/watch?v=YT1', externalId: 'YT1' } });
-  const tt = await prisma.publishJob.create({ data: { workspaceId: wsId, contentProjectId: piece.id, assetId: asset.id, platform: 'tiktok', status: 'done', externalUrl: 'https://tiktok.com/@me/video/TT1', externalId: 'TT1' } });
+  const yt = await prisma.publishJob.create({ data: { workspaceId: wsId, contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', accountId: 'youtube-account', status: 'done', externalUrl: 'https://youtube.com/watch?v=YT1', externalId: 'YT1' } });
+  const tt = await prisma.publishJob.create({ data: { workspaceId: wsId, contentProjectId: piece.id, assetId: asset.id, platform: 'tiktok', accountId: 'tiktok-account', status: 'done', externalUrl: 'https://tiktok.com/@me/video/TT1', externalId: 'TT1' } });
   //? A done job WITHOUT an externalId (a stub post) → skipped.
   await prisma.publishJob.create({ data: { workspaceId: wsId, contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', status: 'stub', externalUrl: 'stub://youtube/x' } });
 
-  const res = await ingestPublishMetrics(prisma, wsId, async (platform, id) => {
+  const requestedAccounts: Record<string, string | null | undefined> = {};
+  const res = await ingestPublishMetrics(prisma, wsId, async (platform, id, accountId) => {
+    requestedAccounts[id] = accountId;
     if (platform === 'youtube' && id === 'YT1') return { items: [{ statistics: { viewCount: '4200', likeCount: '210' } }] };
     if (platform === 'tiktok' && id === 'TT1') return { data: { videos: [{ view_count: 9000, like_count: 400, share_count: 30 }] } };
     return undefined;
   });
   eq(res.updated, 2, 'the two posted jobs with an external id were updated (the stub skipped)');
+  eq(requestedAccounts.YT1, 'youtube-account', 'youtube metrics uses the job account connection');
+  eq(requestedAccounts.TT1, 'tiktok-account', 'tiktok metrics uses the job account connection');
 
   const ytRow = await prisma.publishJob.findFirst({ where: { id: yt.id }, select: { metrics: true } });
   const ytM = (ytRow?.metrics ?? {}) as Record<string, unknown>;

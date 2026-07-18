@@ -1,10 +1,9 @@
-//? D4 — prod build-export + deploy-hook, end-to-end against REAL infra. Part 1 proves the deploy-webhook
-//? by standing up a REAL local HTTP receiver and asserting the POST lands (body + bearer). Part 2 proves the
+//? D4 — prod build-export + deploy-hook. Part 1 proves the deploy-webhook through the central injectable
+//? DNS-pinned transport (no local server/live network) and asserts the POST body + bearer. Part 2 proves the
 //? `bundle` export by running a REAL production-build tar inside a throwaway container (alpine) and asserting
 //? a non-empty .tgz on disk — this is what replaced `export.bundleNotImplemented`. Part 2 SKIPS (not fails)
 //? without Docker so it's safe anywhere. Runs against the real Mongo; creates + cleans up its own data.
 
-import { createServer } from 'node:http';
 import { existsSync, statSync, rmSync } from 'node:fs';
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
@@ -26,37 +25,42 @@ let workspaceId: string | null = null;
 const savedEnv = { url: process.env.WS_DEPLOY_WEBHOOK_URL, token: process.env.WS_DEPLOY_WEBHOOK_TOKEN, cmd: process.env.WS_BUILD_EXPORT_CMD, dir: process.env.WS_BUILD_EXPORT_DIR };
 
 try {
-  // ---- Part 1: the deploy-hook actually POSTs to an external endpoint -------------------------------
-  //? A real receiver captures what the hook sends.
-  const received: { body: string; auth: string }[] = [];
-  const server = createServer((req, res) => {
-    let body = '';
-    req.on('data', (c) => { body += String(c); });
-    req.on('end', () => { received.push({ body, auth: String(req.headers.authorization ?? '') }); res.writeHead(200); res.end('ok'); });
-  });
-  await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', () => { resolve(); }); });
-  const addr = server.address();
-  const port = addr !== null && typeof addr === 'object' ? addr.port : 0;
+  // ---- Part 1: the deploy-hook POST through mocked public DNS + pinned transport --------------------
+  const received: { body: string; auth: string; pin: string; host: string }[] = [];
+  const dependencies = {
+    resolver: async () => [{ address: '93.184.216.34', family: 4 as const }],
+    transport: async (request: { body?: Buffer; headers: Record<string, string>; connectAddress: string; hostHeader: string }) => {
+      received.push({
+        body: request.body?.toString('utf8') ?? '',
+        auth: request.headers.authorization ?? '',
+        pin: request.connectAddress,
+        host: request.hostHeader,
+      });
+      return { status: 200, headers: {}, body: Buffer.from('ok') };
+    },
+  };
 
   //? Unconfigured → no-op (the export works with or without a deploy target).
   delete process.env.WS_DEPLOY_WEBHOOK_URL;
-  const noop = await postDeployWebhook({ event: 'build-export', workspaceId: 'w', projectId: 'p', kind: 'image', artifactId: 'a', imageRef: 'img', downloadToken: 'tok' });
+  const noop = await postDeployWebhook({ event: 'build-export', workspaceId: 'w', projectId: 'p', kind: 'image', artifactId: 'a', imageRef: 'img', downloadToken: 'tok' }, dependencies);
   eq(noop.fired, false, 'no webhook configured → fired:false (no-op)');
 
-  //? Configured → a real POST with the descriptor + bearer lands on the receiver.
-  process.env.WS_DEPLOY_WEBHOOK_URL = `http://127.0.0.1:${String(port)}/deploy`;
+  //? Configured → a bounded POST with descriptor + bearer reaches only the validated public pin.
+  process.env.WS_DEPLOY_WEBHOOK_URL = 'https://deploy.test/deploy';
   process.env.WS_DEPLOY_WEBHOOK_TOKEN = 'sekret';
-  const hook = await postDeployWebhook({ event: 'build-export', workspaceId: 'w1', projectId: 'p1', kind: 'bundle', artifactId: 'art1', imageRef: 'my/img:1', downloadToken: 'tok123' });
+  const hook = await postDeployWebhook({ event: 'build-export', workspaceId: 'w1', projectId: 'p1', kind: 'bundle', artifactId: 'art1', imageRef: 'my/img:1', downloadToken: 'tok123' }, dependencies);
   eq(hook.fired, true, 'configured → fired:true');
-  eq(hook.ok, true, 'the receiver returned 200 → ok:true');
+  eq(hook.ok, true, 'the mocked external endpoint returned 200 → ok:true');
   eq(hook.status, 200, 'status propagated');
-  await poll(() => Promise.resolve(received.length > 0 ? received : null));
-  assert(received.length === 1, 'the receiver got exactly one POST');
-  const sent = JSON.parse(received[0]?.body ?? '{}') as { artifactId?: string; downloadToken?: string; kind?: string };
-  eq(sent.artifactId, 'art1', 'the descriptor carried the artifactId');
-  eq(sent.downloadToken, 'tok123', 'the descriptor carried the download token');
+  assert(received.length === 1, 'the transport got exactly one POST');
+  const sent: unknown = JSON.parse(received[0]?.body ?? '{}');
+  const artifactId = sent !== null && typeof sent === 'object' && 'artifactId' in sent && typeof sent.artifactId === 'string' ? sent.artifactId : '';
+  const downloadToken = sent !== null && typeof sent === 'object' && 'downloadToken' in sent && typeof sent.downloadToken === 'string' ? sent.downloadToken : '';
+  eq(artifactId, 'art1', 'the descriptor carried the artifactId');
+  eq(downloadToken, 'tok123', 'the descriptor carried the download token');
   eq(received[0]?.auth, 'Bearer sekret', 'the bearer token was sent');
-  server.close();
+  eq(received[0]?.pin, '93.184.216.34', 'the deploy hook connected to the validated IP pin');
+  eq(received[0]?.host, 'deploy.test', 'the deploy hook retained the configured Host/SNI identity');
 
   // ---- Part 2: the bundle export produces a REAL build tarball (Docker) ------------------------------
   if (!(await dockerAvailable())) {

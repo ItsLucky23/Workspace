@@ -10,19 +10,19 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { screenshots: string[]; problems: string[]; page?: string; notes?: string; clientRequestId: string };
+  clientInput: { projectId: string; screenshots: string[]; problems: string[]; page?: string; notes?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { screenshots, problems, page, notes, clientRequestId } = clientInput;
+  const { projectId, screenshots, problems, page, notes, clientRequestId } = clientInput;
   const hasContent = (Array.isArray(screenshots) && screenshots.length > 0) || (Array.isArray(problems) && problems.length > 0);
-  if (!hasContent) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  if (!projectId || !hasContent) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'ui-review-create', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}) }, clientRequestId,
+    target: { projectId }, payload: { screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success' };

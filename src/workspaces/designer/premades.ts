@@ -34,6 +34,11 @@ export const PREMADE_LOOKS: PremadeLook[] = [
 
 export interface ResolvedLook { look: PremadeLook; theme: DesignTheme; style: DesignStyle; fontHeading: string; fontBody: string }
 
+//? A look is ready to persist only once BOTH active library ids match its curated pair.
+export function isActiveLook(resolved: ResolvedLook, activeThemeId: string, activeStyleId: string): boolean {
+  return resolved.theme.id === activeThemeId && resolved.style.id === activeStyleId;
+}
+
 //? L3 — the save payloads for "copy this premade look into my workspace": a theme artifact (its palette) +
 //? a style artifact (its component spec, with the look's fonts baked in). These match the `designerLibrary`
 //? save op shape and round-trip via persisted.ts.

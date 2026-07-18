@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 249,
-    "edges": 377,
-    "symbols": 322,
-    "callEdges": 47
+    "nodes": 252,
+    "edges": 379,
+    "symbols": 334,
+    "callEdges": 55
   },
   "nodes": [
     {
@@ -459,6 +459,16 @@
       "route": "api/workspaces/revokePat/v1"
     },
     {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/rotateWebhookSecret/v1"
+    },
+    {
       "id": "workspaces/_api/saveDevCommand_v1.ts",
       "kind": "api",
       "route": "api/workspaces/saveDevCommand/v1"
@@ -715,6 +725,11 @@
     },
     {
       "id": "workspaces/_shell/Shell.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_shell/snapshotRequest.ts",
       "kind": "other",
       "route": null
     },
@@ -1801,6 +1816,10 @@
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
+      "to": "workspaces/_shell/snapshotRequest.ts"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesProvider.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2573,6 +2592,10 @@
     },
     {
       "from": "workspaces/scheduled/page.tsx",
+      "to": "_components/dropdown/MultiSelectDropdown.tsx"
+    },
+    {
+      "from": "workspaces/scheduled/page.tsx",
       "to": "_functions/menuHandler.ts"
     },
     {
@@ -2900,7 +2923,8 @@
     ],
     "_components/dropdown/MultiSelectDropdown.tsx": [
       "workspaces/designer/page.tsx",
-      "workspaces/designer/sections/Components.tsx"
+      "workspaces/designer/sections/Components.tsx",
+      "workspaces/scheduled/page.tsx"
     ],
     "_components/editor/CodeEditorPanel.tsx": [
       "editor-demo/page.tsx",
@@ -3506,6 +3530,12 @@
       "main.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_shell/snapshotRequest.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
     "workspaces/_shell/WorkspacesContext.tsx": [
@@ -4318,6 +4348,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerInspiration_v1.ts::enqueueCompareReview",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "enqueueCompareReview",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/designerInspiration_v1.ts::main",
       "file": "workspaces/_api/designerInspiration_v1.ts",
       "name": "main",
@@ -4327,6 +4363,12 @@
       "id": "workspaces/_api/designerInspiration_v1.ts::resolveSide",
       "file": "workspaces/_api/designerInspiration_v1.ts",
       "name": "resolveSide",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.ts::str",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "str",
       "kind": "function"
     },
     {
@@ -4549,6 +4591,48 @@
       "id": "workspaces/_api/revokePat_v1.ts::main",
       "file": "workspaces/_api/revokePat_v1.ts",
       "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::<module>",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
+      "name": "cleanupRouteWorkspace",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.ts::<module>",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.ts::main",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest",
+      "file": "workspaces/_api/rotateWebhookSecret_v1.ts",
+      "name": "rotateWebhookSecretRequest",
       "kind": "function"
     },
     {
@@ -5518,9 +5602,27 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace",
+      "file": "workspaces/_sync/saveIntegration_server_v1.ts",
+      "name": "integrationEnvRefsBelongToWorkspace",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveIntegration_server_v1.ts::isObjectId",
+      "file": "workspaces/_sync/saveIntegration_server_v1.ts",
+      "name": "isObjectId",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/saveIntegration_server_v1.ts::main",
       "file": "workspaces/_sync/saveIntegration_server_v1.ts",
       "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest",
+      "file": "workspaces/_sync/saveIntegration_server_v1.ts",
+      "name": "saveIntegrationRequest",
       "kind": "function"
     },
     {
@@ -5823,7 +5925,15 @@
     },
     {
       "from": "workspaces/_api/designerInspiration_v1.ts::main",
+      "to": "workspaces/_api/designerInspiration_v1.ts::enqueueCompareReview"
+    },
+    {
+      "from": "workspaces/_api/designerInspiration_v1.ts::main",
       "to": "workspaces/_api/designerInspiration_v1.ts::resolveSide"
+    },
+    {
+      "from": "workspaces/_api/designerInspiration_v1.ts::main",
+      "to": "workspaces/_api/designerInspiration_v1.ts::str"
     },
     {
       "from": "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror",
@@ -5844,6 +5954,18 @@
     {
       "from": "workspaces/_api/getDockerfile_v1.tests.ts::run",
       "to": "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
+      "to": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace"
+    },
+    {
+      "from": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
+      "to": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "workspaces/_api/rotateWebhookSecret_v1.ts::main",
+      "to": "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest"
     },
     {
       "from": "workspaces/_api/saveDockerfile_v1.tests.ts::run",
@@ -5942,6 +6064,18 @@
       "to": "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp"
     },
     {
+      "from": "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace",
+      "to": "workspaces/_sync/saveIntegration_server_v1.ts::isObjectId"
+    },
+    {
+      "from": "workspaces/_sync/saveIntegration_server_v1.ts::main",
+      "to": "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest"
+    },
+    {
+      "from": "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest",
+      "to": "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace"
+    },
+    {
       "from": "workspaces/_sync/saveSections_server_v1.ts::main",
       "to": "workspaces/_data/modules.ts::sanitizeSections"
     },
@@ -5990,7 +6124,13 @@
     "workspaces/_api/designerInspiration_v1.ts::asViewport": [
       "workspaces/_api/designerInspiration_v1.ts::main"
     ],
+    "workspaces/_api/designerInspiration_v1.ts::enqueueCompareReview": [
+      "workspaces/_api/designerInspiration_v1.ts::main"
+    ],
     "workspaces/_api/designerInspiration_v1.ts::resolveSide": [
+      "workspaces/_api/designerInspiration_v1.ts::main"
+    ],
+    "workspaces/_api/designerInspiration_v1.ts::str": [
       "workspaces/_api/designerInspiration_v1.ts::main"
     ],
     "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror": [
@@ -6008,6 +6148,15 @@
     ],
     "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail": [
       "workspaces/_api/getDockerfile_v1.tests.ts::run"
+    ],
+    "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace": [
+      "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run"
+    ],
+    "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail": [
+      "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run"
+    ],
+    "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest": [
+      "workspaces/_api/rotateWebhookSecret_v1.ts::main"
     ],
     "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser": [
       "workspaces/_api/saveDockerfile_v1.tests.ts::run"
@@ -6083,6 +6232,18 @@
     ],
     "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp": [
       "workspaces/_sync/documentsControl_server_v1.ts::main"
+    ],
+    "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace": [
+      "workspaces/_sync/saveIntegration_server_v1.ts::main",
+      "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest"
+    ],
+    "workspaces/_sync/saveIntegration_server_v1.ts::isObjectId": [
+      "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace",
+      "workspaces/_sync/saveIntegration_server_v1.ts::main",
+      "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest"
+    ],
+    "workspaces/_sync/saveIntegration_server_v1.ts::saveIntegrationRequest": [
+      "workspaces/_sync/saveIntegration_server_v1.ts::main"
     ],
     "workspaces/_sync/serviceProvision_server_v1.ts::rejected": [
       "workspaces/_sync/serviceProvision_server_v1.ts::main"

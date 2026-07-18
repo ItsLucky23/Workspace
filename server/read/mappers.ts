@@ -8,7 +8,6 @@ import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, E
 
 import type { ContentAssetSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
-import { decryptSecret } from '../crypto/secretBox';
 
 //? DB priority string → the frontend `TicketPriority` union (falls back to 'normal'
 //? for a legacy row written before the column existed). Mirrors buildSnapshot.
@@ -178,15 +177,23 @@ function isDbEnvVar(v: unknown): v is DbEnvVar {
   return v !== null && typeof v === 'object' && 'id' in v && 'key' in v && 'value' in v && 'secret' in v;
 }
 
-//? Narrow the save-env op result to the frontend `EnvVar` delta (client upserts by id). Secret
-//? values are decrypted for display (falls back to the raw value for legacy plaintext rows).
-export function envDelta(result: unknown): EnvVar | null {
-  if (!isDbEnvVar(result)) return null;
-  //? RS-B1 (SECURITY) — internal `__`-rows never leave the server over the delta channel either
-  //? (mirrors the snapshot filter).
+//? Map an EnvVar row to its client-safe metadata projection. Secret values are write-only:
+//? the browser receives an empty replacement buffer plus `configured`, never plaintext/ciphertext.
+//? Internal `__` rows stay server-only because they carry provider/OAuth/runtime configuration.
+export function toEnvVar(result: DbEnvVar): EnvVar | null {
   if (result.key.startsWith('__')) return null;
-  const value = result.secret ? (decryptSecret(result.value) ?? result.value) : result.value;
-  return { id: result.id, key: result.key, value, secret: result.secret };
+  return {
+    id: result.id,
+    key: result.key,
+    value: result.secret ? '' : result.value,
+    secret: result.secret,
+    configured: result.value.length > 0,
+  };
+}
+
+//? Narrow the save-env op result to the same safe `EnvVar` projection used by snapshots.
+export function envDelta(result: unknown): EnvVar | null {
+  return isDbEnvVar(result) ? toEnvVar(result) : null;
 }
 
 function isDbRole(v: unknown): v is DbRole {

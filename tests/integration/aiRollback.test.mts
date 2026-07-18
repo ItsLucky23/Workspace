@@ -30,10 +30,13 @@ try {
   const ws = await poll(() => prisma.workspace.findFirst({ where: { ownerId: owner.id } }));
   workspaceId = ws?.id ?? null;
   const wsId = workspaceId ?? '';
-  const proj = await poll(() => prisma.project.findFirst({ where: { workspaceId: wsId } }));
-  await enqueueControlAction({ workspaceId: wsId, op: 'quick-add', target: {}, payload: { title: 'RB Ticket' }, userId: owner.id, clientRequestId: `rb-t-${String(stamp)}` });
+  const projectA = await poll(() => prisma.project.findFirst({ where: { workspaceId: wsId }, orderBy: { createdAt: 'asc' } }));
+  await enqueueControlAction({ workspaceId: wsId, op: 'project-create', target: {}, payload: { name: 'Rollback project B' }, userId: owner.id, clientRequestId: `rb-pb-${String(stamp)}` });
+  const projectB = await poll(() => prisma.project.findFirst({ where: { workspaceId: wsId, name: 'Rollback project B' } }));
+  assert(projectB !== null && projectB.id !== projectA?.id, 'the culprit MR belongs to project B, not the first project');
+  await enqueueControlAction({ workspaceId: wsId, op: 'quick-add', target: {}, payload: { title: 'RB Ticket', projectId: projectB?.id ?? '' }, userId: owner.id, clientRequestId: `rb-t-${String(stamp)}` });
   const ticket = await poll(() => prisma.ticket.findFirst({ where: { workspaceId: wsId, title: 'RB Ticket' } }));
-  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: proj?.id ?? '', ticketId: ticket?.id ?? '', number: 3, title: 'Auth refactor', sourceBranch: 'DEV-3', targetBranch: 'main', status: 'merged', mergedSha: 'deadbeef', mergeStrategy: 'merge' } });
+  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: projectB?.id ?? '', ticketId: ticket?.id ?? '', number: 3, title: 'Auth refactor', sourceBranch: 'DEV-3', targetBranch: 'main', status: 'merged', mergedSha: 'deadbeef', mergeStrategy: 'merge' } });
 
   //? Seed the rollback suggestion the root-cause role would PROPOSE (the AI completion is a live path).
   const suggestion = await prisma.workspaceSuggestion.create({ data: { workspaceId: wsId, type: 'rollback', title: 'Rollback MR-3', body: '…', ticketIds: [], patch: { mrId: mr.id, symptom: 'login is broken in prod', reason: 'the auth refactor dropped the null check' }, status: 'open' } });
@@ -47,6 +50,8 @@ try {
   assert((tracking?.title ?? '').includes('login is broken'), 'the tracking ticket is pre-filled from the symptom');
   eq(tracking?.priority, 'high', 'the rollback tracking ticket is high priority');
   eq(tracking?.stageId, 'unrefined', 'the tracking ticket enters at unrefined');
+  eq(tracking?.projectId, projectB?.id, 'the rollback tracking ticket derives project B from the culprit MR/ticket');
+  assert(tracking?.projectId !== projectA?.id, 'rollback never falls back to project A');
   const ticketsAfter = await prisma.ticket.count({ where: { workspaceId: wsId } });
   eq(ticketsAfter, ticketsBefore + 1, 'exactly one tracking ticket is created');
 

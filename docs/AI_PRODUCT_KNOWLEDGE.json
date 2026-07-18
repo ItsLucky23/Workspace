@@ -1,6 +1,6 @@
 {
-  "hash": "9d14dff4c444f279",
-  "chunkCount": 210,
+  "hash": "3bf34b39612f74eb",
+  "chunkCount": 212,
   "chunks": [
     {
       "id": "cap-001",
@@ -1261,6 +1261,18 @@
       "kind": "decision",
       "title": "0275-voice-interface-provider-abstracted-stt-plus-tts",
       "text": "ADR 0275: 0275-voice-interface-provider-abstracted-stt-plus-tts. Feature-doc `06_VOICE_INPUT.md` ontwierp voice als BUILD-DEFERRED: self-hosted whisper.cpp, ALLEEN speech-to-text, geen TTS, met een streaming-upload-custom-route en drie send-to-targets. De user koos in het interview van 2026-07-17: voice bouwen, **provider-pluggable** STT/TTS, phone-first spraak-in voor de Assistant (PWA-mic → STT → bestaand chat-pad) én spraak-uit (TTS op antwoorden, opt-in). Twee botsingen met de oude spec: provider-abstractie-vs-whisper-only, en TTS-output-vs-out-of-scope. Decision: STT rijdt op de bestaande AI-provider-abstractie (ADR 0007): nieuwe `AiFeature 'speech-to-text'` + `AiCompletionRequest.audioUrls`; de Gemini-provider hangt audio als `inline_data` aan (net als images voor vision), tekst-only providers negeren het. Default provider = Gemini. TTS-output hergebruikt de bestáánde gemeterde media-`tts`-feature (ElevenLabs) via `synthesizeSpeech` (budget-guard + spend-record). De transcript rijdt de BESTAANDE tekstpaden (Assistant-chat) — géén nieuwe structured-channel-verb (invariant #2), geen write. UI: mic-knop + \"speak replies\"-toggle in de `AIPanel`-composer; browser `MediaRecorder` → `/media/upload` (audio-exts toegevoegd) → `voiceTranscribe_v1` → draft-prefill; `voiceSynthesize_v1` speelt antwoorden. Honest degrade overal: geen key ⇒ error (STT) of gevlagde stub (TTS), nooit een verzonnen transcript."
+    },
+    {
+      "id": "adr-0276",
+      "kind": "decision",
+      "title": "Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS",
+      "text": "ADR 0276: Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS. The first `apply-design-tokens` implementation generated a new minimal `src/index.css` and committed it to a hardcoded `main` branch. That destroyed every authored rule/comment outside the generated tokens, ignored multi-project service roots and the configured target branch, and could overwrite a concurrent branch edit. A missing stylesheet, non-Tailwind project, unchanged result and git failure all collapsed into the same boolean failure. Decision: The existing control op remains the only product/control surface; the Conductor remains the only writer (B-23). Its implementation is now fail-closed and revision-safe: 1. Resolve the explicit target project and optional existing `Service.path`; root projects target `src/index.css`, monorepo services target `<service.path>/src/index.css`. 2. Resolve `Workspace.gitConfig.targetBranch`; never infer or hardcode `main`. 3. Read the stylesheet from one immutable branch SHA. Accept exactly one top-level Tailwind `@theme` color-token block and, when dark tokens exist, exactly one `.dark` color-token block. Patch only `--color-*` values/additions inside those blocks; preserve every other byte/comment. Missing, non-Tailwind or ambiguous blocks return typed semantic failures. 4. Commit against the read SHA. Re-check HEAD immediately before commit and push with `--force-with-lease=<expected SHA>` as the final compare-and-swap. A race returns `repo.hea"
+    },
+    {
+      "id": "adr-0277",
+      "kind": "decision",
+      "title": "Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing",
+      "text": "ADR 0277: Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing. ADR 0015 put the complete workspace-scoped Conductor critical section behind a fixed 15-second Redis lease, but did not renew it. If an action exceeded that TTL, a second instance could acquire the lease while the original callback kept running. The original caller could then complete successfully without observing that ownership had expired. Owner-checked release already prevented the stale owner from deleting its successor's lease, but it did not prevent or surface the overlapping work. ADR 0031 verified only short critical sections (60–80 ms) and leader exclusivity. Its broad conclusion that the engine was proven safe for N instances did not cover a greater-than-TTL action, lease loss mid-action, or cross-store fencing. Those claims must now be read through the limitations below. Decision: Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and an explicit fail-closed lease guard; this strengthens mutual exclusion for normal asynchronous actions but is not database fencing. 1. `withWorkspaceLease` renews sequentially every 5 seconds for a 15-second TTL. The next renewal is not scheduled until the previous owner-checked renewal settles. Production timings stay fixed by default; the full timing set is injectable so real-Redis expiry tests run in hundreds of milliseconds. 2. The lease callback receives `WorkspaceLeaseGuard { assertHeld, signal }`. "
     }
   ]
 }

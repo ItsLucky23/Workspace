@@ -10,6 +10,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import { tryCatchSync } from '@luckystack/core';
 import { bareMirrorPathFor } from '../git/repoStore';
 import { ensureEgressInfra, egressLaunchArgs } from './egress';
 import { serviceEnvArgs } from './serviceEnv';
@@ -22,20 +23,69 @@ export const DOCKER_BIN = process.env.WS_DOCKER_BIN ?? 'docker';
 //? container. Matches PTY_AGENT_PORT in docker/pty-agent/agent.mjs.
 export const PTY_AGENT_PORT = Number(process.env.WS_PTY_AGENT_PORT ?? '7681');
 
-interface DockerResult { code: number; out: string; err: string }
+export interface DockerResult {
+  code: number;
+  out: string;
+  err: string;
+  timedOut: boolean;
+  outputLimitExceeded: boolean;
+}
 
-//? Run `docker` capturing stdout/stderr. NEVER rejects on a non-zero exit — the caller
-//? branches on `code` so partial-launch rollback (§8.3) stays explicit. Exported so the
-//? L2 image-build + terminal bridge share ONE Windows-safe spawn path.
-export function docker(args: string[]): Promise<DockerResult> {
+export interface DockerRunOptions {
+  timeoutMs?: number;
+  //? Cap each captured stream. The retained value is its tail, so diagnostics stay useful without
+  //? letting a noisy Docker child retain unbounded output in the Node process.
+  maxOutputBytes?: number;
+}
+
+//? Run `docker` capturing stdout/stderr. NEVER rejects on a non-zero exit — the caller branches on `code`.
+//? The optional timeout is used by untrusted parser/render tools; ordinary runtime calls stay unchanged.
+export function docker(args: string[], options: DockerRunOptions = {}): Promise<DockerResult> {
   return new Promise((resolve) => {
     const proc = spawn(DOCKER_BIN, args, { windowsHide: true });
     let out = '';
     let err = '';
-    proc.stdout.on('data', (d) => { out += String(d); });
-    proc.stderr.on('data', (d) => { err += String(d); });
-    proc.on('error', (e) => { resolve({ code: -1, out: '', err: e.message }); });
-    proc.on('close', (code) => { resolve({ code: code ?? -1, out: out.trim(), err: err.trim() }); });
+    let settled = false;
+    let timedOut = false;
+    let outputLimitExceeded = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const maxOutputBytes = options.maxOutputBytes;
+
+    const stopProcess = (): void => { tryCatchSync(() => { proc.kill('SIGKILL'); }); };
+    const finish = (code: number, spawnError?: string): void => {
+      if (settled) return;
+      settled = true;
+      if (timer !== undefined) clearTimeout(timer);
+      const fallbackError = timedOut ? 'docker command timed out' : (outputLimitExceeded ? 'docker command output exceeded its limit' : '');
+      resolve({ code, out: out.trim(), err: (spawnError ?? err).trim() || fallbackError, timedOut, outputLimitExceeded });
+    };
+    const appendOutput = (current: string, data: unknown): string => {
+      const chunk = String(data);
+      if (maxOutputBytes === undefined || maxOutputBytes <= 0) return current + chunk;
+      const next = current + chunk;
+      if (Buffer.byteLength(next, 'utf8') <= maxOutputBytes) return next;
+      outputLimitExceeded = true;
+      return Buffer.from(next, 'utf8').subarray(-maxOutputBytes).toString('utf8');
+    };
+    const stopForOutputLimit = (): void => {
+      if (!outputLimitExceeded) return;
+      stopProcess();
+      finish(-1);
+    };
+
+    proc.stdout.on('data', (data) => { out = appendOutput(out, data); stopForOutputLimit(); });
+    proc.stderr.on('data', (data) => { err = appendOutput(err, data); stopForOutputLimit(); });
+    proc.on('error', (error) => { finish(-1, error.message); });
+    proc.on('close', (code) => { finish(code ?? -1); });
+
+    if (options.timeoutMs !== undefined && options.timeoutMs > 0) {
+      timer = setTimeout(() => {
+        timedOut = true;
+        stopProcess();
+        finish(-1);
+      }, options.timeoutMs);
+      timer.unref();
+    }
   });
 }
 

@@ -99,24 +99,28 @@ function UiReviewForm() {
   );
 }
 
-//? INS — inspiration import: URL-capture → theme proposal, screenshot-upload → theme proposal, and
-//? the side-by-side compare that lands in the review inbox as a redesign candidate. Inline (inside
-//? WorkspacesProvider — no menuHandler-portal gotcha, lesson 0011).
+//? INS — inspiration import: screenshot-upload → theme proposal, and the side-by-side screenshot
+//? compare that lands in the review inbox as a redesign candidate. Inline (inside WorkspacesProvider —
+//? no menuHandler-portal gotcha, lesson 0011).
 function InspirationForm() {
   const translate = useTranslator();
-  const { activeWorkspace, refetch } = useWorkspaces();
-  const [url, setUrl] = useState('');
-  const [ownUrl, setOwnUrl] = useState('');
-  const [inspUrl, setInspUrl] = useState('');
-  const [busy, setBusy] = useState<'url' | 'image' | 'compare' | null>(null);
+  const { activeWorkspace, activeProjectId, refetch } = useWorkspaces();
+  const [ownImage, setOwnImage] = useState('');
+  const [inspirationImage, setInspirationImage] = useState('');
+  const [busy, setBusy] = useState<'image' | 'compare' | null>(null);
   const [result, setResult] = useState<'ok' | 'error' | null>(null);
-  const call = (op: string, payload: Record<string, string>, kind: 'url' | 'image' | 'compare') => {
+  //? The route's data type is a discriminated union per op, so each caller builds its own
+  //? payload and this helper only owns the busy/result lifecycle.
+  const call = (kind: 'image' | 'compare', fire: () => Promise<{ status: string }>) => {
     if (busy) return;
     setBusy(kind); setResult(null);
-    void tryCatch(() => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op, ...payload } })).then(([err, r]) => {
+    void tryCatch(fire).then(([err, r]) => {
       setBusy(null);
       setResult(!err && r?.status === 'success' ? 'ok' : 'error');
-      if (!err && r?.status === 'success') { setUrl(''); setOwnUrl(''); setInspUrl(''); refetch(); }
+      if (!err && r?.status === 'success') {
+        if (kind === 'compare') { setOwnImage(''); setInspirationImage(''); }
+        refetch();
+      }
     });
   };
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
@@ -124,14 +128,18 @@ function InspirationForm() {
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted">{translate({ key: 'workspaces.inspire.desc' })}</div>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={url} onChange={(e) => { setUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.inspire.urlPlaceholder' })} className={`${inputCls} flex-1 min-w-52 max-w-md`} />
-        <WsButton icon={busy === 'url' ? 'spinner' : 'wand-magic-sparkles'} disabled={busy !== null || !/^https?:\/\//.test(url.trim())} className={busy === 'url' ? '[&_svg]:animate-spin' : ''} onClick={() => { call('inspire-url', { url: url.trim() }, 'url'); }}>{translate({ key: 'workspaces.inspire.captureExtract' })}</WsButton>
-        <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { call('inspire-image', { imageUrl: uploaded }, 'image'); }} />
+        <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { call('image', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'inspire-image', imageUrl: uploaded } })); }} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={ownUrl} onChange={(e) => { setOwnUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.inspire.ownPlaceholder' })} className={`${inputCls} flex-1 min-w-44`} />
-        <input value={inspUrl} onChange={(e) => { setInspUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.inspire.inspPlaceholder' })} className={`${inputCls} flex-1 min-w-44`} />
-        <WsButton variant="secondary" icon={busy === 'compare' ? 'spinner' : 'table-columns'} disabled={busy !== null || ownUrl.trim().length === 0 || inspUrl.trim().length === 0} className={busy === 'compare' ? '[&_svg]:animate-spin' : ''} onClick={() => { call('compare', { ownUrl: ownUrl.trim(), inspirationUrl: inspUrl.trim() }, 'compare'); }}>{translate({ key: 'workspaces.inspire.compare' })}</WsButton>
+        <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
+          <span className="text-muted">{translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { setOwnImage(uploaded); setResult(null); }} />
+        </div>
+        <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
+          <span className="text-muted">{translate({ key: 'workspaces.inspire.inspPlaceholder' })}</span>
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { setInspirationImage(uploaded); setResult(null); }} />
+        </div>
+        <WsButton variant="secondary" icon={busy === 'compare' ? 'spinner' : 'table-columns'} disabled={busy !== null || !activeProjectId || ownImage.length === 0 || inspirationImage.length === 0} className={busy === 'compare' ? '[&_svg]:animate-spin' : ''} onClick={() => { if (!activeProjectId) return; call('compare', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'compare', projectId: activeProjectId, ownUrl: ownImage, inspirationUrl: inspirationImage, clientRequestId: globalThis.crypto.randomUUID() } })); }}>{translate({ key: 'workspaces.inspire.compare' })}</WsButton>
       </div>
       {result === 'ok' && <span className="text-xs text-correct inline-flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.inspire.done' })}</span>}
       {result === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.inspire.failed' })}</span>}
@@ -217,7 +225,7 @@ function DesignerShell() {
         </Disclosure>
       </div>
 
-      {/* INS — inspiration import: capture/upload → theme proposal, compare → review inbox. */}
+      {/* INS — inspiration import: screenshot upload → theme proposal, compare → review inbox. */}
       <div className="px-3 md:px-4 pt-2 shrink-0">
         <Disclosure summary={translate({ key: 'workspaces.inspire.title' })}>
           <InspirationForm />
@@ -243,7 +251,7 @@ function DesignerShell() {
                     {r.screenshots.length > 0 && <div className="text-[11px] text-disabled mt-0.5">{translate({ key: 'workspaces.uiReview.shotCount', params: [{ key: 'n', value: String(r.screenshots.length) }] })}</div>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <WsButton variant="secondary" icon="ticket" onClick={() => { uiReviewAction('ui-review-to-ticket', r.id); }}>{translate({ key: 'workspaces.uiReview.makeTicket' })}</WsButton>
+                    <WsButton variant="secondary" icon="ticket" onClick={() => { uiReviewAction('ui-review-to-ticket', r.id, r.projectId ?? activeProjectId ?? undefined); }}>{translate({ key: 'workspaces.uiReview.makeTicket' })}</WsButton>
                     <button type="button" onClick={() => { uiReviewAction('ui-review-dismiss', r.id); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.uiReview.dismiss' })}</button>
                   </div>
                 </div>

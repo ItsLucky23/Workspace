@@ -18,6 +18,7 @@ import { runPipeline } from '../ci/runner';
 import { isTestStage, testStageCiVerdict } from '../ci/gate';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
+import type { StageToolCfg } from '../../src/workspaces/_data/types';
 import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
@@ -194,36 +195,89 @@ export function resolveStageGate(stageGate: boolean, level: string | null | unde
   return stageGate;
 }
 
-//? X1 — the workspace's enabled MCP integration tools → { name, command, env } for renderStage. Each field's
-//? referenced EnvVar (decrypted) becomes an env var (keyed by the EnvVar key). Best-effort — any failure ⇒ [].
-async function loadMcpIntegrations(prisma: PrismaClient, workspaceId: string): Promise<McpIntegration[]> {
-  const [, toolRowsRaw] = await tryCatch(() => prisma.integrationTool.findMany({ where: { workspaceId } }));
-  //? The composite (mcp/fields) payload type erases through tryCatch; narrow to just the fields we read.
-  const toolRows = (toolRowsRaw ?? []) as { name: string; mcp: { enabled: boolean; command: string }; fields: { envVarId: string | null }[] }[];
-  const enabled = toolRows.filter((t) => t.mcp.enabled && t.mcp.command.trim().length > 0);
+const isObjectId = (value: string): boolean => /^[a-f\d]{24}$/i.test(value);
+
+//? X1 — load ONLY the MCP integrations selected by this stage's StageToolCfg.
+//? Arbitrary MCP servers have no generic read-only enforcement, so a `ro` selection
+//? fails closed (omitted) instead of receiving `rw` credentials; only `rw` mounts.
+//? IntegrationField.envVarId is a loose reference, so both tool and env queries carry
+//? workspaceId. A malformed/missing/foreign ref (or undecryptable secret) omits the
+//? complete integration: no command, secret, or partial config reaches `.mcp.json`.
+export async function loadMcpIntegrations(
+  prisma: PrismaClient,
+  workspaceId: string,
+  selectedTools: readonly StageToolCfg[],
+): Promise<McpIntegration[]> {
+  const toolIds = [...new Set(selectedTools.filter((tool) => tool.tier === 'rw').map((tool) => tool.toolId).filter((id) => isObjectId(id)))];
+  if (toolIds.length === 0) return [];
+  const toolRows = await prisma.integrationTool.findMany({ where: { workspaceId, id: { in: toolIds } } });
+  const enabled = toolRows.filter((tool) => tool.mcp.enabled && tool.mcp.command.trim().length > 0);
   if (enabled.length === 0) return [];
-  const envIds = enabled.flatMap((t) => t.fields.map((f) => f.envVarId).filter((id): id is string => typeof id === 'string' && id.length > 0));
-  const [, envRows] = await tryCatch(() => prisma.envVar.findMany({ where: { id: { in: envIds } } }));
-  const byId = new Map<string, { key: string; value: string; secret: boolean }>();
-  for (const e of envRows ?? []) byId.set(e.id, { key: e.key, value: e.value, secret: e.secret });
-  return enabled.map((t) => {
+
+  const envIds = [...new Set(enabled.flatMap((tool) => tool.fields.flatMap((field) => field.envVarId === null ? [] : [field.envVarId])).filter((id) => isObjectId(id)))];
+  const envRows = envIds.length > 0
+    ? await prisma.envVar.findMany({ where: { workspaceId, id: { in: envIds } } })
+    : [];
+  const byId = new Map(envRows.map((envVar) => [envVar.id, envVar]));
+
+  return enabled.flatMap((tool): McpIntegration[] => {
+    const refs = tool.fields.flatMap((field) => field.envVarId === null ? [] : [field.envVarId]);
+    if (refs.some((id) => !isObjectId(id) || !byId.has(id))) return [];
+
     const env: Record<string, string> = {};
-    for (const f of t.fields) {
-      const ev = f.envVarId ? byId.get(f.envVarId) : undefined;
-      if (ev) env[ev.key] = ev.secret ? (decryptSecret(ev.value) ?? ev.value) : ev.value;
+    for (const field of tool.fields) {
+      if (field.envVarId === null) continue;
+      const envVar = byId.get(field.envVarId);
+      if (!envVar) return [];
+      const value = envVar.secret ? decryptSecret(envVar.value) : envVar.value;
+      if (value === null) return [];
+      env[envVar.key] = value;
     }
-    return { name: t.name, command: t.mcp.command, ...(Object.keys(env).length > 0 ? { env } : {}) };
+    return [{ name: tool.name, command: tool.mcp.command, ...(Object.keys(env).length > 0 ? { env } : {}) }];
   });
+}
+
+//? The ticket is the authoritative runtime-project source. A stale provisioning request for
+//? another stage, or an identically-keyed stage in a sibling project, fails closed.
+export async function resolveStageRuntime(prisma: PrismaClient, workspaceId: string, ticketKey: string, stageKey: string) {
+  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey } });
+  if (ticket?.stageId !== stageKey) return null;
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: stageKey } });
+  return stage ? { ticket, stage } : null;
+}
+
+//? Project-owned context may only cross into that project's agent. The design-system remains
+//? workspace-wide per ADR 0034; explicit stage sources may be workspace-wide or ticket-project-owned.
+export async function loadStageContextDocs(prisma: PrismaClient, workspaceId: string, projectId: string, sourceIds: readonly string[]): Promise<{ name: string; content: string }[]> {
+  const explicitIds = sourceIds.filter((id) => /^[a-fA-F0-9]{24}$/.test(id));
+  const rows = await prisma.infoSource.findMany({
+    where: {
+      workspaceId,
+      mode: 'context-doc',
+      OR: [
+        { source: 'starter', enabled: true, projectId },
+        { source: 'design-system', enabled: true },
+        ...(explicitIds.length > 0 ? [{ id: { in: explicitIds }, OR: [{ projectId }, { projectId: null }] }] : []),
+      ],
+    },
+    select: { name: true, content: true },
+    take: 12,
+  });
+  return rows.filter((row) => (row.content ?? '').trim().length > 0).map((row) => ({ name: row.name, content: row.content ?? '' }));
+}
+
+export async function resolveNextProjectStage(prisma: PrismaClient, workspaceId: string, projectId: string, afterOrder: number) {
+  return prisma.pipelineStage.findFirst({ where: { workspaceId, projectId, order: { gt: afterOrder } }, orderBy: { order: 'asc' } });
 }
 
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
-//? serial chain. `prisma` is passed in so this stays callable from the Conductor.
+//? serial chain.
 export async function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { resume?: boolean; resumePrompt?: string } = {}): Promise<StageRunResult> {
   const prisma = getPrismaClient();
-  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey } });
-  const stageRow = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageKey } });
-  if (!ticket || !stageRow) return { ok: false, error: 'ticket-or-stage.notFound' };
+  const runtime = await resolveStageRuntime(prisma, workspaceId, ticketKey, stageKey);
+  if (!runtime) return { ok: false, error: 'ticket-or-stage.notFound' };
+  const { ticket, stage: stageRow } = runtime;
   const cfg = toStageConfig(stageRow);
 
   //? Incoming carry-over = the previous stage's envelope addressed to this stage (null first).
@@ -236,17 +290,11 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const scoreNote = typeof carryOver?.complexityScore === 'number' ? ` (score ${String(carryOver.complexityScore)})` : '';
   console.log(`[stage] ${ticketKey}@${stageKey} model=${choice.model} effort=${choice.effort}${scoreNote}${cfg.modelCfg.autoEscalate ? ' autoEscalate' : ''}`);
 
-  //? Context-docs injected into CLAUDE.md: enabled workspace-wide workflow guidance (the
-  //? starter-library snippets) + this stage's explicitly-selected sourceIds (skip the
-  //? `summary` pseudo-source + any non-ObjectId ids so the Mongo `in` filter stays valid).
-  const explicitIds = cfg.sourceIds.filter((id) => /^[a-fA-F0-9]{24}$/.test(id));
-  const docRows = await prisma.infoSource.findMany({
-    where: { workspaceId, mode: 'context-doc', OR: [{ source: 'starter', enabled: true }, { source: 'design-system', enabled: true }, ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : [])] },
-    select: { name: true, content: true }, take: 12,
-  });
-  const starterDocs = docRows.filter((d) => (d.content ?? '').trim().length > 0).map((d) => ({ name: d.name, content: d.content ?? '' }));
+  //? Context-docs are scoped from the ticket's authoritative project. Workspace-wide design-system
+  //? guidance remains visible per ADR 0034; sibling-project starters/explicit docs never are.
+  const starterDocs = await loadStageContextDocs(prisma, workspaceId, ticket.projectId, cfg.sourceIds);
   //? ADR 0034: per-ticket linked artifacts (the specific design/spec this ticket implements) — injected
-  //? alongside the workspace-wide design-system doc + starter docs.
+  //? alongside the workspace-wide design-system doc + project-scoped starter docs.
   const linkedArtifacts = await loadTicketArtifactContext(prisma, workspaceId, ticket.id);
   //? Zelf-bewuste-AI-brug: the product-knowledge corpus (was chat-only) as ONE bounded context-doc, so
   //? a dev stage knows the platform around the code it writes. Best-effort — empty corpus = omitted.
@@ -255,7 +303,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   //? SK2 — enabled 'dev' skills reach the PTY coding agent as a context-doc (the one-shot choke-point
   //? in ai/registry.ts doesn't cover the PTY path). Best-effort: read failure = no doc.
   const [, skillsDoc] = await tryCatch(() => skillPromptBlock(workspaceId, 'dev'));
-  const contextDocs = [...starterDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '' }] : [])];
+  const contextDocs = [...starterDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc, provenance: 'RAG chunks: product knowledge' }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '', trusted: true }] : [])];
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
   //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).
@@ -280,9 +328,9 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
     : await tryCatch(() => latestHandoff(prisma, workspaceId, sessionKey));
   const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
 
-  //? X1 — mount the workspace's ENABLED MCP integration tools: their command + the credentials (each field's
-  //? referenced EnvVar, decrypted) injected as env. Best-effort — a read failure just omits integrations.
-  const integrations = await loadMcpIntegrations(prisma, workspaceId);
+  //? X1 — mount only this stage's selected MCP integrations. The typed loader enforces
+  //? tier fail-closed (`ro` omitted, `rw` mounted) and workspace ownership for tools + env refs.
+  const integrations = await loadMcpIntegrations(prisma, workspaceId, cfg.tools);
 
   const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice });
   if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
@@ -327,7 +375,7 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   if (result.kind === 'done') {
     //? Persist the carry-over: the machine envelope + the human one-liner on the ticket, so
     //? the NEXT stage's promptTemplate chips are filled from it (02 §4).
-    const nextStage = await prisma.pipelineStage.findFirst({ where: { workspaceId, order: { gt: stageRow.order } }, orderBy: { order: 'asc' } });
+    const nextStage = await resolveNextProjectStage(prisma, workspaceId, ticket.projectId, stageRow.order);
     await prisma.carryOver.create({ data: { workspaceId, ticketId: ticket.id, fromStageId: stageKey, toStageId: nextStage?.key ?? stageKey, sessionId: session.id, envelope: envelopeJson(result.envelope) } });
     await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { carryOver: result.envelope.summary } });
     //? W2 — surface NON-blocking questions the agent proceeded past with assumptions on the ticket (append to any

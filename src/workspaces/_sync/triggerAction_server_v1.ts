@@ -13,7 +13,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 export interface SyncParams {
   clientInput: {
     op: string; clientRequestId: string;
-    id?: string; triggerId?: string; name?: string; on?: string; action?: string; role?: string; focus?: string;
+    id?: string; triggerId?: string; name?: string; on?: string; action?: string; role?: string; focus?: string; projectId?: string;
     params?: unknown; match?: unknown; requiresApproval?: boolean; cron?: string; enabled?: boolean; dedupeKey?: string; debounceMs?: number;
   };
   user: SessionLayout;

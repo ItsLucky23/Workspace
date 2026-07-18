@@ -7,6 +7,7 @@
 import { tryCatch } from '@luckystack/core';
 
 import { encodeQuestion, type RawQuestion } from '../../src/workspaces/_functions/structuredQuestion';
+import { renderUntrustedContext } from '../ai/untrustedContext';
 
 //? The carry-over envelope an agent emits at stage-done (B-O2 contract, 02 §4).
 export interface CarryOverEnvelope {
@@ -110,12 +111,20 @@ export async function parseTurnResult(message: string): Promise<TurnResult> {
 }
 
 //? Fill a stage's `promptTemplate` `{{chips}}` from the incoming carry-over envelope
-//? (CARRY_VARS: summary/changedFiles/openQuestions/commitHash). Null envelope (first stage)
-//? → chips resolve to empty. Arrays render as newline lists.
+//? (CARRY_VARS: summary/changedFiles/openQuestions/commitHash). CarryOver is previous AI output,
+//? so every non-empty occurrence gets its OWN untrusted-data block; a repeated chip never reuses a
+//? delimiter. Null envelope (first stage) → chips resolve to empty. Arrays render as newline lists.
 export function renderPromptTemplate(template: string, envelope: CarryOverEnvelope | null): string {
-  return template
-    .replaceAll('{{summary}}', envelope?.summary ?? '')
-    .replaceAll('{{changedFiles}}', (envelope?.changedFiles ?? []).join('\n'))
-    .replaceAll('{{openQuestions}}', (envelope?.openQuestions ?? []).join('\n'))
-    .replaceAll('{{commitHash}}', envelope?.commitHash ?? '');
+  const values: Record<string, string> = {
+    summary: envelope?.summary ?? '',
+    changedFiles: (envelope?.changedFiles ?? []).join('\n'),
+    openQuestions: (envelope?.openQuestions ?? []).join('\n'),
+    commitHash: envelope?.commitHash ?? '',
+  };
+  return template.replaceAll(/\{\{(summary|changedFiles|openQuestions|commitHash)\}\}/g, (_match, key: string) => {
+    const content = values[key] ?? '';
+    return content.length > 0
+      ? renderUntrustedContext({ provenance: `previous AI CarryOver field: ${key}`, content, maxChars: 6000 })
+      : '';
+  });
 }

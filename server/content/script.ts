@@ -5,18 +5,27 @@
 
 import type { PrismaClient } from '@prisma/client';
 import { runAiCompletion } from '../ai/registry';
-import { resolveStyle, composeStylePrompt } from './styles';
+import { resolveStyle } from './styles';
 import { buildBrandContext } from './brandContext';
 import { buildKnowledgeContext } from './knowledgeContext';
 import { retrieveContentPlaybook } from '../rag/contentPlaybook';
 import { retrieveReferences } from './referenceLibrary';
 import { extractJson, coerceBeats } from './jsonParse';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
 interface ParsedScript { body: string; beats: { text: string; visualPrompt: string }[] }
 
 //? The structured-output directive appended to the model prompt. `targetBeats` (M3 long-form planner) asks
 //? for roughly N beats so a duration target is met; without it, the default 4–8 arc.
 const MAX_BEATS = 40; // cost/scene cap — a 10-min video at 5s/scene ≈ 120 scenes would be huge; the budget guard is the hard rem, this is the planner ceiling.
+const MAX_EXTRA_INSTRUCTIONS_CHARS = 2000;
+
+//? Direct user instructions are authoritative, but bounded so they cannot consume the prompt budget.
+function renderExtraInstructions(extraInstructions?: string): string {
+  const bounded = extraInstructions?.trim().slice(0, MAX_EXTRA_INSTRUCTIONS_CHARS) ?? '';
+  return bounded.length > 0 ? `AUTHORITATIVE USER INSTRUCTIONS:\n${bounded}` : '';
+}
+
 function scriptFormat(targetBeats?: number): string {
   const count = typeof targetBeats === 'number' && targetBeats > 0 ? `approximately ${String(Math.min(MAX_BEATS, Math.max(2, Math.round(targetBeats))))} beats (one narration beat per scene)` : '4–8 beats';
   return `Return ONLY a JSON object: {"body": "<the full narration>", "beats": [{"text": "<one narration beat>", "visualPrompt": "<a vivid shot description for this beat>"}]}. ${count}. No prose outside the JSON.`;
@@ -81,14 +90,29 @@ export async function generateScript(
   //? Ground the script on DOMAIN best-practices (hooks/retention/structure) relevant to the brief, so the AI
   //? writes what WORKS, not just what's asked. Global playbook corpus (server/rag/contentPlaybook.ts).
   const playbook = await retrieveContentPlaybook(prisma, args.brief, 3);
-  const bestPractices = playbook.length > 0 ? `Proven content best-practices (apply these):\n${playbook.map((p) => p.content).join('\n\n')}` : '';
+  const bestPractices = playbook.length > 0
+    ? `Proven content best-practices (apply these):\n${playbook.map((p) => renderUntrustedContext({ provenance: `RAG chunk: content playbook ${p.filePath}`, content: p.content, maxChars: 1000 })).join('\n\n')}`
+    : '';
   //? Ground on the workspace's own INSPIRATION library — great examples the user collected — emulating their
   //? approach/structure, not copying them verbatim.
   const refs = await retrieveReferences(prisma, args.workspaceId, args.brief, 2);
-  const inspiration = refs.length > 0 ? `Reference examples from this workspace's inspiration library (emulate the APPROACH/structure, do NOT copy verbatim):\n${refs.map((r) => r.content).join('\n\n')}` : '';
-  const system = [brandContext, knowledge, bestPractices, inspiration, composeStylePrompt(style, args.extraInstructions)].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
+  const inspiration = refs.length > 0
+    ? `Reference examples from this workspace's inspiration library (emulate the APPROACH/structure, do NOT copy verbatim):\n${refs.map((r) => renderUntrustedContext({ provenance: `RAG chunk: inspiration reference ${r.filePath}`, content: r.content, maxChars: 1000 })).join('\n\n')}`
+    : '';
+  const styleContext = style?.systemPrompt.trim()
+    ? renderUntrustedContext({ provenance: `selected script style preset: ${style.label}`, content: style.systemPrompt, maxChars: 3000 })
+    : '';
+  const system = [
+    brandContext.length > 0 ? renderUntrustedContext({ provenance: 'workspace brand and product context', content: brandContext, maxChars: 3000 }) : '',
+    knowledge.length > 0 ? renderUntrustedContext({ provenance: 'workspace reference knowledge', content: knowledge, maxChars: 6000 }) : '',
+    bestPractices,
+    inspiration,
+    styleContext,
+    UNTRUSTED_CONTEXT_POLICY,
+    renderExtraInstructions(args.extraInstructions),
+  ].map((s) => s.trim()).filter((s) => s.length > 0).join('\n\n');
   const res = await complete('script', {
-    prompt: `${args.brief}\n\n${scriptFormat(args.targetBeats)}`,
+    prompt: `AUTHORITATIVE USER BRIEF:\n${args.brief}\n\n${scriptFormat(args.targetBeats)}`,
     ...(system ? { system } : {}),
     workspaceId: args.workspaceId,
     label: 'Content script',

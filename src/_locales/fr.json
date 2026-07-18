@@ -1415,7 +1415,9 @@
       "transcodeGif": "Convertir en GIF (boucle aperçu)",
       "transcodeStarted": "Conversion en cours – le nouveau fichier apparaît ici une fois prêt.",
       "webmLabel": "WEBM",
-      "gifLabel": "GIF"
+      "gifLabel": "GIF",
+      "publishNeedsReconnect": "reconnect",
+      "publishReconnect": "Reconnect"
     },
     "knowledge": {
       "title": "Graphe de connaissances",

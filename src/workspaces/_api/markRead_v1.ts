@@ -5,7 +5,7 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { enqueueControlAction } from '../../../server/orchestrator/conductor';
+import { enqueueControlAction, isControlActionFailure } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -18,10 +18,15 @@ export interface ApiParams {
   functions: Functions;
 }
 
-export const main = async ({ data, user }: ApiParams): Promise<ApiResponse> => {
+export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
   const { workspaceId, notificationId, all, clientRequestId } = data;
   if (!workspaceId || (all !== true && !notificationId)) return { status: 'error', errorCode: 'api.invalidRequest' };
   const target = all === true ? { all: true } : { notificationId: notificationId ?? '' };
-  const { signalSeq } = await enqueueControlAction({ workspaceId, op: 'mark-read', target, payload: {}, userId: user.id, clientRequestId });
-  return { status: 'success', result: { accepted: true, signalSeq } };
+  const [enqueueError, enqueued] = await functions.tryCatch.tryCatch(() => enqueueControlAction({
+    workspaceId, op: 'mark-read', target, payload: {}, userId: user.id, clientRequestId,
+  }));
+  if (enqueueError || !enqueued || isControlActionFailure(enqueued.result)) {
+    return { status: 'error', errorCode: 'api.invalidRequest' };
+  }
+  return { status: 'success', result: { accepted: true, signalSeq: enqueued.signalSeq } };
 };

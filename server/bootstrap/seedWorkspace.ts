@@ -137,9 +137,36 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
   if (!seedProject) throw new Error('seedDemoWorkspace: PROJECTS[0] is missing');
   const project = await prisma.project.create({ data: { workspaceId, name: seedProject.name, gitlabPath: seedProject.gitlabPath } });
 
-  //? Pipeline stages — the composite config maps through 1:1 (the schema composite
-  //? types mirror PipelineStageCfg). `key` is the stable slug tickets reference.
+  //? Demo seed constants use stable legacy ids for cross-references. Persist env vars
+  //? first, then translate IntegrationField.envVarId to the real Mongo ObjectIds.
+  const envVarIdMap = new Map<string, string>();
+  for (const e of ENV_VARS) {
+    const row = await prisma.envVar.create({ data: { workspaceId, key: e.key, value: e.secret ? encryptSecret(e.value) : e.value, secret: e.secret } });
+    envVarIdMap.set(e.id, row.id);
+  }
+
+  //? IntegrationTool ids are Mongo-generated too. Translate each field ref before
+  //? persisting and retain legacy tool id → real id for the stage configs below.
+  const integrationToolIdMap = new Map<string, string>();
+  for (const it of INTEGRATION_TOOLS) {
+    const fields = it.fields.map((field) => {
+      if (field.envVarId === null) return field;
+      const envVarId = envVarIdMap.get(field.envVarId);
+      if (!envVarId) throw new Error(`seedDemoWorkspace: EnvVar '${field.envVarId}' is missing`);
+      return { ...field, envVarId };
+    });
+    const row = await prisma.integrationTool.create({ data: { workspaceId, name: it.name, type: it.type, fields, mcp: it.mcp } });
+    integrationToolIdMap.set(it.id, row.id);
+  }
+
+  //? Pipeline stages — translate StageToolCfg.toolId to the real IntegrationTool ids.
+  //? `key` remains the stable stage slug tickets reference.
   for (const s of STAGE_CONFIGS) {
+    const tools = s.tools.map((tool) => {
+      const toolId = integrationToolIdMap.get(tool.toolId);
+      if (!toolId) throw new Error(`seedDemoWorkspace: IntegrationTool '${tool.toolId}' is missing`);
+      return { ...tool, toolId };
+    });
     await prisma.pipelineStage.create({
       data: {
         workspaceId, projectId: project.id, key: s.id, kind: s.kind, name: s.name, order: s.order,
@@ -147,7 +174,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
         roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
         customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
         skillKeys: s.skillKeys, sourceIds: s.sourceIds,
-        commands: s.commands, tools: s.tools, statuses: s.statuses, processes: s.processes,
+        commands: s.commands, tools, statuses: s.statuses, processes: s.processes,
         visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, network: s.network, hooks: s.hooks,
       },
     });
@@ -216,14 +243,6 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     await prisma.infoSource.create({
       data: { workspaceId, projectId: project.id, mode: 'skill', name: sk.name, summary: sk.description ?? null, kind: sk.kind, model: sk.model ?? null, usedByStages: sk.usedByStages ?? [], enabled: sk.on },
     });
-  }
-
-  for (const e of ENV_VARS) {
-    await prisma.envVar.create({ data: { workspaceId, key: e.key, value: e.secret ? encryptSecret(e.value) : e.value, secret: e.secret } });
-  }
-
-  for (const it of INTEGRATION_TOOLS) {
-    await prisma.integrationTool.create({ data: { workspaceId, name: it.name, type: it.type, fields: it.fields, mcp: it.mcp } });
   }
 
   for (const inv of INVITES) {

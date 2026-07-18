@@ -5,7 +5,7 @@
 //? client merges — the contract the realtime board relies on (no refetch).
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
-import { ticketListDelta, sprintDelta, noteDelta, repoDelta } from '../../server/read/mappers';
+import { envDelta, ticketListDelta, sprintDelta, noteDelta, repoDelta } from '../../server/read/mappers';
 
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
@@ -44,6 +44,16 @@ try {
   const mvList = ticketListDelta(mv.result);
   eq(mvList[0]?.stageId, 'coding', 'bulk-move delta carries the new stageId');
   eq(mvList[0]?.id, key, 'bulk-move delta keeps the DEV key as id');
+
+  // save-env returns a write-only EnvVar delta: no plaintext/ciphertext crosses the room.
+  const secretInput = `delta-secret-${String(stamp)}`;
+  const saveEnv = await enqueueControlAction({ workspaceId, op: 'save-env', target: {}, payload: { key: 'DELTA_SECRET', value: secretInput, secret: true }, userId: owner.id, clientRequestId: `d-env-${String(stamp)}` });
+  const secretEnv = envDelta(saveEnv.result);
+  eq(secretEnv?.value, '', 'save-env realtime delta exposes an empty secret replacement buffer');
+  eq(secretEnv?.configured, true, 'save-env realtime delta exposes configured metadata');
+  assert(!JSON.stringify(secretEnv).includes(secretInput), 'save-env realtime delta NEVER contains plaintext');
+  const internalEnv = await prisma.envVar.create({ data: { workspaceId, key: '__DELTA_INTERNAL', value: 'server-only', secret: false } });
+  eq(envDelta(internalEnv), null, 'internal EnvVars NEVER become realtime deltas');
 
   // link-repo with an invalid URL → a scrubbed error delta (no clone), repoDelta maps it
   const badRepo = await enqueueControlAction({ workspaceId, op: 'link-repo', target: {}, payload: { gitUrl: 'not-a-valid-url' }, userId: owner.id, clientRequestId: `d-repo-${String(stamp)}` });

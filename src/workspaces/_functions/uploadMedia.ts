@@ -1,8 +1,8 @@
 //? Client media upload (FREEDOM_PROGRAM K1). POSTs a File's raw bytes to the backend `/media/upload` route
-//? (authed via the session cookie; origin-exempt) and returns the resulting `/media/<file>` url + kind. Used
+//? through the framework's CSRF-aware HTTP wrapper and returns the resulting `/media/<file>` url + kind. Used
 //? by the reference-image picker (bring your own reference) + the "import your own asset" action.
 
-import { tryCatch } from '@luckystack/core/client';
+import { httpFetch, tryCatch } from '@luckystack/core/client';
 
 import { backendUrl } from '../../../config';
 
@@ -24,7 +24,7 @@ export interface UploadedMedia { url: string; kind: string }
 export async function uploadMedia(file: File, workspaceId: string): Promise<UploadedMedia | null> {
   const ext = MIME_EXT[file.type] ?? (file.name.split('.').pop() ?? '').toLowerCase();
   if (!ALLOWED.has(ext)) return null;
-  const [err, res] = await tryCatch(() => fetch(`${backendUrl}/media/upload?ws=${encodeURIComponent(workspaceId)}&ext=${ext}`, {
+  const [err, res] = await tryCatch(() => httpFetch(`${backendUrl}/media/upload?ws=${encodeURIComponent(workspaceId)}&ext=${ext}`, {
     method: 'POST', body: file, credentials: 'include',
     ...(file.type ? { headers: { 'Content-Type': file.type } } : {}),
   }));

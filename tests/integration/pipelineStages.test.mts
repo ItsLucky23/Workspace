@@ -22,35 +22,38 @@ try {
   const created = await createBlankWorkspace(prisma, owner.id, 'Stg WS');
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
-  const before = await prisma.pipelineStage.findMany({ where: { workspaceId: wsId }, orderBy: { order: 'asc' }, select: { key: true, order: true } });
+  const project = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
+  const projectId = project?.id ?? '';
+  assert(projectId.length > 0, 'the workspace has a pipeline project');
+  const before = await prisma.pipelineStage.findMany({ where: { workspaceId: wsId, projectId }, orderBy: { order: 'asc' }, select: { key: true, order: true } });
   assert(before.length >= 4, 'the default pipeline seeded stages');
   const maxOrder = Math.max(...before.map((s) => s.order));
 
   // 1) stage-create → a durable new stage appended at the end.
-  await enqueueControlAction({ workspaceId: wsId, op: 'stage-create', target: {}, payload: { key: 'security', name: 'Security review', kind: 'review' }, userId: owner.id, clientRequestId: `stg-c-${String(stamp)}` });
-  const newStage = await poll(() => prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, key: 'security' } }));
+  await enqueueControlAction({ workspaceId: wsId, op: 'stage-create', target: { projectId }, payload: { key: 'security', name: 'Security review', kind: 'review' }, userId: owner.id, clientRequestId: `stg-c-${String(stamp)}` });
+  const newStage = await poll(() => prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId, key: 'security' } }));
   assert(newStage !== null, 'the new stage persisted');
   eq(newStage?.name, 'Security review', 'the stage name was stored');
   assert((newStage?.order ?? 0) > maxOrder, 'the new stage is appended after the existing ones');
 
   // creating a duplicate key is rejected (no second row)
-  await enqueueControlAction({ workspaceId: wsId, op: 'stage-create', target: {}, payload: { key: 'security', name: 'Dupe', kind: 'review' }, userId: owner.id, clientRequestId: `stg-dup-${String(stamp)}` });
+  await enqueueControlAction({ workspaceId: wsId, op: 'stage-create', target: { projectId }, payload: { key: 'security', name: 'Dupe', kind: 'review' }, userId: owner.id, clientRequestId: `stg-dup-${String(stamp)}` });
   await wait(300);
-  eq((await prisma.pipelineStage.count({ where: { workspaceId: wsId, key: 'security' } })), 1, 'a duplicate stage key is rejected');
+  eq((await prisma.pipelineStage.count({ where: { workspaceId: wsId, projectId, key: 'security' } })), 1, 'a duplicate stage key is rejected');
 
   // 2) stage-reorder → the order is rewritten to the given sequence.
-  const keys = (await prisma.pipelineStage.findMany({ where: { workspaceId: wsId }, orderBy: { order: 'asc' }, select: { key: true } })).map((s) => s.key);
+  const keys = (await prisma.pipelineStage.findMany({ where: { workspaceId: wsId, projectId }, orderBy: { order: 'asc' }, select: { key: true } })).map((s) => s.key);
   const reversed = [...keys].reverse();
-  await enqueueControlAction({ workspaceId: wsId, op: 'stage-reorder', target: {}, payload: { order: reversed }, userId: owner.id, clientRequestId: `stg-r-${String(stamp)}` });
+  await enqueueControlAction({ workspaceId: wsId, op: 'stage-reorder', target: { projectId }, payload: { order: reversed }, userId: owner.id, clientRequestId: `stg-r-${String(stamp)}` });
   const after = await poll(async () => {
-    const rows = await prisma.pipelineStage.findMany({ where: { workspaceId: wsId }, orderBy: { order: 'asc' }, select: { key: true } });
+    const rows = await prisma.pipelineStage.findMany({ where: { workspaceId: wsId, projectId }, orderBy: { order: 'asc' }, select: { key: true } });
     return rows.map((r) => r.key).join(',') === reversed.join(',') ? rows : null;
   });
   assert(after !== null, 'the stage order was persisted to the reversed sequence');
 
   // 3) stage-delete → the stage is removed.
-  await enqueueControlAction({ workspaceId: wsId, op: 'stage-delete', target: { stageId: 'security' }, payload: {}, userId: owner.id, clientRequestId: `stg-d-${String(stamp)}` });
-  const gone = await poll(async () => (await prisma.pipelineStage.count({ where: { workspaceId: wsId, key: 'security' } })) === 0 ? true : null);
+  await enqueueControlAction({ workspaceId: wsId, op: 'stage-delete', target: { stageId: 'security', projectId }, payload: {}, userId: owner.id, clientRequestId: `stg-d-${String(stamp)}` });
+  const gone = await poll(async () => (await prisma.pipelineStage.count({ where: { workspaceId: wsId, projectId, key: 'security' } })) === 0 ? true : null);
   assert(gone === true, 'the deleted stage is removed');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);

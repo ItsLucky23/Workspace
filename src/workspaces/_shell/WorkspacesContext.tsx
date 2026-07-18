@@ -65,6 +65,8 @@ export interface WorkspacesCtx {
   applyCopilot: (directive: CopilotDirective) => void;
   copilotPrefill: Record<string, string> | null;
   consumeCopilotPrefill: () => void;
+  //? Proposal/plan acceptance is project-bound: a switch makes the old offer stale
+  //? and the provider rejects it instead of retargeting it to the new active project.
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
   acceptChatPlan: (messageId: string, plan: ChatPlan) => void;
   rejectChatProposal: (messageId: string) => void;
@@ -117,8 +119,8 @@ export interface WorkspacesCtx {
   renameWorkspace: (name: string) => void;
   deleteWorkspace: () => void;
   saveGitlab: (baseUrl: string, token: string, forgeType?: string) => void;
-  //? #27 — mint/rotate the per-workspace inbound-webhook secret (settings card); refetches to bring it back.
-  rotateWebhookSecret: () => void;
+  //? #27 — mints/rotates a write-once inbound-webhook secret for this initiator only.
+  rotateWebhookSecret: () => Promise<string | null>;
   copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   indexMemory: () => void;
   planCritique: (ticketKey: string) => void;
@@ -132,7 +134,7 @@ export interface WorkspacesCtx {
   createUiReview: (input: { screenshots: string[]; problems: string[]; page?: string; notes?: string }) => void;
   //? U2 (gap-fix): the designer review-inbox — open requests + turn one into a redesign ticket / dismiss.
   uiReviews: UiReviewSummary[];
-  uiReviewAction: (op: 'ui-review-to-ticket' | 'ui-review-dismiss', reviewId: string) => void;
+  uiReviewAction: (op: 'ui-review-to-ticket' | 'ui-review-dismiss', reviewId: string, projectId?: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
   scanDocs: () => void;
@@ -212,9 +214,9 @@ export interface WorkspacesCtx {
   //? I1 — run the built-in CI at a ticket's MR head (ci-run control-op via projectAdmin).
   runCi: (ticketKey: string) => void;
   //? R1 — durably ADD / REMOVE / REORDER pipeline stages (was React-state-only → lost on refresh).
-  createStage: (input: { key: string; name: string; kind?: string }) => void;
-  deleteStage: (stageKey: string) => void;
-  reorderStages: (order: string[]) => void;
+  createStage: (input: { projectId: string; key: string; name: string; kind?: string }) => void;
+  deleteStage: (projectId: string, stageKey: string) => void;
+  reorderStages: (projectId: string, order: string[]) => void;
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;
@@ -247,7 +249,7 @@ export interface WorkspacesCtx {
   deleteDocTemplate: (slug: string) => void;
   editDocument: (input: { documentId: string; title?: string; content?: string; addAssetUrl?: string; addAssetKind?: string; addAssetLabel?: string }) => void;
   deleteDocument: (documentId: string) => void;
-  runDocumentAi: (documentId: string, mode: string, instruction: string) => void;
+  runDocumentAi: (documentId: string, mode: string, instruction: string) => Promise<string | null>;
   applyDocumentDraft: (documentId: string) => void;
   discardDocumentDraft: (documentId: string) => void;
   genDocumentImage: (documentId: string, prompt: string) => void;
@@ -308,7 +310,7 @@ export interface WorkspacesCtx {
   interviewFindings: InterviewFinding[];     // categorised interviewer findings (ADR 0034)
   makeTicketFromFinding: (id: string) => void;
   dismissFinding: (id: string) => void;
-  ticketArtifactLinks: TicketArtifactLink[]; // design/Studio artifacts linked to a ticket (ADR 0034)
+  ticketArtifactLinks: TicketArtifactLink[]; // design/Studio/UI-review artifacts linked to a ticket (ADR 0034)
   linkArtifact: (ticketKey: string, artifactId: string, artifactKind: string, label?: string) => void;
   unlinkArtifact: (linkId: string) => void;
   saveBrief: (b: { id?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes?: string }) => Promise<void>;

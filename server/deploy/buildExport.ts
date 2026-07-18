@@ -10,12 +10,13 @@ import { mkdirSync, statSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
-import { tryCatch, tryCatchSync } from '@luckystack/core';
+import { tryCatchSync } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { docker, dockerAvailable } from '../container/runtime';
 import { workspaceDataDir } from '../git/repoStore';
 import { decryptSecret } from '../crypto/secretBox';
+import { safeHttpRequest, type SafeHttpDependencies } from '../security/safeHttp';
 
 //? Download links live for this long (hours) before the artifact is considered expired + prunable.
 const EXPORT_TTL_MS = Number(process.env.WS_BUILD_EXPORT_TTL_H ?? '24') * 3_600_000;
@@ -104,9 +105,6 @@ export interface DeployDescriptor {
   imageRef: string;
   downloadToken: string;
 }
-//? Injectable so the webhook is unit/e2e-tested without the global fetch (a local receiver in the test).
-export type DeployFetch = (url: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{ ok: boolean; status: number }>;
-
 //? #64 — resolve a deploy-hook config value: the PER-WORKSPACE env var (save-env, decrypted if secret)
 //? takes precedence over the host-global `process.env`, so each workspace points at its own deploy target
 //? without a host restart. A missing prisma or row falls back to the env-global default.
@@ -123,16 +121,21 @@ async function resolveDeployConfig(prisma: PrismaClient | undefined, workspaceId
 //? (save-env, settings UI) with a host-global `process.env` fallback. No-op (`fired:false`) when no URL is
 //? configured, so export works with or without a target. Best-effort: a network failure is reported on the
 //? result, never thrown (a failed hook must not fail the export that already produced a good artifact).
-export async function postDeployWebhook(descriptor: DeployDescriptor, fetchImpl?: DeployFetch, prisma?: PrismaClient): Promise<DeployHookResult> {
+export async function postDeployWebhook(descriptor: DeployDescriptor, dependencies: SafeHttpDependencies = {}, prisma?: PrismaClient): Promise<DeployHookResult> {
   const url = await resolveDeployConfig(prisma, descriptor.workspaceId, 'WS_DEPLOY_WEBHOOK_URL');
   if (url.length === 0) return { fired: false };
   const bearer = await resolveDeployConfig(prisma, descriptor.workspaceId, 'WS_DEPLOY_WEBHOOK_TOKEN');
-  const doFetch: DeployFetch = fetchImpl ?? ((u, init) => fetch(u, init).then((r) => ({ ok: r.ok, status: r.status })));
-  const [err, res] = await tryCatch(() => doFetch(url, {
+  const result = await safeHttpRequest(url, {
+    ...dependencies,
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(bearer.length > 0 ? { authorization: `Bearer ${bearer}` } : {}) },
     body: JSON.stringify(descriptor),
-  }));
-  if (err || !res) return { fired: true, ok: false, error: err?.message ?? 'deploy.hookNoResponse' };
-  return { fired: true, ok: res.ok, status: res.status };
+    timeoutMs: 15_000,
+    maxRedirects: 3,
+    maxRequestBytes: 256_000,
+    maxResponseBytes: 64_000,
+  });
+  if (!result.ok) return { fired: true, ok: false, error: result.error.code };
+  const { status } = result.response;
+  return { fired: true, ok: status >= 200 && status < 300, status };
 }

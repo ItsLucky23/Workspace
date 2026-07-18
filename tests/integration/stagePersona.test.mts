@@ -22,12 +22,12 @@ try {
   const stageKey = stage?.key ?? '';
 
   await enqueueControlAction({
-    workspaceId: wsId, op: 'save-stage-config', target: { stageId: stageKey },
+    workspaceId: wsId, op: 'save-stage-config', target: { stageId: stageKey, projectId: stage?.projectId ?? '' },
     payload: { id: stageKey, systemPrompt: 'You are a rigorous staff engineer.', definitionOfDone: 'All tests pass.' },
     userId: owner.id, clientRequestId: `sp-1-${String(stamp)}`,
   });
 
-  const after = await prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, key: stageKey } });
+  const after = await prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId: stage?.projectId ?? '', key: stageKey } });
   eq(after?.systemPrompt, 'You are a rigorous staff engineer.', 'the stage persona (systemPrompt) persisted');
   eq(after?.definitionOfDone, 'All tests pass.', 'the definition of done persisted (op previously ignored it)');
 } catch (error) {

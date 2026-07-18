@@ -14,11 +14,12 @@ try {
     'http://localhost/hook', 'http://sub.localhost/x', 'https://foo.local/x', 'https://ci.internal/x',
     'http://127.0.0.1/hook', 'http://127.9.9.9/x', 'http://0.0.0.0/x',
     'http://10.1.2.3/x', 'http://172.16.0.1/x', 'http://172.31.255.255/x', 'http://192.168.1.1/x',
-    'http://169.254.169.254/latest/meta-data', 'http://[::1]/x', 'http://[fe80::1]/x', 'http://[fd12::1]/x',
+    'http://169.254.169.254/latest/meta-data', 'http://203.0.113.7/x',
+    'http://[::1]/x', 'http://[fe80::1]/x', 'http://[fd12::1]/x', 'http://[2001:db8::1]/x',
     'not a url',
   ]) assert(isBlockedWebhookTarget(bad), `blocked: ${bad}`);
   for (const ok of [
-    'https://hooks.slack.com/services/x', 'https://example.com/webhook', 'http://203.0.113.7/x',
+    'https://hooks.slack.com/services/x', 'https://example.com/webhook', 'http://8.8.8.8/x',
     'https://172.15.0.1/x', 'https://172.32.0.1/x', 'https://11.0.0.1/x',
   ]) assert(!isBlockedWebhookTarget(ok), `allowed: ${ok}`);
 

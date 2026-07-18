@@ -40,14 +40,16 @@ try {
   assert((doc?.content ?? '').includes('## Requirements') && (doc?.content ?? '').includes('## System decisions'), 'the template seeded a section skeleton');
 
   // ---- 2. attach an uploaded source file (txt) → extraction persists text + indexes doc-assets RAG (1.2/1.3) ----
-  const src = persistMediaBytes(Buffer.from('ASSIGNMENT BRIEF\nBuild an offline-first study planner.\nRUBRIC: architecture 40%, UX 30%, code quality 30%.\nMUST support spaced-repetition scheduling.', 'utf8'), 'txt', `brief-${String(stamp)}`);
-  await enqueueControlAction({ workspaceId: wsId, op: 'document-edit', target: {}, payload: { documentId: doc?.id, addAssetUrl: src.url, addAssetKind: 'file', addAssetLabel: 'Assignment brief' }, userId: owner.id, clientRequestId: `att-${String(stamp)}` });
+  const src = persistMediaBytes(Buffer.from('ASSIGNMENT BRIEF\nBuild an offline-first study planner.\nRUBRIC: architecture 40%, UX 30%, code quality 30%.\nMUST support spaced-repetition scheduling.', 'utf8'), 'TXT', `brief-${String(stamp)}`);
+  const sourceUrl = `${src.url}?download=1#page=2`;
+  await enqueueControlAction({ workspaceId: wsId, op: 'document-edit', target: {}, payload: { documentId: doc?.id, addAssetUrl: sourceUrl, addAssetKind: 'file', addAssetLabel: 'Assignment brief' }, userId: owner.id, clientRequestId: `att-${String(stamp)}` });
   const extracted = await poll(async () => {
     const d = await prisma.document.findFirst({ where: { workspaceId: wsId, id: doc?.id ?? '' } });
-    const a = findAsset(d?.assets, src.url);
+    const a = findAsset(d?.assets, sourceUrl);
     return a?.extractStatus === 'ok' ? a : null;
   });
   assert(extracted !== null, 'the uploaded txt was extracted (extractStatus ok) off the write lock');
+  eq(extracted?.url, sourceUrl, 'the stored asset preserves its original URL identity');
   assert((extracted?.extractedText ?? '').includes('spaced-repetition'), 'the extracted text carries the source content');
   const assetRag = await poll(async () => { const n = await prisma.ragEntry.count({ where: { workspaceId: wsId, commitHash: DOC_ASSETS_CORPUS, filePath: { startsWith: `docasset/${doc?.id ?? ''}/` } } }); return n > 0 ? n : null; });
   assert((assetRag ?? 0) > 0, 'the source text indexed into the workspace-doc-assets corpus');

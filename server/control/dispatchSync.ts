@@ -8,10 +8,11 @@
 //? workspaceId (the client joins room = workspaceId); membership is enforced by the
 //? sync layer (`requireRoomMembership`) and re-checked here via `OP_CAPABILITY`.
 
+import { tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import { OP_CAPABILITY, hasCapability } from './rbac';
-import { enqueueControlAction } from '../orchestrator/conductor';
+import { enqueueControlAction, isControlActionFailure } from '../orchestrator/conductor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 
 export interface DispatchSyncInput {
@@ -39,8 +40,11 @@ export async function dispatchControlSync(input: DispatchSyncInput): Promise<Dis
   const allowed = await hasCapability(prisma, workspaceId, userId, OP_CAPABILITY[op]);
   if (!allowed) return { ok: false, errorCode: 'auth.forbidden' };
 
-  const { result } = await enqueueControlAction({
+  const [enqueueError, enqueued] = await tryCatch(() => enqueueControlAction({
     workspaceId, op, target: target ?? {}, payload: payload ?? {}, userId, clientRequestId,
-  });
-  return { ok: true, result };
+  }));
+  if (enqueueError || !enqueued || isControlActionFailure(enqueued.result)) {
+    return { ok: false, errorCode: 'sync.invalidRequest' };
+  }
+  return { ok: true, result: enqueued.result };
 }

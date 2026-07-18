@@ -49,8 +49,9 @@ function FieldLabel({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-function blankStage(id: string, name: string, order: number): PipelineStageCfg {
+function blankStage(projectId: string, id: string, name: string, order: number): PipelineStageCfg {
   return {
+    projectId,
     id, kind: 'code', name, order, aiEnabled: true, customInstructions: '', promptTemplate: '',
     skillKeys: [], sourceIds: [], commands: [], tools: [],
     statuses: [
@@ -581,7 +582,7 @@ export const template = 'workspaces';
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   const [selectedId, setSelectedId] = useState<string>(stageConfigs[0]?.id ?? '');
   const [tab, setTab] = useState('general');
@@ -610,18 +611,19 @@ export default function Pipeline() {
     copy[j] = a;
     const reordered = copy.map((st, idx) => ({ ...st, order: idx }));
     //? R1 — persist the new order (stage ids in sequence) so a reorder survives a refresh.
-    reorderStages(reordered.map((st) => st.id));
+    if (activeProjectId) reorderStages(activeProjectId, reordered.map((st) => st.id));
     return reordered;
   }); };
 
   const addStage = () => {
+    if (!activeProjectId) return;
     const key = `stage-${String(stages.length)}-${String(Date.now())}`;
     const name = `Stage ${String(stages.length + 1)}`;
-    setStages((p) => [...p, blankStage(key, name, p.length)]);
+    setStages((p) => [...p, blankStage(activeProjectId, key, name, p.length)]);
     setSelectedId(key);
     setTab('general');
     //? R1 — persist the new stage immediately (was React-state-only → lost on refresh).
-    createStage({ key, name, kind: 'code' });
+    createStage({ projectId: activeProjectId, key, name, kind: 'code' });
   };
 
   const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s?.name ?? '' }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
@@ -631,7 +633,7 @@ export default function Pipeline() {
     setStages((p) => p.filter((x) => x.id !== selectedId).map((st, idx) => ({ ...st, order: idx })));
     setSelectedId(fallback);
     //? R1 — persist the deletion.
-    if (removed) deleteStage(removed);
+    if (removed && activeProjectId) deleteStage(activeProjectId, removed);
   });
 
   const validate = () => {

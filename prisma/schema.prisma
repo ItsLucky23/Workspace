@@ -324,15 +324,17 @@ model ServiceStack {
 model UiReviewRequest {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
+  projectId   String?  @db.ObjectId               // persisted target; null only for legacy/unscoped requests
   page        String?                             // which page/flow (free label)
   screenshots String[]                            // /media/… urls (K1 upload)
   problems    String[]                            // taxonomy keys (server/ui/uiReview UI_PROBLEMS)
   notes       String?                             // free-text ("anything off-list")
-  status      String   @default("open")           // 'open' | 'redesigned' | 'closed'
+  status      String   @default("open")           // 'open' | 'ticketed' | 'dismissed'
   createdById String?  @db.ObjectId
   createdAt   DateTime @default(now())
 
   @@index([workspaceId, status])
+  @@index([workspaceId, projectId, status])
 }
 
 //? H1 — the admin/security AUDIT LOG. The audit found governance ops (role changes, secret read/writes, member

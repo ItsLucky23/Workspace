@@ -93,7 +93,9 @@ export async function createDefaultPipeline(prisma: PrismaClient, workspaceId: s
         roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: s.systemPrompt,
         customInstructions: s.customInstructions, promptTemplate: s.promptTemplate, definitionOfDone: s.definitionOfDone,
         skillKeys: [], sourceIds: ['summary'],
-        commands: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
+        //? A blank workspace has no IntegrationTool rows yet, so it must not carry
+        //? a phantom legacy seed id. Users explicitly bind real tools after creating them.
+        commands: [], tools: [],
         statuses: baseStatuses(),
         //? Extra long-running terminals (dev servers) are project-specific — none by default.
         //? The claude AGENT is driven by the stage-runner, not a StageProcess command.

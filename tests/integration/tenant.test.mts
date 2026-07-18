@@ -70,6 +70,15 @@ try {
   assert(TENANT_MODELS.has('Ticket'), 'TENANT_MODELS includes Ticket (tenant-scoped)');
   assert(TENANT_MODELS.has('WorkspaceMember'), 'TENANT_MODELS includes WorkspaceMember (tenant-scoped)');
   assert(TENANT_MODELS.has('EnvVar'), 'TENANT_MODELS includes EnvVar (tenant-scoped)');
+  assert(TENANT_MODELS.has('ServiceStack'), 'TENANT_MODELS includes ServiceStack (tenant-scoped)');
+
+  //? ServiceStack regression: no-where tenantDb reads must never surface another
+  //? workspace's compose config, service names, or runtime status.
+  const stackA = await runInTenant(wsA, async () => tenantDb.serviceStack.create({ data: { name: `stack-a-${String(Date.now())}`, compose: 'services: {}', services: ['a'] } }));
+  const stackB = await runInTenant(wsB, async () => tenantDb.serviceStack.create({ data: { name: `stack-b-${String(Date.now())}`, compose: 'services: {}', services: ['b'] } }));
+  const stacksA = await runInTenant(wsA, async () => tenantDb.serviceStack.findMany());
+  assert(stacksA.some((stack) => stack.id === stackA.id), 'wsA tenantDb ServiceStack read includes wsA stack');
+  assert(!stacksA.some((stack) => stack.id === stackB.id), 'wsA tenantDb ServiceStack read excludes wsB stack');
 
   //? ---- REGRESSION GUARD: the MOST dangerous cross-tenant path — a NO-`where`
   //? MUTATION (updateMany/deleteMany with no filter) must hit ONLY the active tenant.
@@ -102,6 +111,9 @@ try {
   assert(aAfterDelete === null, 'no-`where` deleteMany in wsA DID delete wsA\'s own row');
 } finally {
   //? ---- best-effort cleanup: both workspaces + all tenant rows + the demo owner ----
+  //? cleanupWorkspace predates ServiceStack, so remove these rows explicitly here.
+  if (wsA) await prisma.serviceStack.deleteMany({ where: { workspaceId: wsA } });
+  if (wsB) await prisma.serviceStack.deleteMany({ where: { workspaceId: wsB } });
   if (wsA) await cleanupWorkspace(prisma, wsA, ownerId ? [ownerId] : []);
   if (wsB) await cleanupWorkspace(prisma, wsB, ownerId ? [ownerId] : []);
 }

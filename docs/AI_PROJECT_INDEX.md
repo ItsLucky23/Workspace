@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (58)
+## API routes (59)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -51,6 +51,7 @@
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
+| `api/workspaces/rotateWebhookSecret/v1` | POST | login | 10 | ItsLucky23 | yes | — | Rotates the forge webhook credential. Unlike room-broadcast sync output, this API response |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
@@ -144,10 +145,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 15 |
+| `ItsLucky23` | 16 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 3/121 routes have a per-route `.tests.ts`.
+**Test coverage**: 4/122 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

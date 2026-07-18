@@ -365,7 +365,7 @@ export interface ContentChannelSummary { id: string; name: string; platform: str
 //? A publish target (FIX-C) — a platform + whether the workspace has a stored OAuth connection for it,
 //? so the settings UI shows connect/connected and the piece-detail only offers publish to a live target.
 //? #140 — one connected account under a platform (accountId null = the legacy single-account connection).
-export interface PublishAccountSummary { accountId: string | null }
+export interface PublishAccountSummary { accountId: string | null; needsReconnect?: boolean }
 export interface PublishTargetSummary { platform: string; connected: boolean; accounts: PublishAccountSummary[] }
 
 export interface ContentSnapshot {
@@ -777,6 +777,7 @@ export interface ChatProposal {
   //? dispatches). Generic ops carry their validated fields in `params`; `destructive: true` makes
   //? the client wrap the accept in an extra explicit confirm (B-23 confirm-on-important).
   op: 'assign' | 'create-ticket' | 'create-content' | ControlOp;
+  projectId: string;        // validated active project at proposal time; stale accepts fail closed
   summary: string;          // human-readable ("Move DEV-3 → Review")
   destructive?: boolean;    // extra confirm required at accept (X1 generic ops)
   params?: Record<string, unknown>; // generic-op fields, already server-validated against the workspace
@@ -1080,6 +1081,7 @@ export interface DesignArtifact {
 //? U2 (gap-fix): an open "unfuck the UI" review request in the designer inbox.
 export interface UiReviewSummary {
   id: string;
+  projectId: string | null;
   page: string | null;
   problems: string[];
   screenshots: string[];

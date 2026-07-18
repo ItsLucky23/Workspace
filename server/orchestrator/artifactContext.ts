@@ -33,19 +33,36 @@ export async function loadTicketArtifactContext(prisma: PrismaClient, workspaceI
   if (links.length === 0) return [];
   const out: { name: string; content: string }[] = [];
   for (const link of links) {
-    if (link.artifactKind === 'design') {
-      const a = await prisma.designArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, name: true, description: true, content: true } });
-      if (!a) continue;
-      const meta = { name: a.name, description: a.description ?? '', content: a.content };
-      //? Render by kind — theme + style via the design-system doc; animation via its own motion block (3.3).
-      const doc = a.kind === 'theme'
-        ? buildDesignSystemDoc(meta, null)
-        : (a.kind === 'animation' ? renderAnim(a.name, a.description ?? '', a.content) : buildDesignSystemDoc(null, meta));
-      out.push({ name: `Linked design: ${a.name}`, content: doc });
-    } else {
-      const a = await prisma.studioArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, title: true, content: true } });
-      if (!a) continue;
-      out.push({ name: `Linked ${a.kind}: ${a.title}`, content: renderStudio(a.kind, a.content) });
+    switch (link.artifactKind) {
+      case 'design': {
+        const artifact = await prisma.designArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, name: true, description: true, content: true } });
+        if (!artifact) break;
+        const meta = { name: artifact.name, description: artifact.description ?? '', content: artifact.content };
+        //? Render by kind — theme + style via the design-system doc; animation via its own motion block (3.3).
+        const doc = artifact.kind === 'theme'
+          ? buildDesignSystemDoc(meta, null)
+          : (artifact.kind === 'animation' ? renderAnim(artifact.name, artifact.description ?? '', artifact.content) : buildDesignSystemDoc(null, meta));
+        out.push({ name: `Linked design: ${artifact.name}`, content: doc });
+        break;
+      }
+      case 'studio': {
+        const artifact = await prisma.studioArtifact.findFirst({ where: { workspaceId, id: link.artifactId }, select: { kind: true, title: true, content: true } });
+        if (!artifact) break;
+        out.push({ name: `Linked ${artifact.kind}: ${artifact.title}`, content: renderStudio(artifact.kind, artifact.content) });
+        break;
+      }
+      case 'ui-review': {
+        const review = await prisma.uiReviewRequest.findFirst({ where: { workspaceId, id: link.artifactId }, select: { page: true, screenshots: true, problems: true, notes: true } });
+        if (!review) break;
+        const content = [
+          `# UI review${review.page ? ` — ${review.page}` : ''}`,
+          review.problems.length > 0 ? `## Reported problems\n${review.problems.map((problem) => `- ${problem}`).join('\n')}` : '',
+          review.notes ? `## Comparison / notes\n${review.notes}` : '',
+          review.screenshots.length > 0 ? `## Reference screenshots\n${review.screenshots.map((url) => `- ${url}`).join('\n')}` : '',
+        ].filter((part) => part.length > 0).join('\n\n');
+        out.push({ name: `Linked UI review: ${review.page ?? 'UI'}`, content });
+        break;
+      }
     }
   }
   return out;

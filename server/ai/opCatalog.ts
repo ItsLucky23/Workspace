@@ -18,6 +18,7 @@ import { listServicePresets } from '../container/servicePresets';
 //? The context slice generic validation checks references against (structural subset of
 //? workspaceChat's Ctx — no import to avoid a runtime cycle).
 export interface CatalogCtx {
+  projectId: string;
   tickets: { key: string }[];
   stages: { id: string }[];
   members: { id: string }[];
@@ -453,5 +454,5 @@ export function validateGenericAction(raw: unknown, ctx: CatalogCtx): ChatPropos
   //? Piece params render their title in the summary so the confirm reads human, not as an ObjectId.
   const pieceTitle = typeof params.pieceId === 'string' ? ctx.pieces.find((p) => p.id === params.pieceId)?.title : undefined;
   const summary = `${typedOp}${pieceTitle ? ` — ${pieceTitle}` : ''}${rendered.length > 0 ? ` (${rendered})` : ''}`;
-  return { op: typedOp, summary, params, ...(spec.destructive ? { destructive: true } : {}) };
+  return { op: typedOp, projectId: ctx.projectId, summary, params, ...(spec.destructive ? { destructive: true } : {}) };
 }

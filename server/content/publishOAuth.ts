@@ -334,12 +334,51 @@ export async function getValidConnection(
   if (!isTokenExpired(stored, now) || refreshToken === undefined || refreshToken.length === 0) return stored;
   const transport = opts.refreshTransport ?? realRefreshTransport;
   const [err, refreshed] = await tryCatch(() => transport.refresh(platform, refreshToken));
-  if (err || !refreshed) return stored;
+  //? GAP_SCAN A4 — the refresh of an EXPIRED token failed: this connection is DEAD (revoked/expired
+  //? refresh token). It used to silently hand back the stale token, so every later post failed with a
+  //? generic error and the user was never told to reconnect. Mark it unhealthy (the UI shows a reconnect
+  //? CTA) and still return the stale token, so the upload fails HONESTLY rather than degrading to a stub.
+  if (err || !refreshed) {
+    await markConnectionUnhealthy(prisma, workspaceId, platform, opts.accountId ?? null, err?.message ?? 'refresh.failed');
+    return stored;
+  }
   //? CI — a refresh response may omit `scope`; keep the originally-granted scope so the comment
   //? inbox's capability check survives token refreshes.
   const merged: StoredTokens = { ...refreshed, refreshToken: refreshed.refreshToken ?? refreshToken, ...(refreshed.scope === undefined && stored.scope !== undefined ? { scope: stored.scope } : {}) };
   await saveConnection(prisma, workspaceId, platform, merged, opts.accountId);
+  //? A4 — a successful refresh means the connection is healthy again; drop any stale unhealthy marker.
+  await clearConnectionHealth(prisma, workspaceId, platform, opts.accountId ?? null);
   return merged;
+}
+
+//? GAP_SCAN A4 — connection HEALTH markers, stored as ordinary (non-secret) EnvVar rows next to the
+//? encrypted tokens: `__publishhealth_<platform>[_<accountId>]` = the failure reason. Present ⇒ the account
+//? needs a reconnect; absent ⇒ healthy. Kept out of `__publish_` so the token parser never sees them.
+const HEALTH_PREFIX = '__publishhealth_';
+export const healthKey = (platform: OAuthPlatform, accountId?: string | null): string =>
+  accountId && accountId.length > 0 ? `${HEALTH_PREFIX}${platform}_${accountId}` : `${HEALTH_PREFIX}${platform}`;
+
+export async function markConnectionUnhealthy(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, accountId: string | null, reason: string): Promise<void> {
+  const key = healthKey(platform, accountId);
+  const value = reason.slice(0, 200);
+  const existing = await prisma.envVar.findFirst({ where: { workspaceId, key }, select: { id: true } });
+  await (existing
+    ? prisma.envVar.updateMany({ where: { workspaceId, key }, data: { value } })
+    : prisma.envVar.create({ data: { workspaceId, key, value, secret: false } }));
+}
+
+export async function clearConnectionHealth(prisma: PrismaClient, workspaceId: string, platform: OAuthPlatform, accountId: string | null): Promise<void> {
+  await prisma.envVar.deleteMany({ where: { workspaceId, key: healthKey(platform, accountId) } });
+}
+
+//? The set of `__publishhealth_` keys for a workspace → which (platform, accountId) pairs need a reconnect.
+//? Pure parse + exported for tests.
+export function parseHealthKey(key: string): { platform: string; accountId: string | null } | null {
+  if (!key.startsWith(HEALTH_PREFIX)) return null;
+  const rest = key.slice(HEALTH_PREFIX.length);
+  const sep = rest.indexOf('_');
+  if (sep === -1) return { platform: rest, accountId: null };
+  return { platform: rest.slice(0, sep), accountId: rest.slice(sep + 1) };
 }
 
 //? Complete a connect: exchange the OAuth code for tokens + store them encrypted. Returns ok.
@@ -353,5 +392,7 @@ export async function connectPublishPlatform(
   //? #140 — store under the per-account key when an accountId is supplied (multi-account), else the legacy
   //? single-account key (back-compat).
   await saveConnection(prisma, workspaceId, platform, tokens, opts.accountId);
+  //? A4 — a fresh connect resolves any prior "needs reconnect" state for this account.
+  await clearConnectionHealth(prisma, workspaceId, platform, opts.accountId ?? null);
   return { ok: true };
 }

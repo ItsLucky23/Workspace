@@ -1,6 +1,6 @@
 //? Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace
-//? inbound-webhook secret through the Conductor (single-writer, B-23) and returns it so the settings card
-//? can show it once for pasting into the forge's webhook config. Requires workspaceSettings (OP_CAPABILITY).
+//? inbound-webhook secret through the Conductor (single-writer, B-23), but broadcasts configuration
+//? metadata only. The plaintext is available exclusively from the initiator-only API route.
 /** @docs owner ItsLucky23 */
 
 import { AuthProps, SessionLayout } from '../../../config';
@@ -24,6 +24,5 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     payload: {}, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
-  const secret = typeof res.result === 'object' && res.result !== null && 'webhookSecret' in res.result ? String(res.result.webhookSecret) : '';
-  return { status: 'success', webhookSecret: secret };
+  return { status: 'success', webhookConfigured: true };
 };

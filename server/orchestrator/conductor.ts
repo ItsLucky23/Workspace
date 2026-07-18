@@ -22,6 +22,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { sanitizeSections } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
+import { createStarterLibrary } from '../bootstrap/starterLibrary';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
 import { generateScript } from '../content/script';
@@ -56,7 +57,15 @@ import { indexInstitutionalMemory } from '../rag/memory';
 import { createMr, addReviewComment, approveMr, mergeMr, rollbackMr, resolveThread, mrForTicket } from '../mr/service';
 import { normalizeGitConfig, resolveBranchName } from '../git/branchStrategy';
 import { syncForgeIssues } from '../git/gitlabSync';
-import { withWorkspaceLease, claimActionOnce } from './cluster';
+import {
+  withWorkspaceLease,
+  claimControlAction,
+  completeControlAction,
+  waitForControlActionOutcome,
+  type ControlActionFailureCode,
+  type ControlActionTerminalOutcome,
+  type WorkspaceLeaseGuard,
+} from './cluster';
 import { dockerAvailable } from '../container/runtime';
 import { isSpendEnforcementActive } from '../spend/record';
 import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
@@ -304,24 +313,34 @@ async function recordTicketEvent(workspaceId: string, ticketId: string, type: st
 //? no-op without a linked repo) + draft a `DEV-####` tracking ticket pre-filled from the analysis. The AI
 //? never reverts; the Conductor does, on human consent (B-23). Returns the created ticket for the delta.
 async function acceptRollback(workspaceId: string, userId: string, patch: unknown): Promise<unknown> {
-  const p = (patch !== null && typeof patch === 'object') ? (patch as Record<string, unknown>) : {};
-  const mrId = typeof p.mrId === 'string' ? p.mrId : '';
-  const symptom = typeof p.symptom === 'string' && p.symptom.length > 0 ? p.symptom : 'a production regression';
-  const reason = typeof p.reason === 'string' ? p.reason : '';
-  if (mrId) await tryCatch(() => rollbackMr(prisma, workspaceId, mrId));
-  const projectId = await resolveProjectId(prisma, workspaceId);
-  if (!projectId) return { ok: true };
+  const p = asRec(patch);
+  const mrId = str(p, 'mrId');
+  const symptomRaw = str(p, 'symptom') ?? '';
+  const symptom = symptomRaw.length > 0 ? symptomRaw : 'a production regression';
+  const reason = str(p, 'reason') ?? '';
+  if (!mrId) return { ok: false, error: 'rollback.invalidRequest' };
+
+  //? The culprit MR + its source ticket are the project authority. Once an MR is known, falling
+  //? back to the workspace's first project would create the follow-up on an unrelated board.
+  const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId, id: mrId }, select: { projectId: true, ticketId: true } });
+  if (!mr) return { ok: false, error: 'rollback.mrNotFound' };
+  const sourceTicket = await prisma.ticket.findFirst({ where: { workspaceId, id: mr.ticketId }, select: { projectId: true } });
+  if (sourceTicket?.projectId !== mr.projectId) return { ok: false, error: 'rollback.invalidSource' };
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: sourceTicket.projectId }, select: { id: true } });
+  if (!project) return { ok: false, error: 'project.notFound' };
+
+  await tryCatch(() => rollbackMr(prisma, workspaceId, mrId));
   const last = await prisma.ticket.findFirst({ where: { workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
   const number = (last?.number ?? 0) + 1;
   const created = await prisma.ticket.create({
     data: {
-      workspaceId, projectId, key: `DEV-${String(number)}`, number,
+      workspaceId, projectId: project.id, key: `DEV-${String(number)}`, number,
       title: `Rollback follow-up: ${symptom}`.slice(0, 120), description: reason.length > 0 ? reason : null,
       stageId: 'unrefined', status: 'idle', labels: ['rollback'], creatorId: userId, priority: 'high',
     },
   });
   await recordTicketEvent(workspaceId, created.id, 'status-change', userId, 'created the tracking ticket from an AI rollback');
-  void fireEvent(prisma, workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId });
+  void fireEvent(prisma, workspaceId, { on: 'ticket.created', ticketKey: created.key, stageId: 'unrefined', projectId: project.id });
   return created;
 }
 
@@ -371,9 +390,9 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
 //? tickets that already have a branch (a re-move never re-freezes) and no-ops when no
 //? repo is linked or the target stage is not AI-enabled. Best-effort per ticket: a git
 //? failure is logged, never fails the authoritative stage move.
-async function activateWorktreesForStage(workspaceId: string, keys: string[], stageId: string): Promise<void> {
+async function activateWorktreesForStage(workspaceId: string, projectId: string, keys: string[], stageId: string): Promise<void> {
   if (keys.length === 0) return;
-  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: stageId }, select: { aiEnabled: true } });
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId, key: stageId }, select: { aiEnabled: true } });
   if (stage?.aiEnabled !== true) return;
   //? Resolve the branch NAME from the per-workspace strategy (branchStrategy.ts). Loaded once
   //? per activation; the derived name is persisted on Ticket.branch so it's stable thereafter.
@@ -381,14 +400,15 @@ async function activateWorktreesForStage(workspaceId: string, keys: string[], st
   const gitCfg = normalizeGitConfig(ws?.gitConfig ?? null);
   const activated: { key: string; branch: string }[] = [];
   for (const key of keys) {
-    const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { branch: true, title: true, labels: true, number: true, projectId: true } });
-    if (t?.branch) continue;
-    //? R3-b — cut the worktree from THIS ticket's project's repo (skip if that project isn't linked).
-    if (!t?.projectId || !isLinked(workspaceId, t.projectId)) continue;
-    const branchName = resolveBranchName(gitCfg, { key, title: t.title, labels: t.labels, number: t.number });
-    const [error, wt] = await tryCatch(() => addWorktree(workspaceId, t.projectId, key, branchName));
+    const ticket = await prisma.ticket.findFirst({ where: { workspaceId, projectId, key }, select: { branch: true, title: true, labels: true, number: true } });
+    if (!ticket || ticket.branch || !isLinked(workspaceId, projectId)) continue;
+    const branchName = resolveBranchName(gitCfg, { key, title: ticket.title, labels: ticket.labels, number: ticket.number });
+    const [error, worktree] = await tryCatch(() => addWorktree(workspaceId, projectId, key, branchName));
     if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
-    if (wt) { await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { branch: wt.branch, commitHash: wt.commitHash } }); activated.push({ key, branch: wt.branch }); }
+    if (worktree) {
+      await prisma.ticket.updateMany({ where: { workspaceId, projectId, key }, data: { branch: worktree.branch, commitHash: worktree.commitHash } });
+      activated.push({ key, branch: worktree.branch });
+    }
   }
   //? Run each activated ticket's stage OFF the serial chain (07b §0/§4): the autonomous
   //? claude turn is minutes-long and the authoritative stage move must return fast for
@@ -421,12 +441,17 @@ export async function openBlockersFor(db: PrismaClient, workspaceId: string, tic
 //? Re-fire an autonomous turn for a ticket at its CURRENT stage, if that stage is aiEnabled and
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
 //? already-branched tickets, so a resumed ticket is re-provisioned directly here.
+export async function resolveReprovisionTarget(db: PrismaClient, workspaceId: string, key: string) {
+  const ticket = await db.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true, projectId: true } });
+  if (!ticket?.branch) return null;
+  const stage = await db.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: ticket.stageId }, select: { aiEnabled: true } });
+  return stage?.aiEnabled === true ? { key, branch: ticket.branch, stageId: ticket.stageId, projectId: ticket.projectId } : null;
+}
+
 export async function reprovisionTicket(workspaceId: string, key: string, resume = false, resumePrompt?: string): Promise<void> {
-  const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true } });
-  if (!t?.branch) return;
-  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, key: t.stageId }, select: { aiEnabled: true } });
-  if (stage?.aiEnabled !== true) return;
-  void provisionContainers(workspaceId, [{ key, branch: t.branch }], t.stageId, resume, resumePrompt);
+  const target = await resolveReprovisionTarget(prisma, workspaceId, key);
+  if (!target) return;
+  void provisionContainers(workspaceId, [{ key: target.key, branch: target.branch }], target.stageId, resume, resumePrompt);
 }
 
 async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string, resume = false, resumePrompt?: string): Promise<void> {
@@ -516,59 +541,136 @@ async function drainCapacityQueue(): Promise<void> {
 let globalChain: Promise<unknown> = Promise.resolve();
 const wsChains = new Map<string, Promise<unknown>>();
 
-//? Enqueue a control action + return the allocated signal seq (the ack payload).
-export async function enqueueControlAction(action: ControlAction): Promise<{ signalSeq: number; result?: unknown }> {
-  //? Dedup key is namespaced by workspace so a clientRequestId collision across tenants (or a
-  //? reused id) can never suppress a real write in a DIFFERENT workspace. Cross-instance (survives
-  //? which instance the re-send lands on) + TTL-bounded, replacing the old in-process Set.
-  const dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
-  if (!(await claimActionOnce(dedupKey))) {
-    // Duplicate re-send — already claimed; return a benign ack (no double write).
-    return { signalSeq: -1 };
-  }
+//? A handled action may reject without throwing (for example a failed provider operation).
+//? Transport callers treat that as a failed ACK while successful `void` results remain valid.
+export function isControlActionFailure(result: unknown): boolean {
+  return typeof result === 'object' && result !== null && 'ok' in result && result.ok === false;
+}
 
+export interface EnqueuedControlAction {
+  signalSeq: number;
+  result?: unknown;
+}
+
+export type ControlActionEnqueueErrorCode = ControlActionFailureCode | 'control.pending';
+
+//? Stable, scrubbed codes are the only failure detail replayed through Redis. Raw Prisma/provider/
+//? lease errors never become part of the cross-instance idempotency record or the client ACK.
+export class ControlActionEnqueueError extends Error {
+  constructor(public readonly code: ControlActionEnqueueErrorCode) {
+    super(code);
+    this.name = 'ControlActionEnqueueError';
+  }
+}
+
+export type WorkspaceLeaseRunner = <T>(
+  workspaceId: string,
+  fn: (guard: WorkspaceLeaseGuard) => Promise<T>,
+) => Promise<T>;
+export interface EnqueueControlActionOptions {
+  workspaceLease?: WorkspaceLeaseRunner;
+}
+
+function replayTerminalControlAction(outcome: ControlActionTerminalOutcome): EnqueuedControlAction {
+  if (outcome.state === 'failure') throw new ControlActionEnqueueError(outcome.errorCode);
+  return { signalSeq: outcome.signalSeq };
+}
+
+//? Run the already-claimed action through the original serial queues. Keeping the lease runner
+//? injectable makes lease-failure verification instant while the production default stays identical.
+async function enqueueClaimedControlAction(
+  action: ControlAction,
+  options: EnqueueControlActionOptions,
+): Promise<EnqueuedControlAction> {
   //? Login-only ops (create-workspace / accept-invite) carry NO workspace yet: there is no
   //? per-workspace audit log to append to, and `workspaceId: ''` is not a valid ObjectId (the
   //? signal write would throw and the chain would swallow it, silently dropping the op). Run them
   //? on the global serial chain WITHOUT a signal or workspace-lease (independent rows; no tenant).
   if (!action.workspaceId) {
     let result: unknown;
-    const link = globalChain.then(async () => { result = await executeAction(action); }).catch((error: unknown) => {
+    const actionPromise = globalChain.then(async () => { result = await executeAction(action); });
+    //? Keep the queue tail recovered for later actions, but await the UNRECOVERED action promise
+    //? below so this caller observes execute failures instead of receiving a false-success ACK.
+    globalChain = actionPromise.catch((error: unknown) => {
       console.error(`[conductor] action ${action.op} failed:`, error);
     });
-    globalChain = link;
     //? AWAIT the write before returning so the caller's post-ack refetch reliably sees it. Serial
-    //? ordering is preserved: `link` resolves after all prior queued global actions + this one.
-    await link;
+    //? ordering is preserved: `actionPromise` settles after all prior queued global actions + this one.
+    await actionPromise;
     return { signalSeq: -1, result };
   }
 
   //? Workspace-scoped: queue on this workspace's in-process chain, and inside it hold the
   //? cross-instance lease while allocating the seq, appending the durable (append-only, B-O6)
-  //? signal, and running the authoritative write — so there is never a concurrent authoritative
-  //? write for this workspace, on this instance OR another.
+  //? signal, and running the authoritative write. This excludes contenders while ownership is observed;
+  //? it is not atomic Redis↔Mongo fencing (event-loop/in-flight-write residuals: ADR 0277).
   const workspaceId = action.workspaceId;
   const signalPayload = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
+  const runWorkspaceLease = options.workspaceLease ?? withWorkspaceLease;
   let result: unknown;
   let signalSeq = -1;
   const prev = wsChains.get(workspaceId) ?? Promise.resolve();
-  const link = prev.then(() => withWorkspaceLease(workspaceId, async () => {
+  const actionPromise = prev.then(() => runWorkspaceLease(workspaceId, async (lease) => {
+    //? Renewable-lease checkpoints bracket every irreversible boundary. They fail the caller closed
+    //? after an observed lease loss; `lease.signal` is also available to future abort-aware actions.
+    lease.assertHeld(); // before seq allocation
     signalSeq = await nextSignalSeq(workspaceId);
     await runInTenant(workspaceId, async () => {
+      lease.assertHeld(); // before durable signal append
       await prisma.workspaceSignal.create({
         data: { workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
       });
+      lease.assertHeld(); // before authoritative action execution
       result = await executeAction(action);
+      lease.assertHeld(); // before successful completion / ACK outcome
     });
-  })).catch((error: unknown) => {
+  }));
+  //? Recover only the stored queue tail: a failed lease/write must not poison later actions, while
+  //? the original action promise stays rejected so its caller cannot report success.
+  wsChains.set(workspaceId, actionPromise.catch((error: unknown) => {
     console.error(`[conductor] action ${action.op} failed:`, error);
-  });
-  wsChains.set(workspaceId, link);
+  }));
   //? AWAIT completion so the route responds only AFTER the write lands, and so the realtime
   //? `_sync` route can broadcast the write's delta (`result`). Serial-safe per workspace.
-  await link;
+  await actionPromise;
 
   return { signalSeq, result };
+}
+
+//? Enqueue a control action + return the allocated signal seq (the ack payload). The Redis outcome
+//? state is namespaced by workspace + clientRequestId and replays terminal failure as failure.
+export async function enqueueControlAction(
+  action: ControlAction,
+  options: EnqueueControlActionOptions = {},
+): Promise<EnqueuedControlAction> {
+  const dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
+  const claim = await claimControlAction(dedupKey);
+  if (claim.state === 'success' || claim.state === 'failure') {
+    return replayTerminalControlAction(claim);
+  }
+  if (claim.state === 'pending') {
+    const outcome = await waitForControlActionOutcome(dedupKey);
+    if (outcome.state === 'pending') throw new ControlActionEnqueueError('control.pending');
+    return replayTerminalControlAction(outcome);
+  }
+
+  const [executionError, enqueued] = await tryCatch(() => enqueueClaimedControlAction(action, options));
+  if (executionError || !enqueued) {
+    await completeControlAction(dedupKey, claim.token, {
+      state: 'failure',
+      errorCode: 'control.executionFailure',
+    });
+    throw new ControlActionEnqueueError('control.executionFailure');
+  }
+  if (isControlActionFailure(enqueued.result)) {
+    await completeControlAction(dedupKey, claim.token, {
+      state: 'failure',
+      errorCode: 'control.semanticFailure',
+    });
+    return enqueued;
+  }
+  await completeControlAction(dedupKey, claim.token, { state: 'success', signalSeq: enqueued.signalSeq });
+  return enqueued;
 }
 
 //? DESIGN_DOCS_PROGRAM 1.2 — extract an uploaded file's text OUTSIDE the write lock (a container parse can
@@ -632,11 +734,17 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!key) return;
       const value = str(payload, 'value') ?? '';
       const secret = bool(payload, 'secret');
-      //? Secret values are ENCRYPTED at rest (B-07, same crypto as the GitLab token); non-secrets
-      //? stay plaintext (readable config). The read paths (snapshot + envDelta) decrypt for display.
-      const stored = secret ? encryptSecret(value) : value;
       const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key } });
-      //? Return the upserted row so the realtime `_sync` route broadcasts the delta.
+      //? A masked secret reaches the client as an empty replacement buffer. Keeping an existing
+      //? secret on an empty secret-save prevents an untouched blur/save from erasing it; typing a
+      //? non-empty replacement still rotates it normally.
+      if (existing?.secret === true && secret && value.length === 0) {
+        await recordAudit(prisma, action.workspaceId, userId, 'save-env', key, { secret, unchanged: true });
+        return existing;
+      }
+      //? Secret values are encrypted at rest (B-07); non-secrets remain readable configuration.
+      const stored = secret ? encryptSecret(value) : value;
+      //? Return the upserted row so the realtime `_sync` route broadcasts only its safe metadata delta.
       const row = await (existing
         ? prisma.envVar.update({ where: { id: existing.id }, data: { value: stored, secret } })
         : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: stored, secret } }));
@@ -691,11 +799,11 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       //? advances it to the FIRST aiEnabled stage + activates it — so the user doesn't have to drag it. The
       //? Conductor remains the only writer; activation no-ops without a linked repo/Docker (as usual).
       if (payload.startWithAi === true) {
-        const firstAi = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, aiEnabled: true }, orderBy: { order: 'asc' }, select: { key: true } });
+        const firstAi = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId, aiEnabled: true }, orderBy: { order: 'asc' }, select: { key: true } });
         if (firstAi) {
           await prisma.ticket.update({ where: { id: created.id }, data: { stageId: firstAi.key } });
           await recordTicketEvent(action.workspaceId, created.id, 'status-change', userId, `auto-started AI at ${firstAi.key}`);
-          await activateWorktreesForStage(action.workspaceId, [created.key], firstAi.key);
+          await activateWorktreesForStage(action.workspaceId, projectId, [created.key], firstAi.key);
           //? Return the ADVANCED row so the realtime delta shows the new stage.
           return (await prisma.ticket.findUnique({ where: { id: created.id } })) ?? created;
         }
@@ -745,19 +853,34 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       return ticketRowsForKeys(action.workspaceId, keys);
     }
     case 'bulk-move': {
-      const keys = strArr(target, 'ticketIds'); const stageId = str(payload, 'stageId');
-      if (keys.length === 0 || !stageId) return [];
-      //? #83 — capture each ticket's PRIOR stage before the move so we can fire stage.on_complete for it.
+      const keys = [...new Set(strArr(target, 'ticketIds'))];
+      const stageId = str(payload, 'stageId');
+      if (keys.length === 0 || !stageId) return { ok: false, error: 'bulkMove.invalidRequest' };
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      const explicitProjectId = requestedProjectId === undefined ? null : await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (requestedProjectId !== undefined && !explicitProjectId) return { ok: false, error: 'project.notFound' };
+
+      //? Validate the COMPLETE move before any mutation. Explicit moves may only contain tickets from
+      //? that project; legacy/system moves without a project split safely by each ticket's project.
       const priorStages = await prisma.ticket.findMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, select: { key: true, stageId: true, projectId: true } });
-      const projectByKey = new Map(priorStages.map((p) => [p.key, p.projectId]));
-      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { stageId } });
-      for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, `moved to ${stageId}`);
-      //? Entering an aiEnabled stage → cut each ticket's DEV-#### worktree (07 §A step 5).
-      await activateWorktreesForStage(action.workspaceId, keys, stageId);
-      //? Automation (#2, #83): each ticket LEAVING its prior stage may fire `stage.on_complete`, and
-      //? ENTERING the new stage may fire `stage.on_enter` triggers (projectId carried for match facets).
-      for (const p of priorStages) if (p.stageId && p.stageId !== stageId) void fireEvent(prisma, action.workspaceId, { on: 'stage.on_complete', ticketKey: p.key, stageId: p.stageId, ...(p.projectId ? { projectId: p.projectId } : {}) });
-      for (const key of keys) { const projectId = projectByKey.get(key); void fireEvent(prisma, action.workspaceId, { on: 'stage.on_enter', ticketKey: key, stageId, ...(projectId ? { projectId } : {}) }); }
+      if (priorStages.length !== keys.length) return { ok: false, error: 'ticket.notFound' };
+      if (explicitProjectId && priorStages.some((ticket) => ticket.projectId !== explicitProjectId)) return { ok: false, error: 'bulkMove.mixedProject' };
+      const projectIds = [...new Set(priorStages.map((ticket) => ticket.projectId))];
+      const targetStages = await prisma.pipelineStage.findMany({ where: { workspaceId: action.workspaceId, projectId: { in: projectIds }, key: stageId }, select: { projectId: true } });
+      if (targetStages.length !== projectIds.length) return { ok: false, error: 'stage.notFound' };
+
+      for (const projectId of projectIds) {
+        const projectKeys = priorStages.filter((ticket) => ticket.projectId === projectId).map((ticket) => ticket.key);
+        await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: { in: projectKeys } }, data: { stageId } });
+        await activateWorktreesForStage(action.workspaceId, projectId, projectKeys, stageId);
+      }
+      for (const ticket of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, ticket.id, 'status-change', userId, `moved to ${stageId}`);
+      //? Automation (#2, #83): each ticket LEAVING its prior stage may fire stage.on_complete, and
+      //? ENTERING the new stage may fire stage.on_enter with the exact project match facet.
+      for (const ticket of priorStages) {
+        if (ticket.stageId && ticket.stageId !== stageId) void fireEvent(prisma, action.workspaceId, { on: 'stage.on_complete', ticketKey: ticket.key, stageId: ticket.stageId, projectId: ticket.projectId });
+        void fireEvent(prisma, action.workspaceId, { on: 'stage.on_enter', ticketKey: ticket.key, stageId, projectId: ticket.projectId });
+      }
       return ticketRowsForKeys(action.workspaceId, keys);
     }
     case 'bulk-status': {
@@ -1209,21 +1332,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const ticketKey = str(payload, 'ticketKey');
       const mrId = str(payload, 'mrId');
       if (!ticketKey || !mrId) return;
+      //? Resolve the linked source pair before merge. The MR/ticket project — never project #1 —
+      //? owns the git operation, post-merge RAG refresh and automation facet.
+      const mergedTicket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { id: true, stageId: true, projectId: true } });
+      if (!mergedTicket) return { ok: false, error: 'ticket.notFound' };
+      const sourceMr = await prisma.mergeRequest.findFirst({ where: { workspaceId: action.workspaceId, id: mrId, ticketId: mergedTicket.id }, select: { projectId: true } });
+      if (sourceMr?.projectId !== mergedTicket.projectId) return { ok: false, error: 'mr.projectMismatch' };
       //? Real git-merge (#9), approval-gated. We run under the per-workspace write-lease (this whole
       //? switch does), so merges are serial. Attach the outcome to the fresh view so the client can
       //? toast success / no-approval / conflict.
       const merge = await mergeMr(prisma, action.workspaceId, mrId);
-      //? Incremental re-index on merge (ADR 0045): the target branch advanced, so refresh the RAG code
-      //? index + the institutional memory (best-effort, off the caller's path — never blocks the merge).
+      //? Incremental re-index on merge (ADR 0045): refresh the source ticket's project, not the
+      //? workspace's first repo. Best-effort + off the caller path; memory remains workspace-wide.
       if (merge.ok) void (async () => {
-        const reindexProjectId = await resolveProjectId(prisma, action.workspaceId);
-        await indexWorkspace(prisma, action.workspaceId, reindexProjectId ? { projectId: reindexProjectId } : {}).catch(() => null);
-        await indexInstitutionalMemory(prisma, action.workspaceId).catch(() => null);
+        await tryCatch(() => indexWorkspace(prisma, action.workspaceId, { projectId: mergedTicket.projectId }));
+        await tryCatch(() => indexInstitutionalMemory(prisma, action.workspaceId));
       })();
       //? Automation (#83): a successful merge fires `ticket.merged` (stage/project carried for match facets).
       if (merge.ok) {
-        const mergedTicket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { stageId: true, projectId: true } });
-        void fireEvent(prisma, action.workspaceId, { on: 'ticket.merged', ticketKey, ...(mergedTicket?.stageId ? { stageId: mergedTicket.stageId } : {}), ...(mergedTicket?.projectId ? { projectId: mergedTicket.projectId } : {}) });
+        void fireEvent(prisma, action.workspaceId, { on: 'ticket.merged', ticketKey, ...(mergedTicket.stageId ? { stageId: mergedTicket.stageId } : {}), projectId: mergedTicket.projectId });
       }
       const view = await mrForTicket(prisma, action.workspaceId, ticketKey);
       return view ? { ...view, actionResult: { ok: merge.ok, ...(merge.ok ? {} : { reason: merge.reason, ...(merge.files ? { files: merge.files } : {}) }) } } : null;
@@ -2373,7 +2500,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     }
     case 'save-stage-config': {
       const stageId = str(target, 'stageId') ?? str(payload, 'id');
-      if (!stageId) return;
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      if (!stageId || !requestedProjectId) return { ok: false, error: 'stage.invalidRequest' };
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId) return { ok: false, error: 'project.notFound' };
       const data: Record<string, unknown> = {};
       const name = str(payload, 'name'); if (name) data.name = name;
       const kind = str(payload, 'kind'); if (kind) data.kind = kind;
@@ -2396,23 +2526,25 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (payload.network !== undefined) data.network = { set: readNetworkCfg(payload.network) };
       if (payload.hooks !== undefined) data.hooks = readHooks(payload.hooks);
       const wipLimit = num(payload, 'wipLimit'); if (wipLimit !== undefined) data.wipLimit = wipLimit;
-      if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: stageId }, data });
+      if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: stageId }, data });
       //? Return the updated stage so the realtime `_sync` route broadcasts the delta.
-      return prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key: stageId } });
+      return prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId, key: stageId } });
     }
     //? R1 — durably ADD a pipeline stage (the editor previously mutated React state only → a refresh discarded it).
     //? Appended at the end; the client supplies a unique `key` + `name` (+ optional `kind`).
     case 'stage-create': {
       const key = str(payload, 'key'); const name = str(payload, 'name');
-      if (!key || !name) return { ok: false, error: 'stage.invalidRequest' };
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      if (!key || !name || !requestedProjectId) return { ok: false, error: 'stage.invalidRequest' };
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId) return { ok: false, error: 'project.notFound' };
       const kind = str(payload, 'kind') ?? 'code';
-      const projectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
-      const dupe = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
+      const dupe = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId, key }, select: { id: true } });
       if (dupe) return { ok: false, error: 'stage.keyExists' };
-      const last = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, ...(projectId ? { projectId } : {}) }, orderBy: { order: 'desc' }, select: { order: true } });
+      const last = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId }, orderBy: { order: 'desc' }, select: { order: true } });
       const order = (last?.order ?? -1) + 1;
       return prisma.pipelineStage.create({ data: {
-        workspaceId: action.workspaceId, projectId: projectId ?? '', key, kind, name, order, aiEnabled: true, wipLimit: null,
+        workspaceId: action.workspaceId, projectId, key, kind, name, order, aiEnabled: true, wipLimit: null,
         roleKey: kind === 'code' ? 'code' : kind, systemPrompt: '', customInstructions: '', promptTemplate: '{{summary}}', definitionOfDone: '',
         skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
         modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
@@ -2423,15 +2555,24 @@ async function executeAction(action: ControlAction): Promise<unknown> {
     //? R1 — durably REMOVE a pipeline stage.
     case 'stage-delete': {
       const stageId = str(target, 'stageId') ?? str(payload, 'stageId') ?? str(payload, 'key');
-      if (!stageId) return { ok: false };
-      await prisma.pipelineStage.deleteMany({ where: { workspaceId: action.workspaceId, key: stageId } });
-      return { ok: true, deleted: stageId };
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      if (!stageId || !requestedProjectId) return { ok: false, error: 'stage.invalidRequest' };
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId) return { ok: false, error: 'project.notFound' };
+      const deleted = await prisma.pipelineStage.deleteMany({ where: { workspaceId: action.workspaceId, projectId, key: stageId } });
+      return deleted.count === 1 ? { ok: true, deleted: stageId } : { ok: false, error: 'stage.notFound' };
     }
-    //? R1 — persist a new stage ORDER: `order` lists the stage keys in their new sequence → each stage's `order`
-    //? is set to its index (so a drag-reorder survives a refresh).
+    //? R1 — persist a new stage ORDER: `order` must contain exactly this project's stage keys.
     case 'stage-reorder': {
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
       const order = strArr(payload, 'order');
-      for (let i = 0; i < order.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, key: order[i] }, data: { order: i } });
+      if (!requestedProjectId || order.length === 0) return { ok: false, error: 'stage.invalidRequest' };
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId) return { ok: false, error: 'project.notFound' };
+      const existing = await prisma.pipelineStage.findMany({ where: { workspaceId: action.workspaceId, projectId }, select: { key: true } });
+      const existingKeys = new Set(existing.map((stage) => stage.key));
+      if (order.length !== existingKeys.size || new Set(order).size !== existingKeys.size || order.some((key) => !existingKeys.has(key))) return { ok: false, error: 'stage.invalidOrder' };
+      for (let i = 0; i < order.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: order[i] }, data: { order: i } });
       return { ok: true, count: order.length };
     }
     // ---- suggestions ----
@@ -2536,9 +2677,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
           ...(str(payload, 'gitUrl') ? { gitUrl: str(payload, 'gitUrl') } : {}),
         },
       });
-      //? A dev project owns its OWN board pipeline (ADR 0035); a content project uses the fixed
-      //? content-stage sequence (F1.1), so it needs no board columns.
-      if (projectType !== 'content') await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      //? A dev project owns its OWN board pipeline + starter guidance (ADR 0035); a content project
+      //? uses the fixed content-stage sequence (F1.1), so it needs neither board columns nor dev docs.
+      if (projectType !== 'content') {
+        await createDefaultPipeline(prisma, action.workspaceId, created.id);
+        await createStarterLibrary(prisma, action.workspaceId, created.id);
+      }
       return created;
     }
     case 'service-create': {
@@ -2602,7 +2746,7 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         if (firstAi) {
           await prisma.ticket.update({ where: { id: ticket.id }, data: { stageId: firstAi.key } });
           await recordTicketEvent(action.workspaceId, ticket.id, 'status-change', userId, `auto-started AI at ${firstAi.key}`);
-          await activateWorktreesForStage(action.workspaceId, [ticket.key], firstAi.key);
+          await activateWorktreesForStage(action.workspaceId, created.id, [ticket.key], firstAi.key);
         }
       }
       return created;
@@ -2703,19 +2847,43 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       const screenshots = sanitizeScreenshots(payload.screenshots);
       const problems = sanitizeProblems(payload.problems);
       if (screenshots.length === 0 && problems.length === 0) return { ok: false, error: 'uiReview.empty' };
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      const reviewProjectId = requestedProjectId === undefined ? null : await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (requestedProjectId !== undefined && !reviewProjectId) return { ok: false, error: 'project.notFound' };
       const page = str(payload, 'page'); const notes = str(payload, 'notes');
-      return prisma.uiReviewRequest.create({ data: { workspaceId: action.workspaceId, screenshots, problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}), createdById: userId, status: 'open' } });
+      return prisma.uiReviewRequest.create({ data: {
+        workspaceId: action.workspaceId, ...(reviewProjectId ? { projectId: reviewProjectId } : {}), screenshots, problems,
+        ...(page ? { page } : {}), ...(notes ? { notes } : {}), createdById: userId, status: 'open',
+      } });
     }
     //? U2 (gap-fix): turn an open UI-review request into a redesign TICKET — the review's problems, notes
     //? and screenshot urls become the ticket description, so the pipeline (or a human) picks it up. The
-    //? request flips to 'ticketed' (it leaves the designer inbox but stays queryable).
+    //? persisted review project is authoritative; an explicit request is only a mismatch guard. Legacy
+    //? null-project reviews require an explicit current project and never fall back to project #1.
     case 'ui-review-to-ticket': {
       const reviewId = str(payload, 'reviewId');
-      if (!reviewId) return;
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      if (!reviewId) return { ok: false, error: 'uiReview.invalidRequest' };
       const review = await prisma.uiReviewRequest.findFirst({ where: { workspaceId: action.workspaceId, id: reviewId, status: 'open' } });
       if (!review) return { ok: false, error: 'uiReview.notFound' };
-      const reviewProjectId = await resolveProjectId(prisma, action.workspaceId, null);
-      if (!reviewProjectId) return { ok: false, error: 'env.noProject' };
+
+      let reviewProjectId: string;
+      if (review.projectId) {
+        const persistedProjectId = await resolveProjectId(prisma, action.workspaceId, review.projectId);
+        if (!persistedProjectId) return { ok: false, error: 'project.notFound' };
+        if (requestedProjectId !== undefined) {
+          const requestProjectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+          if (!requestProjectId) return { ok: false, error: 'project.notFound' };
+          if (requestProjectId !== persistedProjectId) return { ok: false, error: 'uiReview.projectMismatch' };
+        }
+        reviewProjectId = persistedProjectId;
+      } else {
+        if (!requestedProjectId) return { ok: false, error: 'uiReview.projectRequired' };
+        const legacyProjectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+        if (!legacyProjectId) return { ok: false, error: 'project.notFound' };
+        reviewProjectId = legacyProjectId;
+      }
+
       const lastTicket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
       const ticketNumber = (lastTicket?.number ?? 0) + 1;
       const description = [
@@ -2729,7 +2897,10 @@ async function executeAction(action: ControlAction): Promise<unknown> {
         title: `Redesign: ${review.page ?? 'UI'}`, description, stageId: 'unrefined', status: 'idle',
         labels: ['ui-review'], creatorId: userId, priority: 'normal',
       } });
-      await prisma.uiReviewRequest.updateMany({ where: { workspaceId: action.workspaceId, id: reviewId }, data: { status: 'ticketed' } });
+      //? Keep the original compare/review as a live implementation artifact: the stage-agent gets the
+      //? screenshots + analysis through the existing TicketArtifactLink context seam.
+      await prisma.ticketArtifactLink.create({ data: { workspaceId: action.workspaceId, ticketId: redesignTicket.id, artifactId: review.id, artifactKind: 'ui-review', label: review.page ?? 'UI review', linkedBy: userId } });
+      await prisma.uiReviewRequest.updateMany({ where: { workspaceId: action.workspaceId, id: reviewId, status: 'open' }, data: { status: 'ticketed', projectId: reviewProjectId } });
       //? Best-effort tail (event + broadcast): a failure here must never error the op — the serial
       //? chain would re-run it and duplicate the ticket.
       await tryCatch(() => recordTicketEvent(action.workspaceId, redesignTicket.id, 'status-change', userId, 'created the ticket from a UI review'));
@@ -2843,10 +3014,12 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!id) return;
       const finding = await prisma.interviewFinding.findFirst({ where: { workspaceId: action.workspaceId, id } });
       if (!finding || finding.ticketId) return;
-      //? Multi-project (ADR 0035): a finding is workspace-level → its ticket goes to the
-      //? active project (payload) or the first. Was a raw findFirst.
-      const findingProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
-      if (!findingProjectId) return;
+      //? A finding is workspace-level, but converting it is an explicit active-project action.
+      //? Missing/stale/foreign targets fail closed instead of falling through to project #1.
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      if (!requestedProjectId) return { ok: false, error: 'finding.invalidRequest' };
+      const findingProjectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!findingProjectId) return { ok: false, error: 'project.notFound' };
       const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
       const number = (last?.number ?? 0) + 1;
       const created = await prisma.ticket.create({
@@ -2885,7 +3058,8 @@ async function executeAction(action: ControlAction): Promise<unknown> {
       if (!role) return;
       //? Optional focus (e.g. "the auth flow") narrows the role's review — threaded through as a param.
       const roleFocus = str(payload, 'focus');
-      await executeTriggerAction(prisma, action.workspaceId, { action: 'invoke-agent-role', params: { role, ...(roleFocus ? { focus: roleFocus } : {}) } });
+      const projectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      await executeTriggerAction(prisma, action.workspaceId, { action: 'invoke-agent-role', params: { role, ...(roleFocus ? { focus: roleFocus } : {}), ...(projectId ? { projectId } : {}) } });
       return;
     }
     // ---- notifications ----

@@ -44,6 +44,7 @@ export const TENANT_MODELS = new Set<string>([
   'RagEntry',
   'EnvVar',
   'IntegrationTool',
+  'ServiceStack',
   //? SECURITY fix (INS-ronde) — these were read via tenantDb in the snapshot but were NOT in this
   //? set, so the no-where reads passed through UNSCOPED: every workspace's snapshot leaked every
   //? other workspace's studio briefs/artifacts/brand library, design library, interviewer findings,

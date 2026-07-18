@@ -34,7 +34,8 @@ try {
 
   //? A fixture transport records which account token it was handed.
   let usedToken = '';
-  const transport = { upload: (_platform: string, req: { accessToken: string }) => { usedToken = req.accessToken; return Promise.resolve({ externalUrl: 'https://youtu.be/fake' }); } };
+  const externalId = `ROUTED-${String(stamp)}`;
+  const transport = { upload: (_platform: string, req: { accessToken: string }) => { usedToken = req.accessToken; return Promise.resolve({ externalUrl: `https://youtube.com/watch?v=${externalId}` }); } };
 
   const toSecond = await publishAsset(prisma, wsId, { contentProjectId: piece.id, assetId: asset.id, platform: 'youtube', accountId: 'second' }, { uploadTransport: transport });
   eq(usedToken, 'tok-second', 'publish routed to the "second" account token');
@@ -56,6 +57,9 @@ try {
   const fired = await runScheduledPublish(prisma, future.getTime() + 1000, { uploadTransport: transport });
   assert(fired.fired >= 1, 'the due scheduled job fired');
   eq(usedToken, 'tok-second', 'the scheduled publish used the chosen account token (accountId survived)');
+  const firedJob = await prisma.publishJob.findUnique({ where: { id: job?.id ?? '' } });
+  eq(firedJob?.accountId, 'second', 'firing preserves the selected accountId');
+  eq(firedJob?.externalId, externalId, 'the injected upload URL is recorded with its external id');
 
   // ---- A4: content binds to a channel ---------------------------------------------------------------
   await enqueueControlAction({ workspaceId: wsId, op: 'channel-create', target: {}, payload: { name: 'Chan Z', platform: 'youtube', brandVoice: 'punchy' }, userId: owner.id, clientRequestId: `pr-cc-${String(stamp)}` });

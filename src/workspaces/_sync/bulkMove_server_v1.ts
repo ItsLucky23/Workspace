@@ -11,16 +11,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { ticketIds: string[]; stageId: string; clientRequestId: string };
+  clientInput: { ticketIds: string[]; stageId: string; projectId: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
+  const { ticketIds, stageId, projectId, clientRequestId } = clientInput;
+  if (ticketIds.length === 0 || stageId.trim().length === 0 || projectId.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'bulk-move', roomCode, userId: user.id, prisma: functions.db.prisma,
-    target: { ticketIds: clientInput.ticketIds }, payload: { stageId: clientInput.stageId }, clientRequestId: clientInput.clientRequestId,
+    target: { ticketIds, projectId }, payload: { stageId }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', tickets: ticketListDelta(res.result) };

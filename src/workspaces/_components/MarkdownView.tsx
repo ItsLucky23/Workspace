@@ -63,7 +63,7 @@ export default function MarkdownView({ markdown, className = '' }: { markdown: s
       let j = i + 1;
       while (j < lines.length && !/^```+\s*$/.test((lines[j] ?? '').trim())) { body.push(lines[j] ?? ''); j += 1; }
       const code = body.join('\n');
-      out.push(lang === 'mermaid'
+      out.push(lang.toLowerCase() === 'mermaid'
         ? <Mermaid key={i} code={code} />
         : <pre key={i} className="my-2 p-3 rounded-lg bg-container2 text-xs text-common overflow-x-auto">{code}</pre>);
       i = j + 1;

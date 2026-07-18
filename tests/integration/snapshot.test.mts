@@ -17,6 +17,7 @@ const VALID_STATUSES: TicketStatus[] = ['idle', 'needs-input', 'busy', 'done', '
 //? AFTER `db()` has resolved DATABASE_URL — hence the dynamic imports below.
 const prisma = await db();
 const { seedDemoWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+const { encryptSecret } = await import('../../server/crypto/secretBox');
 const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
 
 //? Throwaway owner for the seeded workspace, plus a second owner that never gets one.
@@ -30,6 +31,12 @@ try {
   const { workspaceId } = await seedDemoWorkspace(prisma, owner.id);
   seededWorkspaceId = workspaceId;
 
+  const secretPlaintext = `snapshot-secret-${stamp}`;
+  const secretCiphertext = encryptSecret(secretPlaintext);
+  await prisma.envVar.create({ data: { workspaceId, key: 'PUBLIC_SECRET', value: secretCiphertext, secret: true } });
+  await prisma.envVar.create({ data: { workspaceId, key: '__INTERNAL_SECRET', value: encryptSecret(`internal-${stamp}`), secret: true } });
+  await prisma.workspace.update({ where: { id: workspaceId }, data: { webhookSecret: `webhook-${stamp}` } });
+
   const snap = await buildSnapshot(prisma, owner.id);
 
   // ---- active workspace + membership ----
@@ -37,6 +44,16 @@ try {
   eq(snap.workspaces.length, 1, 'exactly one workspace for the owner');
   eq(snap.workspaces[0]?.id, workspaceId, 'the listed workspace is the seeded one');
   eq(snap.workspaces[0]?.role, 'owner', "the owner's role on the workspace is 'owner'");
+  eq(snap.workspaces[0]?.webhookConfigured, true, 'the snapshot exposes only webhook configured metadata');
+  assert(!('webhookSecret' in (snap.workspaces[0] ?? {})), 'the snapshot NEVER contains a webhook secret field');
+
+  // ---- secret projections: write-only metadata, no internal rows or encrypted/plaintext values ----
+  const secretEnv = snap.envVars.find((env) => env.key === 'PUBLIC_SECRET');
+  eq(secretEnv?.value, '', 'a secret EnvVar snapshot value is an empty replacement buffer');
+  eq(secretEnv?.configured, true, 'a secret EnvVar reports configured metadata');
+  assert(!snap.envVars.some((env) => env.key.startsWith('__')), 'internal EnvVars NEVER enter the snapshot');
+  assert(!JSON.stringify(snap).includes(secretPlaintext), 'the snapshot NEVER contains secret plaintext');
+  assert(!JSON.stringify(snap).includes(secretCiphertext), 'the snapshot NEVER contains secret ciphertext');
 
   // ---- K1/K3: provisioned service stacks are surfaced (the Services panel reads these) ----
   assert(Array.isArray(snap.serviceStacks), 'the snapshot exposes serviceStacks (Services panel data)');

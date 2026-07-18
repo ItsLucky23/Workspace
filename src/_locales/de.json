@@ -1415,7 +1415,9 @@
       "transcodeGif": "In GIF umwandeln (Vorschau-Loop)",
       "transcodeStarted": "Wird umgewandelt – die neue Datei erscheint hier, sobald fertig.",
       "webmLabel": "WEBM",
-      "gifLabel": "GIF"
+      "gifLabel": "GIF",
+      "publishNeedsReconnect": "reconnect",
+      "publishReconnect": "Reconnect"
     },
     "knowledge": {
       "title": "Wissensgraph",

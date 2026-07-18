@@ -13,9 +13,15 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 const prisma = await db();
 const { mergeBranches, revertMergeCommit, workspaceDataDir, projectDataDir } = await import('../../server/git/repoStore');
 const { mergeMr, approveMr } = await import('../../server/mr/service');
+const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 
 const g = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+async function poll<T>(fn: () => Promise<T>, timeoutMs = 8000, stepMs = 60): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) { const value = await fn(); if (value !== null && value !== undefined) return value; if (Date.now() >= deadline) return null; await wait(stepMs); }
+}
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `merge-${String(stamp)}@youcomm.nl`, name: 'Merge Owner' } });
@@ -26,9 +32,13 @@ try {
   const created = await createBlankWorkspace(prisma, owner.id, 'Merge WS');
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
-  //? R3-b — the merge functions read the per-PROJECT bare repo; seed it in the first project's slot.
-  const projRow = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
-  const projId = projRow?.id ?? 'proj-merge-test';
+  //? Put the real merge repo in project B. Project A is deliberately first/unlinked so an old
+  //? `resolveProjectId(workspace)` reindex fallback cannot accidentally pass this regression.
+  const projectA = await prisma.project.findFirst({ where: { workspaceId: wsId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+  const projectAId = projectA?.id ?? '';
+  assert(projectAId.length > 0, 'project A exists as the fallback-control project');
+  const projectB = await prisma.project.create({ data: { workspaceId: wsId, name: 'Merge project B', gitlabPath: 'merge/project-b' } });
+  const projId = projectB.id;
   dataDir = workspaceDataDir(wsId);
   const projDir = projectDataDir(wsId, projId);
   const srcDir = path.join(dataDir, '_src');
@@ -86,11 +96,10 @@ try {
   assert(files.includes('a.txt'), 'the conflicting file (a.txt) is reported');
   eq(g(bareDir, 'rev-parse', 'main'), mainPreConflict, 'main is UNTOUCHED after an aborted conflict merge');
 
-  //? 4) mergeMr approval GATE. Create a ticket on `feature` + an MR row targeting main.
-  const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
-  const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-9001', number: 9001, title: 'Merge me', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature2', priority: 'normal' } });
+  //? 4) mergeMr approval GATE. Create a project-B ticket on `feature2` + an MR targeting main.
+  const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: projectB.id, key: 'DEV-9001', number: 9001, title: 'Merge me', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature2', priority: 'normal' } });
   const featureHead = g(bareDir, 'rev-parse', 'feature2');
-  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', ticketId: ticket.id, number: 1, title: 'Merge me', sourceBranch: 'feature2', targetBranch: 'main', status: 'open', headSha: featureHead, mergeStrategy: 'merge' } });
+  const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: projectB.id, ticketId: ticket.id, number: 1, title: 'Merge me', sourceBranch: 'feature2', targetBranch: 'main', status: 'open', headSha: featureHead, mergeStrategy: 'merge' } });
 
   const noApproval = await mergeMr(prisma, wsId, mr.id);
   assert(!noApproval.ok && noApproval.reason === 'no-approval', 'merge is BLOCKED without an approval (the ≥1-approval gate)');
@@ -100,15 +109,26 @@ try {
   //? treats feature's b.txt as already-accounted-for — the proof of a real merge is that main
   //? advances to a new merge commit whose sha is recorded, not b.txt's presence.)
   const mainPreMerge = g(bareDir, 'rev-parse', 'main');
+  await prisma.ragEntry.create({ data: { workspaceId: wsId, projectId: projectAId, commitHash: 'project-a-control', filePath: 'a-control.ts', chunkId: '0', content: 'project A must remain untouched', embedding: [] } });
+  const projectARowsBefore = await prisma.ragEntry.count({ where: { workspaceId: wsId, projectId: projectAId } });
   await approveMr(prisma, wsId, mr.id, owner.id);
-  const withApproval = await mergeMr(prisma, wsId, mr.id);
-  assert(withApproval.ok, 'with a fresh approval the merge goes through');
-  eq((await prisma.mergeRequest.findUnique({ where: { id: mr.id } }))?.status ?? '', 'merged', 'the MR is now merged');
+  await enqueueControlAction({
+    workspaceId: wsId, op: 'mr-merge', target: {}, payload: { ticketKey: ticket.key, mrId: mr.id },
+    userId: owner.id, clientRequestId: `merge-b-${String(stamp)}`,
+  });
+  eq((await prisma.mergeRequest.findUnique({ where: { id: mr.id } }))?.status ?? '', 'merged', 'the Conductor merge succeeds with a fresh approval');
   const merged = await prisma.mergeRequest.findUnique({ where: { id: mr.id } });
   assert((merged?.mergedSha ?? '').length > 0, 'the merge commit sha is recorded for rollback');
   assert(g(bareDir, 'rev-parse', 'main') !== mainPreMerge, 'the real merge advanced main to a new commit');
   eq(g(bareDir, 'rev-parse', 'main'), merged?.mergedSha ?? '', "main's tip IS the recorded merge commit");
   assert(g(bareDir, 'ls-tree', '-r', '--name-only', 'main').includes('c.txt'), "the merged branch's file (c.txt) landed on main");
+
+  const indexedB = await poll(async () => {
+    const count = await prisma.ragEntry.count({ where: { workspaceId: wsId, projectId: projectB.id, commitHash: merged?.mergedSha ?? '' } });
+    return count > 0 ? count : null;
+  });
+  assert((indexedB ?? 0) > 0, 'post-merge RAG reindex targets project B from the MR/ticket source');
+  eq(await prisma.ragEntry.count({ where: { workspaceId: wsId, projectId: projectAId } }), projectARowsBefore, 'project A RAG rows remain untouched');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

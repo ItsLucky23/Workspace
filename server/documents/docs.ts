@@ -16,6 +16,7 @@ import { embedTexts } from '../rag/embed';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { runAiCompletion } from '../ai/registry';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 import { estimateMediaCostCents, runMediaGeneration } from '../media/registry';
 import { checkMediaBudget, recordMediaSpend } from '../media/budget';
 
@@ -125,7 +126,8 @@ export function sourceMaterialBlock(assets: DocumentAssetEntry[]): string {
     const budget = Math.min(SOURCE_PER_ASSET, SOURCE_TOTAL - total);
     const body = (a.extractedText ?? '').slice(0, budget);
     total += body.length;
-    parts.push(`### Source: ${a.label && a.label.length > 0 ? a.label : a.url.split('/').pop() ?? 'file'}\n${body}`);
+    const label = a.label && a.label.length > 0 ? a.label : a.url.split('/').pop() ?? 'file';
+    parts.push(renderUntrustedContext({ provenance: `user-uploaded document: ${label}`, content: body, maxChars: budget }));
   }
   return parts.join('\n\n');
 }
@@ -142,9 +144,14 @@ export async function runDocumentAi(
   const query = `${doc.title}\n${instruction}`.trim();
   const sourceMaterial = sourceMaterialBlock(doc.assets ?? []);
   const [, docHits] = await tryCatch(() => retrieve(prisma, workspaceId, query, 6, DOCUMENTS_CORPUS));
-  const otherDocs = (docHits ?? []).filter((h) => !h.filePath.startsWith(`doc/${doc.id}/`)).map((h) => h.content).join('\n\n').slice(0, 4000);
+  const otherDocs = (docHits ?? [])
+    .filter((h) => !h.filePath.startsWith(`doc/${doc.id}/`))
+    .map((h) => renderUntrustedContext({ provenance: `RAG chunk: workspace document ${h.filePath}`, content: h.content, maxChars: 650 }))
+    .join('\n\n');
   const [, pkChunks] = await tryCatch(() => retrieveProductKnowledge(prisma, query, 2));
-  const productDoc = (pkChunks ?? []).map((c) => c.content).join('\n\n').slice(0, 1500);
+  const productDoc = (pkChunks ?? [])
+    .map((c) => renderUntrustedContext({ provenance: `RAG chunk: product knowledge ${c.filePath}`, content: c.content, maxChars: 750 }))
+    .join('\n\n');
   const system = [
     'You are the workspace document writer. Output ONLY the full markdown document — no preamble, no code fences around the whole document.',
     'Use clean markdown: a single H1 title, clear section headings, tables where data is tabular (tables also drive the spreadsheet export).',
@@ -152,12 +159,14 @@ export async function runDocumentAi(
     sourceMaterial.length > 0 ? `PRIMARY SOURCE MATERIAL the user uploaded — base the document on these, cite/reflect their actual content, do not invent facts that contradict them:\n${sourceMaterial}` : '',
     otherDocs.length > 0 ? `Related workspace documents (ground on these, do not contradict them):\n${otherDocs}` : '',
     productDoc.length > 0 ? `Product context:\n${productDoc}` : '',
+    UNTRUSTED_CONTEXT_POLICY,
   ].filter((s) => s.length > 0).join('\n\n');
   const prompt = [
     `Task: ${MODE_TASK[mode]}`,
     `Instruction: ${instruction.trim().length > 0 ? instruction.trim() : '(none — use the title, the uploaded source material, and current content)'}`,
     `Document title: ${doc.title}`,
-    mode === 'generate' ? '' : `Current document:\n${doc.content}`,
+    mode === 'generate' ? '' : `Current document:\n${renderUntrustedContext({ provenance: `current document: ${doc.title}`, content: doc.content, maxChars: 12_000 })}`,
+    UNTRUSTED_CONTEXT_POLICY,
   ].filter((s) => s.length > 0).join('\n\n');
   const res = await runAiCompletion('document-generate', { prompt, system, workspaceId, label: `Document: ${doc.title} (${mode})` });
   if (!res.ok) return { ok: false, text: '', error: res.error ?? 'ai.failed' };

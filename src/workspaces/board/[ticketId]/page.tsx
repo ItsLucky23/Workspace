@@ -606,7 +606,7 @@ function LinkedArtifactsCard({ ticketKey }: { ticketKey: string }) {
         {links.length === 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.ticket.noLinkedArtifacts' })}</div>}
         {links.map((l) => (
           <div key={l.id} className="flex items-center gap-2 rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
-            <Icon name={l.artifactKind === 'design' ? 'palette' : 'bullhorn'} className="text-primary text-sm shrink-0" />
+            <Icon name={l.artifactKind === 'design' ? 'palette' : (l.artifactKind === 'ui-review' ? 'display' : 'bullhorn')} className="text-primary text-sm shrink-0" />
             <span className="text-sm text-common truncate flex-1">{l.name}</span>
             <button type="button" onClick={() => { ctx.unlinkArtifact(l.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
           </div>

@@ -233,7 +233,7 @@ function EnvTab() {
   const [newKey, setNewKey] = useState('');
   const [newVal, setNewVal] = useState('');
   const [newSecret, setNewSecret] = useState(true);
-  const add = () => { const k = newKey.trim(); if (!k) return; saveEnvVar({ id: `env-${String(Date.now())}`, key: k, value: newVal, secret: newSecret }); setNewKey(''); setNewVal(''); setNewSecret(true); };
+  const add = () => { const k = newKey.trim(); if (!k) return; saveEnvVar({ id: `env-${String(Date.now())}`, key: k, value: newVal, secret: newSecret, configured: newVal.length > 0 }); setNewKey(''); setNewVal(''); setNewSecret(true); };
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.environmentVariables' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.envSubtitle' })}</span></div>
@@ -361,8 +361,19 @@ function GitLabTab() {
   //? Derived client-side from the origin + workspace id; paste it (+ the configured shared secret) into the
   //? forge's Webhooks settings so new issues stream in as tickets.
   const webhookUrl = `${globalThis.location.origin}/webhooks/forge/${activeWorkspace.id}`;
-  //? #27 — the per-workspace secret (paste into the forge) + last-event timestamp, from the snapshot.
-  const webhookSecret = activeWorkspace.webhookSecret ?? '';
+  //? The snapshot says only whether a secret exists. A newly minted plaintext value stays in
+  //? component state for this initiator alone, so it disappears on navigation/reload.
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [rotatingWebhookSecret, setRotatingWebhookSecret] = useState(false);
+  useEffect(() => { setWebhookSecret(null); }, [activeWorkspace.id]);
+  const webhookConfigured = activeWorkspace.webhookConfigured === true;
+  const rotateSecret = async () => {
+    if (rotatingWebhookSecret) return;
+    setRotatingWebhookSecret(true);
+    const secret = await rotateWebhookSecret();
+    if (secret !== null) setWebhookSecret(secret);
+    setRotatingWebhookSecret(false);
+  };
   const webhookLastEventAt = activeWorkspace.webhookLastEventAt ?? '';
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
@@ -393,9 +404,9 @@ function GitLabTab() {
         </div>
         <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.webhookSecretLabel' })}</span>
         <div className="flex items-center gap-2">
-          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret || translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' })}</code>
-          {webhookSecret !== '' && <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookSecret); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>}
-          <WsButton variant="secondary" icon="rotate" onClick={() => { rotateWebhookSecret(); }}>{translate({ key: webhookSecret === '' ? 'workspaces.workspaceSettings.webhookGenerate' : 'workspaces.workspaceSettings.webhookRotate' })}</WsButton>
+          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret ?? (webhookConfigured ? '••••••••••' : translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' }))}</code>
+          {webhookSecret !== null && <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookSecret); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>}
+          <WsButton variant="secondary" icon={rotatingWebhookSecret ? 'spinner' : 'rotate'} disabled={rotatingWebhookSecret} className={rotatingWebhookSecret ? '[&_svg]:animate-spin' : ''} onClick={() => { void rotateSecret(); }}>{translate({ key: webhookConfigured ? 'workspaces.workspaceSettings.webhookRotate' : 'workspaces.workspaceSettings.webhookGenerate' })}</WsButton>
         </div>
         <span className="text-xs text-muted">
           {webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString() }] })}

@@ -10,6 +10,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 import { runAiCompletion } from '../ai/registry';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 import type { AiFeature } from '../ai/types';
 import { broadcastContentDirty } from '../read/broadcast';
 
@@ -211,9 +212,11 @@ export async function finishArtifact(prisma: PrismaClient, artifactId: string, i
   //? Zelf-bewuste-AI-brug: fold the product-knowledge corpus in (was chat-only) so studio output can
   //? reference what THIS platform can actually do next (render, schedule, publish, …). Best-effort.
   const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, `${brief.productName} ${input.kind} marketing`, 2));
-  const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 2000);
+  const productContext = (pk ?? [])
+    .map((c) => renderUntrustedContext({ provenance: `RAG chunk: product capabilities ${c.filePath}`, content: c.content, maxChars: 1000 }))
+    .join('\n\n');
   const system = productContext.length > 0
-    ? `${built.system}\n\nPLATFORM CAPABILITIES (what this workspace platform offers around this artifact — mention a concrete next step when it fits):\n${productContext}`
+    ? `${built.system}\n\nPLATFORM CAPABILITIES (what this workspace platform offers around this artifact — mention a concrete next step when it fits):\n${productContext}\n\n${UNTRUSTED_CONTEXT_POLICY}`
     : built.system;
   //? I4 — a free-text refine instruction appended to the prompt (was a blind re-roll from the unchanged brief).
   const prompt = applyRefine(built.prompt, input.tweak);

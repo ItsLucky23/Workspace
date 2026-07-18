@@ -36,6 +36,7 @@ const block = sourceMaterialBlock([
 assert(block.includes('Build an offline-first note app.'), 'ok file text is inlined');
 assert(block.includes('Grading: architecture 40%'), 'second ok file text is inlined');
 assert(block.includes('Assignment brief') && block.includes('Rubric'), 'source labels are shown');
+assert(block.includes('<<<WS_UNTRUSTED_DATA:') && block.includes('provenance: "user-uploaded document: Assignment brief"'), 'uploaded source is delimited as untrusted data with provenance');
 assert(!block.includes('should-not-appear'), 'non-file (image) assets are excluded');
 assert(!block.includes('Pending'), 'pending (not-yet-extracted) assets are excluded');
 assert(sourceMaterialBlock([]) === '', 'no assets → empty block');
@@ -50,5 +51,6 @@ assert(capped.length < 20_000, 'a 50k-char source is capped well under its raw s
 assert(isParseableUpload('pdf') && isParseableUpload('docx') && isParseableUpload('txt') && isParseableUpload('md'), 'pdf/docx/txt/md are parseable');
 assert(!isParseableUpload('png') && !isParseableUpload('mp4'), 'images/video are not parseable sources');
 assert(isParseableUpload('PDF'), 'extension check is case-insensitive');
+assert(isParseableUpload('/media/assignment.PDF?download=1#page=2'), 'media URL query/hash and upper-case extension stay parseable');
 
 report('documentSourceGrounding');

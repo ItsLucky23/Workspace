@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
@@ -56,8 +56,6 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
     setTitle(doc.title);
     setContent(doc.content);
   }, [doc, dirty]);
-  //? The AI run finished when a draft appears — release the busy flag.
-  useEffect(() => { if (doc?.aiDraft !== null) setAiBusy(false); }, [doc?.aiDraft]);
   //? An export finished when a new export asset lands in the refetched snapshot.
   const exports = (doc?.assets ?? []).filter((a) => a.kind === 'export');
   useEffect(() => { setExporting(null); }, [exports.length]);
@@ -73,6 +71,16 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   const save = (): void => {
     editDocument({ documentId: doc.id, title: title.trim() || doc.title, content });
     setDirty(false);
+  };
+
+  const runAi = (): void => {
+    if (aiBusy) return;
+    setAiBusy(true);
+    void (async () => {
+      const [error, errorCode] = await tryCatch(() => runDocumentAi(doc.id, aiMode, aiInstruction));
+      setAiBusy(false);
+      if (error || errorCode !== null) notify.error({ key: errorCode ?? 'common.unknownError' });
+    })();
   };
 
   const modeItems = AI_MODES.map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.documents.mode.${m}` }) }));
@@ -92,10 +100,10 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         </div>
         <input
           value={aiInstruction} onChange={(e) => { setAiInstruction(e.target.value); }}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !aiBusy) { setAiBusy(true); runDocumentAi(doc.id, aiMode, aiInstruction); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
           placeholder={translate({ key: 'workspaces.documents.aiInstructionPlaceholder' })} className={`${fieldCls} flex-1 min-w-52`}
         />
-        <WsButton icon="wand-magic-sparkles" disabled={aiBusy} onClick={() => { setAiBusy(true); runDocumentAi(doc.id, aiMode, aiInstruction); }}>
+        <WsButton icon="wand-magic-sparkles" disabled={aiBusy} onClick={runAi}>
           {translate({ key: aiBusy ? 'workspaces.documents.aiBusy' : 'workspaces.documents.aiRun' })}
         </WsButton>
       </div>

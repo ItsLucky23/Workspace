@@ -43,16 +43,25 @@ WS_BASE_DOMAIN=workspace.keetlerop.nl # dev default: localhost
 
 ### Caddy
 
-Run Caddy with its admin endpoint enabled (default `localhost:2019`). Point a wildcard site at
-your host and let Caddy manage TLS (it does DNS-01 for wildcards via the matching DNS plugin).
+The self-host stack uses `deploy/Caddyfile` + `deploy/docker-compose.yml`. Caddy is dual-homed:
+public/editor traffic uses `workspaces-net`, while the Admin API and edge-auth backend use a
+separate, `internal: true`, Compose-project-scoped `management` network. Port `2019` is never
+published to the host and Caddy binds Admin only to its fixed management IP — never
+`0.0.0.0:2019`.
 
 ```bash
-WS_CADDY_ADMIN=http://localhost:2019  # default
-WS_CADDY_SERVER=srv0                  # the http server name to attach routes to
+# Set these in deploy/.env only when the default subnet overlaps another Docker network.
+# The fixed IP MUST belong to the subnet; change both together.
+WS_CADDY_ADMIN_IP=172.30.0.2
+WS_CADDY_MANAGEMENT_SUBNET=172.30.0.0/24
 ```
 
-Workspaces adds/removes routes named `ws-route-<ticket>` via the admin API — it never rewrites
-your base Caddyfile, and reconcile only prunes its own `ws-route-*` entries.
+Compose injects `WS_CADDY_ADMIN=http://caddy-admin:2019` into the app and
+`WS_EDITOR_AUTH_BACKEND=app-upstream:80` into dynamic editor routes. `caddy-admin` and
+`app-upstream` are aliases visible only on the project-scoped management network; ticket
+containers attached only to `workspaces-net` cannot reach Admin. Workspaces adds/removes
+`ws-route-<ticket>` entries through that private endpoint and reconcile only prunes its own
+`ws-route-*` entries.
 
 ### nginx
 
@@ -91,7 +100,9 @@ do wildcards). Issue it via your DNS provider's API:
 ## 4. Verify
 
 1. `WS_BASE_DOMAIN` resolves and `*.<base>` has a wildcard A/AAAA record to the host.
-2. The proxy is reachable: Caddy admin (`curl localhost:2019/config/`) or `nginx -t` passes.
+2. The proxy is reachable: from the app container, Caddy Admin at
+   `http://caddy-admin:2019/config/` responds; it must NOT be reachable on a host-published `:2019`.
+   For nginx, `nginx -t` passes.
 3. Open a ticket that runs a dev server → its `<slug>.<base>` preview loads over HTTPS.
 
 The container runtime + engine work **without** any proxy configured — the proxy is only for the
@@ -101,58 +112,29 @@ per-ticket live previews. If it's absent, previews are simply unavailable; nothi
 
 ## 5. Per-ticket VS Code editor exposure (Caddy on `workspaces-net`)
 
-The per-ticket editor (openvscode-server, ADR 0010) is exposed exactly like previews: a
-`vscode-<slug>.<base>` subdomain the proxy routes to the ticket container's in-container editor
-port (3000). The backend adds/removes these routes dynamically via the proxy provider
-(`server/proxy`), so the proxy just needs to be running on the shared container network with its
-Admin API reachable.
+The per-ticket editor (openvscode-server, ADR 0010) is exposed at
+`vscode-<slug>.<base>`. Caddy reaches the ticket container on `workspaces-net`, but its Admin
+listener remains bound exclusively to the separate management network described in §2. The
+backend adds/removes the host → `<container>:3000` route through `caddy-admin`; no ticket
+container joins that control plane. Caddy's `reverse_proxy` forwards openvscode WebSockets
+natively.
 
-### Dev launch
+### Edge-auth on the editor subdomain
 
-```
-npm run caddy:launch        # runs the `caddy:2` container on workspaces-net (:443 + admin :2019)
-```
+The self-host Compose path enables `WS_EDITOR_EDGE_AUTH=1`. Every editor route carries its
+`workspaceId`; route upsert stores host → workspace ownership in Redis and Caddy runs the
+`/editor-auth-check` subrequest before the editor reverse proxy. The check is deliberately
+fail-closed:
 
-- Config: `docker/caddy.json` — an empty `srv0` server, the Admin API on `0.0.0.0:2019`, and
-  **internal-CA TLS for `*.localhost`** (so `https://vscode-<slug>.localhost` gets a cert with no
-  external domain). `curl -k` in dev, or install Caddy's root CA to silence the browser warning.
-- Backend seam: **`WS_CADDY_ADMIN=http://localhost:2019`** (the default). Editor containers are
-  attached to `workspaces-net` at open-time (`editorSession.attachToProxyNet`) so Caddy can dial
-  `<container>:3000` by name.
-- WebSockets: openvscode is WS-heavy; Caddy's `reverse_proxy` forwards `Upgrade` natively
-  (verified: `scripts/spike/caddyExposureSpike.mts` → `101 Switching Protocols`).
+| Condition | Result |
+|---|---:|
+| invalid/missing LuckyStack session | `401` |
+| valid session, but host mapping missing | `403` |
+| valid session, but Redis ownership lookup unavailable | `503` |
+| mapping found, but user lacks `workTickets` in that workspace | `403` |
+| mapping found and user has `workTickets` | `204` (Caddy proceeds) |
 
-> **Admin-API gotcha (non-loopback bind):** when the Admin API is published (not loopback), Caddy
-> enforces an origin allow-list. Node's `fetch` (undici, used by the backend) sends an **empty
-> `Origin` header**, so `admin.origins` MUST include `""` (and `"null"`) alongside the host:port
-> values, plus `"enforce_origin": false`. Without it every `POST` is `403 "origin ''"`.
-
-### Prod
-
-Swap the `tls.automation` policy in `docker/caddy.json` for a DNS-01 wildcard issuer on your real
-`WS_BASE_DOMAIN` (same shape as the preview wildcard in §2), bind the Admin API to a private
-interface, and set `admin.origins` to the backend's real host. Run Caddy on `workspaces-net` (e.g.
-via compose) with `:443` published.
-
-### Edge-auth on the editor subdomain (Track B5 — designed, needs 2 seams)
-
-The editor URL already carries a per-(user,ticket) openvscode **connection-token** minted by the
-login+RBAC-gated `openEditor` op (openvscode returns `403` without it), so a leaked subdomain alone
-is not an open editor. To ALSO gate the subdomain on the LuckyStack session (only logged-in workspace
-members reach it), add Caddy `forward_auth` in front of the editor `reverse_proxy`:
-
-```
-# per editor route, before reverse_proxy:
-forward_auth <backend>:<port> {
-  uri /editor-auth-check
-  copy_headers X-Editor-User
-}
-```
-
-The `/editor-auth-check` handler (login → `functions.session.getSession(cookie)` → 200; else 401;
-optional host→workspace membership check via the editor route map) is a `registerCustomRoute`
-handler. **Two wiring points live outside the editor/UI ownership and need the engine/proxy agent:**
-1. **Register** the handler in the server bootstrap (`registerCustomRoute(editorAuthCheck, { phase: 'pre-params' })` — `server.ts`/`server/bootstrap`).
-2. **Attach** `forward_auth` to the editor routes — the `ProxyRoute` interface (`server/proxy/types.ts`)
-   carries only `{ id, host, target }`; it needs an optional `forwardAuth` field so `caddyProvider`
-   emits the handler chain. Until then the connection-token is the edge layer.
+There is no login-only fallback. The browser must send the session cookie to the editor
+subdomain, so production must set `WS_COOKIE_DOMAIN` to the wildcard parent (for example
+`.workspace.keetlerop.nl`). The per-session openvscode connection token remains a second gate;
+passing edge-auth alone does not authenticate the workbench connection.

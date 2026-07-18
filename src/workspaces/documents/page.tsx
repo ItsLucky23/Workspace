@@ -107,7 +107,7 @@ export default function DocumentsPage() {
           <div className="flex flex-col gap-1">
             {documentTemplates.map((t) => (
               <div key={t.slug} className="flex items-center justify-between gap-2 text-sm rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
-                <span className="truncate">{`${t.name} · ${String(t.sections.length)}`}{t.builtin ? ` · ${translate({ key: 'workspaces.documents.templateBuiltin' })}` : ''}</span>
+                <span className="truncate">{[t.name, String(t.sections.length), ...(t.builtin ? [translate({ key: 'workspaces.documents.templateBuiltin' })] : [])].join(' · ')}</span>
                 <div className="flex items-center gap-1 shrink-0">
                   <WsButton variant="ghost" icon={t.builtin ? 'copy' : 'pen'} onClick={() => { startEditTpl(t.slug); }} title={translate({ key: t.builtin ? 'workspaces.documents.templateDuplicate' : 'workspaces.documents.templateEdit' })} />
                   {!t.builtin && <WsButton variant="ghost" icon="trash" onClick={() => { deleteDocTemplate(t.slug); }} title={translate({ key: 'workspaces.documents.templateDelete' })} />}

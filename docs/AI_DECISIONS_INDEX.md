@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (194)
+## Decisions (195)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -26,7 +26,7 @@
 | 0012 | The AI engine and a human's live editor never run on a ticket's container at once (edit-lock), and stale proxy routes self-heal on boot | 🟢 accepted | editor, engine, concurrency, proxy, safety | — | `docs/decisions/0012-editor-engine-edit-lock-and-proxy-boot-reconcile.md` |
 | 0013 | Engine control-plane completion — push-on-approval, pause/kill controls, off-chain realtime broadcast, and preview exposure | 🟢 accepted | engine, git, control-plane, realtime, preview | — | `docs/decisions/0013-engine-control-plane-completion.md` |
 | 0014 | Market-hardening — GitLab issue ingestion, a concurrent-turn CapacityManager, edge-auth on subdomains, and Sentry error tracking | 🟢 accepted | gitlab, capacity, security, ops, market | — | `docs/decisions/0014-market-hardening-gitlab-ingestion-capacity-edge-auth.md` |
-| 0015 | Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup | 🟢 accepted | multi-instance, conductor, redis, scale, engine | — | `docs/decisions/0015-multi-instance-safety-deel-a.md` |
+| 0015 | Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup | ⚪ superseded | multi-instance, conductor, redis, scale, engine | — | `docs/decisions/0015-multi-instance-safety-deel-a.md` |
 | 0016 | Egress control on worker containers — an internal network + an allowlist forward proxy | 🟢 accepted | security, containers, egress, multi-tenant, market | — | `docs/decisions/0016-egress-control.md` |
 | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context | 🟢 accepted | rag, ai, retrieval, orchestrator, engine | — | `docs/decisions/0017-rag-codebase-intelligence.md` |
 | 0018 | Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge | 🟢 accepted | mr, review, git, engine, frontend | — | `docs/decisions/0018-builtin-mr-review.md` |
@@ -207,6 +207,7 @@
 | 0274 | pipeline role prompt eval replay harness | 🟢 accepted | eval, pipeline, testing, documents-and-skills | — | `docs/decisions/0274-pipeline-role-prompt-eval-replay-harness.md` |
 | 0275 | voice interface provider abstracted stt plus tts | 🟢 accepted | voice, ai, provider-abstraction, documents-and-skills | — | `docs/decisions/0275-voice-interface-provider-abstracted-stt-plus-tts.md` |
 | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS | 🟢 accepted | designer, git, css, tailwind, concurrency, b-23 | — | `docs/decisions/0276-revision-safe-managed-design-token-apply.md` |
+| 0277 | Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing | 🟢 accepted | multi-instance, conductor, redis, lease, fencing, correctness | 0015 | `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md` |
 
 ## Summaries
 
@@ -316,7 +317,7 @@ Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the
 
 ### 0015 — Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup
 
-**0015** · accepted · tags: multi-instance, conductor, redis, scale, engine · 2026-07-03
+**0015** · superseded · tags: multi-instance, conductor, redis, scale, engine · 2026-07-03
 
 New module `server/orchestrator/cluster.ts` with three Redis-backed primitives, all ALWAYS ON (uncontended cost on one instance is one `SET`/`DEL` per user-initiated action, so every path is exercised — no "untested when you scale" cliff):
 
@@ -1775,6 +1776,14 @@ The existing control op remains the only product/control surface; the Conductor 
 **Governs** (`//? @adr 0276`): `server/designer/applyTokens.ts`
 
 → `docs/decisions/0276-revision-safe-managed-design-token-apply.md`
+
+### 0277 — Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing
+
+**0277** · accepted · tags: multi-instance, conductor, redis, lease, fencing, correctness · 2026-07-18
+
+Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and an explicit fail-closed lease guard; this strengthens mutual exclusion for normal asynchronous actions but is not database fencing.
+
+→ `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md`
 
 ## Code governed by decisions
 

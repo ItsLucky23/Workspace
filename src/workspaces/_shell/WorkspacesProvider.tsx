@@ -21,7 +21,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
-import { CHAT_DISPATCH } from '../_functions/chatDispatch';
+import { CHAT_DISPATCH, isChatProposalForProject } from '../_functions/chatDispatch';
 import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
@@ -32,6 +32,7 @@ import type {
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
+import { shouldApplySnapshotResponse, snapshotTargetsMatch, type SnapshotTarget } from './snapshotRequest';
 
 const BASE = '/workspaces';
 
@@ -187,9 +188,29 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
   const [wantWorkspaceId, setWantWorkspaceId] = useState<string | undefined>();
   //? Multi-project (ADR 0035): the client-selected project (mirrors wantWorkspaceId). A
-  //? stale id from another workspace is harmless — the server validates + falls back to
-  //? the first project. Cleared on workspace switch.
+  //? stale id from another workspace is harmless — the server validates it strictly and
+  //? returns no active project instead of falling through to project #1. Cleared on switch.
   const [wantProjectId, setWantProjectId] = useState<string | undefined>();
+  //? Snapshot reads can overlap while switching workspace/project. The request sequence
+  //? makes completion monotonic; the desired-target ref closes the window before React
+  //? commits the switch render, so a late A response cannot replace B.
+  const snapshotRequestSequence = useRef(0);
+  const desiredSnapshotTarget = useRef<SnapshotTarget>({ workspaceId: wantWorkspaceId, projectId: wantProjectId });
+  desiredSnapshotTarget.current = { workspaceId: wantWorkspaceId, projectId: wantProjectId };
+  const latestSnap = useRef(snap);
+  latestSnap.current = snap;
+  //? Writes must target the snapshot the user still wants. During a switch the old
+  //? snapshot remains rendered briefly, but it is no longer a valid write scope.
+  const currentProjectScope = useCallback(() => {
+    const current = latestSnap.current;
+    const desired = desiredSnapshotTarget.current;
+    const workspaceId = current.activeWorkspaceId;
+    const projectId = current.activeProjectId;
+    if (!workspaceId || !projectId) return null;
+    if (desired.workspaceId !== undefined && desired.workspaceId !== workspaceId) return null;
+    if (desired.projectId !== undefined && desired.projectId !== projectId) return null;
+    return { workspaceId, projectId, gitConfig: current.gitConfig };
+  }, []);
   //? Realtime side-channels not part of the snapshot: the RAG code-index status
   //? (07 §D) and the built-in MR review views keyed by their source branch
   //? (BUILTIN_MR_REVIEW). Both are hydrated by their `_sync` delta callbacks below.
@@ -209,8 +230,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [copilotPrefill, setCopilotPrefill] = useState<Record<string, string> | null>(null);
 
   const refetch = useCallback(() => {
+    const target = { workspaceId: wantWorkspaceId, projectId: wantProjectId };
+    //? A timer/callback from the previous render may still hold an old refetch closure.
+    //? Do not let that stale target supersede the newest desired request sequence.
+    if (!snapshotTargetsMatch(target, desiredSnapshotTarget.current)) return;
+    const request = { ...target, sequence: snapshotRequestSequence.current + 1 };
+    snapshotRequestSequence.current = request.sequence;
     void (async () => {
-      const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wantWorkspaceId, projectId: wantProjectId } });
+      const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: request.workspaceId, projectId: request.projectId } });
+      if (!shouldApplySnapshotResponse(request, snapshotRequestSequence.current, desiredSnapshotTarget.current)) return;
       //? Not logged in → go to the login page instead of leaking the onboarding UI
       //? (a logged-out visitor otherwise sees the "Create a workspace" form + only
       //? gets "you need to be logged in" after acting).
@@ -273,8 +301,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const mergeTickets = useCallback((incoming: Ticket[]) => {
     if (incoming.length === 0) return;
     setSnap((s) => {
-      const byId = new Map(s.tickets.map((t) => [t.id, t]));
-      for (const t of incoming) byId.set(t.id, t);
+      const scoped = incoming.filter((ticket) => ticket.projectId === s.activeProjectId);
+      if (scoped.length === 0) return s;
+      const byId = new Map(s.tickets.map((ticket) => [ticket.id, ticket]));
+      for (const ticket of scoped) byId.set(ticket.id, ticket);
       return { ...s, tickets: [...byId.values()] };
     });
   }, []);
@@ -286,7 +316,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success' || !serverOutput.ticket) return;
       const ticket = serverOutput.ticket;
-      setSnap((s) => (s.tickets.some((t) => t.id === ticket.id) ? s : { ...s, tickets: [...s.tickets, ticket] }));
+      setSnap((s) => (ticket.projectId !== s.activeProjectId || s.tickets.some((t) => t.id === ticket.id) ? s : { ...s, tickets: [...s.tickets, ticket] }));
     },
   }), [upsertSyncEventCallback]);
 
@@ -396,7 +426,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success' || !serverOutput.note) return;
       const note = serverOutput.note;
-      setSnap((s) => (s.notes.some((n) => n.id === note.id) ? s : { ...s, notes: [...s.notes, note] }));
+      setSnap((s) => (!s.tickets.some((ticket) => ticket.id === note.ticketId) || s.notes.some((n) => n.id === note.id) ? s : { ...s, notes: [...s.notes, note] }));
     },
   }), [upsertSyncEventCallback]);
 
@@ -679,7 +709,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success' || !serverOutput.stageConfig) return;
       const cfg = serverOutput.stageConfig;
-      setSnap((s) => ({ ...s, stageConfigs: s.stageConfigs.some((c) => c.id === cfg.id) ? s.stageConfigs.map((c) => (c.id === cfg.id ? cfg : c)) : [...s.stageConfigs, cfg] }));
+      setSnap((s) => cfg.projectId === s.activeProjectId
+        ? ({ ...s, stageConfigs: s.stageConfigs.some((stage) => stage.id === cfg.id) ? s.stageConfigs.map((stage) => (stage.id === cfg.id ? cfg : stage)) : [...s.stageConfigs, cfg] })
+        : s);
     },
   }), [upsertSyncEventCallback]);
 
@@ -707,14 +739,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? Per-action REALTIME write: fire the op's `_sync` event to the workspace room;
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority; startWithAi?: boolean }) => {
-    const room = snap.activeWorkspaceId;
-    if (!room) return;
+    const scope = currentProjectScope();
+    if (!scope) return;
+    const { workspaceId: room, projectId } = scope;
     void syncRequest({
       name: 'workspaces/quickAdd', version: 'v1',
       data: {
         title: input.title,
-        //? Multi-project (ADR 0035): the ticket lands in the active project.
-        ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}),
+        //? Multi-project (ADR 0035): no active project means no write — never project #1 fallback.
+        projectId,
         ...(input.sprintId ? { sprintId: input.sprintId } : {}),
         ...(input.description === undefined ? {} : { description: input.description }),
         ...(input.labels && input.labels.length > 0 ? { labels: input.labels } : {}),
@@ -725,18 +758,19 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       receiver: room,
     });
-  }, [snap.activeWorkspaceId, snap.activeProjectId]);
+  }, [currentProjectScope]);
   //? Multi-project / multi-service admin writes (ADR 0035) → the projectAdmin `_sync`
   //? route; the client refetches on success (these change rarely). project-create
   //? switches to the new project once the refetch lands it.
   const createProjectApi = useCallback((input: { name: string; gitUrl?: string; gitlabPath?: string }) => {
-    const room = snap.activeWorkspaceId;
-    if (!room || input.name.trim().length === 0) return;
+    const scope = currentProjectScope();
+    if (!scope || input.name.trim().length === 0) return;
+    const room = scope.workspaceId;
     void (async () => {
       await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-create', name: input.name, ...(input.gitUrl ? { gitUrl: input.gitUrl } : {}), ...(input.gitlabPath ? { gitlabPath: input.gitlabPath } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
-  }, [snap.activeWorkspaceId, refetch]);
+  }, [currentProjectScope, refetch]);
   //? Greenfield scaffolding (ADR 0046): create a fresh project from a curated stack template.
   const applyDesignTokensApi = useCallback((projectId?: string, serviceId?: string): Promise<string | null> => {
     const room = snap.activeWorkspaceId;
@@ -755,13 +789,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     });
   }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
   const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string }) => {
-    const room = snap.activeWorkspaceId;
-    if (!room || input.name.trim().length === 0) return;
+    const scope = currentProjectScope();
+    if (!scope || input.name.trim().length === 0) return;
+    const room = scope.workspaceId;
     void (async () => {
       await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, ...(input.brief && input.brief.trim().length > 0 ? { brief: input.brief.trim() } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
-  }, [snap.activeWorkspaceId, refetch]);
+  }, [currentProjectScope, refetch]);
   const createServiceApi = useCallback((input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => {
     const room = snap.activeWorkspaceId;
     if (!room || input.name.trim().length === 0) return;
@@ -988,15 +1023,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? action proposal the user can accept. The AI never writes — acceptChatProposal does.
   const sendChat = useCallback((text: string) => {
     const trimmed = text.trim();
-    const workspaceId = snap.activeWorkspaceId;
-    if (!trimmed || !workspaceId) return;
+    const scope = currentProjectScope();
+    if (!trimmed || !scope) return;
     const stamp = String(reqCounter + 1); reqCounter += 1;
     const aiId = `a${stamp}`;
     //? #112 — send the recent conversation so the AI can follow up ("do that for the other ticket too").
     const history = chat.filter((m) => !m.pending && m.text.length > 0).slice(-8).map((m) => ({ role: m.role, text: m.text }));
     setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}), ...(history.length > 0 ? { history } : {}) } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId: scope.workspaceId, projectId: scope.projectId, message: trimmed, ...(history.length > 0 ? { history } : {}) } }));
       setChat((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) {
@@ -1006,41 +1041,64 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         return { ...m, pending: false, text: reply, ...(proposal ? { proposal } : {}), ...(plan ? { plan } : {}), ...(copilot ? { copilot } : {}) };
       }));
     })();
-  }, [snap.activeWorkspaceId, snap.activeProjectId, chat, translate]);
+  }, [chat, currentProjectScope, translate]);
 
   //? Accept an AI proposal → dispatch the matching control-op via the same `_sync` routes
   //? the manual UI uses (so execution stays under the Conductor + OP_CAPABILITY RBAC) and
   //? mark the bubble consumed so its Accept button can't re-fire.
   //? Dispatch a SINGLE proposal to the existing `_sync` verb (never a new verb; Conductor stays the writer).
   //? Shared by acceptChatProposal (one op) and acceptChatPlan (O-A, each step in order).
-  const dispatchProposal = useCallback((p: ChatProposal, room: string) => {
-    if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, clientRequestId: nextReqId() }, receiver: room });
-    else if (p.op === 'assign' && p.ticketKeys && p.assigneeId) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
-    else if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
+  const dispatchProposal = useCallback((p: ChatProposal): boolean => {
+    const scope = currentProjectScope();
+    if (!scope || !isChatProposalForProject(p, scope.projectId)) return false;
+    const room = scope.workspaceId;
+    if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) {
+      void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
+      return true;
+    }
+    if (p.op === 'assign' && p.ticketKeys && p.assigneeId) {
+      void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
+      return true;
+    }
+    if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) {
+      void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
+      return true;
+    }
     //? O-B — create ops route to the EXISTING verbs (quick-add / content-from-brief), not a new one.
-    else if (p.op === 'create-ticket' && p.title) void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
-    else if (p.op === 'create-content' && p.title && p.brief) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+    if (p.op === 'create-ticket' && p.title) {
+      void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, projectId: p.projectId, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+      return true;
+    }
+    if (p.op === 'create-content' && p.title && p.brief) {
+      void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+      return true;
+    }
     //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
     //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
-    else if (isChatEnabledOp(p.op)) CHAT_DISPATCH[p.op](p, { room, activeProjectId: snap.activeProjectId, gitConfig: snap.gitConfig, nextReqId, refetch });
-  }, [refetch, snap.activeProjectId, snap.gitConfig]);
+    if (isChatEnabledOp(p.op)) {
+      CHAT_DISPATCH[p.op](p, { room, activeProjectId: scope.projectId, gitConfig: scope.gitConfig, nextReqId, refetch });
+      return true;
+    }
+    return false;
+  }, [currentProjectScope, refetch]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
-    const room = snap.activeWorkspaceId;
-    if (!room) return;
-    const consume = () => { setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m))); };
+    const run = () => {
+      const accepted = dispatchProposal(p);
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...(accepted ? { accepted: true } : { declined: true }) } : m)));
+    };
     //? X1 — destructive generic ops get an EXPLICIT extra confirm before dispatch (B-23
-    //? confirm-on-important; user decision 2026-07-09). Declining leaves the bubble actionable.
+    //? confirm-on-important; user decision 2026-07-09). The project is rechecked AFTER
+    //? the confirm resolves, closing the switch-while-dialog-open race.
     if (p.destructive) {
       void menuHandler.confirm({
         title: translate({ key: 'workspaces.shell.confirmDestructiveTitle' }),
         content: translate({ key: 'workspaces.shell.confirmDestructiveContent', params: [{ key: 'summary', value: p.summary }] }),
-      }).then((ok) => { if (ok) { dispatchProposal(p, room); consume(); } });
+      }).then((ok) => { if (ok) run(); });
       return;
     }
-    dispatchProposal(p, room);
-    consume();
-  }, [snap.activeWorkspaceId, dispatchProposal, translate]);
+    run();
+  }, [dispatchProposal, translate]);
 
   //? J5 — REJECT a proposal/plan: dismiss it (mark declined) WITHOUT dispatching anything. The AI proposes,
   //? the user disposes — declining is a first-class outcome, not just "ignore the bubble". No server write.
@@ -1051,14 +1109,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? O-A — approve a whole intake plan: dispatch each step in order (single-writer intact; each step is an
   //? existing verb). One approval → the Conductor materializes every ticket/piece the plan proposed.
   const acceptChatPlan = useCallback((messageId: string, plan: ChatPlan) => {
-    const room = snap.activeWorkspaceId;
-    if (!room) return;
     const run = () => {
-      for (const step of plan.steps) dispatchProposal(step, room);
-      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, accepted: true } : m)));
+      const scope = currentProjectScope();
+      const current = scope !== null && plan.steps.length > 0 && plan.steps.every((step) => isChatProposalForProject(step, scope.projectId));
+      if (current) for (const step of plan.steps) dispatchProposal(step);
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...(current ? { accepted: true } : { declined: true }) } : m)));
     };
     //? X1 — a plan containing destructive steps gets ONE explicit confirm listing them (the plan
-    //? approval itself covers the rest — B-23 confirm-on-important).
+    //? approval itself covers the rest — B-23 confirm-on-important). Scope is rechecked on resolve.
     const destructive = plan.steps.filter((s) => s.destructive === true);
     if (destructive.length > 0) {
       void menuHandler.confirm({
@@ -1068,7 +1126,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     run();
-  }, [snap.activeWorkspaceId, dispatchProposal, translate]);
+  }, [currentProjectScope, dispatchProposal, translate]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 
@@ -1151,13 +1209,22 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       rejectChatProposal,
       workspaces: snap.workspaces,
       activeWorkspace,
-      setActiveWorkspace: (id) => { setWantWorkspaceId(id); setWantProjectId(undefined); setLoading(true); },
+      setActiveWorkspace: (id) => {
+        desiredSnapshotTarget.current = { workspaceId: id, projectId: undefined };
+        setWantWorkspaceId(id);
+        setWantProjectId(undefined);
+        setLoading(true);
+      },
       createWorkspace: (name, enabledSections) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), clientRequestId: nextReqId() } })); },
       //? Multi-project / multi-service (ADR 0035).
       projects: snap.projects,
-      activeProject: snap.projects.find((p) => p.id === snap.activeProjectId) ?? snap.projects.at(0) ?? null,
+      activeProject: snap.projects.find((project) => project.id === snap.activeProjectId) ?? null,
       activeProjectId: snap.activeProjectId,
-      setActiveProject: (id) => { setWantProjectId(id); setLoading(true); },
+      setActiveProject: (id) => {
+        desiredSnapshotTarget.current = { workspaceId: wantWorkspaceId, projectId: id };
+        setWantProjectId(id);
+        setLoading(true);
+      },
       services: snap.services,
       templates: snap.templates,
       createProject: createProjectApi,
@@ -1188,17 +1255,27 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       renameWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }); },
       deleteWorkspace: () => {
         afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', clientRequestId: nextReqId() } }));
+        desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
         setWantWorkspaceId(undefined);
+        setWantProjectId(undefined);
         setLoading(true);
       },
       saveGitlab: (baseUrl, token, forgeType) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
-      //? #27 — rotate the inbound-webhook secret; the fresh secret comes back in the refetched snapshot.
-      rotateWebhookSecret: () => {
-        const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/rotateWebhookSecret', version: 'v1', data: { clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+      //? #27 — only the initiating browser receives this write-once value. The snapshot keeps
+      //? `webhookConfigured` metadata, so neither a refetch nor room broadcast can leak it.
+      rotateWebhookSecret: async () => {
+        const workspaceId = snap.activeWorkspaceId;
+        if (!workspaceId) return null;
+        const [requestError, response] = await tryCatch(() => apiRequest({
+          name: 'workspaces/rotateWebhookSecret', version: 'v1', data: { workspaceId, clientRequestId: nextReqId() },
+        }));
+        if (requestError || response?.status !== 'success' || response.result.webhookSecret.length === 0) return null;
+        const secret = response.result.webhookSecret;
+        setSnap((current) => ({ ...current, workspaces: current.workspaces.map((workspace) => (workspace.id === workspaceId ? { ...workspace, webhookConfigured: true } : workspace)) }));
+        return secret;
       },
       //? R2 — copy the user-authored styles + brand kit from another workspace INTO the active one (server route
       //? existed; this wires the client dispatch). The Conductor authorizes source membership (B-23).
@@ -1231,8 +1308,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       //? Pull the active project's open forge issues (GitLab|GitHub) + upsert them as tickets (ADR 0036).
       resyncForge: () => {
-        const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', clientRequestId: nextReqId() }, receiver: room });
+        const scope = currentProjectScope();
+        if (scope) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'gitlab-resync', projectId: scope.projectId, clientRequestId: nextReqId() }, receiver: scope.workspaceId });
       },
       //? ci-allow-red: let a human merge while CI is red (workspace-level toggle).
       allowCiRed: (enabled) => {
@@ -1249,15 +1326,23 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Conductor persists it (B-23), leading to a redesign ticket.
       createUiReview: (input) => {
         const room = snap.activeWorkspaceId;
-        if (room && (input.screenshots.length > 0 || input.problems.length > 0 || (input.notes ?? '').trim().length > 0)) {
-          void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { screenshots: input.screenshots, problems: input.problems, ...(input.page ? { page: input.page } : {}), ...(input.notes ? { notes: input.notes } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+        const projectId = snap.activeProjectId;
+        if (room && projectId && (input.screenshots.length > 0 || input.problems.length > 0 || (input.notes ?? '').trim().length > 0)) {
+          void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { projectId, screenshots: input.screenshots, problems: input.problems, ...(input.page ? { page: input.page } : {}), ...(input.notes ? { notes: input.notes } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
         }
       },
-      //? U2 (gap-fix): the designer inbox — open reviews + turn-into-ticket / dismiss.
+      //? A persisted review project survives a later UI switch. Legacy null-project reviews use the
+      //? explicitly supplied current project; the Conductor never falls back to project #1.
       uiReviews: snap.uiReviews,
-      uiReviewAction: (op, reviewId) => {
+      uiReviewAction: (op, reviewId, projectId) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/uiReviewAction', version: 'v1', data: { op, reviewId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+        if (!room) return;
+        if (op === 'ui-review-to-ticket') {
+          if (!projectId) return;
+          void syncRequest({ name: 'workspaces/uiReviewAction', version: 'v1', data: { op, reviewId, projectId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
+          return;
+        }
+        void syncRequest({ name: 'workspaces/uiReviewAction', version: 'v1', data: { op, reviewId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
       },
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
@@ -1327,21 +1412,21 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Who (if anyone) has soft-claimed this ticket's question (is answering it) — null if free.
       claimedBy: (ticketKey: string): string | null => (Object.entries(presence).find(([, v]) => v.ticketKey === ticketKey && v.claiming === true)?.[0]) ?? null,
       archiveTicket: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: id, clientRequestId: nextReqId() }, receiver: room }); },
-      bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, clientRequestId: nextReqId() }, receiver: room }); },
+      bulkMove: (ids, stageId) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ids, stageId, projectId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkStatus: (ids, status) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds: ids, status, clientRequestId: nextReqId() }, receiver: room }); },
       bulkAssign: (ids, assigneeId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: ids, assigneeId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkSprint: (ids, sprintId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { ticketIds: ids, sprintId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkArchive: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
-      saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room }); },
       //? I1 — run the built-in CI at a ticket's MR head (projectAdmin ci-run op → Conductor → runPipeline).
       runCi: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
       //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes
       //? (Conductor single-writer). The editor calls these so structural edits survive a refresh.
-      createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      deleteStage: (stageKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { stageId: stageKey, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      reorderStages: (order) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { order, clientRequestId: nextReqId() }, receiver: room }); },
+      createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { projectId: input.projectId, key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      deleteStage: (projectId, stageKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { stageId: stageKey, projectId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      reorderStages: (projectId, order) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { order, projectId, clientRequestId: nextReqId() }, receiver: room }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
       //? Module gating: optimistically flip the active workspace's enabledSections (instant
@@ -1358,7 +1443,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       deleteCustomTask: (taskId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'delete-custom-task', taskId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runCustomTask: (taskId, vars) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'run-custom-task', taskId, vars, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? #167 — invoke an agent-role now (interviewer "Generate ideas now"); refetch to surface new findings.
-      runAgentRole: (role, focus) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'run-agent-role', role, ...(focus?.trim() ? { focus: focus.trim() } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runAgentRole: (role, focus) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'run-agent-role', role, ...(focus?.trim() ? { focus: focus.trim() } : {}), ...(snap.activeProjectId ? { projectId: snap.activeProjectId } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? O5 — reusable output specs (save/delete).
       outputTemplates: snap.outputTemplates,
       saveOutputTemplate: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1371,7 +1456,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       deleteDocTemplate: (slug) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'doc-template-delete', slug, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       editDocument: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-edit', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteDocument: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-delete', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      runDocumentAi: (documentId, mode, instruction) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-ai', documentId, mode, instruction, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runDocumentAi: (documentId, mode, instruction) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return Promise.resolve('sync.missingReceiver');
+        return syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-ai', documentId, mode, instruction, clientRequestId: nextReqId() }, receiver: room }).then((response) => {
+          refetch();
+          return response.status === 'success' ? null : response.errorCode;
+        });
+      },
       applyDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-apply-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       discardDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-discard-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       genDocumentImage: (documentId, prompt) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-gen-image', documentId, prompt, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1449,7 +1541,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       designArtifacts: snap.designArtifacts,
       interviewFindings: snap.interviewFindings,
       ticketArtifactLinks: snap.ticketArtifactLinks,
-      makeTicketFromFinding: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-to-ticket', findingId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      makeTicketFromFinding: (id) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-to-ticket', findingId: id, projectId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       dismissFinding: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-dismiss', findingId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       linkArtifact: (ticketKey, artifactId, artifactKind, label) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-link-artifact', ticketId: ticketKey, artifactId, artifactKind, ...(label ? { label } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       unlinkArtifact: (linkId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-unlink-artifact', linkId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1493,7 +1585,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

@@ -26,7 +26,7 @@ import { questionPrompt } from '../../src/workspaces/_functions/structuredQuesti
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
-import { parseTokenKey } from '../content/publishOAuth';
+import { parseTokenKey, parseHealthKey } from '../content/publishOAuth';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
@@ -227,7 +227,7 @@ export interface WorkspaceSnapshot {
   //? Interviewer module (ADR 0034): categorised, persisted improvement findings.
   interviewFindings: { id: string; area: string; severity: string; title: string; summary: string; status: string; ticketId: string | null; createdAt: string }[];
   //? U2 (gap-fix): open "unfuck the UI" review requests — the designer inbox feed.
-  uiReviews: { id: string; page: string | null; problems: string[]; screenshots: string[]; notes: string | null; createdAt: string }[];
+  uiReviews: { id: string; projectId: string | null; page: string | null; problems: string[]; screenshots: string[]; notes: string | null; createdAt: string }[];
   //? Ticket ↔ artifact links (ADR 0034): design/Studio artifacts a ticket implements (keyed by DEV-#### key).
   ticketArtifactLinks: { id: string; ticketId: string; artifactId: string; artifactKind: string; name: string; label: string | null }[];
   //? #111 — the requesting user's persisted Workspace-AI chat history (per-user), chronological,
@@ -422,7 +422,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       prisma.stylePreset.findMany({ where: { OR: [{ workspaceId: contentWsId }, { workspaceId: null }] }, orderBy: { createdAt: 'asc' } }),
       prisma.channel.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.contentAsset.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
-      prisma.envVar.findMany({ where: { workspaceId: contentWsId, key: { startsWith: '__publish_' } }, select: { key: true } }),
+      prisma.envVar.findMany({ where: { workspaceId: contentWsId, key: { startsWith: '__publish' } }, select: { key: true } }), //? A4: '__publish' (no trailing _) also captures the '__publishhealth_' markers; each parser ignores the other's keys
       prisma.mediaJob.findMany({ where: { workspaceId: contentWsId } }),
       prisma.referenceExample.findMany({ where: { workspaceId: contentWsId }, orderBy: { createdAt: 'asc' } }),
       prisma.shortLink.findMany({ where: { workspaceId: contentWsId }, orderBy: { clicks: 'desc' } }),
@@ -443,9 +443,19 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       list.push(parsed.accountId);
       accountsByPlatform.set(parsed.platform, list);
     }
+    //? GAP_SCAN A4 — accounts whose token refresh failed are marked unhealthy; surface that as
+    //? `needsReconnect` so the settings UI can show a reconnect CTA instead of a generic publish failure.
+    const unhealthy = new Set<string>();
+    for (const r of publishConnRows) {
+      const h = parseHealthKey(r.key);
+      if (h) unhealthy.add(`${h.platform}::${h.accountId ?? ''}`);
+    }
     const publishTargets = ['youtube', 'tiktok'].map((platform) => {
       const accts = accountsByPlatform.get(platform) ?? [];
-      return { platform, connected: accts.length > 0, accounts: accts.map((accountId) => ({ accountId })) };
+      return {
+        platform, connected: accts.length > 0,
+        accounts: accts.map((accountId) => ({ accountId, ...(unhealthy.has(`${platform}::${accountId ?? ''}`) ? { needsReconnect: true } : {}) })),
+      };
     });
     //? U-fix B: group the produced media assets per piece so the detail page can show + download them.
     //? `stub` = the asset was produced in dummy mode (no key) — the registry marks it in `metadata.stub`.
@@ -629,8 +639,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ticketId: finding.ticketId ? (ticketKeyById.get(finding.ticketId) ?? null) : null,
         createdAt: finding.createdAt.toISOString(),
       })),
-      uiReviews: uiReviewRows.map((r) => ({
-        id: r.id, page: r.page ?? null, problems: r.problems, screenshots: r.screenshots, notes: r.notes ?? null, createdAt: r.createdAt.toISOString(),
+      uiReviews: uiReviewRows.map((review) => ({
+        id: review.id, projectId: review.projectId ?? null, page: review.page ?? null, problems: review.problems,
+        screenshots: review.screenshots, notes: review.notes ?? null, createdAt: review.createdAt.toISOString(),
       })),
       ticketArtifactLinks: artifactLinkRows.flatMap((link) => {
         const ticketKey = ticketKeyById.get(link.ticketId);

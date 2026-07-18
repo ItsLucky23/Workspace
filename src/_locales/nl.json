@@ -1415,7 +1415,9 @@
       "transcodeGif": "Naar GIF (preview-loop)",
       "transcodeStarted": "Bezig met converteren - het nieuwe bestand verschijnt hier zodra klaar.",
       "webmLabel": "WEBM",
-      "gifLabel": "GIF"
+      "gifLabel": "GIF",
+      "publishNeedsReconnect": "opnieuw koppelen",
+      "publishReconnect": "Opnieuw koppelen"
     },
     "knowledge": {
       "title": "Kennisgraaf",

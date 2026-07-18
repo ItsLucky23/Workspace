@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `9d14dff4c444f279` · 17 capabilities · 193 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `3bf34b39612f74eb` · 17 capabilities · 195 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -219,3 +219,5 @@
 - `adr-0273` 0273-comment-inbox-read-only-youtube-tiktok
 - `adr-0274` 0274-pipeline-role-prompt-eval-replay-harness
 - `adr-0275` 0275-voice-interface-provider-abstracted-stt-plus-tts
+- `adr-0276` Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS
+- `adr-0277` Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing

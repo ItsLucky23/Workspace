@@ -1,9 +1,9 @@
 /** @docs owner ItsLucky23 */
 //? DESIGN_DOCS_PROGRAM 3.5 — web DISCOVERY of design-reference sites. From a plain-language brief the
 //? designer FINDS candidate sites to capture (previously the user had to already have a URL). Discovery uses
-//? a static-fetchable search endpoint (DuckDuckGo's html endpoint returns result links with NO JS), following
-//? the established scraper egress pattern (AbortController timeout + withRetry + protocol/size guards). The
-//? found URLs are then captured with the existing chromium container (captureUrlScreenshot) + vision-extracted.
+//? a static-fetchable search endpoint (DuckDuckGo's html endpoint returns result links with NO JS), through
+//? the central DNS-pinned outbound policy (per-hop validation + timeout/size caps). Candidate URLs are returned
+//? for research; remote Chromium capture stays fail-closed until isolated filtered browser egress exists.
 //?
 //? SWAP SEAM: a headless-browser backend (Playwright/chromium driving a search page) can replace `fetchSearch`
 //? without touching callers — kept behind this one function so discovery stays swappable (owner chose a
@@ -12,8 +12,8 @@
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
-import { withRetry } from '../util/retry';
 import { runAiCompletion } from '../ai/registry';
+import { safeHttpRequest, type SafeHttpDependencies } from '../security/safeHttp';
 
 export interface DiscoveredSite { url: string; title: string }
 
@@ -35,20 +35,19 @@ function hostOf(url: string): string | null {
   return err || u === null ? null : u.hostname.replace(/^www\./, '');
 }
 
-//? Fetch the search results HTML (the swappable step). Static endpoint → plain fetch, guarded like the scraper.
-async function fetchSearch(query: string): Promise<string | null> {
+//? Fetch the search results HTML (the swappable step) through the central DNS-pinned policy.
+export async function fetchSearch(query: string, dependencies: SafeHttpDependencies = {}): Promise<string | null> {
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => { controller.abort(); }, SEARCH_TIMEOUT_MS);
-  const [err, html] = await tryCatch(async () => {
-    // eslint-disable-next-line luckystack/no-raw-fetch-in-src -- server-side external egress (design discovery), guarded + capped
-    const res = await withRetry(() => fetch(url, { signal: controller.signal, headers: { 'user-agent': 'Mozilla/5.0 (compatible; WorkspacesBot/1.0)' } }));
-    if (!res.ok) return null;
-    const text = await res.text();
-    return text.slice(0, MAX_HTML);
+  const result = await safeHttpRequest(url, {
+    ...dependencies,
+    allowInsecureHttp: true,
+    headers: { 'user-agent': 'Mozilla/5.0 (compatible; WorkspacesBot/1.0)' },
+    timeoutMs: SEARCH_TIMEOUT_MS,
+    maxRedirects: 3,
+    maxResponseBytes: MAX_HTML,
   });
-  clearTimeout(timer);
-  return err ? null : (html ?? null);
+  if (!result.ok || result.response.status < 200 || result.response.status >= 300) return null;
+  return result.response.body.toString('utf8');
 }
 
 //? Parse the search-results HTML into de-duped candidate sites (pure + exported for tests — no network).
@@ -109,11 +108,11 @@ async function discoverViaAi(query: string, workspaceId: string | undefined, lim
 
 //? Discover up to `limit` candidate reference sites for a design brief. Primary path = AI suggestion (reliable,
 //? uses the working provider layer); falls back to the static search-endpoint scrape. Returns [] on failure.
-export async function discoverReferenceSites(query: string, limit = 6, workspaceId?: string): Promise<DiscoveredSite[]> {
+export async function discoverReferenceSites(query: string, limit = 6, workspaceId?: string, dependencies: SafeHttpDependencies = {}): Promise<DiscoveredSite[]> {
   const q = query.trim();
   if (q.length === 0) return [];
   const viaAi = await discoverViaAi(q, workspaceId, limit);
   if (viaAi.length > 0) return viaAi;
-  const html = await fetchSearch(q);
+  const html = await fetchSearch(q, dependencies);
   return html ? parseSearchResults(html, limit) : [];
 }

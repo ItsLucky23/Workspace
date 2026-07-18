@@ -77,10 +77,10 @@ export async function resumeEngineOnBoot(opts: { listContainers?: ContainerListe
 
   for (const s of busy) {
     if (!s.ticketId) { counts.skipped += 1; continue; }
-    const ticket = await prisma.ticket.findFirst({ where: { workspaceId: s.workspaceId, id: s.ticketId }, select: { key: true, stageId: true, status: true, archived: true, needsInput: true } });
+    const ticket = await prisma.ticket.findFirst({ where: { workspaceId: s.workspaceId, id: s.ticketId }, select: { key: true, projectId: true, stageId: true, status: true, archived: true, needsInput: true } });
     if (!ticket) { await markStopped(prisma, s.id); counts.stopped += 1; continue; }
     const ws = await prisma.workspace.findUnique({ where: { id: s.workspaceId }, select: { paused: true } });
-    const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId: s.workspaceId, key: ticket.stageId }, select: { aiEnabled: true } });
+    const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId: s.workspaceId, projectId: ticket.projectId, key: ticket.stageId }, select: { aiEnabled: true } });
     const action = classifyBusySession({
       wsPaused: ws?.paused === true,
       ticketPaused: ticket.status === 'paused',
@@ -135,12 +135,12 @@ export async function runWatchdogSweep(now: number): Promise<SweepCounts> {
   //? `needsInput` is filtered in code (not the query): Prisma+Mongo's `{ needsInput: null }` misses
   //? documents where the field is unset, and a defer banner (capacity/editor) IS re-runnable — only a
   //? REAL human question parks. So: fetch idle activated tickets, then drop the ones parked on a question.
-  const candidates = await prisma.ticket.findMany({ where: { branch: { not: null }, archived: false, status: 'idle' }, select: { id: true, key: true, workspaceId: true, stageId: true, needsInput: true } });
+  const candidates = await prisma.ticket.findMany({ where: { branch: { not: null }, archived: false, status: 'idle' }, select: { id: true, key: true, workspaceId: true, projectId: true, stageId: true, needsInput: true } });
   for (const t of candidates) {
     if (isRealNeedsInput(t.needsInput)) continue;
     const ws = await prisma.workspace.findUnique({ where: { id: t.workspaceId }, select: { paused: true } });
     if (ws?.paused === true) continue;
-    const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId: t.workspaceId, key: t.stageId }, select: { aiEnabled: true, gateForApproval: true } });
+    const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId: t.workspaceId, projectId: t.projectId, key: t.stageId }, select: { aiEnabled: true, gateForApproval: true } });
     if (stage?.aiEnabled !== true || stage.gateForApproval) continue;
     const ran = await prisma.agentSession.findFirst({ where: { workspaceId: t.workspaceId, sessionKey: `worker:${t.id}:${t.stageId}` }, select: { id: true } });
     if (ran) continue; // this stage already ran — respect its outcome

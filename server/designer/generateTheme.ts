@@ -6,6 +6,7 @@
 
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { runAiCompletion } from '../ai/registry';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
 //? The 30 token roles (kept in sync with `src/index.css` + `src/workspaces/designer/themes.ts`).
 //? Duplicated here so the server module stays standalone (server tsconfig doesn't pull in `src/`).
@@ -119,8 +120,10 @@ export async function generateTheme(brief: string, workspaceId?: string): Promis
   if (workspaceId) {
     const { retrieveDesignLibrary } = await import('./designLibraryRag');
     const [, hits] = await tryCatch(() => retrieveDesignLibrary(getPrismaClient(), workspaceId, brief, 4));
-    const lib = (hits ?? []).map((h) => h.content).join('\n').slice(0, 1200);
-    if (lib.length > 0) system = `${baseSystem}\n\nThe workspace's existing visual language (build on it, stay coherent with these named looks):\n${lib}`;
+    const lib = (hits ?? [])
+      .map((h) => renderUntrustedContext({ provenance: `RAG chunk: design library ${h.filePath}`, content: h.content, maxChars: 300 }))
+      .join('\n\n');
+    if (lib.length > 0) system = `${baseSystem}\n\nThe workspace's existing visual language (build on it, stay coherent with these named looks):\n${lib}\n\n${UNTRUSTED_CONTEXT_POLICY}`;
   }
   const [error, res] = await tryCatch(() => runAiCompletion('designer-theme', { prompt, system, timeoutMs: 180_000, ...(workspaceId ? { workspaceId, label: `Theme · ${brief.slice(0, 40)}` } : {}) }));
   if (error || !res?.ok) return null;

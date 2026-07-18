@@ -9,6 +9,7 @@ import type { PipelineStageCfg, StageModelChoice } from '../../src/workspaces/_d
 import type { CarryOverEnvelope } from './turnResult';
 import { renderPromptTemplate } from './turnResult';
 import { effortThinkingTokens } from './modelSelect';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
 export interface StageRenderCtx {
   ticketId: string;
@@ -17,7 +18,7 @@ export interface StageRenderCtx {
   //? Context-docs to inject into CLAUDE.md: the stage's `sourceIds` docs + any enabled
   //? workspace-wide workflow guidance (the starter-library snippets). Loaded by stageRunner
   //? (renderStage stays pure). Each is written inline so the in-container agent reads it.
-  contextDocs?: { name: string; content: string }[];
+  contextDocs?: { name: string; content: string; provenance?: string; trusted?: boolean }[];
   //? RAG-retrieved code excerpts most relevant to this ticket (07 §D), injected so the agent
   //? starts with the right files in view. Loaded by stageRunner (retrieval stays out of the renderer).
   retrieved?: { filePath: string; content: string }[];
@@ -84,18 +85,22 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   //? the workspace conventions rather than them being a dead toggle).
   const docs = (ctx.contextDocs ?? []).filter((d) => d.content.trim().length > 0);
   const docsSection = docs.length > 0
-    ? `\n\n---\n\n## Project & workflow guidance\n\nFollow the conventions in these workspace documents:\n\n${docs.map((d) => `### ${d.name}\n\n${d.content.trim().slice(0, 4000)}`).join('\n\n')}\n`
+    ? `\n\n---\n\n## Project & workflow guidance\n\n${docs.map((d) => d.trusted
+      ? `### ${d.name}\n\n${d.content.trim().slice(0, 4000)}`
+      : renderUntrustedContext({ provenance: d.provenance ?? `workspace context document: ${d.name}`, content: d.content.trim(), maxChars: 4000 })).join('\n\n')}\n`
     : '';
   //? RAG: the code excerpts retrieved as most relevant to this ticket — a starting map for the agent.
   const hits = (ctx.retrieved ?? []).filter((h) => h.content.trim().length > 0);
   const retrievedSection = hits.length > 0
-    ? `\n\n---\n\n## Relevant code from the repository\n\nThese excerpts were retrieved as most relevant to this ticket. Use them as a starting map, then open the full files as needed:\n\n${hits.map((h) => `### ${h.filePath}\n\n\`\`\`\n${h.content.trim().slice(0, 1500)}\n\`\`\``).join('\n\n')}\n`
+    ? `\n\n---\n\n## Relevant code from the repository\n\nThese excerpts were retrieved as most relevant to this ticket. Use them as a starting map, then open the full files as needed:\n\n${hits.map((h) => renderUntrustedContext({ provenance: `RAG chunk: repository ${h.filePath}`, content: h.content.trim(), maxChars: 1500 })).join('\n\n')}\n`
     : '';
-  //? #4 self-handoff reload: the resumed session's own handoff, first so it frames everything below.
-  const reloadSection = (ctx.handoffReload ?? '').trim().length > 0
-    ? `## Resumed context (your own handoff)\n\n${(ctx.handoffReload ?? '').trim()}\n\n---\n\n`
+  //? #4 self-handoff reload is earlier AI output, never authority. Give it a unique data block;
+  //? the direct stage config/instructions below remain outside and therefore authoritative.
+  const handoffReload = (ctx.handoffReload ?? '').trim();
+  const reloadSection = handoffReload.length > 0
+    ? `## Resumed context (your own handoff)\n\n${renderUntrustedContext({ provenance: 'previous AI self-handoff', content: handoffReload, maxChars: 6000 })}\n\n---\n\n`
     : '';
-  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${reloadSection}${cfg.customInstructions}\n${docsSection}${retrievedSection}`;
+  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${reloadSection}${cfg.customInstructions}\n${docsSection}${retrievedSection}\n\n${UNTRUSTED_CONTEXT_POLICY}`;
 
   //? --append-system-prompt = the system layer + the carry-over-filled task, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).
@@ -117,6 +122,7 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
       : []),
     'If you are blocked and need a human, end with a ```ws-needs-input block listing the questions instead.',
     'NON-BLOCKING questions (W2): if a question does NOT block your progress, DO NOT stop — make a sensible assumption, keep working, and record it in `openQuestions` as `{ "question": "...", "assumption": "what you assumed" }`. The human can correct it later; a divergent answer will trigger a revision turn. Reserve `ws-needs-input` for questions that TRULY block you.',
+    UNTRUSTED_CONTEXT_POLICY,
   ].filter((s) => s.trim().length > 0).join('\n\n');
 
   //? settings.json — permissions derived from the stage commands (allow/ask/deny) + the

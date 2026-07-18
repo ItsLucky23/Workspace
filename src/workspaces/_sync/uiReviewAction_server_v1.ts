@@ -11,8 +11,12 @@ import { dispatchControlSync } from '../../../server/control/dispatchSync';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
+type UiReviewActionInput =
+  | { op: 'ui-review-to-ticket'; reviewId: string; projectId: string; clientRequestId: string }
+  | { op: 'ui-review-dismiss'; reviewId: string; clientRequestId: string };
+
 export interface SyncParams {
-  clientInput: { op: string; reviewId: string; clientRequestId: string };
+  clientInput: UiReviewActionInput;
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -20,12 +24,15 @@ export interface SyncParams {
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
   const { op, reviewId, clientRequestId } = clientInput;
-  if ((op !== 'ui-review-to-ticket' && op !== 'ui-review-dismiss') || !reviewId) {
-    return { status: 'error', errorCode: 'sync.invalidRequest' };
-  }
+  //? `validation = 'relaxed'` — the declared union is a contract, not a runtime guarantee, so the op
+  //? is re-checked as a plain string before it is trusted.
+  const opRaw: string = op;
+  if ((opRaw !== 'ui-review-to-ticket' && opRaw !== 'ui-review-dismiss') || !reviewId) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const projectId = op === 'ui-review-to-ticket' ? clientInput.projectId : undefined;
+  if (op === 'ui-review-to-ticket' && !projectId) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op, roomCode, userId: user.id, prisma: functions.db.prisma, clientRequestId,
-    payload: { reviewId },
+    target: projectId ? { projectId } : {}, payload: { reviewId },
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success' };

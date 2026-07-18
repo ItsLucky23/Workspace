@@ -10,6 +10,7 @@ import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
 import { retrieve } from '../rag/index';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from './untrustedContext';
 //? R3-b — repos are per-(workspace,project); the code-RAG must be scoped to the ACTIVE project
 //? or the chat grounds on whichever project indexed last (answering about the wrong codebase).
 import { resolveProjectId } from '../orchestrator/projectResolve';
@@ -49,6 +50,10 @@ export function validateCopilot(raw: unknown): { navigate: string; note: string;
 }
 
 export interface Ctx {
+  //? Every proposal is bound to this validated project. The client rejects it once
+  //? another project becomes active, so a delayed Accept cannot target stale state.
+  projectId: string;
+  projectName: string;
   tickets: { key: string; title: string; stageId: string }[];
   stages: { id: string; name: string }[];
   members: { id: string; name: string }[];
@@ -68,25 +73,34 @@ export interface Ctx {
   channels: { id: string; name: string }[];
 }
 
-async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> {
+export async function loadCtx(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<Ctx | null> {
+  //? An explicit active project is mandatory. resolveProjectId validates both ObjectId
+  //? shape and workspace ownership and never falls through when the supplied id is stale.
+  const activeProjectId = await resolveProjectId(prisma, workspaceId, projectId);
+  if (!activeProjectId) return null;
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: activeProjectId }, select: { name: true } });
+  if (!project) return null;
+
   const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows, channels] = await Promise.all([
-    prisma.ticket.findMany({ where: { workspaceId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
-    prisma.pipelineStage.findMany({ where: { workspaceId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
+    prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
+    prisma.pipelineStage.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
-    prisma.contentProject.findMany({ where: { workspaceId, archived: false }, select: { id: true, title: true, stageId: true }, take: 30, orderBy: { updatedAt: 'desc' } }),
-    prisma.environment.findMany({ where: { workspaceId }, select: { id: true, kind: true, status: true }, take: 12 }),
+    prisma.contentProject.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { id: true, title: true, stageId: true }, take: 30, orderBy: { updatedAt: 'desc' } }),
+    prisma.environment.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, kind: true, status: true }, take: 12 }),
     prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
     prisma.customAiTask.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
-    prisma.mergeRequest.findMany({ where: { workspaceId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
-    prisma.channel.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
+    prisma.mergeRequest.findMany({ where: { workspaceId, projectId: activeProjectId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
+    prisma.channel.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 30 }),
   ]);
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
   //? #54 — resolve each open MR's ticket KEY (the chat + mrAction reference the DEV-#### key, not the id).
-  const mrTicketKeys = await prisma.ticket.findMany({ where: { workspaceId, id: { in: mrRows.map((m) => m.ticketId) } }, select: { id: true, key: true } });
+  const mrTicketKeys = await prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, id: { in: mrRows.map((m) => m.ticketId) } }, select: { id: true, key: true } });
   const keyByTicketId = new Map(mrTicketKeys.map((t) => [t.id, t.key]));
   return {
+    projectId: activeProjectId,
+    projectName: project.name,
     tickets: tickets.map((t) => ({ key: t.key, title: t.title, stageId: t.stageId })),
     stages: stages.map((s) => ({ id: s.key, name: s.name })),
     members: users.map((u) => ({ id: u.id, name: u.name ?? u.id })),
@@ -100,7 +114,23 @@ async function loadCtx(prisma: PrismaClient, workspaceId: string): Promise<Ctx> 
   };
 }
 
-function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): string {
+function workspaceStateText(ctx: Ctx): string {
+  return [
+    `Active project: ${ctx.projectId} — ${ctx.projectName}`,
+    `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
+    `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
+    `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
+    `Content pieces (pieceId — title [stage]): ${ctx.pieces.map((p) => `${p.id} — ${p.title} [${p.stageId}]`).join('; ') || '(none)'}`,
+    `Environments (envId — kind [status]): ${ctx.environments.map((e) => `${e.id} — ${e.kind} [${e.status}]`).join('; ') || '(none)'}`,
+    `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
+    `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
+    `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
+    `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
+    `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
+  ].join('\n');
+}
+
+export function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): string {
   return [
     'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below — AND explain what THIS PRODUCT can do — use the product-capabilities below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
@@ -120,19 +150,21 @@ function systemPrompt(ctx: Ctx, codeContext: string, productContext = ''): strin
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
     //? #109 — AI-drives-UI: when the best help is to TAKE the user somewhere (not run an op), emit a copilot directive.
     'AI-DRIVES-UI (copilot): when the user\'s ask is best served by GUIDING them to a specific page to finish it themselves (a settings screen, a form you can\'t fully fill, "where do I set X?", "take me to Y"), ADD a "copilot" field: {"navigate": <one of: board|backlog|terminals|activity|sources|pipeline|scheduled|scheduled-posts|usage|content|content/settings|designer|interviewer|marketing|knowledge|studio|settings|workspace|ai>, "note": short "here\'s what to do next", "prefill"?: { field: value }}. Use it INSTEAD of (or alongside) a plain reply when navigating helps; keep proposing an op when you CAN do the action directly. Only navigate to a listed target.',
-    `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
-    `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
-    `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
-    `Content pieces (pieceId — title [stage]): ${ctx.pieces.map((p) => `${p.id} — ${p.title} [${p.stageId}]`).join('; ') || '(none)'}`,
-    `Environments (envId — kind [status]): ${ctx.environments.map((e) => `${e.id} — ${e.kind} [${e.status}]`).join('; ') || '(none)'}`,
-    `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
-    `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
-    `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
-    `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
-    `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
-    ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${productContext}`] : []),
-    ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${codeContext}`] : []),
+    `Workspace state (reference data; ids may be used only as allowed above):\n${renderUntrustedContext({ provenance: 'current workspace state and user-authored names', content: workspaceStateText(ctx), maxChars: 12_000 })}`,
+    ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${renderUntrustedContext({ provenance: 'RAG chunks: product knowledge', content: productContext, maxChars: 4000 })}`] : []),
+    ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${renderUntrustedContext({ provenance: 'RAG chunks: user repository', content: codeContext, maxChars: 6000 })}`] : []),
+    UNTRUSTED_CONTEXT_POLICY,
   ].join('\n');
+}
+
+export function buildChatPrompt(message: string, history: { role: string; text: string }[] = []): string {
+  const historyText = history.slice(-8).map((entry) => `${entry.role === 'user' ? 'User' : 'Assistant'}: ${entry.text}`).join('\n');
+  return [
+    ...(historyText.length > 0
+      ? [renderUntrustedContext({ provenance: 'prior workspace chat history', content: historyText, maxChars: 8000 }), UNTRUSTED_CONTEXT_POLICY]
+      : []),
+    `AUTHORITATIVE CURRENT USER REQUEST:\n${message}`,
+  ].join('\n\n');
 }
 
 //? Slice the first balanced {...} object out of the model's reply (tolerates stray prose
@@ -163,19 +195,19 @@ export function validateChatAction(raw: unknown, ctx: Ctx): ChatProposal | null 
     const stageId = typeof a.stageId === 'string' ? a.stageId : '';
     if (validKeys.length === 0 || !ctx.stages.some((s) => s.id === stageId)) return null;
     const stageName = ctx.stages.find((s) => s.id === stageId)?.name ?? stageId;
-    return { op, ticketKeys: validKeys, stageId, summary: `Move ${validKeys.join(', ')} → ${stageName}` };
+    return { op, projectId: ctx.projectId, ticketKeys: validKeys, stageId, summary: `Move ${validKeys.join(', ')} → ${stageName}` };
   }
   const [firstKey] = validKeys;
   if (op === 'assign') {
     const assigneeId = typeof a.assigneeId === 'string' ? a.assigneeId : '';
     if (firstKey === undefined || !ctx.members.some((m) => m.id === assigneeId)) return null;
     const who = ctx.members.find((m) => m.id === assigneeId)?.name ?? assigneeId;
-    return { op, ticketKeys: [firstKey], assigneeId, summary: `Assign ${firstKey} → ${who}` };
+    return { op, projectId: ctx.projectId, ticketKeys: [firstKey], assigneeId, summary: `Assign ${firstKey} → ${who}` };
   }
   if (op === 'add-comment') {
     const body = typeof a.body === 'string' ? a.body.trim() : '';
     if (firstKey === undefined || body.length === 0) return null;
-    return { op, ticketKeys: [firstKey], body, summary: `Comment on ${firstKey}` };
+    return { op, projectId: ctx.projectId, ticketKeys: [firstKey], body, summary: `Comment on ${firstKey}` };
   }
   //? O-B create ops — free-form (they invent NEW state), so they validate on their own fields, not against
   //? existing tickets/stages. They still only PROPOSE; accept routes them to the existing quick-add /
@@ -184,14 +216,14 @@ export function validateChatAction(raw: unknown, ctx: Ctx): ChatProposal | null 
     const title = typeof a.title === 'string' ? a.title.trim() : '';
     if (title.length === 0) return null;
     const description = typeof a.description === 'string' ? a.description.trim() : undefined;
-    return { op, title, ...(description ? { description } : {}), summary: `Create ticket: ${title}` };
+    return { op, projectId: ctx.projectId, title, ...(description ? { description } : {}), summary: `Create ticket: ${title}` };
   }
   if (op === 'create-content') {
     const title = typeof a.title === 'string' ? a.title.trim() : '';
     const brief = typeof a.brief === 'string' ? a.brief.trim() : '';
     if (title.length === 0 || brief.length === 0) return null;
     const format = typeof a.format === 'string' && a.format.trim().length > 0 ? a.format.trim() : undefined;
-    return { op, title, brief, ...(format ? { format } : {}), summary: `Create content: ${title}` };
+    return { op, projectId: ctx.projectId, title, brief, ...(format ? { format } : {}), summary: `Create content: ${title}` };
   }
   //? X1 — everything else falls through to the generic catalog: any ENABLED op validates against
   //? the catalog's param spec + the real workspace context (unknown/disabled/dangling → null).
@@ -213,24 +245,24 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
 
 //? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
 export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[]): Promise<ChatResult> {
-  const ctx = await loadCtx(prisma, workspaceId);
+  if (!projectId) return { reply: '', proposal: null, error: 'project.notFound' };
+  const ctx = await loadCtx(prisma, workspaceId, projectId);
+  if (!ctx) return { reply: '', proposal: null, error: 'project.notFound' };
   //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
   //? so "how does X work?" answers from real code instead of flying blind. Best-effort — empty when
   //? nothing is indexed. R3-b — scope to the active project so a multi-project workspace grounds on the
   //? RIGHT repo (else `retrieve`'s fallback picks whichever project indexed last).
-  const projId = await resolveProjectId(prisma, workspaceId, projectId ?? null);
-  const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6, undefined, projId ?? undefined));
+  const [, chunks] = await tryCatch(() => retrieve(prisma, workspaceId, message, 6, undefined, ctx.projectId));
   const codeContext = (chunks ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 6000);
   //? Q3 — ALSO ground on the PRODUCT's own capabilities (Q2 corpus), so the assistant can answer "can we edit
   //? videos? → yes, via the media module, first generate/upload a video then the timeline editor". Kept as a
   //? SEPARATE section from the user-code context so the model never confuses "what this product can do" with
   //? "what the user's repo contains". Best-effort — empty when the corpus isn't indexed.
   const [, pk] = await tryCatch(() => retrieveProductKnowledge(prisma, message, 4));
-  const productContext = (pk ?? []).map((c) => c.content).join('\n\n').slice(0, 4000);
-  //? #112 — thread the last N prior turns into the prompt so the AI can follow up ("do that for the
-  //? other ticket too"). Bounded to the last 8 turns; the current message is the final line.
-  const historyText = (history ?? []).slice(-8).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n');
-  const fullPrompt = historyText.length > 0 ? `Conversation so far:\n${historyText}\n\nUser: ${message}` : message;
+  const productContext = (pk ?? []).map((c) => `// ${c.filePath}\n${c.content}`).join('\n\n').slice(0, 4000);
+  //? #112 — prior turns are model/user-authored reference data; only the current message is a direct,
+  //? authoritative request. Bounded to the last 8 turns inside one unique untrusted block.
+  const fullPrompt = buildChatPrompt(message, history ?? []);
   const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);

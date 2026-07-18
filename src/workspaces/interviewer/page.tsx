@@ -40,7 +40,7 @@ const STARTERS: { icon: string; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole } = useWorkspaces();
+  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -98,6 +98,7 @@ export default function Interviewer() {
             {interviewFindings.map((f) => (
               <FindingRow key={f.id} f={f} translate={translate}
                 onMakeTicket={() => { makeTicketFromFinding(f.id); }}
+                onOpenTicket={() => { if (f.ticketId) openTicket(f.ticketId); }}
                 onDismiss={() => { dismissFinding(f.id); }} />
             ))}
           </div>
@@ -142,7 +143,7 @@ export default function Interviewer() {
   );
 }
 
-function FindingRow({ f, translate, onMakeTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onDismiss: () => void }) {
+function FindingRow({ f, translate, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
   const meta = areaMeta(f.area);
   const accepted = f.status === 'accepted';
   return (
@@ -157,7 +158,7 @@ function FindingRow({ f, translate, onMakeTicket, onDismiss }: { f: InterviewFin
         {f.summary.length > 0 && <div className="text-xs text-muted mt-0.5">{f.summary}</div>}
       </div>
       {accepted ? (
-        <span className="text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center"><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</span>
+        <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className="text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center enabled:hover:underline enabled:cursor-pointer disabled:cursor-default"><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
       ) : (
         <div className="flex items-center gap-1.5 shrink-0 self-center">
           <button type="button" onClick={onMakeTicket} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="plus" className="text-xs" />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>

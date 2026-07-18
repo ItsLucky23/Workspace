@@ -9,18 +9,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { stageId: string; clientRequestId: string };
+  clientInput: { stageId: string; projectId: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { stageId, clientRequestId } = clientInput;
-  if (stageId.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { stageId, projectId, clientRequestId } = clientInput;
+  if (stageId.trim().length === 0 || projectId.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'stage-delete', roomCode, userId: user.id, prisma: functions.db.prisma,
-    target: { stageId }, payload: {}, clientRequestId,
+    target: { stageId, projectId }, payload: {}, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success' };

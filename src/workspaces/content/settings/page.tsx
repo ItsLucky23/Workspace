@@ -659,8 +659,15 @@ export default function ContentSettings() {
                     {/* #140/#146 — one row per connected account with its own disconnect. */}
                     {accounts.map((acc) => (
                       <div key={acc.accountId ?? '__default__'} className="flex items-center justify-between gap-3 pl-1">
-                        <span className="text-xs font-medium text-correct flex items-center gap-1.5"><Icon name="circle-check" /> {acc.accountId ?? translate({ key: 'workspaces.content.publishDefaultAccount' })}</span>
-                        <button type="button" onClick={() => { disconnectPlatform(p.id, acc.accountId); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.publishDisconnect' })}</button>
+                        {/* GAP_SCAN A4 — a dead token (refresh failed) shows a reconnect CTA instead of failing silently on the next post. */}
+                        <span className={`text-xs font-medium flex items-center gap-1.5 ${acc.needsReconnect ? 'text-warning' : 'text-correct'}`}>
+                          <Icon name={acc.needsReconnect ? 'triangle-exclamation' : 'circle-check'} /> {acc.accountId ?? translate({ key: 'workspaces.content.publishDefaultAccount' })}
+                          {acc.needsReconnect && <span className="text-[10px] uppercase tracking-wide rounded-full bg-warning/15 px-1.5 py-0.5">{translate({ key: 'workspaces.content.publishNeedsReconnect' })}</span>}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {acc.needsReconnect && <button type="button" onClick={() => { openConnectAccount(p.id, platformName); }} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.content.publishReconnect' })}</button>}
+                          <button type="button" onClick={() => { disconnectPlatform(p.id, acc.accountId); }} className="text-xs text-muted hover:text-wrong cursor-pointer">{translate({ key: 'workspaces.content.publishDisconnect' })}</button>
+                        </div>
                       </div>
                     ))}
                     {accounts.length === 0 && <span className="text-xs text-muted pl-1">{translate({ key: 'workspaces.content.publishNoAccounts' })}</span>}

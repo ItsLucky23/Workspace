@@ -161,3 +161,67 @@ browser: labels now render ("Blank", "Templates", "Apply tokens", …).
 *Verification:* applyDesignTokens integration **35/35** tegen echte Mongo + echte git; `npm run typecheck` groen; target ESLint 0; `npm run build` groen; `npm run ai:lint` schoon; generateArtifacts + decisions/capabilities/project-index/graph/product/context-budget groen. Volledige lint: 0 errors, 22 reeds aanwezige warnings in andere gelijktijdig gewijzigde document/content/settings-files (niet drive-by gefixt).
 
 *Notes:* Geen nieuw control-verb/schema/productkeuze. De werkboom bevat omvangrijke gelijktijdige wijzigingen van andere A0x-prompts; die zijn niet door A09 overschreven.
+
+## 2026-07-18 18:34 — PTY-context en prompt-injection hardening
+
+*User prompt:* Sluit de PTY/tool/context-blockers: one-shot Claude deny-all + minimale env, verwijder tweede Enter, en behandel web/MR/plan/chat/CarryOver/handoff/RAG-context als untrusted terwijl actuele user-instructies authoritative blijven.
+
+*What I did:*
+- One-shot `claude` blijft interactieve PTY, maar krijgt nu een fail-closed `permissions.deny` (`*` plus expliciete Bash/Read/Edit/Write/Glob/Grep/Web/Task/MCP-regels), een login/runtime/temp env-allowlist en exact één prompt-submit.
+- Workspace-chat state/RAG/history, scraper-webtekst, MR-diff, AI-plan, CarryOver en self-handoff staan in unieke delimiter-blocks met de policy erna; de huidige user request en deterministic role-task blijven erbuiten.
+- Script style/brand/knowledge/RAG blijft untrusted; `extraInstructions` en de actuele brief zijn expliciet authoritative.
+- Fake-PTY/env/settings- en hostile-delimiter regressies toegevoegd; bestaande concurrente security-edits behouden.
+
+*Files touched:* `server/ai/providers/claudeCli.ts`, `server/ai/workspaceChat.ts`, `server/scraper/role.ts`, `server/mr/reviewRole.ts`, `server/reasoning/planCritiqueRole.ts`, `server/orchestrator/renderStage.ts`, `server/orchestrator/turnResult.ts`, `server/content/script.ts`, `tests/unit/claudeCliProvider.test.mts`, `tests/unit/promptContextBoundaries.test.mts`, `tests/integration/stageEngine.test.mts`, `tests/integration/scriptGrounding.test.mts`, plus Ctx-fixture updates in `tests/unit/chatCreateOps.test.mts` en `tests/unit/opCatalogParity.test.mts`.
+
+*Verification:* fake Claude **19/19**; prompt boundaries **19/19**; stage engine **37/37**; script grounding **8/8**; MR review **9/9**; plan critique **6/6**; chat create ops **19/19**; op-catalog **53/53**; gerichte ESLint schoon; typecheck groen; `npm run build` groen; `npm run ai:lint` schoon. Volledige lint werd tussentijds groen, maar eindigde door een nieuwe gelijktijdige buiten-scope edit op **2 errors** in `server/media/uploadRoute.ts:885` plus 22 reeds aanwezige waarschuwingen; gerichte scope-lint blijft schoon.
+
+*Notes:* Geen commit, ADR, inhoudelijke docs of generators uitgevoerd. De omvangrijke gelijktijdige worktree is niet opgeschoond of overschreven.
+
+## 2026-07-18 19:07 — Renewable workspace lease en fail-closed guard
+
+**User prompt (summary)**: Fix A10 binnen ADR 0015: renew de workspace-lease tijdens >TTL-actions, maak leaseverlies caller-zichtbaar/fail-closed, geef de Conductor guard-checkpoints en bewijs dit met korte real-Redis/conductor-tests zonder nieuwe leader-forwarding of generator/commit.
+
+**What I did**:
+- Vervangen van de vaste workspace-lease door een sequentiële owner-checked renew-loop (elke 5s bij 15s TTL), met volledig injecteerbare testtimings en zonder overlappende renewals.
+- Toegevoegd: `WorkspaceLeaseGuard` (`assertHeld` + `AbortSignal`) en zichtbare `WorkspaceLeaseLostError`; renew/deadline/release-onzekerheid faalt closed en release blijft owner-safe.
+- De Conductor checkt leasebezit vóór seq, vóór signal-append, vóór execute en vóór succesvolle completion; de recovered queue-tail blijft bruikbaar na verlies.
+- Real-Redis regressie toegevoegd voor een 320ms-action met 120ms-TTL + tweede contender, plus renewal-loss/successor-release; control-ACK regressie injecteert verlies op alle vier grenzen en bewijst caller failure + queueherstel.
+- ADR 0277 supersedeert ADR 0015 en begrenst de claim eerlijk: geen volledige DB-fencing zonder cross-store atomische fencing; event-loop stalls en reeds gestarte Prisma/provider-writes blijven residual risk.
+
+**Files touched**: `server/orchestrator/cluster.ts`, `server/orchestrator/conductor.ts`, `tests/integration/multiInstance.test.mts`, `tests/integration/controlAck.test.mts`, `docs/decisions/0015-multi-instance-safety-deel-a.md`, `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md`, `docs/AI_DECISIONS_INDEX.md`, `branch-logs/feat-design-docs-program.md`, `branch-logs/INDEX.md`.
+
+**Notes / decisions**: Geen leader-forwarding, nieuw verb of productarchitectuur. Geen commit/generators. Verificatie: multiInstance 22/22, controlAck 34/34, typecheck groen, gerichte lint schoon, volledige lint 0 errors/22 bestaande warnings, build groen, ai:lint schoon.
+
+## 2026-07-18 19:44 — End-to-end project execution scope (A12/F21/E02/E15/E29)
+
+**User prompt (summary)**: Fix project execution scope end-to-end while preserving concurrent edits, security, leases, A09 and ADR 0035; add two-project duplicate-key/APP_BRIEF regressions; regenerate artifacts; do not commit.
+
+**What I did**:
+- Made `ticket.projectId` authoritative for stage runtime, next-stage lookup, reprovision, watchdog recovery and edit guard; all stage identity reads now use `(workspaceId, projectId, key)`.
+- Scoped starter and explicit project-owned context to the ticket project while retaining workspace-wide design-system context per ADR 0034; new dev projects now receive their own starter library.
+- Required and validated `projectId` for stage save/create/delete/reorder, scoped every mutation to that project, and made reorder validate the complete target-project stage set.
+- Made bulk move validate every ticket and every target-project stage before mutation; explicit mixed-project requests fail closed and internal unscoped batches split writes/worktree activation by project.
+- Threaded active project context through finding/review conversion, pipeline/chat/provider/sync call sites and snapshot state; compare reviews retain a live artifact link so screenshots and analysis reach stage context.
+- Added two-project regressions with duplicate stage keys and distinct `APP_BRIEF.md` content, including runtime/next/reprovision/editguard/snapshot/stage mutation/bulk move/finding/review coverage.
+
+**Files touched**: `server/bootstrap/starterLibrary.ts`, `server/orchestrator/{artifactContext,conductor,editGuard,projectResolve,stageRunner,watchdog}.ts`, `server/read/workspaceSnapshot.ts`, project-aware Workspaces API/sync/provider/pipeline/interviewer/designer/board files, and focused integration/unit tests including `tests/integration/multiProject.test.mts`.
+
+**Verification**: `npm run generateArtifacts` and `npm run typecheck` green; multi-project **45/45**, pipeline stages **8/8**, stage persona **3/3**, watchdog **24/24**, UI review **35/35**, plus stage-engine/model-wiring targeted tests green. Final `npm run lint`: 0 errors / 22 pre-existing concurrent warnings; `npm run build` green (existing Vite chunk warnings); `npm run ai:lint` clean.
+
+**Notes / decisions**: No schema change or new ADR was needed; this enforces existing ADR 0035 and preserves ADR 0034/A09/renewable-lease behavior. No commit. The large concurrent worktree was not reverted, reformatted or otherwise cleaned up.
+
+## 2026-07-18 20:24 — UI-review en MR-fallback projectbinding
+
+**User prompt (summary)**: Persist UI-review project scope, make conversion and legacy handling fail closed, and derive rollback/MR reindex scope from source records. Preserve concurrent edits; regenerate Prisma/artifacts; test focused paths; do not migrate, install or commit.
+
+**What I did**:
+- Added optional indexed `UiReviewRequest.projectId`, validated explicit workspace-project bindings, and exposed the persisted binding through snapshots/client types.
+- Made review conversion authoritative on the persisted project, rejected foreign/mismatched projects, and required an explicit active project for legacy null-project reviews.
+- Kept project B stable across active-project switches and linked converted review artifacts to the resulting project-B ticket/context.
+- Derived rollback follow-up tickets from the culprit MR/source ticket pair and post-merge RAG reindex from the validated MR/ticket project instead of project #1.
+- Added focused UI-review, two-project, rollback and real-git MR/reindex regressions; regenerated Prisma Client and route artifacts.
+
+**Files touched**: `prisma/schema.prisma`, `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `src/workspaces/_api/designerInspiration_v1.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/_sync/{uiReviewAction,uiReviewCreate}_server_v1.ts`, `src/workspaces/designer/page.tsx`, `tests/integration/{uiReview,multiProject,aiRollback,mergeReal}.test.mts`, generated route artifacts.
+
+**Notes / decisions**: No new architecture decision; this enforces ADRs 0035, 0042 and 0045. Verification: UI-review 49/49, multi-project 59/59, rollback 12/12, real MR/reindex 18/18, snapshot 33/33; typecheck/build/ai:lint green and focused ESLint clean. Full lint has 0 errors and 21 unrelated existing warnings. Designer inspiration reached 15 passing assertions but its 2 Docker capture assertions could not run because Docker was unavailable. No migrate/install/commit; concurrent worktree changes were preserved.

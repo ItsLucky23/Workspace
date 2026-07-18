@@ -11,18 +11,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { op: string; clientRequestId: string; findingId?: string };
+  clientInput: { op: string; clientRequestId: string; findingId?: string; projectId?: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { op, clientRequestId, findingId } = clientInput;
-  if (op !== 'finding-to-ticket' && op !== 'finding-dismiss') return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { op, clientRequestId, findingId, projectId } = clientInput;
+  if ((op !== 'finding-to-ticket' && op !== 'finding-dismiss') || !findingId || (op === 'finding-to-ticket' && !projectId)) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op, roomCode, userId: user.id, prisma: functions.db.prisma, clientRequestId,
-    ...(findingId ? { target: { findingId } } : {}), payload: {},
+    target: { findingId, ...(projectId ? { projectId } : {}) }, payload: {},
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success' };

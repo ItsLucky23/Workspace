@@ -11,7 +11,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { key: string; name: string; kind?: string; projectId?: string; clientRequestId: string };
+  clientInput: { key: string; name: string; kind?: string; projectId: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -19,10 +19,10 @@ export interface SyncParams {
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
   const { key, name, kind, projectId, clientRequestId } = clientInput;
-  if (key.trim().length === 0 || name.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  if (key.trim().length === 0 || name.trim().length === 0 || projectId.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'stage-create', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { key: key.trim(), name: name.trim(), ...(kind ? { kind } : {}), ...(projectId ? { projectId } : {}) }, clientRequestId,
+    target: { projectId }, payload: { key: key.trim(), name: name.trim(), ...(kind ? { kind } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', stageConfig: stageConfigDelta(res.result) };

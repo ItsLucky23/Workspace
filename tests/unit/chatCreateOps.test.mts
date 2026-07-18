@@ -4,13 +4,16 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 import { validateChatAction, validatePlan, type Ctx } from '../../server/ai/workspaceChat';
+import { isChatProposalForProject } from '../../src/workspaces/_functions/chatDispatch';
 
 const ctx: Ctx = {
+  projectId: 'project-a',
+  projectName: 'Project A',
   tickets: [{ key: 'DEV-1', title: 'Existing', stageId: 'unrefined' }],
   stages: [{ id: 'unrefined', name: 'Unrefined' }, { id: 'refined', name: 'Refined' }],
   members: [{ id: 'u1', name: 'Alice' }],
   //? X1 widened Ctx — empty here; the generic-op paths are covered by opCatalogParity.test.mts.
-  pieces: [], environments: [], services: [],
+  pieces: [], environments: [], services: [], customTasks: [], triggers: [], mrs: [], channels: [],
 };
 
 try {
@@ -19,6 +22,9 @@ try {
   assert(t !== null && t.op === 'create-ticket', 'create-ticket with a title validates');
   eq(t?.title, 'Add a login page', 'the title is trimmed');
   eq(t?.description, 'with 2FA', 'the description is carried');
+  eq(t?.projectId, ctx.projectId, 'the proposal is bound to the validated active project');
+  assert(t !== null && isChatProposalForProject(t, 'project-a'), 'the proposal dispatches in its original project');
+  assert(t !== null && !isChatProposalForProject(t, 'project-b'), 'the same proposal is stale after a project switch');
   assert((t?.summary ?? '').includes('Add a login page'), 'the summary names the ticket');
   eq(validateChatAction({ op: 'create-ticket', title: '   ' }, ctx), null, 'create-ticket with a blank title is rejected');
   eq(validateChatAction({ op: 'create-ticket' }, ctx), null, 'create-ticket with no title is rejected');
@@ -44,6 +50,7 @@ try {
     { op: 'create-ticket', title: 'Login page' },
   ] }, ctx);
   assert(plan !== null && plan.steps.length === 3, 'a 3-step plan validates with all steps');
+  assert(plan?.steps.every((step) => step.projectId === ctx.projectId) === true, 'every plan step carries the same active project');
   eq(plan?.summary, 'Build a todo app', 'the plan summary is carried');
   eq(validatePlan({ summary: 'One step', steps: [{ op: 'create-ticket', title: 'Only one' }] }, ctx), null, 'a 1-step plan is rejected (that is just a proposal)');
   //? Invalid steps are dropped; a plan needs ≥2 SURVIVING steps.

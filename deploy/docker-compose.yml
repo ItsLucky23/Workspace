@@ -55,6 +55,11 @@ services:
       WS_DOCKER_BIN: /usr/bin/docker
       WS_NET: workspaces-net
       WS_AUTH_DIR: /app/data/_auth
+      # Caddy's Admin API is reachable only on the private management network.
+      WS_CADDY_ADMIN: http://caddy-admin:2019
+      # Edge-auth is mandatory in the self-host stack; subrequests stay on management.
+      WS_EDITOR_EDGE_AUTH: "1"
+      WS_EDITOR_AUTH_BACKEND: app-upstream:80
     volumes:
       # Persistent app data (repos, editor profiles, encrypted secrets, auth) + the Docker socket
       # so the app can launch/stop per-ticket containers on the host engine.
@@ -65,12 +70,18 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-    networks: [internal, workspaces-net]
+    networks:
+      internal: {}
+      management:
+        aliases: [app-upstream]
 
   caddy:
     image: caddy:2
     restart: unless-stopped
     depends_on: [app]
+    environment:
+      # Must be inside WS_CADDY_MANAGEMENT_SUBNET; Caddyfile binds Admin to this IP only.
+      WS_CADDY_ADMIN_IP: "${WS_CADDY_ADMIN_IP:-172.30.0.2}"
     ports:
       - "80:80"
       - "443:443"
@@ -78,7 +89,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
-    networks: [internal, workspaces-net]
+    networks:
+      management:
+        ipv4_address: "${WS_CADDY_ADMIN_IP:-172.30.0.2}"
+        aliases: [caddy-admin]
+      workspaces-net: {}
 
 volumes:
   mongo-data:
@@ -89,9 +104,16 @@ volumes:
 
 networks:
   internal:
-  # Shared with the per-ticket containers the app launches (WS_NET). `external: true` because the app
-  # (and its ticket containers) create/own this network at runtime — compose must attach to the
-  # EXISTING one, not try to manage a duplicate. Create it once with:
+  # App↔Caddy control traffic only. No explicit `name`: Compose project-scopes this network,
+  # so separate Workspaces projects never share an Admin plane.
+  management:
+    internal: true
+    ipam:
+      config:
+        - subnet: "${WS_CADDY_MANAGEMENT_SUBNET:-172.30.0.0/24}"
+  # Shared with the per-ticket containers Caddy proxies to (WS_NET). `external: true` because the
+  # app creates/owns this network at runtime — compose must attach to the EXISTING one, not try to
+  # manage a duplicate. Create it once with:
   #   docker network create workspaces-net
   workspaces-net:
     external: true

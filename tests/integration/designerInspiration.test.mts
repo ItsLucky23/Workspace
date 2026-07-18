@@ -16,6 +16,7 @@ const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorksp
 const { ensureStyleGallery, GALLERY_PRESET_NAMES, captureUrlScreenshot, extractThemeFromScreenshot, compareDesigns } = await import('../../server/designer/inspiration');
 const { THEME_TOKENS } = await import('../../server/designer/generateTheme');
 const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
+const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { dockerAvailable } = await import('../../server/container/runtime');
 const { MEDIA_DIR } = await import('../../server/media/store');
 
@@ -56,7 +57,7 @@ try {
 
   // ---- 3. honest no-provider paths (stub world: no Gemini key → null, never a fabricated theme) ----
   eq(await extractThemeFromScreenshot(wsId, shotUrl ?? ''), null, 'extraction without a vision provider returns null (honest)');
-  eq(await compareDesigns(prisma, wsId, shotUrl ?? '', shotUrl ?? ''), null, 'compare without a vision provider returns null');
+  eq(await compareDesigns(wsId, shotUrl ?? '', shotUrl ?? ''), null, 'compare without a vision provider returns null');
   eq(await prisma.uiReviewRequest.count({ where: { workspaceId: wsId } }), 0, 'and no review row was fabricated');
 
   // ---- 4. snapshot: gallery lazily seeds for OTHER workspaces + the 8-model tenant-scoping fix ----
@@ -64,7 +65,11 @@ try {
   assert(snapB1.designArtifacts.filter((a) => a.source === 'seed').length >= 6, "workspace B's snapshot lazily seeded its OWN gallery");
   //? Plant foreign rows in B; A's snapshot must not see ANY of them (was: unscoped tenantDb reads).
   await prisma.designArtifact.create({ data: { workspaceId: wsB, kind: 'theme', name: `B-theme-${String(stamp)}`, content: {}, source: 'manual' } });
-  await prisma.uiReviewRequest.create({ data: { workspaceId: wsB, page: `b-page-${String(stamp)}`, screenshots: [], problems: [] } });
+  await enqueueControlAction({
+    workspaceId: wsB, op: 'ui-review-create', target: {}, userId: ownerB.id,
+    payload: { page: `b-page-${String(stamp)}`, screenshots: [], problems: ['confusing'] },
+    clientRequestId: `ins-foreign-review-${String(stamp)}`,
+  });
   await prisma.interviewFinding.create({ data: { workspaceId: wsB, area: 'ux', title: `B-finding-${String(stamp)}` } });
   await prisma.studioBrief.create({ data: { workspaceId: wsB, name: `B-brief-${String(stamp)}`, productName: 'x', audience: 'x', tone: 'x', goals: 'x' } });
   const snapA = await buildSnapshot(prisma, owner.id, wsId);

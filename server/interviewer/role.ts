@@ -12,6 +12,7 @@ import { retrieve } from '../rag/index';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { resolveProjectId } from '../orchestrator/projectResolve';
 import { parseFindings, recordFindings } from './findings';
+import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
 //? Pure prompt builder (unit-testable). `focus` narrows the review (e.g. "the auth flow"); empty =
 //? the whole project. `context` is retrieved codebase excerpts (RAG) that GROUND the ideas in the
@@ -22,14 +23,14 @@ import { parseFindings, recordFindings } from './findings';
 export function buildInterviewerPrompt(focus: string, context = '', productContext = ''): { system: string; prompt: string } {
   const scope = focus.trim().length > 0 ? focus.trim() : 'the whole project';
   const grounding = context.trim().length > 0
-    ? `\n\nGROUND your ideas in these real excerpts from the codebase (cite the file when relevant):\n${context.trim()}`
+    ? `\n\nGROUND your ideas in these real excerpts from the codebase (cite the file when relevant):\n${renderUntrustedContext({ provenance: 'RAG chunks: repository excerpts', content: context.trim(), maxChars: 6000 })}`
     : '';
   const productGrounding = productContext.trim().length > 0
-    ? `\n\nPLATFORM CAPABILITIES (what this workspace platform itself offers — use these when an idea can be realised with an existing module):\n${productContext.trim()}`
+    ? `\n\nPLATFORM CAPABILITIES (what this workspace platform itself offers — use these when an idea can be realised with an existing module):\n${renderUntrustedContext({ provenance: 'RAG chunks: product capabilities', content: productContext.trim(), maxChars: 3000 })}`
     : '';
   return {
     system: 'You are a sharp senior engineer reviewing a software project and proposing improvements. Output 3–5 concise, concrete, actionable ideas as a short markdown list. Each line MUST be exactly: `- [area] **Title** — one sentence on why it matters`, where area is ONE of reliability, dx, ux, performance, security, product. No preamble, no filler.',
-    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}${productGrounding}`,
+    prompt: `Propose the highest-value improvements for ${scope}. Prefer things a small team could actually ship soon. Return a short markdown list, one idea per line in the "- [area] **Title** — why" format.${grounding}${productGrounding}${grounding || productGrounding ? `\n\n${UNTRUSTED_CONTEXT_POLICY}` : ''}`,
   };
 }
 

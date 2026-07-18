@@ -12,12 +12,15 @@ import { CHAT_ENABLED_OPS, isChatEnabledOp } from '../../src/workspaces/_data/ch
 import { validateChatAction, validatePlan, type Ctx } from '../../server/ai/workspaceChat';
 
 const ctx: Ctx = {
+  projectId: 'project-a',
+  projectName: 'Project A',
   tickets: [{ key: 'DEV-1', title: 'Existing', stageId: 'unrefined' }],
   stages: [{ id: 'unrefined', name: 'Unrefined' }, { id: 'refined', name: 'Refined' }],
   members: [{ id: 'u1', name: 'Alice' }],
   pieces: [{ id: 'p1', title: 'Launch video', stageId: 'idea' }],
   environments: [{ id: 'e1', kind: 'dev', status: 'live' }],
   services: [{ name: 'events', status: 'running' }],
+  customTasks: [], triggers: [], mrs: [], channels: [],
 };
 
 try {
@@ -44,6 +47,7 @@ try {
   // ---- (4) generic validation: happy paths with real references
   const prov = validateGenericAction({ op: 'service-provision', name: 'queue', preset: 'kafka' }, ctx);
   assert(prov !== null && prov.op === 'service-provision', 'service-provision with a known preset validates');
+  eq(prov?.projectId, ctx.projectId, 'generic proposals carry active-project provenance');
   eq(prov?.params?.name, 'queue', 'the stack name is carried in params');
   eq(validateGenericAction({ op: 'service-provision', name: 'queue', preset: 'nope' }, ctx), null, 'an unknown preset key is rejected');
   eq(validateGenericAction({ op: 'service-provision', name: 'queue' }, ctx), null, 'a missing required param is rejected');

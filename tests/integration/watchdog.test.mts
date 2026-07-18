@@ -10,6 +10,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 const prisma = await db();
 const wd = await import('../../server/orchestrator/watchdog');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+const { createDefaultPipeline } = await import('../../server/bootstrap/defaultPipeline');
 const { EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG } = await import('../../server/orchestrator/conductor');
 
 const stamp = Date.now();
@@ -92,6 +93,19 @@ try {
   await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: idleTicket.id, stageId, kind: 'worker', sessionKey: `worker:${idleTicket.id}:${stageId}`, status: 'stopped' } });
   const sweep2 = await wd.runWatchdogSweep(Date.now());
   eq(sweep2.idle, sweep.idle - 1, 'a stage that already produced a session is no longer flagged idle');
+
+  // ---- multi-project duplicate-key regression -----------------------------------
+  // Project A marks this key non-AI while project B keeps the IDENTICAL key AI-enabled.
+  // Boot recovery for B must consult (workspaceId, projectId, key), not A's first row.
+  const projectB = await prisma.project.create({ data: { workspaceId: wsId, name: 'WD Project B', gitlabPath: '' } });
+  await createDefaultPipeline(prisma, wsId, projectB.id);
+  await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: project?.id ?? '', key: stageId }, data: { aiEnabled: false } });
+  await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: projectB.id, key: stageId }, data: { aiEnabled: true } });
+  const projectBTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: projectB.id, key: 'DEV-8200', number: 8200, title: 'project B recovery', stageId, status: 'idle', labels: [], branch: 'DEV-8200', priority: 'normal' } });
+  const projectBSession = await busySession(wsId, projectBTicket.id, stageId, 'project-b');
+  await wd.resumeEngineOnBoot({ listContainers: async () => new Set([projectBTicket.key]) });
+  eq(await statusOf(projectBSession), 'busy', 'watchdog uses B stage config despite A having the same disabled key');
+  eq((await prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId: project?.id ?? '', key: stageId } }))?.aiEnabled, false, 'watchdog never mutates sibling project A stage config');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

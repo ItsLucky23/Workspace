@@ -578,6 +578,7 @@ const network = (over?: Partial<StageNetworkCfg>): StageNetworkCfg => ({ enabled
 
 function cfg(id: string, kind: StageKind, name: string, order: number, over: Partial<PipelineStageCfg>): PipelineStageCfg {
   return {
+    projectId: PRJ,
     id, kind, name, order, aiEnabled: true,
     customInstructions: '', promptTemplate: '',
     skillKeys: [], sourceIds: ['summary'], commands: [],

@@ -14,18 +14,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { stageId: string; cfg: PipelineStageCfg; clientRequestId: string };
+  clientInput: { stageId: string; projectId: string; cfg: PipelineStageCfg; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { stageId, cfg, clientRequestId } = clientInput;
-  if (!stageId) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { stageId, projectId, cfg, clientRequestId } = clientInput;
+  if (!stageId || !projectId || cfg.projectId !== projectId) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'save-stage-config', roomCode, userId: user.id, prisma: functions.db.prisma,
-    target: { stageId }, payload: { ...cfg }, clientRequestId,
+    target: { stageId, projectId }, payload: { ...cfg }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', stageConfig: stageConfigDelta(res.result) };

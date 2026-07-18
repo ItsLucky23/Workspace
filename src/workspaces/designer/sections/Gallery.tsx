@@ -14,7 +14,7 @@ import { useTranslator, i18nNotify as notify, apiRequest, tryCatch } from '@luck
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import Icon from '../../_components/Icon';
 import { WsButton } from '../../_components/primitives';
-import { PREMADE_LOOKS, resolveLook, lookToArtifacts, type ResolvedLook } from '../premades';
+import { PREMADE_LOOKS, resolveLook, lookToArtifacts, isActiveLook, type ResolvedLook } from '../premades';
 import { validArtifactContent } from '../persisted';
 import { SEED_ANIMS, FADE_ANIM, animFrom, ANIM_TO, animTransition } from '../animations';
 import { themeVars } from '../themes';
@@ -112,19 +112,28 @@ export default function Gallery() {
   const [selectedId, setSelectedId] = useState(PREMADE_LOOKS[0]?.id ?? '');
   const [replay, setReplay] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [pendingLook, setPendingLook] = useState<ResolvedLook | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const selected = resolveLook(selectedId);
 
   const useLook = (): void => {
     if (!selected || busy) return;
     setBusy(true);
+    setPendingLook(selected);
     d.setActiveThemeId(selected.theme.id);
     d.setActiveStyleId(selected.style.id);
+  };
+
+  //? Wait for the context to render the complete selected pair before persisting; calling its action in
+  //? the click handler would capture the previous active theme/style ids.
+  useEffect(() => {
+    if (!pendingLook || !isActiveLook(pendingLook, d.activeThemeId, d.activeStyleId)) return;
+    setPendingLook(null);
     void Promise.all([d.useInProject('theme'), d.useInProject('style')]).then((oks) => {
       notify[oks.every(Boolean) ? 'success' : 'error']({ key: oks.every(Boolean) ? 'workspaces.gallery.applied' : 'workspaces.gallery.applyFailed' });
       setBusy(false);
     });
-  };
+  }, [d, pendingLook]);
 
   //? L3 — save a COPY of the premade (its theme + style artifacts) into the workspace library (customizable).
   const copyLook = (): void => {

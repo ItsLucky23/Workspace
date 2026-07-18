@@ -4,7 +4,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { CAP, hasCapability } from '../../../server/control/rbac';
-import { enqueueControlAction } from '../../../server/orchestrator/conductor';
+import { enqueueControlAction, isControlActionFailure } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -22,6 +22,11 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.ownerActions);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const { signalSeq } = await enqueueControlAction({ workspaceId, op: 'delete-workspace', target: {}, payload: {}, userId: user.id, clientRequestId });
-  return { status: 'success', result: { accepted: true, signalSeq } };
+  const [enqueueError, enqueued] = await functions.tryCatch.tryCatch(() => enqueueControlAction({
+    workspaceId, op: 'delete-workspace', target: {}, payload: {}, userId: user.id, clientRequestId,
+  }));
+  if (enqueueError || !enqueued || isControlActionFailure(enqueued.result)) {
+    return { status: 'error', errorCode: 'api.invalidRequest' };
+  }
+  return { status: 'success', result: { accepted: true, signalSeq: enqueued.signalSeq } };
 };
