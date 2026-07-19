@@ -29,8 +29,14 @@ export const CHAT_ENABLED_OPS = [
   'content-critique-image',
   //? F1 — compose a thumbnail (template, or with an AI background).
   'content-gen-thumbnail',
-  //? G3 — put a generated Studio page live on a public URL.
-  'studio-publish-site',
+  //? G3 — put a generated Studio page live on a public URL, or take it down again.
+  'studio-publish-site', 'studio-unpublish-site',
+  //? Documents housekeeping (both reversible) + the reusable-asset library marker.
+  'document-archive', 'document-unarchive', 'asset-star',
+  //? F5 — reply to an inbox comment (destructive: it posts publicly, so accept carries an extra confirm).
+  'content-reply-comment',
+  //? G7 — run a prompt A/B and stop it again.
+  'prompt-experiment-save', 'prompt-experiment-stop',
   // F7 — video-to-video restyle (paid gen)
   'content-video-restyle',
   'content-edit-image',

@@ -9,6 +9,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 
 import { PROPOSE_CATALOG } from '../../server/ai/opCatalog.ts';
+import { CHAT_ENABLED_OPS } from '../../src/workspaces/_data/chatOps.ts';
+import { CHAT_DISPATCH } from '../../src/workspaces/_functions/chatDispatch.ts';
 import { OP_CAPABILITY } from '../../server/control/rbac.ts';
 import { parseCaptionStyle } from '../../server/content/captionStyle.ts';
 import { assert, eq, report } from '../_helpers.mts';
@@ -95,7 +97,6 @@ assert(settings.includes('stopPromptExperiment'), 'and stop one');
 assert(settings.includes('row.verdict'), 'the panel shows the VERDICT (including "not enough data")');
 for (const op of ['prompt-experiment-save', 'prompt-experiment-stop'] as const) {
   eq(OP_CAPABILITY[op] === undefined, false, `${op} is RBAC-mapped`);
-  eq(PROPOSE_CATALOG[op].mode, 'later', `${op} stays out of chat (a settings decision, not a chat turn)`);
 }
 assert(hasKey(['workspaces', 'experiments', 'title']), 'the experiments panel is translated everywhere');
 
@@ -109,5 +110,35 @@ const studio = read('src/workspaces/studio/page.tsx');
 assert(studio.includes("'studio-publish-site'"), 'studio can publish a page live');
 assert(studio.includes("a.kind === 'landing' && a.status === 'ready'"), 'only a READY landing page offers it');
 assert(hasKey(['workspaces', 'studio', 'publishLive']), 'the publish button is translated everywhere');
+
+/* ------------------------------------------------------------ Workspace-AI reachability */
+
+//? The other half of "a user can reach it": the ASSISTANT. Every op this program added is either
+//? chat-proposable (catalog `enabled` + client twin + a dispatcher) or excluded for a stated invariant
+//? reason. A `later` op would mean "silently unreachable from chat", which is what this pins down.
+const CHAT_REACHABLE = [
+  'env-rollback', 'document-archive', 'document-unarchive', 'content-gen-thumbnail',
+  'content-reply-comment', 'studio-publish-site', 'studio-unpublish-site', 'asset-star',
+  'prompt-experiment-save', 'prompt-experiment-stop', 'ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset',
+] as const;
+
+const dispatchable = new Set(Object.keys(CHAT_DISPATCH));
+for (const op of CHAT_REACHABLE) {
+  eq(PROPOSE_CATALOG[op].mode, 'enabled', `${op} is proposable by the Workspace-AI`);
+  assert((CHAT_ENABLED_OPS as readonly string[]).includes(op), `${op} is in the client twin`);
+  assert(dispatchable.has(op), `${op} has a client dispatcher (an enabled op with no dispatcher is a dead accept)`);
+  assert((PROPOSE_CATALOG[op].hint ?? '').length > 0, `${op} tells the model how to call it`);
+}
+
+//? Two ops stay OUT of chat on purpose, and the reason is an invariant rather than taste:
+//?   • platform credentials are secrets — invariant: secret-bearing ops never flow through the LLM;
+//?   • cloning creates a SECOND workspace — invariant #4: the Assistant is scoped to ITS workspace.
+eq(PROPOSE_CATALOG['save-platform-credentials'].mode, 'excluded', 'secret-bearing ops never reach the chat surface');
+eq(PROPOSE_CATALOG['clone-workspace'].mode, 'excluded', 'cross-workspace creation stays out of a workspace-scoped assistant');
+
+//? Posting publicly / taking a page offline carry the extra accept-confirm.
+for (const op of ['content-reply-comment', 'studio-unpublish-site'] as const) {
+  eq(PROPOSE_CATALOG[op].destructive, true, `${op} requires an explicit confirm on accept`);
+}
 
 report('surfaceReachability');

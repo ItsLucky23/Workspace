@@ -65,7 +65,7 @@ try {
 
   // ---- 1. md→html: structure + escaping ----
   const body = mdToHtmlBody(MD);
-  assert(body.includes('<h1>Q3 plan</h1>') && body.includes('<h2>Budget</h2>'), 'headings render');
+  assert(body.includes('<h1 id="q3-plan">Q3 plan</h1>') && body.includes('<h2 id="budget">Budget</h2>'), 'headings render with stable TOC anchors');
   assert(body.includes('<table>') && body.includes('<th>Item</th>') && body.includes('<td>Ads</td>'), 'tables render');
   assert(body.includes('<strong>bold</strong>') && body.includes('<code>code</code>'), 'inline marks render');
   assert(!body.includes('<script>') && body.includes('&lt;script&gt;'), 'HTML is ESCAPED (no injection)');

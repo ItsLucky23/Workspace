@@ -185,14 +185,16 @@ async function failEnv(prisma: PrismaClient, envId: string, error: string): Prom
 export async function teardownEnvironment(prisma: PrismaClient, workspaceId: string, envId: string): Promise<{ ok: boolean }> {
   const environment = await prisma.environment.findFirst({
     where: { id: envId, workspaceId },
-    select: { id: true, containerName: true },
+    select: { id: true, status: true, containerName: true },
   });
   if (!environment) return { ok: true };
 
   //? Workspace deletion relies on this result before removing the ownership rows. Fail closed when
   //? the proxy or Docker cannot prove teardown; otherwise a deleted tenant could leave a public app.
-  const route = await getProxyProvider().removeRoute(`env-${envId}`.toLowerCase());
-  if (!route.ok) return { ok: false };
+  if (environment.status === 'live' || environment.containerName) {
+    const route = await getProxyProvider().removeRoute(`env-${envId}`.toLowerCase());
+    if (!route.ok) return { ok: false };
+  }
   if (environment.containerName) {
     if (!(await dockerAvailable())) return { ok: false };
     await teardownTicketContainer(workspaceId, envKey(envId));

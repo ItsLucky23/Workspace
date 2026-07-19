@@ -168,7 +168,18 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'document-create': LATER, 'document-edit': LATER, 'document-delete': LATER_D, 'document-ai': LATER,
   'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER, 'document-export': LATER,
   'document-restore-revision': LATER,
-  'document-archive': LATER, 'document-unarchive': LATER,
+  //? The Assistant may propose archiving/restoring a document — both are reversible and the Conductor
+  //? scopes the id to this workspace, so the worst case is a document the user un-archives again.
+  'document-archive': {
+    mode: 'enabled',
+    hint: 'archive a document (reversible; keeps every revision). params: documentId',
+    params: { documentId: { kind: 'string', required: true } },
+  },
+  'document-unarchive': {
+    mode: 'enabled',
+    hint: 'restore an archived document. params: documentId',
+    params: { documentId: { kind: 'string', required: true } },
+  },
   'doc-template-save': LATER, 'doc-template-delete': LATER_D,
 
   //? CI — the read-only comment inbox.
@@ -326,9 +337,14 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'compose a thumbnail for a piece: bold headline over a background (optionally AI-generated). params: pieceId, headline, backgroundPrompt? (omit for the free template)',
     params: { pieceId: { kind: 'pieceId', required: true }, headline: { kind: 'string', required: true }, backgroundPrompt: { kind: 'string' } },
   },
-  //? F5 — the reply text is a human decision (and it posts publicly), so the Assistant does not compose it
-  //? blind from chat; the inbox drafts + the user approves. Kept out of the chat catalog on purpose.
-  'content-reply-comment': LATER,
+  //? F5 — the reply POSTS PUBLICLY, so it is marked destructive: the client wraps accept in an extra
+  //? explicit confirm, and the user sees the exact text before it ships. That is the same propose→accept
+  //? contract the inbox's own draft button uses (B-23) — the AI never posts by itself either way.
+  'content-reply-comment': {
+    mode: 'enabled', destructive: true,
+    hint: 'reply to a comment in the inbox. params: commentId (from the comments list), replyText (the exact text to post)',
+    params: { commentId: { kind: 'string', required: true }, replyText: { kind: 'string', required: true } },
+  },
   //? G3 — one-click "put this generated page live". Publishing is public-facing, so the Assistant may
   //? propose it (the user still accepts) but taking it down stays a UI action.
   'studio-publish-site': {
@@ -336,11 +352,30 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'publish a generated Studio page to a public URL. params: artifactId',
     params: { artifactId: { kind: 'string', required: true } },
   },
-  'studio-unpublish-site': LATER_D,
-  //? G4 — which assets belong in the reusable library is a taste call; it stays a UI click.
-  'asset-star': LATER,
-  //? G7 — an experiment changes what every later run is measured against; a deliberate settings action.
-  'prompt-experiment-save': LATER, 'prompt-experiment-stop': LATER,
+  'studio-unpublish-site': {
+    mode: 'enabled', destructive: true,
+    hint: 'take a published page offline. params: slug (from the published page URL)',
+    params: { slug: { kind: 'string', required: true } },
+  },
+  //? G4 — the id is validated by the Conductor's tenant-scoped lookup (a foreign asset is simply not
+  //? found), so a plain string param is safe here; starring is fully reversible.
+  'asset-star': {
+    mode: 'enabled',
+    hint: 'keep an asset in the reusable library, or take it out. params: assetId, starred (true/false)',
+    params: { assetId: { kind: 'string', required: true }, starred: { kind: 'boolean', required: true } },
+  },
+  //? G7 — "test these two prompts against each other" is a natural thing to ask the Assistant. Starting
+  //? one retires the previous experiment on that feature (the Conductor enforces one-per-feature).
+  'prompt-experiment-save': {
+    mode: 'enabled',
+    hint: 'start an A/B test between two prompt variants for one AI feature. params: feature (script|interviewer|mr-review|workspace-chat), name, variantA, variantB',
+    params: { feature: { kind: 'enum', values: ['script', 'interviewer', 'mr-review', 'workspace-chat'], required: true }, name: { kind: 'string', required: true }, variantA: { kind: 'string', required: true }, variantB: { kind: 'string', required: true } },
+  },
+  'prompt-experiment-stop': {
+    mode: 'enabled',
+    hint: 'stop measuring a prompt experiment (its results are kept). params: experimentId',
+    params: { experimentId: { kind: 'string', required: true } },
+  },
   'content-critique-image': {
     mode: 'enabled',
     hint: 'AI critique of an image asset ("what should change about this photo") — vision feedback + which edit fixes each point. params: pieceId, assetId, prompt? (a specific question)',
@@ -467,7 +502,10 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'content-gen-3d': 'content', 'content-critique-image': 'content', 'content-video-restyle': 'content', 'content-edit-image': 'content',
   'content-run-pipeline': 'content', 'content-gen-thumbnail': 'content', 'content-edit-brand': 'content', 'content-edit-product': 'content',
   'channel-create': 'content', 'channel-edit': 'content', 'channel-delete': 'content',
-  'capture-run': 'content', 'studio-publish-site': 'content', 'studio-unpublish-site': 'content', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
+  'capture-run': 'content', 'studio-publish-site': 'content', 'studio-unpublish-site': 'content',
+  'content-reply-comment': 'content', 'asset-star': 'content',
+  //? Documents ops belong to the documents module.
+  'document-archive': 'documents', 'document-unarchive': 'documents', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
 };
 
 //? Each module's DEFINING section. `isModuleEnabled` is deliberately loose (any section counts) because

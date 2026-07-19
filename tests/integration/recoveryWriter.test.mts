@@ -36,7 +36,7 @@ try {
   if (!project || !stage) throw new Error('recovery fixture failed');
 
   let number = 9500;
-  const fixture = async (suffix: string, acquireAt: number) => {
+  const fixture = async (suffix: string, acquireAt: number, reason: 'boot' | 'manual-kill' = 'boot') => {
     number += 1;
     const key = `DEV-${String(number)}`;
     const ticket = await prisma.ticket.create({ data: { workspaceId, projectId: project.id, key, number, title: suffix, stageId: stage.key, status: 'busy', archived: false, branch: key, labels: [], priority: 'normal' } });
@@ -57,7 +57,7 @@ try {
       runFence: acquired.reservation.fence,
       startedAt,
     } });
-    const requestId = `agent-recovery-prepare:boot:${session.id}:${acquired.reservation.runToken}:${String(acquired.reservation.fence)}:${String(startedAt.getTime())}`;
+    const requestId = `agent-recovery-prepare:${reason}:${session.id}:${acquired.reservation.runToken}:${String(acquired.reservation.fence)}:${String(startedAt.getTime())}`;
     return {
       ticket,
       session,
@@ -69,7 +69,7 @@ try {
         target: { ticketId: ticket.id, ticketKey: key, projectId: project.id, stageId: stage.key, sessionId: session.id },
         payload: {
           phase: 'prepare' as const,
-          reason: 'boot' as const,
+          reason,
           expected: {
             ticketStatus: ticket.status,
             needsInputHash: needsInputHash(ticket.needsInput),
@@ -328,6 +328,28 @@ try {
   );
   eq(noDocker, [{ key: noDockerKey, status: 'queued' }], 'Docker-unavailable provision returns queued instead of success');
   eq(await capacity.dequeueDeferred(), { workspaceId, key: noDockerKey, stageId: stage.key }, 'Docker-unavailable provision leaves a durable capacity retry');
+
+  // A fenced manual kill exposes idle only after prepare, restores busy on Docker cancel, and
+  // leaves idle after a completed stop.
+  const manualCanceled = await fixture('manual-cancel', Date.now() - 30_001, 'manual-kill');
+  const canceledManualRun = await runAgentRecovery({ prepare: manualCanceled.prepare, mode: 'kill-claude' }, {
+    claimExternal: async () => true,
+    maintain,
+    recover: async () => ({ ok: false, reason: 'docker' }),
+  });
+  eq(canceledManualRun, { recovered: false, reason: 'docker' }, 'failed fenced manual kill reports Docker failure');
+  eq((await prisma.ticket.findUnique({ where: { id: manualCanceled.ticket.id } }))?.status, 'busy', 'manual-kill cancel restores the prior ticket status');
+  eq((await prisma.agentSession.findUnique({ where: { id: manualCanceled.session.id } }))?.status, 'busy', 'manual-kill cancel restores the prior session status');
+
+  const manualCompleted = await fixture('manual-complete', Date.now() - 30_001, 'manual-kill');
+  const completedManualRun = await runAgentRecovery({ prepare: manualCompleted.prepare, mode: 'kill-claude' }, {
+    claimExternal: async () => true,
+    maintain,
+    recover: async () => ({ ok: true, container: { workspaceId, projectId: project.id, ticketKey: manualCompleted.ticket.key, containerId: manualCompleted.session.containerId ?? '', name: 'manual-complete' } }),
+  });
+  assert(completedManualRun.recovered, 'successful fenced manual kill completes without requiring a successor');
+  eq((await prisma.ticket.findUnique({ where: { id: manualCompleted.ticket.id } }))?.status, 'idle', 'completed manual kill leaves the ticket idle');
+  eq((await prisma.agentSession.findUnique({ where: { id: manualCompleted.session.id } }))?.status, 'stopped', 'completed manual kill stops the exact session');
 
   // Public manual kill cannot ACK success unless its nested recovery prepare fenced the
   // active session synchronously. This fixture has no Redis owner, so the ACK is semantic failure.

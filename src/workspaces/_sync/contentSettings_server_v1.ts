@@ -29,7 +29,7 @@ export interface SyncParams {
     platform?: string; clientId?: string; clientSecret?: string;
     //? G7 — prompt A/B experiment (create/update by id, or stop one). `feature` is shared with the
     //? media-provider ops above — both name an AI/media feature key, so one field serves both.
-    experimentId?: string; variantA?: string; variantB?: string;
+    experimentId?: string; variantA?: string; variantB?: string; name?: string;
     //? Gap-fix — the brand logo (/media upload) the render watermark overlays.
     brandLogoUrl?: string;
   };

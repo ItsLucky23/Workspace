@@ -85,7 +85,7 @@ try {
   await prisma.serviceStack.create({ data: { workspaceId, name: 'delete-fixture', compose: 'services: {}', services: [] } });
   await prisma.designArtifact.create({ data: { workspaceId, kind: 'theme', name: 'Delete fixture', content: {}, source: 'manual' } });
   await prisma.document.create({ data: { workspaceId, title: 'Delete fixture', content: '# Delete me' } });
-  await prisma.workspaceChatMessage.create({ data: { workspaceId, userId: owner.id, role: 'user', content: 'delete me' } });
+  await prisma.workspaceChatMessage.create({ data: { workspaceId, userId: owner.id, role: 'user', text: 'delete me' } });
 
   // ---- 3. cascade teardown (via the delete-workspace op) -----------------------
   await enqueueControlAction({
@@ -108,6 +108,36 @@ try {
   eq(await prisma.document.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes Document rows');
   eq(await prisma.skill.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes seeded Skill rows');
   eq(await prisma.workspaceChatMessage.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes WorkspaceChatMessage rows');
+
+  // A workspace with a live runtime may not lose its ownership rows while proxy/container
+  // teardown is unavailable. Once no public runtime remains, the same destructive op can retry.
+  const guarded = await bootstrapWorkspace({ name: 'Guarded Delete WS', ownerId: owner.id });
+  const guardedProject = await prisma.project.create({ data: { workspaceId: guarded.workspaceId, name: 'guarded-project', gitlabPath: '' } });
+  const guardedEnvironment = await prisma.environment.create({ data: {
+    workspaceId: guarded.workspaceId,
+    projectId: guardedProject.id,
+    kind: 'prod',
+    route: 'guarded.invalid',
+    containerName: 'missing-guarded-container',
+    status: 'live',
+  } });
+  let guardedDeleteFailed = false;
+  try {
+    await enqueueControlAction({
+      workspaceId: guarded.workspaceId, op: 'delete-workspace', target: {}, payload: {},
+      userId: owner.id, clientRequestId: `del-guarded-${String(stamp)}`,
+    });
+  } catch {
+    guardedDeleteFailed = true;
+  }
+  assert(guardedDeleteFailed, 'workspace deletion fails closed when live runtime teardown cannot be proven');
+  assert(await prisma.workspace.findUnique({ where: { id: guarded.workspaceId } }) !== null, 'failed runtime teardown preserves the Workspace for retry');
+  await prisma.environment.update({ where: { id: guardedEnvironment.id }, data: { status: 'error', containerName: null } });
+  await enqueueControlAction({
+    workspaceId: guarded.workspaceId, op: 'delete-workspace', target: {}, payload: {},
+    userId: owner.id, clientRequestId: `del-guarded-retry-${String(stamp)}`,
+  });
+  eq(await prisma.workspace.findUnique({ where: { id: guarded.workspaceId } }), null, 'workspace deletion succeeds after runtime is proven absent');
 
   workspaceId = null; // already torn down — skip the workspace cleanup below
 } catch (error) {

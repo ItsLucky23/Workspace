@@ -84,6 +84,43 @@ const skill = (op: 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-reset') => (p
 };
 
 export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispatchExtras) => void> = {
+  //? Documents housekeeping — both reversible, so the accept is a plain confirm.
+  'document-archive': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-archive', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-unarchive': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-unarchive', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? G4 — curate the reusable asset library from chat.
+  'asset-star': (p, x) => {
+    const assetId = str(p, 'assetId'); const starred = bool(p, 'starred');
+    if (!assetId || starred === undefined) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'asset-star', assetId, starred, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? F5 — the destructive-confirm the user just answered IS the send approval; the text is the one they saw.
+  'content-reply-comment': (p, x) => {
+    const commentId = str(p, 'commentId'); const replyText = str(p, 'replyText');
+    if (!commentId || !replyText) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-reply-comment', commentId, replyText, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? G7 — start / stop a prompt A/B from chat (the panel in settings shows the verdict).
+  'prompt-experiment-save': (p, x) => {
+    const feature = str(p, 'feature'); const name = str(p, 'name');
+    const variantA = str(p, 'variantA'); const variantB = str(p, 'variantB');
+    if (!feature || !name || !variantA || !variantB) return;
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-save', feature, name, variantA, variantB, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'prompt-experiment-stop': (p, x) => {
+    const experimentId = str(p, 'experimentId'); if (!experimentId) return;
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-stop', experimentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? G3 — take a published page down again.
+  'studio-unpublish-site': (p, x) => {
+    const slug = str(p, 'slug'); if (!slug) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'studio-unpublish-site', slug, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? G3 — publish a generated Studio page (the artifact id comes from the studio list).
   'studio-publish-site': (p, x) => {
     const artifactId = str(p, 'artifactId'); if (!artifactId) return;
