@@ -3,8 +3,8 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 288,
-    "edges": 515,
-    "symbols": 371,
+    "edges": 516,
+    "symbols": 372,
     "callEdges": 86
   },
   "nodes": [
@@ -1877,6 +1877,10 @@
     {
       "from": "workspaces/_functions/chatDispatch.ts",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_functions/chatDispatch.ts",
+      "to": "workspaces/_functions/controlApi.ts"
     },
     {
       "from": "workspaces/_functions/priority.ts",
@@ -4772,7 +4776,7 @@
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
       "dependents": 88,
-      "directDependents": 8
+      "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
@@ -6047,6 +6051,12 @@
       "file": "workspaces/_data/modules.ts",
       "name": "sectionsForModules",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/nav.ts::<module>",
+      "file": "workspaces/_data/nav.ts",
+      "name": "<module>",
+      "kind": "module"
     },
     {
       "id": "workspaces/_data/seed.ts::<module>",

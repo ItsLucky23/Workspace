@@ -44,6 +44,22 @@ const ctx: Ctx = {
   channels: [{ id: 'channel-1', name: hostile }],
   skills: [],
   enabledSections: [],
+  //? Parity wave — the new reference collections are new injection surfaces; documents carries the
+  //? hostile sample so the untrusted-wrap assertion covers them too.
+  documents: [{ id: 'doc-1', title: hostile, status: 'ready' }],
+  documentTemplates: [],
+  sprints: [],
+  invites: [],
+  findings: [],
+  uiReviews: [],
+  styles: [],
+  outputTemplates: [],
+  references: [],
+  commentInbox: { unread: 0, total: 0 },
+  roles: [],
+  infoSources: [],
+  projectServices: [],
+  projectFacts: { repoLinked: false, stack: '', framework: '', dependencies: [], databases: [], deployTargets: [], envKeys: [], ciPipelines: [] },
 };
 
 const chatSystem = systemPrompt(ctx, `// src/hostile.ts\n${hostile}`, `capability.md\n${hostile}`);

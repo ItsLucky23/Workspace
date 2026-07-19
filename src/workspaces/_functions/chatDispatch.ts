@@ -10,12 +10,21 @@ import { apiRequest } from 'src/_sockets/apiRequest';
 import { syncRequest } from 'src/_sockets/syncRequest';
 
 import type { ChatEnabledOp } from '../_data/chatOps';
-import type { ChatProposal, GitConfig } from '../_data/types';
+import type { ChatProposal, GitConfig, PipelineStageCfg } from '../_data/types';
+//? role-create seeds an all-false perms array with the canonical capability count (B-28 positional).
+import { RBAC_CAPABILITIES } from './controlApi';
 
 export interface ChatDispatchExtras {
   room: string;                    // workspaceId (the sync receiver)
   activeProjectId: string;         // validated current project; stale proposals never reach this layer
   gitConfig: GitConfig;            // #29 — current git strategy, so save-git-config merges (never clobbers)
+  //? Parity wave — merge sources for the full-payload routes: saveAiInstruction writes ALL five fields
+  //? (absent → ''), saveStageConfig wants a COMPLETE PipelineStageCfg. Same clobber-guard as gitConfig.
+  aiSettings: { aiInstruction: string; outputLanguage: string; geminiModel: string; geminiTemperature: string; geminiBaseUrl: string };
+  stageConfigs: PipelineStageCfg[];
+  //? delete-workspace reuses the provider's OWN delete flow (api call + nav/loading reset) — the one
+  //? accept whose aftermath lives in client state the dispatcher cannot reach.
+  deleteWorkspace: () => void;
   nextReqId: () => string;         // idempotency key factory
   refetch: () => void;             // snapshot refresh for slow/rare structural writes
 }
@@ -406,5 +415,430 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   'preview-down': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
     void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: x.room, ticketKey } });
+  },
+
+  //? ---- Parity wave 2026-07-20 — every dispatcher below copies the EXACT `_sync` shape its manual UI
+  //? twin sends (WorkspacesProvider/page callers), so RBAC + Conductor single-writer stay fully intact.
+
+  // -- board / sprints (the routes broadcast deltas — no refetch needed, same as the UI path)
+  archive: (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
+    //? The route field is named ticketId but carries the DEV-#### key (Ticket.id IS the key).
+    void syncRequest({ name: 'workspaces/archive', version: 'v1', data: { ticketId: ticketKey, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'bulk-status': (p, x) => {
+    const ticketIds = strArr(p, 'ticketKeys'); const status = str(p, 'status');
+    if (!ticketIds || ticketIds.length === 0 || !status) return;
+    void syncRequest({ name: 'workspaces/bulkStatus', version: 'v1', data: { ticketIds, status, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'bulk-sprint': (p, x) => {
+    const ticketIds = strArr(p, 'ticketKeys'); if (!ticketIds || ticketIds.length === 0) return;
+    //? Empty sprintId = move back to the backlog (the same shape the backlog UI sends).
+    const sprintId = str(p, 'sprintId') ?? '';
+    void syncRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { ticketIds, sprintId, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'bulk-archive': (p, x) => {
+    const ticketIds = strArr(p, 'ticketKeys'); if (!ticketIds || ticketIds.length === 0) return;
+    void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'sprint-create': (p, x) => {
+    const name = str(p, 'name'); if (!name) return;
+    const active = bool(p, 'active');
+    void syncRequest({ name: 'workspaces/sprintCreate', version: 'v1', data: { name, active: active === true, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'sprint-edit': (p, x) => {
+    const sprintId = str(p, 'sprintId'); if (!sprintId) return;
+    const name = str(p, 'name'); const active = bool(p, 'active');
+    const startAt = str(p, 'startAt'); const endAt = str(p, 'endAt');
+    void syncRequest({ name: 'workspaces/sprintEdit', version: 'v1', data: { sprintId, ...(name ? { name } : {}), ...(active === undefined ? {} : { active }), ...(startAt ? { startAt } : {}), ...(endAt ? { endAt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  //? Ticket-artifact links change rarely and carry no delta broadcast — refetch after, like the UI.
+  'ticket-link-artifact': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); const artifactId = str(p, 'artifactId'); const artifactKind = str(p, 'artifactKind');
+    if (!ticketKey || !artifactId || !artifactKind) return;
+    const label = str(p, 'label');
+    void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-link-artifact', ticketId: ticketKey, artifactId, artifactKind, ...(label ? { label } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'ticket-unlink-artifact': (p, x) => {
+    const linkId = str(p, 'linkId'); if (!linkId) return;
+    void syncRequest({ name: 'workspaces/ticketArtifact', version: 'v1', data: { op: 'ticket-unlink-artifact', linkId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- members / roles / workspace lifecycle (delta callbacks update state — no refetch)
+  invite: (p, x) => {
+    const email = str(p, 'email'); const roleKey = str(p, 'roleKey');
+    if (!email || !roleKey) return;
+    void syncRequest({ name: 'workspaces/invite', version: 'v1', data: { email, roleKey, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'revoke-invite': (p, x) => {
+    const inviteId = str(p, 'inviteId'); if (!inviteId) return;
+    void syncRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { inviteId, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'change-role': (p, x) => {
+    const memberId = str(p, 'memberId'); const roleKey = str(p, 'roleKey');
+    if (!memberId || !roleKey) return;
+    void syncRequest({ name: 'workspaces/changeRole', version: 'v1', data: { memberId, roleKey, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'remove-member': (p, x) => {
+    const memberId = str(p, 'memberId'); if (!memberId) return;
+    void syncRequest({ name: 'workspaces/removeMember', version: 'v1', data: { memberId, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'role-create': (p, x) => {
+    const name = str(p, 'name'); if (!name) return;
+    //? Same key derivation as the settings UI; perms start all-false with the canonical B-28 length.
+    const key = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
+    if (!key) return;
+    void syncRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { key, label: name, perms: RBAC_CAPABILITIES.map(() => false), clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  //? DELIBERATELY label-only: the perms array is merged client-side by the settings UI from live state
+  //? the chat layer does not carry — a chat-side perms write would clobber (permission toggles stay UI).
+  'role-update': (p, x) => {
+    const roleKey = str(p, 'roleKey'); const label = str(p, 'label');
+    if (!roleKey || !label) return;
+    void syncRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { roleKey, label, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'rename-workspace': (p, x) => {
+    const name = str(p, 'name'); if (!name) return;
+    void syncRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { name, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'transfer-ownership': (p, x) => {
+    const memberId = str(p, 'memberId'); if (!memberId) return;
+    void syncRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { memberId, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  //? The one accept that must also reset client nav/loading state — reuse the provider's own flow.
+  'delete-workspace': (_p, x) => { x.deleteWorkspace(); },
+
+  // -- documents + templates (no fine-grained delta — refetch after, like the documents UI)
+  'document-create': (p, x) => {
+    const title = str(p, 'title'); if (!title) return;
+    const content = str(p, 'content'); const templateSlug = str(p, 'templateSlug');
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-create', title, ...(content ? { content } : {}), ...(templateSlug ? { templateSlug } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-edit': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    const title = str(p, 'title'); const content = str(p, 'content');
+    //? `'content' in payload` semantics server-side — only send content when actually proposed.
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-edit', documentId, ...(title ? { title } : {}), ...(content === undefined ? {} : { content }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-delete': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-delete', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? B-23-clean: writes ONLY aiDraft/aiDraftLabel — document-apply-draft is the consent step.
+  'document-ai': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    const mode = str(p, 'mode'); const instruction = str(p, 'instruction');
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-ai', documentId, ...(mode ? { mode } : {}), ...(instruction ? { instruction } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-apply-draft': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-apply-draft', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-discard-draft': (p, x) => {
+    const documentId = str(p, 'documentId'); if (!documentId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-discard-draft', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-gen-image': (p, x) => {
+    const documentId = str(p, 'documentId'); const prompt = str(p, 'prompt');
+    if (!documentId || !prompt) return;
+    const assetId = str(p, 'assetId');
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-gen-image', documentId, prompt, ...(assetId ? { assetId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-export': (p, x) => {
+    const documentId = str(p, 'documentId'); const format = str(p, 'format');
+    if (!documentId || !format) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-export', documentId, format, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'document-restore-revision': (p, x) => {
+    const documentId = str(p, 'documentId'); const revisionId = str(p, 'revisionId');
+    if (!documentId || !revisionId) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-restore-revision', documentId, revisionId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'doc-template-save': (p, x) => {
+    const name = str(p, 'name'); const sectionsRaw = str(p, 'sections');
+    if (!name || !sectionsRaw) return;
+    //? sections travel as 'Heading::hint||Heading2::hint2' (ParamKind has no object-array kind — same
+    //? encode-in-a-string precedent as ai-skill-save's comma-separated applyPoints).
+    const sections = sectionsRaw.split('||').map((s) => {
+      const [heading, hint] = s.split('::');
+      const trimmedHint = (hint ?? '').trim();
+      return { heading: (heading ?? '').trim(), ...(trimmedHint.length > 0 ? { hint: trimmedHint } : {}) };
+    }).filter((s) => s.heading.length > 0);
+    if (sections.length === 0) return;
+    const description = str(p, 'description'); const slug = str(p, 'slug');
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'doc-template-save', name, sections, ...(description ? { description } : {}), ...(slug ? { slug } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'doc-template-delete': (p, x) => {
+    const slug = str(p, 'slug'); if (!slug) return;
+    void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'doc-template-delete', slug, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- content: publish/retract, asset import, editors (contentControl route, refetch after)
+  'content-request-publish': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId'); const platform = str(p, 'platform');
+    if (!pieceId || !assetId || !platform) return;
+    const caption = str(p, 'caption'); const privacy = str(p, 'privacy'); const scheduledAt = str(p, 'scheduledAt');
+    const syntheticMedia = bool(p, 'syntheticMedia'); const accountId = str(p, 'accountId');
+    //? hashtags travel comma-separated in the proposal; the route wants string[] like the composer sends.
+    const hashtagsRaw = str(p, 'hashtags');
+    const hashtags = hashtagsRaw ? hashtagsRaw.split(',').map((t) => t.trim()).filter((t) => t.length > 0) : undefined;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-request-publish', contentProjectId: pieceId, assetId, platform, ...(caption ? { caption } : {}), ...(hashtags && hashtags.length > 0 ? { hashtags } : {}), ...(privacy ? { privacy } : {}), ...(scheduledAt ? { scheduledAt } : {}), ...(syntheticMedia === undefined ? {} : { syntheticMedia }), ...(accountId ? { accountId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-unpublish': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId'); const platform = str(p, 'platform');
+    if (!pieceId || !assetId || !platform) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-unpublish', contentProjectId: pieceId, assetId, platform, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-import-asset': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const url = str(p, 'url'); const kind = str(p, 'kind');
+    if (!pieceId || !url || !kind) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-import-asset', contentProjectId: pieceId, url, kind, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-inpaint': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const referenceUrl = str(p, 'referenceUrl'); const maskUrl = str(p, 'maskUrl');
+    const prompt = str(p, 'prompt'); const parentAssetId = str(p, 'parentAssetId');
+    if (!pieceId || !referenceUrl || !maskUrl || !prompt || !parentAssetId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-inpaint', contentProjectId: pieceId, referenceUrl, maskUrl, prompt, parentAssetId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-transcode': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId'); const format = str(p, 'format');
+    if (!pieceId || !assetId || (format !== 'webm' && format !== 'gif')) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-transcode', contentProjectId: pieceId, assetId, format, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-decompose-video': (p, x) => {
+    const pieceId = str(p, 'pieceId'); if (!pieceId) return;
+    const sceneDurationMs = num(p, 'sceneDurationMs');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-decompose-video', contentProjectId: pieceId, ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-refine-range': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const startMs = num(p, 'startMs'); const endMs = num(p, 'endMs'); const instruction = str(p, 'instruction');
+    if (!pieceId || startMs === undefined || endMs === undefined || !instruction) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-refine-range', contentProjectId: pieceId, startMs, endMs, instruction, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-save-audio-mix': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const voiceVolume = num(p, 'voiceVolume'); const musicVolume = num(p, 'musicVolume');
+    if (!pieceId || voiceVolume === undefined || musicVolume === undefined) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-save-audio-mix', contentProjectId: pieceId, voiceVolume, musicVolume, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-trim-audio': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const assetId = str(p, 'assetId');
+    const startMs = num(p, 'startMs'); const endMs = num(p, 'endMs');
+    if (!pieceId || !assetId || startMs === undefined || endMs === undefined) return;
+    const gain = num(p, 'gain');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-trim-audio', contentProjectId: pieceId, assetId, startMs, endMs, ...(gain === undefined ? {} : { gain }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-gen-reference-image': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const referenceUrl = str(p, 'referenceUrl');
+    if (!pieceId || !referenceUrl) return;
+    const styleKey = str(p, 'styleKey'); const extraInstructions = str(p, 'extraInstructions');
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-gen-reference-image', contentProjectId: pieceId, referenceUrl, ...(styleKey ? { styleKey } : {}), ...(extraInstructions ? { extraInstructions } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'content-analyze-reference-video': (p, x) => {
+    const pieceId = str(p, 'pieceId'); const referenceVideoUrl = str(p, 'referenceVideoUrl'); const newStory = str(p, 'newStory');
+    if (!pieceId || !referenceVideoUrl || !newStory) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-analyze-reference-video', contentProjectId: pieceId, referenceVideoUrl, newStory, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- merge requests + monorepo services
+  'mr-create': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'create', ticketKey, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'mr-comment': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); const mrId = str(p, 'mrId'); const body = str(p, 'body');
+    if (!ticketKey || !mrId || !body) return;
+    const filePath = str(p, 'filePath'); const line = num(p, 'line'); const side = str(p, 'side'); const threadId = str(p, 'threadId');
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'comment', ticketKey, mrId, body, ...(filePath ? { filePath } : {}), ...(line === undefined ? {} : { line }), ...(side ? { side } : {}), ...(threadId ? { threadId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'mr-approve': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); const mrId = str(p, 'mrId');
+    if (!ticketKey || !mrId) return;
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'approve', ticketKey, mrId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'mr-merge': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); const mrId = str(p, 'mrId');
+    if (!ticketKey || !mrId) return;
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'merge', ticketKey, mrId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'mr-resolve': (p, x) => {
+    const ticketKey = str(p, 'ticketKey'); const threadId = str(p, 'threadId');
+    if (!ticketKey || !threadId) return;
+    const resolved = bool(p, 'resolved');
+    void syncRequest({ name: 'workspaces/mrAction', version: 'v1', data: { action: 'resolve', ticketKey, threadId, ...(resolved === undefined ? {} : { resolved }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'service-create': (p, x) => {
+    const name = str(p, 'name'); if (!name || !x.activeProjectId) return;
+    const path = str(p, 'path'); const buildCmd = str(p, 'buildCmd'); const deployUnit = str(p, 'deployUnit');
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'service-create', projectId: x.activeProjectId, name, ...(path ? { path } : {}), ...(buildCmd ? { buildCmd } : {}), ...(deployUnit ? { deployUnit } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'service-delete': (p, x) => {
+    const serviceId = str(p, 'serviceId'); if (!serviceId) return;
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'service-delete', serviceId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- automation triggers + workflow-snippet skills + knowledge intake
+  'trigger-save': (p, x) => {
+    const triggerId = str(p, 'triggerId');
+    const name = str(p, 'name'); const on = str(p, 'on'); const action = str(p, 'action');
+    //? Update needs a target id; create needs the full name/on/action triple.
+    if (!triggerId && (!name || !on || !action)) return;
+    const cron = str(p, 'cron'); const requiresApproval = bool(p, 'requiresApproval');
+    //? The UI's saveTrigger spreads its form object into the same route; the server reads `id` for updates.
+    void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-save', ...(triggerId ? { id: triggerId } : {}), ...(name ? { name } : {}), ...(on ? { on } : {}), ...(action ? { action } : {}), ...(cron ? { cron } : {}), ...(requiresApproval === undefined ? {} : { requiresApproval }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'trigger-toggle': (p, x) => {
+    const triggerId = str(p, 'triggerId'); const enabled = bool(p, 'enabled');
+    if (!triggerId || enabled === undefined) return;
+    void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId, enabled, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'trigger-delete': (p, x) => {
+    const triggerId = str(p, 'triggerId'); if (!triggerId) return;
+    void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? The server broadcasts the flip — no refetch, same as the Sources-page toggle.
+  'skill-toggle': (p, x) => {
+    const sourceId = str(p, 'sourceId'); const on = bool(p, 'on');
+    if (!sourceId || on === undefined) return;
+    void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId, on, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'create-info-source': (p, x) => {
+    const name = str(p, 'name'); const content = str(p, 'content');
+    if (!name || !content) return;
+    void syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? Credential boundary: the route accepts an optional `token`, but a token must NEVER travel through
+  //? the chat/LLM path (same principle as the EXCLUDED secret-bearing ops) — gitUrl only.
+  'link-repo': (p, x) => {
+    const gitUrl = str(p, 'gitUrl'); if (!gitUrl) return;
+    void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { gitUrl, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- workspace settings + budgets
+  'save-sections': (p, x) => {
+    const raw = str(p, 'enabledSections'); if (!raw) return;
+    const enabledSections = raw.split(',').map((v) => v.trim()).filter((v) => v.length > 0);
+    if (enabledSections.length === 0) return;
+    //? Full-set replace — mirrors the settings UI; the Conductor sanitizes to GATEABLE_SECTIONS.
+    void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'save-ai-instruction': (p, x) => {
+    const aiInstruction = str(p, 'aiInstruction'); const outputLanguage = str(p, 'outputLanguage');
+    const geminiModel = str(p, 'geminiModel'); const geminiTemperature = str(p, 'geminiTemperature'); const geminiBaseUrl = str(p, 'geminiBaseUrl');
+    if (!aiInstruction && !outputLanguage && !geminiModel && !geminiTemperature && !geminiBaseUrl) return;
+    //? MERGE over the workspace's CURRENT values — the Conductor writes ALL five fields (absent → ''),
+    //? so sending only the proposed field would wipe the rest (same clobber-guard as save-git-config).
+    void syncRequest({
+      name: 'workspaces/saveAiInstruction', version: 'v1',
+      data: {
+        aiInstruction: aiInstruction ?? x.aiSettings.aiInstruction,
+        outputLanguage: outputLanguage ?? x.aiSettings.outputLanguage,
+        geminiModel: geminiModel ?? x.aiSettings.geminiModel,
+        geminiTemperature: geminiTemperature ?? x.aiSettings.geminiTemperature,
+        geminiBaseUrl: geminiBaseUrl ?? x.aiSettings.geminiBaseUrl,
+        clientRequestId: x.nextReqId(),
+      },
+      receiver: x.room,
+    });
+  },
+  'save-ai-provider': (p, x) => {
+    const feature = str(p, 'feature'); const providerId = str(p, 'providerId');
+    if (!feature || !providerId) return;
+    void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'save-autonomy': (p, x) => {
+    const autonomyLevel = str(p, 'autonomyLevel'); if (!autonomyLevel) return;
+    void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'save-stage-config': (p, x) => {
+    const stageId = str(p, 'stageId'); if (!stageId || !x.activeProjectId) return;
+    const current = x.stageConfigs.find((c) => c.id === stageId && c.projectId === x.activeProjectId);
+    if (!current) return;
+    const stageName = str(p, 'name'); const promptTemplate = str(p, 'promptTemplate'); const systemPrompt = str(p, 'systemPrompt');
+    const customInstructions = str(p, 'customInstructions'); const definitionOfDone = str(p, 'definitionOfDone');
+    const aiEnabled = bool(p, 'aiEnabled'); const gateForApproval = bool(p, 'gateForApproval');
+    //? MERGE the proposed fields over the CURRENT full cfg — the route wants a complete PipelineStageCfg
+    //? (and rejects cfg.projectId !== projectId); the Conductor applies the flat fields per-field.
+    const cfg: PipelineStageCfg = {
+      ...current,
+      ...(stageName ? { name: stageName } : {}),
+      ...(promptTemplate ? { promptTemplate } : {}),
+      ...(systemPrompt ? { systemPrompt } : {}),
+      ...(customInstructions ? { customInstructions } : {}),
+      ...(definitionOfDone ? { definitionOfDone } : {}),
+      ...(aiEnabled === undefined ? {} : { aiEnabled }),
+      ...(gateForApproval === undefined ? {} : { gateForApproval }),
+    };
+    void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId, projectId: x.activeProjectId, cfg, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'edit-budget': (p, x) => {
+    const cap = num(p, 'cap'); const alertPct = num(p, 'alertPct'); const label = str(p, 'label');
+    const enforcement = str(p, 'enforcement'); const create = bool(p, 'create'); const enabled = bool(p, 'enabled');
+    if (cap === undefined && alertPct === undefined && label === undefined && enforcement === undefined && enabled === undefined) return;
+    //? Only the provided fields travel — mirrors the Budgets UI (first edit CREATES the primary cap).
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...(cap === undefined ? {} : { cap }), ...(alertPct === undefined ? {} : { alertPct }), ...(label ? { label } : {}), ...(enforcement ? { enforcement } : {}), ...(create === undefined ? {} : { create }), ...(enabled === undefined ? {} : { enabled }), clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'resume-spend': (_p, x) => {
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
+  'edit-media-budget': (p, x) => {
+    const capCents = num(p, 'capCents'); const alertPct = num(p, 'alertPct'); const enabled = bool(p, 'enabled');
+    if (capCents === undefined && alertPct === undefined && enabled === undefined) return;
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...(capCents === undefined ? {} : { capCents }), ...(alertPct === undefined ? {} : { alertPct }), ...(enabled === undefined ? {} : { enabled }), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+
+  // -- inbox / findings / ui-review / styles / references / tasks / output templates / design tokens
+  'comments-refresh': (_p, x) => {
+    void syncRequest({ name: 'workspaces/commentInbox', version: 'v1', data: { op: 'comments-refresh', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'comments-mark-read': (p, x) => {
+    const commentId = str(p, 'commentId');
+    void syncRequest({ name: 'workspaces/commentInbox', version: 'v1', data: { op: 'comments-mark-read', ...(commentId ? { commentId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'finding-to-ticket': (p, x) => {
+    const findingId = str(p, 'findingId'); if (!findingId || !x.activeProjectId) return;
+    void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-to-ticket', findingId, projectId: x.activeProjectId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'finding-dismiss': (p, x) => {
+    const findingId = str(p, 'findingId'); if (!findingId) return;
+    void syncRequest({ name: 'workspaces/findingAction', version: 'v1', data: { op: 'finding-dismiss', findingId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? Chat has no screenshot upload — screenshots:[] and at least one problem key (route requires one OR
+  //? the other; the chat path is therefore stricter than the manual form).
+  'ui-review-create': (p, x) => {
+    const problemsRaw = str(p, 'problems');
+    const problems = problemsRaw ? problemsRaw.split(',').map((v) => v.trim()).filter((v) => v.length > 0) : [];
+    if (problems.length === 0 || !x.activeProjectId) return;
+    const page = str(p, 'page'); const notes = str(p, 'notes');
+    void syncRequest({ name: 'workspaces/uiReviewCreate', version: 'v1', data: { projectId: x.activeProjectId, screenshots: [], problems, ...(page ? { page } : {}), ...(notes ? { notes } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'delete-style': (p, x) => {
+    const feature = str(p, 'feature'); const key = str(p, 'key');
+    if (!feature || !key) return;
+    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'delete-style', feature, key, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? Workspace-level op — the empty contentProjectId is the established runContentOp shape.
+  'reference-delete': (p, x) => {
+    const referenceId = str(p, 'referenceId'); if (!referenceId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'reference-delete', contentProjectId: '', referenceId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'delete-custom-task': (p, x) => {
+    const taskId = str(p, 'taskId'); if (!taskId) return;
+    void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'delete-custom-task', taskId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'save-output-template': (p, x) => {
+    const name = str(p, 'name'); const templateId = str(p, 'templateId');
+    if (!name && !templateId) return;
+    const format = str(p, 'format'); const watermarkPosition = str(p, 'watermarkPosition');
+    void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'save-output-template', ...(templateId ? { templateId } : {}), ...(name ? { name } : {}), ...(format ? { format } : {}), ...(watermarkPosition ? { watermarkPosition } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'delete-output-template': (p, x) => {
+    const templateId = str(p, 'templateId'); if (!templateId) return;
+    void syncRequest({ name: 'workspaces/outputTemplate', version: 'v1', data: { op: 'delete-output-template', templateId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  //? Whole-project apply — the optional per-service target has no ctx collection to validate against,
+  //? so the chat path deliberately omits serviceId (same pattern as env-deploy's validated fields).
+  'apply-design-tokens': (_p, x) => {
+    if (!x.activeProjectId) return;
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'apply-design-tokens', projectId: x.activeProjectId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
 };

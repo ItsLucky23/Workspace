@@ -69,8 +69,35 @@ export const CHAT_ENABLED_OPS = [
   // preview launch/stop (#17/#113) — dispatched via the openPreview/closePreview _api, not the Conductor
   'preview-up', 'preview-down',
   //? GAP_SCAN C3 — the universal AI-skills layer: "turn on the SEO skill" / "make the humanizer stricter".
-  //? Delete stays UI-only (destroying a user-authored skill from a chat turn is the wrong trade).
   'ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset',
+  //? ---- Parity wave 2026-07-20 — full UI parity for the Workspace-AI (destructive ops keep the extra
+  //? explicit confirm on accept via spec.destructive; the catalog is the single classification source).
+  // board / sprints / ticket-artifact links
+  'archive', 'bulk-status', 'bulk-sprint', 'bulk-archive', 'sprint-create', 'sprint-edit',
+  'ticket-link-artifact', 'ticket-unlink-artifact',
+  // members / roles / workspace lifecycle
+  'invite', 'revoke-invite', 'change-role', 'remove-member', 'role-create', 'role-update',
+  'rename-workspace', 'transfer-ownership', 'delete-workspace',
+  // documents + document templates
+  'document-create', 'document-edit', 'document-delete', 'document-ai', 'document-apply-draft',
+  'document-discard-draft', 'document-gen-image', 'document-export', 'document-restore-revision',
+  'doc-template-save', 'doc-template-delete',
+  // content: publish/retract, asset import, editors (paid gen ops: accept = cost-confirm)
+  'content-request-publish', 'content-unpublish', 'content-import-asset', 'content-inpaint',
+  'content-transcode', 'content-decompose-video', 'content-refine-range', 'content-save-audio-mix',
+  'content-trim-audio', 'content-gen-reference-image', 'content-analyze-reference-video',
+  // merge requests + monorepo services
+  'mr-create', 'mr-comment', 'mr-approve', 'mr-merge', 'mr-resolve', 'service-create', 'service-delete',
+  // automation triggers + workflow-snippet skills + knowledge intake
+  'trigger-save', 'trigger-toggle', 'trigger-delete', 'skill-toggle',
+  'create-info-source', 'link-repo',
+  // workspace settings + budgets
+  'save-sections', 'save-ai-instruction', 'save-ai-provider', 'save-autonomy', 'save-stage-config',
+  'edit-budget', 'resume-spend', 'edit-media-budget',
+  // inbox / findings / ui-review / styles / references / tasks / output templates / design tokens
+  'comments-refresh', 'comments-mark-read', 'finding-to-ticket', 'finding-dismiss', 'ui-review-create',
+  'delete-style', 'reference-delete', 'delete-custom-task', 'save-output-template', 'delete-output-template',
+  'apply-design-tokens',
 ] as const;
 
 export type ChatEnabledOp = (typeof CHAT_ENABLED_OPS)[number];

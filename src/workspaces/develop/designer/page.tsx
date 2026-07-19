@@ -5,7 +5,7 @@
 //? UI feedback (review requests + inbox) and inspiration import live one tap away in the secondary
 //? Feedback tab and the Gallery header.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
@@ -225,7 +225,7 @@ function FeedbackSection() {
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const { activeWorkspace, activeProjectId, uiReviews, applyDesignTokens } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, uiReviews, applyDesignTokens, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyResult, setApplyResult] = useState<'ok' | 'error' | null>(null);
   //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
@@ -236,6 +236,26 @@ function DesignerShell() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState(false);
+  const aiInputRef = useRef<HTMLInputElement | null>(null);
+  const [focusAiBar, setFocusAiBar] = useState(false);
+  //? #109 — an AI-drives-UI copilot directive that navigated here with a prompt pre-fill lands it in the
+  //? unified AI-generate bar (switching to a matching AI section first) and focuses the field, then consumes
+  //? the pre-fill so it fires exactly once. NEVER auto-submits — the user presses Generate (B-23).
+  useEffect(() => {
+    const p = copilotPrefill?.prompt ?? copilotPrefill?.brief ?? copilotPrefill?.description;
+    if (p === undefined) return;
+    const target = copilotPrefill?.section;
+    if (target === 'themes' || target === 'styles' || target === 'animations') setSection(target);
+    else if (!AI_SECTIONS.has(section)) setSection('themes');
+    setAiPrompt(p);
+    setFocusAiBar(true);
+    consumeCopilotPrefill();
+  }, [copilotPrefill, consumeCopilotPrefill, section]);
+  //? Focus once the (possibly just-switched) section's AI bar has rendered.
+  useEffect(() => {
+    if (!focusAiBar) return;
+    if (aiInputRef.current) { aiInputRef.current.focus(); setFocusAiBar(false); }
+  }, [focusAiBar, section]);
 
   const themeItems: DropdownItem[] = d.themes.map((t) => ({ id: t.id, value: t.id, item: t.name }));
   const activeItem = themeItems.find((i) => i.id === d.activeThemeId);
@@ -338,7 +358,7 @@ function DesignerShell() {
       {AI_SECTIONS.has(section) && (
         <div className={`px-3 md:px-4 py-2 border-b border-divider flex items-center gap-2 bg-container1/40`}>
           <Icon name="wand-magic-sparkles" className={`text-primary shrink-0`} />
-          <input value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} disabled={aiBusy}
+          <input ref={aiInputRef} value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} disabled={aiBusy}
             onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
             placeholder={translate({ key: `workspaces.designer.aiBar.${section}` })}
             className={`flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`} />

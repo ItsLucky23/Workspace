@@ -6,7 +6,7 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 158,110 tokens if all loaded)
+## Artifact sizes (total ≈ 158,842 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
@@ -14,12 +14,12 @@
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
 | `capabilities` — `docs/AI_CAPABILITIES.md` | 3,414 | 13,654 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,155 | 36,620 | Routes/pages/helpers/components + test coverage. |
-| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 60,106 | 240,425 | Why-it-is-this-way (ADRs). |
-| `lessons` — `docs/AI_LESSONS_INDEX.md` | 5,002 | 20,006 | Known pitfalls (what failed). |
+| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 60,255 | 241,018 | Why-it-is-this-way (ADRs). |
+| `lessons` — `docs/AI_LESSONS_INDEX.md` | 5,519 | 22,074 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,176 | 4,703 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
 | `product` — `docs/AI_PRODUCT_OVERVIEW.md` | 4,398 | 17,590 | What the app + each page is FOR. |
-| `graph` — `docs/ai-graph.json` | 62,555 | 250,218 | Dependency graph — prefer the MCP tools over reading whole. |
+| `graph` — `docs/ai-graph.json` | 62,622 | 250,488 | Dependency graph — prefer the MCP tools over reading whole. |
 
 ## Retrieval profiles
 
@@ -43,14 +43,14 @@ _Adding a page: match an existing template/component + state the intent._
 
 _Auditing: lean on the why-record + risky hubs, not every page intent._
 
-- **Load** (≈ 80,791 tokens): `contract`, `decisions`, `project-index`
+- **Load** (≈ 80,940 tokens): `contract`, `decisions`, `project-index`
 - **Query via MCP** (don't read whole): `god_nodes`, `blast_radius`, `get_decision`, `list_decisions('security')`
 
 ### `debug`
 
 _Chasing a bug: check known pitfalls first, then trace impact via the graph._
 
-- **Load** (≈ 16,532 tokens): `contract`, `lessons`
+- **Load** (≈ 17,049 tokens): `contract`, `lessons`
 - **Query via MCP** (don't read whole): `find_lesson`, `who_calls`, `who_imports`, `blast_radius`
 
 ### `doc-fix`

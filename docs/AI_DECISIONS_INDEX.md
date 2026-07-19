@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (199)
+## Decisions (200)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -212,6 +212,7 @@
 | 0279 | Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer | 🟢 accepted | watchdog, recovery, capacity, fencing, conductor, cron, containers, multi-instance | 0020, 0022 | `docs/decisions/0279-fenced-agent-recovery-writer.md` |
 | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs | 🟢 accepted | frontend, navbar, ux, ia, routing, restructure | 0068 | `docs/decisions/0280-module-based-nav-categories.md` |
 | 0281 | CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit | 🟢 accepted | ci, monorepo, gates, schema, mongodb | — | `docs/decisions/0281-per-service-ci-and-unit-scope.md` |
+| 0282 | Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A | 🟢 accepted | workspace-ai, chat, op-catalog, parity, copilot, rag, b-23 | — | `docs/decisions/0282-assistant-parity-tranche.md` |
 
 ## Summaries
 
@@ -1822,6 +1823,14 @@ _(no Decision section found — fill it in)_
 *1. `serviceId` is a first-class column on `Pipeline`, `PipelineRun`, `BuildArtifact` and `Ticket`, where `null` means "the project root unit".** A single-unit repo has no `Service` row and never needs one; its work is the root unit. `Pipeline`'s unique key widens to `[workspaceId, projectId, serviceId]`.
 
 → `docs/decisions/0281-per-service-ci-and-unit-scope.md`
+
+### 0282 — Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A
+
+**0282** · accepted · tags: workspace-ai, chat, op-catalog, parity, copilot, rag, b-23 · 2026-07-20
+
+_(no Decision section found — fill it in)_
+
+→ `docs/decisions/0282-assistant-parity-tranche.md`
 
 ## Code governed by decisions
 

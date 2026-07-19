@@ -134,6 +134,10 @@ export default function Board() {
   const [filters, setFilters] = useState<BoardFilters>(ALL_FILTERS);
 
   const filteredTickets = useMemo(() => tickets.filter((t) => {
+    //? Soft-archived tickets never render on the board (the snapshot ships them flagged so the
+    //? backlog's Archived view can restore them). This filter was promised by the archive op's
+    //? contract but never existed — surfaced the first time the assistant archived a ticket live.
+    if (t.archived === true) return false;
     if (filters.sprintId !== 'all' && t.sprintId !== filters.sprintId) return false;
     if (filters.status !== 'all' && t.status !== filters.status) return false;
     if (filters.assigneeId !== 'all' && t.assigneeId !== filters.assigneeId) return false;

@@ -36,12 +36,33 @@ const KINDS: { kind: StudioArtifactKind; icon: IconName; role: 'designer' | 'mar
 
 export default function Studio() { return <StudioSurface variant="studio" />; }
 
+//? #109 — AI-drives-UI: map a copilot prefill (free-form field→value hints) onto the brief-form fields.
+//? Returns null when the prefill carries nothing brief-shaped, so a directive aimed at another page's form
+//? is never swallowed here. Aliases cover the likely model spellings ("product", "brief", "description").
+interface BriefDraft { name: string; productName: string; audience: string; tone: string; goals: string; notes: string }
+function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | null {
+  const pick = (...keys: string[]) => { for (const k of keys) { const v = prefill[k]; if (v !== undefined && v.trim().length > 0) return v.trim(); } return ''; };
+  const draft: BriefDraft = {
+    name: pick('name'),
+    productName: pick('productName', 'product', 'title'),
+    audience: pick('audience'),
+    tone: pick('tone'),
+    goals: pick('goals', 'goal'),
+    notes: pick('notes', 'brief', 'description'),
+  };
+  if ([draft.name, draft.productName, draft.audience, draft.tone, draft.goals, draft.notes].every((v) => v.length === 0)) return null;
+  //? A save needs both name + productName; derive the missing one so the user only has to confirm.
+  if (draft.productName.length === 0) draft.productName = draft.name;
+  if (draft.name.length === 0) draft.name = draft.productName;
+  return draft;
+}
+
 //? The shared Studio surface. `variant` gives /studio (design + marketing kinds) and /marketing (marketing kinds
 //? only) their own page + focus while sharing the brief workspace + generator — the user chose a split marketing
 //? page over one shared Studio. `/marketing` re-uses this with variant="marketing" (marketer kinds, no Brand tab).
 export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
@@ -62,6 +83,24 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
   const [tab, setTab] = useState<'assets' | 'brand'>('assets');
   const [refine, setRefine] = useState('');   //? I4 — an optional refine instruction applied to (re)generation.
+  //? #109 — a consumed copilot prefill, held as a keyed draft so the (possibly already-mounted) new-brief
+  //? form remounts with the values. `seq` keeps repeated directives distinct.
+  const [prefillDraft, setPrefillDraft] = useState<{ seq: number; values: BriefDraft } | null>(null);
+
+  //? #109 — AI-drives-UI: a copilot directive that navigated here (or to the marketing variant, which embeds
+  //? this same surface) with brief-shaped hints opens the NEW-brief form prefilled, then consumes the prefill
+  //? so it fires exactly once. Non-brief-shaped prefills are left alone (guard: briefDraftFromPrefill → null),
+  //? and the user still submits the form themselves — nothing is auto-saved.
+  useEffect(() => {
+    if (!copilotPrefill) return;
+    const values = briefDraftFromPrefill(copilotPrefill);
+    if (!values) return;
+    setPrefillDraft((p) => ({ seq: (p?.seq ?? 0) + 1, values }));
+    setEditing(true);
+    setSelectedId(null);
+    setTab('assets');
+    consumeCopilotPrefill();
+  }, [copilotPrefill, consumeCopilotPrefill]);
 
   useEffect(() => {
     if (selectedId && !studioBriefs.some((b) => b.id === selectedId)) setSelectedId(studioBriefs[0]?.id ?? null);
@@ -85,8 +124,8 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
     content: translate({ key: 'workspaces.studio.deleteBriefBody' }),
   }).then((ok) => { if (ok) { deleteBrief(b.id); if (selectedId === b.id) setSelectedId(null); } });
 
-  const startNewBrief = () => { setEditing(true); setSelectedId(null); setTab('assets'); };
-  const openBrief = (id: string) => { setSelectedId(id); setEditing(false); };
+  const startNewBrief = () => { setEditing(true); setSelectedId(null); setTab('assets'); setPrefillDraft(null); };
+  const openBrief = (id: string) => { setSelectedId(id); setEditing(false); setPrefillDraft(null); };
 
   //? The brand tab keeps the old rail-subtitle signal ("N colours" / set / not set) so brand state
   //? stays visible without opening the panel.
@@ -225,7 +264,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                       </div>
                     </div>
                   )
-                  : <BriefForm key={selected?.id ?? 'new'} brief={editing ? selected : null} onSaved={() => { setEditing(false); }} onCancel={studioBriefs.length > 0 ? () => { setEditing(false); if (!selectedId) setSelectedId(studioBriefs[0]?.id ?? null); } : undefined} />)}
+                  : <BriefForm key={selected?.id ?? (prefillDraft ? `prefill-${String(prefillDraft.seq)}` : 'new')} brief={editing ? selected : null} {...(!selected && prefillDraft ? { initial: prefillDraft.values } : {})} onSaved={() => { setEditing(false); setPrefillDraft(null); }} onCancel={studioBriefs.length > 0 ? () => { setEditing(false); setPrefillDraft(null); if (!selectedId) setSelectedId(studioBriefs[0]?.id ?? null); } : undefined} />)}
             </div>
           </div>
         )}
@@ -234,15 +273,16 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
 }
 
 //? ---- Brief form ----
-function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; onSaved: () => void; onCancel?: () => void }) {
+//? `initial` (#109) seeds a NEW brief from a copilot prefill; the user reviews + saves themselves.
+function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief | null; initial?: BriefDraft; onSaved: () => void; onCancel?: () => void }) {
   const translate = useTranslator();
   const { saveBrief } = useWorkspaces();
-  const [name, setName] = useState(brief?.name ?? '');
-  const [productName, setProductName] = useState(brief?.productName ?? '');
-  const [audience, setAudience] = useState(brief?.audience ?? '');
-  const [tone, setTone] = useState(brief?.tone ?? '');
-  const [goals, setGoals] = useState(brief?.goals ?? '');
-  const [notes, setNotes] = useState(brief?.notes ?? '');
+  const [name, setName] = useState(brief?.name ?? initial?.name ?? '');
+  const [productName, setProductName] = useState(brief?.productName ?? initial?.productName ?? '');
+  const [audience, setAudience] = useState(brief?.audience ?? initial?.audience ?? '');
+  const [tone, setTone] = useState(brief?.tone ?? initial?.tone ?? '');
+  const [goals, setGoals] = useState(brief?.goals ?? initial?.goals ?? '');
+  const [notes, setNotes] = useState(brief?.notes ?? initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const canSave = name.trim().length > 0 && productName.trim().length > 0;
 

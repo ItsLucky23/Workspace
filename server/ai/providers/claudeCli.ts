@@ -102,7 +102,21 @@ export async function driveClaudeCliTurn(req: AiCompletionRequest, dependencies:
   //? Strict + empty prevents project/user MCP configs from even starting a server for this turn.
   writeFileSync(mcpPath, JSON.stringify({ mcpServers: {} }), 'utf8');
 
-  const args = ['--settings', settingsPath, '--mcp-config', mcpPath, '--strict-mcp-config', ...(req.system ? ['--append-system-prompt', req.system] : [])];
+  //? Windows CreateProcess caps the whole command line at ~32k chars; the chat system prompt
+  //? (workspace state + project facts + the full op-catalog + RAG blocks) outgrew that, and
+  //? `--append-system-prompt <system>` then fails with spawn error 206. When we own the cwd (the
+  //? throwaway runDir) the system prompt ships as a CLAUDE.md there instead — the CLI auto-loads it
+  //? as project memory at session start (same instruction tier, no argv limit). Only a caller that
+  //? pins its own cwd (none today) still rides argv, with the overflow prepended over PTY stdin.
+  const ownCwd = req.cwd == null;
+  let systemArgs: string[] = [];
+  let stdinSystemPrefix = '';
+  if (req.system) {
+    if (ownCwd) writeFileSync(path.join(runDir, 'CLAUDE.md'), req.system, 'utf8');
+    else if (req.system.length <= 20_000) systemArgs = ['--append-system-prompt', req.system];
+    else stdinSystemPrefix = `${req.system}\n\n---\n\n`;
+  }
+  const args = ['--settings', settingsPath, '--mcp-config', mcpPath, '--strict-mcp-config', ...systemArgs];
   const spawnPty = dependencies.spawnPty ?? ((file, spawnArgs, options) => pty.spawn(file, spawnArgs, options));
   const waitFor = dependencies.wait ?? wait;
   const term = spawnPty(dependencies.claudeBin ?? CLAUDE_BIN, args, {
@@ -115,7 +129,7 @@ export async function driveClaudeCliTurn(req: AiCompletionRequest, dependencies:
   await waitFor(6000);         //? boot the REPL / surface the trust prompt
   term.write('\r');            //? confirm folder-trust (default = "Yes, I trust")
   await waitFor(2500);
-  term.write(req.prompt);
+  term.write(stdinSystemPrefix + req.prompt);
   await waitFor(1200);
   term.write('\r');            //? submit exactly once; a blind second Enter can start an empty turn
 

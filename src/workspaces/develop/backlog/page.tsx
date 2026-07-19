@@ -59,6 +59,9 @@ export default function Backlog() {
   const openNewTicket = (initialSprintId?: string) => { void menuHandler.open(<NewBacklogTicketForm quickAdd={quickAdd} sprints={sprints} members={members} initialSprintId={initialSprintId} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const filtered = useMemo(() => tickets.filter((t) => {
+    //? Soft-archived tickets stay out of the backlog list (same contract as the board; the
+    //? archive op promises "disappears from board and backlog, restorable later").
+    if (t.archived === true) return false;
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;
     if (quick === 'unrefined' && t.stageId !== 'unrefined') return false;
     if (quick === 'needs-input' && t.status !== 'needs-input') return false;

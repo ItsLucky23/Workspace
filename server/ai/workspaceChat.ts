@@ -5,9 +5,12 @@
 //? is a per-feature config choice (see ai-provider-abstraction). The AI's JSON is
 //? VALIDATED against the workspace's real tickets/stages before it can become a proposal.
 
-import { tryCatch } from '@luckystack/core';
+import { tryCatch, tryCatchSync } from '@luckystack/core';
 import { runAiCompletion } from './registry';
 import type { PrismaClient } from '@prisma/client';
+//? PROJECT FACTS — the repo's package.json + linked-state come from the EXISTING repoStore loaders
+//? (bare-clone reads, no checkout, no new git plumbing here).
+import { isLinked, showRepoFile } from '../git/repoStore';
 import { retrieve } from '../rag/index';
 import { retrieveMemory } from '../rag/memory';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
@@ -20,6 +23,9 @@ import { resolveProjectId } from '../orchestrator/projectResolve';
 import { catalogPromptLines, validateGenericAction } from './opCatalog';
 //? The proposal shape is shared with the client (it crosses the aiChat API boundary).
 import type { ChatProposal, ChatPlan } from '../../src/workspaces/_data/types';
+//? #109 — the copilot nav allowlist derives from the nav category map (pure constants, server-safe import
+//? — same pattern as opCatalog's `modules.ts` import) so every real view is a valid nav target.
+import { VIEW_CATEGORY } from '../../src/workspaces/_data/nav';
 
 export interface ChatResult {
   reply: string;
@@ -31,8 +37,10 @@ export interface ChatResult {
 }
 
 //? #109 — the KNOWN nav targets a copilot directive may point at (a WsView id or a piece/settings sub-route).
-//? Kept permissive but bounded to real views so the AI can't navigate somewhere that doesn't exist.
-const COPILOT_NAV = new Set(['board', 'backlog', 'terminals', 'activity', 'sources', 'pipeline', 'scheduled', 'scheduled-posts', 'usage', 'content', 'content/settings', 'designer', 'interviewer', 'marketing', 'knowledge', 'studio', 'settings', 'workspace', 'ai']);
+//? Parity wave: DERIVED from the nav category map (every categorized view) + the flat category-less views,
+//? so a newly added page is navigable the moment it lands in `nav.ts` — no second hardcoded list to drift.
+const COPILOT_NAV_TARGETS: string[] = [...Object.keys(VIEW_CATEGORY), 'content/settings', 'ai', 'settings', 'workspace'];
+const COPILOT_NAV = new Set(COPILOT_NAV_TARGETS);
 
 //? #109 — validate a model-proposed copilot directive: a known nav target + a note, with string-only prefill
 //? hints. Rejects to null (the turn degrades to a plain reply) — never invents a route.
@@ -74,8 +82,53 @@ export interface Ctx {
   channels: { id: string; name: string }[];
   //? C3 — the workspace's AI skills, so "turn on the SEO skill" resolves to a real skill id.
   skills: { id: string; name: string; enabled: boolean }[];
+  //? Parity wave — the remaining reference collections upcoming proposal validation grounds on
+  //? (compact id/name pairs; same capped-list pattern as the fields above).
+  documents: { id: string; title: string; status: string }[];
+  documentTemplates: { slug: string; name: string }[];
+  sprints: { id: string; name: string }[];
+  invites: { id: string; email: string; role: string }[];
+  findings: { id: string; title: string }[];
+  uiReviews: { id: string; page: string; status: string }[];
+  styles: { key: string; name: string }[];
+  outputTemplates: { id: string; name: string }[];
+  references: { id: string; kind: string; title: string }[];
+  commentInbox: { unread: number; total: number };
+  //? Parity wave — RBAC roles (invite/change-role/role-update name a roleKey), the Sources-page
+  //? workflow-snippet skills (skill-toggle) and the project's monorepo services (service-delete).
+  roles: { key: string; label: string }[];
+  infoSources: { id: string; name: string; enabled: boolean }[];
+  projectServices: { id: string; name: string }[];
+  //? Parity wave — structured facts about the ACTIVE project so "is X possible with this project?"
+  //? is answerable from real state. envKeys carries KEY NAMES ONLY — values never enter a prompt.
+  projectFacts: ProjectFacts;
   //? C4 — which modules this workspace runs; ops of a disabled module are neither listed nor validated.
   enabledSections: string[];
+}
+
+export interface ProjectFacts {
+  repoLinked: boolean;
+  stack: string;
+  framework: string;
+  dependencies: { name: string; version: string }[];
+  databases: { name: string; kind: string; envKind: string }[];
+  deployTargets: { kind: string; route: string; status: string }[];
+  envKeys: string[];
+  ciPipelines: { stages: string[]; enabled: boolean }[];
+}
+
+//? Framework detection from package.json dep names — most-specific first (a Next app also depends
+//? on react; @luckystack apps also depend on react). Display labels, not package names.
+const FRAMEWORK_DEPS: [string, string][] = [
+  ['next', 'next'], ['nuxt', 'nuxt'], ['@angular/core', 'angular'], ['@sveltejs/kit', 'sveltekit'],
+  ['svelte', 'svelte'], ['@nestjs/core', 'nestjs'], ['@remix-run/react', 'remix'], ['astro', 'astro'],
+  ['@luckystack/core', 'luckystack'], ['vue', 'vue'], ['react', 'react'], ['express', 'express'], ['fastify', 'fastify'],
+];
+
+//? Typed [name, version] pairs out of a package.json dependency map (unknown-shaped by design).
+function depEntries(v: unknown): [string, string][] {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return [];
+  return Object.entries(v as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string');
 }
 
 export async function loadCtx(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<Ctx | null> {
@@ -83,15 +136,17 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
   //? shape and workspace ownership and never falls through when the supplied id is stale.
   const activeProjectId = await resolveProjectId(prisma, workspaceId, projectId);
   if (!activeProjectId) return null;
-  const project = await prisma.project.findFirst({ where: { workspaceId, id: activeProjectId }, select: { name: true } });
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: activeProjectId }, select: { name: true, stack: true } });
   if (!project) return null;
 
   const [tickets, stages, memberRows, pieces, environments, services, customTasks, triggers, mrRows, channels, skills, wsRow] = await Promise.all([
-    prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { key: true, title: true, stageId: true }, take: 60, orderBy: { lastActivityAt: 'desc' } }),
+    //? Parity wave: 60→40 — the state text has a hard 12k slice; the cap is trimmed here rather than
+    //? letting the added reference lists push the tail of the text past the budget.
+    prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { key: true, title: true, stageId: true }, take: 40, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
     prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
     prisma.contentProject.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { id: true, title: true, stageId: true }, take: 30, orderBy: { updatedAt: 'desc' } }),
-    prisma.environment.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, kind: true, status: true }, take: 12 }),
+    prisma.environment.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, kind: true, status: true, route: true }, take: 12 }),
     prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
     prisma.customAiTask.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
@@ -100,6 +155,41 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     prisma.skill.findMany({ where: { workspaceId }, select: { id: true, name: true, enabled: true }, take: 40 }),
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { enabledSections: true } }),
   ]);
+  //? Parity wave — the remaining reference collections + the project-facts sources, same
+  //? tenant-scoped/capped pattern as the batch above (small caps: the state text has a 12k budget).
+  const [documents, docTemplates, sprints, inviteRows, findings, uiReviews, styleRows, outputTemplates, referenceRows, unreadComments, totalComments, dbConns, envVarRows, pipelines, roleRows, infoSourceRows, projectServiceRows] = await Promise.all([
+    prisma.document.findMany({ where: { workspaceId, archived: false }, select: { id: true, title: true, aiDraft: true }, take: 20, orderBy: { updatedAt: 'desc' } }),
+    prisma.documentTemplate.findMany({ where: { workspaceId }, select: { slug: true, name: true }, take: 12 }),
+    prisma.sprint.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 10, orderBy: { createdAt: 'desc' } }),
+    prisma.invite.findMany({ where: { workspaceId, status: 'pending' }, select: { id: true, email: true, roleKey: true }, take: 10 }),
+    prisma.interviewFinding.findMany({ where: { workspaceId, status: 'open' }, select: { id: true, title: true }, take: 15, orderBy: { createdAt: 'desc' } }),
+    //? projectId is null on legacy/unscoped review requests — include both for the active project.
+    prisma.uiReviewRequest.findMany({ where: { workspaceId, status: 'open', OR: [{ projectId: activeProjectId }, { projectId: null }] }, select: { id: true, page: true, status: true }, take: 10, orderBy: { createdAt: 'desc' } }),
+    //? workspaceId null = global builtin style presets — both are pickable in this workspace.
+    prisma.stylePreset.findMany({ where: { OR: [{ workspaceId }, { workspaceId: null }] }, select: { key: true, label: true }, take: 24 }),
+    prisma.outputTemplate.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 12 }),
+    prisma.referenceExample.findMany({ where: { workspaceId }, select: { id: true, kind: true, title: true }, take: 15, orderBy: { createdAt: 'desc' } }),
+    prisma.socialComment.count({ where: { workspaceId, read: false } }),
+    prisma.socialComment.count({ where: { workspaceId } }),
+    prisma.dbConnection.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { name: true, kind: true, envKind: true }, take: 8 }),
+    //? KEY NAMES ONLY — the value column (plaintext or encrypted) is never selected.
+    prisma.envVar.findMany({ where: { workspaceId }, select: { key: true }, take: 40, orderBy: { key: 'asc' } }),
+    prisma.pipeline.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { stages: true, enabled: true }, take: 5 }),
+    //? Parity wave — roles (roleKey refs), workflow-snippet skills (skill-toggle) and the project's
+    //? monorepo Service rows (service-delete) — same tenant-scoped/capped pattern.
+    prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true }, take: 12 }),
+    prisma.infoSource.findMany({ where: { workspaceId, mode: 'skill' }, select: { id: true, name: true, enabled: true }, take: 20 }),
+    prisma.service.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 12 }),
+  ]);
+  //? PROJECT FACTS — package.json straight from the bare clone via the existing repoStore loader
+  //? (best-effort: '' when unlinked/absent; parse failure degrades to no dependency facts).
+  const repoLinked = isLinked(workspaceId, activeProjectId);
+  const [, pkgRaw] = await tryCatch(() => showRepoFile(workspaceId, activeProjectId, 'HEAD', 'package.json'));
+  const [, pkgParsed] = tryCatchSync(() => JSON.parse(pkgRaw ?? '') as unknown);
+  const pkg = (pkgParsed !== null && typeof pkgParsed === 'object' && !Array.isArray(pkgParsed)) ? pkgParsed as Record<string, unknown> : null;
+  const dependencies = [...depEntries(pkg?.dependencies), ...depEntries(pkg?.devDependencies)].slice(0, 40).map(([name, version]) => ({ name, version }));
+  const depNames = new Set(dependencies.map((d) => d.name));
+  const framework = FRAMEWORK_DEPS.find(([dep]) => depNames.has(dep))?.[1] ?? '';
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
   //? #54 — resolve each open MR's ticket KEY (the chat + mrAction reference the DEV-#### key, not the id).
@@ -119,25 +209,75 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     mrs: mrRows.map((m) => ({ id: m.id, ticketKey: keyByTicketId.get(m.ticketId) ?? '', title: m.title })).filter((m) => m.ticketKey.length > 0),
     channels: channels.map((c) => ({ id: c.id, name: c.name })),
     skills: skills.map((sk) => ({ id: sk.id, name: sk.name, enabled: sk.enabled })),
+    documents: documents.map((d) => ({ id: d.id, title: d.title, status: d.aiDraft === null ? 'ready' : 'draft-pending' })),
+    documentTemplates: docTemplates.map((t) => ({ slug: t.slug, name: t.name })),
+    sprints: sprints.map((s) => ({ id: s.id, name: s.name })),
+    invites: inviteRows.map((i) => ({ id: i.id, email: i.email, role: i.roleKey })),
+    findings: findings.map((f) => ({ id: f.id, title: f.title })),
+    uiReviews: uiReviews.map((r) => ({ id: r.id, page: r.page ?? '(unspecified)', status: r.status })),
+    styles: styleRows.map((s) => ({ key: s.key, name: s.label })),
+    outputTemplates: outputTemplates.map((t) => ({ id: t.id, name: t.name })),
+    references: referenceRows.map((r) => ({ id: r.id, kind: r.kind, title: r.title })),
+    commentInbox: { unread: unreadComments, total: totalComments },
+    roles: roleRows.map((r) => ({ key: r.key, label: r.label })),
+    infoSources: infoSourceRows.map((s) => ({ id: s.id, name: s.name, enabled: s.enabled })),
+    projectServices: projectServiceRows.map((s) => ({ id: s.id, name: s.name })),
+    projectFacts: {
+      repoLinked,
+      //? Explicit project stack wins; else a parsed package.json implies node; else unknown/unlinked.
+      stack: project.stack ?? (dependencies.length > 0 ? 'node' : (repoLinked ? 'unknown' : 'unlinked')),
+      framework,
+      dependencies,
+      databases: dbConns.map((d) => ({ name: d.name, kind: d.kind, envKind: d.envKind })),
+      deployTargets: environments.map((e) => ({ kind: e.kind, route: e.route, status: e.status })),
+      envKeys: envVarRows.map((v) => v.key),
+      ciPipelines: pipelines.map((p) => ({ stages: p.stages, enabled: p.enabled })),
+    },
     enabledSections: wsRow?.enabledSections ?? [],
   };
 }
 
 function workspaceStateText(ctx: Ctx): string {
+  const f = ctx.projectFacts;
   return [
     `Active project: ${ctx.projectId} — ${ctx.projectName}`,
+    //? STRUCTURED PROJECT FACTS — placed directly under the project line (the state text is sliced
+    //? at 12k from the bottom, so the facts can never be the part that gets truncated away).
+    'PROJECT FACTS (answer "can we / is X possible with this project?" from these):',
+    `- Repo: ${f.repoLinked ? 'linked' : 'not linked'}; stack: ${f.stack}${f.framework.length > 0 ? `; framework: ${f.framework}` : ''}`,
+    `- Dependencies (name@version): ${f.dependencies.map((d) => `${d.name}@${d.version}`).join('; ') || '(none detected)'}`,
+    `- Databases (name — kind [env]): ${f.databases.map((d) => `${d.name} — ${d.kind} [${d.envKind}]`).join('; ') || '(none connected)'}`,
+    `- Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
+    `- Deploy targets (kind — route [status]): ${f.deployTargets.map((t) => `${t.kind} — ${t.route} [${t.status}]`).join('; ') || '(none)'}`,
+    `- Env var KEYS (names only — values are secret and never shown): ${f.envKeys.join('; ') || '(none)'}`,
+    `- CI: ${f.ciPipelines.length > 0 ? f.ciPipelines.map((p) => `pipeline [${p.enabled ? 'enabled' : 'disabled'}] stages: ${p.stages.join(' > ')}`).join('; ') : 'no pipeline configured'}`,
     `Stages (id — name): ${ctx.stages.map((s) => `${s.id} — ${s.name}`).join('; ')}`,
     `Tickets (key — title [stage]): ${ctx.tickets.map((t) => `${t.key} — ${t.title} [${t.stageId}]`).join('; ') || '(none)'}`,
     `Members (id — name): ${ctx.members.map((m) => `${m.id} — ${m.name}`).join('; ') || '(none)'}`,
     `Content pieces (pieceId — title [stage]): ${ctx.pieces.map((p) => `${p.id} — ${p.title} [${p.stageId}]`).join('; ') || '(none)'}`,
     `Environments (envId — kind [status]): ${ctx.environments.map((e) => `${e.id} — ${e.kind} [${e.status}]`).join('; ') || '(none)'}`,
-    `Service stacks (name [status]): ${ctx.services.map((s) => `${s.name} [${s.status}]`).join('; ') || '(none)'}`,
+    //? Service stacks are listed once, in the PROJECT FACTS block above (identical name [status] pairs).
     `Custom AI tasks (taskId — name): ${ctx.customTasks.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
     `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
     //? C3 — the AI-skills list, so a skill op proposal can name a REAL skillId (and see its on/off state).
     `AI skills (skillId — name [on|off]): ${ctx.skills.map((sk) => `${sk.id} — ${sk.name} [${sk.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
+    //? Parity wave — the remaining reference collections (documents/templates/sprints/invites/findings/
+    //? ui-reviews/styles/output-templates/references/inbox) so proposals can name REAL ids here too.
+    `Documents (docId — title [status]): ${ctx.documents.map((d) => `${d.id} — ${d.title} [${d.status}]`).join('; ') || '(none)'}`,
+    `Document templates (slug — name): ${ctx.documentTemplates.map((t) => `${t.slug} — ${t.name}`).join('; ') || '(none)'}`,
+    `Sprints (sprintId — name): ${ctx.sprints.map((s) => `${s.id} — ${s.name}`).join('; ') || '(none)'}`,
+    `Pending invites (inviteId — email — role): ${ctx.invites.map((i) => `${i.id} — ${i.email} — ${i.role}`).join('; ') || '(none)'}`,
+    `Roles (roleKey — label): ${ctx.roles.map((r) => `${r.key} — ${r.label}`).join('; ') || '(none)'}`,
+    `Workflow-snippet skills (sourceId — name [on|off]): ${ctx.infoSources.map((s) => `${s.id} — ${s.name} [${s.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
+    `Project services / deploy-units (serviceId — name): ${ctx.projectServices.map((s) => `${s.id} — ${s.name}`).join('; ') || '(none)'}`,
+    `Open interview findings (findingId — title): ${ctx.findings.map((fi) => `${fi.id} — ${fi.title}`).join('; ') || '(none)'}`,
+    `Open UI reviews (reviewId — page [status]): ${ctx.uiReviews.map((r) => `${r.id} — ${r.page} [${r.status}]`).join('; ') || '(none)'}`,
+    `Style presets (key — name): ${ctx.styles.map((s) => `${s.key} — ${s.name}`).join('; ') || '(none)'}`,
+    `Output templates (templateId — name): ${ctx.outputTemplates.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
+    `Reference examples (refId — kind — title): ${ctx.references.map((r) => `${r.id} — ${r.kind} — ${r.title}`).join('; ') || '(none)'}`,
+    `Comment inbox: ${String(ctx.commentInbox.unread)} unread of ${String(ctx.commentInbox.total)} total`,
   ].join('\n');
 }
 
@@ -160,7 +300,7 @@ export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '',
     'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
     //? #109 — AI-drives-UI: when the best help is to TAKE the user somewhere (not run an op), emit a copilot directive.
-    'AI-DRIVES-UI (copilot): when the user\'s ask is best served by GUIDING them to a specific page to finish it themselves (a settings screen, a form you can\'t fully fill, "where do I set X?", "take me to Y"), ADD a "copilot" field: {"navigate": <one of: board|backlog|terminals|activity|sources|pipeline|scheduled|scheduled-posts|usage|content|content/settings|designer|interviewer|marketing|knowledge|studio|settings|workspace|ai>, "note": short "here\'s what to do next", "prefill"?: { field: value }}. Use it INSTEAD of (or alongside) a plain reply when navigating helps; keep proposing an op when you CAN do the action directly. Only navigate to a listed target.',
+    `AI-DRIVES-UI (copilot): when the user's ask is best served by GUIDING them to a specific page to finish it themselves (a settings screen, a form you can't fully fill, "where do I set X?", "take me to Y"), ADD a "copilot" field: {"navigate": <one of: ${COPILOT_NAV_TARGETS.join('|')}>, "note": short "here's what to do next", "prefill"?: { field: value }}. Use it INSTEAD of (or alongside) a plain reply when navigating helps; keep proposing an op when you CAN do the action directly. Only navigate to a listed target.`,
     `Workspace state (reference data; ids may be used only as allowed above):\n${renderUntrustedContext({ provenance: 'current workspace state and user-authored names', content: workspaceStateText(ctx), maxChars: 12_000 })}`,
     ...(productContext.length > 0 ? [`What THIS product can do (answer capability/how-to questions from this):\n${renderUntrustedContext({ provenance: 'RAG chunks: product knowledge', content: productContext, maxChars: 4000 })}`] : []),
     ...(codeContext.length > 0 ? [`Relevant code from the repository (grounds code questions about the USER's own project):\n${renderUntrustedContext({ provenance: 'RAG chunks: user repository', content: codeContext, maxChars: 6000 })}`] : []),

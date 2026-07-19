@@ -1151,11 +1151,31 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
     //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
     if (isChatEnabledOp(p.op)) {
-      CHAT_DISPATCH[p.op](p, { room, activeProjectId: scope.projectId, gitConfig: scope.gitConfig, nextReqId, refetch });
+      //? Parity wave — merge sources for the full-payload routes (saveAiInstruction writes all five
+      //? fields; saveStageConfig wants the complete cfg) + the provider's own delete-workspace flow.
+      const ws = latestSnap.current.workspaces.find((w) => w.id === room);
+      CHAT_DISPATCH[p.op](p, {
+        room, activeProjectId: scope.projectId, gitConfig: scope.gitConfig,
+        aiSettings: {
+          aiInstruction: ws?.aiInstruction ?? '', outputLanguage: ws?.outputLanguage ?? '',
+          geminiModel: ws?.geminiModel ?? '', geminiTemperature: ws?.geminiTemperature ?? '', geminiBaseUrl: ws?.geminiBaseUrl ?? '',
+        },
+        stageConfigs: latestSnap.current.stageConfigs,
+        deleteWorkspace: () => {
+          //? Same flow as the settings UI's deleteWorkspace: fire the `_api`, then leave the dead
+          //? workspace (reset the desired snapshot target so the refetch lands on a valid one).
+          afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: room, clientRequestId: nextReqId() } }));
+          desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
+          setWantWorkspaceId(undefined);
+          setWantProjectId(undefined);
+          setLoading(true);
+        },
+        nextReqId, refetch,
+      });
       return true;
     }
     return false;
-  }, [currentProjectScope, refetch]);
+  }, [currentProjectScope, refetch, afterWrite]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
     const run = () => {

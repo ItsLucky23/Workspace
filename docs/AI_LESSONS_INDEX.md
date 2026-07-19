@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (15)
+## Lessons (17)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -28,6 +28,8 @@
 | 0013 | .eslintcache holds stale type-aware results after prisma generate — phantom "error typed" lint on a new field | 🟡 medium | prisma, schema-change, eslint, dev-tooling | — | `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md` |
 | 0014 | On MongoDB an omitted optional field is ABSENT, not null — `{ field: null }` never matches it, so freshly written rows are invisible to their own queries | 🟠 high | prisma, mongodb, schema-change | — | `docs/lessons/0014-mongo-absent-vs-null-optional-field-invisible.md` |
 | 0015 | The dev backend hops ports and records the real one in dev-server.json — restarting "the" configured port leaves the browser on a stale backend | 🟠 high | dev-server, browser-testing, windows | — | `docs/lessons/0015-dev-server-port-hops-stale-backend.md` |
+| 0016 | Killing the PID on the port resurrects the server — luckystack-dev is a supervisor; kill the process TREE | 🟠 high | dev-server, windows, process-management | — | `docs/lessons/0016-supervisor-respawns-killed-port-pid.md` |
+| 0017 | surfaceReachability pins op ENTRY points, not op EFFECTS — an op's promised UI behavior can be pure prose | 🟡 medium | testing, op-catalog, ui-contracts | — | `docs/lessons/0017-op-contract-ui-effect-never-existed.md` |
 
 ## Takeaways
 
@@ -150,3 +152,19 @@ On MongoDB, **write nullable state fields explicitly as `null` on create** whene
 **Read `node_modules/.luckystack/dev-server.json` to find the backend the browser is actually using.** Its `pid` is the one to stop; `config.ports.ts` is the *preferred* port, not the live one. After a restart, re-read that file and confirm the port changed as expected — do not assume the configured port is the live one. Before starting a fresh backend, check for orphans: `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | ? { $_.CommandLine -like '*devkit*supervisor*' }`. Stop the **supervisors**, not their children, or they respawn (see lesson 0012, which is the same trap seen from the Prisma-DLL side). Symptom to recognise fast: *the code is provably correct when called directly, but the browser shows the old behaviour across a hard reload.* Before re-checking the code again, prove the running server executes it — a one-line `console.log` and a page load answers it in seconds. E2E tests that fetch `http://localhost:<configured port>` directly can pass against a *different* instance than the browser uses. That is exactly how this stayed hidden: the e2e suite went green while the UI stayed stale.
 
 → `docs/lessons/0015-dev-server-port-hops-stale-backend.md`
+
+### 0016 — Killing the PID on the port resurrects the server — luckystack-dev is a supervisor; kill the process TREE
+
+**0016** · high · dev-server, windows, process-management · 2026-07-20
+
+Restart by killing the supervisor TREE, not the port PID: find the `luckystack-dev` / `npm run server` wrapper processes (`Get-CimInstance Win32_Process | Where CommandLine -match 'luckystack-dev'`) and `taskkill /PID <wrapper> /T /F` each — then verify `netstat` shows ZERO `:478x` listeners before starting exactly one new instance. After any restart, trust `node_modules/.luckystack/dev-server.json` for the real port (lesson 0015) and check the listener COUNT, not just "the port answers".
+
+→ `docs/lessons/0016-supervisor-respawns-killed-port-pid.md`
+
+### 0017 — surfaceReachability pins op ENTRY points, not op EFFECTS — an op's promised UI behavior can be pure prose
+
+**0017** · medium · testing, op-catalog, ui-contracts · 2026-07-20
+
+When enabling an op (assistant or UI), verify its promised EFFECT once in the browser — not just that the dispatch fires. The op summary text is a checklist: every claim in it must be observable. Comments that say "X derives from Y" are hypotheses: grep for the derivation before trusting them (here: zero `archived` references in board/backlog across all of git history). When a soft-delete flag ships in a snapshot "so the client can filter", add the client filter in the same change — a flag without a consumer is the exact pattern the hardening sessions kept finding.
+
+→ `docs/lessons/0017-op-contract-ui-effect-never-existed.md`

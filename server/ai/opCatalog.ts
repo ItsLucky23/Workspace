@@ -33,11 +33,23 @@ export interface CatalogCtx {
   channels: { id: string; name: string }[];
   //? C3 — the workspace's AI skills, so "turn on the SEO skill" validates against a REAL skill id.
   skills: { id: string; name: string }[];
+  //? Parity wave — the reference collections the newly-enabled tranche validates against (all fed by
+  //? workspaceChat's loadCtx; structural subsets, same as the fields above).
+  sprints: { id: string }[];
+  documents: { id: string }[];
+  invites: { id: string }[];
+  roles: { key: string }[];
+  findings: { id: string }[];
+  references: { id: string }[];
+  outputTemplates: { id: string }[];
+  styles: { key: string }[];
+  infoSources: { id: string }[];
+  projectServices: { id: string }[];
   //? GAP_SCAN C4 — the workspace's enabled modules. An empty list is the legacy "everything on" state.
   enabledSections?: string[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'ticketKeys' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'sprintId' | 'memberId' | 'roleKey' | 'inviteId' | 'documentId' | 'findingId' | 'referenceId' | 'outputTemplateId' | 'styleKey' | 'sourceId' | 'projectServiceId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -61,29 +73,89 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { ticketKey: { kind: 'ticketKey', required: true }, title: { kind: 'string' }, description: { kind: 'string' }, priority: { kind: 'enum', values: ['low', 'normal', 'high', 'urgent'] } },
   },
   'add-comment': EXCLUDED, // legacy rich path
-  archive: LATER_D,
+  archive: {
+    mode: 'enabled', destructive: true,
+    hint: 'archive a single ticket (soft; board/backlog hide it). params: ticketKey (e.g. DEV-3)',
+    params: { ticketKey: { kind: 'ticketKey', required: true } },
+  },
   'bulk-move': EXCLUDED, // legacy rich path
-  'bulk-status': LATER,
+  'bulk-status': {
+    mode: 'enabled',
+    hint: 'set the status of one or more tickets at once. params: ticketKeys (list), status (idle|needs-input|busy|done|paused|stuck)',
+    params: { ticketKeys: { kind: 'ticketKeys', required: true }, status: { kind: 'enum', required: true, values: ['idle', 'needs-input', 'busy', 'done', 'paused', 'stuck'] } },
+  },
   'bulk-assign': EXCLUDED, // legacy `assign`
-  'bulk-sprint': LATER,
-  'bulk-archive': LATER_D,
-  'sprint-create': LATER,
-  'sprint-edit': LATER,
+  'bulk-sprint': {
+    mode: 'enabled',
+    hint: 'move one or more tickets into a sprint (omit sprintId = back to backlog). params: ticketKeys (list), sprintId? (from the sprint list)',
+    params: { ticketKeys: { kind: 'ticketKeys', required: true }, sprintId: { kind: 'sprintId' } },
+  },
+  'bulk-archive': {
+    mode: 'enabled', destructive: true,
+    hint: 'archive several tickets at once (soft; hidden from board/backlog). params: ticketKeys (list)',
+    params: { ticketKeys: { kind: 'ticketKeys', required: true } },
+  },
+  'sprint-create': {
+    mode: 'enabled',
+    hint: 'create a new sprint. params: name, active? (default false — activate it immediately)',
+    params: { name: { kind: 'string', required: true }, active: { kind: 'boolean' } },
+  },
+  'sprint-edit': {
+    mode: 'enabled',
+    hint: 'rename / (de)activate / (re)date an existing sprint. params: sprintId, name?, active?, startAt? (ISO date), endAt? (ISO date)',
+    params: { sprintId: { kind: 'sprintId', required: true }, name: { kind: 'string' }, active: { kind: 'boolean' }, startAt: { kind: 'string' }, endAt: { kind: 'string' } },
+  },
   // ---- members / RBAC / workspace lifecycle
   'create-workspace': EXCLUDED, // cross-workspace plumbing
   //? G2 — cloning creates a SECOND workspace; the Assistant is scoped to the current one (invariant #4),
   //? so this stays a deliberate UI action.
   'clone-workspace': EXCLUDED,
-  'rename-workspace': LATER,
-  'delete-workspace': LATER_D,
-  'transfer-ownership': LATER_D,
-  'change-role': LATER_D,
-  'remove-member': LATER_D,
-  invite: LATER,
-  'revoke-invite': LATER_D,
+  'rename-workspace': {
+    mode: 'enabled',
+    hint: 'rename the current workspace. params: name (the new workspace name)',
+    params: { name: { kind: 'string', required: true } },
+  },
+  'delete-workspace': {
+    mode: 'enabled', destructive: true,
+    hint: 'permanently delete the CURRENT workspace and everything in it. no params. Extremely destructive — always confirmed; only propose on an explicit, unambiguous user request',
+    params: {},
+  },
+  'transfer-ownership': {
+    mode: 'enabled', destructive: true,
+    hint: "hand workspace ownership to another member (current owner becomes admin). params: memberId (the new owner's member id). Irreversible — always confirmed",
+    params: { memberId: { kind: 'memberId', required: true } },
+  },
+  'change-role': {
+    mode: 'enabled', destructive: true,
+    hint: "change an existing member's role ('make Piet an admin'). params: memberId (an existing member id), roleKey (an existing role key)",
+    params: { memberId: { kind: 'memberId', required: true }, roleKey: { kind: 'roleKey', required: true } },
+  },
+  'remove-member': {
+    mode: 'enabled', destructive: true,
+    hint: "remove a member from the workspace ('kick Piet'). params: memberId (an existing member id). Irreversible for their access — always confirmed",
+    params: { memberId: { kind: 'memberId', required: true } },
+  },
+  invite: {
+    mode: 'enabled',
+    hint: "invite a person to this workspace by email with a role ('invite jan@x.nl as developer'). params: email, roleKey (an existing role key)",
+    params: { email: { kind: 'string', required: true }, roleKey: { kind: 'roleKey', required: true } },
+  },
+  'revoke-invite': {
+    mode: 'enabled', destructive: true,
+    hint: "withdraw a pending workspace invite ('cancel the invite for jan@x.nl'). params: inviteId (an existing pending invite id)",
+    params: { inviteId: { kind: 'inviteId', required: true } },
+  },
   'accept-invite': EXCLUDED, // own-resource plumbing
-  'role-create': LATER_D,
-  'role-update': LATER_D,
+  'role-create': {
+    mode: 'enabled', destructive: true,
+    hint: 'create a new custom RBAC role (starts with zero permissions; grant perms afterwards in Settings). params: name (display label; the key is derived)',
+    params: { name: { kind: 'string', required: true } },
+  },
+  'role-update': {
+    mode: 'enabled', destructive: true,
+    hint: "rename a custom role's display label ('rename role reviewer to auditor'). params: roleKey (existing role key), label (new display name). Permission toggles stay a Settings-UI action",
+    params: { roleKey: { kind: 'roleKey', required: true }, label: { kind: 'string', required: true } },
+  },
   // ---- workspace settings (secret-bearing ops NEVER flow through the chat/LLM)
   'save-env': EXCLUDED, // env values may be secrets
   'remove-env': EXCLUDED,
@@ -99,10 +171,16 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'stop + remove a running service stack. params: name (an existing stack name)',
     params: { name: { kind: 'serviceName', required: true } },
   },
-  'ui-review-create': LATER,
+  'ui-review-create': {
+    mode: 'enabled',
+    hint: "file a UI-review ('unfuck the UI') request for the current project: comma-separated problem keys + optional free-text notes and page name. Chat cannot attach screenshots — at least one problem is required. params: problems, notes?, page?",
+    params: { problems: { kind: 'string', required: true }, notes: { kind: 'string' }, page: { kind: 'string' } },
+  },
   'ui-review-to-ticket': EXCLUDED, // U2 gap-fix — direct inbox button on the designer page
   'ui-review-dismiss': EXCLUDED,   // U2 gap-fix — direct inbox button
   'gitlab-settings': EXCLUDED, // carries the forge token
+  //? gitlab-verify stays later: no `_sync` route, no UI dispatch, and the Conductor case is a deliberate
+  //? no-op stub (completion-gaps-v3) — wiring it would need a NEW surface, which chat never adds.
   'gitlab-verify': LATER,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
@@ -124,15 +202,68 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   //? Runtime commands/custom-base are an Admin settings form, never AI-proposable.
   'project-runtime-save': EXCLUDED,
-  'save-sections': LATER,
-  'save-ai-instruction': LATER,
-  'save-ai-provider': LATER,
-  'save-autonomy': LATER,
-  'link-repo': LATER,
+  'save-sections': {
+    mode: 'enabled',
+    hint: "turn workspace modules/nav sections on or off ('enable the documents module'). params: enabledSections — the COMPLETE new comma-separated section list (valid ids: board|backlog|terminals|activity|sources|pipeline|scheduled|interviewer|content|marketing|scheduled-posts|studio|designer|documents). Always include the sections that must STAY on — this replaces the whole set.",
+    params: { enabledSections: { kind: 'string', required: true } },
+  },
+  'save-ai-instruction': {
+    mode: 'enabled',
+    hint: 'set the workspace-wide AI behaviour: the always-on instruction prepended to every AI run, the preferred output language, and/or the Gemini model/temperature(0-2)/base-url. Only pass the fields to change; the rest keep their current value. params: aiInstruction?, outputLanguage?, geminiModel?, geminiTemperature?, geminiBaseUrl?',
+    params: { aiInstruction: { kind: 'string' }, outputLanguage: { kind: 'string' }, geminiModel: { kind: 'string' }, geminiTemperature: { kind: 'string' }, geminiBaseUrl: { kind: 'string' } },
+  },
+  'save-ai-provider': {
+    mode: 'enabled',
+    hint: "switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | claude-cli | gemini-api). The CODING agent is not switchable.",
+    params: {
+      feature: { kind: 'enum', required: true, values: ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
+      providerId: { kind: 'enum', required: true, values: ['default', 'claude-cli', 'gemini-api'] },
+    },
+  },
+  'save-autonomy': {
+    mode: 'enabled',
+    hint: 'set how often the human must approve pipeline stages: gate-every (approve each stage) | gate-key-stages (default) | full-auto (no human gates — propose with care and say so in the reply). params: autonomyLevel',
+    params: { autonomyLevel: { kind: 'enum', required: true, values: ['gate-every', 'gate-key-stages', 'full-auto'] } },
+  },
+  //? Credential boundary: the route also accepts a `token`, but a token must NEVER travel through the
+  //? chat/LLM path — the chat surface is gitUrl-only (private repos go via the settings UI).
+  'link-repo': {
+    mode: 'enabled',
+    hint: 'link (clone) a git repository to the workspace by URL. params: gitUrl (https/ssh clone URL). PUBLIC repos only from chat — a private repo needs a token, which must be entered in the settings UI, never via chat',
+    params: { gitUrl: { kind: 'string', required: true } },
+  },
   'scan-docs': { mode: 'enabled', hint: 'rescan the linked repo for context docs (README/docs/…). no params', params: {} },
-  'create-info-source': LATER,
+  'create-info-source': {
+    mode: 'enabled',
+    hint: "register a user-provided text/markdown document as a context doc the coding AI reads (the 'bring your own knowledge' path). params: name (doc filename/label), content (the full md/txt text — include it verbatim in the proposal)",
+    params: { name: { kind: 'string', required: true }, content: { kind: 'string', required: true } },
+  },
   'scan-index': { mode: 'enabled', hint: 'rebuild the code RAG index of the linked repo (so answers ground on the latest code). no params', params: {} },
-  'mr-create': LATER, 'mr-comment': LATER, 'mr-approve': LATER_D, 'mr-merge': LATER_D, 'mr-resolve': LATER,
+  'mr-create': {
+    mode: 'enabled',
+    hint: "open/refresh the built-in merge request for a ticket's branch (idempotent — also just loads the MR view). params: ticketKey",
+    params: { ticketKey: { kind: 'ticketKey', required: true } },
+  },
+  'mr-comment': {
+    mode: 'enabled',
+    hint: 'post a review comment on a merge request — MR-level by default, or line-anchored via filePath+line, or reply in an existing thread via threadId. params: ticketKey, mrId, body, filePath?, line?, side? (new|old), threadId?',
+    params: { ticketKey: { kind: 'ticketKey', required: true }, mrId: { kind: 'mrId', required: true }, body: { kind: 'string', required: true }, filePath: { kind: 'string' }, line: { kind: 'number' }, side: { kind: 'enum', values: ['new', 'old'] }, threadId: { kind: 'string' } },
+  },
+  'mr-approve': {
+    mode: 'enabled', destructive: true,
+    hint: "approve a merge request (records the caller's approval; staleness tracked against head). params: ticketKey, mrId — pick the pair from the open-MR list",
+    params: { ticketKey: { kind: 'ticketKey', required: true }, mrId: { kind: 'mrId', required: true } },
+  },
+  'mr-merge': {
+    mode: 'enabled', destructive: true,
+    hint: 'merge a merge request into its target branch (irreversible except via mr-rollback). params: ticketKey, mrId — only propose when the user explicitly asks to merge',
+    params: { ticketKey: { kind: 'ticketKey', required: true }, mrId: { kind: 'mrId', required: true } },
+  },
+  'mr-resolve': {
+    mode: 'enabled',
+    hint: "mark a merge-request review thread resolved (or unresolved with resolved:false). params: ticketKey, threadId (from the MR's thread list), resolved? (default true)",
+    params: { ticketKey: { kind: 'ticketKey', required: true }, threadId: { kind: 'string', required: true }, resolved: { kind: 'boolean' } },
+  },
   'mr-review': {
     mode: 'enabled',
     hint: 'run an AI review of a merge request (findings land as a suggestion the user accepts). params: mrId, ticketKey (the pair from the MR list below)',
@@ -143,8 +274,24 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'roll back (revert) a merged merge request. params: mrId, ticketKey (the pair from the MR list below)',
     params: { mrId: { kind: 'mrId', required: true }, ticketKey: { kind: 'ticketKey', required: true } },
   },
-  'raise-cap': LATER_D, 'edit-budget': LATER_D, 'resume-spend': LATER_D,
-  'skill-toggle': LATER,
+  //? raise-cap stays LATER_D: no manual UI ever dispatches it and the Conductor aliases it onto the
+  //? edit-budget handler — "raise the cap to X" is fully expressible as edit-budget { cap: X }.
+  'raise-cap': LATER_D,
+  'edit-budget': {
+    mode: 'enabled', destructive: true,
+    hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap). Only pass the fields to change.",
+    params: { cap: { kind: 'number' }, alertPct: { kind: 'number' }, label: { kind: 'string' }, enforcement: { kind: 'enum', values: ['pauseNew', 'pauseAll'] }, create: { kind: 'boolean' }, enabled: { kind: 'boolean' } },
+  },
+  'resume-spend': {
+    mode: 'enabled', destructive: true,
+    hint: "resume AI spending after a budget freeze — resets the current window's spent counter to 0 for ALL caps and unfreezes work. no params. Destructive because it re-opens real spending.",
+    params: {},
+  },
+  'skill-toggle': {
+    mode: 'enabled',
+    hint: 'enable or disable a workflow-snippet skill (an InfoSource on the Sources page — NOT an AI skill; those use ai-skill-toggle). params: sourceId (from the workflow-snippet skills list below), on (true/false)',
+    params: { sourceId: { kind: 'sourceId', required: true }, on: { kind: 'boolean', required: true } },
+  },
   //? SK1 — the universal AI-skills layer. GAP_SCAN C3: toggling/saving a skill is exactly the kind of
   //? "turn on the SEO skill" ask the Assistant should handle, so save/toggle/reset are ENABLED (delete
   //? stays `later` — destroying a user-authored skill from a chat turn is a worse trade than a UI click).
@@ -163,11 +310,61 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'reset a BUILT-IN AI skill back to its shipped instruction. params: skillId (from the skills list below)',
     params: { skillId: { kind: 'skillId', required: true } },
   },
-  'ai-skill-delete': LATER_D,
-  //? DOC — the Documents module (draft-based; flip to enabled once chat-proposing documents proves useful).
-  'document-create': LATER, 'document-edit': LATER, 'document-delete': LATER_D, 'document-ai': LATER,
-  'document-apply-draft': LATER, 'document-discard-draft': LATER, 'document-gen-image': LATER, 'document-export': LATER,
-  'document-restore-revision': LATER,
+  //? Deliberately `later`, NOT part of the parity tranche: deleting a user-authored skill from a chat
+  //? turn stays a UI-only action (pinned by couplingBridges; toggle-off covers the chat use case).
+  //? OPEN VRAAG: the owner may consciously overrule this — flip mode + CHAT_ENABLED_OPS + dispatcher.
+  'ai-skill-delete': {
+    mode: 'later', destructive: true,
+    hint: 'permanently delete an AI skill. params: skillId (from the skills list below). Destructive — the user gets an extra confirm; prefer ai-skill-toggle off unless the user explicitly wants it gone',
+    params: { skillId: { kind: 'skillId', required: true } },
+  },
+  //? DOC — the Documents module (draft-based). B-23-clean: document-ai writes ONLY a draft; apply-draft
+  //? is the consent step, and edits/restores snapshot the previous content as a revision first.
+  'document-create': {
+    mode: 'enabled',
+    hint: "create a new document. params: title, content? (initial markdown), templateSlug? (a document-template slug; seeds the doc's kind + a section skeleton when content is empty)",
+    params: { title: { kind: 'string', required: true }, content: { kind: 'string' }, templateSlug: { kind: 'string' } },
+  },
+  'document-edit': {
+    mode: 'enabled',
+    hint: "edit a document's title and/or REPLACE its full markdown content (the previous content is auto-snapshotted as a revision). params: documentId, title?, content? (full replacement, not a patch)",
+    params: { documentId: { kind: 'documentId', required: true }, title: { kind: 'string' }, content: { kind: 'string' } },
+  },
+  'document-delete': {
+    mode: 'enabled', destructive: true,
+    hint: "PERMANENTLY delete a document + ALL its revisions and RAG rows (prefer document-archive for 'remove from the list'). params: documentId",
+    params: { documentId: { kind: 'documentId', required: true } },
+  },
+  'document-ai': {
+    mode: 'enabled',
+    hint: 'run AI over a document (generate/rewrite/summarize/extend; costs AI spend). The result lands as a DRAFT only — the user applies it via document-apply-draft. params: documentId, mode? (default rewrite), instruction?',
+    params: { documentId: { kind: 'documentId', required: true }, mode: { kind: 'enum', values: ['generate', 'rewrite', 'summarize', 'extend'] }, instruction: { kind: 'string' } },
+  },
+  'document-apply-draft': {
+    mode: 'enabled',
+    hint: "apply a document's pending AI draft as the real content (previous content is snapshotted as a revision first). Only meaningful when the doc HAS a pending draft. params: documentId",
+    params: { documentId: { kind: 'documentId', required: true } },
+  },
+  'document-discard-draft': {
+    mode: 'enabled',
+    hint: "throw away a document's pending AI draft (content untouched). params: documentId",
+    params: { documentId: { kind: 'documentId', required: true } },
+  },
+  'document-gen-image': {
+    mode: 'enabled',
+    hint: 'add an image to a document — generates one from the prompt (costs money — the user confirms), or with assetId reuses an EXISTING approved asset (no spend). params: documentId, prompt, assetId?',
+    params: { documentId: { kind: 'documentId', required: true }, prompt: { kind: 'string', required: true }, assetId: { kind: 'string' } },
+  },
+  'document-export': {
+    mode: 'enabled',
+    hint: "export a document to a file (md|html|pdf|docx|xlsx); the file lands in the doc's assets list as an 'export' entry. params: documentId, format",
+    params: { documentId: { kind: 'documentId', required: true }, format: { kind: 'enum', required: true, values: ['md', 'html', 'pdf', 'docx', 'xlsx'] } },
+  },
+  'document-restore-revision': {
+    mode: 'enabled',
+    hint: "restore a prior revision as the current content (the current content is snapshotted first, so this is itself undoable; any pending AI draft is cleared). params: documentId, revisionId (from the doc's revision history)",
+    params: { documentId: { kind: 'documentId', required: true }, revisionId: { kind: 'string', required: true } },
+  },
   //? The Assistant may propose archiving/restoring a document — both are reversible and the Conductor
   //? scopes the id to this workspace, so the worst case is a document the user un-archives again.
   'document-archive': {
@@ -180,11 +377,35 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'restore an archived document. params: documentId',
     params: { documentId: { kind: 'string', required: true } },
   },
-  'doc-template-save': LATER, 'doc-template-delete': LATER_D,
+  //? ParamKind has no object-array kind, so `sections` travels ENCODED IN A STRING
+  //? ('Heading::hint||Heading2') — same encode-in-a-string precedent as ai-skill-save's applyPoints.
+  'doc-template-save': {
+    mode: 'enabled',
+    hint: "create or update a document template (a named list of sections a doc is generated against). params: name, sections (encoded as 'Heading::hint||Heading2::hint2' — at least one heading), description?, slug? (existing slug = update/override, incl. overriding a builtin)",
+    params: { name: { kind: 'string', required: true }, sections: { kind: 'string', required: true }, description: { kind: 'string' }, slug: { kind: 'string' } },
+  },
+  'doc-template-delete': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a document template by slug (for a builtin slug this resets it to the builtin default rather than removing it). params: slug',
+    params: { slug: { kind: 'string', required: true } },
+  },
 
   //? CI — the read-only comment inbox.
-  'comments-refresh': LATER, 'comments-mark-read': LATER,
-  'save-stage-config': LATER,
+  'comments-refresh': {
+    mode: 'enabled',
+    hint: 'refresh the read-only comment inbox (fetch new comments on published posts on demand). no params',
+    params: {},
+  },
+  'comments-mark-read': {
+    mode: 'enabled',
+    hint: 'mark one inbox comment read (commentId from the comment list) or ALL read when commentId is omitted. params: commentId?',
+    params: { commentId: { kind: 'string' } },
+  },
+  'save-stage-config': {
+    mode: 'enabled',
+    hint: "edit ONE pipeline stage's config: rename it, set its prompt/system-prompt/custom instructions/definition-of-done, toggle AI on it, or toggle its human approval gate. params: stageId (from the stage list) + only the fields to change (name?, promptTemplate?, systemPrompt?, customInstructions?, definitionOfDone?, aiEnabled?, gateForApproval?)",
+    params: { stageId: { kind: 'stageId', required: true }, name: { kind: 'string' }, promptTemplate: { kind: 'string' }, systemPrompt: { kind: 'string' }, customInstructions: { kind: 'string' }, definitionOfDone: { kind: 'string' }, aiEnabled: { kind: 'boolean' }, gateForApproval: { kind: 'boolean' } },
+  },
   'stage-create': {
     mode: 'enabled',
     hint: 'add a pipeline stage. params: key (short slug), name (display name), kind? (code|test|review|…)',
@@ -200,22 +421,77 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'reorder the pipeline stages. params: order (ALL stage ids in their new order)',
     params: { order: { kind: 'stageKeys', required: true } },
   },
-  'trigger-save': LATER, 'trigger-toggle': LATER, 'trigger-delete': LATER_D,
+  //? Parity wave — trigger-save ships the FLAT param subset only (create/rename/re-cron/approval-flip);
+  //? nested action payloads (notify title/body, emit-signal name, …) still need the settings UI, so a
+  //? chat-created `notify` trigger starts with an empty params object. Documented in the hint.
+  'trigger-save': {
+    mode: 'enabled',
+    hint: 'create or update an automation trigger (fires an action on an event or cron). params: triggerId (from the triggers list, to update), name + on (event: ticket.created|stage.on_enter|stage.on_complete|stage.on_signal|stage.on_approval|ticket.merged|suggestion.accepted|cron) + action (notify|emit-signal|start-stage|invoke-agent-role|invoke-workspace-ai|run-command|webhook) — all three required when creating, cron (expression, required when on=cron), requiresApproval?. Action DETAILS (message text, stage key, …) are configured afterwards in the automation panel',
+    params: {
+      triggerId: { kind: 'triggerId' },
+      name: { kind: 'string' },
+      on: { kind: 'enum', values: ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.merged', 'suggestion.accepted', 'cron'] },
+      action: { kind: 'enum', values: ['notify', 'emit-signal', 'start-stage', 'invoke-agent-role', 'invoke-workspace-ai', 'run-command', 'webhook'] },
+      cron: { kind: 'string' },
+      requiresApproval: { kind: 'boolean' },
+    },
+  },
+  'trigger-toggle': {
+    mode: 'enabled',
+    hint: 'enable or disable an automation trigger. params: triggerId (a trigger id from the list below), enabled (true/false)',
+    params: { triggerId: { kind: 'triggerId', required: true }, enabled: { kind: 'boolean', required: true } },
+  },
+  'trigger-delete': {
+    mode: 'enabled', destructive: true,
+    hint: 'permanently delete an automation trigger. params: triggerId (a trigger id from the list below)',
+    params: { triggerId: { kind: 'triggerId', required: true } },
+  },
   'trigger-run': {
     mode: 'enabled',
     hint: 'run an automation trigger NOW by id (fire its action on demand). params: triggerId (a trigger id from the list below)',
     params: { triggerId: { kind: 'triggerId', required: true } },
   },
-  'finding-to-ticket': LATER, 'finding-dismiss': LATER,
-  'apply-design-tokens': LATER,
-  'ticket-link-artifact': LATER, 'ticket-unlink-artifact': LATER,
+  'finding-to-ticket': {
+    mode: 'enabled',
+    hint: 'turn an Interviewer finding into a board ticket (human-approved — the Interviewer never creates tickets itself). params: findingId (from the findings list)',
+    params: { findingId: { kind: 'findingId', required: true } },
+  },
+  'finding-dismiss': {
+    mode: 'enabled',
+    hint: 'dismiss an Interviewer finding (it leaves the open list). params: findingId (from the findings list)',
+    params: { findingId: { kind: 'findingId', required: true } },
+  },
+  'apply-design-tokens': {
+    mode: 'enabled',
+    hint: "apply the Designer's approved design tokens (colors/typography) to the current project's codebase. no params (runs against the active project)",
+    params: {},
+  },
+  'ticket-link-artifact': {
+    mode: 'enabled',
+    hint: 'link a design/Studio/UI-review artifact to a ticket so it is injected at stage-spawn. params: ticketKey, artifactId, artifactKind (design|studio|ui-review), label?',
+    params: { ticketKey: { kind: 'ticketKey', required: true }, artifactId: { kind: 'string', required: true }, artifactKind: { kind: 'enum', required: true, values: ['design', 'studio', 'ui-review'] }, label: { kind: 'string' } },
+  },
+  'ticket-unlink-artifact': {
+    mode: 'enabled',
+    hint: 'remove an existing artifact link from a ticket. params: linkId (an existing TicketArtifactLink id, not the artifactId)',
+    params: { linkId: { kind: 'string', required: true } },
+  },
   // ---- projects / services / greenfield
   'project-create': {
     mode: 'enabled',
     hint: 'add an (empty) project to the workspace. params: name',
     params: { name: { kind: 'string', required: true } },
   },
-  'service-create': LATER, 'service-delete': LATER_D,
+  'service-create': {
+    mode: 'enabled',
+    hint: 'add a monorepo service/deploy-unit to the ACTIVE project (name + optional sub-path, build command, deploy unit). NOT for third-party stacks — that is service-provision. params: name, path?, buildCmd?, deployUnit?',
+    params: { name: { kind: 'string', required: true }, path: { kind: 'string' }, buildCmd: { kind: 'string' }, deployUnit: { kind: 'string' } },
+  },
+  'service-delete': {
+    mode: 'enabled', destructive: true,
+    hint: 'remove a monorepo service/deploy-unit row from the project (does not touch code; its per-unit CI/deploy config disappears). params: serviceId — an existing project-service id (NOT a service-stack name)',
+    params: { serviceId: { kind: 'projectServiceId', required: true } },
+  },
   'project-from-template': {
     mode: 'enabled',
     hint: 'create a NEW runnable project from a stack starter template. params: name, template (e.g. node-api|react-vite|python-fastapi|go-api)',
@@ -281,13 +557,22 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'db-migrate-apply': LATER_D,
   'db-introspect': { mode: 'enabled', hint: 'introspect the connected user-app database (tables/columns). params: connectionId?', params: { connectionId: { kind: 'string' } } },
   // ---- content settings / brand / styles
-  'edit-media-budget': LATER_D,
+  //? Unit trap: capCents is CENTS (€25 = 2500) while edit-budget's cap is the plain Budgets-UI number.
+  'edit-media-budget': {
+    mode: 'enabled', destructive: true,
+    hint: 'edit the MEDIA-generation €-budget (paid image/video/audio providers): capCents (the cap in CENTS — €25 = 2500), alertPct? (0-100 warn threshold), enabled? (false disables the guard entirely). Only pass the fields to change. Distinct from edit-budget (the AI/token budget).',
+    params: { capCents: { kind: 'number' }, alertPct: { kind: 'number' }, enabled: { kind: 'boolean' } },
+  },
   'save-style': {
     mode: 'enabled',
     hint: 'save a reusable generation STYLE (a named prompt preset the AI reuses). params: feature (image-gen|video-gen|script|…), key (short slug), systemPrompt (the style prompt), label? (display name)',
     params: { feature: { kind: 'string', required: true }, key: { kind: 'string', required: true }, systemPrompt: { kind: 'string', required: true }, label: { kind: 'string' } },
   },
-  'delete-style': LATER_D,
+  'delete-style': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a saved generation STYLE preset. params: feature + key exactly as shown in the styles list (styles are keyed by feature+key, not an id; builtins cannot be deleted)',
+    params: { feature: { kind: 'string', required: true }, key: { kind: 'styleKey', required: true } },
+  },
   'save-media-provider': EXCLUDED, // provider API keys
   'save-platform-credentials': EXCLUDED, // A7 — platform app credentials (secrets never pass through chat)
   'content-edit-brand': {
@@ -300,7 +585,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: "set the workspace's brand/product CONTEXT that every creative generation folds in ('set the brand voice/product to X'). params: productContext (the brand + product description)",
     params: { productContext: { kind: 'string', required: true } },
   },
-  // ---- content pipeline (per-asset PAID gen ops stay `later` until cost-confirms land — B4)
+  // ---- content pipeline
+  //? content-create stays later: NO manual UI ever fires it (the UI + chat create path is
+  //? create-content → content-from-brief, special-cased in the provider) — no dispatch precedent.
   'content-create': LATER,
   'content-advance': {
     mode: 'enabled',
@@ -317,17 +604,35 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'content-gen-voice': { mode: 'enabled', hint: "generate the VOICEOVER for a content piece (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
   'content-gen-images': { mode: 'enabled', hint: "generate the IMAGES/visuals for a content piece (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
   'content-assemble': { mode: 'enabled', hint: "assemble a content piece's rendered video from its scenes+audio (costs money). params: pieceId", params: { pieceId: { kind: 'pieceId', required: true } } },
-  'content-gen-reference-image': LATER,
+  'content-gen-reference-image': {
+    mode: 'enabled',
+    hint: "generate an image GUIDED BY a reference image url ('make one like this picture') — costs money, the user confirms. params: pieceId, referenceUrl (the reference image url), styleKey?, extraInstructions?",
+    params: { pieceId: { kind: 'pieceId', required: true }, referenceUrl: { kind: 'string', required: true }, styleKey: { kind: 'string' }, extraInstructions: { kind: 'string' } },
+  },
   'content-gen-shortform': { mode: 'enabled', hint: "generate a hook-driven SHORT-FORM vertical clip (TikTok/Shorts) for a piece (costs money). params: pieceId, prompt (what the clip is about)", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string', required: true } } },
-  'content-analyze-reference-video': LATER,
+  'content-analyze-reference-video': {
+    mode: 'enabled',
+    hint: "analyze a reference video url and seed a script blueprint that retells YOUR story in its style ('script it like this video, but about X'). params: pieceId, referenceVideoUrl (http/https), newStory (what the new video should be about)",
+    params: { pieceId: { kind: 'pieceId', required: true }, referenceVideoUrl: { kind: 'string', required: true }, newStory: { kind: 'string', required: true } },
+  },
   'content-gen-avatar': { mode: 'enabled', hint: "generate a talking-AVATAR clip for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
   'content-gen-music': { mode: 'enabled', hint: "generate background MUSIC for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
   'content-gen-sfx': { mode: 'enabled', hint: "generate a SOUND EFFECT for a piece (costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
   'content-gen-3d': { mode: 'enabled', hint: "generate a 3D model for a piece (image→3D chain; costs money). params: pieceId, prompt?", params: { pieceId: { kind: 'pieceId', required: true }, prompt: { kind: 'string' } } },
-  'content-request-publish': LATER,
+  //? F5-rationale: posting is public + hard to undo, so destructive even though the old LATER was plain.
+  'content-request-publish': {
+    mode: 'enabled', destructive: true,
+    hint: 'publish a finished render/asset of a piece to a connected platform (posts PUBLICLY on accept) — params: pieceId, assetId (a ready render), platform (a CONNECTED platform), caption?, hashtags? (comma-separated), privacy? (public|unlisted|private), scheduledAt? (ISO), syntheticMedia? (AI-disclosure), accountId?',
+    params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, platform: { kind: 'string', required: true }, caption: { kind: 'string' }, hashtags: { kind: 'string' }, privacy: { kind: 'enum', values: ['public', 'unlisted', 'private'] }, scheduledAt: { kind: 'string' }, syntheticMedia: { kind: 'boolean' }, accountId: { kind: 'string' } },
+  },
   'content-from-brief': EXCLUDED, // legacy `create-content`
   'studio-send-to-content': EXCLUDED, // gap-fix — direct UI button on the Studio artifact card
-  'content-import-asset': LATER, 'content-regenerate': {
+  'content-import-asset': {
+    mode: 'enabled',
+    hint: 'attach an ALREADY-UPLOADED media url (library asset or user upload) to a piece as an asset — params: pieceId, url (an existing workspace media url), kind (image|video)',
+    params: { pieceId: { kind: 'pieceId', required: true }, url: { kind: 'string', required: true }, kind: { kind: 'enum', required: true, values: ['image', 'video'] } },
+  },
+  'content-regenerate': {
     mode: 'enabled',
     hint: 'regenerate a media asset (optionally tweaked, costs money — the user confirms). params: assetId, pieceId?, tweak?, count? (1-4)',
     params: { assetId: { kind: 'string', required: true }, pieceId: { kind: 'pieceId' }, tweak: { kind: 'string' }, count: { kind: 'number' } },
@@ -413,15 +718,48 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'instruct-edit an existing IMAGE asset ("change the sky to sunset") — whole-image edit, no mask (costs money, the user confirms). params: pieceId, assetId (an image/render asset), prompt (the instruction)',
     params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, prompt: { kind: 'string', required: true } },
   },
-  'content-inpaint': LATER, 'content-reorder-beats': LATER, 'content-save-scenes': LATER, 'content-transcode': LATER,
-  'content-decompose-video': LATER, 'content-refine-range': LATER,
+  //? Chat cannot paint a mask — content-inpaint is only proposable when the user already has a mask url
+  //? (whole-image edits are the enabled content-edit-image).
+  'content-inpaint': {
+    mode: 'enabled',
+    hint: 'region-edit (inpaint) an image asset with an ALREADY-UPLOADED painted mask (costs money) — params: pieceId, referenceUrl (the source image url), maskUrl (a painted mask image url), prompt, parentAssetId (the source assetId). Without an existing mask url, point the user to the image editor instead',
+    params: { pieceId: { kind: 'pieceId', required: true }, referenceUrl: { kind: 'string', required: true }, maskUrl: { kind: 'string', required: true }, prompt: { kind: 'string', required: true }, parentAssetId: { kind: 'string', required: true } },
+  },
+  //? content-reorder-beats: route+Conductor exist but NO UI ever dispatches it (the timeline saves via
+  //? content-save-scenes) — no dispatch precedent to copy, stays later. content-save-scenes: its nested
+  //? scenes[] is not expressible in ParamKind AND the model cannot know the current scene ids (absent ids
+  //? are DELETED) — stays later by deliberate choice, not oversight.
+  'content-reorder-beats': LATER, 'content-save-scenes': LATER,
+  'content-transcode': {
+    mode: 'enabled',
+    hint: 'transcode a video/render asset into an extra delivery format (webm or gif) — free ffmpeg job, produces a new variant. params: pieceId, assetId, format',
+    params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, format: { kind: 'enum', required: true, values: ['webm', 'gif'] } },
+  },
+  'content-decompose-video': {
+    mode: 'enabled',
+    hint: "(re)generate the timeline's scene list from the piece's script (replaces the current scene plan). params: pieceId, sceneDurationMs? (per-scene target length)",
+    params: { pieceId: { kind: 'pieceId', required: true }, sceneDurationMs: { kind: 'number' } },
+  },
+  'content-refine-range': {
+    mode: 'enabled',
+    hint: "AI-refine ONE time-range of a piece's video with an instruction ('make 0:05-0:12 slower/moodier') — costs money, the user confirms. params: pieceId, startMs, endMs, instruction",
+    params: { pieceId: { kind: 'pieceId', required: true }, startMs: { kind: 'number', required: true }, endMs: { kind: 'number', required: true }, instruction: { kind: 'string', required: true } },
+  },
   'content-run-pipeline': {
     mode: 'enabled',
     hint: 'run the FULL content pipeline for a piece (script→voice→visuals→assemble; costs money — the user confirms). params: pieceId, styleKey?, durationMs?',
     params: { pieceId: { kind: 'pieceId', required: true }, styleKey: { kind: 'string' }, durationMs: { kind: 'number' } },
   },
-  'content-save-audio-mix': LATER,
-  'content-trim-audio': LATER,
+  'content-save-audio-mix': {
+    mode: 'enabled',
+    hint: "save a piece's audio mix: voiceover gain + (ducked) music gain ('make the music quieter'). params: pieceId, voiceVolume, musicVolume (linear gains, ~0-1)",
+    params: { pieceId: { kind: 'pieceId', required: true }, voiceVolume: { kind: 'number', required: true }, musicVolume: { kind: 'number', required: true } },
+  },
+  'content-trim-audio': {
+    mode: 'enabled',
+    hint: "trim an AUDIO asset to a start/end range with an optional linear gain ('cut the voiceover to 2-14s'). params: pieceId, assetId (an audio asset), startMs, endMs, gain?",
+    params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, startMs: { kind: 'number', required: true }, endMs: { kind: 'number', required: true }, gain: { kind: 'number' } },
+  },
   'channel-create': {
     mode: 'enabled',
     hint: 'create a publishing CHANNEL (a platform + brand identity a content piece binds to). params: name, platform? (youtube|tiktok|none), handle?',
@@ -443,13 +781,21 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'save a brand/style REFERENCE (an inspiration example the AI should remember, e.g. "remember this ad"). params: title, description, kind? (ad|post|logo|other)',
     params: { title: { kind: 'string', required: true }, description: { kind: 'string', required: true }, kind: { kind: 'string' } },
   },
-  'reference-delete': LATER_D,
+  'reference-delete': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a saved brand/style reference from the inspiration library. params: referenceId (from the references list)',
+    params: { referenceId: { kind: 'referenceId', required: true } },
+  },
   'content-unarchive': {
     mode: 'enabled',
     hint: 'restore an archived content piece. params: pieceId',
     params: { pieceId: { kind: 'pieceId', required: true } },
   },
-  'content-unpublish': LATER_D,
+  'content-unpublish': {
+    mode: 'enabled', destructive: true,
+    hint: 'retract a PUBLISHED post from a platform (best-effort platform delete). params: pieceId, assetId (the published asset), platform (where it was published)',
+    params: { pieceId: { kind: 'pieceId', required: true }, assetId: { kind: 'string', required: true }, platform: { kind: 'string', required: true } },
+  },
   //? #86 — the Assistant may PROPOSE a new/updated custom AI task (a named prompt-template). Low-risk
   //? (creation the user confirms); `trigger-save` stays LATER (its nested on/action/params shape needs a
   //? richer proposal contract). delete stays a destructive LATER_D.
@@ -458,13 +804,28 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'save (create/update) a custom AI task — a named, reusable prompt-template the user can run later. params: name (short label), promptTemplate (the prompt, may contain {{vars}})',
     params: { name: { kind: 'string', required: true }, promptTemplate: { kind: 'string', required: true } },
   },
-  'delete-custom-task': LATER_D,
+  'delete-custom-task': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a saved custom AI task (a user-authored prompt-template). params: taskId (a task id from the list below)',
+    params: { taskId: { kind: 'taskId', required: true } },
+  },
   'run-custom-task': {
     mode: 'enabled',
     hint: 'run a saved custom AI task by id (a named prompt-template the user defined). params: taskId (a task id from the list below)',
     params: { taskId: { kind: 'taskId', required: true } },
   },
-  'save-output-template': LATER, 'delete-output-template': LATER_D,
+  'save-output-template': {
+    mode: 'enabled',
+    hint: 'create or update a reusable OUTPUT template (a named render format + watermark position). params: name (required when creating), format?, watermarkPosition?, templateId (from the templates list, to update an existing one)',
+    params: { name: { kind: 'string' }, format: { kind: 'string' }, watermarkPosition: { kind: 'string' }, templateId: { kind: 'outputTemplateId' } },
+  },
+  'delete-output-template': {
+    mode: 'enabled', destructive: true,
+    hint: 'delete a saved output template. params: templateId (from the templates list)',
+    params: { templateId: { kind: 'outputTemplateId', required: true } },
+  },
+  //? copy-workspace-assets stays LATER: sourceWorkspaceId is an OUT-OF-workspace reference — loadCtx has
+  //? no user identity, so the chat ctx cannot list the user's other workspaces to validate against.
   'copy-workspace-assets': LATER,
   'copilot-propose': EXCLUDED, // meta (the propose channel itself)
   'run-agent-role': EXCLUDED, // #167 — direct UI button (interviewer "generate now"), not a chat proposal
@@ -507,6 +868,12 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'scan-docs': 'development', 'scan-index': 'development', 'gitlab-resync': 'development', 'save-git-config': 'development',
   'service-provision': 'development', 'service-teardown': 'development',
   'preview-up': 'development', 'preview-down': 'development',
+  //? Parity wave — board/sprint/MR/service ops follow their enabled siblings into `development`.
+  archive: 'development', 'bulk-status': 'development', 'bulk-sprint': 'development', 'bulk-archive': 'development',
+  'sprint-create': 'development', 'sprint-edit': 'development',
+  'ticket-link-artifact': 'development', 'ticket-unlink-artifact': 'development',
+  'mr-create': 'development', 'mr-comment': 'development', 'mr-approve': 'development', 'mr-merge': 'development', 'mr-resolve': 'development',
+  'service-create': 'development', 'service-delete': 'development',
   //? content — pieces, media generation, channels, publishing.
   'content-advance': 'content', 'content-archive': 'content', 'content-unarchive': 'content',
   'content-gen-script': 'content', 'content-gen-voice': 'content', 'content-gen-images': 'content', 'content-assemble': 'content',
@@ -517,8 +884,18 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'capture-run': 'content', 'studio-publish-site': 'content', 'studio-unpublish-site': 'content',
   'content-reply-comment': 'content', 'asset-star': 'content',
   'media-trash-restore': 'content', 'media-trash-purge': 'content',
+  //? Parity wave — the newly-enabled content-lane ops follow their siblings into `content`.
+  'content-request-publish': 'content', 'content-unpublish': 'content', 'content-import-asset': 'content',
+  'content-inpaint': 'content', 'content-transcode': 'content', 'content-decompose-video': 'content',
+  'content-refine-range': 'content', 'content-save-audio-mix': 'content', 'content-trim-audio': 'content',
+  'content-gen-reference-image': 'content', 'content-analyze-reference-video': 'content',
+  'delete-style': 'content', 'reference-delete': 'content',
   //? Documents ops belong to the documents module.
   'document-archive': 'documents', 'document-unarchive': 'documents', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
+  'document-create': 'documents', 'document-edit': 'documents', 'document-delete': 'documents',
+  'document-ai': 'documents', 'document-apply-draft': 'documents', 'document-discard-draft': 'documents',
+  'document-gen-image': 'documents', 'document-export': 'documents', 'document-restore-revision': 'documents',
+  'doc-template-save': 'documents', 'doc-template-delete': 'documents',
 };
 
 //? Each module's DEFINING section. `isModuleEnabled` is deliberately loose (any section counts) because
@@ -555,6 +932,13 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'boolean') return typeof value === 'boolean' ? value : undefined;
   if (kind === 'enum') return typeof value === 'string' && (spec.values ?? []).includes(value) ? value : undefined;
   if (kind === 'ticketKey') return typeof value === 'string' && ctx.tickets.some((t) => t.key === value) ? value : undefined;
+  //? Parity wave — an ARRAY of existing ticket keys (bulk-status/bulk-sprint/bulk-archive); one dangling
+  //? key rejects the whole array (same all-or-nothing rule as stageKeys).
+  if (kind === 'ticketKeys') {
+    if (!Array.isArray(value)) return undefined;
+    const keys = value.filter((v): v is string => typeof v === 'string');
+    return keys.length > 0 && keys.every((k) => ctx.tickets.some((t) => t.key === k)) ? keys : undefined;
+  }
   if (kind === 'stageId') return typeof value === 'string' && ctx.stages.some((s) => s.id === value) ? value : undefined;
   if (kind === 'stageKeys') {
     if (!Array.isArray(value)) return undefined;
@@ -569,6 +953,18 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'mrId') return typeof value === 'string' && ctx.mrs.some((m) => m.id === value) ? value : undefined;
   if (kind === 'channelId') return typeof value === 'string' && ctx.channels.some((c) => c.id === value) ? value : undefined;
   if (kind === 'skillId') return typeof value === 'string' && ctx.skills.some((sk) => sk.id === value) ? value : undefined;
+  //? Parity wave — the remaining id-ref kinds, each against its own ctx collection.
+  if (kind === 'sprintId') return typeof value === 'string' && ctx.sprints.some((s) => s.id === value) ? value : undefined;
+  if (kind === 'memberId') return typeof value === 'string' && ctx.members.some((m) => m.id === value) ? value : undefined;
+  if (kind === 'roleKey') return typeof value === 'string' && ctx.roles.some((r) => r.key === value) ? value : undefined;
+  if (kind === 'inviteId') return typeof value === 'string' && ctx.invites.some((i) => i.id === value) ? value : undefined;
+  if (kind === 'documentId') return typeof value === 'string' && ctx.documents.some((d) => d.id === value) ? value : undefined;
+  if (kind === 'findingId') return typeof value === 'string' && ctx.findings.some((f) => f.id === value) ? value : undefined;
+  if (kind === 'referenceId') return typeof value === 'string' && ctx.references.some((r) => r.id === value) ? value : undefined;
+  if (kind === 'outputTemplateId') return typeof value === 'string' && ctx.outputTemplates.some((t) => t.id === value) ? value : undefined;
+  if (kind === 'styleKey') return typeof value === 'string' && ctx.styles.some((s) => s.key === value) ? value : undefined;
+  if (kind === 'sourceId') return typeof value === 'string' && ctx.infoSources.some((s) => s.id === value) ? value : undefined;
+  if (kind === 'projectServiceId') return typeof value === 'string' && ctx.projectServices.some((s) => s.id === value) ? value : undefined;
   //? kind === 'presetKey' (the only remaining ParamKind).
   return typeof value === 'string' && listServicePresets().some((p) => p.key === value) ? value : undefined;
 }
