@@ -433,7 +433,9 @@ function Banner({ tone, icon, title, action, children }: { tone: 'warning' | 'co
 //? revision turn). Routes through the SAME `answerInput` op with the advisory's index.
 function AdvisoryList({ ticketKey, advisories }: { ticketKey: string; advisories: { index: number; q: string; assumption: string }[] }) {
   const translate = useTranslator();
-  const { answerInput } = useWorkspaces();
+  //? F45 — pending is tracked PER ADVISORY: confirming one must not lock the others, since they are
+  //? independent questions that happen to share a card.
+  const { answerInput, isAnswerPending } = useWorkspaces();
   const [correcting, setCorrecting] = useState<number | null>(null);
   const [text, setText] = useState('');
   return (
@@ -446,12 +448,12 @@ function AdvisoryList({ ticketKey, advisories }: { ticketKey: string; advisories
           {correcting === a.index ? (
             <div className="flex items-center gap-2">
               <input value={text} onChange={(e) => { setText(e.target.value); }} placeholder={translate({ key: 'workspaces.ticket.advisoryCorrectPh' })} className="flex-1 h-8 px-2 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
-              <WsButton icon="check" disabled={text.trim().length === 0} onClick={() => { answerInput(ticketKey, text.trim(), a.index); setCorrecting(null); setText(''); }}>{translate({ key: 'workspaces.ticket.advisorySubmit' })}</WsButton>
+              <WsButton icon="check" disabled={text.trim().length === 0 || isAnswerPending(ticketKey, a.index)} onClick={() => { answerInput(ticketKey, text.trim(), a.index); setCorrecting(null); setText(''); }}>{translate({ key: 'workspaces.ticket.advisorySubmit' })}</WsButton>
               <WsButton variant="ghost" onClick={() => { setCorrecting(null); setText(''); }}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <WsButton variant="secondary" icon="check" onClick={() => { answerInput(ticketKey, a.assumption || 'ok', a.index); }}>{translate({ key: 'workspaces.ticket.advisoryConfirm' })}</WsButton>
+              <WsButton variant="secondary" icon={isAnswerPending(ticketKey, a.index) ? 'spinner' : 'check'} disabled={isAnswerPending(ticketKey, a.index)} onClick={() => { answerInput(ticketKey, a.assumption || 'ok', a.index); }}>{translate({ key: isAnswerPending(ticketKey, a.index) ? 'workspaces.ticket.sending' : 'workspaces.ticket.advisoryConfirm' })}</WsButton>
               <WsButton variant="ghost" icon="pen" onClick={() => { setCorrecting(a.index); setText(''); }}>{translate({ key: 'workspaces.ticket.advisoryCorrect' })}</WsButton>
             </div>
           )}
@@ -465,14 +467,19 @@ function AdvisoryList({ ticketKey, advisories }: { ticketKey: string; advisories
 //? decoded here: an `approve` question renders Approve/Reject (+ an optional note); a `choice` question
 //? renders one tap-target per option; a `free` question keeps the text input. Every path routes through the
 //? SAME `answerInput` op (the Conductor records it + re-fires the parked turn) — no new verb, no schema
-//? change. Optimistic: the card disappears when the ticket delta (needsInput cleared) broadcasts back.
+//? change. The card disappears when the ticket delta (needsInput cleared) broadcasts back.
+//?
+//? F45 — that round trip is NOT instant (socket → RBAC → conductor queue → agent resume → broadcast), and
+//? until it lands the buttons used to stay live: the click looked like it did nothing, and a second tap
+//? queued a second answer. `pending` locks the whole card for exactly that gap.
 function NeedsInputBanner({ question, ticketKey }: { question: string; ticketKey: string }) {
   const translate = useTranslator();
-  const { answerInput } = useWorkspaces();
+  const { answerInput, isAnswerPending } = useWorkspaces();
+  const pending = isAnswerPending(ticketKey);
   const [reply, setReply] = useState('');
   const [note, setNote] = useState('');
   const sq = parseStructuredQuestion(question);
-  const answer = (a: string) => { const v = a.trim(); if (v.length === 0) return; answerInput(ticketKey, v); setReply(''); setNote(''); };
+  const answer = (a: string) => { const v = a.trim(); if (v.length === 0 || pending) return; answerInput(ticketKey, v); setReply(''); setNote(''); };
   const withNote = (decision: string) => { answer(note.trim().length > 0 ? `${decision}: ${note.trim()}` : decision); };
   return (
     <Banner tone="warning" icon="circle-question" title={translate({ key: 'workspaces.ticket.agentNeedsInput' })}>
@@ -485,15 +492,15 @@ function NeedsInputBanner({ question, ticketKey }: { question: string; ticketKey
             className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
           />
           <div className="flex items-center gap-2">
-            <WsButton icon="check" onClick={() => { withNote(translate({ key: 'workspaces.ticket.approved' })); }}>{translate({ key: 'workspaces.ticket.approve' })}</WsButton>
-            <WsButton variant="ghost" icon="xmark" onClick={() => { withNote(translate({ key: 'workspaces.ticket.rejected' })); }}>{translate({ key: 'workspaces.ticket.reject' })}</WsButton>
+            <WsButton icon={pending ? 'spinner' : 'check'} disabled={pending} onClick={() => { withNote(translate({ key: 'workspaces.ticket.approved' })); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.approve' })}</WsButton>
+            <WsButton variant="ghost" icon="xmark" disabled={pending} onClick={() => { withNote(translate({ key: 'workspaces.ticket.rejected' })); }}>{translate({ key: 'workspaces.ticket.reject' })}</WsButton>
           </div>
         </div>
       )}
       {sq.kind === 'choice' && (
         <div className="flex flex-wrap gap-2 mt-2">
           {sq.options.map((opt) => (
-            <WsButton key={opt} variant="ghost" onClick={() => { answer(opt); }}>{opt}</WsButton>
+            <WsButton key={opt} variant="ghost" disabled={pending} onClick={() => { answer(opt); }}>{opt}</WsButton>
           ))}
         </div>
       )}
@@ -501,10 +508,10 @@ function NeedsInputBanner({ question, ticketKey }: { question: string; ticketKey
         <div className="flex items-center gap-2 mt-2">
           <input
             value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') answer(reply); }}
-            placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })}
-            className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
+            placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })} disabled={pending}
+            className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors disabled:opacity-50"
           />
-          <WsButton onClick={() => { answer(reply); }}>{translate({ key: 'workspaces.ticket.send' })}</WsButton>
+          <WsButton icon={pending ? 'spinner' : undefined} disabled={pending} onClick={() => { answer(reply); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.send' })}</WsButton>
         </div>
       )}
     </Banner>

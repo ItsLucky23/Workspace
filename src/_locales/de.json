@@ -620,7 +620,8 @@
       "warnNoInstructions": "{{name}} hat keine eigenen Anweisungen.",
       "warnWriteAccess": "{{name}} hat Schreibzugriff auf einen Service — normalerweise braucht das nur die Implementierung.",
       "warnNetworkOff": "{{name}} hat das Netzwerk aus, nutzt aber Skills, die evtl. Egress brauchen.",
-      "warnRagMismatch": "Refined lädt RAG, Plan aber nicht — die Entscheidungs-Stage braucht meist mehr Kontext, nicht weniger."
+      "warnRagMismatch": "Refined lädt RAG, Plan aber nicht — die Entscheidungs-Stage braucht meist mehr Kontext, nicht weniger.",
+      "hookRequired": "immer aktiv"
     },
     "workspaceSettings": {
       "tabMembers": "Mitglieder",
@@ -1650,7 +1651,8 @@
       "noLinks": "Noch keine Links",
       "noLinksSub": "Mit anderen Tickets verknüpfen, blockieren oder deduplizieren.",
       "aiSuggested": "AI-vorgeschlagen",
-      "noStageHistory": "Noch kein Stage-Verlauf"
+      "noStageHistory": "Noch kein Stage-Verlauf",
+      "sending": "Wird gesendet…"
     },
     "terminals": {
       "restart": "Neustart",
@@ -2497,6 +2499,24 @@
       "publish": "Veröffentlichen",
       "build": "Automatisieren",
       "insights": "Einblicke"
+    },
+    "storage": {
+      "title": "Speicher & Papierkorb",
+      "desc": "Was dieser Workspace auf der Festplatte belegt und was zum Löschen bereitliegt.",
+      "used": "Genutzte Medien",
+      "files": "{count} Dateien",
+      "inTrash": "Im Papierkorb",
+      "trashEmpty": "Der Papierkorb ist leer.",
+      "trashTitle": "Gelöschte Medien",
+      "daysLeft": "noch {days} Tage verfügbar",
+      "restore": "Wiederherstellen",
+      "purge": "Endgültig löschen",
+      "purgeConfirm": "Diese Datei endgültig löschen? Das lässt sich nicht rückgängig machen."
+    },
+    "deployHistory": {
+      "title": "Deploy-Verlauf",
+      "current": "jetzt live",
+      "previous": "vorherige"
     }
   }
 }

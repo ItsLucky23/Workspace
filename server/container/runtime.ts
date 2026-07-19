@@ -334,11 +334,13 @@ export async function teardownWorkspaceContainers(workspaceId: string): Promise<
     if (removed.code !== 0) return false;
   }
   for (const containerId of containerIds) {
-    if ((await docker(['inspect', '-f', '{{.Id}}', containerId])).code === 0) return false;
+    const stillThere = await docker(['inspect', '-f', '{{.Id}}', containerId]);
+    if (stillThere.code === 0) return false;
   }
   for (const volume of volumes) {
     await docker(['volume', 'rm', '-f', volume]);
-    if ((await docker(['volume', 'inspect', volume])).code === 0) return false;
+    const volumeStillThere = await docker(['volume', 'inspect', volume]);
+    if (volumeStillThere.code === 0) return false;
   }
   return true;
 }

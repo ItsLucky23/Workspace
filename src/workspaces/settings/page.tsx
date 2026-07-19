@@ -14,8 +14,9 @@ import TwoFactorSection from 'src/_components/TwoFactorSection';
 import { apiRequest } from 'src/_sockets/apiRequest';
 
 import Icon from '../_components/Icon';
-import { AvatarBubble, Segmented, Toggle, WsButton } from '../_components/primitives';
+import { AvatarBubble, Disclosure, Segmented, Toggle, WsButton } from '../_components/primitives';
 import { isModuleEnabled } from '../_data/modules';
+import type { EnvironmentSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
 import { canInstall, isIosSafari, isStandalone, promptInstall, subscribeInstall } from '../_functions/installPrompt';
@@ -160,6 +161,94 @@ interface ExperimentRow {
 
 //? The features whose prompt is worth A/B-ing (the ones whose output has a measurable outcome).
 const EXPERIMENT_FEATURES = ['script', 'interviewer', 'mr-review', 'workspace-chat'];
+
+//? F27 — the per-environment deploy log. Read-only on purpose: rolling back is already an explicit,
+//? confirmed action elsewhere. What was missing was simply the ANSWER to "which commit is live, and what
+//? was live before it?" — which is also what tells you whether a rollback will help.
+function DeployHistoryFold({ environments }: { environments: EnvironmentSummary[] }) {
+  const translate = useTranslator();
+  const withHistory = environments.filter((env) => (env.deploys ?? []).length > 0);
+  if (withHistory.length === 0) return null;
+
+  return (
+    <Disclosure summary={<span className="text-xs font-semibold text-muted">{translate({ key: 'workspaces.deployHistory.title' })}</span>}>
+      <div className="flex flex-col gap-2 pt-1">
+        {withHistory.map((env) => (
+          <div key={env.id} className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-title uppercase px-1">{env.kind}</span>
+            {(env.deploys ?? []).map((deploy, index) => (
+              <Row key={deploy.id}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${deploy.status === 'live' ? 'bg-correct' : 'bg-wrong'}`} />
+                  {/* The commit is the identity of a deploy — short hash, because nobody reads 40 chars. */}
+                  <span className="text-xs font-mono text-title">{deploy.commit.slice(0, 8)}</span>
+                  <span className="text-xs text-muted truncate">{deploy.branch}</span>
+                  {/* Naming the CURRENT one is what makes the rest of the list mean anything. */}
+                  {index === 0 && <span className="text-[11px] rounded-md bg-primary/10 text-primary px-1.5 py-0.5 shrink-0">{translate({ key: 'workspaces.deployHistory.current' })}</span>}
+                  {index === 1 && <span className="text-[11px] text-muted shrink-0">{translate({ key: 'workspaces.deployHistory.previous' })}</span>}
+                </span>
+                <span className="flex items-center gap-2 shrink-0">
+                  {deploy.error !== undefined && <span className="text-xs text-wrong truncate max-w-40">{deploy.error}</span>}
+                  <span className="text-xs text-muted">{new Date(deploy.at).toLocaleString()}</span>
+                </span>
+              </Row>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Disclosure>
+  );
+}
+
+//? Bytes as MB — the only unit that reads at a glance for media of this size.
+const mb = (bytes: number): string => `${(bytes / 1_048_576).toFixed(1)} MB`;
+
+//? F48/F06 — the media bin + the workspace's disk footprint.
+//?
+//? The countdown is the point: "still here for 12 days" is the difference between a delete a user can
+//? recover from and one they only discover went wrong later. Permanent deletion stays available, but it is
+//? an explicit, confirmed choice — never something that happens quietly in the background.
+function StoragePanel() {
+  const translate = useTranslator();
+  const { content, restoreTrashed, purgeTrashed } = useWorkspaces();
+  const { trash, storage } = content;
+
+  return (
+    <Card title={translate({ key: 'workspaces.storage.title' })} desc={translate({ key: 'workspaces.storage.desc' })}>
+      <Row>
+        <span className="text-sm text-common">{translate({ key: 'workspaces.storage.used' })}</span>
+        <span className="text-sm text-title">{mb(storage.liveBytes)} <span className="text-xs text-muted">({translate({ key: 'workspaces.storage.files', params: [{ key: 'count', value: String(storage.files) }] })})</span></span>
+      </Row>
+      <Row>
+        <span className="text-sm text-common">{translate({ key: 'workspaces.storage.inTrash' })}</span>
+        <span className="text-sm text-title">{mb(storage.trashBytes)}</span>
+      </Row>
+
+      {trash.length === 0
+        ? <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.storage.trashEmpty' })}</div>
+        : (
+          <div className="mt-2 pt-2 border-t border-divider flex flex-col gap-1.5">
+            <div className="text-xs font-semibold text-muted px-1">{translate({ key: 'workspaces.storage.trashTitle' })}</div>
+            {trash.map((item) => (
+              <Row key={item.id}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <Icon name="trash" className="text-muted" />
+                  <span className="text-sm text-title truncate">{item.label}</span>
+                  {/* The countdown a user needs to decide: is this still recoverable, and for how long? */}
+                  <span className="text-xs text-warning shrink-0">{translate({ key: 'workspaces.storage.daysLeft', params: [{ key: 'days', value: String(item.daysLeft) }] })}</span>
+                </span>
+                <span className="flex items-center gap-2 shrink-0">
+                  <button type="button" onClick={() => { restoreTrashed(item.id); }} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.storage.restore' })}</button>
+                  {/* The one path that destroys media on the spot — confirmed, because nothing undoes it. */}
+                  <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.storage.purgeConfirm' }), content: item.label }).then((ok) => { if (ok) purgeTrashed(item.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.storage.purge' })}</button>
+                </span>
+              </Row>
+            ))}
+          </div>
+        )}
+    </Card>
+  );
+}
 
 function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
@@ -525,6 +614,10 @@ export default function AccountSettings() {
                 </Row>
               );
             })}
+            {/* F27 — the deploy history was recorded from day one and never shown, so "what is running, and
+                what did it replace?" could not be answered from the UI. Folded away by default: it matters
+                when something breaks, not on every glance. */}
+            <DeployHistoryFold environments={environments.filter((e) => e.serviceId === undefined)} />
             {/* D1/D3 — demo host: "commit X at a stable URL". Pin a commit (frozen demo) or leave blank + auto-redeploy on main. */}
             {(() => {
               const demo = environments.find((e) => e.kind === 'demo' && e.serviceId === undefined);
@@ -670,6 +763,11 @@ export default function AccountSettings() {
           <PatPanel workspaceId={activeWorkspace.id} />
           {/* G7 — measure a prompt change instead of guessing at it. */}
           <ExperimentsPanel workspaceId={activeWorkspace.id} />
+
+          {/* F48/F06 — the media BIN + what this workspace occupies on disk. Deleting media no longer
+              destroys bytes immediately: it lands here with a visible countdown, so a misclick is
+              recoverable and a deliberate wipe is still one click away. Storage is MEASURED, not capped. */}
+          <StoragePanel />
 
           {/* H4 — download a tenant-scoped JSON export of the workspace (portability/backup; secrets excluded). */}
           <Card title={translate({ key: 'workspaces.dataExport.title' })} desc={translate({ key: 'workspaces.dataExport.desc' })}>

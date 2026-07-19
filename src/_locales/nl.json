@@ -620,7 +620,8 @@
       "warnNoInstructions": "{{name}} heeft geen aangepaste instructies.",
       "warnWriteAccess": "{{name}} heeft schrijftoegang tot een service — meestal heeft alleen Implementatie dat nodig.",
       "warnNetworkOff": "{{name}} heeft netwerk uit maar gebruikt skills die mogelijk egress nodig hebben.",
-      "warnRagMismatch": "Refined laadt RAG maar Plan niet — de beslisstage heeft meestal meer context nodig, niet minder."
+      "warnRagMismatch": "Refined laadt RAG maar Plan niet — de beslisstage heeft meestal meer context nodig, niet minder.",
+      "hookRequired": "altijd aan"
     },
     "workspaceSettings": {
       "tabMembers": "Leden",
@@ -1650,7 +1651,8 @@
       "noLinks": "Nog geen links",
       "noLinksSub": "Relateer, blokkeer of ontdubbel tegen andere tickets.",
       "aiSuggested": "AI-voorgesteld",
-      "noStageHistory": "Nog geen stage-historie"
+      "noStageHistory": "Nog geen stage-historie",
+      "sending": "Versturen…"
     },
     "terminals": {
       "restart": "Herstarten",
@@ -2497,6 +2499,24 @@
       "publish": "Publiceren",
       "build": "Automatiseren",
       "insights": "Inzichten"
+    },
+    "storage": {
+      "title": "Opslag & prullenbak",
+      "desc": "Wat deze workspace op schijf inneemt, en wat er klaarstaat om verwijderd te worden.",
+      "used": "Media in gebruik",
+      "files": "{count} bestanden",
+      "inTrash": "In de prullenbak",
+      "trashEmpty": "De prullenbak is leeg.",
+      "trashTitle": "Verwijderde media",
+      "daysLeft": "nog {days} dagen beschikbaar",
+      "restore": "Terugzetten",
+      "purge": "Definitief verwijderen",
+      "purgeConfirm": "Dit bestand definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
+    },
+    "deployHistory": {
+      "title": "Deploy-historie",
+      "current": "nu live",
+      "previous": "vorige"
     }
   }
 }

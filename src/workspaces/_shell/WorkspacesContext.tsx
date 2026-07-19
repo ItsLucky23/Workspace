@@ -83,6 +83,9 @@ export interface WorkspacesCtx {
   replyToComment: (commentId: string, replyText: string) => void;
   //? G4 — mark an asset as part of the reusable library (or take it out).
   setAssetStarred: (assetId: string, starred: boolean) => void;
+  //? F48 — the media bin: take a file back, or destroy it now instead of waiting out its grace window.
+  restoreTrashed: (trashId: string) => void;
+  purgeTrashed: (trashId: string) => void;
   //? G2 — duplicate this workspace's configuration into a new one.
   cloneWorkspace: (name: string) => void;
   //? G5 — `presetKey` = the pipeline tier the new workspace starts with.
@@ -199,6 +202,9 @@ export interface WorkspacesCtx {
   //? Answer the AI's open question on a ticket (#17): records the answer + re-fires the parked
   //? turn with it. Clears the needs-input banner. `ticketId` is the DEV-#### key.
   answerInput: (ticketId: string, answer: string, advisoryIndex?: number) => void;
+  //? F45 — is this specific question's answer still on its way to the Conductor? Drives the disabled +
+  //? spinner state on the approve/reject buttons, which previously stayed live for the whole round trip.
+  isAnswerPending: (ticketId: string, advisoryIndex?: number) => boolean;
   //? Realtime presence (#17): announce/retract that this user is viewing a ticket (open + heartbeat
   //? + close), and read the OTHER users currently viewing a ticket (self excluded).
   setTicketPresence: (ticketKey: string, viewing: boolean) => void;

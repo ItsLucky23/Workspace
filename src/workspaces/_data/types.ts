@@ -161,6 +161,10 @@ export interface EnvironmentSummary {
   url?: string;
   lastError?: string;
   lastDeployedAt?: string;
+  //? F27 — the last few deploys of THIS environment. Recorded since day one and never shown, which made
+  //? "what is actually running, and what did it replace?" an unanswerable question from the UI. Newest
+  //? first, so `deploys[0]` is what is live and `deploys[1]` is what a rollback goes back to.
+  deploys?: { id: string; commit: string; branch: string; status: string; error?: string; at: string }[];
 }
 
 //? A downloadable build export (ADR 0038): a docker-save tarball behind a signed TTL'd link.
@@ -396,6 +400,11 @@ export interface ContentSnapshot {
   //? ('comments.youtubeReconnect' → the one-time re-consent hint).
   comments: SocialCommentSummary[];
   unreadComments: number;
+  //? F48 — what is in the media bin and how long each item still has. The UI shows the countdown so a
+  //? user can decide to restore it or destroy it now, rather than discovering a silent deletion later.
+  trash: { id: string; url: string; label: string; kind: string; reason: string; daysLeft: number; bytes: number }[];
+  //? F06 — storage MEASUREMENT only (the owner explicitly chose insight over a limit).
+  storage: { liveBytes: number; trashBytes: number; files: number };
 }
 
 //? CI (DOCUMENTS_AND_SKILLS) — one cached comment on a published post (read-only; no reply surface).

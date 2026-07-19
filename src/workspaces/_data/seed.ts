@@ -436,18 +436,21 @@ export const INITIAL_CHAT: ChatMessage[] = [
 //? reference DOCS. Everything is stack-agnostic (works on Node / .NET / Go / …),
 //? grounded in handoff/DATAMODEL.md §2 + CLAUDE_SETTINGS_MAP.md.
 
-//? Lifecycle hooks — grouped, with their matcher + what they feed.
-export const HOOK_CATALOG: { key: string; label: string; category: string; matcher: string; feeds: string; desc: string }[] = [
-  { key: 'SessionStart', label: 'SessionStart', category: 'Lifecycle', matcher: 'stage container boots', feeds: 'AgentSession + carry-over', desc: 'Registers the session and injects the previous stage’s structured output as the start prompt.' },
-  { key: 'UserPromptSubmit', label: 'UserPromptSubmit', category: 'Lifecycle', matcher: 'manual user input', feeds: 'TicketEvent (user-input)', desc: 'Logs a voice note / reply before it runs — full audit trail.' },
-  { key: 'WorktreeCreate', label: 'WorktreeCreate', category: 'Lifecycle', matcher: 'git worktree add', feeds: 'orchestrator state', desc: 'Syncs the branch/worktree with the orchestrator when the container spins up.' },
-  { key: 'WorktreeRemove', label: 'WorktreeRemove', category: 'Lifecycle', matcher: 'git worktree remove', feeds: 'orchestrator state', desc: 'Cleans up references when the container is torn down.' },
-  { key: 'PostToolUse', label: 'PostToolUse', category: 'Events & status', matcher: 'Bash · Edit · Write · mcp__*', feeds: 'TicketEvent → live activity', desc: 'Records each command and file-change as an event in the live stream.' },
-  { key: 'PostToolUseFailure', label: 'PostToolUseFailure', category: 'Events & status', matcher: 'any failed tool', feeds: 'error event + escalate', desc: 'Captures tool errors and can escalate the ticket to needs-input.' },
-  { key: 'Stop', label: 'Stop', category: 'Events & status', matcher: 'stage-AI finished', feeds: 'done / needs-input + move', desc: 'Marks the stage done (or needs-input if idle) and runs the pipeline-move logic.' },
-  { key: 'Notification', label: 'Notification', category: 'Gating', matcher: 'permission_prompt · idle_prompt', feeds: 'needs-input + notify', desc: 'Permission / idle prompts pause the agent, flag needs-input and ping you.' },
-  { key: 'PreToolUse', label: 'PreToolUse', category: 'Gating', matcher: 'per-tool', feeds: 'app-level gating', desc: 'Extra gate before a tool runs (e.g. enforce the DB read/write tier).' },
+//? F29 — the lifecycle hooks a stage container can emit.
+//?
+//? This list used to advertise NINE hooks; the container emitted three, and none of the six others had an
+//? emitter anywhere. Toggling `WorktreeCreate` did nothing and said nothing — a UI that lies about what it
+//? controls is worse than one that offers less. So the catalog is now exactly what `renderStage` writes
+//? into the container's settings.json, and each entry's toggle really takes effect.
+//?
+//? `required` marks a hook the engine itself depends on: the Stop hook is how a turn is detected as
+//? finished, so it is shown but not switchable — the alternative is a stage that hangs forever.
+export const HOOK_CATALOG: { key: string; label: string; category: string; matcher: string; feeds: string; desc: string; required?: true }[] = [
+  { key: 'Stop', label: 'Stop', category: 'Events & status', matcher: 'stage-AI finished', feeds: 'done / needs-input + move', desc: 'Marks the stage done (or needs-input if idle) and runs the pipeline-move logic. The engine depends on this.', required: true },
+  { key: 'PostToolUse', label: 'PostToolUse', category: 'Events & status', matcher: 'every tool call', feeds: 'TicketEvent → live activity', desc: 'Records each command and file change as an event, so the turn has a readable trail afterwards.' },
+  { key: 'PreCompact', label: 'PreCompact', category: 'Lifecycle', matcher: 'about to auto-compact', feeds: 'controlled handoff', desc: 'Signals the orchestrator to do its own handoff instead of an opaque automatic compaction.' },
 ];
+
 const HOOK_KEYS = HOOK_CATALOG.map((h) => h.key);
 
 //? Common, Claude-relevant command patterns to whitelist, grouped by category.

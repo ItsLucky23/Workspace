@@ -13,6 +13,10 @@ import { registerCronJob } from '@luckystack/cron';
 import { runScheduledPublish, runMetricsIngest, PUBLISH_INTERVAL_MS, METRICS_INTERVAL_MS } from '../../server/content/publish';
 import { runCommentsIngest, COMMENTS_INTERVAL_MS } from '../../server/content/commentInbox';
 import { runRetentionSweep, RETENTION_INTERVAL_MS } from '../../server/retention/sweep';
+import { runTrashSweep } from '../../server/media/trash';
+
+//? F48 — how often the media trash is swept (hourly is plenty for a 30-day window).
+const TRASH_SWEEP_MS = 3_600_000;
 import { runSchemaUpgrade } from '../../server/db/schemaVersion';
 
 //? F51 — a re-check interval that mainly matters after a deploy adds a step; the runOnStart pass is the
@@ -64,6 +68,9 @@ registerCronJob({ name: 'document-extract-recovery', schedule: { everyMs: EXTRAC
 
 //? F38 — retry failed/stranded automation runs (durable run history + dead letter).
 registerCronJob({ name: 'automation-recovery', schedule: { everyMs: AUTOMATION_RECOVERY_MS }, handler: async () => { await runAutomationRecovery(getPrismaClient()); } });
+
+//? F48 — unlink trashed media whose grace window has passed (the only automatic byte-deleter).
+registerCronJob({ name: 'media-trash-sweep', schedule: { everyMs: TRASH_SWEEP_MS }, handler: async () => { await runTrashSweep(getPrismaClient()); } });
 
 //? F55 — apply the workspace retention policy (opt-in per data class; a workspace with none is a no-op).
 registerCronJob({ name: 'retention-sweep', schedule: { everyMs: RETENTION_INTERVAL_MS }, handler: async () => { await runRetentionSweep(getPrismaClient()); } });

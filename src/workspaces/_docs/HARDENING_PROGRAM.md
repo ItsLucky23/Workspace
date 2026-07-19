@@ -76,8 +76,31 @@ Caught by the restore drill, not by typecheck.
 **A unique index could not be built** until pre-existing duplicate rows were removed — which is precisely
 the upgrade class F51 exists for, met while building F51.
 
-## Still open (verified, not started)
+## Phase 10 — the last verified-open items (done)
 
-F06 upload quota · F20 audit tamper-evidence · F27 deploy compare/history surface · F28 `Service.path`
-respected by CI/preview/deploy/export · F29 stage hooks/processes/visibleStageIds consumed · F45 write ACK
-for approvals · F48 blob GC + revocation of deleted media · the per-page KISS pass beyond onboarding/nav.
+All closed with tests that fail without the fix (`tests/integration/trashAndAudit.test.mts`,
+`tests/integration/stageConfigAndService.test.mts`):
+
+| Item | What was actually wrong | Closed by |
+|---|---|---|
+| F48 | media bytes were never GC'd at all | a TRASH, not a shredder: grace window, visible countdown, restore, explicit permanent delete, hourly sweep, two ops |
+| F06 | storage unmeasurable | `workspaceStorage()` in the snapshot + settings. Measurement only — the owner chose insight over a limit |
+| F20 | the audit mirror swallowed every failure | hash chain (`seq`/`prevHash`/`hash`) + `verifyAuditChain` naming the broken row + a loud, counted failure |
+| F27 | deploy history recorded since day one, never readable | per-environment history in the snapshot + a folded UI naming what is live and what preceded it |
+| F28 | `Service.path` promised independent deploys, every exec ran at `/work` | validated `serviceWorkdir()` + the deploy serve command runs in the service's directory |
+| F29 | `hooks`/`processes`/`visibleStageIds` written, read by nothing | hooks honoured in the container settings; processes actually started; visible stages fed into context |
+| F45 | approve was fire-and-forget | derived request id (double-tap dedupes), pending state released on the ticket delta, errors surfaced |
+
+**A UI that lied, twice.** Two of these were worse than dead config: the hooks tab offered nine toggles of
+which six had no emitter anywhere, and the terminal tab labelled "server" attached to a bare shell because
+`processes` was never executed. The catalog is now exactly the three hooks the container emits, with `Stop`
+shown as always-on rather than as a switch that silently refuses — the engine's turn-detection depends on it.
+
+**Still open, deliberately:** per-service CI. `Pipeline`/`PipelineRun`/`BuildArtifact` carry no `serviceId`
+and CI reads one config at the repo root, so "CI per service" is a schema change, not a wiring fix. Also
+noted, not fixed: workspace export/import drops `Service` rows entirely, and `Service.buildCmd` /
+`deployUnit` are written by the editor and read nowhere.
+
+## Still open
+
+The per-page KISS pass beyond onboarding/nav/settings.

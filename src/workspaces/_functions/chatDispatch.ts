@@ -93,6 +93,15 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const documentId = str(p, 'documentId'); if (!documentId) return;
     void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-unarchive', documentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? F48 — the bin, from chat. Purge already passed the destructive-confirm before it reaches here.
+  'media-trash-restore': (p, x) => {
+    const trashId = str(p, 'trashId'); if (!trashId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'media-trash-restore', trashId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'media-trash-purge': (p, x) => {
+    const trashId = str(p, 'trashId'); if (!trashId) return;
+    void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'media-trash-purge', trashId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? G4 — curate the reusable asset library from chat.
   'asset-star': (p, x) => {
     const assetId = str(p, 'assetId'); const starred = bool(p, 'starred');

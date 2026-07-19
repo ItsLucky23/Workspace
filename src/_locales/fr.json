@@ -620,7 +620,8 @@
       "warnNoInstructions": "{{name}} n’a aucune instruction personnalisée.",
       "warnWriteAccess": "{{name}} a un accès en écriture à un service — normalement, seule l’Implémentation en a besoin.",
       "warnNetworkOff": "{{name}} a le réseau désactivé mais utilise des skills qui peuvent nécessiter une sortie réseau.",
-      "warnRagMismatch": "Refined charge le RAG mais Plan non — l’étape de décision a généralement besoin de plus de contexte, pas moins."
+      "warnRagMismatch": "Refined charge le RAG mais Plan non — l’étape de décision a généralement besoin de plus de contexte, pas moins.",
+      "hookRequired": "toujours actif"
     },
     "workspaceSettings": {
       "tabMembers": "Membres",
@@ -1650,7 +1651,8 @@
       "noLinks": "Aucun lien pour l’instant",
       "noLinksSub": "Associez, bloquez ou dédupliquez avec d’autres tickets.",
       "aiSuggested": "Suggéré par l’IA",
-      "noStageHistory": "Pas encore d’historique d’étapes"
+      "noStageHistory": "Pas encore d’historique d’étapes",
+      "sending": "Envoi…"
     },
     "terminals": {
       "restart": "Redémarrer",
@@ -2497,6 +2499,24 @@
       "publish": "Publier",
       "build": "Automatiser",
       "insights": "Analyses"
+    },
+    "storage": {
+      "title": "Stockage et corbeille",
+      "desc": "Ce que cet espace occupe sur le disque, et ce qui attend d'être supprimé.",
+      "used": "Médias utilisés",
+      "files": "{count} fichiers",
+      "inTrash": "Dans la corbeille",
+      "trashEmpty": "La corbeille est vide.",
+      "trashTitle": "Médias supprimés",
+      "daysLeft": "encore {days} jours",
+      "restore": "Restaurer",
+      "purge": "Supprimer définitivement",
+      "purgeConfirm": "Supprimer ce fichier définitivement ? Cette action est irréversible."
+    },
+    "deployHistory": {
+      "title": "Historique des déploiements",
+      "current": "en ligne",
+      "previous": "précédent"
     }
   }
 }

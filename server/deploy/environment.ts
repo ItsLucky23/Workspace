@@ -14,6 +14,7 @@ import { getProxyProvider, envRoute, baseDomain } from '../proxy';
 import { normalizeGitConfig, deriveHostSlug } from '../git/branchStrategy';
 import { branchHead } from '../git/repoStore';
 import { recordDeploy, listDeployHistory, previousLiveCommit } from './deployHistory';
+import { workdirOrRoot } from './servicePath';
 import { resolveDevCommand, resolveProdCommand } from '../container/baseImages';
 
 const ENV_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
@@ -91,7 +92,7 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const [ws, project, service] = await Promise.all([
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } }),
     prisma.project.findFirst({ where: { id: env.projectId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, stack: true } }),
-    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true, prodCommand: true } }) : Promise.resolve(null),
+    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, path: true } }) : Promise.resolve(null),
   ]);
   const branch = normalizeGitConfig(ws?.gitConfig ?? null).targetBranch;
   const image = opts.imageRef ?? service?.baseImageRef ?? project?.baseImageRef ?? undefined;
@@ -132,7 +133,11 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   await docker(['network', 'connect', NET, container.name]);
   //? Start the serve command detached in /work (HOST/PORT cover CRA/Next; Vite needs flags in the command).
   //? D1 — for prod/demo this builds + serves the production output; for dev/staging it's the dev server.
-  await docker(['exec', '-d', '-w', '/work', '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(ENV_PORT)}`, container.name, 'sh', '-lc', serveCmd]);
+  //? F28 — a per-service environment serves from that SERVICE's directory. The command used to run at the
+  //? repo root regardless, so a monorepo service either failed to start or served the root project while
+  //? the UI claimed the service was deployed. Git stays at the root (it is the repo), only the app runs here.
+  const serveDir = workdirOrRoot(service?.path);
+  await docker(['exec', '-d', '-w', serveDir, '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(ENV_PORT)}`, container.name, 'sh', '-lc', serveCmd]);
 
   //? Only flip the stable route once the app actually serves (readiness), so a broken deploy doesn't
   //? blackhole the live URL.

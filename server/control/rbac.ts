@@ -144,6 +144,9 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   //? G3 — publishing puts a page on a public URL; same bar as other content work.
   'studio-publish-site': CAP.workTickets,
   'studio-unpublish-site': CAP.workTickets,
+  //? F48 — restoring is harmless; PURGING destroys bytes for good, so it sits at the settings bar.
+  'media-trash-restore': CAP.workTickets,
+  'media-trash-purge': CAP.workspaceSettings,
   //? G4 — starring marks an asset as part of the workspace's reusable library.
   'asset-star': CAP.workTickets,
   //? G7 — a prompt experiment steers every AI run for that feature; workspace-settings bar.

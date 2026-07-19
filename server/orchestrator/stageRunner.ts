@@ -19,7 +19,7 @@ import { isTestStage } from '../ci/gate';
 import { runStageCiInContainer, type StageCiReport } from '../ci/runner';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
-import type { StageToolCfg } from '../../src/workspaces/_data/types';
+import type { StageProcessCfg, StageToolCfg } from '../../src/workspaces/_data/types';
 import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
@@ -156,6 +156,36 @@ export async function materializeStageConfig(container: string, artifacts: Stage
     if (!(await writeFileInContainer(container, path, content))) return false;
   }
   return true;
+}
+
+//? F29 — start the stage's declared long-running PROCESSES (a dev server, a watcher, …).
+//?
+//? These were configurable in the stage editor and rendered as terminal tabs on the ticket, but nothing
+//? ever ran them: opening the "server" tab attached to a bare shell in the image's default directory. The
+//? tab existed, the process did not — a UI that lies about what is running.
+//?
+//? Each process runs detached with its own cwd + env, and its output is teed to a per-process log on the
+//? /work volume so the terminal tab can show what it actually did. Best-effort: a stage must still run
+//? when a user's dev-server command is wrong, so a failure is logged, not fatal.
+async function startStageProcesses(container: string, processes: StageProcessCfg[]): Promise<void> {
+  for (const proc of processes) {
+    const commands = proc.commands.filter((c) => c.trim().length > 0);
+    if (commands.length === 0) continue;
+    //? Shell-quoting: the name reaches a file path and the values reach `export`, so both are
+    //? single-quoted with embedded quotes escaped rather than interpolated raw.
+    const safeName = proc.name.replaceAll(/[^a-zA-Z0-9._-]/g, '-').slice(0, 40) || 'process';
+    const cwd = quoteForShell(proc.cwd.trim().length > 0 ? proc.cwd.trim() : '/work');
+    const exports = proc.env.map((e) => `export ${e.key.replaceAll(/[^A-Za-z0-9_]/g, '')}=${quoteForShell(e.value)};`).join(' ');
+    const script = `cd ${cwd} 2>/dev/null || cd /work; ${exports} ${commands.join(' && ')}`;
+    const logPath = `/work/.claude/process-${safeName}.log`;
+    const [error, result] = await tryCatch(() => docker(['exec', '-d', container, 'sh', '-lc', `mkdir -p /work/.claude; { ${script}; } >> ${logPath} 2>&1`]));
+    if (error || result?.code !== 0) console.warn(`[stage] process '${proc.name}' failed to start in ${container}`);
+  }
+}
+
+//? Single-quote a value for `sh -lc`, closing and reopening around embedded quotes.
+function quoteForShell(value: string): string {
+  return `'${value.replaceAll("'", String.raw`'''`)}'`;
 }
 
 //? Copy the RO-projected subscription creds into a writable, agent-owned ~/.claude (0600)
@@ -549,6 +579,28 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   const prior = await prisma.carryOver.findFirst({ where: { ticketId: ticket.id, toStageId: stageKey }, orderBy: { createdAt: 'desc' } });
   const carryOver = coerceEnvelope(prior?.envelope ?? null);
 
+  //? F29 — `visibleStageIds` let a stage read the output of stages OTHER than the one immediately before
+  //? it ("implement should still see what refine decided"). It was configurable in the stage editor and
+  //? read by nothing, so the setting was purely decorative: every stage only ever saw its direct
+  //? predecessor's envelope. Those extra stages are now loaded and handed to the renderer as context.
+  const visibleIds = cfg.visibleStageIds.filter((id) => id !== stageKey);
+  const visibleEnvelopes = visibleIds.length === 0 ? [] : await prisma.carryOver.findMany({
+    where: { ticketId: ticket.id, toStageId: { in: visibleIds } },
+    orderBy: { createdAt: 'desc' }, take: 20,
+  });
+  //? Newest per stage only — an older run of the same stage is superseded, not extra context.
+  const seenStages = new Set<string>();
+  const visibleDocs: { name: string; content: string; provenance: string; trusted: boolean }[] = [];
+  for (const row of visibleEnvelopes) {
+    if (seenStages.has(row.toStageId)) continue;
+    seenStages.add(row.toStageId);
+    const envelope = coerceEnvelope(row.envelope);
+    const summary = (envelope?.summary ?? '').trim();
+    if (summary.length > 0) {
+      visibleDocs.push({ name: `Output of stage: ${row.toStageId}`, content: summary.slice(0, 4000), provenance: `carry-over from ${row.toStageId}`, trusted: true });
+    }
+  }
+
   //? Resolve the ACTUAL model/effort for this turn: the stage's base choice, or (autoEscalate) the
   //? escalation rule matched by the agent's own complexity score from the previous stage.
   const choice = resolveModelChoice(cfg.modelCfg, carryOver?.complexityScore ?? null);
@@ -568,7 +620,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? SK2 — enabled 'dev' skills reach the PTY coding agent as a context-doc (the one-shot choke-point
   //? in ai/registry.ts doesn't cover the PTY path). Best-effort: read failure = no doc.
   const [, skillsDoc] = await tryCatch(() => skillPromptBlock(workspaceId, 'dev'));
-  const contextDocs = [...starterDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc, provenance: 'RAG chunks: product knowledge' }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '', trusted: true }] : [])];
+  const contextDocs = [...starterDocs, ...visibleDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc, provenance: 'RAG chunks: product knowledge' }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '', trusted: true }] : [])];
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
   //? missing/empty index just yields no hits (the agent still gets its docs + can explore the repo).
@@ -608,6 +660,10 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
     await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
     return { ok: false, error: 'materialize.failed' };
   }
+
+  //? F29 — the stage's declared processes start AFTER its config is materialized (they may read it) and
+  //? BEFORE the agent turn, so a dev server the agent is meant to hit is already up.
+  await startStageProcesses(container.name, cfg.processes);
 
   //? The slow container launch/config materialization happened without the writer. Revalidate the exact
   //? ticket/project/stage and persist the unique capacity runToken immediately before PTY; a reused

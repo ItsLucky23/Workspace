@@ -26,6 +26,7 @@ import { isPipelinePreset } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
 import { setAssetStarred } from '../content/assetLibrary';
+import { trashMedia, restoreFromTrash, purgeTrashItem } from '../media/trash';
 import { sanitizeSections } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { createStarterLibrary } from '../bootstrap/starterLibrary';
@@ -328,6 +329,13 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.videoScene.deleteMany({ where: { workspaceId } });
   await prisma.beat.deleteMany({ where: { workspaceId } });
   await prisma.script.deleteMany({ where: { workspaceId } });
+  //? F48 — the workspace's media BYTES were left on disk forever (no GC). They now go to the trash with a
+  //? grace window rather than being unlinked here: deleting a workspace is exactly the moment an
+  //? irreversible wipe hurts most, and the trash view lets an owner pull something back or purge it now.
+  const doomedAssets = await prisma.contentAsset.findMany({ where: { workspaceId, url: { not: null } }, select: { url: true, kind: true } });
+  for (const asset of doomedAssets) {
+    if (asset.url) await trashMedia(prisma, { workspaceId, url: asset.url, label: asset.kind, kind: asset.kind, reason: 'workspace-deleted' });
+  }
   await prisma.contentAsset.deleteMany({ where: { workspaceId } });
   await prisma.contentProject.deleteMany({ where: { workspaceId } });
   await prisma.channel.deleteMany({ where: { workspaceId } });
@@ -2467,6 +2475,24 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const experimentId = str(payload, 'experimentId');
       if (!experimentId) return { ok: false, status: 'error', error: 'experiment.invalidRequest' };
       await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, id: experimentId }, data: { status: 'stopped' } });
+      return { ok: true };
+    }
+    //? F48 — pull a file back out of the trash, or destroy it now. Both are tenant-scoped by id, so a
+    //? foreign trash row is simply not found rather than being an error worth distinguishing.
+    case 'media-trash-restore': {
+      const trashId = str(payload, 'trashId');
+      if (!trashId) return { ok: false, status: 'error', error: 'trash.invalidRequest' };
+      const ok = await restoreFromTrash(prisma, action.workspaceId, trashId);
+      if (!ok) return { ok: false, status: 'error', error: 'trash.notFound' };
+      broadcastContentDirty(action.workspaceId);
+      return { ok: true };
+    }
+    case 'media-trash-purge': {
+      const trashId = str(payload, 'trashId');
+      if (!trashId) return { ok: false, status: 'error', error: 'trash.invalidRequest' };
+      const ok = await purgeTrashItem(prisma, action.workspaceId, trashId);
+      if (!ok) return { ok: false, status: 'error', error: 'trash.notFound' };
+      broadcastContentDirty(action.workspaceId);
       return { ok: true };
     }
     //? GAP_SCAN G4 — mark an asset as part of the workspace's reusable library (or take it out).

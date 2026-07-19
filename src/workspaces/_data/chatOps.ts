@@ -32,7 +32,7 @@ export const CHAT_ENABLED_OPS = [
   //? G3 — put a generated Studio page live on a public URL, or take it down again.
   'studio-publish-site', 'studio-unpublish-site',
   //? Documents housekeeping (both reversible) + the reusable-asset library marker.
-  'document-archive', 'document-unarchive', 'asset-star',
+  'document-archive', 'document-unarchive', 'asset-star', 'media-trash-restore', 'media-trash-purge',
   //? F5 — reply to an inbox comment (destructive: it posts publicly, so accept carries an extra confirm).
   'content-reply-comment',
   //? G7 — run a prompt A/B and stop it again.

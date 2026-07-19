@@ -357,6 +357,18 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'take a published page offline. params: slug (from the published page URL)',
     params: { slug: { kind: 'string', required: true } },
   },
+  //? F48 — the Assistant may pull something back out of the bin freely. PURGE is `confirm`: it is the one
+  //? op in the system that destroys media immediately, with nothing left to undo it with.
+  'media-trash-restore': {
+    mode: 'enabled',
+    hint: 'take a file back out of the trash before it is deleted. params: trashId',
+    params: { trashId: { kind: 'string', required: true } },
+  },
+  'media-trash-purge': {
+    mode: 'enabled', destructive: true,
+    hint: 'permanently delete a trashed file NOW instead of waiting out its grace period. params: trashId',
+    params: { trashId: { kind: 'string', required: true } },
+  },
   //? G4 — the id is validated by the Conductor's tenant-scoped lookup (a foreign asset is simply not
   //? found), so a plain string param is safe here; starring is fully reversible.
   'asset-star': {
@@ -504,6 +516,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'channel-create': 'content', 'channel-edit': 'content', 'channel-delete': 'content',
   'capture-run': 'content', 'studio-publish-site': 'content', 'studio-unpublish-site': 'content',
   'content-reply-comment': 'content', 'asset-star': 'content',
+  'media-trash-restore': 'content', 'media-trash-purge': 'content',
   //? Documents ops belong to the documents module.
   'document-archive': 'documents', 'document-unarchive': 'documents', 'shortlink-create': 'content', 'reference-add': 'content', 'save-style': 'content',
 };

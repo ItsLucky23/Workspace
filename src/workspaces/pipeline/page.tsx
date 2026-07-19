@@ -567,7 +567,11 @@ function HooksTab({ s, update }: TabProps) {
                   <div className="text-xs text-muted mt-0.5">{h.desc}</div>
                   <div className="text-[11px] text-primary mt-0.5">{translate({ key: 'workspaces.pipeline.stageFeeds', params: [{ key: 'feeds', value: h.feeds }] })}</div>
                 </div>
-                <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />
+                {/* F29 — a required hook shows as permanently on rather than as a switch that silently
+                    refuses: the engine's turn-detection depends on it. */}
+                {h.required === true
+                  ? <span className="text-[11px] rounded-md bg-primary/10 text-primary px-1.5 py-0.5 shrink-0 mt-0.5">{translate({ key: 'workspaces.pipeline.hookRequired' })}</span>
+                  : <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />}
               </div>
             ))}
           </div>

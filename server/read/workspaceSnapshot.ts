@@ -26,6 +26,7 @@ import { listTemplates } from '../scaffold/templates';
 import { parseTokenKey, parseHealthKey, credentialKey, envCredentials, credentialSource } from '../content/publishOAuth';
 import { buildChannelHealth, accountKey } from '../content/publishHealth';
 import { listLibrary } from '../content/assetLibrary';
+import { listTrash, workspaceStorage } from '../media/trash';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
 import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
@@ -248,7 +249,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -296,6 +297,20 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const projectScope = { projectId: activeProjectId ?? '000000000000000000000000' };
     const serviceRows = activeProjectId ? await tenantDb.service.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const environmentRows = activeProjectId ? await tenantDb.environment.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
+
+    //? F27 — one query for the whole page's deploy history, bucketed per environment. Bounded per env so a
+    //? long-lived project cannot grow the snapshot without limit; the full log stays queryable server-side.
+    const deployHistoryRows = new Map<string, { id: string; commit: string; branch: string; status: string; error: string | null; createdAt: Date }[]>();
+    if (environmentRows.length > 0) {
+      const historyRows = await tenantDb.deployHistory.findMany({
+        where: { envId: { in: environmentRows.map((e) => e.id) } },
+        orderBy: { createdAt: 'desc' }, take: 120,
+      });
+      for (const row of historyRows) {
+        const bucket = deployHistoryRows.get(row.envId) ?? [];
+        if (bucket.length < 10) { bucket.push(row); deployHistoryRows.set(row.envId, bucket); }
+      }
+    }
     //? K1/K3 — provisioned service stacks (workspace-scoped, not per-project).
     const serviceStackRows = await tenantDb.serviceStack.findMany({ orderBy: { createdAt: 'asc' } });
     const buildArtifactRows = activeProjectId ? await tenantDb.buildArtifact.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
@@ -542,6 +557,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? CI — the read-only comment inbox.
       comments: socialCommentRows.map((c) => ({ id: c.id, platform: c.platform, channelId: c.channelId ?? null, contentProjectId: c.contentProjectId ?? null, author: c.author, text: c.text, publishedAt: c.publishedAt.getTime(), read: c.read })),
       unreadComments,
+      trash: await listTrash(prisma, contentWsId),
+      storage: await workspaceStorage(prisma, contentWsId),
     };
 
     //? Project-owned context follows the selected project. Null-project sources and the ADR 0034
@@ -574,6 +591,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: e.id, projectId: e.projectId, ...(e.serviceId ? { serviceId: e.serviceId } : {}), kind: e.kind, route: e.route, status: e.status,
         url: `${baseDomain() === 'localhost' ? 'http' : 'https'}://${e.route}/`,
         ...(e.lastError ? { lastError: e.lastError } : {}), ...(e.lastDeployedAt ? { lastDeployedAt: e.lastDeployedAt.toISOString() } : {}),
+        //? F27 — the deploy history this environment already recorded, finally readable.
+        deploys: (deployHistoryRows.get(e.id) ?? []).map((d) => ({
+          id: d.id, commit: d.commit, branch: d.branch, status: d.status,
+          ...(d.error ? { error: d.error } : {}), at: d.createdAt.toISOString(),
+        })),
       })),
       buildArtifacts: buildArtifactRows.map((b): BuildArtifactSummary => ({
         id: b.id, projectId: b.projectId, kind: b.kind, status: b.status, sizeBytes: b.sizeBytes,

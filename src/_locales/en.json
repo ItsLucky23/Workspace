@@ -620,7 +620,8 @@
       "warnNoInstructions": "{{name}} has no custom instructions.",
       "warnWriteAccess": "{{name}} has write access to a service — usually only Implementatie needs that.",
       "warnNetworkOff": "{{name}} has network off but uses skills that may need egress.",
-      "warnRagMismatch": "Refined loads RAG but Plan does not — the decision stage usually needs more context, not less."
+      "warnRagMismatch": "Refined loads RAG but Plan does not — the decision stage usually needs more context, not less.",
+      "hookRequired": "always on"
     },
     "workspaceSettings": {
       "tabMembers": "Members",
@@ -1650,7 +1651,8 @@
       "noLinks": "No links yet",
       "noLinksSub": "Relate, block, or dedupe against other tickets.",
       "aiSuggested": "AI-suggested",
-      "noStageHistory": "No stage history yet"
+      "noStageHistory": "No stage history yet",
+      "sending": "Sending…"
     },
     "terminals": {
       "restart": "Restart",
@@ -2497,6 +2499,24 @@
       "publish": "Publish",
       "build": "Automate",
       "insights": "Insights"
+    },
+    "storage": {
+      "title": "Storage & trash",
+      "desc": "What this workspace occupies on disk, and what is waiting to be deleted.",
+      "used": "Media in use",
+      "files": "{count} files",
+      "inTrash": "In the trash",
+      "trashEmpty": "The trash is empty.",
+      "trashTitle": "Deleted media",
+      "daysLeft": "still here for {days} days",
+      "restore": "Restore",
+      "purge": "Delete permanently",
+      "purgeConfirm": "Delete this file permanently? This cannot be undone."
+    },
+    "deployHistory": {
+      "title": "Deploy history",
+      "current": "live now",
+      "previous": "previous"
     }
   }
 }

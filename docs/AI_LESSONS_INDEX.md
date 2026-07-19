@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (13)
+## Lessons (14)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -26,6 +26,7 @@
 | 0011 | A form opened via menuHandler.open renders ABOVE WorkspacesProvider — useWorkspaces() throws | 🟠 high | src/workspaces/_shell, menuHandler, react-context | — | `docs/lessons/0011-menuhandler-portal-renders-above-workspacesprovider.md` |
 | 0012 | prisma generate EPERMs on the locked query-engine DLL — never blanket-kill node, never --no-engine | 🟠 high | prisma, schema-change, windows, dev-server | — | `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md` |
 | 0013 | .eslintcache holds stale type-aware results after prisma generate — phantom "error typed" lint on a new field | 🟡 medium | prisma, schema-change, eslint, dev-tooling | — | `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md` |
+| 0014 | On MongoDB an omitted optional field is ABSENT, not null — `{ field: null }` never matches it, so freshly written rows are invisible to their own queries | 🟠 high | prisma, mongodb, schema-change | — | `docs/lessons/0014-mongo-absent-vs-null-optional-field-invisible.md` |
 
 ## Takeaways
 
@@ -132,3 +133,11 @@ A component rendered via `menuHandler.open(...)` (or any portal above the Router
 After a `prisma generate` / schema change, if lint reports `error typed` / `no-unsafe-*` on a **new** model field while `tsc` is clean, it's the eslint cache — `rm -f .eslintcache` and re-run `npm run lint`. The signal is the **tsc-clean vs eslint-error disagreement on a Prisma field** — don't start casting or re-typing the code to satisfy eslint; the code is fine, the cache is stale. Related Windows/prisma pitfall on the generate step itself: [[0012-prisma-generate-eperm-locked-engine-dll]].
 
 → `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md`
+
+### 0014 — On MongoDB an omitted optional field is ABSENT, not null — `{ field: null }` never matches it, so freshly written rows are invisible to their own queries
+
+**0014** · high · prisma, mongodb, schema-change · 2026-07-19
+
+On MongoDB, **write nullable state fields explicitly as `null` on create** whenever a query filters on them. `purgedAt: null` in the `create` data is the whole fix. When a query must also survive rows written before that rule existed, match both: `{ OR: [{ field: null }, { field: { isSet: false } }] }`. Symptom to recognise fast: *the write succeeds and a raw query by id finds the row, but the filtered query does not.* Before suspecting the client, the schema push, or the tenant extension, check whether the filtered field was ever actually written.
+
+→ `docs/lessons/0014-mongo-absent-vs-null-optional-field-invisible.md`

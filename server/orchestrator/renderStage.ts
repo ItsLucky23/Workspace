@@ -141,10 +141,14 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     //? the effort knob becomes the extended-thinking budget the CLI actually honours.
     ...(ctx.modelChoice ? { model: ctx.modelChoice.model, env: { MAX_THINKING_TOKENS: String(effortThinkingTokens(ctx.modelChoice.effort)) } } : {}),
     permissions: { allow, ask, deny },
+    //? F29 — the stage's hook toggles were WRITTEN by the editor, round-tripped through the snapshot, and
+    //? then ignored here: every container got the same three hooks regardless. They are honoured now.
+    //? `Stop` is deliberately not switchable — the engine detects a finished turn by reading the file this
+    //? hook writes, so a stage without it would simply hang.
     hooks: {
       Stop: [{ hooks: [{ type: 'command', command: STOP_HOOK_CMD }] }],
-      PreCompact: [{ hooks: [{ type: 'command', command: PRECOMPACT_HOOK_CMD }] }],
-      PostToolUse: [{ hooks: [{ type: 'command', command: POST_TOOL_HOOK_CMD }] }],
+      ...(cfg.hooks.PreCompact === false ? {} : { PreCompact: [{ hooks: [{ type: 'command', command: PRECOMPACT_HOOK_CMD }] }] }),
+      ...(cfg.hooks.PostToolUse === false ? {} : { PostToolUse: [{ hooks: [{ type: 'command', command: POST_TOOL_HOOK_CMD }] }] }),
     },
   }, null, 2);
 

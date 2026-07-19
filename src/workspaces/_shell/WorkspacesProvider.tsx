@@ -9,9 +9,12 @@
 //? chat, ssh keys) stays client-side.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+//? F45 — identifies WHICH question is being answered: a ticket's needs-input banner, or one specific
+//? advisory on it. Used both as the pending-state key and as the idempotency id for the write.
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { apiRequest, tryCatch, useSession, useTheme, useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, i18nNotify as notify, useSession, useTheme, useTranslator } from '@luckystack/core/client';
 
 import { useSocketStatus } from 'src/_providers/socketStatusProvider';
 import { joinRoom, leaveRoom } from 'src/_sockets/socketInitializer';
@@ -118,7 +121,7 @@ const EMPTY_SNAP: Snap = {
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
   answerQueue: [],
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0 },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -175,6 +178,8 @@ function useIsMobile(): boolean {
 function nextReqId(): string { return globalThis.crypto.randomUUID(); }
 //? A local counter for UI-only ids (chat messages) — never sent to the server.
 let reqCounter = 0;
+
+const answerKey = (ticketId: string, advisoryIndex?: number): string => `${ticketId}:${typeof advisoryIndex === 'number' ? String(advisoryIndex) : 'main'}`;
 
 export function WorkspacesProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
@@ -292,6 +297,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const offline = socketStatusValue !== 'CONNECTED' && socketStatusValue !== 'STARTUP';
   const offlineRef = useRef(offline);
   offlineRef.current = offline;
+  //? F45 — which answers are in flight. Every write here is enqueued for the Conductor and only becomes
+  //? visible when the ticket delta broadcasts back, so without this the Approve button looked like it did
+  //? nothing: it stayed live and re-clickable for the whole round trip, and a second tap queued a SECOND
+  //? answer. The key is the surface the user clicked, so the button that is waiting is the one that dims.
+  const [pendingAnswers, setPendingAnswers] = useState<Record<string, true>>({});
   const offlineQueueRef = useRef<(() => void)[]>([]);
   const [queuedWrites, setQueuedWrites] = useState(0);
   const parkWrite = useCallback((run: () => void) => {
@@ -352,7 +362,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? answer-input (#17): the parked ticket's banner clears → merge the updated ticket.
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/answerInput', version: 'v1',
-    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      mergeTickets(serverOutput.tickets);
+      //? F45 — THIS is the real acknowledgement: the Conductor has applied the answer and the ticket that
+      //? comes back no longer asks the question. Releasing the pending flag here rather than on the socket
+      //? reply is what makes the button stay locked for the whole round trip instead of un-dimming early.
+      const acked = new Set(serverOutput.tickets.map((t) => t.id));
+      setPendingAnswers((prev) => Object.fromEntries(
+        Object.entries(prev).filter(([key]) => !acked.has(key.slice(0, key.lastIndexOf(':')))),
+      ));
+    },
   }), [upsertSyncEventCallback, mergeTickets]);
   //? #20 — live agent tail: append each broadcast PTY chunk to that ticket's rolling buffer (capped 40k).
   useEffect(() => upsertSyncEventCallback({
@@ -1257,6 +1277,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? GAP_SCAN F5 — post the reply the user approved (the AI only ever drafted it). Conductor writes.
       replyToComment: (commentId, replyText) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-reply-comment', commentId, replyText, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? G4 — star/unstar an asset for the workspace-wide library (B-23 via contentControl).
+      restoreTrashed: (trashId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'media-trash-restore', trashId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      purgeTrashed: (trashId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'media-trash-purge', trashId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       setAssetStarred: (assetId, starred) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'asset-star', assetId, starred, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? G2 — clone this workspace's SETUP into a new one (no tickets, content, credentials or members).
       cloneWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/cloneWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1449,10 +1471,29 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       answerInput: (ticketId, answer, advisoryIndex) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
-        const reqId = nextReqId();
-        const send = () => { void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: reqId }, receiver: room }); };
+        const key = answerKey(ticketId, advisoryIndex);
+        //? F45 — the request id is DERIVED from what is being answered, not random. A double-tap therefore
+        //? carries the same id and the Conductor's idempotency drops it, instead of queueing a second
+        //? answer to a question that was already answered.
+        const reqId = `answer:${key}`;
+        const send = () => {
+          setPendingAnswers((prev) => ({ ...prev, [key]: true }));
+          void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: reqId }, receiver: room })
+            .then((response) => {
+              //? A refused write used to vanish silently — the banner simply stayed put, which reads as
+              //? "the click did nothing" rather than "you are not allowed to do that".
+              if (response.status !== 'success') {
+                notify.error({ key: response.errorCode });
+                setPendingAnswers((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)));
+              }
+              //? On success the flag stays until the ticket delta arrives: the Conductor accepting the op
+              //? is not the same as the answer having taken effect, and the button must stay locked for
+              //? the whole gap. `clearPendingAnswers` below releases it on the real state change.
+            });
+        };
         if (offlineRef.current) parkWrite(send); else send();
       },
+      isAnswerPending: (ticketId: string, advisoryIndex?: number): boolean => pendingAnswers[answerKey(ticketId, advisoryIndex)] === true,
       setTicketPresence,
       viewersOf: (ticketKey: string): string[] => Object.entries(presence).filter(([uid, v]) => v.ticketKey === ticketKey && uid !== currentUser.id).map(([uid]) => uid),
       //? #117 — everyone present in the workspace right now (the presence state is already tick-pruned).
