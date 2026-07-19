@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (14)
+## Lessons (15)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -27,6 +27,7 @@
 | 0012 | prisma generate EPERMs on the locked query-engine DLL — never blanket-kill node, never --no-engine | 🟠 high | prisma, schema-change, windows, dev-server | — | `docs/lessons/0012-prisma-generate-eperm-locked-engine-dll.md` |
 | 0013 | .eslintcache holds stale type-aware results after prisma generate — phantom "error typed" lint on a new field | 🟡 medium | prisma, schema-change, eslint, dev-tooling | — | `docs/lessons/0013-eslintcache-stale-after-prisma-generate.md` |
 | 0014 | On MongoDB an omitted optional field is ABSENT, not null — `{ field: null }` never matches it, so freshly written rows are invisible to their own queries | 🟠 high | prisma, mongodb, schema-change | — | `docs/lessons/0014-mongo-absent-vs-null-optional-field-invisible.md` |
+| 0015 | The dev backend hops ports and records the real one in dev-server.json — restarting "the" configured port leaves the browser on a stale backend | 🟠 high | dev-server, browser-testing, windows | — | `docs/lessons/0015-dev-server-port-hops-stale-backend.md` |
 
 ## Takeaways
 
@@ -141,3 +142,11 @@ After a `prisma generate` / schema change, if lint reports `error typed` / `no-u
 On MongoDB, **write nullable state fields explicitly as `null` on create** whenever a query filters on them. `purgedAt: null` in the `create` data is the whole fix. When a query must also survive rows written before that rule existed, match both: `{ OR: [{ field: null }, { field: { isSet: false } }] }`. Symptom to recognise fast: *the write succeeds and a raw query by id finds the row, but the filtered query does not.* Before suspecting the client, the schema push, or the tenant extension, check whether the filtered field was ever actually written.
 
 → `docs/lessons/0014-mongo-absent-vs-null-optional-field-invisible.md`
+
+### 0015 — The dev backend hops ports and records the real one in dev-server.json — restarting "the" configured port leaves the browser on a stale backend
+
+**0015** · high · dev-server, browser-testing, windows · 2026-07-19
+
+**Read `node_modules/.luckystack/dev-server.json` to find the backend the browser is actually using.** Its `pid` is the one to stop; `config.ports.ts` is the *preferred* port, not the live one. After a restart, re-read that file and confirm the port changed as expected — do not assume the configured port is the live one. Before starting a fresh backend, check for orphans: `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | ? { $_.CommandLine -like '*devkit*supervisor*' }`. Stop the **supervisors**, not their children, or they respawn (see lesson 0012, which is the same trap seen from the Prisma-DLL side). Symptom to recognise fast: *the code is provably correct when called directly, but the browser shows the old behaviour across a hard reload.* Before re-checking the code again, prove the running server executes it — a one-line `console.log` and a page load answers it in seconds. E2E tests that fetch `http://localhost:<configured port>` directly can pass against a *different* instance than the browser uses. That is exactly how this stayed hidden: the e2e suite went green while the UI stayed stale.
+
+→ `docs/lessons/0015-dev-server-port-hops-stale-backend.md`

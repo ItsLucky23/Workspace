@@ -953,16 +953,22 @@ const [runError] = await tryCatch(async () => {
   const [lowerScannerSeverity] = await tryCatch(() => Promise.resolve(assertValidInternalAction({ ...ciAction, payload: { ...ciAction.payload, ci: scannerReport } })));
   assert(lowerScannerSeverity !== null, 'scanner severity lower than its bounded findings is rejected');
 
+  //? Per-service CI: `serviceId: null` = the project root unit, written EXPLICITLY. On MongoDB an omitted
+  //? field is absent, absent does not match the runner's `serviceId: null` lookup, and the unique index
+  //? treats absent and null as the same value — so omitting it both hides this row from the lookup AND
+  //? collides with the row that lookup then creates. The ids are unit-salted for the same reason: two
+  //? units under one clientRequestId would otherwise derive identical run/job ids.
   const partialPipeline = await prisma.pipeline.create({
-    data: { workspaceId, projectId: project.id, specHash: 'partial', stages: ['test'], runnerKind: 'builtin' },
+    data: { workspaceId, projectId: project.id, serviceId: null, specHash: 'partial', stages: ['test'], runnerKind: 'builtin' },
   });
-  const partialRunId = deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-run');
+  const partialRunId = deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-run:root');
   await prisma.pipelineRun.create({
     data: {
       id: partialRunId,
       workspaceId,
       pipelineId: partialPipeline.id,
       projectId: project.id,
+      serviceId: null,
       ticketId: ciTicket.id,
       commitHash: actualReportHash,
       trigger: 'test-stage',
@@ -971,7 +977,7 @@ const [runError] = await tryCatch(async () => {
   });
   await prisma.pipelineJob.create({
     data: {
-      id: deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-job:0:unit'),
+      id: deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-job:root:0:unit'),
       workspaceId,
       pipelineRunId: partialRunId,
       name: 'unit',
@@ -986,7 +992,7 @@ const [runError] = await tryCatch(async () => {
   });
   await prisma.ticketEvent.create({
     data: {
-      id: deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-event:0:unit'),
+      id: deterministicObjectId(workspaceId, ciAction.clientRequestId, 'ci-event:root:0:unit'),
       workspaceId,
       ticketId: ciTicket.id,
       seq: 1,
