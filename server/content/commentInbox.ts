@@ -13,6 +13,7 @@ import type { PrismaClient } from '@prisma/client';
 import { tryCatch } from '@luckystack/core';
 
 import { getValidConnection, type HttpRequest, type StoredTokens } from './publishOAuth';
+import { withTenant } from '../tenant/tenantGuard';
 
 export interface FetchedComment { externalId: string; author: string; text: string; publishedAt: number }
 export interface CommentFetchOutcome { comments: FetchedComment[]; error?: string }
@@ -144,7 +145,10 @@ export async function runCommentsIngest(prisma: PrismaClient): Promise<{ newComm
   const rows = await prisma.publishJob.findMany({ where: { status: 'done', externalId: { not: null } }, select: { workspaceId: true }, distinct: ['workspaceId'] });
   let total = 0;
   for (const { workspaceId } of rows) {
-    const [, res] = await tryCatch(() => refreshComments(prisma, workspaceId));
+    //? F17 — the SWEEP is deliberately cross-tenant (it looks for every workspace with published posts),
+    //? but the per-workspace refresh writes SocialComment rows and must run inside that workspace's tenant
+    //? scope. It was the last background writer doing raw Prisma outside any boundary.
+    const [, res] = await tryCatch(() => withTenant(workspaceId, 'comments.refresh', () => refreshComments(prisma, workspaceId)));
     total += res?.newComments ?? 0;
   }
   return { newComments: total };

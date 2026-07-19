@@ -45,6 +45,8 @@ import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
 import { renderThumbnail } from '../content/thumbnail';
 import { parseCaptionStyle } from '../content/captionStyle';
+import { enqueueExtractJob, claimExtractJob, completeExtractJob, reclaimStaleExtractJobs } from '../documents/extractJob';
+import { withTenant } from '../tenant/tenantGuard';
 import { postReply } from '../content/commentActions';
 import { getValidConnection } from '../content/publishOAuth';
 import { generateShortForm } from '../content/shortForm';
@@ -1095,13 +1097,31 @@ export function enqueueInternalWriterAction(
 //? take seconds/minutes), then enqueue the server-only writer op that persists it onto the asset + indexes
 //? it into RAG. Fire-and-forget from document-edit so the attach op returns immediately (asset is pending).
 async function extractDocumentAssetText(workspaceId: string, documentId: string, url: string, userId: string): Promise<void> {
-  const [, parsed] = await tryCatch(() => extractUploadText(url));
+  //? F35 — the intent is DURABLE before the work starts. A crash mid-parse used to strand the asset at
+  //? `pending` with nothing to retry it; now a row exists that the recovery sweep can find and re-drive.
+  const jobId = await enqueueExtractJob(prisma, { workspaceId, documentId, url, userId });
+  if (jobId !== null && !(await claimExtractJob(prisma, jobId))) return;   //? another instance has it
+  const [error, parsed] = await tryCatch(() => extractUploadText(url));
   const { enqueueInternalAction } = await import('./internalOps');
   await enqueueInternalAction({
     workspaceId, op: 'document-set-asset-text', userId,
     target: { documentId }, payload: { url, text: parsed?.text ?? '', status: parsed?.status ?? 'failed' },
     clientRequestId: `docasset-${randomUUID()}`,
   });
+  if (jobId !== null) {
+    const ok = !error && parsed?.status === 'ok';
+    await completeExtractJob(prisma, jobId, { ok, ...(error ? { error: error.message } : {}) });
+  }
+}
+
+//? F35 — the recovery half: re-drive extractions whose process died. Runs on the same leader loop as the
+//? other sweeps; each job is re-entered inside its own workspace's tenant scope.
+export async function runExtractRecovery(): Promise<{ revived: number }> {
+  const stale = await reclaimStaleExtractJobs(prisma);
+  for (const job of stale) {
+    await tryCatch(() => withTenant(job.workspaceId, 'documents.extractRecovery', () => extractDocumentAssetText(job.workspaceId, job.documentId, job.url, job.userId)));
+  }
+  return { revived: stale.length };
 }
 
 //? SEC1/SEC2 (COMPLETION FASE SEC) — RBAC-hardening helpers. Positional capability indices

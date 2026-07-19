@@ -21,6 +21,7 @@ import { docker, dockerAvailable, containerName } from '../container/runtime';
 import { runAiCompletion } from '../ai/registry';
 import { isObviouslyUnsafeOutboundUrl } from '../security/outboundUrl';
 import { safeHttpRequest } from '../security/safeHttp';
+import { shouldRunCommand } from './commandPolicy';
 
 //? X2 — outbound webhook poster. Production uses the central DNS-pinned transport; this outer seam remains
 //? injectable so the action-envelope integration test can capture the POST without network access.
@@ -191,6 +192,11 @@ async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a
       const command = str(a.params, 'command');
       if (!command || !a.ticketKey) return { status: 'noop', detail: 'run-command-needs-ticket-and-command' };
       if (!(await dockerAvailable())) return { status: 'noop', detail: 'docker-unavailable' };
+      //? F09 — the documented allowlist boundary, shipped report-first (ADR 0278). A chained command
+      //? (`npm test; rm -rf /`) is refused on its SHAPE even in report mode, because the allowlist can only
+      //? reason about one command and a chain smuggles a second past it.
+      const policy = shouldRunCommand(command, workspaceId);
+      if (!policy.run) return { status: 'error', detail: `command-refused:${policy.verdict}` };
       const container = containerName(workspaceId, a.ticketKey);
       const res = await docker(['exec', '-w', '/work', container, 'sh', '-lc', command]);
       const combined = [res.out, res.err].filter((s) => s.length > 0).join('\n').slice(0, 2000);

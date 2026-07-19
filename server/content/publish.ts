@@ -9,6 +9,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { getValidConnection, type OAuthPlatform, type OAuthRefreshTransport, type PublishUploadTransport, type PublishVariant, realUploadTransport } from './publishOAuth';
 import { staggerPlan } from './publishHealth';
+import { jsonInput } from '../util/json';
 import { buildThumbnailUploadRequest } from './thumbnail';
 import { readMediaBytes } from '../media/store';
 import { withTenant } from '../tenant/tenantGuard';
@@ -77,21 +78,25 @@ export function publishRetryDelayMs(attempts: number, reason?: string): number {
 async function performUpload(
   prisma: PrismaClient, workspaceId: string,
   args: { contentProjectId: string; assetId: string; platform: PublishPlatform; accountId?: string },
-  opts: { uploadTransport?: PublishUploadTransport; refreshTransport?: OAuthRefreshTransport; now?: number },
+  opts: { uploadTransport?: PublishUploadTransport; refreshTransport?: OAuthRefreshTransport; now?: number; frozen?: FrozenPublishIntent | null },
 ): Promise<UploadOutcome> {
   const oauthPlatform = args.platform as OAuthPlatform; // built platforms are youtube|tiktok
   //? F1 + A3 — a USABLE connection for the CHOSEN account: the stored token (default account when no
   //? accountId), transparently refreshed when expired and re-saved under the same account key.
   const connection = await getValidConnection(prisma, workspaceId, oauthPlatform, { refreshTransport: opts.refreshTransport, now: opts.now, accountId: args.accountId });
-  const asset = await prisma.contentAsset.findFirst({ where: { workspaceId, id: args.assetId }, select: { url: true } });
-  const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true, publishVariants: true } });
+  //? F40 — a scheduled job carries its FROZEN intent; only an immediate post (or a pre-F40 job) reads live.
+  const frozen = opts.frozen ?? null;
+  const asset = frozen ? null : await prisma.contentAsset.findFirst({ where: { workspaceId, id: args.assetId }, select: { url: true } });
+  const project = frozen ? null : await prisma.contentProject.findFirst({ where: { workspaceId, id: args.contentProjectId }, select: { title: true, publishVariants: true } });
   //? O2 — the per-platform post override (caption/hashtags/privacy), if the piece defines one.
-  const variant = extractPublishVariant(project?.publishVariants, args.platform);
+  const variant = frozen ? frozen.variant : extractPublishVariant(project?.publishVariants, args.platform);
+  const assetUrl = frozen ? frozen.assetUrl : (asset?.url ?? '');
+  const title = frozen ? frozen.title : (project?.title ?? 'Untitled');
   //? Honesty (audit fix): NOT connected → an explicit 'stub' (a dummy, not a live post). Connected but the
   //? upload fails → an explicit 'error' — a real failure that was previously SWALLOWED into a fake success.
   if (!connection) return { kind: 'stub' };
   const transport = opts.uploadTransport ?? realUploadTransport;
-  const [err, uploaded] = await tryCatch(() => transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl: asset?.url ?? '', title: project?.title ?? 'Untitled', variant }));
+  const [err, uploaded] = await tryCatch(() => transport.upload(oauthPlatform, { accessToken: connection.accessToken, assetUrl, title, variant }));
   if (err || !uploaded) return { kind: 'error', ...(err ? { reason: err.message } : {}) };
   //? GAP_SCAN F1 — a composed thumbnail is worthless if it never reaches the platform. Set it right after
   //? the upload, best-effort: a thumbnail failure must not turn a SUCCESSFUL post into an error (and TikTok
@@ -117,6 +122,34 @@ export async function applyThumbnail(
   return { applied: true };
 }
 
+//? F40 — the snapshot of everything a scheduled post needs, taken at SCHEDULE time.
+export interface FrozenPublishIntent { title: string; assetUrl: string; variant: PublishVariant | null; frozenAt: number }
+
+export async function freezePublishIntent(
+  prisma: PrismaClient, workspaceId: string, contentProjectId: string, assetId: string, platform: string,
+): Promise<FrozenPublishIntent> {
+  const asset = await prisma.contentAsset.findFirst({ where: { workspaceId, id: assetId }, select: { url: true } });
+  const project = await prisma.contentProject.findFirst({ where: { workspaceId, id: contentProjectId }, select: { title: true, publishVariants: true } });
+  return {
+    title: project?.title ?? 'Untitled',
+    assetUrl: asset?.url ?? '',
+    variant: extractPublishVariant(project?.publishVariants, platform),
+    frozenAt: Date.now(),
+  };
+}
+
+//? Read a frozen intent back. Anything malformed (or a job scheduled before F40) yields null, and the
+//? caller falls back to the live read — an old job must still fire, just without the guarantee.
+export function parseFrozenIntent(raw: unknown): FrozenPublishIntent | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const title = typeof o.title === 'string' ? o.title : '';
+  const assetUrl = typeof o.assetUrl === 'string' ? o.assetUrl : '';
+  if (title.length === 0 && assetUrl.length === 0) return null;
+  const variant = o.variant !== null && typeof o.variant === 'object' && !Array.isArray(o.variant) ? o.variant as PublishVariant : null;
+  return { title, assetUrl, variant, frozenAt: typeof o.frozenAt === 'number' ? o.frozenAt : 0 };
+}
+
 export async function publishAsset(
   prisma: PrismaClient,
   workspaceId: string,
@@ -133,7 +166,10 @@ export async function publishAsset(
   //? O3 — a future schedule: park the intent as a 'scheduled' job; the leader loop fires it when due.
   const now = opts.now ?? Date.now();
   if (args.scheduledAt && args.scheduledAt.getTime() > now) {
-    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: 'scheduled', scheduledAt: args.scheduledAt } });
+    //? F40 — FREEZE the intent. The fire path used to re-read title/caption/privacy/asset live, so an edit
+    //? made after scheduling silently changed what was posted. What you scheduled is what ships.
+    const frozen = await freezePublishIntent(prisma, workspaceId, args.contentProjectId, args.assetId, args.platform);
+    const job = await prisma.publishJob.create({ data: { workspaceId, contentProjectId: args.contentProjectId, assetId: args.assetId, platform: args.platform, ...selectedAccount, status: 'scheduled', scheduledAt: args.scheduledAt, frozenPayload: jsonInput(frozen) } });
     return { ok: true, publishJobId: job.id, stub: false, scheduled: true };
   }
 
@@ -202,7 +238,7 @@ export async function runScheduledPublish(prisma: PrismaClient, now: number, opt
       }
       //? F1 — a scheduled post fires long after connect, so refresh the (likely-expired) token before uploading.
       //? A3 — route to the account the job was scheduled for.
-      const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now }));
+      const [err, res] = await tryCatch(() => performUpload(prisma, job.workspaceId, { contentProjectId: job.contentProjectId, assetId: job.assetId, platform, ...(job.accountId ? { accountId: job.accountId } : {}) }, { ...opts, now, frozen: parseFrozenIntent(job.frozenPayload) }));
       if (err || !res || res.kind === 'error') {
         //? A3 — bounded retry with backoff; only the LAST attempt becomes a terminal error (+ A2 notify).
         const reason = res?.kind === 'error' ? res.reason : err?.message;

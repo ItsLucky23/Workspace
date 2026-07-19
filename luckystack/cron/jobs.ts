@@ -12,6 +12,11 @@ import { registerCronJob } from '@luckystack/cron';
 
 import { runScheduledPublish, runMetricsIngest, PUBLISH_INTERVAL_MS, METRICS_INTERVAL_MS } from '../../server/content/publish';
 import { runCommentsIngest, COMMENTS_INTERVAL_MS } from '../../server/content/commentInbox';
+import { runExtractRecovery } from '../../server/orchestrator/conductor';
+import { runRetentionSweep, RETENTION_INTERVAL_MS } from '../../server/retention/sweep';
+
+//? F35 — how often the extraction-recovery sweep looks for stranded parses.
+const EXTRACT_RECOVERY_MS = Math.max(60_000, Number(process.env.WS_EXTRACT_RECOVERY_MIN ?? '5') * 60_000);
 import { runCronTriggers, CRON_TICK_MS } from '../../server/automation/cron';
 import { drainCapacityQueue, CAPACITY_DRAIN_MS } from '../../server/orchestrator/conductor';
 import { runWorkerReapTick, WORKER_REAP_MS } from '../../server/orchestrator/workerReaper';
@@ -38,6 +43,12 @@ registerCronJob({ name: 'automation-cron', schedule: { everyMs: CRON_TICK_MS }, 
 //? Backfill builtin skills + Designer gallery for pre-provisioning workspaces. Cron supplies cluster
 //? leadership/overlap protection; every tenant write still enters the internal Conductor lane.
 registerCronJob({ name: 'workspace-builtins', schedule: { everyMs: WORKSPACE_BUILTINS_BACKFILL_MS }, runOnStart: true, handler: async () => { await runWorkspaceBuiltinsBackfill(getPrismaClient()); } });
+
+//? F35 — re-drive document extractions whose process died mid-parse (durable job + bounded attempts).
+registerCronJob({ name: 'document-extract-recovery', schedule: { everyMs: EXTRACT_RECOVERY_MS }, handler: async () => { await runExtractRecovery(); } });
+
+//? F55 — apply the workspace retention policy (opt-in per data class; a workspace with none is a no-op).
+registerCronJob({ name: 'retention-sweep', schedule: { everyMs: RETENTION_INTERVAL_MS }, handler: async () => { await runRetentionSweep(getPrismaClient()); } });
 
 //? Capacity crash backstop — evicts expired reservations and resumes one valid queued turn.
 registerCronJob({ name: 'capacity-drain', schedule: { everyMs: CAPACITY_DRAIN_MS }, handler: async () => { await drainCapacityQueue(); } });

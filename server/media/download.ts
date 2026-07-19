@@ -1,16 +1,21 @@
 //? Media download/stream endpoint (M4) — serves the produced media files under `data/media/` at
 //? `GET /media/<file>` (the persisted voice/sfx from M2 + the rendered mp4 from the render pipeline).
-//? SECURITY: the file name is an unguessable uuid (the capability, like the build-download token); the
-//? only lookup is a filename UNDER `MEDIA_DIR` with a hard path-traversal guard (no `..`, no separators,
-//? no absolute). Origin-exempt (a direct download/`<video src>` has no Origin) — exemption is not auth.
+//? SECURITY (F05): the uuid is NO LONGER the capability. A request must either
+//?   (a) carry a session whose user is a member of a workspace, or
+//?   (b) carry a valid, unexpired HMAC signature minted by the publish path (F42: TikTok/YouTube fetch
+//?       our asset with no cookie, and a published page is opened by strangers).
+//? Path-traversal is still hard-guarded (no `..`, no separators, no absolute). Origin-exempt (a direct
+//? download / `<video src>` / platform pull has no Origin) — exemption is not auth, which is the point.
 //? Streams the file (bounded by the OS), never buffers. Best-effort: any miss is a clean 404.
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
+import { readSession, getPrismaClient } from '@luckystack/core';
 import { registerCustomRoute, registerOriginExemptPath } from '@luckystack/server';
 
 import { MEDIA_DIR } from './store';
+import { readSignatureParams, verifyMediaSignature } from './signedUrl';
 
 const PREFIX = '/media/';
 
@@ -42,14 +47,32 @@ export function safeMediaPath(urlPath: string): string | null {
 //? Register the media download route (call once at boot).
 export function registerMediaDownload(): void {
   registerOriginExemptPath({ pathPrefix: PREFIX });
-  registerCustomRoute((req, res) => {
-    const rawUrl = (req.url ?? '').split('?')[0] ?? '';
+  registerCustomRoute(async (req, res, ctx) => {
+    const fullUrl = req.url ?? '';
+    const rawUrl = fullUrl.split('?')[0] ?? '';
     if (!rawUrl.startsWith(PREFIX)) return false;
     const fail = (code: number): true => { res.statusCode = code; res.end(); return true; };
     if ((req.method ?? '').toUpperCase() !== 'GET') return fail(405);
 
     const abs = safeMediaPath(rawUrl);
     if (abs === null || !existsSync(abs)) return fail(404);
+
+    //? F05/F42 — a signature is checked FIRST: it is the path a platform or a public page uses, and it
+    //? needs no DB round-trip. Only an unsigned request falls through to session+membership.
+    const name = rawUrl.slice(PREFIX.length);
+    const { exp, sig } = readSignatureParams(fullUrl);
+    const verdict = verifyMediaSignature(name, exp, sig);
+    if (verdict !== 'valid') {
+      //? An EXPIRED or forged signature is refused outright rather than silently falling back to the
+      //? session path — otherwise a stale public link would keep working for any logged-in visitor.
+      if (verdict === 'expired' || verdict === 'invalid') return fail(403);
+      const session = await readSession(ctx.token);
+      if (!session) return fail(401);
+      //? Membership of ANY workspace, not a specific one: media ids carry no workspace, and inventing a
+      //? binding here would be security theatre. This closes drive-by access, which is the actual gap.
+      const member = await getPrismaClient().workspaceMember.findFirst({ where: { userId: session.id }, select: { id: true } });
+      if (!member) return fail(403);
+    }
 
     res.statusCode = 200;
     res.setHeader('Content-Type', MIME[path.extname(abs).toLowerCase()] ?? 'application/octet-stream');

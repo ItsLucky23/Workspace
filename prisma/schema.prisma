@@ -400,6 +400,45 @@ model PublishedSite {
   @@index([workspaceId, slug])
 }
 
+//? F35 — the DURABLE record of a document-upload extraction. Extraction runs outside the write lock (a
+//? container parse takes seconds), and it used to be fire-and-forget: a crash or restart mid-parse left the
+//? asset stuck at `extractStatus: 'pending'` forever, with nothing to retry it. This row is what a sweep
+//? can find and re-drive.
+//? F55 — the workspace's RETENTION policy: how long each data class is kept. Absent or 0 = keep forever,
+//? which is the default on purpose — silently deleting a user's history because a default said so is the
+//? worse failure. A workspace opts in per class, and the sweep only ever touches classes with a positive
+//? value. `lastSweptAt` makes the sweep observable instead of a silent background deleter.
+model RetentionPolicy {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId    String   @unique @db.ObjectId
+  chatDays       Int      @default(0)
+  commentDays    Int      @default(0)
+  eventDays      Int      @default(0)   // ticket events / activity feed
+  notificationDays Int    @default(0)
+  aiRunDays      Int      @default(0)   // AI activity + spend detail rows
+  lastSweptAt    DateTime?
+  lastDeleted    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model DocumentExtractJob {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  documentId  String   @db.ObjectId
+  url         String
+  userId      String   @db.ObjectId
+  status      String   @default("pending")      // 'pending' | 'running' | 'done' | 'failed'
+  attempts    Int      @default(0)
+  lastError   String?
+  startedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, documentId, url])
+}
+
 model SiteSnapshot {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
@@ -1845,6 +1884,10 @@ model PublishJob {
   platform         String                            // 'youtube' | 'tiktok' | 'instagram' | 'linkedin'
   accountId        String?                            // A3 — which connected account to publish with (null = default)
   status           String   @default("queued")       // 'queued' | 'scheduled' | 'processing' | 'done' | 'stub' | 'error'
+  //? F40 — the FROZEN intent: title + caption/hashtags/privacy/disclosure + the asset URL as they were
+  //? when the post was scheduled. Without this the fire path re-read them live, so editing a piece after
+  //? scheduling silently changed what got posted hours later.
+  frozenPayload    Json?
   attempts         Int      @default(0)               // GAP_SCAN A3 — publish tries so far; drives the bounded retry/backoff
   scheduledAt      DateTime?                          // O3 — when a 'scheduled' post should fire (null = post now); also the retry time
   externalUrl      String?

@@ -12,6 +12,7 @@ import { tryCatch } from '@luckystack/core';
 
 import { encryptSecret, decryptSecret } from '../crypto/secretBox';
 import { MEDIA_DIR } from '../media/store';
+import { platformFetchableUrl } from '../media/signedUrl';
 import { withRetry } from '../util/retry';
 
 export type OAuthPlatform = 'youtube' | 'tiktok';
@@ -168,7 +169,11 @@ export function buildUploadRequest(platform: OAuthPlatform, input: { accessToken
   return {
     url: cfg.uploadUrl, method: 'POST',
     headers: { Authorization: `Bearer ${input.accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ post_info: { title: caption, privacy_level: TT_PRIVACY[privacy], ...(synthetic ? { is_aigc: true } : {}) }, source_info: { source: 'PULL_FROM_URL', video_url: input.assetUrl } }),
+    //? F42 — TikTok PULLS the video from us, so the URL must be absolute AND fetchable without a cookie.
+    //? A relative `/media/...` (what was sent before) is unfetchable by definition; `platformFetchableUrl`
+    //? returns a signed, expiring absolute URL, or '' when this install has no public origin configured —
+    //? in which case we send the raw value and the platform's own error surfaces honestly.
+    body: JSON.stringify({ post_info: { title: caption, privacy_level: TT_PRIVACY[privacy], ...(synthetic ? { is_aigc: true } : {}) }, source_info: { source: 'PULL_FROM_URL', video_url: platformFetchableUrl(input.assetUrl) || input.assetUrl } }),
   };
 }
 

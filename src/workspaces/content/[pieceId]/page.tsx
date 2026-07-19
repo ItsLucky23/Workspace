@@ -113,7 +113,7 @@ function GenProgress({ asset, translate }: { asset: ContentAssetSummary; transla
 //? platform (fires content-request-publish behind a confirm; the actual post is B-23-gated on accept).
 //? G1/CP1 — the publish composer form: caption + hashtags + privacy + optional schedule for ONE platform.
 //? Submits the fields to content-request-publish (G1 persists them as the per-platform publishVariant).
-function PublishComposer({ platform, accounts, defaultSynthetic, onSubmit, translate }: { platform: string; accounts: { accountId: string | null }[]; defaultSynthetic: boolean; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string; accountId?: string; syntheticMedia?: boolean }) => void; translate: ReturnType<typeof useTranslator> }) {
+function PublishComposer({ platform, accounts, defaultSynthetic, defaultAccountId, onSubmit, translate }: { platform: string; accounts: { accountId: string | null }[]; defaultSynthetic: boolean; defaultAccountId: string | null; onSubmit: (fields: { caption?: string; hashtags?: string[]; privacy?: string; scheduledAt?: string; accountId?: string; syntheticMedia?: boolean }) => void; translate: ReturnType<typeof useTranslator> }) {
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [privacy, setPrivacy] = useState('public');
@@ -121,7 +121,13 @@ function PublishComposer({ platform, accounts, defaultSynthetic, onSubmit, trans
   //? AI-disclosure checkbox — manual per post, prefilled from the channel's aiDisclosureDefault.
   const [synthetic, setSynthetic] = useState(defaultSynthetic);
   //? #140 — which connected account to post as (only shown when the platform has a named/multi account).
-  const [accountId, setAccountId] = useState(accounts[0]?.accountId ?? '');
+  //? F41 — the CHANNEL's default account wins over "whichever account happens to be first". Picking
+  //? accounts[0] silently posted to the wrong account whenever a channel named a different default.
+  const [accountId, setAccountId] = useState(
+    defaultAccountId !== null && accounts.some((a) => a.accountId === defaultAccountId)
+      ? defaultAccountId
+      : (accounts[0]?.accountId ?? ''),
+  );
   const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
   const privItems = (['public', 'unlisted', 'private'] as const).map((p) => ({ id: p, value: p, item: translate({ key: `workspaces.publish.priv_${p}` }) }));
   const showAccountPicker = accounts.length > 1 || accounts.some((a) => a.accountId !== null);
@@ -478,9 +484,12 @@ export default function ContentPiece({ params }: { params: Record<string, string
     const accounts = content.publishTargets.find((t) => t.platform === platform)?.accounts ?? [];
     //? AI-disclosure default: the piece's channel prefills the synthetic-media checkbox (props-injected —
     //? menuHandler renders above WorkspacesProvider, lesson 0011).
-    const defaultSynthetic = content.channels.find((c) => c.id === piece.channelId)?.aiDisclosureDefault ?? false;
+    const pieceChannel = content.channels.find((c) => c.id === piece.channelId);
+    const defaultSynthetic = pieceChannel?.aiDisclosureDefault ?? false;
+    //? F41 — carry the channel's chosen account into the composer (props-injected, lesson 0011).
+    const defaultAccountId = pieceChannel?.defaultAccountId ?? null;
     void menuHandler.open(
-      <PublishComposer platform={platform} accounts={accounts} defaultSynthetic={defaultSynthetic} translate={translate} onSubmit={(fields) => {
+      <PublishComposer platform={platform} accounts={accounts} defaultSynthetic={defaultSynthetic} defaultAccountId={defaultAccountId} translate={translate} onSubmit={(fields) => {
         void menuHandler.close();
         runContentOp('content-request-publish', piece.id, { assetId, platform, ...fields });
       }} />,

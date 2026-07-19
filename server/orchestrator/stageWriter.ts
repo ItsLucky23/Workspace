@@ -13,6 +13,8 @@ import { estTokens, priceFor } from '../spend/record';
 import { parseAdvisories } from './questionSet';
 import { recordHandoff } from './handoff';
 import { assertWorkspaceWriterContext } from './writerContext';
+import { tryCatch } from '@luckystack/core';
+import { needsInputHash } from './recoveryWriter';
 import type {
   StageActivationCompleteInternalAction,
   StageDeferUpdateInternalAction,
@@ -358,6 +360,53 @@ async function stageCompletionFromMarker(
     claudeSessionId: current.claudeSessionId,
     tokenEstimate: current.tokenEstimate,
   };
+}
+
+//? F44 — the immediate "a question is waiting" notification + web push for a NEWLY asked question.
+//? Recipient: the ticket's assignee, else its creator, else the workspace owner — the human who is
+//? actually expected to answer. Every step is tryCatch'd: an audit/notify failure is never allowed to
+//? roll back a completed stage write.
+export async function notifyNewQuestion(
+  prisma: PrismaClient,
+  input: { workspaceId: string; ticketId: string; ticketKey: string; question: string },
+): Promise<{ notified: boolean; recipient: string | null }> {
+  const [, outcome] = await tryCatch(async () => {
+    const ticket = await prisma.ticket.findFirst({
+      where: { workspaceId: input.workspaceId, id: input.ticketId },
+      select: { assigneeId: true, creatorId: true },
+    });
+    const owner = await prisma.workspace.findUnique({ where: { id: input.workspaceId }, select: { ownerId: true } });
+    const recipient = ticket?.assigneeId ?? ticket?.creatorId ?? owner?.ownerId ?? null;
+    if (!recipient) return { notified: false, recipient: null };
+
+    const title = 'A question is waiting';
+    const body = `${input.ticketKey}: ${input.question.slice(0, 160)}`;
+    //? Deterministic id so a retried writer action cannot produce a second notification for the same
+    //? question (the whole action layer is idempotent; this must be too).
+    const notificationId = deterministicObjectId(input.workspaceId, `needs-input:${input.ticketId}`, needsInputHash(input.question));
+    await prisma.notification.upsert({
+      where: { id: notificationId },
+      create: {
+        id: notificationId,
+        workspaceId: input.workspaceId,
+        userId: recipient,
+        type: 'question',
+        title,
+        body,
+        ticketId: input.ticketId,
+        deepLink: jsonInput({ view: 'board', ticketId: input.ticketKey }),
+        read: false,
+      },
+      update: {},
+    });
+
+    //? The push itself is what makes this phone-first; imported lazily so the writer keeps no web-push
+    //? dependency at module load (the same pattern the publish path uses).
+    const { sendWebPush } = await import('../hooks/webPush');
+    await sendWebPush(prisma, recipient, { title, body, url: `/?ticket=${input.ticketKey}`, tag: `question-${input.ticketKey}` }, 'assignment');
+    return { notified: true, recipient };
+  });
+  return outcome ?? { notified: false, recipient: null };
 }
 
 export async function applyStageActivationComplete(
@@ -758,6 +807,18 @@ export async function applyStageTurnComplete(
         },
       });
       if (ticketUpdate.count !== 1) throw new Error('[stage-writer] current ticket disappeared inside the writer boundary');
+      //? F44 — THE fix for the silent loop. A brand-new question used to notify nobody: this write sets
+      //? `remindedAt: null`, and the watchdog's reminder path only notifies when `remindedAt !== null`, so
+      //? the first push waited for the reminder sweep — two hours by default, on the one loop this product
+      //? is built around (ask → phone buzzes → human answers). The question now pushes IMMEDIATELY, and the
+      //? reminder stays what it is: a reminder. Best-effort by design: a failed push must never fail the
+      //? authoritative ticket write that already succeeded.
+      await notifyNewQuestion(prisma, {
+        workspaceId,
+        ticketId: action.target.ticketId,
+        ticketKey: action.target.ticketKey,
+        question: questions[0] ?? '',
+      });
     }
   }
 

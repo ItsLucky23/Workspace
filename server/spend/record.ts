@@ -90,8 +90,14 @@ export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId
 //? aggregate is cached briefly so per-generation checks don't rescan both tables.
 const HOST_CAP_CACHE_MS = 60_000;
 const hostCapCache = { at: 0, totalCents: 0 };
-export async function hostSpendTotalCents(prisma: PrismaClient): Promise<number> {
-  if (Date.now() - hostCapCache.at < HOST_CAP_CACHE_MS) return hostCapCache.totalCents;
+export async function hostSpendTotalCents(prisma: PrismaClient, opts: { fresh?: boolean } = {}): Promise<number> {
+  //? F34 — the cache is a throughput optimisation for the common case (far below the cap). Near or over
+  //? the cap it is exactly wrong: a 60-second-stale total is how parallel generations sail past the limit.
+  //? So a caller that is about to SPEND asks for a fresh read, and the cache self-invalidates once the
+  //? last known total is within 10% of the cap.
+  const cap = hostSpendCapCents();
+  const nearCap = cap > 0 && hostCapCache.totalCents >= cap * 0.9;
+  if (!opts.fresh && !nearCap && Date.now() - hostCapCache.at < HOST_CAP_CACHE_MS) return hostCapCache.totalCents;
   //? luckystack-allow tenant-scope: a deliberately host-wide aggregate (the whole point of the cap).
   const media = await prisma.mediaSpend.aggregate({ _sum: { costCents: true } });
   //? luckystack-allow tenant-scope: same host-wide aggregate.
@@ -107,7 +113,8 @@ export function hostSpendCapCents(): number {
 export async function isHostSpendCapReached(prisma: PrismaClient): Promise<boolean> {
   const cap = hostSpendCapCents();
   if (cap <= 0) return false;
-  return (await hostSpendTotalCents(prisma)) >= cap;
+  //? A cap CHECK always reads fresh: this is the guard, not a dashboard number.
+  return (await hostSpendTotalCents(prisma, { fresh: true })) >= cap;
 }
 //? Test hook: drop the cached aggregate so a test sees fresh sums.
 export function resetHostSpendCache(): void { hostCapCache.at = 0; }

@@ -15,6 +15,22 @@ import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 
 import { baseDomain } from '../proxy';
+import { signMediaUrl, publicMediaOrigin } from '../media/signedUrl';
+
+//? A published page lives longer than a platform pull, so its links get a generous TTL; re-publishing
+//? mints fresh ones, which doubles as the revocation story (unpublish → links die with the page).
+const SITE_MEDIA_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+//? Rewrite every `/media/<file>` reference in the page to a signed absolute URL. Deliberately a plain
+//? textual rewrite over src/href attributes: the HTML is AI-authored and served under a strict CSP, so
+//? parsing it into a DOM to be clever would add risk without adding correctness.
+export function withSignedMedia(html: string, ttlMs: number): string {
+  const origin = publicMediaOrigin();
+  if (origin.length === 0) return html;
+  //? Match the opening quote, capture the path, and require the SAME quote to close it — one
+  //? backreference keeps both `src="…"` and `src='…'` intact without a second pattern.
+  return html.replaceAll(/(src|href)=(["'])(\/media\/[A-Za-z0-9._-]+)\2/g, (_full, attr: string, quote: string, url: string) => `${attr}=${quote}${signMediaUrl(url, origin, ttlMs)}${quote}`);
+}
 
 export const SITE_PREFIX = '/s/';
 
@@ -66,8 +82,13 @@ export async function publishArtifactSite(
   const artifact = await prisma.studioArtifact.findFirst({ where: { workspaceId, id: artifactId }, select: { title: true, content: true, status: true } });
   if (!artifact) return { ok: false, error: 'artifact.notFound' };
   if (artifact.status !== 'ready') return { ok: false, error: 'artifact.notReady' };
-  const html = extractHtml(artifact.content);
-  if (!html) return { ok: false, error: 'artifact.notAPage' };
+  const rawHtml = extractHtml(artifact.content);
+  if (!rawHtml) return { ok: false, error: 'artifact.notAPage' };
+
+  //? F05 fallout — a published page is opened by strangers with no session, so every `/media/...` it
+  //? references must become a SIGNED absolute URL or the page would render with broken images the moment
+  //? media stopped being public. Signed at publish time with a long TTL; re-publishing refreshes them.
+  const html = withSignedMedia(rawHtml, SITE_MEDIA_TTL_MS);
 
   const slug = siteSlug(artifact.title, artifactId);
   const existing = await prisma.publishedSite.findFirst({ where: { workspaceId, slug }, select: { id: true } });
