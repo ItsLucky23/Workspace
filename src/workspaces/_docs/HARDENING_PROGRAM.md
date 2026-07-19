@@ -33,15 +33,15 @@ The parallel pass reported all 55 F-items as fixed. Three independent code verif
 | # | Phase | Items | Status |
 |---|---|---|---|
 | 0 | Finish the parallel pass | F11 edge auth (was complete, uncommitted) | ✅ `e51733b` |
-| 1 | Ship-what-you-tested + the silent loop | F26 promotion pin · F44 immediate push · F40 frozen publish payload · F41 channel default · F43 | |
-| 2 | Media access + storage truth | F05/F42 signed URLs · F06 quota · F48 blob GC + revocation | |
-| 3 | Trust boundaries | F09 run-command allowlist (report-first) · F17 commentInbox tenant · F20 audit integrity · F34 atomic spend | |
-| 4 | Durable work | F35 document extraction job · F38 cron attempts/retry/catch-up/dead-letter · F45 write ACK | |
-| 5 | Release integrity | F23 parallel DAG · F27 history/compare surface · F28 `Service.path` · F29 hooks/processes/visibility | |
-| 6 | Subsystems | F49/F50 backup+restore drill · F51 migration runner · F54 export/import · F55 retention · #19 packs | |
-| 7 | UI: structure | Navbar → ~5 groups + sub-navigation, module-aware | |
-| 8 | UI: first-open legibility | KISS pass per page; split where a page does too much | |
-| 9 | Verification | Container E2E + browser pass over the real UI | |
+| 1 | Ship-what-you-tested + the silent loop | F26 promotion pin · F44 immediate push · F40 frozen publish payload · F41 channel default | ✅ `3a3fe13` |
+| 2 | Media access + storage truth | F05/F42 signed URLs | ✅ `3a3fe13` (F06 quota, F48 blob GC still open) |
+| 3 | Trust boundaries | F09 allowlist (report-first) · F17 tenant · F34 spend cap | ✅ `3a3fe13` (F20 tamper-evidence still open) |
+| 4 | Durable work | F35 extraction job · F38 runs/retry/catch-up/dead-letter | ✅ `c643db7` (F45 write ACK still open) |
+| 5 | Release integrity | F23 parallel DAG | ✅ `c643db7` (F27 compare, F28 `Service.path`, F29 hooks/processes still open) |
+| 6 | Subsystems | F49/F50 · F51 · F54 · F55 · #19 | ✅ `12040c7` |
+| 7 | UI: structure | 5 destinations + sub-navigation | ✅ `af0558e` |
+| 8 | UI: first-open legibility | packs on onboarding; per-page KISS pass | 🔶 packs done, page-by-page pass open |
+| 9 | Verification | Container E2E + browser pass | ✅ container E2E green; browser pass done for onboarding/nav/packs |
 
 ## Standing rules for this run
 
@@ -53,4 +53,31 @@ The parallel pass reported all 55 F-items as fixed. Three independent code verif
 
 ## Findings log
 
-_(appended as the run progresses — the place where "this turned out differently" goes)_
+**The browser pass earned its place.** Three bugs reached a green test suite and were only visible in a
+real browser:
+
+1. **`packId` never reached the server.** The create route ENQUEUES a Conductor op rather than creating the
+   workspace itself. A fix written against the wrong shape silently did nothing — and the integration test
+   passed because it called `createBlankWorkspace` directly, bypassing the route entirely. `presetKey`
+   arrived (3 vs 7 stages) while the pack seeded nothing at all.
+2. **The nav restructure made the collapsed rail WORSE** — 19 icons where there had been 15, because it
+   rendered the group buttons and every sub-item.
+3. **Pack tickets collided with the default starter tickets**, which restart numbering at DEV-1, so the
+   pack's ticket vanished. Seeding now runs last and continues the numbering.
+
+Two smaller ones: two pack icons rendered as "?" placeholders (not in the icon map), and packs were
+initially added only to the in-app create form — not to Onboarding, which is the one screen where "what is
+this workspace for?" actually matters.
+
+**A `void` that ate its promise.** `void prisma.x.create(...)` was used to make a heterogeneous writer list
+type-check in the import path. It discarded the promise, so rows appeared to import while still in flight.
+Caught by the restore drill, not by typecheck.
+
+**A unique index could not be built** until pre-existing duplicate rows were removed — which is precisely
+the upgrade class F51 exists for, met while building F51.
+
+## Still open (verified, not started)
+
+F06 upload quota · F20 audit tamper-evidence · F27 deploy compare/history surface · F28 `Service.path`
+respected by CI/preview/deploy/export · F29 stage hooks/processes/visibleStageIds consumed · F45 write ACK
+for approvals · F48 blob GC + revocation of deleted media · the per-page KISS pass beyond onboarding/nav.
