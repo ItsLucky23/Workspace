@@ -16,6 +16,7 @@ import {
 } from '../../src/workspaces/_data/seed';
 import { isModuleEnabled } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline, type PipelinePreset } from './defaultPipeline';
+import { findPack, seedPack } from './workspacePacks';
 import { createStarterLibrary } from './starterLibrary';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from './workspaceBuiltins';
 import { rebuildDesignSystemDoc } from '../designer/designSystemDoc';
@@ -41,7 +42,7 @@ function slugify(name: string): string {
 //? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
 //? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
 //? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
-export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional'): Promise<{ workspaceId: string }> {
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional', packId?: string): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   //? Module gating (workspaces/_data/modules.ts): the caller passes the RESOLVED
   //? section-id list from the chosen module presets. Absent/empty ⇒ legacy all-on.
@@ -70,6 +71,12 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? Seed the curated starter-guidance library (all disabled; the user toggles them on from
   //? the Workflow settings — the "nudge, not a blank page" for their own AI workflows).
   await createStarterLibrary(prisma, workspaceId, project.id);
+
+  //? #19 — a PACK seeds what makes the workspace immediately usable (skills, a channel, starter documents,
+  //? a first ticket). Module toggles only decide which nav items exist; they never answered "now what?".
+  //? Best-effort: a pack is a nicety, and a failed seed must not fail workspace creation.
+  const pack = packId === undefined ? null : findPack(packId);
+  if (pack) await seedPack(prisma, workspaceId, project.id, ownerId, pack);
 
   await prisma.workspaceBudget.create({
     data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },

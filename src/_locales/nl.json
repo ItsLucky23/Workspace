@@ -2478,6 +2478,18 @@
       "empty": "Nog geen experimenten.",
       "status_running": "loopt",
       "status_stopped": "gestopt"
+    },
+    "packs": {
+      "heading": "Waar is deze workspace voor?",
+      "advanced": "Geavanceerd: modules en pipeline",
+      "soloDev": "Soloproject",
+      "soloDevDesc": "Code, een lichte pipeline, meteen aan de slag.",
+      "creator": "Contentmaker",
+      "creatorDesc": "Video, kanalen en een eigen stem.",
+      "agency": "Bureau / klantwerk",
+      "agencyDesc": "Alles aan, met reviewfases.",
+      "student": "Studie / documenten",
+      "studentDesc": "Schrijf vanuit je eigen geüploade bronnen."
     }
   }
 }

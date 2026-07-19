@@ -1261,7 +1261,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? G2 — clone this workspace's SETUP into a new one (no tickets, content, credentials or members).
       cloneWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/cloneWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? G5 — `presetKey` picks how heavy the seeded pipeline is (simple/advanced/professional).
-      createWorkspace: (name, enabledSections, presetKey) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), ...(presetKey ? { presetKey } : {}), clientRequestId: nextReqId() } })); },
+      createWorkspace: (name, enabledSections, presetKey, packId) => { afterWrite(apiRequest({ name: 'workspaces/createWorkspace', version: 'v1', data: { name, ...(enabledSections ? { enabledSections } : {}), ...(presetKey ? { presetKey } : {}), ...(packId ? { packId } : {}), clientRequestId: nextReqId() } })); },
       //? Multi-project / multi-service (ADR 0035).
       projects: snap.projects,
       activeProject: snap.projects.find((project) => project.id === snap.activeProjectId) ?? null,

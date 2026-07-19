@@ -2478,6 +2478,18 @@
       "empty": "Noch keine Experimente.",
       "status_running": "läuft",
       "status_stopped": "gestoppt"
+    },
+    "packs": {
+      "heading": "Wofür ist dieser Workspace?",
+      "advanced": "Erweitert: Module und Pipeline",
+      "soloDev": "Soloprojekt",
+      "soloDevDesc": "Code, schlanke Pipeline, sofort loslegen.",
+      "creator": "Content-Creator",
+      "creatorDesc": "Video, Kanäle und eine eigene Stimme.",
+      "agency": "Agentur / Kundenarbeit",
+      "agencyDesc": "Alles an, mit Review-Phasen.",
+      "student": "Studium / Dokumente",
+      "studentDesc": "Schreibe aus deinen eigenen Quellen."
     }
   }
 }

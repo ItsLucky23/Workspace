@@ -1515,7 +1515,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? unknown or absent value keeps the previous full-pipeline behaviour.
       const rawPreset = str(payload, 'presetKey') ?? '';
       const preset = isPipelinePreset(rawPreset) ? rawPreset : 'professional';
-      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections), preset);
+      //? #19 — a pack id seeds the starting content; an unknown id simply seeds nothing.
+      const packId = str(payload, 'packId');
+      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections), preset, packId);
       return;
     }
     //? GAP_SCAN G2 — clone THIS workspace's configuration into a new one owned by the caller. Config only:

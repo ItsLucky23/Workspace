@@ -2478,6 +2478,18 @@
       "empty": "Aucune expérience pour le moment.",
       "status_running": "en cours",
       "status_stopped": "arrêtée"
+    },
+    "packs": {
+      "heading": "À quoi sert cet espace ?",
+      "advanced": "Avancé : modules et pipeline",
+      "soloDev": "Projet solo",
+      "soloDevDesc": "Du code, un pipeline léger, au travail.",
+      "creator": "Créateur de contenu",
+      "creatorDesc": "Vidéo, canaux et une voix maison.",
+      "agency": "Agence / travail client",
+      "agencyDesc": "Tout activé, avec étapes de revue.",
+      "student": "Études / documents",
+      "studentDesc": "Rédigez à partir de vos propres sources."
     }
   }
 }

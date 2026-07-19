@@ -2478,6 +2478,18 @@
       "empty": "No experiments yet.",
       "status_running": "running",
       "status_stopped": "stopped"
+    },
+    "packs": {
+      "heading": "What is this workspace for?",
+      "advanced": "Advanced: modules and pipeline",
+      "soloDev": "Solo project",
+      "soloDevDesc": "Code, a light pipeline, straight to work.",
+      "creator": "Content creator",
+      "creatorDesc": "Video, channels and a house voice.",
+      "agency": "Agency / client work",
+      "agencyDesc": "Everything on, with review stages.",
+      "student": "Study / documents",
+      "studentDesc": "Write from your own uploaded sources."
     }
   }
 }

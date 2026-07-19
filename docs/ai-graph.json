@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 257,
-    "edges": 381,
+    "nodes": 258,
+    "edges": 382,
     "symbols": 370,
     "callEdges": 85
   },
@@ -670,6 +670,11 @@
     },
     {
       "id": "workspaces/_data/modules.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_data/packs.ts",
       "kind": "other",
       "route": null
     },
@@ -1802,6 +1807,10 @@
     {
       "from": "workspaces/_shell/Shell.tsx",
       "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_data/packs.ts"
     },
     {
       "from": "workspaces/_shell/Shell.tsx",
@@ -3372,6 +3381,14 @@
       "workspaces/settings/page.tsx",
       "workspaces/studio/page.tsx",
       "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/_data/packs.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
     "workspaces/_data/seed.ts": [
       "_components/templates/TemplateProvider.tsx",

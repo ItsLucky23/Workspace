@@ -412,6 +412,19 @@ model PublishedSite {
 //? console line, a missed tick was lost (no catch-up), a failed action had no retry and no dead letter, and
 //? "did my automation run last night?" was unanswerable. This row is the run history, the retry state and
 //? the dead letter in one place.
+//? F51 — the schema-upgrade WATERMARK. Prisma's MongoDB connector has no `migrate deploy`, so every added
+//? field landed on existing rows as "absent" and was papered over with a `?? default` at read time — which
+//? breaks the moment a query FILTERS on that field. One row per applied backfill step; the highest version
+//? is how far this install has been upgraded. In its own collection so it survives a container rebuild and
+//? is visible to every instance.
+model SchemaVersion {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  version   Int      @unique
+  name      String
+  rows      Int      @default(0)
+  appliedAt DateTime @default(now())
+}
+
 model AutomationRun {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId

@@ -12,7 +12,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
   //? G5 — `presetKey` chooses the seeded pipeline tier (simple/advanced/professional).
-  data: { name: string; clientRequestId: string; enabledSections?: string[]; presetKey?: string };
+  data: { name: string; clientRequestId: string; enabledSections?: string[]; presetKey?: string; packId?: string };
   user: SessionLayout;
   functions: Functions;
 }

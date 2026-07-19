@@ -13,6 +13,11 @@ import { registerCronJob } from '@luckystack/cron';
 import { runScheduledPublish, runMetricsIngest, PUBLISH_INTERVAL_MS, METRICS_INTERVAL_MS } from '../../server/content/publish';
 import { runCommentsIngest, COMMENTS_INTERVAL_MS } from '../../server/content/commentInbox';
 import { runRetentionSweep, RETENTION_INTERVAL_MS } from '../../server/retention/sweep';
+import { runSchemaUpgrade } from '../../server/db/schemaVersion';
+
+//? F51 — a re-check interval that mainly matters after a deploy adds a step; the runOnStart pass is the
+//? one that does the work.
+const SCHEMA_UPGRADE_MS = 6 * 3_600_000;
 
 //? F35 — how often the extraction-recovery sweep looks for stranded parses.
 const EXTRACT_RECOVERY_MS = Math.max(60_000, Number(process.env.WS_EXTRACT_RECOVERY_MIN ?? '5') * 60_000);
@@ -40,6 +45,15 @@ registerCronJob({ name: 'comments-ingest', schedule: { everyMs: COMMENTS_INTERVA
 
 //? #2 — fire due `on:'cron'` WorkspaceTriggers (per-minute sweep; each trigger carries its own cron string).
 registerCronJob({ name: 'automation-cron', schedule: { everyMs: CRON_TICK_MS }, handler: async () => { await runCronTriggers(getPrismaClient(), new Date()); } });
+
+//? F51 — versioned schema backfills for EXISTING installs. `runOnStart` because an install that is behind
+//? must be repaired before the loops below start querying on fields old rows do not have. Idempotent and
+//? watermarked, so a healthy install does nothing.
+registerCronJob({ name: 'schema-upgrade', schedule: { everyMs: SCHEMA_UPGRADE_MS }, runOnStart: true, handler: async () => {
+  const outcome = await runSchemaUpgrade(getPrismaClient());
+  if (outcome.failed !== undefined) console.error(`[schema] upgrade stopped at ${outcome.failed}`);
+  else if (outcome.applied.length > 0) console.log(`[schema] upgraded ${String(outcome.from)} → ${String(outcome.to)}: ${outcome.applied.map((a) => `${a.name}(${String(a.rows)})`).join(', ')}`);
+} });
 
 //? Backfill builtin skills + Designer gallery for pre-provisioning workspaces. Cron supplies cluster
 //? leadership/overlap protection; every tenant write still enters the internal Conductor lane.

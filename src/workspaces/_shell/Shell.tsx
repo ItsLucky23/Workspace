@@ -20,6 +20,7 @@ import { Glossary } from '../_components/Glossary';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
+import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
 import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, NotificationItem } from '../_data/types';
 
@@ -395,14 +396,26 @@ export function TabBar() {
 //? never asked for.
 const PIPELINE_TIERS = ['simple', 'advanced', 'professional'] as const;
 
-export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[], presetKey?: string) => void }) {
+export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, enabledSections?: string[], presetKey?: string, packId?: string) => void }) {
   const translate = useTranslator();
   const [name, setName] = useState('');
   const [tier, setTier] = useState<string>('professional');
+  //? #19 — the PACK is the first question now, because it answers "what is this workspace for?" and then
+  //? fills in the modules + tier itself. Picking one is optional; "start empty" keeps the old behaviour.
+  const [pack, setPack] = useState<string>('');
   //? Default all modules on (full experience); deselect the lanes you don't want.
   const [modules, setModules] = useState<WorkspaceModuleId[]>(WORKSPACE_MODULES.map((m) => m.id));
   const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
-  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; onCreate(n, sectionsForModules(modules), tier); void menuHandler.close(); };
+  //? Choosing a pack SETS the modules + tier, so the two lower sections reflect it and stay editable —
+  //? the pack is a starting point, never a lock-in.
+  const choosePack = (packId: string): void => {
+    setPack(packId);
+    const chosen = WORKSPACE_PACK_CHOICES.find((p) => p.id === packId);
+    if (!chosen) return;
+    setModules(chosen.modules);
+    setTier(chosen.preset);
+  };
+  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; onCreate(n, sectionsForModules(modules), tier, pack || undefined); void menuHandler.close(); };
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.shell.createWorkspace' })}</div>
@@ -412,8 +425,26 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
         placeholder={translate({ key: 'workspaces.shell.workspaceNamePlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
-      <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
-      <ModulePicker selected={modules} onToggle={toggleModule} />
+      {/* #19 — what is this workspace FOR? Answering that seeds real starting content (skills, a channel,
+          starter documents, a first ticket) instead of handing someone an empty workspace. */}
+      <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.packs.heading' })}</div>
+      <div className="grid grid-cols-2 gap-2">
+        {WORKSPACE_PACK_CHOICES.map((p) => (
+          <button key={p.id} type="button" onClick={() => { choosePack(p.id); }}
+            className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left cursor-pointer transition-colors ${pack === p.id ? 'border-primary-border bg-primary/10' : 'border-container1-border bg-container2/50 hover:bg-container2'}`}>
+            <Icon name={p.icon} className={pack === p.id ? 'text-primary mt-0.5' : 'text-muted mt-0.5'} />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-title">{translate({ key: p.labelKey })}</span>
+              <span className="block text-xs text-muted">{translate({ key: p.descKey })}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <details className="mt-1">
+        <summary className="text-xs text-muted cursor-pointer">{translate({ key: 'workspaces.packs.advanced' })}</summary>
+        <div className="flex flex-col gap-2 mt-2">
+          <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+          <ModulePicker selected={modules} onToggle={toggleModule} />
       {/* G5 — how much pipeline to start with. Only meaningful with the development module on. */}
       {modules.includes('development') && (
         <>
@@ -428,6 +459,8 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
           </div>
         </>
       )}
+        </div>
+      </details>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
