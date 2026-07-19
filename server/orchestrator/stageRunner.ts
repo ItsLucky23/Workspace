@@ -585,7 +585,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? predecessor's envelope. Those extra stages are now loaded and handed to the renderer as context.
   const visibleIds = cfg.visibleStageIds.filter((id) => id !== stageKey);
   const visibleEnvelopes = visibleIds.length === 0 ? [] : await prisma.carryOver.findMany({
-    where: { ticketId: ticket.id, toStageId: { in: visibleIds } },
+    where: { workspaceId, ticketId: ticket.id, toStageId: { in: visibleIds } },
     orderBy: { createdAt: 'desc' }, take: 20,
   });
   //? Newest per stage only — an older run of the same stage is superseded, not extra context.

@@ -92,7 +92,7 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const [ws, project, service] = await Promise.all([
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } }),
     prisma.project.findFirst({ where: { id: env.projectId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, stack: true } }),
-    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, path: true } }) : Promise.resolve(null),
+    env.serviceId ? prisma.service.findFirst({ where: { id: env.serviceId, workspaceId }, select: { baseImageRef: true, devCommand: true, prodCommand: true, path: true } }) : Promise.resolve(null),
   ]);
   const branch = normalizeGitConfig(ws?.gitConfig ?? null).targetBranch;
   const image = opts.imageRef ?? service?.baseImageRef ?? project?.baseImageRef ?? undefined;
