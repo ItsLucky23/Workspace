@@ -80,6 +80,9 @@ export const GROUP_ICONS: Record<NavGroup, IconName> = { work: 'table-columns', 
 export const NAV_ITEMS: NavDef[] = [
   //? Work — the live state of the project.
   { id: 'board', icon: 'table-columns', label: 'Board', group: 'work' },
+  //? The cross-ticket answer inbox. It sits in Work rather than under a bell, because on a phone-first
+  //? product where the human's whole job is answering, "what is waiting on me?" IS the work.
+  { id: 'answers', icon: 'circle-question', label: 'Answers', group: 'work' },
   { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'work' },
   { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'work' },
   { id: 'activity', icon: 'wave-square', label: 'Activity', group: 'work' },

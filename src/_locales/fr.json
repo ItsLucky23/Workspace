@@ -2522,6 +2522,16 @@
       "account": "Vous",
       "workspace": "Espace",
       "developer": "Développeur"
+    },
+    "answers": {
+      "heading": "Réponses",
+      "sub": "Tout ce qui vous attend, au même endroit.",
+      "emptyTitle": "Rien ne vous attend",
+      "emptySub": "Dès qu'une IA a besoin d'une décision, elle apparaît ici.",
+      "waitedMinutes": "{{n}}m d'attente",
+      "waitedHours": "{{n}}h d'attente",
+      "waitedDays": "{{n}}j d'attente",
+      "moreOpen": "+{{n}} autres"
     }
   }
 }

@@ -434,13 +434,6 @@ export interface ShortLinkSummary {
 
 //? Review ergonomics (ADR 0048) — one item in the cross-ticket answer-queue: a ticket parked on a
 //? question, surfaced in a single queue the reviewer swipes/stacks through.
-export interface AnswerQueueItem {
-  ticketKey: string;
-  title: string;
-  question: string;
-  priority: string;
-}
-
 //? Delivery analytics (ADR 0047) — the fuller on-request fold surfaced on the analytics dashboard.
 export interface WorkspaceAnalytics {
   cycleP50Hours: number;

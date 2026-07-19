@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 258,
-    "edges": 384,
+    "nodes": 259,
+    "edges": 388,
     "symbols": 370,
     "callEdges": 85
   },
@@ -1104,6 +1104,11 @@
       "route": null
     },
     {
+      "id": "workspaces/answers/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
       "id": "workspaces/backlog/page.tsx",
       "kind": "page",
       "route": null
@@ -1970,6 +1975,22 @@
     },
     {
       "from": "workspaces/activity/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/answers/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/answers/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/answers/page.tsx",
+      "to": "workspaces/_functions/structuredQuestion.ts"
+    },
+    {
+      "from": "workspaces/answers/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2857,6 +2878,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
@@ -3205,6 +3227,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/board/[ticketId]/page.tsx",
@@ -3278,6 +3301,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
@@ -3324,6 +3348,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
@@ -3432,6 +3457,7 @@
       "workspaces/_sync/saveIntegration_server_v1.ts",
       "workspaces/_sync/saveStageConfig_server_v1.ts",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/DiffView.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
@@ -3504,6 +3530,7 @@
       "workspaces/_sync/saveStageConfig_server_v1.ts",
       "workspaces/_sync/skillsControl_server_v1.ts",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/DiffView.tsx",
       "workspaces/board/[ticketId]/FileDiffViewer.tsx",
@@ -3550,6 +3577,7 @@
       "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/structuredQuestion.ts": [
+      "workspaces/answers/page.tsx",
       "workspaces/board/[ticketId]/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
@@ -3617,6 +3645,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/activity/page.tsx",
+      "workspaces/answers/page.tsx",
       "workspaces/backlog/page.tsx",
       "workspaces/board/[ticketId]/page.tsx",
       "workspaces/content/[pieceId]/page.tsx",
@@ -3774,44 +3803,44 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 61,
+      "dependents": 62,
       "directDependents": 8
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 53,
+      "dependents": 54,
       "directDependents": 32
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 50,
-      "directDependents": 45
+      "dependents": 51,
+      "directDependents": 46
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 45,
-      "directDependents": 36
+      "dependents": 46,
+      "directDependents": 37
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 43,
+      "dependents": 44,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 42,
+      "dependents": 43,
       "directDependents": 8
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 41,
-      "directDependents": 37
+      "dependents": 42,
+      "directDependents": 38
     },
     {
       "id": "_components/ConfirmMenu.tsx",

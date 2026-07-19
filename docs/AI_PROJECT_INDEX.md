@@ -208,7 +208,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioGenerate/v1`
 - … +72 more
 
-## Pages (32)
+## Pages (33)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -223,6 +223,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/settings/confirm-email` | plain | — | `settings/confirm-email/page.tsx` | — |
 | `/workspaces` | workspaces | — | `workspaces/page.tsx` | Workspaces — the scrum board. Kanban across the 7 pipeline stages. |
 | `/workspaces/activity` | workspaces | — | `workspaces/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
+| `/workspaces/answers` | workspaces | — | `workspaces/answers/page.tsx` | intent: One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to. |
 | `/workspaces/backlog` | workspaces | — | `workspaces/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
 | `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
 | `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |

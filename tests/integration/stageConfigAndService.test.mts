@@ -102,7 +102,9 @@ assert(settings.includes("'workspaces.deployHistory.current'"), 'naming which on
 /* ------------------------------------------------------------ F45: the write ACK */
 
 const provider = read('src/workspaces/_shell/WorkspacesProvider.tsx');
-assert(provider.includes('const reqId = `answer:${key}`'), 'the answer request id is derived, so a double-tap dedupes instead of queueing a second answer');
+//? The id keys on the QUESTION, not just the ticket: keying on the ticket alone swallowed the NEXT
+//? question's answer as a replay of the previous one (caught in the browser, see answerInbox.test.mts).
+assert(provider.includes('const reqId = `answer:${key}:${shortHash(askedNow)}`'), 'the answer request id is derived from the question being answered, so a double-tap dedupes but a new question does not');
 assert(!provider.includes('const reqId = nextReqId();\n        const send = () => { void syncRequest({ name: \'workspaces/answerInput\''), 'the old random-id fire-and-forget path is gone');
 assert(provider.includes('setPendingAnswers'), 'a pending state exists');
 assert(provider.includes('notify.error({ key: response.errorCode })'), 'and a refused answer is surfaced instead of vanishing');

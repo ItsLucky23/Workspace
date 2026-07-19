@@ -2522,6 +2522,16 @@
       "account": "Jij",
       "workspace": "Workspace",
       "developer": "Ontwikkelaar"
+    },
+    "answers": {
+      "heading": "Antwoorden",
+      "sub": "Alles wat op jou wacht, op één plek.",
+      "emptyTitle": "Er wacht niets op jou",
+      "emptySub": "Zodra een AI een beslissing nodig heeft, verschijnt die hier.",
+      "waitedMinutes": "{{n}}m wachtend",
+      "waitedHours": "{{n}}u wachtend",
+      "waitedDays": "{{n}}d wachtend",
+      "moreOpen": "+{{n}} meer"
     }
   }
 }

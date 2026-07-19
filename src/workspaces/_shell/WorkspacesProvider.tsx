@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 //? F45 — identifies WHICH question is being answered: a ticket's needs-input banner, or one specific
-//? advisory on it. Used both as the pending-state key and as the idempotency id for the write.
+//? advisory on it. Used as the pending-state key.
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { apiRequest, tryCatch, i18nNotify as notify, useSession, useTheme, useTranslator } from '@luckystack/core/client';
@@ -32,7 +32,7 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 import { shouldApplySnapshotResponse, snapshotTargetsMatch, type SnapshotTarget } from './snapshotRequest';
@@ -90,7 +90,6 @@ interface Snap {
   usage: WorkspaceUsage;
   insights: WorkspaceInsights;
   analytics: WorkspaceAnalytics;
-  answerQueue: AnswerQueueItem[];
   content: ContentSnapshot;
   triggers: WorkspaceTrigger[];
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
@@ -120,7 +119,6 @@ const EMPTY_SNAP: Snap = {
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
-  answerQueue: [],
   content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
@@ -178,6 +176,14 @@ function useIsMobile(): boolean {
 function nextReqId(): string { return globalThis.crypto.randomUUID(); }
 //? A local counter for UI-only ids (chat messages) — never sent to the server.
 let reqCounter = 0;
+
+//? A short, stable fingerprint of the question text, so the idempotency id changes when the QUESTION does.
+//? Not cryptographic — it only has to distinguish one open question from the next on the same ticket.
+const shortHash = (value: string): string => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) hash = Math.trunc(Math.imul(31, hash) + (value.codePointAt(index) ?? 0));
+  return (hash >>> 0).toString(36);
+};
 
 const answerKey = (ticketId: string, advisoryIndex?: number): string => `${ticketId}:${typeof advisoryIndex === 'number' ? String(advisoryIndex) : 'main'}`;
 
@@ -1472,10 +1478,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (!room) return;
         const key = answerKey(ticketId, advisoryIndex);
-        //? F45 — the request id is DERIVED from what is being answered, not random. A double-tap therefore
-        //? carries the same id and the Conductor's idempotency drops it, instead of queueing a second
-        //? answer to a question that was already answered.
-        const reqId = `answer:${key}`;
+        //? F45 — the request id is DERIVED from what is being answered, not random: a double-tap carries the
+        //? same id and the Conductor's idempotency drops it instead of queueing a second answer.
+        //?
+        //? It must key on the QUESTION, not just the ticket. Keying on the ticket alone made the id stable
+        //? across DIFFERENT questions on the same ticket, so the next question's answer was silently
+        //? swallowed as a replay of the previous one — the ticket stayed parked and the button stayed
+        //? spinning. A browser pass caught it; no unit test would have, because the write "succeeded".
+        const askedNow = snap.tickets.find((t) => t.id === ticketId)?.needsInput ?? '';
+        const reqId = `answer:${key}:${shortHash(askedNow)}`;
         const send = () => {
           setPendingAnswers((prev) => ({ ...prev, [key]: true }));
           void syncRequest({ name: 'workspaces/answerInput', version: 'v1', data: { ticketKey: ticketId, answer, ...(typeof advisoryIndex === 'number' ? { advisoryIndex } : {}), clientRequestId: reqId }, receiver: room })
@@ -1501,7 +1512,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       viewCounts,
       agentTerm,
       //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim.
-      answerQueue: snap.answerQueue,
       content: snap.content,
       claimTicket: claimTicketApi,
       //? Who (if anyone) has soft-claimed this ticket's question (is answering it) — null if free.

@@ -2522,6 +2522,16 @@
       "account": "Du",
       "workspace": "Workspace",
       "developer": "Entwickler"
+    },
+    "answers": {
+      "heading": "Antworten",
+      "sub": "Alles, was auf dich wartet, an einem Ort.",
+      "emptyTitle": "Es wartet nichts auf dich",
+      "emptySub": "Sobald eine KI eine Entscheidung braucht, erscheint sie hier.",
+      "waitedMinutes": "{{n}}m wartend",
+      "waitedHours": "{{n}}h wartend",
+      "waitedDays": "{{n}}T wartend",
+      "moreOpen": "+{{n}} weitere"
     }
   }
 }

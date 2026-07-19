@@ -23,7 +23,7 @@ _(The main features/areas of the app and what each is for. The AI keeps this in 
 
 _(Domain terms used in this project, so the AI + the team use the same vocabulary.)_
 
-## Pages by area (32)
+## Pages by area (33)
 
 ### (root)
 
@@ -80,6 +80,7 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 | --- | --- | --- |
 | `/workspaces` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/page.tsx` |
 | `/workspaces/activity` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/activity/page.tsx` |
+| `/workspaces/answers` | One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to. ? The cross-ticket answer inbox. A server-built `answerQueue` has existed in the snapshot since ADR 0048 and was rendered by NOTHING — the data was plumbed all the way to the client and then dropped on the floor. ? For a product whose whole premise is "the human is a man-in-the-middle who only approves and answers questions", that is a gap on the core loop: you could only answer a question if you happened to have the right ticket open. This page is the drain. Highest priority first, oldest wait surfaced, and the same structured tap-targets the ticket banner offers — an approve question stays two buttons here too. ? The queue is DERIVED from the live tickets rather than read from that snapshot array. A browser pass showed why: answering cleared the ticket server-side, the ticket delta arrived — and the inbox kept showing the answered question, because no delta ever updates a separate `answerQueue` array. Tickets are what the realtime layer actually keeps current, so the queue is computed from them and cannot go stale. | `workspaces/answers/page.tsx` |
 | `/workspaces/backlog` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/backlog/page.tsx` |
 | `/workspaces/board/[ticketId]` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `workspaces/board/[ticketId]/page.tsx` |
 | `/workspaces/content` | the Content studio — a board of your AI content pieces (script → media → assemble → review → publish) with the media €-budget, so a non-technical user sees everything they've made. | `workspaces/content/page.tsx` |

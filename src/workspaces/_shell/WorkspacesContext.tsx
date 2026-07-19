@@ -12,11 +12,11 @@ import type {
   PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, DocumentTemplateSection, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, AnswerQueueItem, ContentSnapshot,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
 } from '../_data/types';
 
 export type WsView =
-  | 'board' | 'backlog' | 'terminals' | 'activity' | 'sources'
+  | 'board' | 'backlog' | 'answers' | 'terminals' | 'activity' | 'sources'
   | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'scheduled-posts' | 'knowledge' | 'documents'
   | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
@@ -218,7 +218,6 @@ export interface WorkspacesCtx {
   //? #20 — the live agent-terminal tail per ticket key (a rolling PTY buffer; '' when no live turn).
   agentTerm: Record<string, string>;
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue + soft-claim (who's answering).
-  answerQueue: AnswerQueueItem[];
   claimTicket: (ticketKey: string, claiming: boolean) => void;
   claimedBy: (ticketKey: string) => string | null;
   archiveTicket: (id: string) => void;

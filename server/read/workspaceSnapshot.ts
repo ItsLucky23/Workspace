@@ -19,7 +19,6 @@ import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toContentAssetSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
-import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
@@ -40,14 +39,12 @@ import type {
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
-  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, AnswerQueueItem, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
+  ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
   ChatMessage,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
 
-//? Priority rank for the answer-queue ordering (ADR 0048 — urgent first).
-const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1, low: 0 };
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
 const jsonStr = (v: unknown, key: string): string => (v !== null && typeof v === 'object' && typeof (v as Record<string, unknown>)[key] === 'string' ? ((v as Record<string, string>)[key] ?? '') : '');
@@ -208,7 +205,6 @@ export interface WorkspaceSnapshot {
   //? Delivery analytics (ADR 0047): the fuller fold for the analytics dashboard.
   analytics: WorkspaceAnalytics;
   //? Review ergonomics (ADR 0048): the cross-ticket answer-queue — tickets parked on a question.
-  answerQueue: AnswerQueueItem[];
   //? Content platform (ADR 0069): the content-lane pieces + media €-budget status.
   content: ContentSnapshot;
   //? Automation (#2): the workspace's triggers.
@@ -248,7 +244,6 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
-  answerQueue: [],
   content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
@@ -643,12 +638,6 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         return mapped;
       }),
       usage, insights, analytics,
-      //? Review ergonomics (ADR 0048): the cross-ticket answer-queue — every ticket parked on a question
-      //? (needs-input), in one place the reviewer drains. Highest priority first.
-      answerQueue: ticketRows
-        .filter((t) => !t.archived && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'))
-        .map((t): AnswerQueueItem => ({ ticketKey: t.key, title: t.title, question: questionPrompt(t.needsInput), priority: t.priority }))
-        .toSorted((a, b) => (PRIORITY_RANK[b.priority] ?? 1) - (PRIORITY_RANK[a.priority] ?? 1)),
       //? Content platform (ADR 0069): the content-lane pieces + media €-budget status.
       content: contentSnapshot,
       triggers: triggerRows.map((t): WorkspaceTrigger => ({

@@ -2522,6 +2522,16 @@
       "account": "You",
       "workspace": "Workspace",
       "developer": "Developer"
+    },
+    "answers": {
+      "heading": "Answers",
+      "sub": "Every AI waiting on you, in one place.",
+      "emptyTitle": "Nothing is waiting on you",
+      "emptySub": "When an AI needs a decision, it shows up here.",
+      "waitedMinutes": "{{n}}m waiting",
+      "waitedHours": "{{n}}h waiting",
+      "waitedDays": "{{n}}d waiting",
+      "moreOpen": "+{{n}} more"
     }
   }
 }

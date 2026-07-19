@@ -873,7 +873,18 @@ async function markWorkspaceSignalProcessed(workspaceId: string, signalId: strin
     where: { workspaceId, id: signalId },
     data: { processedAt: new Date() },
   });
-  if (marked.count !== 1) throw new Error('[conductor] durable signal could not be marked processed');
+  if (marked.count === 1) return;
+
+  //? Zero rows updated means the signal row is GONE, not that marking it failed — the workspace was
+  //? deleted while this action was still in flight. That is a benign lost race (there is nothing left to
+  //? mark, and nothing left to act on), and throwing turned it into a stack trace plus a failed action.
+  //?
+  //? The distinction matters: a real marking failure must stay loud, because an unmarked signal gets
+  //? REPLAYED. So check whether the row still exists before deciding which of the two this is — and if it
+  //? does exist, keep throwing.
+  const stillThere = await prisma.workspaceSignal.findFirst({ where: { workspaceId, id: signalId }, select: { id: true } });
+  if (stillThere) throw new Error('[conductor] durable signal could not be marked processed');
+  console.log(`[conductor] signal ${signalId} vanished before it could be marked (workspace ${workspaceId} deleted mid-flight) — nothing to do`);
 }
 
 export interface EnqueuedControlAction {
