@@ -79,9 +79,9 @@ import {
   type ControlActionTerminalOutcome,
   type WorkspaceLeaseGuard,
 } from './cluster';
-import { dockerAvailable } from '../container/runtime';
+import { dockerAvailable, teardownWorkspaceContainers } from '../container/runtime';
 import { isSpendEnforcementActive } from '../spend/record';
-import { provisionServiceStack, teardownServiceStack } from '../container/composeEngine';
+import { provisionServiceStack, teardownServiceStack, teardownWorkspaceServiceNetwork } from '../container/composeEngine';
 import { presetCompose, presetEnv } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
 import { recordAudit } from '../control/audit';
@@ -1429,6 +1429,20 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       for (const environment of environments) {
         const tornDown = await teardownEnvironment(prisma, action.workspaceId, environment.id);
         if (!tornDown.ok) throw new Error('[conductor] workspace environment teardown could not be proven');
+      }
+      const serviceStacks = await prisma.serviceStack.findMany({
+        where: { workspaceId: action.workspaceId },
+        select: { name: true },
+      });
+      for (const stack of serviceStacks) {
+        const tornDown = await teardownServiceStack(prisma, action.workspaceId, stack.name);
+        if (!tornDown.ok) throw new Error('[conductor] workspace service-stack teardown could not be proven');
+      }
+      if (!(await teardownWorkspaceContainers(action.workspaceId))) {
+        throw new Error('[conductor] workspace container teardown could not be proven');
+      }
+      if (!(await teardownWorkspaceServiceNetwork(action.workspaceId))) {
+        throw new Error('[conductor] workspace service-network teardown could not be proven');
       }
       await recordAudit(prisma, action.workspaceId, userId, 'delete-workspace', action.workspaceId);
       await cascadeDeleteWorkspace(action.workspaceId);

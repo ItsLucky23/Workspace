@@ -18,7 +18,7 @@ import { startEditorInContainer, EDITOR_IN_CONTAINER_PORT } from './editorServer
 import { captureProfileFromContainer } from './editorProfile';
 import { isEditorRunning } from '../orchestrator/editGuard';
 import { deriveHostSlug } from '../git/branchStrategy';
-import { getProxyProvider, baseDomain, type ProxyRoute } from '../proxy';
+import { getProxyProvider, baseDomain, edgeAuthBackend, type ProxyRoute } from '../proxy';
 
 //? The shared docker network the proxy dials container names on. Host-level infra config.
 const EDITOR_NET = process.env.WS_NET ?? 'workspaces-net';
@@ -41,8 +41,6 @@ export interface OpenEditorResult { ok: boolean; url?: string; host?: string; to
 //? `WS_EDITOR_EDGE_AUTH` because it REQUIRES the session cookie to be subdomain-scoped
 //? (`Domain=.<baseDomain>`), else the app's iframe can't send it. The auth backend dial defaults
 //? to `host.docker.internal:80` (the host backend, reachable from the Caddy container in dev).
-const EDGE_AUTH_BACKEND = process.env.WS_EDITOR_EDGE_AUTH === undefined ? undefined : (process.env.WS_EDITOR_AUTH_BACKEND ?? 'host.docker.internal:80');
-
 export function editorRoute(input: { workspaceId: string; ticketKey: string; branch: string; containerName: string }): ProxyRoute {
   return {
     id: `vscode-${input.ticketKey.toLowerCase()}`,
@@ -51,7 +49,7 @@ export function editorRoute(input: { workspaceId: string; ticketKey: string; bra
     //? host→workspace for /editor-auth-check membership (the proxy writes it to the Redis map on
     //? upsert). Without it the edge-auth degrades to logged-in-only (any member of any workspace).
     workspaceId: input.workspaceId,
-    ...(EDGE_AUTH_BACKEND === undefined ? {} : { forwardAuth: EDGE_AUTH_BACKEND }),
+    ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
   };
 }
 

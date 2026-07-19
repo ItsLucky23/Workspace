@@ -120,6 +120,40 @@ try {
   });
   assert(recovered.some((entry) => entry.sessionId === expired.session.id && entry.reason === 'boot'), 'cron reconstructs and continues a recovering prepare after process crash');
 
+  const manual = await makeRun('manual-crash', now, now);
+  const manualRequestId = `agent-recovery-prepare:manual-kill:${manual.session.id}:${manual.reservation.runToken}:${String(manual.reservation.fence)}:${String(manual.session.startedAt.getTime())}`;
+  const manualPrepared = await enqueueInternalAction({
+    workspaceId,
+    op: 'agent-recovery-transition',
+    target: { ticketId: manual.ticket.id, ticketKey: manual.ticket.key, projectId: project.id, stageId: stage.key, sessionId: manual.session.id },
+    payload: {
+      phase: 'prepare',
+      reason: 'manual-kill',
+      expected: {
+        ticketStatus: 'busy',
+        needsInputHash: needsInputHash(manual.ticket.needsInput),
+        sessionStatus: 'busy',
+        containerId: manual.session.containerId ?? '',
+        runToken: manual.reservation.runToken,
+        runFence: manual.reservation.fence,
+        startedAt: manual.session.startedAt.getTime(),
+      },
+      observedAt: now,
+    },
+    userId: 'watchdog-test',
+    clientRequestId: manualRequestId,
+  });
+  assert(readRecoveryTransitionResult(manualPrepared.result)?.applied === true, 'manual-kill crash fixture has an accepted recovery fence');
+  eq((await prisma.ticket.findUnique({ where: { id: manual.ticket.id } }))?.status, 'idle', 'manual-kill prepare moves the ticket idle only after fencing');
+  recovered.length = 0;
+  await watchdog.runWatchdogSweep(now + 1, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return false; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === manual.session.id && entry.reason === 'manual-kill' && !entry.provision), 'cron resumes a crashed manual-kill despite its prepared idle ticket state');
+
   if (!preparedResult?.applied || preparedResult.phase !== 'prepare') throw new Error('watchdog prepare fixture failed');
   await enqueueInternalAction({
     workspaceId,

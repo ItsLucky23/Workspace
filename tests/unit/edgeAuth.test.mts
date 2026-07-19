@@ -3,6 +3,8 @@
 
 import { assert, eq, report } from '../_helpers.mts';
 import { decideEditorAuth } from '../../server/http/editorAuthCheck.ts';
+import { editorRoute } from '../../server/container/editorSession.ts';
+import { previewRoute, refPreviewRoute } from '../../server/proxy/index.ts';
 import { getRouteWorkspace, type RouteWorkspaceDeps } from '../../server/proxy/routeOwnership.ts';
 
 // Route ownership: one production lookup contract, three security-relevant Redis outcomes.
@@ -21,6 +23,20 @@ eq(await getRouteWorkspace('vscode-dev-2.example.com', missingDeps), { status: '
 
 const unavailableDeps: RouteWorkspaceDeps = { get: () => Promise.reject(new Error('redis unavailable')) };
 eq(await getRouteWorkspace('vscode-dev-3.example.com', unavailableDeps), { status: 'unavailable' }, 'Redis failure stays distinguishable as unavailable');
+
+// Enabling edge auth applies the same membership gate to editors, previews and ref previews.
+const previousEdgeAuth = process.env.WS_EDITOR_EDGE_AUTH;
+const previousEdgeBackend = process.env.WS_EDITOR_AUTH_BACKEND;
+process.env.WS_EDITOR_EDGE_AUTH = '1';
+process.env.WS_EDITOR_AUTH_BACKEND = 'auth.internal:8080';
+const editor = editorRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', branch: 'DEV-1', containerName: 'worker' });
+const preview = previewRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', branch: 'DEV-1', containerName: 'worker' });
+const refPreview = refPreviewRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', branch: 'DEV-1', refSlug: 'abc', containerName: 'worker-ref' });
+eq(editor.forwardAuth, 'auth.internal:8080', 'editor route receives the configured edge-auth backend');
+eq(preview.forwardAuth, 'auth.internal:8080', 'ticket preview receives the configured edge-auth backend');
+eq(refPreview.forwardAuth, 'auth.internal:8080', 'ref preview receives the configured edge-auth backend');
+if (previousEdgeAuth === undefined) delete process.env.WS_EDITOR_EDGE_AUTH; else process.env.WS_EDITOR_EDGE_AUTH = previousEdgeAuth;
+if (previousEdgeBackend === undefined) delete process.env.WS_EDITOR_AUTH_BACKEND; else process.env.WS_EDITOR_AUTH_BACKEND = previousEdgeBackend;
 
 // Pure authorization decision table. A valid login never bypasses ownership or workspace RBAC.
 eq(decideEditorAuth({ sessionValid: false }), { statusCode: 401, body: 'unauthorized' }, 'invalid session returns 401');

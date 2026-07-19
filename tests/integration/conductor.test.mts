@@ -17,6 +17,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 //? the module runs `getPrismaClient()` at load, so the client must exist before it.
 const prisma = await db();
 const { bootstrapWorkspace, enqueueControlAction } = await import('../../server/orchestrator/conductor');
+const { docker } = await import('../../server/container/runtime');
 
 //? Small poll helper — the Conductor writes on an off-thread serial chain, so a row
 //? is not visible synchronously after enqueue. Retry until `fn` yields a truthy
@@ -35,6 +36,10 @@ async function poll<T>(fn: () => Promise<T>, timeoutMs = 3000, stepMs = 50): Pro
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `conductor-test-${String(stamp)}@youcomm.nl`, name: 'Conductor Test' } });
 let workspaceId: string | null = null;
+let runtimeContainer = '';
+let runtimeVolume = '';
+let orphanRuntimeVolume = '';
+let serviceNetwork = '';
 
 try {
   // ---- 1. bootstrapWorkspace ---------------------------------------------------
@@ -86,6 +91,20 @@ try {
   await prisma.designArtifact.create({ data: { workspaceId, kind: 'theme', name: 'Delete fixture', content: {}, source: 'manual' } });
   await prisma.document.create({ data: { workspaceId, title: 'Delete fixture', content: '# Delete me' } });
   await prisma.workspaceChatMessage.create({ data: { workspaceId, userId: owner.id, role: 'user', text: 'delete me' } });
+  runtimeContainer = `ws-delete-${workspaceId}`;
+  runtimeVolume = `${runtimeContainer}-work`;
+  await docker(['volume', 'create', runtimeVolume]);
+  orphanRuntimeVolume = `wsvol-${workspaceId}-orphan`;
+  serviceNetwork = `ws-${workspaceId}-svc`;
+  await docker(['volume', 'create', orphanRuntimeVolume]);
+  await docker(['network', 'create', serviceNetwork]);
+  const runtimeStarted = await docker([
+    'run', '-d', '--name', runtimeContainer,
+    '--label', `org.workspaces.workspace=${workspaceId}`,
+    '-v', `${runtimeVolume}:/work`,
+    'alpine:latest', 'sleep', '300',
+  ]);
+  eq(runtimeStarted.code, 0, 'the deletion fixture starts a labelled workspace container');
 
   // ---- 3. cascade teardown (via the delete-workspace op) -----------------------
   await enqueueControlAction({
@@ -108,6 +127,14 @@ try {
   eq(await prisma.document.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes Document rows');
   eq(await prisma.skill.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes seeded Skill rows');
   eq(await prisma.workspaceChatMessage.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes WorkspaceChatMessage rows');
+  assert((await docker(['inspect', runtimeContainer])).code !== 0, 'workspace deletion removes labelled worker/editor/ref containers');
+  assert((await docker(['volume', 'inspect', runtimeVolume])).code !== 0, 'workspace deletion removes their named worktree volumes');
+  assert((await docker(['volume', 'inspect', orphanRuntimeVolume])).code !== 0, 'workspace deletion removes orphaned worktree volumes without a surviving container');
+  assert((await docker(['network', 'inspect', serviceNetwork])).code !== 0, 'workspace deletion removes the external service-stack network');
+  runtimeContainer = '';
+  runtimeVolume = '';
+  orphanRuntimeVolume = '';
+  serviceNetwork = '';
 
   // A workspace with a live runtime may not lose its ownership rows while proxy/container
   // teardown is unavailable. Once no public runtime remains, the same destructive op can retry.
@@ -145,6 +172,10 @@ try {
 } finally {
   //? Best-effort cleanup — remove the throwaway workspace (if the teardown assert
   //? never ran) + the throwaway owner User, in every case.
+  if (runtimeContainer) await docker(['rm', '-f', runtimeContainer]);
+  if (runtimeVolume) await docker(['volume', 'rm', '-f', runtimeVolume]);
+  if (orphanRuntimeVolume) await docker(['volume', 'rm', '-f', orphanRuntimeVolume]);
+  if (serviceNetwork) await docker(['network', 'rm', serviceNetwork]);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

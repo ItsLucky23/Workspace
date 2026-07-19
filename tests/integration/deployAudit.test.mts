@@ -20,7 +20,7 @@ try {
   const project = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
   const projectId = project?.id ?? wsId;
 
-  const env = await prisma.environment.create({ data: { workspaceId: wsId, projectId, kind: 'prod', route: `prod-${String(stamp)}.test`, status: 'live', deployedCommit: 'ccc' } });
+  const env = await prisma.environment.create({ data: { workspaceId: wsId, projectId, kind: 'prod', route: `prod-${String(stamp)}.test`, status: 'error', deployedCommit: 'ccc', lastError: 'env.notReady' } });
 
   /* ---------------------------------------------- D3: history is append-only and ordered */
   await recordDeploy(prisma, { workspaceId: wsId, envId: env.id, projectId, kind: 'prod', branch: 'main', commit: 'aaa', imageRef: null, status: 'live' });
@@ -37,7 +37,7 @@ try {
   eq(previousLiveCommit(history, 'bbb'), 'aaa', 'rolling back twice walks further back');
 
   //? History is scoped to its environment — another env's deploys never become a rollback target.
-  const other = await prisma.environment.create({ data: { workspaceId: wsId, projectId, kind: 'staging', route: `stg-${String(stamp)}.test`, status: 'live' } });
+  const other = await prisma.environment.create({ data: { workspaceId: wsId, projectId, kind: 'staging', route: `stg-${String(stamp)}.test`, status: 'stopped' } });
   await recordDeploy(prisma, { workspaceId: wsId, envId: other.id, projectId, kind: 'staging', branch: 'main', commit: 'zzz', imageRef: null, status: 'live' });
   eq((await listDeployHistory(prisma, wsId, env.id)).length, 3, "another environment's deploys stay out of this history");
 

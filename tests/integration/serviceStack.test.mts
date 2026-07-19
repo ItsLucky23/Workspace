@@ -8,7 +8,7 @@ import { existsSync, rmSync } from 'node:fs';
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { provisionServiceStack, teardownServiceStack } = await import('../../server/container/composeEngine');
+const { provisionServiceStack, teardownServiceStack, teardownWorkspaceServiceNetwork } = await import('../../server/container/composeEngine');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 const { workspaceDataDir } = await import('../../server/git/repoStore');
 
@@ -45,11 +45,31 @@ try {
   assert(!dockerCalled, 'a rejected compose NEVER touches Docker');
   eq(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'evil' } }), null, 'a rejected compose persists no row');
 
-  // 3) teardown → row removed + compose down called.
+  // 3) teardown → Docker failure preserves ownership for retry; proven down removes the row.
+  const failedDown = await teardownServiceStack(prisma, wsId, 'data', { run: async () => ({ code: 1, out: '', err: 'daemon failed' }) });
+  assert(!failedDown.ok, 'a failed compose down is not reported as successful teardown');
+  assert(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'data' } }) !== null, 'failed teardown preserves the stack row for retry');
+  await prisma.serviceStack.create({ data: { workspaceId: wsId, name: 'partial', compose: 'services: {}', services: [], status: 'error' } });
+  const missingPartialFile = await teardownServiceStack(prisma, wsId, 'partial', { run: async () => ({ code: 0, out: '', err: '' }) });
+  assert(!missingPartialFile.ok, 'an error stack without its compose file fails closed because partial runtime may remain');
+  assert(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'partial' } }) !== null, 'unprovable partial stack keeps its ownership row');
+  await prisma.serviceStack.deleteMany({ where: { workspaceId: wsId, name: 'partial' } });
   let downCalled = false;
   await teardownServiceStack(prisma, wsId, 'data', { run: async (a) => { if (a.includes('down')) downCalled = true; return { code: 0, out: '', err: '' }; } });
   assert(downCalled, 'teardown calls docker compose down');
   eq(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'data' } }), null, 'teardown removes the row');
+
+  let networkLists = 0;
+  const networkRemoved = await teardownWorkspaceServiceNetwork(wsId, { run: async (args) => {
+    if (args[1] === 'ls') {
+      networkLists += 1;
+      return { code: 0, out: networkLists === 1 ? `ws-${wsId}-svc` : '', err: '' };
+    }
+    return { code: 0, out: '', err: '' };
+  } });
+  assert(networkRemoved, 'workspace service network is removed and absence is re-proven');
+  const uncertainNetwork = await teardownWorkspaceServiceNetwork(wsId, { run: async () => ({ code: 1, out: '', err: 'daemon error' }) });
+  assert(!uncertainNetwork, 'network-list uncertainty fails closed instead of pretending absence');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

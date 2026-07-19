@@ -106,6 +106,7 @@ async function stillExactRecoveryTarget(
   workspaceId: string,
   target: StageTarget & { sessionId: string },
   expected: AgentRecoveryExpected,
+  ticketStatus: string = expected.ticketStatus,
 ): Promise<boolean> {
   if (await isEditorRunning(workspaceId, target.ticketKey)) return false;
   const [ticket, session] = await Promise.all([
@@ -116,7 +117,7 @@ async function stillExactRecoveryTarget(
         projectId: target.projectId,
         key: target.ticketKey,
         stageId: target.stageId,
-        status: expected.ticketStatus,
+        status: ticketStatus,
         archived: false,
       },
       select: { needsInput: true },
@@ -151,7 +152,8 @@ async function recoverSession(
 ): Promise<boolean> {
   if (!session.ticketId || !session.stageId) return false;
   const expected = accepted?.prepare.payload.expected ?? recoveryExpected(ticket, session);
-  if (expected?.ticketStatus !== ticket.status || needsInputHash(ticket.needsInput) !== expected.needsInputHash) return false;
+  const acceptedTicketStatus = accepted?.prepare.payload.reason === 'manual-kill' ? 'idle' : expected?.ticketStatus;
+  if (acceptedTicketStatus !== ticket.status || needsInputHash(ticket.needsInput) !== expected?.needsInputHash) return false;
   const target = accepted?.prepare.target ?? {
     ticketId: session.ticketId,
     ticketKey: ticket.key,
@@ -177,7 +179,13 @@ async function recoverSession(
   const result = await runAgentRecovery({
     prepare,
     mode: recoveryReason === 'worker-reap' ? 'stop-container' : 'kill-claude',
-    shouldProceed: () => runInTenant(workspaceId, () => stillExactRecoveryTarget(prisma, workspaceId, target, expected)),
+    shouldProceed: () => runInTenant(workspaceId, () => stillExactRecoveryTarget(
+      prisma,
+      workspaceId,
+      target,
+      expected,
+      recoveryReason === 'manual-kill' ? 'idle' : expected.ticketStatus,
+    )),
     ...(provision
       ? { provision: () => reprovisionTicketAndWait(workspaceId, ticket.key, recoveryReason === 'boot') }
       : {}),

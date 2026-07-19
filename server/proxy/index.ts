@@ -23,6 +23,14 @@ export function baseDomain(): string {
   return process.env.WS_BASE_DOMAIN ?? 'localhost';
 }
 
+//? Shared edge-auth dial for editor AND preview routes. Keeping this in the route factory
+//? prevents a workspace-aware preview from silently staying public when edge auth is enabled.
+export function edgeAuthBackend(): string | undefined {
+  return process.env.WS_EDITOR_EDGE_AUTH === undefined
+    ? undefined
+    : (process.env.WS_EDITOR_AUTH_BACKEND ?? 'host.docker.internal:80');
+}
+
 let cached: ProxyProvider | null = null;
 export function getProxyProvider(): ProxyProvider {
   if (cached?.kind === proxyKind()) return cached;
@@ -39,8 +47,11 @@ export function previewRoute(input: { ticketKey: string; branch: string; contain
     id: input.ticketKey.toLowerCase(),
     host: `${deriveHostSlug(input.branch)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
-    //? Carry the workspace so edge-auth can verify membership on this preview subdomain.
-    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+    //? Carry the workspace so edge-auth verifies membership on this preview subdomain.
+    ...(input.workspaceId === undefined ? {} : {
+      workspaceId: input.workspaceId,
+      ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
+    }),
   };
 }
 
@@ -51,7 +62,10 @@ export function refPreviewRoute(input: { ticketKey: string; branch: string; refS
     id: `${input.ticketKey.toLowerCase()}-ref-${input.refSlug}`,
     host: `${deriveHostSlug(`${input.branch}-${input.refSlug}`)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
-    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+    ...(input.workspaceId === undefined ? {} : {
+      workspaceId: input.workspaceId,
+      ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
+    }),
   };
 }
 

@@ -10,7 +10,7 @@ import path from 'node:path';
 
 import type { PrismaClient } from '@prisma/client';
 
-import { docker } from './runtime';
+import { docker, dockerAvailable } from './runtime';
 import { workspaceDataDir } from '../git/repoStore';
 import { sanitizeCompose } from './composeSanitize';
 import { resolveWorkspaceEnv } from './serviceEnv';
@@ -79,11 +79,40 @@ export async function provisionServiceStack(
 }
 
 //? Tear down a stack: `docker compose down -v` + drop the row + the on-disk file. Injectable runner.
+export async function teardownWorkspaceServiceNetwork(workspaceId: string, opts: { run?: DockerRun } = {}): Promise<boolean> {
+  if (!(await dockerAvailable())) return false;
+  const run = opts.run ?? realRun;
+  const network = stackNetwork(workspaceId);
+  const list = async (): Promise<string[] | null> => {
+    const result = await run(['network', 'ls', '--filter', `name=${network}`, '--format', '{{.Name}}']);
+    return result.code === 0
+      ? result.out.split('\n').map((value) => value.trim()).filter((value) => value === network)
+      : null;
+  };
+  const existing = await list();
+  if (existing === null) return false;
+  if (existing.length === 0) return true;
+  const removed = await run(['network', 'rm', network]);
+  if (removed.code !== 0) return false;
+  const remaining = await list();
+  return remaining !== null && remaining.length === 0;
+}
+
 export async function teardownServiceStack(prisma: PrismaClient, workspaceId: string, name: string, opts: { run?: DockerRun } = {}): Promise<{ ok: boolean }> {
   const run = opts.run ?? realRun;
   const file = stackFile(workspaceId, name);
-  if (existsSync(file)) await run(composeDownArgs(stackProject(workspaceId, name), file));
+  const stack = await prisma.serviceStack.findFirst({ where: { workspaceId, name }, select: { status: true } });
+  if (!stack) return { ok: true };
+  if (existsSync(file)) {
+    const down = await run(composeDownArgs(stackProject(workspaceId, name), file));
+    if (down.code !== 0) return { ok: false };
+  } else if (stack.status !== 'stopped') {
+    //? A failed compose up may have created only part of the stack before status='error'. Without
+    //? the exact sanitized compose file, `down -v` cannot prove project-container/volume ownership.
+    //? Only an explicitly stopped row is safe to discard without that file.
+    return { ok: false };
+  }
   rmSync(file, { force: true });
-  await prisma.serviceStack.deleteMany({ where: { workspaceId, name } });
-  return { ok: true };
+  const removed = await prisma.serviceStack.deleteMany({ where: { workspaceId, name } });
+  return { ok: removed.count === 1 };
 }

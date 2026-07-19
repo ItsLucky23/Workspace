@@ -308,3 +308,37 @@ export async function teardownTicketContainer(workspaceId: string, ticketKey: st
   await docker(['rm', '-f', name]);
   await docker(['volume', 'rm', '-f', volumeName(workspaceId, ticketKey, suffix)]);
 }
+
+//? Destructive workspace deletion cannot discard DB ownership while labelled ticket/editor/ref
+//? containers or their named worktree volumes still exist. Enumerate by immutable workspace label,
+//? remove every state (running and stopped), then prove both containers and mounted volumes are gone.
+export async function teardownWorkspaceContainers(workspaceId: string): Promise<boolean> {
+  if (!(await dockerAvailable())) return false;
+  const [listed, listedVolumes] = await Promise.all([
+    docker(['ps', '-aq', '--filter', `label=org.workspaces.workspace=${workspaceId}`]),
+    docker(['volume', 'ls', '-q', '--filter', `name=wsvol-${safe(workspaceId)}-`]),
+  ]);
+  if (listed.code !== 0 || listedVolumes.code !== 0) return false;
+  const containerIds = listed.out.split('\n').map((value) => value.trim()).filter((value) => value.length > 0);
+  const volumePrefix = `wsvol-${safe(workspaceId)}-`;
+  const volumes = new Set(listedVolumes.out.split('\n')
+    .map((value) => value.trim())
+    .filter((value) => value.startsWith(volumePrefix)));
+  for (const containerId of containerIds) {
+    const mounts = await docker(['inspect', '-f', '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}', containerId]);
+    if (mounts.code !== 0) return false;
+    for (const name of mounts.out.split('\n').map((value) => value.trim()).filter((value) => value.length > 0)) volumes.add(name);
+  }
+  if (containerIds.length > 0) {
+    const removed = await docker(['rm', '-f', ...containerIds]);
+    if (removed.code !== 0) return false;
+  }
+  for (const containerId of containerIds) {
+    if ((await docker(['inspect', '-f', '{{.Id}}', containerId])).code === 0) return false;
+  }
+  for (const volume of volumes) {
+    await docker(['volume', 'rm', '-f', volume]);
+    if ((await docker(['volume', 'inspect', volume])).code === 0) return false;
+  }
+  return true;
+}
