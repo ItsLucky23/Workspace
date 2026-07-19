@@ -20,6 +20,7 @@ import { deterministicObjectId } from '../orchestrator/actionIds';
 import { currentWriterScope, assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 import { jsonInput } from '../util/json';
 import { parseCiYaml, specFingerprint, type CiJob, type CiSpec } from './parse';
+import { planWaves, skippedBy, chunkWave, describeUnrunnable } from './dag';
 import { higherSeverity, isScannerType, parseScan, scannerCommand, type SecurityFinding } from './security';
 import { tryCatch } from '@luckystack/core';
 
@@ -27,7 +28,9 @@ export interface CiRunResult { status: 'none' | 'success' | 'failed' | 'canceled
 
 export interface StageCiJobReport {
   name: string;
-  status: 'success' | 'failed';
+  //? F23 — `skipped` is a real outcome, not a failure: a job whose dependency failed never ran, and
+  //? reporting it as failed would blame the wrong job (and turn one red into a cascade of reds).
+  status: 'success' | 'failed' | 'skipped';
   exitCode: number;
   severity: 'none' | 'low' | 'moderate' | 'high' | 'critical';
   findings: SecurityFinding[];
@@ -269,9 +272,18 @@ export async function runStageCiInContainer(
     return { kind: 'executed', commitHash, spec: parsed.spec, jobs: failedReports(parsed.spec, integrityError), integrityError };
   }
 
-  const ordered = parsed.spec.jobs.toSorted((left, right) => parsed.spec.stages.indexOf(left.stage) - parsed.spec.stages.indexOf(right.stage));
+  //? F23 — a real DAG instead of a flat stage-ordered sequence. Jobs whose dependencies are satisfied form
+  //? a WAVE and run concurrently (capped); a job whose dependency FAILED is never started and is reported
+  //? `skipped` — it used to run anyway and fail confusingly on its own.
+  const dagJobs = parsed.spec.jobs.map((job) => ({ name: job.name, stage: job.stage, needs: job.needs }));
+  const plan = planWaves(dagJobs, parsed.spec.stages);
+  const jobByName = new Map(parsed.spec.jobs.map((job) => [job.name, job]));
+  const failedJobs = new Set<string>();
   const jobs: StageCiJobReport[] = [];
-  for (const job of ordered) {
+
+  const runOneJob = async (jobName: string): Promise<StageCiJobReport | null> => {
+    const job = jobByName.get(jobName);
+    if (!job) return null;
     const scanner = isScannerType(job.type);
     const command = scanner ? scannerCommand(job.type) : job.script.join(' && ');
     const result = await runDocker(['exec', '-w', '/work', container, 'sh', '-lc', command], {
@@ -285,24 +297,46 @@ export async function runStageCiInContainer(
         severity: exactSeverity(finding.severity),
         title: boundedUtf8(finding.title, 500),
       }));
-      jobs.push({
+      return {
         name: job.name,
         status: result.code === 0 ? 'success' : 'failed',
         exitCode: result.code,
         severity: severityFromFindings(findings),
         findings,
         logTail: boundedUtf8(`${String(findings.length)} finding(s)`, MAX_STAGE_CI_LOG_BYTES, true),
-      });
-    } else {
-      jobs.push({
-        name: job.name,
-        status: result.code === 0 ? 'success' : 'failed',
-        exitCode: result.code,
-        severity: 'none',
-        findings: [],
-        logTail: boundedUtf8(`${result.out}\n${result.err}`, MAX_STAGE_CI_LOG_BYTES, true),
-      });
+      };
     }
+    return {
+      name: job.name,
+      status: result.code === 0 ? 'success' : 'failed',
+      exitCode: result.code,
+      severity: 'none',
+      findings: [],
+      logTail: boundedUtf8(`${result.out}
+${result.err}`, MAX_STAGE_CI_LOG_BYTES, true),
+    };
+  };
+
+  for (const wave of plan.waves) {
+    const blocked = skippedBy(dagJobs, failedJobs);
+    for (const name of wave.filter((jobName) => blocked.has(jobName))) {
+      jobs.push({ name, status: 'skipped', exitCode: 0, severity: 'none', findings: [], logTail: 'skipped: a dependency failed' });
+    }
+    //? Concurrency-capped: the whole DAG shares ONE container on a shared Docker host, so unbounded
+    //? parallelism would trade "CI is slow" for "the host is wedged".
+    for (const chunk of chunkWave(wave.filter((jobName) => !blocked.has(jobName)))) {
+      const results = await Promise.all(chunk.map((name) => runOneJob(name)));
+      for (const report of results) {
+        if (!report) continue;
+        jobs.push(report);
+        if (report.status === 'failed') failedJobs.add(report.name);
+      }
+    }
+  }
+
+  //? A cycle (or a `needs` naming a job that does not exist) is a config error the user must SEE.
+  for (const name of plan.unrunnable) {
+    jobs.push({ name, status: 'skipped', exitCode: 0, severity: 'none', findings: [], logTail: describeUnrunnable(plan) });
   }
 
   const [postHead, postStatus] = await Promise.all([worktreeHead(container, runDocker), worktreeStatus(container, runDocker)]);

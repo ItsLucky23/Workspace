@@ -8,6 +8,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
+import { openRun, startRun, finishRun, retryableRuns } from './runHistory';
 import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 import { runTriggerAction } from './executor';
 
@@ -143,6 +144,12 @@ export async function runCronTriggers(prisma: PrismaClient, now: Date): Promise<
     const timezone = timezoneByWorkspace.get(t.workspaceId);
     if (!t.cron || timezone === undefined || !cronMatches(t.cron, now, timezone)) continue;
     if (t.lastFiredAt && t.lastFiredAt.getTime() >= minuteAt) continue;
+    //? F38 — the run row is opened BEFORE the work. A duplicate tick loses the unique-key race and returns
+    //? null (correctly firing nothing); an enqueue failure below now leaves a `failed` row the retry sweep
+    //? can pick up, instead of a console line and a silently-lost tick.
+    const runId = await openRun(prisma, { workspaceId: t.workspaceId, triggerId: t.id, triggerName: t.name, minuteAt: new Date(minuteAt) });
+    if (runId === null) continue;
+    await startRun(prisma, runId);
     const [error, enqueued] = await tryCatch(() => enqueueInternalAction({
       workspaceId: t.workspaceId,
       op: 'automation-cron-fire',
@@ -151,7 +158,12 @@ export async function runCronTriggers(prisma: PrismaClient, now: Date): Promise<
       userId: 'automation',
       clientRequestId: `automation-cron-${t.id}-${String(minuteAt)}`,
     }));
-    if (error) { console.error(`[automation] cron trigger ${t.name} enqueue failed:`, error.message); continue; }
+    if (error) {
+      console.error(`[automation] cron trigger ${t.name} enqueue failed:`, error.message);
+      await finishRun(prisma, runId, { ok: false, error: error.message });
+      continue;
+    }
+    await finishRun(prisma, runId, { ok: true, detail: `fired ${String(executedCount(enqueued?.result))}` });
     //? Terminal dedup replay intentionally carries no arbitrary internal result, therefore counts zero.
     fired += executedCount(enqueued?.result);
   }
@@ -185,4 +197,30 @@ export async function fireCronTrigger(prisma: PrismaClient, workspaceId: string,
     });
   }
   return { fired: outcome.status === 'executed' ? 1 : 0 };
+}
+
+//? F38 — the recovery half of durable runs: re-drive failed/stranded runs, and CATCH UP minutes this
+//? instance was down for. Both go through the same `automation-cron-fire` internal op, so a late run is
+//? indistinguishable from an on-time one apart from its recorded minute.
+export async function runAutomationRecovery(prisma: PrismaClient, now = Date.now()): Promise<{ retried: number }> {
+  const { enqueueInternalAction } = await import('../orchestrator/internalOps');
+  const retryable = await retryableRuns(prisma, now);
+  let retried = 0;
+  for (const run of retryable) {
+    if (!(await startRun(prisma, run.id))) continue;
+    const minuteAt = run.minuteAt.getTime();
+    const [error] = await tryCatch(() => enqueueInternalAction({
+      workspaceId: run.workspaceId,
+      op: 'automation-cron-fire',
+      target: { triggerId: run.triggerId },
+      payload: { minuteAt },
+      userId: 'automation',
+      //? A RETRY must not collide with the original attempt's dedup key, or the Conductor replays the
+      //? previous terminal result instead of actually re-running the work.
+      clientRequestId: `automation-cron-retry-${run.id}-${String(run.attempts)}`,
+    }));
+    await finishRun(prisma, run.id, error ? { ok: false, error: error.message } : { ok: true, detail: 'retried' });
+    if (!error) retried += 1;
+  }
+  return { retried };
 }

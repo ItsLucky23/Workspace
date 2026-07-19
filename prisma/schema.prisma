@@ -408,6 +408,29 @@ model PublishedSite {
 //? which is the default on purpose — silently deleting a user's history because a default said so is the
 //? worse failure. A workspace opts in per class, and the sweep only ever touches classes with a positive
 //? value. `lastSweptAt` makes the sweep observable instead of a silent background deleter.
+//? F38 — one durable row per automation RUN. Cron firing used to leave no trace: an enqueue failure was a
+//? console line, a missed tick was lost (no catch-up), a failed action had no retry and no dead letter, and
+//? "did my automation run last night?" was unanswerable. This row is the run history, the retry state and
+//? the dead letter in one place.
+model AutomationRun {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  triggerId   String   @db.ObjectId
+  triggerName String
+  //? The minute this run belongs to — the dedup key that makes a catch-up sweep idempotent.
+  minuteAt    DateTime
+  status      String   @default("pending")   // 'pending' | 'running' | 'done' | 'failed' | 'dead'
+  attempts    Int      @default(0)
+  detail      String?
+  lastError   String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, triggerId, minuteAt])
+  @@index([workspaceId, status, createdAt])
+}
+
 model RetentionPolicy {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId    String   @unique @db.ObjectId
