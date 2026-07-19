@@ -1,9 +1,9 @@
 //? L1 — the premade UI-look catalog. Pure: every look resolves to a real seed theme + style + font stacks,
 //? unknown ids return null, and the catalog is a non-trivial starter set. No DOM, no providers.
 
-import { PREMADE_LOOKS, resolveLook, isActiveLook } from '../../src/workspaces/designer/premades.ts';
-import { SEED_THEMES } from '../../src/workspaces/designer/themes.ts';
-import { SEED_STYLES } from '../../src/workspaces/designer/styles.ts';
+import { PREMADE_LOOKS, resolveLook, isActiveLook } from '../../src/workspaces/develop/designer/premades.ts';
+import { SEED_THEMES } from '../../src/workspaces/develop/designer/themes.ts';
+import { SEED_STYLES } from '../../src/workspaces/develop/designer/styles.ts';
 import { assert, report } from '../_helpers.mts';
 
 //? A real starter set.

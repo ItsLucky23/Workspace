@@ -24,6 +24,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
+import { VIEW_CATEGORY } from '../_data/nav';
 import { CHAT_DISPATCH, isChatProposalForProject } from '../_functions/chatDispatch';
 import { INITIAL_CHAT } from '../_data/seed';
 import type {
@@ -134,17 +135,35 @@ const EMPTY_SNAP: Snap = {
   sshKeys: [],
 };
 
+//? URLs mirror the category folder structure (/workspaces/<category>/<view>, see ../_data/nav.ts).
+//? The Content overview doubles as its category index (/workspaces/content); category-less views
+//? (ai, settings, workspace) keep flat /workspaces/<view> URLs.
 function pathForView(view: WsView): string {
-  if (view === 'board') return BASE;
-  if (isTicketView(view)) return `${BASE}/board/${view}`;
-  return `${BASE}/${view}`;
+  if (isTicketView(view)) return `${BASE}/develop/board/${view}`;
+  if (view === 'content') return `${BASE}/content`;
+  const cat = VIEW_CATEGORY[view];
+  return cat ? `${BASE}/${cat}/${view}` : `${BASE}/${view}`;
 }
 function viewFromPath(pathname: string): WsView {
   const rest = pathname.replace(/^\/workspaces\/?/, '').replace(/\/+$/, '');
   if (!rest) return 'board';
   const segs = rest.split('/');
-  if (segs[0] === 'board' && segs[1] && isTicketView(segs[1])) return segs[1];
-  return segs[0] ?? 'board';
+  const first = segs[0] ?? '';
+  if (first === 'develop') {
+    if (segs[1] === 'board' && segs[2] && isTicketView(segs[2])) return segs[2];
+    return segs[1] && VIEW_CATEGORY[segs[1]] === 'develop' ? segs[1] : 'board';
+  }
+  if (first === 'content') {
+    //? /workspaces/content/<sub> is a sibling page only when <sub> is a nav view of the content
+    //? category; every other sub-path ([pieceId], insights, settings) belongs to the overview page.
+    return segs[1] && segs[1] !== 'content' && VIEW_CATEGORY[segs[1]] === 'content' ? segs[1] : 'content';
+  }
+  if (first === 'insights') {
+    return segs[1] && VIEW_CATEGORY[segs[1]] === 'insights' ? segs[1] : 'activity';
+  }
+  //? pre-restructure flat paths (old bookmarks/push links) still resolve to their view
+  if (first === 'board' && segs[1] && isTicketView(segs[1])) return segs[1];
+  return first || 'board';
 }
 const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',

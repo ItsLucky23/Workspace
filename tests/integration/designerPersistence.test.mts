@@ -9,9 +9,9 @@ const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { saveDesignArtifact } = await import('../../server/designer/library');
 const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
-const { parsePersistedLibraries, artifactToTheme } = await import('../../src/workspaces/designer/persisted');
-const { SEED_THEMES } = await import('../../src/workspaces/designer/themes');
-const { SEED_STYLES } = await import('../../src/workspaces/designer/styles');
+const { parsePersistedLibraries, artifactToTheme } = await import('../../src/workspaces/develop/designer/persisted');
+const { SEED_THEMES } = await import('../../src/workspaces/develop/designer/themes');
+const { SEED_STYLES } = await import('../../src/workspaces/develop/designer/styles');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T>, timeoutMs = 8000, stepMs = 60): Promise<T | null> {

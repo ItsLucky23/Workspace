@@ -20,6 +20,7 @@ import { Glossary } from '../_components/Glossary';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
+import { NAV_CATEGORIES, type NavCategory } from '../_data/nav';
 import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
 import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, NotificationItem } from '../_data/types';
@@ -53,55 +54,55 @@ function notificationIcon(type: NotificationItem['type']): IconName {
 //? the panel width and wobble the board edge.
 const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
 
-//? Nav grouping (ADR 0068, F4.1) — a `group` per item declutters the (long, flat) main rail into labelled
-//? sections. The group header renders when the rail is expanded; collapsed shows a thin divider between
-//? groups. Groups render in GROUP_ORDER.
-type NavGroup = 'work' | 'build' | 'studio' | 'publish' | 'insights';
+//? Nav grouping — module-based IA (supersedes the five verb destinations of ADR 0068/F4.1). The rail
+//? mirrors the folder structure under src/workspaces/ (develop / content / insights) and the URL space
+//? (/workspaces/<category>/<view>), so nav, folders and URLs tell one story:
+//?
+//?   Develop  — everything about building YOUR project (board, answers, backlog, pipeline,
+//?              terminals, designer, interviewer, sources, schedules)
+//?   Content  — the content lane: what you make and where it goes out (pieces, documents,
+//?              marketing, scheduled posts, studio)
+//?   Insights — what came of it (activity, usage, knowledge)
+//?
+//? Designer + Interviewer are repo-bound tools (visual editor over the product's own UI; repo-aware
+//? planning chat), so they live under Develop, not the content lane. Category definitions come from
+//? ../_data/nav.ts (shared with the provider's URL mapping). Group headers render when the rail is
+//? expanded; collapsed shows a thin divider between groups. Groups render in GROUP_ORDER.
+type NavGroup = NavCategory;
 interface NavDef { id: WsView; icon: IconName; label: string; group?: NavGroup }
 
-//? UI restructure — the rail carried 15 flat entries across 4 headers, which is a wall of nouns to someone
-//? opening the app for the first time ("Backlog? Sources? Knowledge? Interviewer?"). It is now FIVE
-//? top-level destinations, each with its own sub-navigation:
-//?
-//?   Work     — what is happening right now (board, backlog, terminals, activity)
-//?   Create   — the things you make (content, documents, designer, marketing)
-//?   Publish  — where the work goes out (scheduled posts, channels)
-//?   Automate — the machine that does it for you (pipeline, schedules, sources)
-//?   Insights — what came of it (usage, knowledge, interviewer)
-//?
-//? The group names are VERBS where possible: a first-time user recognises "Create" faster than "Studio".
-//? Sub-items keep their own routes, so nothing about deep-linking or module gating changes.
-export const GROUP_ORDER: NavGroup[] = ['work', 'studio', 'publish', 'build', 'insights'];
-export const GROUP_LABELS: Record<NavGroup, string> = { work: 'Work', studio: 'Create', publish: 'Publish', build: 'Automate', insights: 'Insights' };
+export const GROUP_ORDER: NavGroup[] = NAV_CATEGORIES;
+export const GROUP_LABELS: Record<NavGroup, string> = { develop: 'Develop', content: 'Content', insights: 'Insights' };
 //? The icon + landing page for each group. Clicking a group always DOES something (it navigates to its
 //? first available item) instead of only toggling a menu — a nav item that does nothing on click reads as
 //? broken.
-export const GROUP_ICONS: Record<NavGroup, IconName> = { work: 'table-columns', studio: 'wand-magic-sparkles', publish: 'paper-plane', build: 'diagram-project', insights: 'chart-column' };
+export const GROUP_ICONS: Record<NavGroup, IconName> = { develop: 'code-branch', content: 'wand-magic-sparkles', insights: 'chart-column' };
 export const NAV_ITEMS: NavDef[] = [
-  //? Work — the live state of the project.
-  { id: 'board', icon: 'table-columns', label: 'Board', group: 'work' },
-  //? The cross-ticket answer inbox. It sits in Work rather than under a bell, because on a phone-first
-  //? product where the human's whole job is answering, "what is waiting on me?" IS the work.
-  { id: 'answers', icon: 'circle-question', label: 'Answers', group: 'work' },
-  { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'work' },
-  { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'work' },
-  { id: 'activity', icon: 'wave-square', label: 'Activity', group: 'work' },
-  //? Create — the things a user MAKES here.
-  { id: 'content', icon: 'wand-magic-sparkles', label: 'Content', group: 'studio' },
-  { id: 'documents', icon: 'file-lines', label: 'Documents', group: 'studio' },
-  { id: 'designer', icon: 'palette', label: 'Designer', group: 'studio' },
-  { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'studio' },
-  //? Publish — where finished work goes out. Split off from Create because "made it" and "sent it" are
-  //? different questions, and mixing them is what made the old Studio group unreadable.
-  { id: 'scheduled-posts', icon: 'calendar-day', label: 'Scheduled posts', group: 'publish' },
-  //? Automate — the machine: how work moves, when it runs, what it knows.
-  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'build' },
-  { id: 'scheduled', icon: 'clock', label: 'Schedules', group: 'build' },
-  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'build' },
+  //? Develop — the live state of the work…
+  { id: 'board', icon: 'table-columns', label: 'Board', group: 'develop' },
+  //? The cross-ticket answer inbox. It sits first-class in the rail rather than under a bell, because on
+  //? a phone-first product where the human's whole job is answering, "what is waiting on me?" IS the work.
+  { id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop' },
+  { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'develop' },
+  //? …the machine that moves it (the pipeline lives with the board it drives)…
+  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'develop' },
+  { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'develop' },
+  //? …and the repo-bound tools.
+  { id: 'designer', icon: 'palette', label: 'Designer', group: 'develop' },
+  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'develop' },
+  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'develop' },
+  { id: 'scheduled', icon: 'clock', label: 'Schedules', group: 'develop' },
+  //? Content — the content lane: what you make and where it goes out.
+  { id: 'content', icon: 'wand-magic-sparkles', label: 'Content', group: 'content' },
+  { id: 'documents', icon: 'file-lines', label: 'Documents', group: 'content' },
+  { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'content' },
+  { id: 'scheduled-posts', icon: 'calendar-day', label: 'Scheduled posts', group: 'content' },
+  //? Studio (brief → landing page + brand kit) is back in the nav after the restructure.
+  { id: 'studio', icon: 'display', label: 'Studio', group: 'content' },
   //? Insights — what came of it.
+  { id: 'activity', icon: 'wave-square', label: 'Activity', group: 'insights' },
   { id: 'usage', icon: 'chart-column', label: 'Usage', group: 'insights' },
   { id: 'knowledge', icon: 'diagram-project', label: 'Knowledge', group: 'insights' },
-  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'insights' },
 ];
 export const NAV_BOTTOM: NavDef[] = [
   { id: 'ai', icon: 'robot', label: 'Workspace-AI' },
@@ -496,27 +497,26 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
           </button>
         ))}
       </div>
-      <details className="mt-1">
-        <summary className="text-xs text-muted cursor-pointer">{translate({ key: 'workspaces.packs.advanced' })}</summary>
-        <div className="flex flex-col gap-2 mt-2">
-          <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
-          <ModulePicker selected={modules} onToggle={toggleModule} />
-      {/* G5 — how much pipeline to start with. Only meaningful with the development module on. */}
-      {modules.includes('development') && (
-        <>
-          <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.tierHeading' })}</div>
-          <div className="flex flex-wrap gap-2">
-            {PIPELINE_TIERS.map((t) => (
-              <button key={t} type="button" onClick={() => { setTier(t); }}
-                className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${tier === t ? 'border-primary-border bg-primary/10 text-primary' : 'border-container1-border bg-container2/50 text-common hover:bg-container2'}`}>
-                {translate({ key: `workspaces.modules.tier_${t}` })}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-        </div>
-      </details>
+      {/* Modules are first-class (no "advanced" fold): a pack pre-checks them, and the checkboxes
+          below let you add or drop lanes before creating. */}
+      <div className="flex flex-col gap-2 mt-1">
+        <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+        <ModulePicker selected={modules} onToggle={toggleModule} />
+        {/* G5 — how much pipeline to start with. Only meaningful with the development module on. */}
+        {modules.includes('development') && (
+          <>
+            <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.tierHeading' })}</div>
+            <div className="flex flex-wrap gap-2">
+              {PIPELINE_TIERS.map((t) => (
+                <button key={t} type="button" onClick={() => { setTier(t); }}
+                  className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${tier === t ? 'border-primary-border bg-primary/10 text-primary' : 'border-container1-border bg-container2/50 text-common hover:bg-container2'}`}>
+                  {translate({ key: `workspaces.modules.tier_${t}` })}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

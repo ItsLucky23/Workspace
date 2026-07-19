@@ -1,6 +1,7 @@
-//? UI restructure — pins the navigation shape the owner asked for: ~5 top-level destinations with
-//? sub-navigation, not 15 flat buttons. Structural, because this is the kind of thing that silently drifts
-//? back to a flat list one "just add it to the rail" at a time.
+//? Nav IA — pins the MODULE-BASED navigation shape the owner decided (ADR 0280): three top-level
+//? categories (Develop / Content / Insights) that mirror the folder structure under src/workspaces/
+//? AND the URL space, with sub-navigation per category. Structural, because this is the kind of thing
+//? that silently drifts back to a flat list one "just add it to the rail" at a time.
 //?
 //? Also pins the two bugs the BROWSER pass caught, which no unit test would have:
 //?   • the collapsed rail rendered group buttons AND every sub-item (19 icons, worse than the 15 before);
@@ -10,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 
 import { GROUP_ORDER, GROUP_LABELS, GROUP_ICONS, NAV_ITEMS, NAV_BOTTOM } from '../../src/workspaces/_shell/Shell.tsx';
+import { VIEW_CATEGORY } from '../../src/workspaces/_data/nav.ts';
 import { WORKSPACE_PACK_CHOICES } from '../../src/workspaces/_data/packs.ts';
 import { assert, eq, report } from '../_helpers.mts';
 
@@ -17,7 +19,7 @@ const read = (p: string): string => readFileSync(new URL(`../../${p}`, import.me
 
 /* ------------------------------------------------------------ the shape */
 
-eq(GROUP_ORDER.length, 5, 'five top-level destinations (the owner asked for ~5, not 20)');
+eq(GROUP_ORDER.length, 3, 'three module-based categories (Develop / Content / Insights — ADR 0280 supersedes the five verb destinations)');
 assert(NAV_ITEMS.length > GROUP_ORDER.length, 'and the pages live UNDER them, not beside them');
 
 //? Every group must be complete: a label, an icon, and at least one page — a group that renders as an
@@ -33,15 +35,25 @@ for (const item of NAV_ITEMS) {
   assert(item.group !== undefined && GROUP_ORDER.includes(item.group), `${item.id} belongs to a real group`);
 }
 
-//? Group names read as VERBS where possible — a first-time user recognises "Create" faster than "Studio".
-eq(GROUP_LABELS.studio, 'Create', 'the old "Studio" is now "Create"');
-eq(GROUP_LABELS.build, 'Automate', 'the old "Build" is now "Automate"');
-assert(GROUP_ORDER.includes('publish'), 'publishing is its own destination — "made it" and "sent it" are different questions');
+//? Category names are the MODULES a user picks at creation — the nav mirrors what they chose.
+eq(GROUP_LABELS.develop, 'Develop', 'the development lane is called Develop');
+eq(GROUP_LABELS.content, 'Content', 'the content lane is called Content');
+eq(GROUP_LABELS.insights, 'Insights', 'what came of it is called Insights');
 
-//? No group should be so large it recreates the original problem inside itself.
-for (const group of GROUP_ORDER) {
-  const count = NAV_ITEMS.filter((it) => it.group === group).length;
-  assert(count <= 5, `${group} holds ${String(count)} pages — a group over ~5 is a wall of nouns again`);
+//? The exact category membership the owner decided (ADR 0280): folders, URLs and nav tell ONE story.
+//? Develop deliberately holds nine pages — the owner chose module-cohesion over a size cap (the KISS
+//? wave may sub-group it later, but the category SET is pinned here).
+const EXPECTED: Record<string, string[]> = {
+  develop: ['board', 'answers', 'backlog', 'pipeline', 'terminals', 'designer', 'interviewer', 'sources', 'scheduled'],
+  content: ['content', 'documents', 'marketing', 'scheduled-posts', 'studio'],
+  insights: ['activity', 'usage', 'knowledge'],
+};
+for (const [group, ids] of Object.entries(EXPECTED)) {
+  eq(NAV_ITEMS.filter((it) => it.group === group).map((it) => it.id).join(','), ids.join(','), `${group} holds exactly its decided pages, in order`);
+}
+//? …and the Shell's grouping can never drift from the shared category model the URLs are built from.
+for (const item of NAV_ITEMS) {
+  eq(VIEW_CATEGORY[item.id], item.group, `${item.id}'s nav group matches its URL category`);
 }
 
 eq(NAV_BOTTOM.length, 2, 'the assistant and settings stay out of the groups (they are not destinations)');
@@ -63,7 +75,10 @@ assert(createRoute.includes('...(data.packId ? { packId: data.packId } : {})'), 
 //? most. It was initially only added to the in-app create form.
 const onboarding = read('src/workspaces/_shell/Onboarding.tsx');
 assert(onboarding.includes('WORKSPACE_PACK_CHOICES'), 'onboarding asks what the workspace is for');
-assert(onboarding.includes('workspaces.packs.advanced'), 'and tucks the module checkboxes behind "advanced"');
+//? ADR 0280 flipped this: a pack pre-checks the modules, but the checkboxes are FIRST-CLASS — the
+//? old "advanced" fold hid the one choice that shapes the whole workspace.
+assert(onboarding.includes('ModulePicker'), 'and shows the module checkboxes first-class');
+assert(!onboarding.includes('workspaces.packs.advanced'), 'the "advanced" fold is gone for good');
 
 //? Pack icons must exist in the icon map, or the card renders a "?" placeholder (seen in the browser).
 const iconMap = read('src/workspaces/_components/Icon.tsx');

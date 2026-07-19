@@ -1,6 +1,6 @@
 //? DESIGN_DOCS_PROGRAM Phase 2.5 — the pure line diff behind the document draft-review-before-approve panel.
 
-import { lineDiff, diffStat } from '../../src/workspaces/documents/lineDiff.ts';
+import { lineDiff, diffStat } from '../../src/workspaces/content/documents/lineDiff.ts';
 import { assert, report } from '../_helpers.mts';
 
 //? Identical text → all context, no changes.

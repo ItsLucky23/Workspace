@@ -33,8 +33,10 @@ export const WORKSPACE_MODULES: WorkspaceModule[] = [
   //? scheduled posts + event automation, not just the Development lane. #165 — Design also unlocks
   //? 'marketing' (the Studio brand/landing generator) so a Design-only workspace can do visual/brand
   //? generation. (OPEN VRAAG: defaults per Rule 3a — user away; revisit if the nav feels too broad.)
-  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'scheduled-posts'] },
-  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled'] },
+  //? Category restructure — 'studio' (brief → landing page + brand kit) is a visible nav section
+  //? again, unlocked by the same lanes as 'marketing' (it is the brand/landing generator behind it).
+  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'scheduled-posts', 'studio'] },
+  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled', 'studio'] },
   //? DOC1 (DOCUMENTS_AND_SKILLS) — the Documents module: AI-drafted workspace documents (specs,
   //? designs, plans) with export targets. Own module so any workspace type can add just this.
   { id: 'documents', labelKey: 'workspaces.modules.documentsLabel', descKey: 'workspaces.modules.documentsDesc', icon: 'file-lines', sections: ['documents'] },

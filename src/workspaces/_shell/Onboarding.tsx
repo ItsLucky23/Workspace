@@ -73,13 +73,12 @@ export function Onboarding() {
               </button>
             ))}
           </div>
-          <details>
-            <summary className="text-xs text-muted cursor-pointer">{translate({ key: 'workspaces.packs.advanced' })}</summary>
-            <div className="flex flex-col gap-2 mt-2">
-              <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
-              <ModulePicker selected={modules} onToggle={toggleModule} />
-            </div>
-          </details>
+          {/* Modules are first-class (no "advanced" fold): a pack pre-checks them, and the
+              checkboxes below let you add or drop lanes before creating. */}
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+            <ModulePicker selected={modules} onToggle={toggleModule} />
+          </div>
           <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
         </div>
 

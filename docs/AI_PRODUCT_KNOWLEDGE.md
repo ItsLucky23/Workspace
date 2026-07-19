@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `a0ffbc05bd8771a8` · 17 capabilities · 197 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `fd8ad932cf7c9149` · 17 capabilities · 198 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -223,3 +223,4 @@
 - `adr-0277` Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing
 - `adr-0278` GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops
 - `adr-0279` Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer
+- `adr-0280` Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs

@@ -1,6 +1,6 @@
 {
-  "hash": "a0ffbc05bd8771a8",
-  "chunkCount": 214,
+  "hash": "fd8ad932cf7c9149",
+  "chunkCount": 215,
   "chunks": [
     {
       "id": "cap-001",
@@ -1285,6 +1285,12 @@
       "kind": "decision",
       "title": "Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer",
       "text": "ADR 0279: Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer. The stage writer now treats a CapacityManager `runToken` + monotonic `runFence` as the authority for all stage results, but the watchdog and worker reaper still used the pre-fence model. They directly updated `AgentSession`/`Ticket`, selected containers by reusable ticket name, and used the hard `WS_TURN_MAX_MS` as both the maximum turn policy and capacity-owner TTL. A healthy 30-minute owner could therefore block boot recovery for 30 minutes, while a stale watchdog scan could kill a newer same-container successor. Reaper idle time was process-local and ticket keys were collapsed across workspaces. Reminder writes also lacked compare-and-set/idempotency. Decision: 1. Capacity ownership is a short renewable lease: `WS_CAPACITY_LEASE_MS` defaults to 30 seconds. `WS_TURN_MAX_MS` remains only the hard watchdog policy. Active scores, heartbeat expiry, renewal, stale eviction, and owner checks all use the capacity lease; renewal must run by half its TTL. 2. A server-only `agent-recovery-transition` InternalOp owns `prepare|complete|cancel`: - prepare exact-CASes workspace/project/ticket/stage/status/needs-input plus the exact worker session/container/runToken/runFence/startedAt; - one Redis Lua operation transfers the expected old reservation to a deterministic recovery owner at the next fence (or rejects live/stale authority), then the session becomes `recovering`; - "
+    },
+    {
+      "id": "adr-0280",
+      "kind": "decision",
+      "title": "Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs",
+      "text": "ADR 0280: Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs.  Decision: "
     }
   ]
 }

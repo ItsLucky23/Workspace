@@ -1032,7 +1032,8 @@
       "marketing": "Marketing",
       "designer": "Designer",
       "interviewer": "Interviewer",
-      "documents": "Documents"
+      "documents": "Documents",
+      "studio": "Studio"
     },
     "glossary": {
       "title": "Glossary",
@@ -2483,7 +2484,6 @@
     },
     "packs": {
       "heading": "What is this workspace for?",
-      "advanced": "Advanced: modules and pipeline",
       "soloDev": "Solo project",
       "soloDevDesc": "Code, a light pipeline, straight to work.",
       "creator": "Content creator",
@@ -2494,10 +2494,8 @@
       "studentDesc": "Write from your own uploaded sources."
     },
     "nav": {
-      "work": "Work",
-      "studio": "Create",
-      "publish": "Publish",
-      "build": "Automate",
+      "develop": "Develop",
+      "content": "Content",
       "insights": "Insights"
     },
     "storage": {

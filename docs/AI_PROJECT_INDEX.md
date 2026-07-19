@@ -208,7 +208,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioGenerate/v1`
 - … +72 more
 
-## Pages (33)
+## Pages (34)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -221,29 +221,30 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/reset-password` | plain | — | `reset-password/page.tsx` | — |
 | `/settings` | home | yes | `settings/page.tsx` | — |
 | `/settings/confirm-email` | plain | — | `settings/confirm-email/page.tsx` | — |
-| `/workspaces` | workspaces | — | `workspaces/page.tsx` | Workspaces — the scrum board. Kanban across the 7 pipeline stages. |
-| `/workspaces/activity` | workspaces | — | `workspaces/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
-| `/workspaces/answers` | workspaces | — | `workspaces/answers/page.tsx` | intent: One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to. |
-| `/workspaces/backlog` | workspaces | — | `workspaces/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
-| `/workspaces/board/[ticketId]` | workspaces | — | `workspaces/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
+| `/workspaces` | plain | — | `workspaces/page.tsx` | intent: the /workspaces entry point — forwards to the Develop board, the canonical home of a |
 | `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |
 | `/workspaces/content/[pieceId]` | workspaces | — | `workspaces/content/[pieceId]/page.tsx` | intent: a content piece's detail — its stage/status, the generation controls (write · voice · images · |
+| `/workspaces/content/documents` | workspaces | — | `workspaces/content/documents/page.tsx` | intent: Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). See |
+| `/workspaces/content/documents/[docId]` | workspaces | — | `workspaces/content/documents/[docId]/page.tsx` | intent: a document's editor — write markdown (or let the AI draft it: generate/rewrite/summarize/ |
 | `/workspaces/content/insights` | workspaces | — | `workspaces/content/insights/page.tsx` | intent: content insights — how much you've made and what it cost (analytics), your style library, and |
+| `/workspaces/content/marketing` | workspaces | — | `workspaces/content/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |
+| `/workspaces/content/scheduled-posts` | workspaces | — | `workspaces/content/scheduled-posts/page.tsx` | intent: Scheduled posts — a content-lane calendar/list of every publish that's queued for a future |
 | `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: content setup & settings — connect your AI media provider keys (encrypted) and set a media |
-| `/workspaces/designer` | workspaces | — | `workspaces/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
-| `/workspaces/documents` | workspaces | — | `workspaces/documents/page.tsx` | intent: Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). See |
-| `/workspaces/documents/[docId]` | workspaces | — | `workspaces/documents/[docId]/page.tsx` | intent: a document's editor — write markdown (or let the AI draft it: generate/rewrite/summarize/ |
-| `/workspaces/interviewer` | workspaces | — | `workspaces/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
-| `/workspaces/knowledge` | workspaces | — | `workspaces/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as |
-| `/workspaces/marketing` | workspaces | — | `workspaces/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |
-| `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
-| `/workspaces/scheduled` | workspaces | — | `workspaces/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
-| `/workspaces/scheduled-posts` | workspaces | — | `workspaces/scheduled-posts/page.tsx` | intent: Scheduled posts — a content-lane calendar/list of every publish that's queued for a future |
+| `/workspaces/content/studio` | workspaces | — | `workspaces/content/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |
+| `/workspaces/develop/answers` | workspaces | — | `workspaces/develop/answers/page.tsx` | intent: One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to. |
+| `/workspaces/develop/backlog` | workspaces | — | `workspaces/develop/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
+| `/workspaces/develop/board` | workspaces | — | `workspaces/develop/board/page.tsx` | Workspaces — the scrum board. Kanban across the 7 pipeline stages. |
+| `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
+| `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
+| `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
+| `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
+| `/workspaces/develop/scheduled` | workspaces | — | `workspaces/develop/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
+| `/workspaces/develop/sources` | workspaces | — | `workspaces/develop/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
+| `/workspaces/develop/terminals` | workspaces | — | `workspaces/develop/terminals/page.tsx` | Workspaces — Terminals page. Always-dark multi-terminal workspace, gated on |
+| `/workspaces/insights/activity` | workspaces | — | `workspaces/insights/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
+| `/workspaces/insights/knowledge` | workspaces | — | `workspaces/insights/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as |
+| `/workspaces/insights/usage` | workspaces | — | `workspaces/insights/usage/page.tsx` | Workspaces — Usage. No monetary budget/cap/alert (we run Claude via the Pro |
 | `/workspaces/settings` | workspaces | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
-| `/workspaces/sources` | workspaces | — | `workspaces/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
-| `/workspaces/studio` | workspaces | — | `workspaces/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |
-| `/workspaces/terminals` | workspaces | — | `workspaces/terminals/page.tsx` | Workspaces — Terminals page. Always-dark multi-terminal workspace, gated on |
-| `/workspaces/usage` | workspaces | — | `workspaces/usage/page.tsx` | Workspaces — Usage. No monetary budget/cap/alert (we run Claude via the Pro |
 | `/workspaces/workspace` | workspaces | — | `workspaces/workspace/page.tsx` | Workspaces — workspace settings. Members + per-member role (searchable |
 
 ## Helpers — `src/_functions/` (3 exports across 2 files)

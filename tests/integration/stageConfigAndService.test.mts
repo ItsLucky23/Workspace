@@ -114,7 +114,7 @@ assert(provider.includes('notify.error({ key: response.errorCode })'), 'and a re
 const ackBlock = provider.slice(provider.indexOf("name: 'workspaces/answerInput'"), provider.indexOf("name: 'workspaces/answerInput'") + 900);
 assert(ackBlock.includes('setPendingAnswers'), 'the pending flag clears when the updated ticket arrives');
 
-const board = read('src/workspaces/board/[ticketId]/page.tsx');
+const board = read('src/workspaces/develop/board/[ticketId]/page.tsx');
 assert(board.includes('const pending = isAnswerPending(ticketKey)'), 'the banner knows whether its answer is in flight');
 assert(board.includes("icon={pending ? 'spinner' : 'check'}"), 'approve shows a spinner while it waits');
 assert(board.includes('disabled={pending}'), 'and cannot be clicked twice');

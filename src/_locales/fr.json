@@ -1032,7 +1032,8 @@
       "marketing": "Marketing",
       "designer": "Concepteur",
       "interviewer": "Intervieweur",
-      "documents": "Documents"
+      "documents": "Documents",
+      "studio": "Studio"
     },
     "glossary": {
       "title": "Glossaire",
@@ -2483,7 +2484,6 @@
     },
     "packs": {
       "heading": "À quoi sert cet espace ?",
-      "advanced": "Avancé : modules et pipeline",
       "soloDev": "Projet solo",
       "soloDevDesc": "Du code, un pipeline léger, au travail.",
       "creator": "Créateur de contenu",
@@ -2494,10 +2494,8 @@
       "studentDesc": "Rédigez à partir de vos propres sources."
     },
     "nav": {
-      "work": "Travail",
-      "studio": "Créer",
-      "publish": "Publier",
-      "build": "Automatiser",
+      "develop": "Développer",
+      "content": "Contenu",
       "insights": "Analyses"
     },
     "storage": {

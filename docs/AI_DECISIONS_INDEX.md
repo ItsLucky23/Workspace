@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (197)
+## Decisions (198)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -210,6 +210,7 @@
 | 0277 | Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing | 🟢 accepted | multi-instance, conductor, redis, lease, fencing, correctness | 0015 | `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md` |
 | 0278 | GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops | 🟢 accepted | security, tenancy, control-api, content, deploy | — | `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md` |
 | 0279 | Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer | 🟢 accepted | watchdog, recovery, capacity, fencing, conductor, cron, containers, multi-instance | 0020, 0022 | `docs/decisions/0279-fenced-agent-recovery-writer.md` |
+| 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs | 🟢 accepted | frontend, navbar, ux, ia, routing, restructure | 0068 | `docs/decisions/0280-module-based-nav-categories.md` |
 
 ## Summaries
 
@@ -1803,6 +1804,16 @@ Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and
 
 → `docs/decisions/0279-fenced-agent-recovery-writer.md`
 
+### 0280 — Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs
+
+**0280** · accepted · tags: frontend, navbar, ux, ia, routing, restructure · 2026-07-19
+
+_(no Decision section found — fill it in)_
+
+**Governs** (`//? @adr 0280`): `src/workspaces/_data/nav.ts`
+
+→ `docs/decisions/0280-module-based-nav-categories.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -1819,3 +1830,4 @@ Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |
+| `src/workspaces/_data/nav.ts` | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs |

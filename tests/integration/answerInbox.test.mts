@@ -21,7 +21,7 @@ const workspaceId = '000000000000000000a48001';
 
 /* ------------------------------------------------------------ the queue is DERIVED, not stored */
 
-const page = read('src/workspaces/answers/page.tsx');
+const page = read('src/workspaces/develop/answers/page.tsx');
 assert(page.includes('const { tickets } = useWorkspaces()'), 'the inbox reads the live tickets');
 assert(page.includes('.filter((t) => t.archived !== true && ((t.needsInput ?? \'\').length > 0 || t.status === \'needs-input\'))'), 'and derives the queue from them');
 assert(!page.includes('const { answerQueue } = useWorkspaces()'), 'it does NOT read a snapshot array that no delta keeps current');
@@ -106,8 +106,9 @@ assert(!remaining.some((t) => t.key === 'DEV-2'), 'specifically the one that was
 /* ------------------------------------------------------------ reachability */
 
 const shell = read('src/workspaces/_shell/Shell.tsx');
-assert(shell.includes("{ id: 'answers', icon: 'circle-question', label: 'Answers', group: 'work' }"), 'the inbox has a nav entry');
-assert(shell.includes("group: 'work'"), 'in Work — on a phone-first product, "what is waiting on me?" IS the work');
+//? ADR 0280 — the verb groups became module categories; the inbox sits first-class under Develop.
+assert(shell.includes("{ id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop' }"), 'the inbox has a nav entry');
+assert(shell.includes("group: 'develop'"), 'in Develop — on a phone-first product, "what is waiting on me?" IS the work');
 const context = read('src/workspaces/_shell/WorkspacesContext.tsx');
 assert(context.includes("| 'answers' |"), 'and the view is routable');
 

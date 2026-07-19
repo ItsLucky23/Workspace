@@ -1032,7 +1032,8 @@
       "marketing": "Marketing",
       "designer": "Designer",
       "interviewer": "Interviewer",
-      "documents": "Documenten"
+      "documents": "Documenten",
+      "studio": "Studio"
     },
     "glossary": {
       "title": "Woordenlijst",
@@ -2483,7 +2484,6 @@
     },
     "packs": {
       "heading": "Waar is deze workspace voor?",
-      "advanced": "Geavanceerd: modules en pipeline",
       "soloDev": "Soloproject",
       "soloDevDesc": "Code, een lichte pipeline, meteen aan de slag.",
       "creator": "Contentmaker",
@@ -2494,10 +2494,8 @@
       "studentDesc": "Schrijf vanuit je eigen geüploade bronnen."
     },
     "nav": {
-      "work": "Werk",
-      "studio": "Maken",
-      "publish": "Publiceren",
-      "build": "Automatiseren",
+      "develop": "Ontwikkelen",
+      "content": "Content",
       "insights": "Inzichten"
     },
     "storage": {

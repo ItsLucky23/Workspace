@@ -145,7 +145,8 @@ export function IconButton({ icon, onClick, title, active, className = '' }: { i
 export interface TabDef { id: string; label: string; icon?: IconName; count?: number }
 export function Tabs({ tabs, active, onChange }: { tabs: TabDef[]; active: string; onChange: (id: string) => void }) {
   return (
-    <div className="flex items-center gap-1 border-b border-divider overflow-x-auto">
+    //? ws-no-scrollbar: the strip scrolls on narrow screens, but a visible scrollbar under the tabs reads as a rendering glitch
+    <div className="flex items-center gap-1 border-b border-divider overflow-x-auto ws-no-scrollbar">
       {tabs.map((t) => {
         const on = active === t.id;
         return (

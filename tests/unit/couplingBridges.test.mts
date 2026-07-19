@@ -90,7 +90,7 @@ assert(read('server/content/ideatorRole.ts').includes('${winners}${audience}'), 
 assert(read('src/workspaces/_components/SearchPalette.tsx').includes('ctx.documents.filter'), 'C7: the palette indexes documents');
 assert(read('server/read/workspaceSnapshot.ts').includes('...(d.archived ? { archived: true } : {})'), 'C7: the snapshot flags archived documents');
 assert(read('server/orchestrator/conductor.ts').includes("case 'document-archive':"), 'C7: the archive op exists in the Conductor');
-assert(read('src/workspaces/designer/page.tsx').includes('liveEnv'), 'C8: the designer knows the live environment');
-assert(read('src/workspaces/designer/page.tsx').includes('workspaces.inspire.useLive'), 'C8: and offers it as a one-tap fill');
+assert(read('src/workspaces/develop/designer/page.tsx').includes('liveEnv'), 'C8: the designer knows the live environment');
+assert(read('src/workspaces/develop/designer/page.tsx').includes('workspaces.inspire.useLive'), 'C8: and offers it as a one-tap fill');
 
 report('couplingBridges');

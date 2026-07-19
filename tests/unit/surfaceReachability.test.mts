@@ -80,7 +80,7 @@ assert(existsSync(new URL('../../src/workspaces/_components/AssetPicker.tsx', im
 const picker = read('src/workspaces/_components/AssetPicker.tsx');
 assert(!picker.includes("from '../_shell/WorkspacesContext'"), 'the picker IMPORTS no workspace context, so it works inside a menuHandler overlay (lesson 0011)');
 assert(picker.includes('backendUrl'), 'and resolves /media against the BACKEND origin');
-const docUi = read('src/workspaces/documents/[docId]/page.tsx');
+const docUi = read('src/workspaces/content/documents/[docId]/page.tsx');
 assert(docUi.includes('AssetPicker'), 'documents use the shared picker');
 assert(docUi.includes('contentSnapshot.assetLibrary'), 'fed by the workspace-wide library, not a per-piece scrape');
 assert(!docUi.includes('contentSnapshot.pieces'), 'the old ad-hoc derivation is gone');
@@ -106,7 +106,7 @@ assert(pieceUi.includes("'content-gen-thumbnail'"), 'the piece UI can compose a 
 assert(pieceUi.includes('confirmPaid'), 'and cost-confirms the paid (AI-background) variant');
 assert(hasKey(['workspaces', 'content', 'thumbTitle']), 'the thumbnail panel is translated everywhere');
 
-const studio = read('src/workspaces/studio/page.tsx');
+const studio = read('src/workspaces/content/studio/page.tsx');
 assert(studio.includes("'studio-publish-site'"), 'studio can publish a page live');
 assert(studio.includes("a.kind === 'landing' && a.status === 'ready'"), 'only a READY landing page offers it');
 assert(hasKey(['workspaces', 'studio', 'publishLive']), 'the publish button is translated everywhere');

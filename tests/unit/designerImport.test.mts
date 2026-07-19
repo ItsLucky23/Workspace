@@ -2,10 +2,10 @@
 //? is refused, and a premade look converts into saveable artifacts that themselves pass validation (so
 //? "save a copy" always round-trips). No DOM, no providers.
 
-import { validArtifactContent } from '../../src/workspaces/designer/persisted.ts';
-import { lookToArtifacts, resolveLook, PREMADE_LOOKS } from '../../src/workspaces/designer/premades.ts';
-import { SEED_THEMES } from '../../src/workspaces/designer/themes.ts';
-import { SEED_STYLES } from '../../src/workspaces/designer/styles.ts';
+import { validArtifactContent } from '../../src/workspaces/develop/designer/persisted.ts';
+import { lookToArtifacts, resolveLook, PREMADE_LOOKS } from '../../src/workspaces/develop/designer/premades.ts';
+import { SEED_THEMES } from '../../src/workspaces/develop/designer/themes.ts';
+import { SEED_STYLES } from '../../src/workspaces/develop/designer/styles.ts';
 import { assert, report } from '../_helpers.mts';
 
 const seedTheme = SEED_THEMES[0];
