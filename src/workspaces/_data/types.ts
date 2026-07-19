@@ -402,9 +402,11 @@ export interface ContentSnapshot {
   unreadComments: number;
   //? F48 — what is in the media bin and how long each item still has. The UI shows the countdown so a
   //? user can decide to restore it or destroy it now, rather than discovering a silent deletion later.
-  trash: { id: string; url: string; label: string; kind: string; reason: string; daysLeft: number; bytes: number }[];
+  //? Optional because client and server do not deploy in lockstep: a client newer than the server it talks
+  //? to receives a snapshot without these, and must render an empty bin rather than crash the page.
+  trash?: { id: string; url: string; label: string; kind: string; reason: string; daysLeft: number; bytes: number }[];
   //? F06 — storage MEASUREMENT only (the owner explicitly chose insight over a limit).
-  storage: { liveBytes: number; trashBytes: number; files: number };
+  storage?: { liveBytes: number; trashBytes: number; files: number };
 }
 
 //? CI (DOCUMENTS_AND_SKILLS) — one cached comment on a published post (read-only; no reply surface).

@@ -1121,7 +1121,7 @@
       "capDesign": "Was kann das Design-Modul?",
       "askAiPlaceholder": "Bitte die AI, etwas zu tun…",
       "confirmDestructiveTitle": "Destruktive Aktion bestätigen",
-      "confirmDestructiveContent": "Diese Aktion ist destruktiv oder schwer rückgängig zu machen: {summary}. Fortfahren?",
+      "confirmDestructiveContent": "Diese Aktion ist destruktiv oder schwer rückgängig zu machen: {{summary}}. Fortfahren?",
       "aiError": "Die KI ist gerade nicht verfügbar. Bitte erneut versuchen.",
       "aiReject": "Ablehnen",
       "aiDeclined": "Abgelehnt",
@@ -1137,7 +1137,7 @@
       "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
     },
     "publish": {
-      "title": "Auf {platform} veröffentlichen",
+      "title": "Auf {{platform}} veröffentlichen",
       "captionPh": "Beschriftung / Beschreibung…",
       "hashtagsPh": "Hashtags (Leerzeichen/Komma getrennt)",
       "privacy": "Sichtbarkeit",
@@ -2151,7 +2151,7 @@
       "lastRun": "last run {{when}}",
       "channels": "Channels",
       "channelsPlaceholder": "All channels (none selected)",
-      "channelsSelected": "{count} channels",
+      "channelsSelected": "{{count}} channels",
       "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
@@ -2371,7 +2371,7 @@
       "noContentYet": "Leeres Dokument",
       "delete": "Dokument löschen",
       "deleteConfirmTitle": "Dokument löschen?",
-      "deleteConfirmBody": "\"{title}\" und die Historie löschen? Das kann nicht rückgängig gemacht werden.",
+      "deleteConfirmBody": "\"{{title}}\" und die Historie löschen? Das kann nicht rückgängig gemacht werden.",
       "notFound": "Dokument nicht gefunden",
       "backToList": "Zurück zu den Dokumenten",
       "titleLabel": "Dokumenttitel",
@@ -2504,11 +2504,11 @@
       "title": "Speicher & Papierkorb",
       "desc": "Was dieser Workspace auf der Festplatte belegt und was zum Löschen bereitliegt.",
       "used": "Genutzte Medien",
-      "files": "{count} Dateien",
+      "files": "{{count}} Dateien",
       "inTrash": "Im Papierkorb",
       "trashEmpty": "Der Papierkorb ist leer.",
       "trashTitle": "Gelöschte Medien",
-      "daysLeft": "noch {days} Tage verfügbar",
+      "daysLeft": "noch {{days}} Tage verfügbar",
       "restore": "Wiederherstellen",
       "purge": "Endgültig löschen",
       "purgeConfirm": "Diese Datei endgültig löschen? Das lässt sich nicht rückgängig machen."
@@ -2517,6 +2517,11 @@
       "title": "Deploy-Verlauf",
       "current": "jetzt live",
       "previous": "vorherige"
+    },
+    "settingsTabs": {
+      "account": "Du",
+      "workspace": "Workspace",
+      "developer": "Entwickler"
     }
   }
 }

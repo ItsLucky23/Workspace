@@ -14,7 +14,7 @@ import TwoFactorSection from 'src/_components/TwoFactorSection';
 import { apiRequest } from 'src/_sockets/apiRequest';
 
 import Icon from '../_components/Icon';
-import { AvatarBubble, Disclosure, Segmented, Toggle, WsButton } from '../_components/primitives';
+import { AvatarBubble, Disclosure, Segmented, Tabs, Toggle, WsButton } from '../_components/primitives';
 import { isModuleEnabled } from '../_data/modules';
 import type { EnvironmentSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
@@ -200,6 +200,15 @@ function DeployHistoryFold({ environments }: { environments: EnvironmentSummary[
   );
 }
 
+//? The three settings destinations. Kept as data so the tab bar and the render stay in step, and so the
+//? developer tab can simply be filtered out for a workspace that has no development module.
+type SettingsTab = 'account' | 'workspace' | 'developer';
+const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
+  { id: 'account', labelKey: 'workspaces.settingsTabs.account' },
+  { id: 'workspace', labelKey: 'workspaces.settingsTabs.workspace' },
+  { id: 'developer', labelKey: 'workspaces.settingsTabs.developer' },
+];
+
 //? Bytes as MB — the only unit that reads at a glance for media of this size.
 const mb = (bytes: number): string => `${(bytes / 1_048_576).toFixed(1)} MB`;
 
@@ -211,7 +220,12 @@ const mb = (bytes: number): string => `${(bytes / 1_048_576).toFixed(1)} MB`;
 function StoragePanel() {
   const translate = useTranslator();
   const { content, restoreTrashed, purgeTrashed } = useWorkspaces();
-  const { trash, storage } = content;
+  //? Defaulted rather than destructured straight through: client and server do not deploy in lockstep, so a
+  //? client that is newer than the server it is talking to will read a snapshot without these fields. That
+  //? must render an empty bin, not take the whole settings page down with it — which is exactly what a
+  //? browser pass against a still-running old server just demonstrated.
+  const trash = content.trash ?? [];
+  const storage = content.storage ?? { liveBytes: 0, trashBytes: 0, files: 0 };
 
   return (
     <Card title={translate({ key: 'workspaces.storage.title' })} desc={translate({ key: 'workspaces.storage.desc' })}>
@@ -482,7 +496,7 @@ export default function AccountSettings() {
   //? so it stays visible). A plain 'member' or a content/design-only workspace sees a clean account page.
   //? Collapsed by default so even an admin's first paint stays light (progressive disclosure).
   const showDevOps = isModuleEnabled(activeWorkspace.enabledSections, 'development') && activeWorkspace.role !== 'member';
-  const [devOpen, setDevOpen] = useState(false);
+  const [tab, setTab] = useState<SettingsTab>('account');
 
   //? Theme + language autosave: apply the change instantly (DOM class / active
   //? locale) and persist it to the account via the framework's `settings/updateUser`
@@ -545,6 +559,16 @@ export default function AccountSettings() {
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
         <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+          {/* Every setting used to live in ONE scroll of a dozen cards, and the developer half was folded
+              behind a single "DevOps" disclosure that also hid API tokens, storage and data export — things
+              a workspace without the development module still needs. Three named destinations instead: what
+              is MINE, what is this WORKSPACE's, and the developer surface. */}
+          <Tabs
+            tabs={SETTINGS_TABS.filter((t) => t.id !== 'developer' || showDevOps).map((t) => ({ id: t.id, label: translate({ key: t.labelKey }) }))}
+            active={tab} onChange={(id) => { setTab(id as SettingsTab); }}
+          />
+
+          {tab === 'account' && (<>
           <Card title={translate({ key: 'workspaces.account.profile' })}>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16"><AvatarBubble user={currentUser} size={64} /></div>
@@ -568,14 +592,144 @@ export default function AccountSettings() {
             </div>
           </Card>
 
-          {showDevOps && (
-            <>
-              <button type="button" onClick={() => { setDevOpen((o) => !o); }} className="flex items-center justify-between gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3 text-sm font-medium text-title cursor-pointer">
-                <span className="flex items-center gap-2"><Icon name="diagram-project" className="text-muted" /> {translate({ key: 'workspaces.account.devOpsSection' })}</span>
-                <Icon name="caret-down" className={`text-muted transition-transform motion-reduce:transition-none ${devOpen ? 'rotate-180' : ''}`} />
+          <Card
+            title={translate({ key: 'workspaces.account.sessionsTitle' })}
+            desc={translate({ key: 'workspaces.account.sessionsDesc' })}
+            right={
+              <button
+                type="button"
+                onClick={() => {
+                  void menuHandler.confirm({ title: translate({ key: 'workspaces.account.revokeAllTitle' }), content: translate({ key: 'workspaces.account.revokeAllContent' }) })
+                    .then((ok) => { if (ok) revokeAllOtherSessions(); });
+                }}
+                className="text-xs text-wrong hover:underline cursor-pointer"
+              >
+                {translate({ key: 'workspaces.account.revokeAllOthers' })}
               </button>
-              {devOpen && (
-          <><Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
+            }
+          >
+            <div className="flex flex-col">
+              {sessions.map((s) => (
+                <Row key={s.handle}>
+                  <div>
+                    <div className="text-sm font-medium text-title font-mono">
+                      ...{s.handle.slice(-8)} {s.isCurrent && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-sans">{translate({ key: 'workspaces.account.thisDevice' })}</span>}
+                    </div>
+                    {s.expiresInSeconds !== null && (
+                      <div className="text-xs text-muted">{translate({ key: 'workspaces.account.sessionExpiresIn', params: [{ key: 'hours', value: String(Math.round(s.expiresInSeconds / 3600)) }] })}</div>
+                    )}
+                  </div>
+                  {!s.isCurrent && <button type="button" onClick={() => { revokeSession(s.handle); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revoke' })}</button>}
+                </Row>
+              ))}
+              {sessions.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noSessions' })}</div>}
+            </div>
+          </Card>
+
+          <Card title={translate({ key: 'workspaces.account.notificationsTitle' })} desc={translate({ key: 'workspaces.account.notificationsDesc' })}>
+            {/* A1: real web-push — the toggle subscribes the browser + stores it server-side. */}
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
+              <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
+            </Row>
+            {/* B4 — say WHY it failed instead of silently snapping back. On iOS the honest answer is
+                "install the app first". */}
+            {pushProblem !== null && (
+              <div className="text-xs text-warning px-1 pb-2">
+                {translate({ key: `workspaces.account.push_${pushProblem}` })}
+                {iosNotInstalled ? ` ${translate({ key: 'workspaces.account.pushIosHint' })}` : ''}
+              </div>
+            )}
+            {/* B4 — iOS never fires `beforeinstallprompt`, so the in-app install button never appeared there.
+                Show the manual Share → Add to Home Screen path instead. */}
+            {iosNotInstalled && (
+              <Row>
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
+                <span className="text-xs text-muted text-right">{translate({ key: 'workspaces.account.installIos' })}</span>
+              </Row>
+            )}
+            {/* #123 — install the PWA to the home screen (only shown when the browser offers the prompt). */}
+            {canInstallApp && (
+              <Row>
+                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
+                <WsButton variant="secondary" icon="download" onClick={() => { void promptInstall(); }}>{translate({ key: 'workspaces.account.install' })}</WsButton>
+              </Row>
+            )}
+            {/* A3 — per-type push opt-out (only meaningful once push is enabled). */}
+            {push && (
+              <div className="flex flex-col gap-1 pl-3 border-l border-divider mt-1">
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAssignment' })}</span>
+                  <Toggle on={pushCats.assignment} onChange={(v) => { savePushCat('assignment', 'pushOnAssignment', v); }} label="" />
+                </Row>
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAutomation' })}</span>
+                  <Toggle on={pushCats.automation} onChange={(v) => { savePushCat('automation', 'pushOnAutomation', v); }} label="" />
+                </Row>
+                <Row>
+                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAiSuggestion' })}</span>
+                  <Toggle on={pushCats.aiSuggestion} onChange={(v) => { savePushCat('aiSuggestion', 'pushOnAiSuggestion', v); }} label="" />
+                </Row>
+              </div>
+            )}
+          </Card>
+
+          {/* Account & security — the 2FA/GDPR/mail-preference flows were fully built on /settings but
+              unreachable from Workspaces (gap-scan A8): embed 2FA here + a visible route to the rest. */}
+          <Card title={translate({ key: 'workspaces.account.securityTitle' })} desc={translate({ key: 'workspaces.account.securityDesc' })}>
+            <TwoFactorSection />
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.fullSettings' })}</span>
+              <WsButton variant="secondary" icon="up-right-from-square" onClick={() => { globalThis.location.assign('/settings'); }}>{translate({ key: 'workspaces.account.openFullSettings' })}</WsButton>
+            </Row>
+          </Card>
+
+          <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.downloadData' })}</span>
+              <WsButton variant="secondary" icon="up-right-from-square" onClick={exportData}>{translate({ key: 'workspaces.account.export' })}</WsButton>
+            </Row>
+            {/* Gap-fix — import a workspace-export JSON back as a NEW workspace (there was no import path). */}
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.account.importWorkspace' })}</span>
+              <label className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-sm text-common cursor-pointer">
+                <Icon name="download" /> {translate({ key: 'workspaces.account.importPick' })}
+                <input type="file" accept="application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importWorkspace(f); e.target.value = ''; }} />
+              </label>
+            </Row>
+          </Card>
+          </>)}
+
+          {tab === 'workspace' && (<>
+{/* X3 — API tokens (issue/list/revoke) for the public API. */}
+          <PatPanel workspaceId={activeWorkspace.id} />
+          {/* G7 — measure a prompt change instead of guessing at it. */}
+          <ExperimentsPanel workspaceId={activeWorkspace.id} />
+
+          {/* F48/F06 — the media BIN + what this workspace occupies on disk. Deleting media no longer
+              destroys bytes immediately: it lands here with a visible countdown, so a misclick is
+              recoverable and a deliberate wipe is still one click away. Storage is MEASURED, not capped. */}
+          <StoragePanel />
+
+          {/* H4 — download a tenant-scoped JSON export of the workspace (portability/backup; secrets excluded). */}
+          <Card title={translate({ key: 'workspaces.dataExport.title' })} desc={translate({ key: 'workspaces.dataExport.desc' })}>
+            <Row>
+              <span className="text-sm text-common">{translate({ key: 'workspaces.dataExport.hint' })}</span>
+              <WsButton variant="secondary" icon="download" onClick={() => {
+                void apiRequest({ name: 'workspaces/workspaceExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
+                  if (r.status !== 'success') return;
+                  const blob = new Blob([JSON.stringify(r.result, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `workspace-${activeWorkspace.id}.json`; a.click();
+                  URL.revokeObjectURL(url);
+                });
+              }}>{translate({ key: 'workspaces.dataExport.download' })}</WsButton>
+            </Row>
+          </Card>
+          </>)}
+
+          {showDevOps && tab === 'developer' && (<>
+<Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
             {/* Per-project forge connect (ADR 0036): GitLab OR GitHub for the active project. The
                 label + connected badge reflect REAL state — the workspace's chosen forge and whether
                 the active project has a linked repo (no more hardcoded "connected"). */}
@@ -759,33 +913,7 @@ export default function AccountSettings() {
             ))}
           </Card>
 
-          {/* X3 — API tokens (issue/list/revoke) for the public API. */}
-          <PatPanel workspaceId={activeWorkspace.id} />
-          {/* G7 — measure a prompt change instead of guessing at it. */}
-          <ExperimentsPanel workspaceId={activeWorkspace.id} />
-
-          {/* F48/F06 — the media BIN + what this workspace occupies on disk. Deleting media no longer
-              destroys bytes immediately: it lands here with a visible countdown, so a misclick is
-              recoverable and a deliberate wipe is still one click away. Storage is MEASURED, not capped. */}
-          <StoragePanel />
-
-          {/* H4 — download a tenant-scoped JSON export of the workspace (portability/backup; secrets excluded). */}
-          <Card title={translate({ key: 'workspaces.dataExport.title' })} desc={translate({ key: 'workspaces.dataExport.desc' })}>
-            <Row>
-              <span className="text-sm text-common">{translate({ key: 'workspaces.dataExport.hint' })}</span>
-              <WsButton variant="secondary" icon="download" onClick={() => {
-                void apiRequest({ name: 'workspaces/workspaceExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
-                  if (r.status !== 'success') return;
-                  const blob = new Blob([JSON.stringify(r.result, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a'); a.href = url; a.download = `workspace-${activeWorkspace.id}.json`; a.click();
-                  URL.revokeObjectURL(url);
-                });
-              }}>{translate({ key: 'workspaces.dataExport.download' })}</WsButton>
-            </Row>
-          </Card>
-
-          <Card
+<Card
             title={translate({ key: 'workspaces.account.sshKeysTitle' })}
             desc={translate({ key: 'workspaces.account.sshKeysDesc' })}
             right={sshUser
@@ -805,117 +933,9 @@ export default function AccountSettings() {
               {sshKeys.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noKeysLinked' })}</div>}
             </div>
             <div className="mt-3"><AddKeyForm onAdd={addSshKey} /></div>
-          </Card></>
-              )}
-            </>
-          )}
-
-          <Card
-            title={translate({ key: 'workspaces.account.sessionsTitle' })}
-            desc={translate({ key: 'workspaces.account.sessionsDesc' })}
-            right={
-              <button
-                type="button"
-                onClick={() => {
-                  void menuHandler.confirm({ title: translate({ key: 'workspaces.account.revokeAllTitle' }), content: translate({ key: 'workspaces.account.revokeAllContent' }) })
-                    .then((ok) => { if (ok) revokeAllOtherSessions(); });
-                }}
-                className="text-xs text-wrong hover:underline cursor-pointer"
-              >
-                {translate({ key: 'workspaces.account.revokeAllOthers' })}
-              </button>
-            }
-          >
-            <div className="flex flex-col">
-              {sessions.map((s) => (
-                <Row key={s.handle}>
-                  <div>
-                    <div className="text-sm font-medium text-title font-mono">
-                      ...{s.handle.slice(-8)} {s.isCurrent && <span className="ml-1 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-sans">{translate({ key: 'workspaces.account.thisDevice' })}</span>}
-                    </div>
-                    {s.expiresInSeconds !== null && (
-                      <div className="text-xs text-muted">{translate({ key: 'workspaces.account.sessionExpiresIn', params: [{ key: 'hours', value: String(Math.round(s.expiresInSeconds / 3600)) }] })}</div>
-                    )}
-                  </div>
-                  {!s.isCurrent && <button type="button" onClick={() => { revokeSession(s.handle); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.account.revoke' })}</button>}
-                </Row>
-              ))}
-              {sessions.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noSessions' })}</div>}
-            </div>
           </Card>
+          </>)}
 
-          <Card title={translate({ key: 'workspaces.account.notificationsTitle' })} desc={translate({ key: 'workspaces.account.notificationsDesc' })}>
-            {/* A1: real web-push — the toggle subscribes the browser + stores it server-side. */}
-            <Row>
-              <span className="text-sm text-common">{translate({ key: 'workspaces.account.webPush' })}</span>
-              <Toggle on={push} onChange={togglePush} label={push ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
-            </Row>
-            {/* B4 — say WHY it failed instead of silently snapping back. On iOS the honest answer is
-                "install the app first". */}
-            {pushProblem !== null && (
-              <div className="text-xs text-warning px-1 pb-2">
-                {translate({ key: `workspaces.account.push_${pushProblem}` })}
-                {iosNotInstalled ? ` ${translate({ key: 'workspaces.account.pushIosHint' })}` : ''}
-              </div>
-            )}
-            {/* B4 — iOS never fires `beforeinstallprompt`, so the in-app install button never appeared there.
-                Show the manual Share → Add to Home Screen path instead. */}
-            {iosNotInstalled && (
-              <Row>
-                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
-                <span className="text-xs text-muted text-right">{translate({ key: 'workspaces.account.installIos' })}</span>
-              </Row>
-            )}
-            {/* #123 — install the PWA to the home screen (only shown when the browser offers the prompt). */}
-            {canInstallApp && (
-              <Row>
-                <span className="text-sm text-common">{translate({ key: 'workspaces.account.installApp' })}</span>
-                <WsButton variant="secondary" icon="download" onClick={() => { void promptInstall(); }}>{translate({ key: 'workspaces.account.install' })}</WsButton>
-              </Row>
-            )}
-            {/* A3 — per-type push opt-out (only meaningful once push is enabled). */}
-            {push && (
-              <div className="flex flex-col gap-1 pl-3 border-l border-divider mt-1">
-                <Row>
-                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAssignment' })}</span>
-                  <Toggle on={pushCats.assignment} onChange={(v) => { savePushCat('assignment', 'pushOnAssignment', v); }} label="" />
-                </Row>
-                <Row>
-                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAutomation' })}</span>
-                  <Toggle on={pushCats.automation} onChange={(v) => { savePushCat('automation', 'pushOnAutomation', v); }} label="" />
-                </Row>
-                <Row>
-                  <span className="text-sm text-muted">{translate({ key: 'workspaces.account.pushAiSuggestion' })}</span>
-                  <Toggle on={pushCats.aiSuggestion} onChange={(v) => { savePushCat('aiSuggestion', 'pushOnAiSuggestion', v); }} label="" />
-                </Row>
-              </div>
-            )}
-          </Card>
-
-          {/* Account & security — the 2FA/GDPR/mail-preference flows were fully built on /settings but
-              unreachable from Workspaces (gap-scan A8): embed 2FA here + a visible route to the rest. */}
-          <Card title={translate({ key: 'workspaces.account.securityTitle' })} desc={translate({ key: 'workspaces.account.securityDesc' })}>
-            <TwoFactorSection />
-            <Row>
-              <span className="text-sm text-common">{translate({ key: 'workspaces.account.fullSettings' })}</span>
-              <WsButton variant="secondary" icon="up-right-from-square" onClick={() => { globalThis.location.assign('/settings'); }}>{translate({ key: 'workspaces.account.openFullSettings' })}</WsButton>
-            </Row>
-          </Card>
-
-          <Card title={translate({ key: 'workspaces.account.yourDataTitle' })}>
-            <Row>
-              <span className="text-sm text-common">{translate({ key: 'workspaces.account.downloadData' })}</span>
-              <WsButton variant="secondary" icon="up-right-from-square" onClick={exportData}>{translate({ key: 'workspaces.account.export' })}</WsButton>
-            </Row>
-            {/* Gap-fix — import a workspace-export JSON back as a NEW workspace (there was no import path). */}
-            <Row>
-              <span className="text-sm text-common">{translate({ key: 'workspaces.account.importWorkspace' })}</span>
-              <label className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-container1-border bg-container1 hover:bg-container2 text-sm text-common cursor-pointer">
-                <Icon name="download" /> {translate({ key: 'workspaces.account.importPick' })}
-                <input type="file" accept="application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importWorkspace(f); e.target.value = ''; }} />
-              </label>
-            </Row>
-          </Card>
         </div>
       </div>
     </div>

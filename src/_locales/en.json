@@ -1121,7 +1121,7 @@
       "capDesign": "What can the design module do?",
       "askAiPlaceholder": "Ask the AI to do something…",
       "confirmDestructiveTitle": "Confirm destructive action",
-      "confirmDestructiveContent": "This action is destructive or hard to reverse: {summary}. Continue?",
+      "confirmDestructiveContent": "This action is destructive or hard to reverse: {{summary}}. Continue?",
       "aiError": "The AI is unavailable right now. Please try again.",
       "aiReject": "Reject",
       "aiDeclined": "Declined",
@@ -1137,7 +1137,7 @@
       "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
     },
     "publish": {
-      "title": "Publish to {platform}",
+      "title": "Publish to {{platform}}",
       "captionPh": "Caption / description…",
       "hashtagsPh": "hashtags (space or comma separated)",
       "privacy": "Privacy",
@@ -2151,7 +2151,7 @@
       "lastRun": "last run {{when}}",
       "channels": "Channels",
       "channelsPlaceholder": "All channels (none selected)",
-      "channelsSelected": "{count} channels",
+      "channelsSelected": "{{count}} channels",
       "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
@@ -2371,7 +2371,7 @@
       "noContentYet": "Empty document",
       "delete": "Delete document",
       "deleteConfirmTitle": "Delete document?",
-      "deleteConfirmBody": "Delete \"{title}\" and its history? This cannot be undone.",
+      "deleteConfirmBody": "Delete \"{{title}}\" and its history? This cannot be undone.",
       "notFound": "Document not found",
       "backToList": "Back to documents",
       "titleLabel": "Document title",
@@ -2504,11 +2504,11 @@
       "title": "Storage & trash",
       "desc": "What this workspace occupies on disk, and what is waiting to be deleted.",
       "used": "Media in use",
-      "files": "{count} files",
+      "files": "{{count}} files",
       "inTrash": "In the trash",
       "trashEmpty": "The trash is empty.",
       "trashTitle": "Deleted media",
-      "daysLeft": "still here for {days} days",
+      "daysLeft": "still here for {{days}} days",
       "restore": "Restore",
       "purge": "Delete permanently",
       "purgeConfirm": "Delete this file permanently? This cannot be undone."
@@ -2517,6 +2517,11 @@
       "title": "Deploy history",
       "current": "live now",
       "previous": "previous"
+    },
+    "settingsTabs": {
+      "account": "You",
+      "workspace": "Workspace",
+      "developer": "Developer"
     }
   }
 }

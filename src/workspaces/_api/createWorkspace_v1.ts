@@ -34,5 +34,9 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (enqueueError || !enqueued || isControlActionFailure(enqueued.result)) {
     return { status: 'error', errorCode: 'api.invalidRequest' };
   }
-  return { status: 'success', result: { accepted: true, signalSeq: enqueued.signalSeq } };
+  //? The new workspace's id rides back with the op result: the caller had no workspace before this call,
+  //? so there is nothing for it to poll or merge against — it needs to be TOLD which one is now theirs.
+  const created = enqueued.result;
+  const workspaceId = typeof created === 'object' && created !== null && 'workspaceId' in created && typeof created.workspaceId === 'string' ? created.workspaceId : '';
+  return { status: 'success', result: { accepted: true, signalSeq: enqueued.signalSeq, ...(workspaceId ? { workspaceId } : {}) } };
 };

@@ -1525,8 +1525,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const preset = isPipelinePreset(rawPreset) ? rawPreset : 'professional';
       //? #19 — a pack id seeds the starting content; an unknown id simply seeds nothing.
       const packId = str(payload, 'packId');
-      if (name) await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections), preset, packId);
-      return;
+      if (!name) return;
+      const created = await createBlankWorkspace(prisma, userId, name.trim(), sanitizeSections(payload.enabledSections), preset, packId);
+      //? The caller has no workspace yet and therefore nothing to poll for, so the id has to come back
+      //? with the op. The route's own doc-comment promised this and the op returned void — which is why
+      //? onboarding could only guess at which workspace it had just created. Returned as the op's plain
+      //? result value, the same way `role-update` returns the updated role.
+      return { workspaceId: created.workspaceId };
     }
     //? GAP_SCAN G2 — clone THIS workspace's configuration into a new one owned by the caller. Config only:
     //? no tickets, no content, no credentials, no members (see cloneWorkspace for the full contract).

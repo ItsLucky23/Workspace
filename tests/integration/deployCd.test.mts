@@ -41,7 +41,18 @@ try {
   await op(wsId, 'env-deploy', { projectId: projId }, { kind: 'dev' }, `cd-d-${String(stamp)}`);
   const dev = await poll(() => prisma.environment.findFirst({ where: { workspaceId: wsId, projectId: projId, kind: 'dev' } }));
   assert(dev !== null, 'a dev environment exists');
-  await prisma.environment.updateMany({ where: { id: dev?.id ?? '' }, data: { status: 'live', imageRef: 'workspaces/proj-test:abc' } });
+  //? F26 — a promotion now carries the SOURCE's tested commit forward. Forcing an env "live" without a
+  //? deployedCommit therefore no longer promotes: you cannot ship what you cannot identify. The fixture
+  //? sets one, and the refusal itself is asserted below.
+  await prisma.environment.updateMany({ where: { id: dev?.id ?? '' }, data: { status: 'live', imageRef: 'workspaces/proj-test:abc', deployedCommit: 'abc123def456' } });
+
+  // ---- F26: a live env with NO recorded commit cannot be promoted ------------------------------
+  //? This is the gap that made promotion dangerous: it gated on the source's tested commit and then
+  //? deployed the target at branch TIP, shipping code that was never the thing that passed.
+  await prisma.environment.updateMany({ where: { id: dev?.id ?? '' }, data: { deployedCommit: null } });
+  const blockedNoCommit = await op(wsId, 'env-promote', { projectId: projId }, { fromKind: 'dev' }, `cd-p0-${String(stamp)}`);
+  eq(blockedNoCommit?.error, 'promote.sourceHasNoCommit', 'a live source with no recorded commit cannot be promoted');
+  await prisma.environment.updateMany({ where: { id: dev?.id ?? '' }, data: { deployedCommit: 'abc123def456' } });
 
   // ---- promote dev→staging (no approval needed) → creates + deploys staging ----------------------
   await op(wsId, 'env-promote', { projectId: projId }, { fromKind: 'dev' }, `cd-p1-${String(stamp)}`);
@@ -53,7 +64,7 @@ try {
   eq(blockedNotLive?.error, 'promote.sourceNotLive', 'promoting a non-live source is blocked');
 
   // ---- FORCE staging live, then prod promote WITHOUT approval → blocked ---------------------------
-  await prisma.environment.updateMany({ where: { id: staging?.id ?? '' }, data: { status: 'live', imageRef: 'workspaces/proj-test:abc' } });
+  await prisma.environment.updateMany({ where: { id: staging?.id ?? '' }, data: { status: 'live', imageRef: 'workspaces/proj-test:abc', deployedCommit: 'abc123def456' } });
   const blockedNoApproval = await op(wsId, 'env-promote', { projectId: projId }, { fromKind: 'staging' }, `cd-p3-${String(stamp)}`);
   eq(blockedNoApproval?.error, 'promote.prodNeedsApproval', 'promoting to prod without approval is blocked (B-23 confirm gate)');
 

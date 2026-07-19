@@ -1121,7 +1121,7 @@
       "capDesign": "Wat kan de design-module?",
       "askAiPlaceholder": "Vraag de AI iets te doen…",
       "confirmDestructiveTitle": "Bevestig destructieve actie",
-      "confirmDestructiveContent": "Deze actie is destructief of moeilijk terug te draaien: {summary}. Doorgaan?",
+      "confirmDestructiveContent": "Deze actie is destructief of moeilijk terug te draaien: {{summary}}. Doorgaan?",
       "aiError": "De AI is nu niet beschikbaar. Probeer het opnieuw.",
       "aiReject": "Weigeren",
       "aiDeclined": "Geweigerd",
@@ -1137,7 +1137,7 @@
       "projectBriefPh": "Beschrijf de app om de start-UI te genereren (optioneel)…"
     },
     "publish": {
-      "title": "Publiceren naar {platform}",
+      "title": "Publiceren naar {{platform}}",
       "captionPh": "Bijschrift / beschrijving…",
       "hashtagsPh": "hashtags (spatie of komma gescheiden)",
       "privacy": "Zichtbaarheid",
@@ -2151,7 +2151,7 @@
       "lastRun": "laatst gedraaid {{when}}",
       "channels": "Kanalen",
       "channelsPlaceholder": "Alle kanalen (niets geselecteerd)",
-      "channelsSelected": "{count} kanalen",
+      "channelsSelected": "{{count}} kanalen",
       "channelsHint": "De rol draait één keer per geselecteerd kanaal — een kanaal dat faalt blokkeert de rest nooit."
     },
     "automation": {
@@ -2371,7 +2371,7 @@
       "noContentYet": "Leeg document",
       "delete": "Document verwijderen",
       "deleteConfirmTitle": "Document verwijderen?",
-      "deleteConfirmBody": "\"{title}\" en de historie verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "deleteConfirmBody": "\"{{title}}\" en de historie verwijderen? Dit kan niet ongedaan worden gemaakt.",
       "notFound": "Document niet gevonden",
       "backToList": "Terug naar documenten",
       "titleLabel": "Documenttitel",
@@ -2504,11 +2504,11 @@
       "title": "Opslag & prullenbak",
       "desc": "Wat deze workspace op schijf inneemt, en wat er klaarstaat om verwijderd te worden.",
       "used": "Media in gebruik",
-      "files": "{count} bestanden",
+      "files": "{{count}} bestanden",
       "inTrash": "In de prullenbak",
       "trashEmpty": "De prullenbak is leeg.",
       "trashTitle": "Verwijderde media",
-      "daysLeft": "nog {days} dagen beschikbaar",
+      "daysLeft": "nog {{days}} dagen beschikbaar",
       "restore": "Terugzetten",
       "purge": "Definitief verwijderen",
       "purgeConfirm": "Dit bestand definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
@@ -2517,6 +2517,11 @@
       "title": "Deploy-historie",
       "current": "nu live",
       "previous": "vorige"
+    },
+    "settingsTabs": {
+      "account": "Jij",
+      "workspace": "Workspace",
+      "developer": "Ontwikkelaar"
     }
   }
 }

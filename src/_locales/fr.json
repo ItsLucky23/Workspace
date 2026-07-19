@@ -1121,7 +1121,7 @@
       "capDesign": "Que peut faire le module design ?",
       "askAiPlaceholder": "Demandez à l’IA de faire quelque chose…",
       "confirmDestructiveTitle": "Confirmer l’action destructive",
-      "confirmDestructiveContent": "Cette action est destructive ou difficile à annuler : {summary}. Continuer ?",
+      "confirmDestructiveContent": "Cette action est destructive ou difficile à annuler : {{summary}}. Continuer ?",
       "aiError": "L’IA est indisponible pour le moment. Réessayez.",
       "aiReject": "Refuser",
       "aiDeclined": "Refusé",
@@ -1137,7 +1137,7 @@
       "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
     },
     "publish": {
-      "title": "Publier sur {platform}",
+      "title": "Publier sur {{platform}}",
       "captionPh": "Légende / description…",
       "hashtagsPh": "hashtags (espaces ou virgules)",
       "privacy": "Confidentialité",
@@ -2151,7 +2151,7 @@
       "lastRun": "last run {{when}}",
       "channels": "Channels",
       "channelsPlaceholder": "All channels (none selected)",
-      "channelsSelected": "{count} channels",
+      "channelsSelected": "{{count}} channels",
       "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
     },
     "automation": {
@@ -2371,7 +2371,7 @@
       "noContentYet": "Document vide",
       "delete": "Supprimer le document",
       "deleteConfirmTitle": "Supprimer le document ?",
-      "deleteConfirmBody": "Supprimer « {title} » et son historique ? Cette action est irréversible.",
+      "deleteConfirmBody": "Supprimer « {{title}} » et son historique ? Cette action est irréversible.",
       "notFound": "Document introuvable",
       "backToList": "Retour aux documents",
       "titleLabel": "Titre du document",
@@ -2504,11 +2504,11 @@
       "title": "Stockage et corbeille",
       "desc": "Ce que cet espace occupe sur le disque, et ce qui attend d'être supprimé.",
       "used": "Médias utilisés",
-      "files": "{count} fichiers",
+      "files": "{{count}} fichiers",
       "inTrash": "Dans la corbeille",
       "trashEmpty": "La corbeille est vide.",
       "trashTitle": "Médias supprimés",
-      "daysLeft": "encore {days} jours",
+      "daysLeft": "encore {{days}} jours",
       "restore": "Restaurer",
       "purge": "Supprimer définitivement",
       "purgeConfirm": "Supprimer ce fichier définitivement ? Cette action est irréversible."
@@ -2517,6 +2517,11 @@
       "title": "Historique des déploiements",
       "current": "en ligne",
       "previous": "précédent"
+    },
+    "settingsTabs": {
+      "account": "Vous",
+      "workspace": "Espace",
+      "developer": "Développeur"
     }
   }
 }
