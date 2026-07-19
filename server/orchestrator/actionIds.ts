@@ -19,6 +19,11 @@ export function stageForgeIntentId(workspaceId: string, clientRequestId: string)
   return deterministicObjectId(workspaceId, clientRequestId, 'stage-forge-intent');
 }
 
+//? Per-service CI fans one user action out into one run PER UNIT, each needing its own durable intent.
+//? The unit is NOT salted in here: it is already part of the `clientRequestId` the caller sends (see
+//? `unitRequestId` in the dispatcher), and the Conductor derives these same ids from the request id it
+//? receives. Salting here as well would make caller and Conductor disagree — which presents as an intent
+//? that never validates rather than as an obvious error.
 export function ciPublicIntentId(workspaceId: string, projectId: string, clientRequestId: string): string {
   return deterministicObjectId(workspaceId, `${projectId}:${clientRequestId}`, 'ci-public-intent');
 }

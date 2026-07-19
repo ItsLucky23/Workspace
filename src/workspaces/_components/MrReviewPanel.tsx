@@ -201,15 +201,26 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
               <Icon name={ciIcon(mr.checks.status)} />{translate({ key: `workspaces.mr.ciStatus.${mr.checks.status}` })}
             </span>
           </div>
-          {mr.checks.jobs.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {mr.checks.jobs.map((j) => (
-                <span key={j.name} className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${ciTint(j.status)}`}>
-                  <Icon name={ciIcon(j.status)} />{j.name}
+          {/* Per-service CI: one row per unit, each with its own verdict and its own retry. A monorepo
+              previously showed ONE status for the whole MR, so a red service was either invisible behind a
+              green sibling or unattributable. A single-unit repo shows exactly one row — itself. */}
+          {mr.checks.units.map((unit) => (
+            <div key={unit.serviceId ?? 'root'} className="flex items-center justify-between gap-2 border-t border-divider pt-2 first:border-t-0 first:pt-0">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ciTint(unit.status)}`}>
+                  <Icon name={ciIcon(unit.status)} />{unit.serviceName}
                 </span>
-              ))}
+                {unit.jobs.map((j) => (
+                  <span key={`${unit.serviceId ?? 'root'}:${j.name}`} className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${ciTint(j.status)}`}>
+                    <Icon name={ciIcon(j.status)} />{j.name}
+                  </span>
+                ))}
+              </div>
+              {/* Retry just this unit — re-running the whole MR to fix one flaky service is the thing that
+                  makes people stop using CI. */}
+              <button type="button" disabled={busy !== null} onClick={() => { runCi(ticketKey, unit.serviceId); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0 disabled:opacity-50">{translate({ key: 'workspaces.mr.retryUnit' })}</button>
             </div>
-          )}
+          ))}
           {mr.checks.findings.length > 0 && (
             <div className="flex flex-col gap-1 border-t border-divider pt-2">
               {mr.checks.findings.map((f, i) => (

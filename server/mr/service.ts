@@ -10,6 +10,7 @@ import { normalizeGitConfig } from '../git/branchStrategy';
 import { branchDiff, branchHead, mergeBranches, revertMergeCommit } from '../git/repoStore';
 import { pushMergedTarget } from '../git/forge';
 import { ciGateForMr, allowMergeOnRedCI } from '../ci/gate';
+import { SEVERITY_RANK } from '../ci/security';
 import { parseUnifiedDiff, type MrDiff } from './diff';
 
 //? The outcome of a merge/rollback attempt — the caller maps `reason` to a UI message. `conflict`
@@ -28,7 +29,10 @@ export interface MrApprovalView { userId: string; stale: boolean; createdAt: str
 export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[] }
 export interface MrCheckJob { name: string; status: string; severity: string | null }
 export interface MrCheckFinding { severity: string; title: string }
-export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[] }
+//? Per-service CI: `status`/`jobs`/`findings` stay the ROLLED-UP view (the worst verdict across units — a
+//? green sibling must never read as "the MR is green"), and `units` carries the attributable breakdown.
+export interface MrCheckUnit { serviceId: string | null; serviceName: string; status: string; maxSeverity: string | null; jobs: MrCheckJob[] }
+export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[]; units: MrCheckUnit[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;
@@ -184,16 +188,50 @@ export async function mrForTicket(prisma: PrismaClient, workspaceId: string, tic
   const approvalRows = await prisma.approval.findMany({ where: { workspaceId, mergeRequestId: mr.id } });
   const approvals: MrApprovalView[] = approvalRows.map((a) => ({ userId: a.userId, stale: (a.headSha ?? '') !== (mr.headSha ?? ''), createdAt: a.createdAt.toISOString() }));
 
-  //? #51/#52 — the latest CI run for this MR + its jobs + parsed findings, for the panel's Checks section.
-  const latestRun = await prisma.pipelineRun.findFirst({ where: { workspaceId, mergeRequestId: mr.id }, orderBy: { startedAt: 'desc' } });
+  //? #51/#52 — the CI runs for this MR + their jobs + parsed findings, for the panel's Checks section.
+  //?
+  //? Per-service CI: taking only the NEWEST run collapsed a monorepo's units into whichever finished last,
+  //? so a red service could be reported as green purely by ordering. Every unit's newest run is read, the
+  //? panel shows them individually, and the headline status is the WORST of them.
+  const runRows = await prisma.pipelineRun.findMany({ where: { workspaceId, mergeRequestId: mr.id }, orderBy: { startedAt: 'desc' }, take: 100 });
+  const latestPerUnit = new Map<string, (typeof runRows)[number]>();
+  for (const row of runRows) {
+    const unit = row.serviceId ?? 'root';
+    if (!latestPerUnit.has(unit)) latestPerUnit.set(unit, row);
+  }
+
   let checks: MrChecks | undefined;
-  if (latestRun) {
-    const jobRows = await prisma.pipelineJob.findMany({ where: { workspaceId, pipelineRunId: latestRun.id } });
-    checks = {
-      status: latestRun.status, maxSeverity: latestRun.maxSeverity,
-      jobs: jobRows.map((j) => ({ name: j.name, status: j.status, severity: j.severity })),
-      findings: jobRows.flatMap((j) => parseFindings(j.findings)),
-    };
+  if (latestPerUnit.size > 0) {
+    const serviceRows = await prisma.service.findMany({ where: { workspaceId, projectId: mr.projectId }, select: { id: true, name: true } });
+    const serviceName = new Map(serviceRows.map((row) => [row.id, row.name]));
+
+    const units: MrCheckUnit[] = [];
+    const allJobs: MrCheckJob[] = [];
+    const allFindings: MrCheckFinding[] = [];
+    for (const run of latestPerUnit.values()) {
+      const jobRows = await prisma.pipelineJob.findMany({ where: { workspaceId, pipelineRunId: run.id } });
+      const jobs = jobRows.map((j) => ({ name: j.name, status: j.status, severity: j.severity }));
+      units.push({
+        serviceId: run.serviceId,
+        //? A unit whose Service row was deleted after its run still has to be nameable, or the panel shows
+        //? an anonymous red check nobody can act on.
+        serviceName: run.serviceId === null ? 'root' : serviceName.get(run.serviceId) ?? run.serviceId,
+        status: run.status, maxSeverity: run.maxSeverity, jobs,
+      });
+      allJobs.push(...jobs);
+      allFindings.push(...jobRows.flatMap((j) => parseFindings(j.findings)));
+    }
+
+    //? The roll-up: any non-success unit decides the headline. "Running" only wins when nothing failed.
+    const failed = units.find((u) => u.status !== 'success' && u.status !== 'running' && u.status !== 'canceled');
+    const running = units.find((u) => u.status === 'running');
+    const status = failed?.status ?? (running ? 'running' : 'success');
+    let maxSeverity: string | null = null;
+    for (const unit of units) {
+      if ((SEVERITY_RANK[unit.maxSeverity ?? 'none'] ?? 0) > (SEVERITY_RANK[maxSeverity ?? 'none'] ?? 0)) maxSeverity = unit.maxSeverity;
+    }
+
+    checks = { status, maxSeverity, jobs: allJobs, findings: allFindings, units };
   }
 
   return {

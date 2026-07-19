@@ -46,7 +46,7 @@ export interface ForgeSnapshotInternalAction extends InternalActionBase {
 
 export interface CiPublicCompleteInternalAction extends InternalActionBase {
   op: 'ci-public-complete';
-  target: { ticketId: string; ticketKey: string; projectId: string };
+  target: { ticketId: string; ticketKey: string; projectId: string; serviceId?: string | null };
   payload: {
     intentId: string;
     prepareSignalId: string;

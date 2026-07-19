@@ -196,7 +196,8 @@ export interface WorkspacesCtx {
   quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority; startWithAi?: boolean }) => void;
   //? Edit a ticket's title / description / labels / priority (stage + assignee changes
   //? reuse bulkMove / bulkAssign on a single ticket). Only the given fields are written.
-  editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[]; priority?: TicketPriority }) => void;
+  //? `serviceId: null` explicitly means the project root unit, so it is distinct from omitting the key.
+  editTicket: (id: string, patch: { title?: string; description?: string; labels?: string[]; priority?: TicketPriority; serviceId?: string | null }) => void;
   //? Add a user comment (WorkspaceNote) to a ticket. Read them back via `ticketNotes`.
   addComment: (ticketId: string, body: string) => void;
   //? Answer the AI's open question on a ticket (#17): records the answer + re-fires the parked
@@ -232,7 +233,9 @@ export interface WorkspacesCtx {
   stageConfigs: PipelineStageCfg[];
   saveStageConfig: (cfg: PipelineStageCfg) => void;
   //? I1 — run the built-in CI at a ticket's MR head (ci-run control-op via projectAdmin).
-  runCi: (ticketKey: string) => void;
+  //? Per-service CI: no `serviceId` runs EVERY unit (the MR button); passing one is the per-unit retry.
+  //? `null` explicitly means the project root unit, so it is distinct from "not given".
+  runCi: (ticketKey: string, serviceId?: string | null) => void;
   //? R1 — durably ADD / REMOVE / REORDER pipeline stages (was React-state-only → lost on refresh).
   createStage: (input: { projectId: string; key: string; name: string; kind?: string }) => void;
   deleteStage: (projectId: string, stageKey: string) => void;

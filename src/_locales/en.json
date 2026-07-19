@@ -1653,7 +1653,9 @@
       "noLinksSub": "Relate, block, or dedupe against other tickets.",
       "aiSuggested": "AI-suggested",
       "noStageHistory": "No stage history yet",
-      "sending": "Sending…"
+      "sending": "Sending…",
+      "serviceLabel": "Service",
+      "serviceRoot": "Whole project"
     },
     "terminals": {
       "restart": "Restart",
@@ -1777,7 +1779,8 @@
       "fileRenamed": "renamed",
       "commentOnLine": "Comment on this line",
       "cancel": "Cancel",
-      "aiAuthor": "AI"
+      "aiAuthor": "AI",
+      "retryUnit": "retry"
     },
     "priority": {
       "label": "Priority",

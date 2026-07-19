@@ -638,6 +638,7 @@ model BuildArtifact {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId   String    @db.ObjectId
   projectId     String    @db.ObjectId
+  serviceId     String?   @db.ObjectId              // which monorepo unit this artifact is (null = the project root)
   kind          String                              // 'image' (docker save tarball) | 'bundle' (dist)
   imageRef      String?                             // the source image tag (kind='image')
   filePath      String?                             // on-disk artifact path (kind + hash)
@@ -671,6 +672,11 @@ model Pipeline {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
   projectId   String   @db.ObjectId
+  //? F28/per-service CI — which monorepo unit this pipeline belongs to. `null` is a FIRST-CLASS value and
+  //? means the project root: a single-unit repo needs no Service row at all, and every pre-existing
+  //? pipeline is exactly that. Written explicitly (never omitted) because on MongoDB an absent field does
+  //? not match a `null` filter (lesson 0014).
+  serviceId   String?  @db.ObjectId
   specHash    String                              // content-hash of the parsed ci.yml (reuse/invalidate)
   stages      String[]                            // ordered stage names from the spec
   enabled     Boolean  @default(true)
@@ -678,7 +684,7 @@ model Pipeline {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([workspaceId, projectId])
+  @@unique([workspaceId, projectId, serviceId])
 }
 
 //? One CI execution at a frozen commit. `status` rolls up the jobs; it GATES merge/promote.
@@ -687,6 +693,7 @@ model PipelineRun {
   workspaceId    String    @db.ObjectId
   pipelineId     String    @db.ObjectId
   projectId      String    @db.ObjectId            // denormalized for the project-level "latest green?" gate
+  serviceId      String?   @db.ObjectId            // denormalized per-service gate scope (null = the project root unit)
   ticketId       String?   @db.ObjectId            // DEV-#### ticket this run gates (null = branch-only)
   mergeRequestId String?   @db.ObjectId            // links to MergeRequest for the MR check-list + merge gate
   commitHash     String                             // frozen baseline (DH5) — a stale-commit green must NOT gate-pass
@@ -700,6 +707,7 @@ model PipelineRun {
   @@index([workspaceId, pipelineId, status])
   @@index([workspaceId, mergeRequestId])
   @@index([workspaceId, projectId, status])
+  @@index([workspaceId, projectId, serviceId, status])
 }
 
 //? One job within a run (a container exec for the builtin runner). `status` is a run-state projection;
@@ -922,6 +930,11 @@ model Ticket {
   issueUrl       String?                         // GitLab-derived cache — the issue url (canonical, was prototype `issue?`)
   commitHash     String?                         // frozen worktree commit the ticket's context is pinned to (DH5)
   sprintId       String?  @db.ObjectId
+  //? Which monorepo unit this ticket's work belongs to. `null` = the project root, which is what a
+  //? single-unit repo always is. It decides which service a PREVIEW boots and which service's CI gates the
+  //? ticket — both of which previously always used the project root, so a monorepo ticket previewed and
+  //? tested the wrong thing while the UI claimed otherwise.
+  serviceId      String?  @db.ObjectId
   carryOver      String?                         // the HUMAN one-liner (derived from the latest CarryOver envelope summary, 04b §14)
   needsInput     String?                         // denormalized banner = first open question (04 §2)
   needsInputQuestions Json?                       // W1 — the FULL open-question set [{q,a}] (multi-question; banner = first unanswered). Null = single/legacy.

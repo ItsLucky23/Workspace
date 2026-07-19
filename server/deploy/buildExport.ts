@@ -25,6 +25,15 @@ const EXPORT_TTL_MS = Number(process.env.WS_BUILD_EXPORT_TTL_H ?? '24') * 3_600_
 //? without a restart. Default = a Node app building to dist/.
 const buildCmd = (): string => process.env.WS_BUILD_EXPORT_CMD ?? 'cd /app && npm run build';
 const buildOutputDir = (): string => process.env.WS_BUILD_EXPORT_DIR ?? '/app/dist';
+//? Where the app image puts the repo. Only used to resolve a SERVICE's output dir relative to it.
+const IMAGE_APP_ROOT = '/app';
+
+//? A repo-relative service path, normalized for use inside the image: separators unified, leading and
+//? trailing slashes trimmed. The path itself is already validated where it enters the system
+//? (`serviceWorkdir`); this only shapes it for interpolation.
+function normalizedServicePath(servicePath: string): string {
+  return servicePath.trim().split(/[\\/]+/).filter((part) => part.length > 0 && part !== '.').join('/');
+}
 
 export interface DeployHookResult { fired: boolean; ok?: boolean; status?: number; error?: string }
 export interface BuildExportResult { ok: boolean; artifactId?: string; downloadToken?: string; status: string; error?: string; deployHook?: DeployHookResult }
@@ -32,13 +41,24 @@ export interface BuildExportResult { ok: boolean; artifactId?: string; downloadT
 //? Export a project as a downloadable artifact. `image` → a `docker save` tarball; `bundle` → a real prod
 //? build tarball. Creates a BuildArtifact row (building→ready|error) + a signed token, then (D4) fires the
 //? configured deploy-hook. `now` is injected (Date.now() is banned in some contexts).
-export async function buildExport(prisma: PrismaClient, workspaceId: string, projectId: string, kind: string, now: number): Promise<BuildExportResult> {
+export async function buildExport(prisma: PrismaClient, workspaceId: string, projectId: string, kind: string, now: number, serviceId?: string | null): Promise<BuildExportResult> {
   const project = await prisma.project.findFirst({ where: { id: projectId, workspaceId }, select: { baseImageRef: true } });
-  const imageRef = project?.baseImageRef ?? null;
+  //? Per-service export: a monorepo unit builds ITSELF — its own image, its own build command, its own
+  //? output directory. `Service.buildCmd` and `Service.deployUnit` were written by the editor and read by
+  //? nothing, so a user could configure a per-service build and silently get the project-wide one.
+  const service = serviceId === undefined || serviceId === null
+    ? null
+    : await prisma.service.findFirst({ where: { id: serviceId, workspaceId, projectId }, select: { path: true, buildCmd: true, deployUnit: true, baseImageRef: true, name: true } });
+  const imageRef = service?.baseImageRef ?? project?.baseImageRef ?? null;
   const token = randomBytes(24).toString('hex');
   const isBundle = kind === 'bundle';
   const artifact = await prisma.buildArtifact.create({
-    data: { workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', downloadToken: token, status: 'building', ...(imageRef ? { imageRef } : {}), expiresAt: new Date(now + EXPORT_TTL_MS) },
+    data: {
+      workspaceId, projectId,
+      //? Written explicitly, including the null (lesson 0014 — an absent field never matches a null filter).
+      serviceId: serviceId ?? null,
+      kind: isBundle ? 'bundle' : 'image', downloadToken: token, status: 'building', ...(imageRef ? { imageRef } : {}), expiresAt: new Date(now + EXPORT_TTL_MS),
+    },
   });
 
   if (!imageRef) return failExport(prisma, workspaceId, artifact.id, 'export.noImage');
@@ -47,12 +67,18 @@ export async function buildExport(prisma: PrismaClient, workspaceId: string, pro
   const dir = path.join(workspaceDataDir(workspaceId), 'exports');
   mkdirSync(dir, { recursive: true });
   const result = isBundle
-    ? await exportBundle(prisma, workspaceId, artifact.id, imageRef, dir, token)
+    ? await exportBundle(prisma, workspaceId, artifact.id, imageRef, dir, token, service?.buildCmd ?? null, service?.path ?? null)
     : await exportImage(prisma, workspaceId, artifact.id, imageRef, dir, token);
   if (!result.ok) return result;
 
   //? D4 — a ready artifact is the deploy input: fire the external deploy-hook (webhook) if configured.
-  const deployHook = await postDeployWebhook({ event: 'build-export', workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', artifactId: artifact.id, imageRef, downloadToken: token }, undefined, prisma);
+  const deployHook = await postDeployWebhook({
+    event: 'build-export', workspaceId, projectId, kind: isBundle ? 'bundle' : 'image', artifactId: artifact.id, imageRef, downloadToken: token,
+    //? Name the unit for the external deployer. `deployUnit` falls back to the service NAME rather than
+    //? being omitted: "which unit is this?" always has an answer once a service is involved.
+    ...(serviceId ? { serviceId } : {}),
+    ...(service ? { deployUnit: (service.deployUnit ?? '').trim().length > 0 ? service.deployUnit ?? service.name : service.name } : {}),
+  }, undefined, prisma);
   //? #64 — persist the hook result on the artifact row so the settings UI can surface fired/ok/status.
   await prisma.buildArtifact.update({ where: { id: artifact.id }, data: { deployHookFired: deployHook.fired, ...(deployHook.ok === undefined ? {} : { deployHookOk: deployHook.ok }), ...(deployHook.status === undefined ? {} : { deployHookStatus: deployHook.status }) } });
   return { ...result, deployHook };
@@ -69,11 +95,18 @@ async function exportImage(prisma: PrismaClient, workspaceId: string, artifactId
 //? `bundle` (D4) — run the project's REAL production build inside a throwaway container from its image, tar
 //? the build output IN the container (tar/gzip live in the app image), then `docker cp` the single tarball
 //? out. Cleans up the container whatever happens. Replaces the old `export.bundleNotImplemented`.
-async function exportBundle(prisma: PrismaClient, workspaceId: string, artifactId: string, imageRef: string, dir: string, token: string): Promise<BuildExportResult> {
+async function exportBundle(prisma: PrismaClient, workspaceId: string, artifactId: string, imageRef: string, dir: string, token: string, serviceBuildCmd: string | null, servicePath: string | null): Promise<BuildExportResult> {
   //? `token` is randomBytes hex ([0-9a-f]) → already a valid docker object name.
   const name = `ws-export-${token}`;
   const filePath = path.join(dir, `${token}.tgz`);
-  const built = await docker(['run', '--name', name, imageRef, 'sh', '-c', `${buildCmd()} && tar -czf /tmp/bundle.tgz -C ${buildOutputDir()} .`]);
+  //? The service's own build command wins over the host-global default — that is what the field is FOR.
+  //? Its output directory is resolved relative to the service root, so a monorepo unit tars its own dist
+  //? rather than the root project's.
+  const command = (serviceBuildCmd ?? '').trim().length > 0 ? serviceBuildCmd ?? buildCmd() : buildCmd();
+  const outputDir = servicePath === null || servicePath.trim().length === 0 || servicePath.trim() === '.'
+    ? buildOutputDir()
+    : `${IMAGE_APP_ROOT}/${normalizedServicePath(servicePath)}/dist`;
+  const built = await docker(['run', '--name', name, imageRef, 'sh', '-c', `${command} && tar -czf /tmp/bundle.tgz -C ${outputDir} .`]);
   if (built.code !== 0) { await docker(['rm', '-f', name]); return failExport(prisma, workspaceId, artifactId, `export.buildFailed: ${built.err.slice(0, 200)}`); }
   const copied = await docker(['cp', `${name}:/tmp/bundle.tgz`, filePath]);
   await docker(['rm', '-f', name]);
@@ -104,6 +137,11 @@ export interface DeployDescriptor {
   artifactId: string;
   imageRef: string;
   downloadToken: string;
+  //? Which monorepo unit this artifact IS. Without it an external deployer receives a tarball and cannot
+  //? tell which unit of the repo it just got — which is exactly what `Service.deployUnit` was declared for
+  //? and then never used. Absent = the project root, i.e. the whole repo is the unit.
+  serviceId?: string;
+  deployUnit?: string;
 }
 //? #64 — resolve a deploy-hook config value: the PER-WORKSPACE env var (save-env, decrypted if secret)
 //? takes precedence over the host-global `process.env`, so each workspace points at its own deploy target

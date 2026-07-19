@@ -1,6 +1,6 @@
 {
-  "hash": "fd8ad932cf7c9149",
-  "chunkCount": 215,
+  "hash": "13dd0bb80a96d2a2",
+  "chunkCount": 216,
   "chunks": [
     {
       "id": "cap-001",
@@ -1291,6 +1291,12 @@
       "kind": "decision",
       "title": "Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs",
       "text": "ADR 0280: Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs.  Decision: "
+    },
+    {
+      "id": "adr-0281",
+      "kind": "decision",
+      "title": "CI, previews and build exports are scoped to a monorepo UNIT, and every gate means \"every unit\"",
+      "text": "ADR 0281: CI, previews and build exports are scoped to a monorepo UNIT, and every gate means \"every unit\". `Service` has existed since the monorepo work, with `path`, `buildCmd`, `deployUnit`, `devCommand` and `baseImageRef`, and the schema comment promised each service was \"independently buildable / deployable / previewable\". It was not. A scan found **39 sites** assuming one pipeline per project: - `Pipeline` was `@@unique([workspaceId, projectId])` — structurally one per project. - The runner read one `/work/.workspaces/ci.yml` and ran every job with `-w /work`. - Previews resolved only `Project`, so a ticket on a monorepo service booted the root project's dev server and presented it as that service. - `buildCmd` and `deployUnit` were written by the editor and read by nothing. - Export/import dropped `Service` rows entirely, while reporting success. The gates were the dangerous part. `ciGreenForProject` took the *newest* run for the project. On a single-unit repo that is correct. The moment a second service exists, a green run for service A passes the prod gate while service B is red — purely because A finished last. **Adding a service silently weakened the prod promote gate**, with nothing to see: no error, no warning, a green check. Decision: **1. `serviceId` is a first-class column on `Pipeline`, `PipelineRun`, `BuildArtifact` and `Ticket`, where `null` means \"the project root unit\".** A single-unit repo has no `Service` row and never needs one; its work is the root uni"
     }
   ]
 }

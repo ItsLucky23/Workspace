@@ -37,6 +37,10 @@ export interface FullBundle {
   triggers: unknown[];
   customTasks: unknown[];
   infoSources: unknown[];
+  //? The project's declared monorepo units. These were dropped entirely: exporting and reimporting a
+  //? workspace silently lost every Service row — and with it each unit's path, build command and deploy
+  //? unit — while the import still reported success.
+  services: unknown[];
   envKeys: string[];
   //? What was deliberately NOT included, stated in the file itself so a restorer is never guessing.
   excluded: string[];
@@ -59,7 +63,7 @@ export async function buildFullBundle(prisma: PrismaClient, workspaceId: string,
   });
   if (!workspace) return null;
 
-  const [stages, tickets, ticketEvents, documents, skills, styles, references, channels, pieces, assets, triggers, customTasks, infoSources, envVars] = await Promise.all([
+  const [stages, tickets, ticketEvents, documents, skills, styles, references, channels, pieces, assets, triggers, customTasks, infoSources, envVars, services] = await Promise.all([
     prisma.pipelineStage.findMany({ where: { workspaceId }, orderBy: { order: 'asc' } }),
     prisma.ticket.findMany({ where: { workspaceId }, orderBy: { number: 'asc' }, take: 5000 }),
     prisma.ticketEvent.findMany({ where: { workspaceId }, orderBy: { seq: 'asc' }, take: 20_000 }),
@@ -74,6 +78,7 @@ export async function buildFullBundle(prisma: PrismaClient, workspaceId: string,
     prisma.customAiTask.findMany({ where: { workspaceId }, take: 500 }),
     prisma.infoSource.findMany({ where: { workspaceId }, take: 1000 }),
     prisma.envVar.findMany({ where: { workspaceId }, select: { key: true, secret: true } }),
+    prisma.service.findMany({ where: { workspaceId }, take: 200 }),
   ]);
 
   return {
@@ -87,7 +92,7 @@ export async function buildFullBundle(prisma: PrismaClient, workspaceId: string,
       productContext: workspace.productContext,
     },
     stages, tickets, ticketEvents, documents, skills, styles, references, channels,
-    contentPieces: pieces, contentAssets: assets, triggers, customTasks, infoSources,
+    contentPieces: pieces, contentAssets: assets, triggers, customTasks, infoSources, services,
     //? Keys only — and internal `__`-namespaced rows (tokens, credentials) are not even named.
     envKeys: envVars.filter((e) => !e.secret && !e.key.startsWith('__')).map((e) => e.key),
     excluded: EXCLUDED,
@@ -97,6 +102,7 @@ export async function buildFullBundle(prisma: PrismaClient, workspaceId: string,
       references: references.length, channels: channels.length,
       contentPieces: pieces.length, contentAssets: assets.length,
       triggers: triggers.length, customTasks: customTasks.length, infoSources: infoSources.length,
+      services: services.length,
     },
   };
 }
@@ -207,6 +213,22 @@ export async function importFullBundle(
   //? An earlier version used `void prisma.x.create(...)` to make that type-check — which silently discarded
   //? the promise, so rows were still in flight (or failing invisibly) when the caller moved on.
   const collections: [string, Record<string, unknown>[], (row: Record<string, unknown>) => Promise<void>][] = [
+    //? Services carry the project's unit layout. They restore onto the single imported project (the bundle
+    //? is single-project by construction — see the note on `excluded`), so only `path`/`buildCmd`/
+    //? `deployUnit` need to survive; ids are minted fresh like every other imported row.
+    ['services', rows(b.services), async (sv) => {
+      await prisma.service.create({ // luckystack-allow tenant-scope: scoped by the workspaceId it WRITES two lines below
+        data: {
+          workspaceId, projectId,
+          name: str(sv, 'name', 'service'),
+          path: str(sv, 'path', '.'),
+          ...(str(sv, 'buildCmd') ? { buildCmd: str(sv, 'buildCmd') } : {}),
+          ...(str(sv, 'deployUnit') ? { deployUnit: str(sv, 'deployUnit') } : {}),
+          ...(str(sv, 'devCommand') ? { devCommand: str(sv, 'devCommand') } : {}),
+          ...(str(sv, 'prodCommand') ? { prodCommand: str(sv, 'prodCommand') } : {}),
+        },
+      });
+    }],
     ['documents', rows(b.documents), async (d) => {
       await prisma.document.create({ data: { workspaceId, title: str(d, 'title', 'Untitled'), content: str(d, 'content'), kind: str(d, 'kind'), archived: bool(d, 'archived') } });
     }],

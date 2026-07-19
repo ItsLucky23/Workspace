@@ -1310,11 +1310,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'ticket-edit': {
       const key = str(target, 'ticketId');
       if (!key) return;
-      const data: { title?: string; description?: string | null; labels?: string[]; priority?: TicketPriority } = {};
+      const data: { title?: string; description?: string | null; labels?: string[]; priority?: TicketPriority; serviceId?: string | null } = {};
       const title = str(payload, 'title'); if (title !== undefined) data.title = title;
       if ('description' in payload) data.description = str(payload, 'description') ?? null;
       if (Array.isArray(payload.labels)) data.labels = strArr(payload, 'labels');
       const priority = asPriority(payload, 'priority'); if (priority !== undefined) data.priority = priority;
+      //? Which monorepo unit this ticket's work belongs to — it decides which service a preview boots and
+      //? which service's CI gates the ticket. Explicitly settable to null ("the project root"), so the key
+      //? being PRESENT is what matters, not whether it has a value.
+      if ('serviceId' in payload) data.serviceId = str(payload, 'serviceId') ?? null;
       if (Object.keys(data).length === 0) return;
       await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
       const [edited] = await ticketIdsForKeys(action.workspaceId, [key]);
@@ -3735,7 +3739,11 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'build-export': {
       const exportProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
       if (!exportProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
-      return buildExport(prisma, action.workspaceId, exportProjectId, str(payload, 'kind') ?? 'image', Date.now());
+      //? Per-service export: the unit rides on the action the same way `env-deploy`/`env-promote` already
+      //? carry it. Without this the op resolved a project and always exported the project root, so a
+      //? service's own build command and output directory could never be reached.
+      const exportServiceId = str(target, 'serviceId') ?? str(payload, 'serviceId') ?? null;
+      return buildExport(prisma, action.workspaceId, exportProjectId, str(payload, 'kind') ?? 'image', Date.now(), exportServiceId);
     }
     //? Phase 1 of public CI: RBAC already ran, and the Conductor only validates +
     //? durably authorizes one immutable execution. Docker/repo work happens afterward;

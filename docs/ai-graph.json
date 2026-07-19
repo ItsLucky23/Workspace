@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 261,
     "edges": 390,
-    "symbols": 370,
-    "callEdges": 85
+    "symbols": 371,
+    "callEdges": 86
   },
   "nodes": [
     {
@@ -5684,6 +5684,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "dispatchPublicCiRunAllUnits",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::execute",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "execute",
@@ -6498,6 +6504,10 @@
       "to": "workspaces/_sync/projectAdmin_server_v1.ts::withExternalRenewal"
     },
     {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun"
+    },
+    {
       "from": "workspaces/_sync/projectAdmin_server_v1.ts::loadPreparedPublicCiIntent",
       "to": "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent"
     },
@@ -6507,7 +6517,7 @@
     },
     {
       "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
-      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun"
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits"
     },
     {
       "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
@@ -6698,36 +6708,44 @@
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::abandonExternal": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::acquireCapacity": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::authorize": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::broadcast": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::claimExternal": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::complete": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::completeExternal": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::currentHead": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies": [
@@ -6736,21 +6754,28 @@
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::defaultPublicCiRunDependencies": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::dispatch": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync": [
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits": [
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::execute": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot": [
@@ -6759,6 +6784,7 @@
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::internalCompletionPersisted": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp": [
@@ -6766,32 +6792,39 @@
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::loadPrepared": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::loadPreparedPublicCiIntent",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::releaseCapacity": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::resolve": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::resolvePublicCiTarget": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main",
       "workspaces/_sync/projectAdmin_server_v1.ts::resolve"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::withCapacityRenewal": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::withExternalRenewal": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRunAllUnits",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace": [

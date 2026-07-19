@@ -525,6 +525,13 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
   useEffect(() => { setDesc(ticket.description ?? ''); }, [ticket.description]);
   const commitDesc = () => { if (desc !== (ticket.description ?? '')) ctx.editTicket(ticket.id, { description: desc }); };
   const priorityItems: DropdownItem[] = PRIORITY_ORDER.map((p) => ({ id: p, value: p, item: translate({ key: PRIORITY_LABEL_KEY[p] }) }));
+  //? The units this ticket's project declares. 'root' is a real choice, not an empty state: it means "the
+  //? whole repo is the unit", which is what a ticket touching shared code wants.
+  const ticketServices = ctx.services.filter((svc) => svc.projectId === ticket.projectId);
+  const serviceItems: DropdownItem[] = [
+    { id: 'root', value: 'root', item: translate({ key: 'workspaces.ticket.serviceRoot' }) },
+    ...ticketServices.map((svc) => ({ id: svc.id, value: svc.id, item: svc.name })),
+  ];
   //? The REAL stage config for this ticket's stage (was a static "AI-driven · RAG…"
   //? string that contradicted a No-AI stage). Drives the aiEnabled label + skills.
   const stageCfg = ctx.stageConfigs.find((s) => s.id === ticket.stageId);
@@ -557,6 +564,23 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
           )}
         </div>
       </Card>
+      {/* Per-service CI/preview: which monorepo unit this ticket's work belongs to. It decides which
+          service a preview boots and which service's CI gates the ticket — both of which silently used the
+          project root before. Only shown when the project actually declares units; a single-unit repo is
+          not asked a question it has no answer to. */}
+      {ticketServices.length > 0 && (
+        <Card title={translate({ key: 'workspaces.ticket.serviceLabel' })}>
+          <Dropdown
+            size="sm"
+            items={serviceItems}
+            value={serviceItems.find((i) => i.id === (ticket.serviceId ?? 'root'))}
+            onChange={(it) => {
+              const next = it.id === 'root' ? null : String(it.id);
+              if (next !== (ticket.serviceId ?? null)) ctx.editTicket(ticket.id, { serviceId: next });
+            }}
+          />
+        </Card>
+      )}
       {ticket.carryOver && (
         <Card title={translate({ key: 'workspaces.ticket.carryOverTitle' })}>
           <p className="text-sm text-common leading-relaxed">{ticket.carryOver}</p>

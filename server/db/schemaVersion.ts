@@ -56,6 +56,36 @@ export const BACKFILL_STEPS: BackfillStep[] = [
       return res.count;
     },
   },
+  {
+    version: 4,
+    name: 'ci-service-scope',
+    //? Per-service CI added a nullable `serviceId` to Pipeline / PipelineRun / BuildArtifact, where `null`
+    //? means "the project root unit" — a first-class value, not a missing one. Every pre-existing row has
+    //? the field ABSENT, and on MongoDB an absent field does not match a `serviceId: null` filter
+    //? (lesson 0014), so without this backfill every existing pipeline becomes invisible to the very
+    //? queries that gate merges and promotions. Writing it explicitly is the whole fix.
+    run: async (prisma) => {
+      //? A schema backfill is host-wide by definition: it repairs every workspace's rows once, and
+      //? scoping it to one tenant would leave every other tenant permanently broken.
+      const results = await Promise.all([
+        prisma.pipeline.updateMany({ where: { serviceId: { equals: undefined } }, data: { serviceId: null } }), // luckystack-allow tenant-scope: host-wide schema backfill
+        prisma.pipelineRun.updateMany({ where: { serviceId: { equals: undefined } }, data: { serviceId: null } }), // luckystack-allow tenant-scope: host-wide schema backfill
+        prisma.buildArtifact.updateMany({ where: { serviceId: { equals: undefined } }, data: { serviceId: null } }), // luckystack-allow tenant-scope: host-wide schema backfill
+      ]);
+      return results.reduce((total, res) => total + res.count, 0);
+    },
+  },
+  {
+    version: 5,
+    name: 'ticket-service-scope',
+    //? Same absent-vs-null reasoning as step 4, for `Ticket.serviceId` (which unit a ticket's work — and
+    //? therefore its preview and its CI gate — belongs to). Its own step rather than an edit to step 4:
+    //? a step that has already run is never re-run, so growing a released step silently skips the addition.
+    run: async (prisma) => {
+      const res = await prisma.ticket.updateMany({ where: { serviceId: { equals: undefined } }, data: { serviceId: null } }); // luckystack-allow tenant-scope: host-wide schema backfill, same reasoning as step 4
+      return res.count;
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = Math.max(0, ...BACKFILL_STEPS.map((s) => s.version));

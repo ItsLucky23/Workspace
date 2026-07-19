@@ -1545,7 +1545,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room }); },
       //? I1 — projectAdmin resolves + executes immutable-ref CI outside the writer, then dispatches its report.
-      runCi: (ticketKey) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', projectId, ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
+      runCi: (ticketKey, serviceId) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', projectId, ticketKey, ...(serviceId === undefined ? {} : { serviceId }), clientRequestId: nextReqId() }, receiver: room }); },
       //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes
       //? (Conductor single-writer). The editor calls these so structural edits survive a refresh.
       createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { projectId: input.projectId, key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

@@ -1653,7 +1653,9 @@
       "noLinksSub": "Associez, bloquez ou dédupliquez avec d’autres tickets.",
       "aiSuggested": "Suggéré par l’IA",
       "noStageHistory": "Pas encore d’historique d’étapes",
-      "sending": "Envoi…"
+      "sending": "Envoi…",
+      "serviceLabel": "Service",
+      "serviceRoot": "Projet entier"
     },
     "terminals": {
       "restart": "Redémarrer",
@@ -1777,7 +1779,8 @@
       "fileRenamed": "renommé",
       "commentOnLine": "Commenter cette ligne",
       "cancel": "Annuler",
-      "aiAuthor": "IA"
+      "aiAuthor": "IA",
+      "retryUnit": "relancer"
     },
     "priority": {
       "label": "Priorité",

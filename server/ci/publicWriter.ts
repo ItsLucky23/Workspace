@@ -105,6 +105,9 @@ export async function applyPublicCiComplete(
 
   const persisted = await persistCiReport(prisma, workspaceId, report, {
     projectId: action.target.projectId,
+    //? The unit this run tested. It scopes the Pipeline row, the deterministic ids, and every gate — a run
+    //? persisted without it would silently be attributed to the project root.
+    serviceId: action.target.serviceId ?? null,
     ticketId: ticket.id,
     mergeRequestId: action.payload.mergeRequestId,
     trigger: action.payload.trigger,

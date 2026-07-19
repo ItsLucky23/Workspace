@@ -66,8 +66,12 @@ try {
 
   //? A synthetic MR + pipeline run to drive the gate (no git/docker needed).
   const mr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: projId, ticketId, number: 1, title: 'CI MR', sourceBranch: ticket?.key ?? 'DEV-1', targetBranch: 'main', status: 'open', headSha: 'abc123', mergeStrategy: 'merge' } });
-  const pipeline = await prisma.pipeline.create({ data: { workspaceId: wsId, projectId: projId, specHash: 'x', stages: ['test'], runnerKind: 'builtin' } });
-  const run = await prisma.pipelineRun.create({ data: { workspaceId: wsId, pipelineId: pipeline.id, projectId: projId, mergeRequestId: mr.id, commitHash: 'abc123', trigger: 'manual', status: 'failed' } });
+  //? Per-service CI: `serviceId: null` means "the project root unit" and must be written EXPLICITLY. On
+  //? MongoDB an omitted field is absent, absent does not match a `serviceId: null` lookup, and the unique
+  //? index treats absent and null as the same value — so an omitted one here both hides from the runner's
+  //? own lookup AND collides with the row it then tries to create.
+  const pipeline = await prisma.pipeline.create({ data: { workspaceId: wsId, projectId: projId, serviceId: null, specHash: 'x', stages: ['test'], runnerKind: 'builtin' } });
+  const run = await prisma.pipelineRun.create({ data: { workspaceId: wsId, pipelineId: pipeline.id, projectId: projId, serviceId: null, mergeRequestId: mr.id, commitHash: 'abc123', trigger: 'manual', status: 'failed' } });
 
   // ---- merge gate: red run for the current head blocks --------------------------------------------
   const redGate = await ciGateForMr(prisma, wsId, mr.id, 'abc123');
@@ -141,10 +145,15 @@ try {
   eq(launchedIdentity, { projectId: projId, ref: publicCommit, intentId: 'server-random-intent' }, 'CI container identity labels bind project + ref + server intent');
   eq(safeCleanupCalls, 1, 'public CI cleanup runs only after exact identity ownership succeeds');
 
+  //? Per-service CI sends a UNIT-scoped clientRequestId (`<requestId>:<unit>`), and the Conductor derives
+  //? the intent/signal ids from whatever request id it receives. This mock stands in for the Conductor, so
+  //? it has to derive them the same way — deriving from the bare request id makes the real dispatcher
+  //? reject its own prepared intent, which presents as a hang rather than an error.
+  const unitScoped = (requestId: string) => `${requestId}:root`;
   const fakePrepared = (requestId: string) => ({
     intent: {
-      id: ciPublicIntentId(wsId, projId, requestId),
-      signalId: ciPublicIntentSignalId(wsId, requestId),
+      id: ciPublicIntentId(wsId, projId, unitScoped(requestId)),
+      signalId: ciPublicIntentSignalId(wsId, unitScoped(requestId)),
       ...publicTarget,
       trigger: 'manual',
     },
@@ -197,7 +206,7 @@ try {
   assert(!isControlActionFailure(whileBlocked.result), 'another writer action completes while fake CI execution is blocked');
   unblockExecution?.();
   assert((await blockedRun).ok, 'blocked fake execution resumes and dispatches');
-  eq(await readCiExternalExecutionState(ciPublicIntentId(wsId, projId, blockedRequestId)), 'success', 'external claim becomes terminal success only after ci-public-complete');
+  eq(await readCiExternalExecutionState(ciPublicIntentId(wsId, projId, unitScoped(blockedRequestId))), 'success', 'external claim becomes terminal success only after ci-public-complete');
 
   // A crashed pending owner is not terminal: its TTL permits a successor retry.
   const crashIntent = ciPublicIntentId(wsId, projId, `ci-crash-${String(stamp)}`);
@@ -280,10 +289,13 @@ try {
     broadcast: async (_prisma, _workspaceId, keys) => { eq(keys, [publicTarget.ticketKey], 'public CI broadcasts its ticket key'); broadcasts += 1; },
   });
   assert(publicResult.ok, 'authorized public CI report persists through the Conductor');
-  eq(publicIntentId, ciPublicIntentId(wsId, projId, publicRequestId), 'public CI intent is deterministic from workspace + project + clientRequestId');
+  eq(publicIntentId, ciPublicIntentId(wsId, projId, unitScoped(publicRequestId)), 'public CI intent is deterministic from workspace + project + the unit-scoped clientRequestId');
   eq(await readCiExternalExecutionState(publicIntentId), 'success', 'final external state is success after durable completion');
   eq(broadcasts, 1, 'public CI broadcasts after persistence');
-  const publicRunId = deterministicObjectId(wsId, `ci-public:${publicIntentId}`, 'ci-run');
+  //? The run id is salted with the UNIT ('root' = the project root). Without that salt, two services
+  //? running under one clientRequestId — which is exactly what a fan-out CI run does — derive the same run
+  //? id and the second silently overwrites the first's results.
+  const publicRunId = deterministicObjectId(wsId, `ci-public:${publicIntentId}`, 'ci-run:root');
   eq((await prisma.pipelineRun.findUnique({ where: { id: publicRunId } }))?.commitHash, publicCommit, 'public PipelineRun stores the immutable executed commit');
   eq((await prisma.pipelineRun.findUnique({ where: { id: publicRunId } }))?.status, 'success', 'public PipelineRun status is writer-derived from job facts');
 

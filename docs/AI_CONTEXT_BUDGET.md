@@ -6,20 +6,20 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 146,910 tokens if all loaded)
+## Artifact sizes (total ≈ 149,483 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
 | `contract` — `CLAUDE.md` | 11,530 | 46,118 | Always-on rules (read every session). |
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
-| `capabilities` — `docs/AI_CAPABILITIES.md` | 3,414 | 13,654 | Existing helpers/exports — check before authoring. |
+| `capabilities` — `docs/AI_CAPABILITIES.md` | 5,245 | 20,980 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,064 | 36,257 | Routes/pages/helpers/components + test coverage. |
-| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 59,911 | 239,642 | Why-it-is-this-way (ADRs). |
+| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 60,106 | 240,425 | Why-it-is-this-way (ADRs). |
 | `lessons` — `docs/AI_LESSONS_INDEX.md` | 4,578 | 18,310 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,176 | 4,703 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
 | `product` — `docs/AI_PRODUCT_OVERVIEW.md` | 2,806 | 11,225 | What the app + each page is FOR. |
-| `graph` — `docs/ai-graph.json` | 53,657 | 214,628 | Dependency graph — prefer the MCP tools over reading whole. |
+| `graph` — `docs/ai-graph.json` | 54,203 | 216,811 | Dependency graph — prefer the MCP tools over reading whole. |
 
 ## Retrieval profiles
 
@@ -29,7 +29,7 @@ Per task type: the minimal artifact set to load + the MCP tools to query for eve
 
 _Adding an API/sync route: reuse before authoring, copy the canonical shape._
 
-- **Load** (≈ 16,896 tokens): `contract`, `capabilities`, `examples`, `runbooks`
+- **Load** (≈ 18,727 tokens): `contract`, `capabilities`, `examples`, `runbooks`
 - **Query via MCP** (don't read whole): `find_route`, `get_capability`, `get_example('auth-api-route')`, `blast_radius`
 
 ### `new-page`
@@ -43,7 +43,7 @@ _Adding a page: match an existing template/component + state the intent._
 
 _Auditing: lean on the why-record + risky hubs, not every page intent._
 
-- **Load** (≈ 80,505 tokens): `contract`, `decisions`, `project-index`
+- **Load** (≈ 80,700 tokens): `contract`, `decisions`, `project-index`
 - **Query via MCP** (don't read whole): `god_nodes`, `blast_radius`, `get_decision`, `list_decisions('security')`
 
 ### `debug`

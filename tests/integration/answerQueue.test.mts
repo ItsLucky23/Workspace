@@ -2,6 +2,12 @@
 //? snapshot builder). Asserts the cross-ticket ANSWER-QUEUE: a ticket parked on a question surfaces in one
 //? queue (highest priority first), a ticket with no question does not, and the presence relay carries the
 //? soft-CLAIM flag (who's answering). The claim itself is ephemeral (a relay) — asserted at the relay shape.
+//?
+//? The queue is no longer a separate snapshot array. It was one, it was rendered by nothing for a long
+//? time, and when the inbox was finally built it went STALE: answering cleared the ticket server-side and
+//? the array kept the answered question, because no realtime delta updates a standalone array. The inbox
+//? now derives the queue from the live tickets, so these assertions target the ticket fields it derives
+//? from — the queue's BEHAVIOUR is what matters here, not which array carried it.
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
@@ -37,11 +43,19 @@ try {
 
   // ---- the answer-queue surfaces the parked ticket, not the normal one ---------------------------
   const snap = await buildSnapshot(prisma, owner.id, wsId);
-  assert(snap.answerQueue.some((q) => q.ticketKey === parked?.key), 'the parked (needs-input) ticket is in the answer-queue');
-  assert(!snap.answerQueue.some((q) => q.title === 'Normal ticket'), 'a ticket with no question is NOT in the answer-queue');
-  const item = snap.answerQueue.find((q) => q.ticketKey === parked?.key);
-  eq(item?.question, 'Which auth provider should we use?', 'the queue item carries the pending question');
+  //? The inbox's own filter, applied to the snapshot the client receives.
+  const queue = snap.tickets.filter((t) => t.archived !== true && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'));
+  assert(queue.some((q) => q.id === parked?.key), 'the parked (needs-input) ticket is in the answer-queue');
+  assert(!queue.some((q) => q.title === 'Normal ticket'), 'a ticket with no question is NOT in the answer-queue');
+  const item = queue.find((q) => q.id === parked?.key);
+  eq(item?.needsInput, 'Which auth provider should we use?', 'the queue item carries the pending question');
   eq(item?.priority, 'high', 'the queue item carries the ticket priority (for ordering)');
+  //? Answering must REMOVE it from the queue — deriving from tickets is what makes that automatic, and it
+  //? is exactly what the old standalone array got wrong.
+  await prisma.ticket.updateMany({ where: { id: parked?.id ?? '' }, data: { status: 'idle', needsInput: null } });
+  const afterAnswer = await buildSnapshot(prisma, owner.id, wsId);
+  const drained = afterAnswer.tickets.filter((t) => t.archived !== true && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'));
+  assert(!drained.some((q) => q.id === parked?.key), 'an answered ticket leaves the queue');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

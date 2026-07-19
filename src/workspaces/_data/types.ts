@@ -221,6 +221,9 @@ export interface Ticket {
   commitHash?: string;   // frozen worktree commit the ticket's context is pinned to (DH5)
   costLabel?: string;    // ui-only: "€1.18 · 12m" derived from SpendRecord
   sprintId?: string;
+  //? Which monorepo unit this ticket's work belongs to (null/absent = the project root). Decides which
+  //? service a preview boots and which service's CI gates the ticket.
+  serviceId?: string | null;
   carryOver?: string;
   needsInput?: string;
   //? #16 (W2) — NON-blocking advisory questions the agent proceeded past with an assumption. The user
@@ -271,7 +274,11 @@ export interface MrActionOutcome { ok: boolean; reason?: string; files?: string[
 //? MR panel can render a Checks section (was invisible; the merge gate felt arbitrary).
 export interface MrCheckJob { name: string; status: string; severity: string | null }
 export interface MrCheckFinding { severity: string; title: string }
-export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[] }
+//? Per-service CI: an MR touching three units has three runs. `status`/`jobs`/`findings` stay the
+//? ROLLED-UP view (the worst verdict across units — a green sibling must never read as "the MR is green"),
+//? and `units` carries the breakdown so a red unit is attributable and retryable on its own.
+export interface MrCheckUnit { serviceId: string | null; serviceName: string; status: string; maxSeverity: string | null; jobs: MrCheckJob[] }
+export interface MrChecks { status: string; maxSeverity: string | null; jobs: MrCheckJob[]; findings: MrCheckFinding[]; units: MrCheckUnit[] }
 export interface MrView {
   id: string; number: number; title: string; status: string; sourceBranch: string; targetBranch: string;
   headSha: string | null; externalUrl: string | null; mergeStrategy: string;

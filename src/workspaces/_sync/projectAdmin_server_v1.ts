@@ -43,7 +43,7 @@ function isProjectAdminOp(op: string): op is ControlOp {
 }
 
 export interface SyncParams {
-  clientInput: { op: string; clientRequestId: string; projectId?: string; serviceId?: string; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; trigger?: string; symptom?: string; template?: string; name?: string; gitUrl?: string; brief?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string; url?: string; envKind?: string; sql?: string; rollbackSql?: string; migrationId?: string; connectionId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string; cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: string; create?: boolean };
+  clientInput: { op: string; clientRequestId: string; projectId?: string; /*? per-service CI: null is the PROJECT ROOT unit, which is distinct from "not given" (= run every unit) */ serviceId?: string | null; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; trigger?: string; symptom?: string; template?: string; name?: string; gitUrl?: string; brief?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string; url?: string; envKind?: string; sql?: string; rollbackSql?: string; migrationId?: string; connectionId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string; cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: string; create?: boolean };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -65,6 +65,9 @@ export interface PublicCiPreparedIntent extends PublicCiTarget {
   id: string;
   signalId: string;
   trigger: string;
+  //? The unit this intent tests — carried through to the container exec so CI runs in the service directory.
+  serviceId?: string | null;
+  servicePath?: string | null;
 }
 
 export interface PublicCiRunDependencies {
@@ -220,6 +223,10 @@ export async function dispatchPublicCiRun(
     ticketKey: string;
     trigger: string;
     clientRequestId: string;
+    //? Which monorepo unit this run tests. `null`/absent = the project root, which is what a single-unit
+    //? repo always is — so every existing caller keeps its exact behaviour.
+    serviceId?: string | null;
+    servicePath?: string | null;
   },
   dependencies?: PublicCiRunDependencies,
 ): Promise<PublicCiDispatchResult> {
@@ -232,14 +239,21 @@ export async function dispatchPublicCiRun(
   //? Prepare/dedup happens BEFORE Docker and authorizes only an immutable intent. The
   //? intent is server-deterministic; terminal prepare replay reloads that durable intent
   //? instead of pretending the external execution already completed.
-  const intentId = ciPublicIntentId(input.workspaceId, target.projectId, input.clientRequestId);
-  const prepareSignalId = ciPublicIntentSignalId(input.workspaceId, input.clientRequestId);
+  //? Every id along this path is scoped to the UNIT. A fan-out sends one request per unit under a single
+  //? user action, so an unscoped intent/signal/request id would make the second unit look like a replay of
+  //? the first and its run would be dropped without a word.
+  const serviceId = input.serviceId ?? null;
+  const unitRequestId = `${input.clientRequestId}:${serviceId ?? 'root'}`;
+  //? Derived from the UNIT-scoped request id, exactly as the Conductor derives them from the request id it
+  //? receives. One source of uniqueness, so the two can never disagree.
+  const intentId = ciPublicIntentId(input.workspaceId, target.projectId, unitRequestId);
+  const prepareSignalId = ciPublicIntentSignalId(input.workspaceId, unitRequestId);
   const prepared = await deps.dispatch({
     op: 'ci-run',
     roomCode: input.workspaceId,
     userId: input.userId,
     prisma: input.prisma,
-    clientRequestId: input.clientRequestId,
+    clientRequestId: unitRequestId,
     target: { ticketId: target.ticketKey, projectId: target.projectId },
     payload: {
       phase: 'prepare',
@@ -293,7 +307,7 @@ export async function dispatchPublicCiRun(
     withCapacityRenewal(capacity.reservation, async (capacityGuard) => {
       await externalGuard.assertOwned();
       await capacityGuard.assertOwned();
-      const report = readCanonicalCiReport(await deps.execute(intent));
+      const report = readCanonicalCiReport(await deps.execute({ ...intent, serviceId, servicePath: input.servicePath ?? null }));
       if (report?.commitHash !== intent.commitHash) throw new Error('[ci] execution report does not match its prepared commit');
       await externalGuard.assertOwned();
       await capacityGuard.assertOwned();
@@ -302,7 +316,7 @@ export async function dispatchPublicCiRun(
       const completion = await deps.complete({
         workspaceId: input.workspaceId,
         op: 'ci-public-complete',
-        target: { ticketId: intent.ticketId, ticketKey: intent.ticketKey, projectId: intent.projectId },
+        target: { ticketId: intent.ticketId, ticketKey: intent.ticketKey, projectId: intent.projectId, serviceId },
         payload: {
           intentId: intent.id,
           prepareSignalId: intent.signalId,
@@ -336,6 +350,63 @@ export async function dispatchPublicCiRun(
   //? terminal replay branch above and must not turn a persisted completion into a false failure.
   await tryCatch(() => deps.broadcast(input.prisma, input.workspaceId, [intent.ticketKey]));
   return { ok: true, result: completed.result };
+}
+
+//? Per-service CI: one user action runs EVERY unit of the project, because "is this MR green?" is a
+//? question about the whole change, not about whichever unit someone remembered to click. A monorepo
+//? otherwise needs N clicks to turn one MR green, and forgetting one is indistinguishable from passing.
+//?
+//? Each unit gets its own durable intent, its own container at the same commit, and its own PipelineRun —
+//? so a red unit is attributable, retryable on its own, and cannot be masked by a green sibling.
+//?
+//? A project with no Service rows resolves to exactly one unit (the root), which is the pre-existing
+//? behaviour byte for byte: a single-unit repo pays nothing for this.
+export async function dispatchPublicCiRunAllUnits(
+  input: {
+    prisma: ProjectAdminPrisma;
+    workspaceId: string;
+    userId: string;
+    projectId: string;
+    ticketKey: string;
+    trigger: string;
+    clientRequestId: string;
+    //? Narrow the fan-out to ONE unit — the per-service retry button on the MR panel.
+    onlyServiceId?: string | null;
+  },
+  dependencies?: PublicCiRunDependencies,
+): Promise<PublicCiDispatchResult> {
+  const services = input.onlyServiceId === undefined
+    ? await input.prisma.service.findMany({ where: { workspaceId: input.workspaceId, projectId: input.projectId }, select: { id: true, path: true } })
+    : await input.prisma.service.findMany({ where: { workspaceId: input.workspaceId, projectId: input.projectId, id: input.onlyServiceId ?? '' }, select: { id: true, path: true } });
+
+  //? The root unit runs whenever the whole project was asked for, or when the caller explicitly asked for
+  //? it (`onlyServiceId: null`). It is not skipped just because services exist: a monorepo root commonly
+  //? carries its own lint/typecheck job.
+  const units: { serviceId: string | null; servicePath: string | null }[] = [];
+  if (input.onlyServiceId === undefined || input.onlyServiceId === null) units.push({ serviceId: null, servicePath: null });
+  for (const service of services) units.push({ serviceId: service.id, servicePath: service.path });
+
+  //? Sequential, not parallel: each unit launches its own container at the same commit, and a monorepo
+  //? firing N Docker builds at once is how a dev box falls over. CI capacity is reserved per unit anyway.
+  let lastFailure: PublicCiDispatchResult | null = null;
+  let anySucceeded = false;
+  const keys: string[] = [];
+  for (const unit of units) {
+    const result = await dispatchPublicCiRun({ ...input, serviceId: unit.serviceId, servicePath: unit.servicePath }, dependencies);
+    if (result.ok) {
+      anySucceeded = true;
+      const resultKeys = result.result !== undefined && result.result !== null && typeof result.result === 'object' && 'keys' in result.result && Array.isArray(result.result.keys) ? result.result.keys : [];
+      for (const key of resultKeys) if (typeof key === 'string' && !keys.includes(key)) keys.push(key);
+      continue;
+    }
+    //? A unit with no ci.yml is not a failure — CI is opt-in per unit, and a monorepo where only one
+    //? service has a pipeline is the normal case, not an error.
+    lastFailure = result;
+  }
+  //? Report failure only when NOTHING ran: a partial fan-out already produced attributable per-unit runs,
+  //? and the gates read those rows rather than this return value.
+  if (!anySucceeded && lastFailure) return lastFailure;
+  return { ok: true, result: { keys } };
 }
 
 export async function dispatchForgeResync(
@@ -378,7 +449,9 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
   if (op === 'ci-run') {
     const ticketKey = typeof payload.ticketKey === 'string' ? payload.ticketKey : '';
     if (!projectId || ticketKey.length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
-    const [ciError, ciRun] = await functions.tryCatch.tryCatch(() => dispatchPublicCiRun({
+    //? No `serviceId` on the request = run every unit (the MR button); an explicit one = the per-unit
+    //? retry. `serviceId` was already destructured off the input here and then dropped on the floor.
+    const [ciError, ciRun] = await functions.tryCatch.tryCatch(() => dispatchPublicCiRunAllUnits({
       prisma: functions.db.prisma,
       workspaceId: roomCode,
       userId: user.id,
@@ -386,6 +459,7 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
       ticketKey,
       trigger: typeof payload.trigger === 'string' ? payload.trigger : 'manual',
       clientRequestId,
+      ...(serviceId === undefined ? {} : { onlyServiceId: serviceId }),
     }));
     if (ciError || !ciRun) return { status: 'error', errorCode: 'sync.invalidRequest' };
     if (!ciRun.ok) return { status: 'error', errorCode: ciRun.errorCode };

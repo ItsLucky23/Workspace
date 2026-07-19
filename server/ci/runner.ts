@@ -20,6 +20,7 @@ import { deterministicObjectId } from '../orchestrator/actionIds';
 import { currentWriterScope, assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 import { jsonInput } from '../util/json';
 import { parseCiYaml, specFingerprint, type CiJob, type CiSpec } from './parse';
+import { workdirOrRoot } from '../deploy/servicePath';
 import { planWaves, skippedBy, chunkWave, describeUnrunnable } from './dag';
 import { higherSeverity, isScannerType, parseScan, scannerCommand, type SecurityFinding } from './security';
 import { tryCatch } from '@luckystack/core';
@@ -61,6 +62,9 @@ export interface PublicCiExecutionInput {
   branch: string;
   commitHash: string;
   intentId: string;
+  //? The unit being tested. `null`/absent = the project root, which is every single-unit repo.
+  serviceId?: string | null;
+  servicePath?: string | null;
 }
 
 export interface PublicCiExecutionDependencies {
@@ -72,6 +76,9 @@ export interface PublicCiExecutionDependencies {
 
 export interface PersistCiReportInput {
   projectId: string;
+  //? Which monorepo unit this run belongs to. `null` = the project root, which is what a single-unit repo
+  //? always is — a first-class value, never "missing".
+  serviceId?: string | null;
   ticketId: string;
   mergeRequestId?: string | null;
   trigger: string;
@@ -247,6 +254,9 @@ function failedReports(spec: CiSpec, error: CiIntegrityError): StageCiJobReport[
 export async function runStageCiInContainer(
   container: string,
   dependencies: StageCiExecutionDependencies = {},
+  //? Per-service CI: the repo-relative root of the unit being tested. Omitted / '.' means the repo root,
+  //? which is what a single-unit repo always is — so every existing caller keeps its exact behaviour.
+  servicePath?: string | null,
 ): Promise<StageCiReport> {
   const inspectContainer = dependencies.inspectContainer ?? isWorkspacesContainer;
   const runDocker = dependencies.runDocker ?? docker;
@@ -257,7 +267,12 @@ export async function runStageCiInContainer(
   if (preHead.code !== 0 || !/^[a-f\d]{40,64}$/i.test(commitHash)) throw new Error('ci.commitUnavailable');
   const preStatus = await worktreeStatus(container, runDocker);
 
-  const config = await runDocker(['exec', container, 'sh', '-lc', `cat /work/${CI_PATH} 2>/dev/null`], { timeoutMs: 10_000, maxOutputBytes: MAX_STAGE_CI_CONFIG_BYTES });
+  //? Each unit carries its OWN ci.yml under its own root, which is what makes a service independently
+  //? testable — the alternative (one root file with a `services:` key) would put every unit's spec behind
+  //? a single parse and a single specHash, defeating the per-service Pipeline row entirely.
+  const workDir = workdirOrRoot(servicePath);
+  const configPath = `${workDir}/${CI_PATH}`;
+  const config = await runDocker(['exec', container, 'sh', '-lc', `cat ${configPath} 2>/dev/null`], { timeoutMs: 10_000, maxOutputBytes: MAX_STAGE_CI_CONFIG_BYTES });
   if (config.outputLimitExceeded) return { kind: 'none', commitHash, error: 'ci.configTooLarge' };
   if (config.code !== 0 || config.out.trim().length === 0) {
     return preStatus.code === 0 && preStatus.out.length === 0
@@ -286,7 +301,9 @@ export async function runStageCiInContainer(
     if (!job) return null;
     const scanner = isScannerType(job.type);
     const command = scanner ? scannerCommand(job.type) : job.script.join(' && ');
-    const result = await runDocker(['exec', '-w', '/work', container, 'sh', '-lc', command], {
+    //? Jobs run in the SERVICE's directory. Running them at the repo root is why a monorepo service's
+    //? `npm test` either failed outright or — worse — tested the root project while reporting the service.
+    const result = await runDocker(['exec', '-w', workDir, container, 'sh', '-lc', command], {
       timeoutMs: STAGE_CI_COMMAND_TIMEOUT_MS,
       maxOutputBytes: 32_768,
     });
@@ -372,7 +389,7 @@ export async function runPublicCiAtCommit(
     executionIdentity,
   }));
   if (launchError || !container) return { kind: 'forced-failed', commitHash: input.commitHash, error: 'ci.executionFailed' };
-  const [executionError, report] = await tryCatch(() => executeCurrent(container.name));
+  const [executionError, report] = await tryCatch(() => executeCurrent(container.name, {}, input.servicePath));
   const [ownershipError, owned] = await tryCatch(() => ownsContainer(container.name, executionIdentity));
   if (!ownershipError && owned === true) await tryCatch(() => teardown(input.workspaceId, ephemeralKey, input.commitHash));
   if (executionError || report?.commitHash !== input.commitHash) return { kind: 'forced-failed', commitHash: input.commitHash, error: 'ci.executionFailed' };
@@ -383,9 +400,12 @@ async function ensurePipeline(
   prisma: PrismaClient,
   workspaceId: string,
   projectId: string,
+  serviceId: string | null,
   report: Exclude<StageCiReport, { kind: 'none' }>,
 ): Promise<string> {
-  const existing = await prisma.pipeline.findFirst({ where: { workspaceId, projectId }, select: { id: true } });
+  //? One pipeline per (project, service). Looking up by project alone made every service in a monorepo
+  //? share — and overwrite — one pipeline row, so the last service to run defined the spec for all of them.
+  const existing = await prisma.pipeline.findFirst({ where: { workspaceId, projectId, serviceId }, select: { id: true } });
   if (existing) {
     if (report.kind === 'executed') {
       await prisma.pipeline.update({ where: { id: existing.id }, data: { specHash: specFingerprint(report.spec), stages: report.spec.stages, enabled: true, runnerKind: 'builtin' } });
@@ -396,6 +416,10 @@ async function ensurePipeline(
     data: {
       workspaceId,
       projectId,
+      //? Written EXPLICITLY, including the null: on MongoDB an omitted field is absent, and an absent field
+      //? does not match the `serviceId: null` lookup above — the row would be invisible to its own query
+      //? (lesson 0014) and the unique index would not hold it apart from a real per-service row.
+      serviceId,
       specHash: report.kind === 'executed' ? specFingerprint(report.spec) : `integrity:${report.error}`,
       stages: report.kind === 'executed' ? report.spec.stages : [],
       enabled: true,
@@ -457,8 +481,13 @@ export async function persistCiReport(
   if (report.kind === 'executed') {
     for (const job of report.jobs) maxSeverity = exactSeverity(higherSeverity(maxSeverity, severityFromFindings(job.findings)));
   }
-  const pipelineId = await ensurePipeline(prisma, workspaceId, input.projectId, report);
-  const runId = deterministicObjectId(workspaceId, input.clientRequestId, 'ci-run');
+  const serviceId = input.serviceId ?? null;
+  const pipelineId = await ensurePipeline(prisma, workspaceId, input.projectId, serviceId, report);
+  //? The deterministic ids are salted with the SERVICE as well as the request. Without it, running two
+  //? services under one `clientRequestId` — which is exactly what a fan-out CI run does — produces the same
+  //? run/job/event ids for both, so the second service silently overwrites the first's results.
+  const scope = serviceId ?? 'root';
+  const runId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-run:${scope}`);
   await prisma.pipelineRun.upsert({
     where: { id: runId },
     create: {
@@ -466,6 +495,7 @@ export async function persistCiReport(
       workspaceId,
       pipelineId,
       projectId: input.projectId,
+      serviceId,
       ticketId: input.ticketId,
       ...(input.mergeRequestId ? { mergeRequestId: input.mergeRequestId } : {}),
       commitHash: report.commitHash,
@@ -478,6 +508,7 @@ export async function persistCiReport(
     update: {
       pipelineId,
       projectId: input.projectId,
+      serviceId,
       ticketId: input.ticketId,
       mergeRequestId: input.mergeRequestId ?? null,
       commitHash: report.commitHash,
@@ -497,7 +528,7 @@ export async function persistCiReport(
       if (!job) continue;
       const spec = specByName.get(job.name);
       if (!spec) throw new Error('[ci] canonical report lost its spec job');
-      const jobId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-job:${String(index)}:${job.name}`);
+      const jobId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-job:${scope}:${String(index)}:${job.name}`);
       await prisma.pipelineJob.upsert({
         where: { id: jobId },
         create: {
@@ -538,7 +569,7 @@ export async function persistCiReport(
           finishedAt: new Date(),
         },
       });
-      const eventId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-event:${String(index)}:${job.name}`);
+      const eventId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-event:${scope}:${String(index)}:${job.name}`);
       const appended = await appendDeterministicCiEvent(prisma, workspaceId, input.ticketId, eventId, {
         ...(input.stageId ? { stageId: input.stageId } : {}),
         ...(input.sessionKey ? { sessionKey: input.sessionKey } : {}),
@@ -557,7 +588,7 @@ export async function persistCiReport(
     }
   }
 
-  const rollupEventId = deterministicObjectId(workspaceId, input.clientRequestId, 'ci-event:rollup');
+  const rollupEventId = deterministicObjectId(workspaceId, input.clientRequestId, `ci-event:rollup:${scope}`);
   const rollupAppended = await appendDeterministicCiEvent(prisma, workspaceId, input.ticketId, rollupEventId, {
     ...(input.stageId ? { stageId: input.stageId } : {}),
     ...(input.sessionKey ? { sessionKey: input.sessionKey } : {}),

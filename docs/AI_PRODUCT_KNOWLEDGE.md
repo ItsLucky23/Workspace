@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `fd8ad932cf7c9149` · 17 capabilities · 198 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `13dd0bb80a96d2a2` · 17 capabilities · 199 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -224,3 +224,4 @@
 - `adr-0278` GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops
 - `adr-0279` Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer
 - `adr-0280` Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs
+- `adr-0281` CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit"

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (198)
+## Decisions (199)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -211,6 +211,7 @@
 | 0278 | GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops | 🟢 accepted | security, tenancy, control-api, content, deploy | — | `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md` |
 | 0279 | Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer | 🟢 accepted | watchdog, recovery, capacity, fencing, conductor, cron, containers, multi-instance | 0020, 0022 | `docs/decisions/0279-fenced-agent-recovery-writer.md` |
 | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs | 🟢 accepted | frontend, navbar, ux, ia, routing, restructure | 0068 | `docs/decisions/0280-module-based-nav-categories.md` |
+| 0281 | CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit | 🟢 accepted | ci, monorepo, gates, schema, mongodb | — | `docs/decisions/0281-per-service-ci-and-unit-scope.md` |
 
 ## Summaries
 
@@ -1813,6 +1814,14 @@ _(no Decision section found — fill it in)_
 **Governs** (`//? @adr 0280`): `src/workspaces/_data/nav.ts`
 
 → `docs/decisions/0280-module-based-nav-categories.md`
+
+### 0281 — CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit
+
+**0281** · accepted · tags: ci, monorepo, gates, schema, mongodb · 2026-07-19
+
+*1. `serviceId` is a first-class column on `Pipeline`, `PipelineRun`, `BuildArtifact` and `Ticket`, where `null` means "the project root unit".** A single-unit repo has no `Service` row and never needs one; its work is the root unit. `Pipeline`'s unique key widens to `[workspaceId, projectId, serviceId]`.
+
+→ `docs/decisions/0281-per-service-ci-and-unit-scope.md`
 
 ## Code governed by decisions
 
