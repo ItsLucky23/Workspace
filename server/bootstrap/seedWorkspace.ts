@@ -72,12 +72,6 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? the Workflow settings — the "nudge, not a blank page" for their own AI workflows).
   await createStarterLibrary(prisma, workspaceId, project.id);
 
-  //? #19 — a PACK seeds what makes the workspace immediately usable (skills, a channel, starter documents,
-  //? a first ticket). Module toggles only decide which nav items exist; they never answered "now what?".
-  //? Best-effort: a pack is a nicety, and a failed seed must not fail workspace creation.
-  const pack = packId === undefined ? null : findPack(packId);
-  if (pack) await seedPack(prisma, workspaceId, project.id, ownerId, pack);
-
   await prisma.workspaceBudget.create({
     data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },
   });
@@ -114,6 +108,13 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? Seed the design-system context-doc so the coding agent knows the named looks (apple, material, …) from
   //? day one — even before the user touches the Designer. Best-effort; never fails workspace creation.
   await rebuildDesignSystemDoc(prisma, workspaceId).catch(() => null);
+
+  //? #19 — a PACK seeds what makes the workspace immediately usable (skills, a channel, starter documents,
+  //? a first ticket). Deliberately LAST: the default starter tickets above restart numbering at DEV-1, so
+  //? seeding the pack earlier collided with them and its ticket silently vanished (caught in the browser).
+  //? `seedPack` continues from the highest existing number. Best-effort — a pack must never fail creation.
+  const pack = packId === undefined ? null : findPack(packId);
+  if (pack) await seedPack(prisma, workspaceId, project.id, ownerId, pack);
 
   //? Derived embeddings start on the next event-loop turn, after any global Conductor writer context ended.
   void scheduleWorkspaceBuiltinIndexing(prisma, workspaceId, builtins.designArtifactsToIndex);

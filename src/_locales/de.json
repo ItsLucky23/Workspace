@@ -2490,6 +2490,13 @@
       "agencyDesc": "Alles an, mit Review-Phasen.",
       "student": "Studium / Dokumente",
       "studentDesc": "Schreibe aus deinen eigenen Quellen."
+    },
+    "nav": {
+      "work": "Arbeit",
+      "studio": "Erstellen",
+      "publish": "Veröffentlichen",
+      "build": "Automatisieren",
+      "insights": "Einblicke"
     }
   }
 }

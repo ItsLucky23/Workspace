@@ -11,6 +11,7 @@ import Icon from '../_components/Icon';
 import { ModulePicker } from '../_components/ModulePicker';
 import { WsButton } from '../_components/primitives';
 import { WORKSPACE_MODULES, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
+import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
 import { useWorkspaces } from './WorkspacesContext';
 
 export function Onboarding() {
@@ -20,10 +21,24 @@ export function Onboarding() {
   //? Default to all modules on (= the full experience, backward-compatible); the user
   //? deselects the lanes they don't want. At least one module is required.
   const [modules, setModules] = useState<WorkspaceModuleId[]>(WORKSPACE_MODULES.map((m) => m.id));
+  //? #19 — the FIRST screen a new user ever sees is exactly where "what is this for?" belongs. Packs were
+  //? initially only added to the in-app create form, which is the one place the question matters least:
+  //? by then you already know what the product does.
+  const [pack, setPack] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
-  const submit = () => { const n = name.trim(); if (!n || modules.length === 0) return; createWorkspace(n, sectionsForModules(modules)); };
+  const choosePack = (packId: string): void => {
+    setPack(packId);
+    const chosen = WORKSPACE_PACK_CHOICES.find((p) => p.id === packId);
+    if (chosen) setModules(chosen.modules);
+  };
+  const submit = () => {
+    const n = name.trim();
+    if (!n || modules.length === 0) return;
+    const chosen = WORKSPACE_PACK_CHOICES.find((p) => p.id === pack);
+    createWorkspace(n, sectionsForModules(modules), chosen?.preset, pack || undefined);
+  };
 
   return (
     <div className="h-full w-full overflow-y-auto bg-background text-title flex items-start md:items-center justify-center p-4">
@@ -42,8 +57,29 @@ export function Onboarding() {
             placeholder={translate({ key: 'workspaces.shell.workspaceNamePlaceholder' })}
             className="h-10 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
-          <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
-          <ModulePicker selected={modules} onToggle={toggleModule} />
+          {/* #19 — one question instead of four checkboxes: what is this workspace for? Answering it seeds
+              real starting content, so the first screen after this is never blank. The module checkboxes
+              stay available underneath for anyone who wants them. */}
+          <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.packs.heading' })}</div>
+          <div className="grid grid-cols-2 gap-2">
+            {WORKSPACE_PACK_CHOICES.map((p) => (
+              <button key={p.id} type="button" onClick={() => { choosePack(p.id); }}
+                className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left cursor-pointer transition-colors ${pack === p.id ? 'border-primary-border bg-primary/10' : 'border-container1-border bg-container2/50 hover:bg-container2'}`}>
+                <Icon name={p.icon} className={`mt-0.5 ${pack === p.id ? 'text-primary' : 'text-muted'}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-title">{translate({ key: p.labelKey })}</span>
+                  <span className="block text-xs text-muted">{translate({ key: p.descKey })}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <details>
+            <summary className="text-xs text-muted cursor-pointer">{translate({ key: 'workspaces.packs.advanced' })}</summary>
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
+              <ModulePicker selected={modules} onToggle={toggleModule} />
+            </div>
+          </details>
           <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
         </div>
 

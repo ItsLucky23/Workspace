@@ -2490,6 +2490,13 @@
       "agencyDesc": "Everything on, with review stages.",
       "student": "Study / documents",
       "studentDesc": "Write from your own uploaded sources."
+    },
+    "nav": {
+      "work": "Work",
+      "studio": "Create",
+      "publish": "Publish",
+      "build": "Automate",
+      "insights": "Insights"
     }
   }
 }

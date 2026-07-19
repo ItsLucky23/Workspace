@@ -20,7 +20,7 @@ export interface WorkspacePackChoice {
 export const WORKSPACE_PACK_CHOICES: WorkspacePackChoice[] = [
   {
     id: 'solo-dev',
-    labelKey: 'workspaces.packs.soloDev', descKey: 'workspaces.packs.soloDevDesc', icon: 'code',
+    labelKey: 'workspaces.packs.soloDev', descKey: 'workspaces.packs.soloDevDesc', icon: 'code-branch',
     modules: ['development'], preset: 'simple',
   },
   {
@@ -35,7 +35,7 @@ export const WORKSPACE_PACK_CHOICES: WorkspacePackChoice[] = [
   },
   {
     id: 'student',
-    labelKey: 'workspaces.packs.student', descKey: 'workspaces.packs.studentDesc', icon: 'graduation-cap',
+    labelKey: 'workspaces.packs.student', descKey: 'workspaces.packs.studentDesc', icon: 'book-open',
     modules: ['documents', 'development'], preset: 'simple',
   },
 ];

@@ -2490,6 +2490,13 @@
       "agencyDesc": "Tout activé, avec étapes de revue.",
       "student": "Études / documents",
       "studentDesc": "Rédigez à partir de vos propres sources."
+    },
+    "nav": {
+      "work": "Travail",
+      "studio": "Créer",
+      "publish": "Publier",
+      "build": "Automatiser",
+      "insights": "Analyses"
     }
   }
 }

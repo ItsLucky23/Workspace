@@ -40,7 +40,7 @@ export interface WorkspacePack {
 export const WORKSPACE_PACKS: WorkspacePack[] = [
   {
     id: 'solo-dev',
-    labelKey: 'workspaces.packs.soloDev', descKey: 'workspaces.packs.soloDevDesc', icon: 'code',
+    labelKey: 'workspaces.packs.soloDev', descKey: 'workspaces.packs.soloDevDesc', icon: 'code-branch',
     modules: ['development'],
     //? A solo project does not need a 7-stage pipeline; that ceremony is what made small projects feel heavy.
     preset: 'simple',
@@ -86,7 +86,7 @@ export const WORKSPACE_PACKS: WorkspacePack[] = [
   },
   {
     id: 'student',
-    labelKey: 'workspaces.packs.student', descKey: 'workspaces.packs.studentDesc', icon: 'graduation-cap',
+    labelKey: 'workspaces.packs.student', descKey: 'workspaces.packs.studentDesc', icon: 'book-open',
     modules: ['documents', 'development'],
     preset: 'simple',
     skills: [

@@ -14,7 +14,7 @@ import { AvatarBubble } from '../_components/primitives';
 import { isSectionEnabled } from '../_data/modules';
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { CreateWorkspaceForm, NAV_BOTTOM, NAV_ITEMS } from './Shell';
+import { CreateWorkspaceForm, GROUP_ORDER, NAV_BOTTOM, NAV_ITEMS } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
@@ -96,7 +96,25 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
               {/* Gap-fix: the drawer now module-gates like the desktop rail (it showed Board on a
                   design-only workspace, and tapping it bounced straight back). */}
               <div className="flex-1 overflow-y-auto flex flex-col gap-1">
-                {[...NAV_ITEMS, ...NAV_BOTTOM].filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id)).map((it) => (
+                {/* UI restructure — the drawer mirrors the rail's five groups with a small header per
+                    group, instead of one flat list of fifteen. On a phone the whole group is shown (no
+                    accordion): tapping twice to reach a page is worse than scrolling once. */}
+                {GROUP_ORDER.map((g) => {
+                  const items = NAV_ITEMS.filter((it) => it.group === g && isSectionEnabled(activeWorkspace.enabledSections, it.id));
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={g} className="flex flex-col gap-1">
+                      <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled">{translate({ key: `workspaces.nav.${g}` })}</div>
+                      {items.map((it) => (
+                        <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
+                          className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
+                          <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+                {NAV_BOTTOM.filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id)).map((it) => (
                   <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
                     className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
                     <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}

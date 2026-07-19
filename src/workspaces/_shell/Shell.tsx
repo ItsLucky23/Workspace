@@ -56,26 +56,49 @@ const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
 //? Nav grouping (ADR 0068, F4.1) — a `group` per item declutters the (long, flat) main rail into labelled
 //? sections. The group header renders when the rail is expanded; collapsed shows a thin divider between
 //? groups. Groups render in GROUP_ORDER.
-type NavGroup = 'work' | 'build' | 'studio' | 'insights';
+type NavGroup = 'work' | 'build' | 'studio' | 'publish' | 'insights';
 interface NavDef { id: WsView; icon: IconName; label: string; group?: NavGroup }
-export const GROUP_ORDER: NavGroup[] = ['work', 'build', 'studio', 'insights'];
-export const GROUP_LABELS: Record<NavGroup, string> = { work: 'Work', build: 'Build', studio: 'Studio', insights: 'Insights' };
+
+//? UI restructure — the rail carried 15 flat entries across 4 headers, which is a wall of nouns to someone
+//? opening the app for the first time ("Backlog? Sources? Knowledge? Interviewer?"). It is now FIVE
+//? top-level destinations, each with its own sub-navigation:
+//?
+//?   Work     — what is happening right now (board, backlog, terminals, activity)
+//?   Create   — the things you make (content, documents, designer, marketing)
+//?   Publish  — where the work goes out (scheduled posts, channels)
+//?   Automate — the machine that does it for you (pipeline, schedules, sources)
+//?   Insights — what came of it (usage, knowledge, interviewer)
+//?
+//? The group names are VERBS where possible: a first-time user recognises "Create" faster than "Studio".
+//? Sub-items keep their own routes, so nothing about deep-linking or module gating changes.
+export const GROUP_ORDER: NavGroup[] = ['work', 'studio', 'publish', 'build', 'insights'];
+export const GROUP_LABELS: Record<NavGroup, string> = { work: 'Work', studio: 'Create', publish: 'Publish', build: 'Automate', insights: 'Insights' };
+//? The icon + landing page for each group. Clicking a group always DOES something (it navigates to its
+//? first available item) instead of only toggling a menu — a nav item that does nothing on click reads as
+//? broken.
+export const GROUP_ICONS: Record<NavGroup, IconName> = { work: 'table-columns', studio: 'wand-magic-sparkles', publish: 'paper-plane', build: 'diagram-project', insights: 'chart-column' };
 export const NAV_ITEMS: NavDef[] = [
+  //? Work — the live state of the project.
   { id: 'board', icon: 'table-columns', label: 'Board', group: 'work' },
   { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'work' },
   { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'work' },
   { id: 'activity', icon: 'wave-square', label: 'Activity', group: 'work' },
-  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'work' },
-  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'build' },
-  { id: 'scheduled', icon: 'clock', label: 'Scheduled', group: 'build' },
+  //? Create — the things a user MAKES here.
   { id: 'content', icon: 'wand-magic-sparkles', label: 'Content', group: 'studio' },
   { id: 'documents', icon: 'file-lines', label: 'Documents', group: 'studio' },
-  { id: 'scheduled-posts', icon: 'calendar-day', label: 'Scheduled posts', group: 'studio' },
   { id: 'designer', icon: 'palette', label: 'Designer', group: 'studio' },
-  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'studio' },
   { id: 'marketing', icon: 'bullhorn', label: 'Marketing', group: 'studio' },
+  //? Publish — where finished work goes out. Split off from Create because "made it" and "sent it" are
+  //? different questions, and mixing them is what made the old Studio group unreadable.
+  { id: 'scheduled-posts', icon: 'calendar-day', label: 'Scheduled posts', group: 'publish' },
+  //? Automate — the machine: how work moves, when it runs, what it knows.
+  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'build' },
+  { id: 'scheduled', icon: 'clock', label: 'Schedules', group: 'build' },
+  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'build' },
+  //? Insights — what came of it.
   { id: 'usage', icon: 'chart-column', label: 'Usage', group: 'insights' },
   { id: 'knowledge', icon: 'diagram-project', label: 'Knowledge', group: 'insights' },
+  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'insights' },
 ];
 export const NAV_BOTTOM: NavDef[] = [
   { id: 'ai', icon: 'robot', label: 'Workspace-AI' },
@@ -93,6 +116,9 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
   const updateLanguage = useUpdateLanguage();
   const activeLang = getActiveLanguage();
   const [userOpen, setUserOpen] = useState(false);
+  //? null = "follow the current view" (the group holding it is open). A string pins the user's own choice;
+  //? '' means they collapsed everything on purpose.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const userRef = useClickAway<HTMLDivElement>(userOpen, () => { setUserOpen(false); });
 
   const renderItem = (it: NavDef) => {
@@ -136,17 +162,44 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
         <Icon name={expanded ? 'angle-left' : 'angle-right'} className="text-xs" />
       </button>
       <div className="flex-1 flex flex-col gap-1 px-2.5 py-2 overflow-y-auto">
-        {GROUP_ORDER.map((g, gi) => {
+        {/* UI restructure — FIVE destinations instead of fifteen. A group expands to show its pages; the
+            group holding the current view is open by default, so you always see where you are without
+            hunting. Clicking a group also NAVIGATES to its first page: a nav item that only toggles a
+            menu reads as broken. */}
+        {GROUP_ORDER.map((g) => {
           //? Module gating (modules.ts): hide the nav items whose section is off for this
           //? workspace. Non-gateable items (usage) + legacy workspaces (empty set) stay on.
           const items = NAV_ITEMS.filter((it) => it.group === g && isSectionEnabled(activeWorkspace.enabledSections, it.id));
           if (items.length === 0) return null;
+          const holdsView = items.some((it) => it.id === view);
+          const open = openGroup === g || (openGroup === null && holdsView);
+          const first = items[0];
           return (
             <div key={g} className="flex flex-col gap-1">
-              {expanded
-                ? <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled">{GROUP_LABELS[g]}</div>
-                : gi > 0 && <div className="mx-2 my-1 h-px bg-divider" />}
-              {items.map((it) => renderItem(it))}
+              <button
+                type="button"
+                title={expanded ? undefined : translate({ key: `workspaces.nav.${g}` })}
+                onClick={() => {
+                  setOpenGroup(open ? '' : g);
+                  //? Only navigate when opening, and only when the current view is elsewhere — re-clicking
+                  //? the group you are already in should not yank you off the page you are reading.
+                  //? Collapsed there is no sub-list to reveal, so a click must always go somewhere.
+                  if ((!expanded || !open) && !holdsView && first) navigate(first.id);
+                }}
+                className={`flex w-full items-center gap-3 rounded-xl h-10 px-2.5 transition-colors cursor-pointer ${holdsView ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}
+              >
+                <span className="w-5 text-center shrink-0"><Icon name={GROUP_ICONS[g]} /></span>
+                {expanded && <span className="flex-1 min-w-0 text-left text-sm font-medium truncate">{translate({ key: `workspaces.nav.${g}` })}</span>}
+                {expanded && items.length > 1 && <Icon name="angle-down" className={`text-xs text-muted transition-transform ${open ? 'rotate-180' : ''}`} />}
+              </button>
+              {/* Sub-navigation, EXPANDED RAIL ONLY. A first attempt also rendered the sub-items while
+                  collapsed, which produced 19 icons where there used to be 15 — the opposite of the point.
+                  Collapsed, the five group icons ARE the navigation; clicking one opens its first page. */}
+              {expanded && open && (
+                <div className="flex flex-col gap-1 pl-3 border-l border-divider ml-3">
+                  {items.map((it) => renderItem(it))}
+                </div>
+              )}
             </div>
           );
         })}
