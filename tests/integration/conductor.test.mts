@@ -81,6 +81,12 @@ try {
   const signals = await prisma.workspaceSignal.findMany({ where: { workspaceId } });
   assert(signals.length >= 2, 'each enqueued action appends an append-only WorkspaceSignal (audit trail)');
 
+  // Seed representative newer module rows that the historical cascade omitted.
+  await prisma.serviceStack.create({ data: { workspaceId, name: 'delete-fixture', compose: 'services: {}', services: [] } });
+  await prisma.designArtifact.create({ data: { workspaceId, kind: 'theme', name: 'Delete fixture', content: {}, source: 'manual' } });
+  await prisma.document.create({ data: { workspaceId, title: 'Delete fixture', content: '# Delete me' } });
+  await prisma.workspaceChatMessage.create({ data: { workspaceId, userId: owner.id, role: 'user', content: 'delete me' } });
+
   // ---- 3. cascade teardown (via the delete-workspace op) -----------------------
   await enqueueControlAction({
     workspaceId, op: 'delete-workspace', target: {}, payload: {},
@@ -97,6 +103,11 @@ try {
   eq(await prisma.envVar.findFirst({ where: { workspaceId: targetId } }), null, 'cascade teardown removes the tenant EnvVar rows');
   eq((await prisma.workspaceRole.findMany({ where: { workspaceId: targetId } })).length, 0, 'cascade teardown removes the WorkspaceRole rows');
   eq(await prisma.workspaceMember.findFirst({ where: { workspaceId: targetId } }), null, 'cascade teardown removes the WorkspaceMember rows');
+  eq(await prisma.serviceStack.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes ServiceStack rows');
+  eq(await prisma.designArtifact.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes DesignArtifact rows');
+  eq(await prisma.document.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes Document rows');
+  eq(await prisma.skill.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes seeded Skill rows');
+  eq(await prisma.workspaceChatMessage.count({ where: { workspaceId: targetId } }), 0, 'cascade teardown removes WorkspaceChatMessage rows');
 
   workspaceId = null; // already torn down — skip the workspace cleanup below
 } catch (error) {

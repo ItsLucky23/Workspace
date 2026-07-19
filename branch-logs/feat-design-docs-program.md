@@ -293,3 +293,22 @@ browser: labels now render ("Blank", "Templates", "Apply tokens", …).
 **Verification**: 446 gerichte assertions groen (recovery 50, watchdog 24, capacity 69, stage writer 164, writer foundation 26 + 98, worker-reaper 15); typecheck, ai:lint en build groen; volledige lint 0 errors / 25 reeds bestaande, out-of-scope warnings. `git diff --check` schoon voor alle taakbestanden en geen `as any`/`as unknown as` toegevoegd.
 
 **Notes / decisions**: Geen schema, migratie, package-install, publieke op/verb, unsafe cast of commit. De grote vooraf bestaande dirty worktree — inclusief reeds dirty schema-, env-, forge- en writerfiles — is niet teruggedraaid of buiten deze herstelpatch opgeschoond.
+
+
+## 2026-07-19 — Surfacing-ronde: de vijf engine-only modules aan een oppervlak
+
+**User prompt (samenvatting)**: "doe nu het volgende maar onthoud de andere AI is ook nog bezig dus straks doen we nog een extra sweep: één ronde die de vijf ❌-items aan een oppervlak hangt (F2 render-pipeline, F3 piece-detail, F5 inbox, G4 picker die C2 óók gebruikt, G7 settings) plus knoppen voor F1/G3."
+
+**Wat ik heb gedaan**:
+- **F2** — `ContentProject.captionStyle` (nieuw, gevalideerd door `parseCaptionStyle`: onbruikbare waarden vallen terug op de kale ffmpeg-default i.p.v. stilzwijgend geclamped te worden); `applyCaptions` kiest de gestylede args voor een burn-in; piece-UI biedt grootte/kleur/balk/woord-voor-woord. De sidecar-`.srt` houdt bewust per-segment-timing zodat een download een leesbaar transcript blijft.
+- **F3** — SEO-paneel op de piece via een nieuwe capability-gated read-route `seoSuggest_v1`. De deterministische score + issues werken zónder key; alternatieven komen van de provider (`aiOk:false` zegt dat eerlijk).
+- **F5** — reply-affordance in de comment-inbox + `commentReplyDraft_v1`. De rij is een `<div>` geworden (geneste buttons zijn invalide HTML) met "markeer gelezen" als eigen knop. Draften en versturen zijn gescheiden acties — een AI-concept kan nooit vanzelf naar een publiek.
+- **G4** — nieuwe gedeelde `AssetPicker` (alleen props, dus bruikbaar in een menuHandler-overlay, lesson 0011; lost `/media` op tegen de BACKEND-origin). Documents gebruiken hem nu op `content.assetLibrary` i.p.v. een eigen per-piece-scrape; sterren kan vanuit de picker zelf.
+- **G7** — `ExperimentsPanel` in settings + `promptExperiments_v1` (read) en de ops `prompt-experiment-save` / `-stop`. Eén lopend experiment per feature: een tweede starten zet de vorige op `stopped` (trials blijven bewaard).
+- **F1/G3** — knoppen voor de twee ops die alleen via de Assistant bereikbaar waren: thumbnail componeren op de piece (cost-confirm alleen voor de betaalde AI-achtergrond) en een ready landing-page live zetten vanuit Studio.
+
+**Files touched**: `prisma/schema.prisma`, `server/content/{captionStyle,assembly,render}.ts`, `server/orchestrator/conductor.ts`, `server/{control/rbac,ai/opCatalog}.ts`, nieuwe `src/workspaces/_api/{seoSuggest,commentReplyDraft,promptExperiments}_v1.ts`, nieuwe `src/workspaces/_components/AssetPicker.tsx`, `src/workspaces/{content/page,content/[pieceId]/page,documents/[docId]/page,studio/page,settings/page}.tsx`, `_shell/{WorkspacesContext,WorkspacesProvider}`, `_sync/{contentControl,contentSettings}_server_v1.ts`, alle vier locales, plus `tests/unit/surfaceReachability.test.mts` en `tests/integration/surfacedOps.test.mts`.
+
+**Verification**: typecheck/lint (0 errors)/ai:lint/build groen. surfaceReachability 50/50 (asserteert per feature dat het oppervlak bedraad is én in alle vier de locales vertaald), surfacedOps 17/17. Regressie: contentDepth 74, newModules 57+48, reliabilityGuards 53, couplingBridges 42+13, opCatalogParity 56, settings 27, snapshot 38, scheduledPublish 32, seed 61.
+
+**Notes / decisions**: Geen nieuwe ADR — dit volgt ADR 0278 (gaps sluiten met ops, geen nieuwe verbs; eerlijke no-ops). Nieuw testtype toegevoegd: een *reachability*-test, omdat de vorige ronde liet zien dat groene unit-tests niets zeggen over of een gebruiker erbij kan. Nog steeds open en bewust: Docker ligt eruit (500 op de engine), dus de container-E2E (thumbnail-render, caption/dub-pass, stale-redeploy, tool-trail door een echte container) en de browser-pass staan nog. De andere AI werkt nog in dezelfde worktree — een extra sweep volgt.
