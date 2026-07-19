@@ -1448,7 +1448,34 @@
       "appCredSaved": "Zugangsdaten gespeichert",
       "appCredSource_workspace": "in diesem Workspace konfiguriert",
       "appCredSource_env": "nutzt .env-Fallback",
-      "appCredSource_none": "nicht konfiguriert"
+      "appCredSource_none": "nicht konfiguriert",
+      "libraryStar": "In der Bibliothek behalten",
+      "seoTitle": "SEO-Check",
+      "seoDesc": "Bewerte diesen Titel und erhalte Alternativen, basierend auf dem, was auf deinem Konto wirklich Views brachte.",
+      "seoAnalyze": "Titel analysieren",
+      "seoBusy": "Analysiere…",
+      "seoOutOf": "/100",
+      "seoScoreOnly": "nur Score — kein KI-Anbieter konfiguriert",
+      "seoAlternatives": "Vorgeschlagene Titel",
+      "seoTags": "Tags",
+      "seo.empty": "Der Titel ist leer.",
+      "seo.tooLong": "Zu lang — wird in der Suche abgeschnitten.",
+      "seo.tooShort": "Sehr kurz — sag, was der Zuschauer bekommt.",
+      "seo.weakOpener": "Beginnt mit einem Füllwort.",
+      "seo.noHook": "Kein Haken (Zahl, Frage oder \"wie\").",
+      "seo.shouting": "GROSSBUCHSTABEN wirken wie Spam.",
+      "seo.repetitive": "Wiederholt dieselben Wörter.",
+      "captionStyleTitle": "Untertitel-Stil",
+      "captionStyleDesc": "Wie eingebrannte Untertitel aussehen.",
+      "captionSize": "Schriftgröße",
+      "captionColor": "Textfarbe (Hex)",
+      "captionBoxed": "Balken hinter dem Text",
+      "captionWordByWord": "Wort für Wort",
+      "thumbTitle": "Thumbnail",
+      "thumbDesc": "Eine fette Überschrift über einem Hintergrund. Hintergrund leer lassen für die kostenlose Vorlage.",
+      "thumbBgPlaceholder": "KI-Hintergrund (optional, kostet eine Generierung)",
+      "thumbCompose": "Thumbnail erstellen",
+      "thumbComposeAi": "Mit KI-Hintergrund erstellen"
     },
     "knowledge": {
       "title": "Wissensgraph",
@@ -1847,7 +1874,10 @@
       "vsVo": "VO",
       "vsScreen": "Im Bild",
       "vsCta": "CTA",
-      "vsNote": "Skript + Storyboard generiert — vollständiges Video-Rendering braucht einen Media-/Video-API-Key."
+      "vsNote": "Skript + Storyboard generiert — vollständiges Video-Rendering braucht einen Media-/Video-API-Key.",
+      "publishLive": "Live schalten",
+      "publishLiveHint": "Diese Seite unter einer öffentlichen URL bereitstellen",
+      "publishedLive": "Wird veröffentlicht — die URL erscheint gleich."
     },
     "uiReview": {
       "title": "UI-Review anfordern",
@@ -2395,7 +2425,8 @@
       "hideArchived": "Archivierte ausblenden",
       "reuseExisting": "Vorhandenes Bild wiederverwenden",
       "reuseHide": "Vorhandene Bilder ausblenden",
-      "reuseThis": "Dieses Asset anhängen"
+      "reuseThis": "Dieses Asset anhängen",
+      "reuseEmpty": "Noch keine wiederverwendbaren Bilder in diesem Workspace."
     },
     "inspire": {
       "title": "Inspiration",
@@ -2417,7 +2448,15 @@
       "markAllRead": "Alle gelesen",
       "readOnlyNote": "Nur lesen: Antworten erfolgt auf der Plattform selbst.",
       "empty": "Noch keine Kommentare",
-      "emptySub": "Kommentare zu deinen veröffentlichten Posts erscheinen hier. YouTube braucht die neue Lese-Berechtigung — verbinde das Konto einmal neu, falls dies leer bleibt."
+      "emptySub": "Kommentare zu deinen veröffentlichten Posts erscheinen hier. YouTube braucht die neue Lese-Berechtigung — verbinde das Konto einmal neu, falls dies leer bleibt.",
+      "reply": "Antworten",
+      "markRead": "Als gelesen markieren",
+      "replyPlaceholder": "Antwort schreiben…",
+      "draft": "Entwurf mit KI",
+      "drafting": "Erstelle…",
+      "send": "Antwort senden",
+      "cancel": "Abbrechen",
+      "draftFailed": "Entwurf fehlgeschlagen."
     },
     "voice": {
       "record": "Sprachnachricht aufnehmen",
@@ -2427,6 +2466,18 @@
       "empty": "Nichts gehört – versuche es erneut.",
       "speakOn": "Antworten werden vorgelesen (zum Stummschalten tippen)",
       "speakOff": "Antworten vorlesen"
+    },
+    "experiments": {
+      "title": "Prompt-Experimente",
+      "desc": "Zwei Varianten eines Prompts gegeneinander laufen lassen und das Urteil lesen — statt zu raten, ob eine Änderung half.",
+      "namePlaceholder": "Name des Experiments (z. B. Hook-Stil)",
+      "variantA": "Prompt Variante A",
+      "variantB": "Prompt Variante B",
+      "start": "Experiment starten",
+      "stop": "Stoppen",
+      "empty": "Noch keine Experimente.",
+      "status_running": "läuft",
+      "status_stopped": "gestoppt"
     }
   }
 }

@@ -8,8 +8,10 @@
 //? @adr 0270
 
 import { getPrismaClient, tryCatch } from '@luckystack/core';
+import type { PrismaClient } from '@prisma/client';
 
 import type { AiFeature } from './types';
+import { deterministicObjectId } from '../orchestrator/actionIds';
 
 //? The user-facing apply-point GROUPS a skill targets — canonical list lives in _data/types.ts (one
 //? source, client + server; same pattern as uiReviewTaxonomy). 'all' (or an empty list) = every AI run.
@@ -140,18 +142,31 @@ const BUILTIN_SKILLS: { slug: string; name: string; applyPoints: SkillApplyPoint
   },
 ];
 
-//? Idempotent per-workspace seeding: inserts any MISSING builtin (never overwrites user edits).
-//? Called lazily from the snapshot read so existing workspaces get the seeds too. Best-effort.
-export async function ensureBuiltinSkills(workspaceId: string): Promise<void> {
-  const prisma = getPrismaClient();
-  const existing = await prisma.skill.findMany({ where: { workspaceId, builtin: true }, select: { slug: true } });
-  const have = new Set(existing.map((s) => s.slug));
-  const missing = BUILTIN_SKILLS.filter((s) => !have.has(s.slug));
-  for (const seed of missing) {
-    await prisma.skill.create({
-      data: { workspaceId, slug: seed.slug, name: seed.name, instruction: seed.instruction, applyPoints: [...seed.applyPoints], enabled: false, builtin: true },
+//? Idempotent per-workspace seed writer: inserts missing builtins and never overwrites user edits.
+//? Call only from workspace bootstrap or the Conductor's internal builtins backfill — never from reads.
+export async function ensureBuiltinSkills(prisma: PrismaClient, workspaceId: string): Promise<number> {
+  const seeds = BUILTIN_SKILLS.map((seed) => ({
+    seed,
+    id: deterministicObjectId(workspaceId, seed.slug, 'builtin-skill'),
+  }));
+  const existing = await prisma.skill.findMany({
+    where: { workspaceId, id: { in: seeds.map(({ id }) => id) } },
+    select: { id: true },
+  });
+  const existingIds = new Set(existing.map((skill) => skill.id));
+  for (const { seed, id } of seeds) {
+    //? Exact deterministic ids make concurrent first-seed/retry calls converge without a schema unique.
+    //? Historical random-id duplicates are deliberately not deleted or rewritten here.
+    await prisma.skill.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id, workspaceId, slug: seed.slug, name: seed.name, instruction: seed.instruction,
+        applyPoints: [...seed.applyPoints], enabled: false, builtin: true,
+      },
     });
   }
+  return seeds.filter(({ id }) => !existingIds.has(id)).length;
 }
 
 //? The canonical builtin text for a slug (the "reset to default" source). null for user-authored slugs.

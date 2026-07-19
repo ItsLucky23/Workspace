@@ -17,7 +17,6 @@ export interface BrandLibraryInput {
 
 //? Upsert the workspace brand library (partial — only provided fields change). Returns the id.
 export async function saveBrandLibrary(prisma: PrismaClient, workspaceId: string, input: BrandLibraryInput): Promise<string> {
-  const existing = await prisma.studioBrandLibrary.findFirst({ where: { workspaceId }, select: { id: true } });
   const data = {
     ...(input.name === undefined ? {} : { name: input.name }),
     ...(input.palette === undefined ? {} : { palette: asJson(input.palette) }),
@@ -26,15 +25,16 @@ export async function saveBrandLibrary(prisma: PrismaClient, workspaceId: string
     ...(input.taglines === undefined ? {} : { taglines: input.taglines }),
     ...(input.logoIdeas === undefined ? {} : { logoIdeas: input.logoIdeas }),
   };
-  if (existing) { await prisma.studioBrandLibrary.update({ where: { id: existing.id }, data }); return existing.id; }
-  const created = await prisma.studioBrandLibrary.create({
-    data: {
+  const brand = await prisma.studioBrandLibrary.upsert({
+    where: { workspaceId },
+    update: data,
+    create: {
       workspaceId, name: input.name ?? 'Brand',
       palette: asJson(input.palette ?? []), typography: asJson(input.typography ?? { heading: '', body: '' }),
       voice: input.voice ?? '', taglines: input.taglines ?? [], logoIdeas: input.logoIdeas ?? [],
     },
   });
-  return created.id;
+  return brand.id;
 }
 
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);

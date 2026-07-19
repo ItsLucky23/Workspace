@@ -17,10 +17,11 @@ const {
   applyForgeSnapshot,
   buildForgeSnapshot,
   forgeSnapshotRequestId,
+  fetchForgeSnapshot,
   forgeTouchedKeys,
   runGitlabSyncTick,
 } = await import('../../server/git/gitlabSync');
-const { forgeEventRequestId, processForgeWebhook } = await import('../../server/git/webhookRoute');
+const { forgeEventRequestId, processForgeWebhook, verifyWebhookSecret } = await import('../../server/git/webhookRoute');
 const { dispatchControlSync } = await import('../../server/control/dispatchSync');
 const { dispatchForgeResync } = await import('../../src/workspaces/_sync/projectAdmin_server_v1');
 
@@ -51,7 +52,7 @@ const [runError] = await tryCatch(async () => {
   });
   await prisma.workspace.update({ where: { id: workspaceId }, data: { webhookSecret: 'workspace-webhook-secret' } });
 
-  const snapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{ iid: 88, title: 'Snapshot issue' }]);
+  const snapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{ iid: 88, title: 'Snapshot issue', web_url: 'https://gitlab.example/acme/b/-/issues/88' }]);
   const [outsideWriterError] = await tryCatch(() => applyForgeSnapshot(prisma, workspaceId, projectB.id, snapshot));
   assert(outsideWriterError !== null && outsideWriterError.message.includes('no active Conductor writer context'), 'a forge mutation helper rejects calls outside writer context');
 
@@ -84,7 +85,7 @@ const [runError] = await tryCatch(async () => {
   const firstBody = JSON.stringify({
     object_kind: 'issue',
     project: { path_with_namespace: 'acme/b' },
-    object_attributes: { iid: 67, action: 'open', title: 'Original delivery', state: 'opened' },
+    object_attributes: { iid: 67, action: 'open', title: 'Original delivery', state: 'opened', url: 'https://gitlab.example/acme/b/-/issues/67' },
   });
   const deliveryHeaders = {
     'x-gitlab-token': 'workspace-webhook-secret',
@@ -211,6 +212,31 @@ const [runError] = await tryCatch(async () => {
   eq(unknownClosed.message, 'no-op', 'an unknown closed issue is acknowledged without an affected key');
   eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-69' } }), 0, 'an unknown close never creates a ticket');
 
+  const noUrlOpen = await processForgeWebhook({
+    workspaceId,
+    headers: {
+      'x-gitlab-token': 'workspace-webhook-secret',
+      'x-gitlab-event-uuid': `open-no-url-${String(stamp)}`,
+    },
+    rawBody: JSON.stringify({
+      object_kind: 'issue',
+      project: { path_with_namespace: 'acme/b' },
+      object_attributes: { iid: 70, action: 'open', title: 'No canonical URL', state: 'opened' },
+    }),
+  }, lifecycleDependencies);
+  eq(noUrlOpen.message, 'no-op', 'an open webhook without a canonical issue URL is skipped');
+  eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-70' } }), 0, 'an open webhook without a canonical issue URL creates no projection');
+  const noUrlSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{ iid: 71, title: 'No canonical URL', state: 'opened' }]);
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: noUrlSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `snapshot-no-url-${String(stamp)}`,
+  });
+  eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-71' } }), 0, 'a snapshot without a canonical issue URL creates no projection');
+
   const ignoredAt = stamp + 10_000;
   const ignoredDependencies: ForgeWebhookDependencies = {
     prisma,
@@ -228,6 +254,10 @@ const [runError] = await tryCatch(async () => {
   }, ignoredDependencies);
   eq(ignored.message, 'ignored', 'a supported authenticated non-issue event is accepted as ignored');
   eq((await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { webhookLastEventAt: true } }))?.webhookLastEventAt?.getTime(), ignoredAt, 'accepted ignored events update metadata through InternalOp');
+
+  assert(verifyWebhookSecret('workspace-webhook-secret', 'workspace-webhook-secret'), 'shared webhook secrets accept an exact match');
+  assert(!verifyWebhookSecret('workspace-webhook-secret', 'wrong'), 'shared webhook secrets reject a different-length value through fixed-length digests');
+  assert(!verifyWebhookSecret('workspace-webhook-secret', 'workspace-webhook-secreu'), 'shared webhook secrets reject a same-length value through fixed-length digests');
 
   await prisma.ticket.create({
     data: {
@@ -256,6 +286,114 @@ const [runError] = await tryCatch(async () => {
   eq(collision?.projectId, projectA.id, 'DEV-iid collision remains on its original project');
   eq(collision?.title, 'Sibling project truth', 'DEV-iid collision never updates the sibling ticket');
 
+  await prisma.ticket.create({
+    data: {
+      workspaceId,
+      projectId: projectB.id,
+      key: 'DEV-76',
+      number: 76,
+      title: 'Same-project local-only ticket',
+      stageId: 'unrefined',
+      status: 'idle',
+    },
+  });
+  for (const [action, state] of [['open', 'opened'], ['update', 'opened'], ['close', 'closed']] as const) {
+    await processForgeWebhook({
+      workspaceId,
+      headers: {
+        'x-gitlab-token': 'workspace-webhook-secret',
+        'x-gitlab-event-uuid': `local-only-${action}-${String(stamp)}`,
+      },
+      rawBody: JSON.stringify({
+        object_kind: 'issue',
+        project: { path_with_namespace: 'acme/b' },
+        object_attributes: { iid: 76, action, title: `Remote ${action}`, state, url: 'https://gitlab.example/acme/b/-/issues/76' },
+      }),
+    });
+    eq(
+      await prisma.ticket.findFirst({ where: { workspaceId, projectId: projectB.id, key: 'DEV-76' }, select: { title: true, issueUrl: true, archived: true } }),
+      { title: 'Same-project local-only ticket', issueUrl: null, archived: false },
+      `a ${action} webhook never converts, updates, or archives a same-project local-only DEV-iid collision`,
+    );
+  }
+  const localCollisionSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{
+    iid: 76,
+    title: 'Remote snapshot close',
+    state: 'closed',
+    web_url: 'https://gitlab.example/acme/b/-/issues/76',
+  }]);
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: projectB.id },
+    payload: { snapshot: localCollisionSnapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `local-only-snapshot-${String(stamp)}`,
+  });
+  eq(
+    await prisma.ticket.findFirst({ where: { workspaceId, projectId: projectB.id, key: 'DEV-76' }, select: { title: true, issueUrl: true, archived: true } }),
+    { title: 'Same-project local-only ticket', issueUrl: null, archived: false },
+    'a snapshot close never converts, updates, or archives a same-project local-only DEV-iid collision',
+  );
+
+  const githubProject = await prisma.project.create({ data: { workspaceId, name: 'GitHub', gitlabPath: 'acme/github' } });
+  await prisma.forgeConnection.create({
+    data: {
+      workspaceId,
+      projectId: githubProject.id,
+      mode: 'github',
+      baseUrl: 'https://api.github.example',
+      repoPath: 'acme/github',
+      tokenEnc: encryptSecret('github-pagination-token'),
+      status: 'connected',
+    },
+  });
+  await prisma.ticket.create({
+    data: {
+      workspaceId,
+      projectId: githubProject.id,
+      key: 'DEV-102',
+      number: 102,
+      title: 'Second GitHub page',
+      issueUrl: 'https://github.example/acme/github/issues/102',
+      stageId: 'unrefined',
+      status: 'idle',
+    },
+  });
+  const githubPages: number[] = [];
+  const githubFetched = await fetchForgeSnapshot(prisma, workspaceId, githubProject.id, async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'));
+    githubPages.push(page);
+    const rows = page === 1
+      ? [
+          { number: 101, title: 'First GitHub issue', state: 'open', html_url: 'https://github.example/acme/github/issues/101' },
+          ...Array.from({ length: 99 }, (_value, index) => ({ number: index + 200, title: `PR ${String(index)}`, pull_request: {} })),
+        ]
+      : page === 2
+        ? [{ number: 102, title: 'Second GitHub page', state: 'open', html_url: 'https://github.example/acme/github/issues/102' }]
+        : [];
+    return new Response(JSON.stringify(rows), { status: 200 });
+  });
+  assert(githubFetched.ok, 'the mixed GitHub page fetch succeeds');
+  if (!githubFetched.ok) return;
+  eq(githubPages, [1, 2], 'a raw 100-row GitHub page continues after PR filtering');
+  eq(githubFetched.snapshot.issues.map((issue) => issue.iid), [101, 102], 'the full snapshot retains issues from the next page');
+  assert(githubFetched.snapshot.full && !githubFetched.snapshot.capped, 'a raw short terminal page yields an authoritative uncapped snapshot');
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'forge-snapshot-apply',
+    target: { projectId: githubProject.id },
+    payload: { snapshot: githubFetched.snapshot },
+    userId: 'forge-writer-test',
+    clientRequestId: `github-mixed-page-${String(stamp)}`,
+  });
+  eq(
+    (await prisma.ticket.findFirst({ where: { workspaceId, projectId: githubProject.id, key: 'DEV-102' }, select: { archived: true } }))?.archived,
+    false,
+    'the complete mixed-page snapshot does not falsely archive an issue omitted by filtered page one',
+  );
+
+  const snapshotSignalsBefore = await prisma.workspaceSignal.count({ where: { workspaceId, kind: 'forge-snapshot-apply' } });
   const snapshotRequestId = forgeSnapshotRequestId(snapshot);
   const firstSnapshot = await enqueueInternalAction({
     workspaceId,
@@ -283,7 +421,7 @@ const [runError] = await tryCatch(async () => {
     { state: 'success', signalSeq: firstSnapshot.signalSeq, resultKeys: ['DEV-88'] },
     'Redis terminal outcome exposes only signalSeq plus bounded resultKeys',
   );
-  eq(await prisma.workspaceSignal.count({ where: { workspaceId, kind: 'forge-snapshot-apply' } }), 1, 'duplicate dataset appends one durable signal');
+  eq(await prisma.workspaceSignal.count({ where: { workspaceId, kind: 'forge-snapshot-apply' } }), snapshotSignalsBefore + 1, 'duplicate dataset appends one durable signal');
   eq(await prisma.ticket.count({ where: { workspaceId, key: 'DEV-88' } }), 1, 'duplicate dataset creates one ticket');
   const firstUpdatedAt = (await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-88' }, select: { updatedAt: true } }))?.updatedAt.getTime();
   const afterOutcomeTtl = await enqueueInternalAction({
@@ -399,7 +537,7 @@ const [runError] = await tryCatch(async () => {
 
   //? Public resync: RBAC must run before fetch, and the fetched snapshot is dispatched
   //? while no writer context is held. The real dispatch re-checks RBAC before apply.
-  const publicSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{ iid: 91, title: 'Public snapshot apply' }]);
+  const publicSnapshot = buildForgeSnapshot(projectB.id, 'gitlab', 'acme/b', [{ iid: 91, title: 'Public snapshot apply', web_url: 'https://gitlab.example/acme/b/-/issues/91' }]);
   const publicResync = await dispatchForgeResync({
     prisma,
     workspaceId,

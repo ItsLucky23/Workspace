@@ -6,7 +6,10 @@
 //? host/system-level) and its handler runs under `runInTenant` at the call site.
 //?
 //? Kept deliberately small + generic (framework code, SOLID): register at boot, look up by key,
-//? list for the UI. No I/O here — the handler does the work when the executor invokes it.
+//? list for the UI. The raw handler stays inside this registry; production callers invoke it through
+//? `executeAgentRole`, which requires the matching Conductor writer + tenant context.
+
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 
 export interface AgentRoleContext {
   workspaceId: string;
@@ -22,8 +25,10 @@ export interface AgentRole {
   label: string;
   //? One-line description of what this role does.
   description: string;
-  //? Does this role write authoritative state? Then the executor gates it behind approval even if
-  //? the trigger didn't ask — a plugin can't silently bypass the single-writer invariant (B-23).
+  //? Does this role perform the authoritative ACTION that requires prior human approval? Then the
+  //? executor gates it even if the trigger did not ask. `false` roles may still persist proposal or
+  //? derived-result rows (findings, suggestions, watch snapshots) through the active Conductor; that
+  //? bookkeeping is not consent to apply the proposed action (B-23).
   mutates: boolean;
   //? Run the role. Returns an artifact (rendered by the ArtifactViewer) or null. Best-effort — the
   //? executor wraps it in tryCatch, so a throwing plugin never breaks the trigger pipeline.
@@ -32,13 +37,25 @@ export interface AgentRole {
 
 const roles = new Map<string, AgentRole>();
 
+export type RegisteredAgentRole = Omit<AgentRole, 'run'>;
+
 //? Register (or replace) an agent role. Called once per role at boot from the server overlay.
 export function registerAgentRole(role: AgentRole): void {
   roles.set(role.key, role);
 }
 
-export function getAgentRole(key: string): AgentRole | undefined {
-  return roles.get(key);
+//? Metadata only: raw mutation-capable role callbacks are not exposed to arbitrary workers.
+export function getAgentRole(key: string): RegisteredAgentRole | undefined {
+  const role = roles.get(key);
+  return role
+    ? { key: role.key, label: role.label, description: role.description, mutates: role.mutates }
+    : undefined;
+}
+
+export function executeAgentRole(key: string, ctx: AgentRoleContext): ReturnType<AgentRole['run']> {
+  assertWorkspaceWriterContext(ctx.workspaceId);
+  const role = roles.get(key);
+  return role ? role.run(ctx) : Promise.resolve(null);
 }
 
 //? All registered roles (for the trigger editor's role picker + the ArtifactViewer legend).

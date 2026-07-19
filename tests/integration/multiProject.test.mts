@@ -7,6 +7,7 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const { enqueueControlAction, isControlActionFailure, resolveReprovisionTarget } = await import('../../server/orchestrator/conductor');
+const { saveDevCommand } = await import('../../src/workspaces/_api/saveDevCommand_v1');
 const { resolveProjectId } = await import('../../server/orchestrator/projectResolve');
 const { resolveStageRuntime, loadStageContextDocs, resolveNextProjectStage } = await import('../../server/orchestrator/stageRunner');
 const { ticketEditGuard } = await import('../../server/orchestrator/editGuard');
@@ -27,7 +28,9 @@ async function poll<T>(fn: () => Promise<T>, timeoutMs = 4000, stepMs = 50): Pro
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `mp-test-${String(stamp)}@youcomm.nl`, name: 'MP Test' } });
+const foreignOwner = await prisma.user.create({ data: { email: `mp-foreign-${String(stamp)}@youcomm.nl`, name: 'MP Foreign' } });
 let workspaceId: string | null = null;
+let foreignWorkspaceId: string | null = null;
 
 try {
   // ---- workspace → project A ----------------------------------------------------
@@ -55,6 +58,27 @@ try {
   const starterName = (await prisma.infoSource.findFirst({ where: { workspaceId: wsId, projectId: projectAId, source: 'starter' }, select: { name: true } }))?.name ?? '';
   assert(starterName.length > 0, 'project A has starter guidance');
   eq(await prisma.infoSource.count({ where: { workspaceId: wsId, source: 'starter', name: starterName, projectId: { in: [projectAId, projectBId] } } }), 2, 'the same starter artifact is seeded independently for A and B');
+
+  // ---- runtime settings are ordered + deduped through the Conductor ----------------
+  const runtimeAId = `mp-runtime-a-${String(stamp)}`;
+  const runtimeBId = `mp-runtime-b-${String(stamp)}`;
+  const savedRuntimeA = await saveDevCommand({ workspaceId: wsId, projectId: projectAId, clientRequestId: runtimeAId, devCommand: 'npm run old' }, owner.id, prisma);
+  const savedRuntimeB = await saveDevCommand({ workspaceId: wsId, projectId: projectAId, clientRequestId: runtimeBId, devCommand: 'npm run newest' }, owner.id, prisma);
+  const lateRuntimeA = await saveDevCommand({ workspaceId: wsId, projectId: projectAId, clientRequestId: runtimeAId, devCommand: 'npm run stale-retry' }, owner.id, prisma);
+  eq(savedRuntimeA.status, 'success', 'project-runtime-save accepts the selected member project');
+  eq(savedRuntimeB.status, 'success', 'a newer project-runtime-save is ordered after the first');
+  eq(lateRuntimeA.status, 'success', 'a late retry replays its terminal success');
+  eq((await prisma.project.findUnique({ where: { id: projectAId } }))?.devCommand, 'npm run newest', 'the deduped late A retry cannot overwrite newer B');
+  eq((await prisma.project.findUnique({ where: { id: projectBId } }))?.devCommand, null, 'project-runtime-save leaves the other workspace project unchanged');
+  eq(await prisma.workspaceSignal.count({ where: { workspaceId: wsId, kind: 'project-runtime-save' } }), 2, 'A + B append two signals while the late A retry appends none');
+
+  await enqueueControlAction({ workspaceId: '', op: 'create-workspace', target: {}, payload: { name: 'Foreign Project WS' }, userId: foreignOwner.id, clientRequestId: `mp-foreign-cw-${String(stamp)}` });
+  const foreignWorkspace = await poll(() => prisma.workspace.findFirst({ where: { ownerId: foreignOwner.id } }));
+  foreignWorkspaceId = foreignWorkspace?.id ?? null;
+  const foreignProject = await poll(() => prisma.project.findFirst({ where: { workspaceId: foreignWorkspaceId ?? '' } }));
+  const foreignResult = await saveDevCommand({ workspaceId: wsId, projectId: foreignProject?.id ?? '', clientRequestId: `mp-runtime-foreign-${String(stamp)}`, devCommand: 'must not save' }, owner.id, prisma);
+  eq(foreignResult.status, 'error', 'project-runtime-save rejects a project outside the selected workspace');
+  eq((await prisma.project.findUnique({ where: { id: foreignProject?.id ?? '' } }))?.devCommand, null, 'a rejected foreign project remains unchanged');
 
   // ---- tickets land in the explicit project --------------------------------------
   await enqueueControlAction({ workspaceId: wsId, op: 'quick-add', target: {}, payload: { title: 'B Ticket', projectId: projectBId }, userId: owner.id, clientRequestId: `mp-tb-${String(stamp)}` });
@@ -202,6 +226,8 @@ try {
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {
+  if (foreignWorkspaceId) await cleanupWorkspace(prisma, foreignWorkspaceId, [foreignOwner.id]).catch(() => undefined);
+  else await prisma.user.delete({ where: { id: foreignOwner.id } }).catch(() => undefined);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

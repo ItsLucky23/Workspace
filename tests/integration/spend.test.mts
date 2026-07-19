@@ -3,15 +3,22 @@
 //? that rolls rows into the per-ticket + 7-day-activity shape the Usage page renders. Visibility
 //? only — no enforcement is asserted (there is none; #16 never hard-stops).
 
+import { redis } from '@luckystack/core';
+
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const spend = await import('../../server/spend/record');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const capacity = await import('../../server/orchestrator/capacity');
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `spend-${String(stamp)}@youcomm.nl`, name: 'Spend Owner' } });
 let workspaceId: string | null = null;
+let capacityMember = '';
+let capacityIdentity = '';
+let capacityHeartbeat = '';
 
 try {
   // ---- estTokens (pure) ----
@@ -46,9 +53,18 @@ try {
   const wsId = created.workspaceId;
   const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
   const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-5000', number: 5000, title: 'Spendy', stageId: 'unrefined', status: 'idle', labels: [], priority: 'normal' } });
-  const session = await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', kind: 'worker', sessionKey: 'worker:spend:unrefined', status: 'busy', tokenEstimate: 0 } });
+  const sessionKey = `worker:${ticket.id}:unrefined`;
+  const runFence = 1;
+  const session = await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', kind: 'worker', sessionKey, status: 'busy', tokenEstimate: 0, runToken: 'spend-run-token', runFence, containerId: 'spend-container' } });
+  capacityIdentity = `${wsId}::${ticket.key}`;
+  capacityMember = `${capacityIdentity}::${String(runFence)}::spend-run-token`;
+  const [activeKey, ownerKey, , , , heartbeatKey] = capacity.capacityRedisKeys(wsId, ticket.key, 'spend-run-token');
+  capacityHeartbeat = heartbeatKey ?? '';
+  await redis.zadd(activeKey ?? '', Date.now(), capacityMember);
+  await redis.hset(ownerKey ?? '', capacityIdentity, capacityMember);
+  await redis.set(capacityHeartbeat, capacityMember, 'PX', 60_000);
 
-  const res = await spend.recordTurnSpend(prisma, { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', sessionKey: 'worker:spend:unrefined', model: 'sonnet', inputChars: 4000, outputChars: 800 });
+  const res = await spend.recordTurnSpend(prisma, { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', sessionKey, model: 'sonnet', inputChars: 4000, outputChars: 800 });
   eq(res.tokensIn, 1000, 'input chars → tokensIn estimate');
   eq(res.tokensOut, 200, 'output chars → tokensOut estimate');
   eq(res.costEstimate, 0, 'cost is 0 on the subscription (no per-model price)');
@@ -56,6 +72,27 @@ try {
   assert(rec !== null && rec.tokensIn === 1000 && rec.tokensOut === 200, 'a SpendRecord row is persisted with the estimates');
   const sess = await prisma.agentSession.findUnique({ where: { id: session.id } });
   eq(sess?.tokenEstimate ?? 0, 1200, "the session's running token estimate is incremented");
+
+  //? The stage-run path never calls recordTurnSpend directly: completion carries bounded char counts
+  //? through one InternalOp. Replaying its stable request id must not append a second SpendRecord.
+  const stageSpendBefore = await prisma.spendRecord.count({ where: { workspaceId: wsId, ticketId: ticket.id } });
+  const stageSpendAction = {
+    workspaceId: wsId,
+    op: 'stage-turn-complete' as const,
+    target: { ticketId: ticket.id, ticketKey: ticket.key, projectId: ticket.projectId, stageId: 'unrefined', sessionId: session.id, runToken: 'spend-run-token', runFence },
+    payload: {
+      containerId: 'spend-container',
+      claudeSessionId: 'spend-claude',
+      turn: { kind: 'continue' as const },
+      spend: { userId: owner.id, model: 'sonnet', inputChars: 40, outputChars: 20 },
+    },
+    userId: 'stage-runner-test',
+    clientRequestId: `stage-spend-${String(stamp)}`,
+  };
+  await enqueueInternalAction(stageSpendAction);
+  await enqueueInternalAction(stageSpendAction);
+  eq(await prisma.spendRecord.count({ where: { workspaceId: wsId, ticketId: ticket.id } }), stageSpendBefore + 1, 'duplicate turn completion appends exactly one stage SpendRecord');
+  eq((await prisma.agentSession.findUnique({ where: { id: session.id } }))?.tokenEstimate, 1215, 'stage spend increments the exact session behind its container CAS');
 
   //? #99 — metered-budget enforcement read: a workspace under an enforced cap is NOT enforced; at/over it IS.
   eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'no enforced cap → provisioning not blocked');
@@ -68,6 +105,10 @@ try {
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {
+  const [activeKey, ownerKey] = capacity.capacityRedisKeys('spend-cleanup', 'cleanup', 'cleanup');
+  if (capacityMember) await redis.zrem(activeKey ?? '', capacityMember).catch(() => undefined);
+  if (capacityIdentity) await redis.hdel(ownerKey ?? '', capacityIdentity).catch(() => undefined);
+  if (capacityHeartbeat) await redis.del(capacityHeartbeat).catch(() => undefined);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

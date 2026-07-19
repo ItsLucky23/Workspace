@@ -46,6 +46,13 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
   const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
+  //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
+  //? this doubles as "update the live page" once it exists.
+  const publishLive = (artifactId: string) => {
+    runContentOp('studio-publish-site', '', { artifactId });
+    notify.success({ key: 'workspaces.studio.publishedLive' });
+  };
+
   const sendToContent = (artifactId: string) => {
     runContentOp('studio-send-to-content', '', { artifactId });
     notify.success({ key: 'workspaces.studio.sentToContent' });
@@ -149,7 +156,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
               {/* artifacts */}
               <div className="flex flex-col gap-4">
                 {artifacts.length === 0 && !busyKind && <div className="text-sm text-muted py-8 text-center border border-dashed border-container1-border rounded-2xl">{translate({ key: 'workspaces.studio.noArtifacts' })}</div>}
-                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} />)}
+                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
               </div>
             </div>
           )
@@ -208,7 +215,7 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
 }
 
 //? ---- Artifact card (renders by kind) ----
-function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void }) {
+function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
@@ -222,6 +229,8 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSen
         {artifact.status === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.studio.failed' })}</span>}
         {onPromote && <button type="button" onClick={onPromote} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.useAsBrandHint' })}><Icon name="swatchbook" className="text-xs" />{translate({ key: 'workspaces.studio.useAsBrand' })}</button>}
         {onSendToContent && <button type="button" onClick={onSendToContent} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.sendToContentHint' })}><Icon name="paper-plane" className="text-xs" />{translate({ key: 'workspaces.studio.sendToContent' })}</button>}
+        {/* G3 — one click from "generated page" to a real public URL. */}
+        {onPublishLive && <button type="button" onClick={onPublishLive} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.publishLiveHint' })}><Icon name="globe" className="text-xs" />{translate({ key: 'workspaces.studio.publishLive' })}</button>}
         <button type="button" disabled={busy} onClick={onRegenerate} className={`text-muted hover:text-primary ${busy ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`} title={translate({ key: 'workspaces.studio.regenerate' })}><Icon name="rotate" className="text-xs" /></button>
         <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer" title={translate({ key: 'workspaces.studio.deleteArtifact' })}><Icon name="trash-can" className="text-xs" /></button>
       </div>

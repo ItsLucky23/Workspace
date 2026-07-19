@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (196)
+## Decisions (197)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -31,9 +31,9 @@
 | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context | 🟢 accepted | rag, ai, retrieval, orchestrator, engine | — | `docs/decisions/0017-rag-codebase-intelligence.md` |
 | 0018 | Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge | 🟢 accepted | mr, review, git, engine, frontend | — | `docs/decisions/0018-builtin-mr-review.md` |
 | 0019 | Ticket priority (one field, `urgent` = hotfix tier) + notification preferences | 🟢 accepted | workspaces, schema, tickets, notifications, capacity | — | `docs/decisions/0019-ticket-priority-notification-preferences.md` |
-| 0020 | CapacityManager — atomic hard-cap admission queue + urgent force-through | 🟢 accepted | workspaces, orchestrator, capacity, concurrency, multi-instance, redis | — | `docs/decisions/0020-capacity-manager-hard-cap.md` |
+| 0020 | CapacityManager — atomic hard-cap admission queue + urgent force-through | ⚪ superseded | workspaces, orchestrator, capacity, concurrency, multi-instance, redis | — | `docs/decisions/0020-capacity-manager-hard-cap.md` |
 | 0021 | Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible) | 🟢 accepted | workspaces, mr-review, git, merge, approvals | — | `docs/decisions/0021-real-git-merge.md` |
-| 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | 🟢 accepted | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
+| 0022 | Crash-recovery watchdog — boot resume + stuck/idle detection | ⚪ superseded | workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance | — | `docs/decisions/0022-crash-recovery-watchdog.md` |
 | 0023 | In-container pty-agent — durable scrollback + crash-resume for container terminals | 🟢 accepted | workspaces, containers, terminal, pty, crash-resume | — | `docs/decisions/0023-in-container-pty-agent.md` |
 | 0024 | Close client gaps — needs-input answer-to-AI + realtime presence | 🟢 accepted | workspaces, client, needs-input, presence, realtime | — | `docs/decisions/0024-client-gaps-answer-input-presence.md` |
 | 0025 | Cost/usage tracking — record token estimates, display only (no hard stop) | 🟢 accepted | workspaces, usage, spend, tokens, observability | — | `docs/decisions/0025-cost-usage-tracking.md` |
@@ -209,6 +209,7 @@
 | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS | 🟢 accepted | designer, git, css, tailwind, concurrency, b-23 | — | `docs/decisions/0276-revision-safe-managed-design-token-apply.md` |
 | 0277 | Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing | 🟢 accepted | multi-instance, conductor, redis, lease, fencing, correctness | 0015 | `docs/decisions/0277-renewable-workspace-lease-with-fail-closed-guard.md` |
 | 0278 | GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops | 🟢 accepted | security, tenancy, control-api, content, deploy | — | `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md` |
+| 0279 | Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer | 🟢 accepted | watchdog, recovery, capacity, fencing, conductor, cron, containers, multi-instance | 0020, 0022 | `docs/decisions/0279-fenced-agent-recovery-writer.md` |
 
 ## Summaries
 
@@ -360,7 +361,7 @@ Opt-in egress control (`WS_EGRESS=1`, default OFF ⇒ current behaviour unchange
 
 ### 0020 — CapacityManager — atomic hard-cap admission queue + urgent force-through
 
-**0020** · accepted · tags: workspaces, orchestrator, capacity, concurrency, multi-instance, redis · 2026-07-03
+**0020** · superseded · tags: workspaces, orchestrator, capacity, concurrency, multi-instance, redis · 2026-07-03
 
 A real admission-control module, `server/orchestrator/capacity.ts`, backed entirely by shared Redis so it is **multi-instance-safe** (ADR 0015) — no per-instance in-memory counters.
 
@@ -376,7 +377,7 @@ A real admission-control module, `server/orchestrator/capacity.ts`, backed entir
 
 ### 0022 — Crash-recovery watchdog — boot resume + stuck/idle detection
 
-**0022** · accepted · tags: workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance · 2026-07-03
+**0022** · superseded · tags: workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance · 2026-07-03
 
 `server/orchestrator/watchdog.ts`, both entry points **leader-gated** (ADR 0015 — exactly one instance recovers):
 
@@ -1793,6 +1794,14 @@ Workspace-scoped Conductor actions use a renewable owner-checked Redis lease and
 *1. Security posture changes ship report-first, not enforce-first.**
 
 → `docs/decisions/0278-gap-scan-program-report-first-guards-and-additive-ops.md`
+
+### 0279 — Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer
+
+**0279** · accepted · tags: watchdog, recovery, capacity, fencing, conductor, cron, containers, multi-instance · 2026-07-19
+
+1. Capacity ownership is a short renewable lease: `WS_CAPACITY_LEASE_MS` defaults to 30 seconds. `WS_TURN_MAX_MS` remains only the hard watchdog policy. Active scores, heartbeat expiry, renewal, stale eviction, and owner checks all use the capacity lease; renewal must run by half its TTL. 2. A server-only `agent-recovery-transition` InternalOp owns `prepare|complete|cancel`: prepare exact-CASes workspace/project/ticket/stage/status/needs-input plus the exact worker session/container/runToken/runFence/startedAt; one Redis Lua operation transfers the expected old reservation to a deterministic recovery owner at the next fence (or rejects live/stale authority), then the session becomes `recovering`; only a hard-`WS_TURN_MAX_MS` stuck prepare or an explicit manual kill may revoke a live owner; boot/reaper prepares require an expired/missing owner; complete requires the processed durable prepare intent and exact recovery owner; strict Redis release certainty comes first, then the exact old session becomes `stopped` in the same writer ordering, and only then may awaited reprovision run; cancel likewise rolls back only its still-owned provisional recovery fence before restoring the prior session status. Redis unavailable/invalid results throw while the row remains `recovering`; a retry repairs the narrow Redis-before-row crash window from the exact fence. 3. `recovering` is a transient server-only fifth `AgentSession.status`. It is not a public/client transition and needs no schema field because the stored column is already a string. This consciously supersedes the earlier canonical-four wording in 04b while preserving the four ordinary lifecycle states. 4. Docker work occurs outside the renewable workspace writer lease. The immutable container ID, exact workspace/project/ticket labels, and `/work/.workspaces-run-owner` must all match before killing the old Claude process or first stopping the container. An exact container already proved stopped is an idempotent replay after a crash between stop and complete: no second stop or impossible stopped-container `exec` is attempted. Nonzero inspect/exec/stop or final-state mismatch otherwise cancels; it never completes or reprovisions. Reusable-container stage takeover additionally holds an atomic `/work/.workspaces-run-owner.lock` across owner read, Redis proof, kill, Redis recheck, marker replace, and cleanup, so an expired A cannot interleave with successor B. 5. The watchdog is an `@luckystack/cron` overlay job with `runOnStart`; no domain `setInterval` or one-time `isLeader()` gate remains. Global enumeration is read-only, then each workspace runs under `runInTenant` and writes only through InternalOps. Worker idle timestamps are host-global Redis keys over the exact container identity, so cron-leader switching preserves the TTL. 6. Reminder CAS is a second InternalOp. It binds exact ticket status/archived/remindedAt/needs-input hash, upserts a deterministic Notification, advances `remindedAt` once, and sends push outside the writer behind a long-lived once claim. 7. Every successful `stage-session-start` resets `startedAt` to now and `lastHeartbeatAt` to null, so a successor never inherits its predecessor's watchdog age. 8. The deterministic processed prepare `WorkspaceSignal` is the durable recovery record. Terminal Redis dedup replay may contain only keys, and its TTL may expire; recovery reconstructs the rich prepare from that exact signal, reuses (never recreates/collides with) its deterministic row after TTL, and may restore only the same expired recovery reservation at the already-incremented fence. Cron scans `busy`, `recovering`, and recovery-origin `stopped` rows so prepare crashes and queued successor retries converge automatically. 9. Manual kill synchronously enqueues and awaits that prepare reentrantly under the current writer before a public success ACK. Only Docker plus complete/cancel detach. Reprovision returns an honest boolean, queues Docker/admission failures, and recovery reports success only after the exact logical `AgentSession` has a new token and higher fence in `busy` or `stopped` state.
+
+→ `docs/decisions/0279-fenced-agent-recovery-writer.md`
 
 ## Code governed by decisions
 

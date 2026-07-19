@@ -22,6 +22,7 @@ import { runAiCompletion } from '../ai/registry';
 import { parseTheme, type GeneratedTheme } from './generateTheme';
 import { parseAsset } from './generateAsset';
 import { saveDesignArtifact } from './library';
+import { deterministicObjectId } from '../orchestrator/actionIds';
 
 const CHROME_IMAGE = (process.env.WS_EXPORT_CHROME_IMAGE ?? '').trim() || 'zenika/alpine-chrome:124';
 
@@ -132,16 +133,29 @@ const GALLERY: { name: string; description: string; light: Record<string, string
   { name: 'Corporate', description: 'Trustworthy and composed: navy-and-slate professionalism, disciplined spacing, zero noise.', light: { background: '#F6F8FB', container1: '#FFFFFF', 'container1-border': '#DFE5EE', container2: '#EEF2F8', 'container2-border': '#D5DDE9', title: '#152238', common: '#3A4A63', muted: '#71809A', divider: '#DFE5EE', primary: '#1D4E89', 'primary-hover': '#163C6A', 'primary-border': '#102D50' }, dark: { background: '#0D1420', container1: '#131C2C', 'container1-border': '#22304A', container2: '#1A2437', 'container2-border': '#2A3A57', title: '#EAF0F9', common: '#B9C6DA', muted: '#7C8BA5', divider: '#22304A', primary: '#4C86D0', 'primary-hover': '#6B9DDD', 'primary-border': '#2F65AB' } },
 ];
 
-//? Idempotent per-workspace seed of the gallery presets (source 'seed', inactive). Never overwrites
-//? edits: a preset only inserts when NO seed-artifact with its name exists yet.
-export async function ensureStyleGallery(prisma: PrismaClient, workspaceId: string): Promise<void> {
-  const existing = await prisma.designArtifact.findMany({ where: { workspaceId, kind: 'theme', source: 'seed' }, select: { name: true } });
-  const have = new Set(existing.map((a) => a.name));
-  for (const preset of GALLERY.filter((p) => !have.has(p.name))) {
+//? Idempotent per-workspace seed writer for gallery presets (source 'seed', inactive). Never overwrites
+//? edits. Call only from workspace bootstrap or the Conductor's internal backfill — never from reads.
+export async function ensureStyleGallery(prisma: PrismaClient, workspaceId: string): Promise<number> {
+  const presets = GALLERY.map((preset) => ({
+    preset,
+    id: deterministicObjectId(workspaceId, preset.name, 'builtin-design-artifact'),
+  }));
+  const existing = await prisma.designArtifact.findMany({
+    where: { workspaceId, id: { in: presets.map(({ id }) => id) } },
+    select: { id: true },
+  });
+  const existingIds = new Set(existing.map((artifact) => artifact.id));
+  for (const { preset, id } of presets) {
     //? parseTheme fills every omitted token from the accessible base sets → always a complete theme.
+    //? The deterministic id makes lease overlap/retry converge; historical duplicates stay untouched.
     const full = parseTheme(JSON.stringify(preset), preset.name);
-    await prisma.designArtifact.create({ data: { workspaceId, kind: 'theme', name: full.name, description: full.description, content: { light: full.light, dark: full.dark }, source: 'seed', active: false } });
+    await prisma.designArtifact.upsert({
+      where: { id },
+      update: {},
+      create: { id, workspaceId, kind: 'theme', name: full.name, description: full.description, content: { light: full.light, dark: full.dark }, source: 'seed', active: false },
+    });
   }
+  return presets.filter(({ id }) => !existingIds.has(id)).length;
 }
 
 export const GALLERY_PRESET_NAMES = GALLERY.map((g) => g.name);

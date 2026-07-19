@@ -60,7 +60,7 @@ model TicketEvent {
 
 ## §7. `AgentSession` — the ONE canonical runtime row
 
-`AgentSession` had **three conflicting definitions** (`handoff/DATAMODEL §5`, `04 §2`, and the INDEX delta additions) — the #1 runtime-cohesion hazard. This is the single merged source of truth; `04 §2` cites THIS body. It is the orchestrator's durable runtime fact: socket sessions are ephemeral, the SessionManager rehydrates PTYs from these rows on boot (`01 §4`, `resumeAll()`), and the container layer pins crash-recovery on its `containerId`/`worktreePath`/`claudeSessionId`. → `Q-DATA-AGENTSESSION`, merges INDEX deltas `AgentSession.durationEstimate` (05) + `tokenEstimate` (04 §2).
+`AgentSession` had **three conflicting definitions** (`handoff/DATAMODEL §5`, `04 §2`, and the INDEX delta additions) — the #1 runtime-cohesion hazard. This is the single merged source of truth; `04 §2` cites THIS body. It is the orchestrator's durable runtime fact: socket sessions are ephemeral, and the cron recovery sweep reconstructs an accepted fenced prepare from the row plus its processed `WorkspaceSignal`; the container layer pins that recovery on `containerId`/`worktreePath`/`claudeSessionId`. The current runtime does **not** implement a standalone `resumeAll()` PTY rebind/token-remint pass. → `Q-DATA-AGENTSESSION`, merges INDEX deltas `AgentSession.durationEstimate` (05) + `tokenEstimate` (04 §2).
 
 ```prisma
 model AgentSession {
@@ -86,15 +86,15 @@ model AgentSession {
   ptyAgentUrl     String?                         // 127.0.0.1:<port> the in-container pty-agent publishes (Q-CT-PTYAGENT), read via docker inspect
 
   // --- status (the SINGLE runtime state machine) ---
-  status          String                          // ready | busy | paused | stopped   (canonical 4-set, see below)
+  status          String                          // ready | busy | paused | recovering | stopped (recovering is server-only; ADR 0279)
 
   // --- budget / estimate feed (advisory; Q-ENG-TOKENFEED) ---
   tokenEstimate   Int      @default(0)            // running estimate for the 06 self-handoff / budget trigger; ADVISORY (char-count or hook-payload, never precise)
   durationEstimate Int?                            // seconds; cold-start self-estimate parsed by Conductor from the planning agent's carry-over summary (D4, doc 05); >= 0, nullable until a planning stage runs
 
   // --- structured-channel security (Q-ENG-TOKEN-LIFECYCLE) ---
-  channelTokenId  String?                         // id (NOT secret) of the per-session structured-channel token, bound to sessionKey, RE-MINTED on every spawn/resume; revoked on kill
-  hookTokenId     String?                         // id of the SEPARATE per-session WS_HOOK_TOKEN (same lifecycle, distinct secret)
+  channelTokenId  String?                         // reserved token id (NOT secret); standalone recovery remint is NOT implemented yet
+  hookTokenId     String?                         // reserved separate WS_HOOK_TOKEN id; same not-yet-implemented recovery lifecycle
 
   startedAt       DateTime @default(now())
   lastHeartbeatAt DateTime?
@@ -106,7 +106,7 @@ model AgentSession {
 }
 ```
 
-**Canonical `status` set — `ready | busy | paused | stopped`.** This is the *runtime/engine* state of the SESSION, distinct from `Ticket.status`/`TicketStatus` (the AI-owned ticket lifecycle: `idle|needs-input|busy|done|paused|stuck`, `types.ts:15`) and from `StageStatusCfg` (per-stage non-lifecycle labels). The three state machines stay separate (`Q-DATA-STATUS`). Mapping of the older 8-literal draft (`starting|ready|busy|needs-input|done|stuck|killed|error`) onto the canonical 4:
+**Runtime `status` set — `ready | busy | paused | recovering | stopped`.** The four ordinary lifecycle states remain unchanged; `recovering` is a transient server-only fenced-recovery state (ADR 0279), never a client/LLM transition. This is the *runtime/engine* state of the SESSION, distinct from `Ticket.status`/`TicketStatus` (the AI-owned ticket lifecycle: `idle|needs-input|busy|done|paused|stuck`, `types.ts:15`) and from `StageStatusCfg` (per-stage non-lifecycle labels). The three state machines stay separate (`Q-DATA-STATUS`). Mapping of the older 8-literal draft (`starting|ready|busy|needs-input|done|stuck|killed|error`) onto the ordinary lifecycle states:
 
 | Old literal | Canonical | Note |
 |---|---|---|
@@ -119,7 +119,7 @@ model AgentSession {
 | `killed`, `error` | `stopped` | terminal; `metadata`/the event log records the cause |
 
 **Lifecycle facts pinned here:**
-- `resumeAll()` (`Q-CT-RESUME`) re-associates each surviving container by stored `containerId` + `worktreePath`, re-attaches the pty-agent at `ptyAgentUrl`, RE-MINTS `channelTokenId`/`hookTokenId` (`Q-ENG-TOKEN-LIFECYCLE`), and `--resume`s on `claudeSessionId`. `--restart unless-stopped` keeps the container alive across orchestrator crashes.
+- The implemented recovery path is the leader-safe cron sweep, not `resumeAll()`: it scans `busy` plus durable `recovering`/`stopped` retry rows, reconstructs the exact processed prepare, validates the immutable container + owner fence (or the exact already-stopped container for an idempotent stop replay), and starts a normal higher-fence successor (using stored `claudeSessionId` for `--resume` when applicable). PTY-agent reattachment and `channelTokenId`/`hookTokenId` reminting remain **not implemented**; no current doc may claim otherwise.
 - A stage transition is a NEW PTY (new row OR a re-keyed `sessionKey`) in the SAME container with freshly-rendered `.claude` (`Q-CT-UNIT`); the old PTY's row goes `stopped`.
 - Host-side reasoning roles (Refine/Plan, `needsWorkspace=false`) leave `containerId`/`worktreePath` null and run in a minimal RO container (`Q-CT-HOSTROLES`).
 
@@ -373,7 +373,7 @@ Three overlapping carry-forward concepts, disambiguated (`04 §2` defines the tw
 - [ ] **`StageId` → `StageKind`** ([§12](#12-typed-stagekind--replacing-the-fixed-7-literal-stageid)). Replace the 7-literal union with `StageKind`; widen `PipelineStage.id`/`Ticket.stageId` to `string`; add `PipelineStage.kind`/`PipelineStageCfg.kind: StageKind`. Audit `Board.tsx`/`Pipeline.tsx`/`WorkspacesContext.tsx` key/switch sites first (they index by id, not kind — mechanical).
 - [ ] **`AiSuggestion.type`** (`types.ts:103`): add `'automation'` → the 5-value set ([§8](#8-workspacesuggestion--5-value-type--patch)); add `patch?: Json`-equivalent (`patch?: unknown` in the UI type or a typed `{ path; before; after }`).
 - [ ] **`WorkspaceBudget`** (`types.ts:129`): single-row → **multi-row/multi-cap** ([§9](#9-spendrecord--multi-row-workspacebudget)). Add `label`, `enforcement: 'pauseNew'|'pauseAll'`, `periodWindow`, `windowStartAt`; the screen renders a caps LIST, not one bar.
-- [ ] **`AgentSession` runtime type** (no prototype type today — `Terminal`/`TerminalProcess`/`TerminalLine` are the UI view): add a typed `AgentSession` mirroring [§7](#7-agentsession--the-one-canonical-runtime-row) (`kind`, `userId`, `claudeSessionId`, `containerId`, `worktreePath`, `status: 'ready'|'busy'|'paused'|'stopped'`, `tokenEstimate`, `durationEstimate`).
+- [ ] **`AgentSession` runtime type** (no prototype type today — `Terminal`/`TerminalProcess`/`TerminalLine` are the UI view): add a typed `AgentSession` mirroring [§7](#7-agentsession--the-one-canonical-runtime-row) (`kind`, `userId`, `claudeSessionId`, `containerId`, `worktreePath`, `status: 'ready'|'busy'|'paused'|'recovering'|'stopped'`, `tokenEstimate`, `durationEstimate`).
 - [ ] **`TicketEvent` parity** (`ActivityEvent`, `types.ts:137`): add `seq: number`, `stageId?`, `sessionKey?`, `metadata?` to align with [§6](#6-ticketevent--the-append-only-event-log).
 - [ ] **`WorkspaceRole`** ([§11e](#11e-workspacerole--custom-rbac-d76-q-sec-rbac-roles)): `PermRole` (`types.ts:236`) already approximates it — add `key`, `builtIn`, `workspaceId` to make it the real `WorkspaceRole` mirror.
 - [ ] **`Notification`/`PushSubscription`** ([§10](#10-notification--pushsubscription)): `NotificationItem` (`types.ts:119`) is the read-projection — add `deepLink?` + a `PushSubscription` type with `fullBodyOptIn`.

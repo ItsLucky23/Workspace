@@ -79,6 +79,10 @@ export interface WorkspacesCtx {
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   setActiveWorkspace: (id: string) => void;
+  //? F5 — post a reply to an inbox comment (the text the user approved).
+  replyToComment: (commentId: string, replyText: string) => void;
+  //? G4 — mark an asset as part of the reusable library (or take it out).
+  setAssetStarred: (assetId: string, starred: boolean) => void;
   //? G2 — duplicate this workspace's configuration into a new one.
   cloneWorkspace: (name: string) => void;
   //? G5 — `presetKey` = the pipeline tier the new workspace starts with.
@@ -346,6 +350,9 @@ export interface WorkspacesCtx {
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string }) => void;
+  //? G7 — create/update a prompt A/B experiment, and stop one (its trials are kept).
+  savePromptExperiment: (input: { experimentId?: string; feature: string; name: string; variantA: string; variantB: string }) => void;
+  stopPromptExperiment: (experimentId: string) => void;
   //? A7 — platform app credentials (write-only; an empty string clears that half → `.env` fallback).
   savePlatformCredentials: (platform: string, clientId: string, clientSecret: string) => void;
   editChannelBrand: (channelId: string, brandVoice: string) => void;

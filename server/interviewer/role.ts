@@ -2,7 +2,8 @@
 //? so a WorkspaceTrigger (e.g. a weekly cron) can run it via `invoke-agent-role` and surface its
 //? proposal in the system (the executor records the returned artifact as a notification). Reasons via
 //? the pluggable AI-provider layer (feature `interviewer`, ADR 0007). Call `registerInterviewerRole()`
-//? once at boot. Workspace-scoped (invariant B-4); `mutates:false` — it proposes, never writes.
+//? once at boot. Workspace-scoped (invariant B-4); `mutates:false` — it may persist derived finding rows
+//? through the Conductor, but it does not perform the authoritative action of applying those findings.
 
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
@@ -47,7 +48,7 @@ export function registerInterviewerRole(): void {
     key: 'interviewer',
     label: 'Interviewer',
     description: 'Reasons over the project and proposes concrete improvement ideas.',
-    mutates: false,
+    mutates: false, //? Finding rows are derived proposals; turning one into a ticket is the gated action.
     run: async (ctx) => {
       const focus = typeof ctx.params.focus === 'string' ? ctx.params.focus : '';
       //? Ground the ideas in the real codebase via RAG (top chunks for the focus, or a broad query).

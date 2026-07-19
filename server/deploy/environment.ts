@@ -183,10 +183,27 @@ async function failEnv(prisma: PrismaClient, envId: string, error: string): Prom
 
 //? Tear an environment down: remove the stable route + stop/remove the container, mark it stopped.
 export async function teardownEnvironment(prisma: PrismaClient, workspaceId: string, envId: string): Promise<{ ok: boolean }> {
-  await getProxyProvider().removeRoute(`env-${envId}`.toLowerCase());
-  await teardownTicketContainer(workspaceId, envKey(envId)).catch(() => null);
-  await prisma.environment.update({ where: { id: envId }, data: { status: 'stopped', containerName: null } }).catch(() => null);
-  return { ok: true };
+  const environment = await prisma.environment.findFirst({
+    where: { id: envId, workspaceId },
+    select: { id: true, containerName: true },
+  });
+  if (!environment) return { ok: true };
+
+  //? Workspace deletion relies on this result before removing the ownership rows. Fail closed when
+  //? the proxy or Docker cannot prove teardown; otherwise a deleted tenant could leave a public app.
+  const route = await getProxyProvider().removeRoute(`env-${envId}`.toLowerCase());
+  if (!route.ok) return { ok: false };
+  if (environment.containerName) {
+    if (!(await dockerAvailable())) return { ok: false };
+    await teardownTicketContainer(workspaceId, envKey(envId));
+    const stillExists = await docker(['inspect', '-f', '{{.Id}}', environment.containerName]);
+    if (stillExists.code === 0) return { ok: false };
+  }
+  const stopped = await prisma.environment.updateMany({
+    where: { id: envId, workspaceId },
+    data: { status: 'stopped', containerName: null },
+  });
+  return { ok: stopped.count === 1 };
 }
 
 //? Boot self-heal: re-assert the proxy route for every `live` environment whose container is still up,

@@ -39,7 +39,7 @@ try {
   assert(!isChatEnabledOp('save-env'), 'the client type-guard rejects a non-tranche op');
 
   // ---- (3) secret-bearing + plumbing ops are EXCLUDED (never proposable via chat)
-  for (const op of ['save-env', 'save-integration', 'save-media-provider', 'gitlab-settings', 'forge-connect', 'db-connect', 'account-disconnect', 'copilot-propose', 'accept-suggestion', 'mark-read'] as const) {
+  for (const op of ['save-env', 'save-integration', 'save-media-provider', 'gitlab-settings', 'forge-connect', 'db-connect', 'account-disconnect', 'copilot-propose', 'accept-suggestion', 'mark-read', 'project-runtime-save'] as const) {
     eq(PROPOSE_CATALOG[op].mode, 'excluded', `${op} is excluded from the chat surface`);
     eq(validateGenericAction({ op }, ctx), null, `${op} never validates as a generic proposal`);
   }

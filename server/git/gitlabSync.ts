@@ -148,8 +148,8 @@ export function mapGithubIssues(rows: GithubIssue[]): ForgeIssue[] {
   return issues;
 }
 
-function normalizedResponseRows(value: unknown, mode: ResolvedForge['mode']): ForgeIssue[] {
-  if (!Array.isArray(value)) return [];
+function normalizedResponsePage(value: unknown, mode: ResolvedForge['mode']): ForgePage<ForgeIssue> {
+  if (!Array.isArray(value)) return { rows: [], rawCount: 0 };
   const issues: ForgeIssue[] = [];
   for (const entry of value.slice(0, PER_PAGE)) {
     const row = record(entry);
@@ -157,7 +157,9 @@ function normalizedResponseRows(value: unknown, mode: ResolvedForge['mode']): Fo
     const issue = normalizeForgeIssue(entry);
     if (issue) issues.push(issue);
   }
-  return issues;
+  //? GitHub's /issues endpoint mixes pull requests into the provider page. Pagination
+  //? must therefore use its raw row count, not the filtered issue count.
+  return { rows: issues, rawCount: value.length };
 }
 
 //? Build the exact payload allowed into WorkspaceSignal/Conductor memory. Sorting and
@@ -237,19 +239,27 @@ export function isTransientForgeError(error: unknown): boolean {
   return code === 429 || code >= 500;
 }
 
-//? Follow `page=1..` until a short page or the safety cap. A malicious oversized
-//? page is sliced before accumulation, so count is bounded independently of the API.
+export interface ForgePage<T> {
+  rows: T[];
+  //? Provider count before local filtering (notably GitHub PR rows in /issues).
+  rawCount: number;
+}
+
+//? Follow `page=1..` until a short RAW provider page or the safety cap. A malicious
+//? oversized page is sliced before accumulation, so count is bounded independently.
 export async function accumulatePages<T>(
-  fetchPage: (page: number) => Promise<T[]>,
+  fetchPage: (page: number) => Promise<T[] | ForgePage<T>>,
   opts: { perPage?: number; maxPages?: number } = {},
 ): Promise<{ rows: T[]; capped: boolean }> {
   const perPage = opts.perPage ?? PER_PAGE;
   const maxPages = opts.maxPages ?? MAX_ISSUE_PAGES;
   const rows: T[] = [];
   for (let page = 1; page <= maxPages; page += 1) {
-    const pageRows = await fetchPage(page);
+    const result = await fetchPage(page);
+    const pageRows = Array.isArray(result) ? result : result.rows;
+    const rawCount = Array.isArray(result) ? result.length : result.rawCount;
     rows.push(...pageRows.slice(0, perPage));
-    if (pageRows.length < perPage) return { rows, capped: false };
+    if (rawCount < perPage) return { rows, capped: false };
   }
   return { rows, capped: true };
 }
@@ -280,7 +290,7 @@ async function fetchGitlabIssues(forge: ResolvedForge, request: ForgeFetch): Pro
     // eslint-disable-next-line luckystack/no-raw-fetch-in-src
     const response = await request(`${forge.base}/api/v4/projects/${encodeURIComponent(forge.repoPath)}/issues?state=opened&per_page=${String(PER_PAGE)}&page=${String(page)}`, { headers: { 'PRIVATE-TOKEN': forge.token ?? '' } });
     if (!response.ok) throw new Error(`gitlab ${String(response.status)}`);
-    return normalizedResponseRows(await readBoundedResponse(response), 'gitlab');
+    return normalizedResponsePage(await readBoundedResponse(response), 'gitlab');
   }, { attempts: 3, baseMs: 300, retryable: isTransientForgeError }));
 }
 
@@ -290,7 +300,7 @@ async function fetchGithubIssues(forge: ResolvedForge, request: ForgeFetch): Pro
     // eslint-disable-next-line luckystack/no-raw-fetch-in-src
     const response = await request(`${forge.base}/repos/${forge.repoPath}/issues?state=open&per_page=${String(PER_PAGE)}&page=${String(page)}`, { headers: { Authorization: `Bearer ${forge.token ?? ''}`, Accept: 'application/vnd.github+json' } });
     if (!response.ok) throw new Error(`github ${String(response.status)}`);
-    return normalizedResponseRows(await readBoundedResponse(response), 'github');
+    return normalizedResponsePage(await readBoundedResponse(response), 'github');
   }, { attempts: 3, baseMs: 300, retryable: isTransientForgeError }));
 }
 
@@ -388,8 +398,12 @@ async function applyIssueToProject(
   //? same forge iid in a sibling project is a collision: never update that sibling.
   if (existing?.projectId && existing.projectId !== projectId) return { key, touched: false };
   const archiveState = forgeIssueArchiveState(issue.state);
-  //? A close webhook is a delta, not a create instruction. Unknown closed issues stay unknown.
-  if (!existing && archiveState === true) return { key, touched: false };
+  //? A same-project DEV-iid with no canonical forge URL is a local-only collision.
+  //? Never turn it into a forge projection, regardless of webhook action or snapshot state.
+  if (existing?.issueUrl === null) return { key, touched: false };
+  //? A close webhook is a delta, not a create instruction. Likewise, an incoming row
+  //? without its canonical issue URL cannot safely create a remote projection.
+  if (!existing && (archiveState === true || issue.web_url === null)) return { key, touched: false };
   const common = {
     title: issue.title,
     description: issue.description,

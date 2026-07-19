@@ -40,9 +40,14 @@ try {
   eq(archList[0]?.archived, true, 'archive delta carries archived=true');
 
   // bulk-move returns the affected rows → ticketListDelta (same path the bulk-* ops share)
-  const mv = await enqueueControlAction({ workspaceId, op: 'bulk-move', target: { ticketIds: [key] }, payload: { stageId: 'coding' }, userId: owner.id, clientRequestId: `d-mv-${String(stamp)}` });
+  const ticketScope = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { projectId: true, stageId: true } });
+  const moveStage = ticketScope
+    ? await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticketScope.projectId, key: { not: ticketScope.stageId } }, orderBy: { order: 'asc' }, select: { key: true } })
+    : null;
+  assert(ticketScope !== null && moveStage !== null, 'the delta fixture has a second project-scoped stage');
+  const mv = await enqueueControlAction({ workspaceId, op: 'bulk-move', target: { ticketIds: [key] }, payload: { stageId: moveStage?.key ?? '', projectId: ticketScope?.projectId ?? '' }, userId: owner.id, clientRequestId: `d-mv-${String(stamp)}` });
   const mvList = ticketListDelta(mv.result);
-  eq(mvList[0]?.stageId, 'coding', 'bulk-move delta carries the new stageId');
+  eq(mvList[0]?.stageId, moveStage?.key, 'bulk-move delta carries the new stageId');
   eq(mvList[0]?.id, key, 'bulk-move delta keeps the DEV key as id');
 
   // save-env returns a write-only EnvVar delta: no plaintext/ciphertext crosses the room.

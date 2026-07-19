@@ -13,11 +13,15 @@ import { registerCronJob } from '@luckystack/cron';
 import { runScheduledPublish, runMetricsIngest, PUBLISH_INTERVAL_MS, METRICS_INTERVAL_MS } from '../../server/content/publish';
 import { runCommentsIngest, COMMENTS_INTERVAL_MS } from '../../server/content/commentInbox';
 import { runCronTriggers, CRON_TICK_MS } from '../../server/automation/cron';
+import { drainCapacityQueue, CAPACITY_DRAIN_MS } from '../../server/orchestrator/conductor';
 import { runWorkerReapTick, WORKER_REAP_MS } from '../../server/orchestrator/workerReaper';
+import { runWatchdogSweep, WATCHDOG_INTERVAL_MS } from '../../server/orchestrator/watchdog';
 import { reapIdleEditors, EDITOR_REAP_MS } from '../../server/proxy/editorReaper';
+import { createProxyRouteReconciliationJob } from '../../server/proxy/reconciliationJob';
 import { runDemoWatch, DEMO_WATCH_MS } from '../../server/deploy/demoWatch';
 import { runGitlabSyncTick, SYNC_INTERVAL_MS } from '../../server/git/gitlabSync';
 import { runBackup, BACKUP_INTERVAL_MS, BACKUP_ENABLED } from '../../server/db/backup';
+import { runWorkspaceBuiltinsBackfill, WORKSPACE_BUILTINS_BACKFILL_MS } from '../../server/bootstrap/workspaceBuiltins';
 
 //? O3 — fire due scheduled posts.
 registerCronJob({ name: 'scheduled-publish', schedule: { everyMs: PUBLISH_INTERVAL_MS }, handler: async () => { await runScheduledPublish(getPrismaClient(), Date.now()); } });
@@ -31,11 +35,26 @@ registerCronJob({ name: 'comments-ingest', schedule: { everyMs: COMMENTS_INTERVA
 //? #2 — fire due `on:'cron'` WorkspaceTriggers (per-minute sweep; each trigger carries its own cron string).
 registerCronJob({ name: 'automation-cron', schedule: { everyMs: CRON_TICK_MS }, handler: async () => { await runCronTriggers(getPrismaClient(), new Date()); } });
 
+//? Backfill builtin skills + Designer gallery for pre-provisioning workspaces. Cron supplies cluster
+//? leadership/overlap protection; every tenant write still enters the internal Conductor lane.
+registerCronJob({ name: 'workspace-builtins', schedule: { everyMs: WORKSPACE_BUILTINS_BACKFILL_MS }, runOnStart: true, handler: async () => { await runWorkspaceBuiltinsBackfill(getPrismaClient()); } });
+
+//? Capacity crash backstop — evicts expired reservations and resumes one valid queued turn.
+registerCronJob({ name: 'capacity-drain', schedule: { everyMs: CAPACITY_DRAIN_MS }, handler: async () => { await drainCapacityQueue(); } });
+
+//? Fenced crash recovery + dropped-turn/reminder sweep. runOnStart replaces the old
+//? one-shot boot timer; cron supplies leadership, overlap protection, and stable run dedup.
+registerCronJob({ name: 'ticket-watchdog', schedule: { everyMs: WATCHDOG_INTERVAL_MS }, runOnStart: true, handler: async () => { await runWatchdogSweep(Date.now()); } });
+
 //? Reap idle ticket worker containers.
 registerCronJob({ name: 'worker-reaper', schedule: { everyMs: WORKER_REAP_MS }, handler: async () => { await runWorkerReapTick(); } });
 
 //? Reap idle openvscode editor containers.
 registerCronJob({ name: 'editor-reaper', schedule: { everyMs: EDITOR_REAP_MS }, handler: async () => { await reapIdleEditors(Date.now()); } });
+
+//? Reconcile stale Caddy routes and re-assert live persistent-environment routes. runOnStart
+//? recovers a restarted proxy; cron's leader election and per-run lease make it cluster-safe.
+registerCronJob(createProxyRouteReconciliationJob());
 
 //? D3 — redeploy demo envs whose target branch moved.
 registerCronJob({ name: 'demo-watch', schedule: { everyMs: DEMO_WATCH_MS }, handler: async () => { await runDemoWatch(); } });

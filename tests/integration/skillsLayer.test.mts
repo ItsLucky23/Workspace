@@ -1,6 +1,6 @@
 //? FASE SK (DOCUMENTS_AND_SKILLS) through the REAL Conductor + Mongo: the universal AI-skills layer.
-//? Covers: builtin lazy-seed (idempotent), apply-point resolution, the prompt block, the four
-//? ai-skill-* ops (builtin delete refused, reset restores the seed), and the SNAPSHOT — including the
+//? Covers: builtin bootstrap/internal backfill (idempotent), apply-point resolution, the prompt block,
+//? the four ai-skill-* ops (builtin delete refused, reset restores the seed), and the SNAPSHOT — including the
 //? cross-tenant regression: CustomAiTask/OutputTemplate reads were UNSCOPED (not in TENANT_MODELS,
 //? so the no-where tenantDb read passed through) → every snapshot leaked every workspace's rows.
 
@@ -10,6 +10,9 @@ const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 const { ensureBuiltinSkills, resolveSkillsFor, skillPromptBlock, applyPointForFeature, builtinSkillDefault } = await import('../../server/ai/skills');
+const { runWorkspaceBuiltinsBackfill } = await import('../../server/bootstrap/workspaceBuiltins');
+const { DESIGN_LIBRARY_CORPUS } = await import('../../server/designer/designLibraryRag');
+const { deterministicObjectId } = await import('../../server/orchestrator/actionIds');
 const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -30,13 +33,14 @@ try {
   const createdB = await createBlankWorkspace(prisma, ownerB.id, 'Other WS');
   wsB = createdB.workspaceId;
 
-  // ---- 1. builtin seed: idempotent, all OFF by default ----
-  await ensureBuiltinSkills(wsId);
-  await ensureBuiltinSkills(wsId); // second run must not duplicate
+  // ---- 1. builtin seed: hard-idempotent under concurrent retry, all OFF by default ----
+  await prisma.skill.deleteMany({ where: { workspaceId: wsId, builtin: true } });
+  await Promise.all([ensureBuiltinSkills(prisma, wsId), ensureBuiltinSkills(prisma, wsId)]);
   const seeded = await prisma.skill.findMany({ where: { workspaceId: wsId } });
   eq(seeded.length, 5, 'the 5 builtin skills seeded exactly once (idempotent)');
   assert(seeded.every((s) => !s.enabled), 'every builtin starts OFF (consent-first)');
   assert(seeded.some((s) => s.slug === 'humanizer'), 'humanizer is among the seeds');
+  assert(seeded.every((skill) => skill.id === deterministicObjectId(wsId, skill.slug, 'builtin-skill')), 'every newly-seeded builtin skill has its deterministic workspace+slug ObjectId');
   const humanizer = seeded.find((s) => s.slug === 'humanizer');
   assert((humanizer?.instruction ?? '').includes('Never attempt to defeat or evade AI-detection'), 'the humanizer instruction embeds the ADR-0015 integrity boundary');
 
@@ -86,12 +90,32 @@ try {
   assert(restored !== null, 'ai-skill-reset restored the builtin name');
   eq(restored?.instruction, builtinSkillDefault('humanizer')?.instruction, 'and the canonical instruction text');
 
-  // ---- 5. snapshot: aiSkills present + lazily seeded for OTHER workspaces too ----
+  // ---- 5. snapshot reads only; the leader backfill repairs existing workspaces through one InternalOp ----
   const snap = await buildSnapshot(prisma, owner.id, wsId);
-  assert(snap.aiSkills.length >= 5, 'the snapshot carries the aiSkills list');
+  assert(snap.aiSkills.length >= 5, 'the snapshot carries the already-provisioned aiSkills list');
   assert(snap.aiSkills.every((s) => s.slug !== `pirate`), 'deleted skills are gone from the snapshot');
+
+  assert(await poll(async () => (await prisma.ragEntry.count({ where: { workspaceId: wsB, commitHash: DESIGN_LIBRARY_CORPUS } })) === 6 ? true : null) === true, 'new workspace bootstrap finishes its immediate gallery indexing callback');
+  await prisma.skill.deleteMany({ where: { workspaceId: wsB, builtin: true } });
+  await prisma.designArtifact.deleteMany({ where: { workspaceId: wsB, kind: 'theme', source: 'seed' } });
+  await prisma.ragEntry.deleteMany({ where: { workspaceId: wsB, commitHash: DESIGN_LIBRARY_CORPUS } });
+  const pureSnapshot = await buildSnapshot(prisma, ownerB.id, wsB);
+  eq(pureSnapshot.aiSkills.length, 0, 'snapshot reports missing builtins without seeding them');
+  eq(await prisma.skill.count({ where: { workspaceId: wsB, builtin: true } }), 0, 'snapshot remains a pure read for builtin skills');
+  eq(await prisma.designArtifact.count({ where: { workspaceId: wsB, kind: 'theme', source: 'seed' } }), 0, 'snapshot remains a pure read for the Designer gallery');
+  const backfillAt = stamp + 1234;
+  await Promise.all([
+    runWorkspaceBuiltinsBackfill(prisma, backfillAt, [wsB]),
+    runWorkspaceBuiltinsBackfill(prisma, backfillAt, [wsB]),
+  ]);
+  eq(await prisma.workspaceSignal.count({ where: { workspaceId: wsB, kind: 'workspace-builtins-ensure' } }), 1, 'concurrent leader backfills enqueue exactly one internal writer action per workspace+bucket');
+  eq(await prisma.skill.count({ where: { workspaceId: wsB, builtin: true } }), 5, 'the internal backfill restores one builtin skill set');
+  const backfilledGallery = await prisma.designArtifact.findMany({ where: { workspaceId: wsB, kind: 'theme', source: 'seed' } });
+  eq(backfilledGallery.length, 6, 'the internal backfill restores one Designer gallery set');
+  assert(backfilledGallery.every((artifact) => artifact.id === deterministicObjectId(wsB, artifact.name, 'builtin-design-artifact')), 'every backfilled gallery preset uses its deterministic workspace+name ObjectId');
+  eq(await prisma.ragEntry.count({ where: { workspaceId: wsB, commitHash: DESIGN_LIBRARY_CORPUS } }), 6, 'derived gallery indexing completes after the internal writer returns');
   const snapB = await buildSnapshot(prisma, ownerB.id, wsB);
-  eq(snapB.aiSkills.length, 5, "workspace B lazily seeded its OWN builtins via the snapshot read");
+  eq(snapB.aiSkills.length, 5, 'workspace B snapshot reads the backfilled skills without mutating');
 
   // ---- 6. cross-tenant regression: customTasks/outputTemplates must NOT leak between workspaces ----
   await prisma.customAiTask.create({ data: { workspaceId: wsB, name: 'B task', promptTemplate: 'x' } });

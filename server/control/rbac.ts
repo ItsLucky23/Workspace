@@ -79,6 +79,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'remove-integration': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,
   'save-git-config': CAP.workspaceSettings,
+  'project-runtime-save': CAP.workspaceSettings,
   'save-sections': CAP.workspaceSettings,
   'save-ai-instruction': CAP.workspaceSettings,
   'save-ai-provider': CAP.workspaceSettings,
@@ -145,6 +146,9 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'studio-unpublish-site': CAP.workTickets,
   //? G4 — starring marks an asset as part of the workspace's reusable library.
   'asset-star': CAP.workTickets,
+  //? G7 — a prompt experiment steers every AI run for that feature; workspace-settings bar.
+  'prompt-experiment-save': CAP.workspaceSettings,
+  'prompt-experiment-stop': CAP.workspaceSettings,
   'content-critique-image': CAP.workTickets,
   'content-video-restyle': CAP.workTickets,
   'content-edit-image': CAP.workTickets,

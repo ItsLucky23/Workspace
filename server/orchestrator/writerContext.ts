@@ -10,12 +10,20 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 
+import { currentWorkspaceId } from '../tenant/tenantContext';
+
 export type WriterScope = string;
 export const GLOBAL_WRITER_SCOPE: WriterScope = 'global';
+
+interface WriterLeaseGuard {
+  assertHeld(): void;
+}
 
 interface WriterContext {
   scope: WriterScope;
   active: boolean;
+  leaseGuard?: WriterLeaseGuard;
+  activeDedupKeys: ReadonlySet<string>;
 }
 
 const storage = new AsyncLocalStorage<WriterContext>();
@@ -47,16 +55,58 @@ export function assertWriterContext(expectedScope?: WriterScope): WriterScope {
   return scope;
 }
 
+//? Dedup keys follow the async call tree, not a process-global mutable set. A nested action therefore
+//? sees every active ancestor key while parallel sibling branches do not become false ancestors.
+export function hasActiveWriterDedupKey(dedupKey: string): boolean {
+  const context = storage.getStore();
+  return context?.active === true && context.activeDedupKeys.has(dedupKey);
+}
+
+//? Reentrant Conductor enqueues may reuse only the renewable lease attached to the
+//? active execute boundary. A hand-built writer ALS scope is not lease ownership.
+export function assertWriterLeaseHeld(expectedScope: WriterScope): void {
+  assertWriterContext(expectedScope);
+  const context = storage.getStore();
+  if (context?.active !== true || context.leaseGuard === undefined) {
+    throw new Error('[writer] no active workspace lease in Conductor writer context');
+  }
+  context.leaseGuard.assertHeld();
+}
+
+//? Domain mutation boundaries use this stricter workspace assertion: writer
+//? ownership without the matching tenant ALS would still permit an unscoped or
+//? cross-tenant raw Prisma write.
+export function assertWorkspaceWriterContext(workspaceId: string): void {
+  assertWriterContext(workspaceId);
+  if (currentWorkspaceId() !== workspaceId) {
+    throw new Error('[writer] tenant context does not match the writer workspace');
+  }
+}
+
 //? Called only at the Conductor's executeAction boundary. Same-scope nesting is
 //? harmless; crossing into another workspace (or global scope) fails loudly.
-export function runInWriterContext<T>(scope: WriterScope, fn: () => Promise<T>): Promise<T> {
+export function runInWriterContext<T>(
+  scope: WriterScope,
+  fn: () => Promise<T>,
+  leaseGuard?: WriterLeaseGuard,
+  dedupKey?: string,
+): Promise<T> {
+  const parent = storage.getStore();
   const activeScope = currentWriterScope();
-  if (activeScope !== null) {
-    if (activeScope !== scope) throw new WriterContextMismatchError(activeScope, scope);
-    return fn();
+  if (activeScope !== null && activeScope !== scope) {
+    throw new WriterContextMismatchError(activeScope, scope);
   }
+  if (activeScope !== null && dedupKey === undefined) return fn();
 
-  const context: WriterContext = { scope, active: true };
+  const activeDedupKeys = new Set(parent?.active === true ? parent.activeDedupKeys : []);
+  if (dedupKey !== undefined) activeDedupKeys.add(dedupKey);
+  const inheritedLeaseGuard = parent?.active === true ? parent.leaseGuard : undefined;
+  const context: WriterContext = {
+    scope,
+    active: true,
+    activeDedupKeys,
+    ...((inheritedLeaseGuard ?? leaseGuard) === undefined ? {} : { leaseGuard: inheritedLeaseGuard ?? leaseGuard }),
+  };
   return storage.run(context, () => Promise.resolve().then(fn).finally(() => {
     context.active = false;
   }));

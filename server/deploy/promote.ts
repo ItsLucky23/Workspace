@@ -25,9 +25,9 @@ export async function promoteEnvironment(prisma: PrismaClient, workspaceId: stri
   //? prod gate (ADR 0038/0039): explicit approval (B-23) AND green CI. Green-CI blocks only when the
   //? latest project run actually failed/is running (no CI configured ⇒ green — opt-in).
   if (toKind === 'prod' && opts.approved !== true) return { ok: false, status: 'blocked', error: 'promote.prodNeedsApproval' };
-  if (toKind === 'prod' && !(await ciGreenForProject(prisma, workspaceId, projectId))) return { ok: false, status: 'blocked', error: 'promote.needsGreenCi' };
-  //? Security gate (ADR 0040): a high/critical scanner finding blocks the prod promote (report-only below).
-  if (toKind === 'prod' && (await securityBlocksProdPromote(prisma, workspaceId, projectId))) return { ok: false, status: 'blocked', error: 'promote.securityFindings' };
+  if (toKind === 'prod' && !(await ciGreenForProject(prisma, workspaceId, projectId, source.deployedCommit))) return { ok: false, status: 'blocked', error: 'promote.needsGreenCi' };
+  //? Security gate (ADR 0040): evaluate findings for the exact source revision when available.
+  if (toKind === 'prod' && (await securityBlocksProdPromote(prisma, workspaceId, projectId, source.deployedCommit))) return { ok: false, status: 'blocked', error: 'promote.securityFindings' };
 
   const targetId = await ensureEnvironment(prisma, workspaceId, projectId, serviceId, toKind);
   if (!targetId) return { ok: false, status: 'error', error: 'promote.noTarget' };

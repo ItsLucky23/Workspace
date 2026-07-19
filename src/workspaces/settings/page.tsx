@@ -149,6 +149,79 @@ function ProfileEditForm({ currentName }: { currentName: string }) {
 //? X3 — API tokens (Personal Access Tokens) panel: issue (raw token shown ONCE), list (prefix + scopes), revoke.
 //? Talks to the issuePat/listPats/revokePat `_api` routes directly (not a [control-API] op — it's account state).
 interface PatRow { id: string; name: string; prefix: string; scopes: string[] }
+//? GAP_SCAN G7 — prompt A/B. A workspace's prompts are its most-edited surface and were the least-measured
+//? one: a rewrite either "felt better" or nobody knew. This starts a two-variant experiment per AI feature
+//? and shows the verdict — including, most of the time, "not enough data yet", which is the honest answer
+//? and the reason the panel is worth having at all.
+interface ExperimentRow {
+  id: string; feature: string; name: string; status: string; variantA: string; variantB: string;
+  trialsA: number; trialsB: number; meanA: number; meanB: number; lift: number; winner: string; verdict: string;
+}
+
+//? The features whose prompt is worth A/B-ing (the ones whose output has a measurable outcome).
+const EXPERIMENT_FEATURES = ['script', 'interviewer', 'mr-review', 'workspace-chat'];
+
+function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
+  const translate = useTranslator();
+  const { savePromptExperiment, stopPromptExperiment } = useWorkspaces();
+  const [rows, setRows] = useState<ExperimentRow[]>([]);
+  const [feature, setFeature] = useState(EXPERIMENT_FEATURES[0] ?? 'script');
+  const [name, setName] = useState('');
+  const [variantA, setVariantA] = useState('');
+  const [variantB, setVariantB] = useState('');
+
+  const refresh = useCallback(() => {
+    void tryCatch(() => apiRequest({ name: 'workspaces/promptExperiments', version: 'v1', data: { workspaceId } })).then(([err, res]) => {
+      if (!err && res?.status === 'success') setRows(res.result.experiments);
+    });
+  }, [workspaceId]);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const start = (): void => {
+    if (variantA.trim().length === 0 || variantB.trim().length === 0) return;
+    savePromptExperiment({ feature, name: name.trim() || feature, variantA: variantA.trim(), variantB: variantB.trim() });
+    setName(''); setVariantA(''); setVariantB('');
+    //? The write goes through the Conductor, so re-read shortly after rather than optimistically.
+    setTimeout(refresh, 600);
+  };
+
+  const featureItems: DropdownItem[] = EXPERIMENT_FEATURES.map((f) => ({ id: f, value: f, item: f }));
+  const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
+
+  return (
+    <Card title={translate({ key: 'workspaces.experiments.title' })} desc={translate({ key: 'workspaces.experiments.desc' })}>
+      <div className="flex flex-col gap-2 pb-3 border-b border-divider">
+        <Dropdown size="md" value={featureItems.find((i) => i.id === feature)} items={featureItems} onChange={(it) => { setFeature(String(it.id)); }} />
+        <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.experiments.namePlaceholder' })} className={fieldCls} />
+        <textarea value={variantA} onChange={(e) => { setVariantA(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.experiments.variantA' })} className={`${fieldCls} resize-none`} />
+        <textarea value={variantB} onChange={(e) => { setVariantB(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.experiments.variantB' })} className={`${fieldCls} resize-none`} />
+        <WsButton icon="flask" disabled={variantA.trim().length === 0 || variantB.trim().length === 0} onClick={start}>{translate({ key: 'workspaces.experiments.start' })}</WsButton>
+      </div>
+      <div className="flex flex-col">
+        {rows.map((row) => (
+          <Row key={row.id}>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-title truncate">{row.name}</div>
+              <div className="text-xs text-muted">{row.feature}{' · '}{translate({ key: `workspaces.experiments.status_${row.status}` })}</div>
+              {/* The verdict is the product here — "not enough data" is a real answer, not a placeholder. */}
+              <div className={`text-xs mt-0.5 ${row.winner ? 'text-correct' : 'text-muted'}`}>{row.verdict}</div>
+              <div className="text-[11px] text-disabled tabular-nums mt-0.5">
+                A {String(row.trialsA)}{' · '}{String(row.meanA)}{'   B '}{String(row.trialsB)}{' · '}{String(row.meanB)}
+              </div>
+            </div>
+            {row.status === 'running' && (
+              <button type="button" onClick={() => { stopPromptExperiment(row.id); setTimeout(refresh, 600); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">
+                {translate({ key: 'workspaces.experiments.stop' })}
+              </button>
+            )}
+          </Row>
+        ))}
+        {rows.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.experiments.empty' })}</div>}
+      </div>
+    </Card>
+  );
+}
+
 function PatPanel({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
   const [rows, setRows] = useState<PatRow[]>([]);
@@ -595,6 +668,8 @@ export default function AccountSettings() {
 
           {/* X3 — API tokens (issue/list/revoke) for the public API. */}
           <PatPanel workspaceId={activeWorkspace.id} />
+          {/* G7 — measure a prompt change instead of guessing at it. */}
+          <ExperimentsPanel workspaceId={activeWorkspace.id} />
 
           {/* H4 — download a tenant-scoped JSON export of the workspace (portability/backup; secrets excluded). */}
           <Card title={translate({ key: 'workspaces.dataExport.title' })} desc={translate({ key: 'workspaces.dataExport.desc' })}>

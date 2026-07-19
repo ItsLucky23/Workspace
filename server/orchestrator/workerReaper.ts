@@ -1,85 +1,204 @@
-//? W3 — idle worker-container reaper. A ticket parked at `needs-input` (waiting for a human) keeps its per-ticket
-//? worker container running indefinitely — the editor-reaper only kills idle *editors*, never the worker itself.
-//? This reaper STOPS (not removes) the worker container of a parked ticket after WS_WORKER_IDLE_MIN: a stopped
-//? container frees CPU/RAM while preserving its filesystem, so the existing reprovision path (`docker start` the
-//? same-named container on answer/resume) keeps `claude --resume` working. Leader-gated. The reap DECISION is
-//? pure over injected deps (Docker/Prisma) so it is unit-testable without a daemon.
+//? Idle worker-container reaper. Runtime enumeration is host-global/read-only; each exact
+//? workspace/project/ticket/container identity is re-read under runInTenant and stopped only
+//? through the same fenced agent-recovery InternalOp as watchdog recovery.
 
-import { docker } from '../container/runtime';
-import { getPrismaClient } from '@luckystack/core';
+import { createHash } from 'node:crypto';
+
+import { formatKey, getPrismaClient, redis, tryCatch } from '@luckystack/core';
+import type { PrismaClient } from '@prisma/client';
+
+import { listRunningWorkerContainers, type WorkerContainerIdentity } from '../container/runtime';
 import { editorSockState } from '../proxy/editorReaper';
+import { runInTenant } from '../tenant/tenantContext';
+import { runAgentRecovery, type AgentRecoveryRunResult } from './agentControl';
+import type { AgentRecoveryExpected, AgentRecoveryTransitionInternalAction } from './internalOps';
+import { needsInputHash } from './recoveryWriter';
 
 const IDLE_MS = Number(process.env.WS_WORKER_IDLE_MIN ?? '20') * 60_000;
-//? Reap cadence. Exported so the @luckystack/cron overlay job schedules it (leadership handled by cron's lease).
+const IDLE_KEY_TTL_MS = Math.max(IDLE_MS * 4, 24 * 60 * 60 * 1000);
 export const WORKER_REAP_MS = Number(process.env.WS_REAP_INTERVAL_MIN ?? '5') * 60_000;
 
-//? container name → epoch ms it was first seen parked-idle (cleared when the ticket leaves needs-input / is gone).
-const idleSince = new Map<string, number>();
-
-//? Statuses that hold a container we may reap: a parked ticket is idle (its `claude` was killed on needs-input).
-//? A `busy` ticket has a live turn — NEVER reap it.
-const REAPABLE = new Set(['needs-input']);
-
-export interface WorkerReapDeps {
-  //? Running per-ticket worker containers: `{ name, ticketKey }`.
-  listWorkers: () => Promise<{ name: string; ticketKey: string }[]>;
-  //? Map each ticket key → its current status.
-  ticketStatus: (keys: string[]) => Promise<Map<string, string>>;
-  //? True when a human has a live editor connection on that container (don't reap under them).
-  hasConnectedEditor: (name: string) => Promise<boolean>;
-  //? Stop (not remove) the container.
-  stop: (name: string) => Promise<void>;
+export interface WorkerReapTarget {
+  target: AgentRecoveryTransitionInternalAction['target'];
+  expected: AgentRecoveryExpected;
 }
 
-//? One reaper sweep (pure over deps). Stops parked-idle worker containers past the TTL; tracks the idle clock
-//? per container across sweeps; forgets containers that are gone. Best-effort — never throws into the caller.
+export interface WorkerReapDeps {
+  listWorkers: () => Promise<WorkerContainerIdentity[]>;
+  loadTarget: (worker: WorkerContainerIdentity) => Promise<WorkerReapTarget | null>;
+  hasConnectedEditor: (worker: WorkerContainerIdentity) => Promise<boolean | null>;
+  idleSince: (worker: WorkerContainerIdentity, now: number) => Promise<number | null>;
+  clearIdle: (worker: WorkerContainerIdentity) => Promise<void>;
+  recover: (worker: WorkerContainerIdentity, target: WorkerReapTarget, now: number) => Promise<AgentRecoveryRunResult>;
+}
+
+export function workerContainerIdentity(worker: WorkerContainerIdentity): string {
+  return `${worker.workspaceId}\0${worker.projectId}\0${worker.ticketKey}\0${worker.containerId}\0${worker.name}`;
+}
+
+function idleKey(worker: WorkerContainerIdentity): string {
+  const digest = createHash('sha256').update(workerContainerIdentity(worker)).digest('hex');
+  return formatKey(':worker-idle', digest);
+}
+
+//? One pure-over-dependencies pass. The timestamp storage is deliberately injected;
+//? production uses host-global Redis, so a different cron leader continues the same clock.
 export async function reapIdleWorkers(now: number, deps: WorkerReapDeps): Promise<{ reaped: string[] }> {
   const workers = await deps.listWorkers();
-  const statuses = await deps.ticketStatus(workers.map((w) => w.ticketKey));
   const reaped: string[] = [];
-  const seen = new Set<string>();
-  for (const w of workers) {
-    seen.add(w.name);
-    const status = statuses.get(w.ticketKey) ?? '';
-    if (!REAPABLE.has(status)) { idleSince.delete(w.name); continue; } // active/other → not reapable
-    if (await deps.hasConnectedEditor(w.name)) { idleSince.delete(w.name); continue; } // a human is editing → keep
-    const since = idleSince.get(w.name) ?? now;
-    idleSince.set(w.name, since);
-    if (now - since >= IDLE_MS) {
-      await deps.stop(w.name);
-      idleSince.delete(w.name);
-      reaped.push(w.name);
+  for (const worker of workers) {
+    const target = await deps.loadTarget(worker);
+    const editor = await deps.hasConnectedEditor(worker);
+    if (!target || editor === true) {
+      await deps.clearIdle(worker);
+      continue;
     }
+    //? Docker/editor uncertainty is fail-closed without resetting the shared idle age.
+    if (editor === null) continue;
+    const since = await deps.idleSince(worker, now);
+    if (since === null || now - since < IDLE_MS) continue;
+    //? Editor/status are probed once more after the TTL. The recovery prepare then performs
+    //? the exact ticket/session CAS before Docker is allowed to stop the immutable container id.
+    const revalidatedEditor = await deps.hasConnectedEditor(worker);
+    if (revalidatedEditor === true) {
+      await deps.clearIdle(worker);
+      continue;
+    }
+    if (revalidatedEditor === null) continue;
+    const result = await deps.recover(worker, target, now);
+    if (!result.recovered) continue;
+    await deps.clearIdle(worker);
+    reaped.push(worker.name);
   }
-  //? Forget containers that are no longer running (a stop/restart resets the idle clock).
-  const stale: string[] = [];
-  for (const name of idleSince.keys()) if (!seen.has(name)) stale.push(name);
-  for (const name of stale) idleSince.delete(name);
   if (reaped.length > 0) console.log(`[worker-reaper] stopped ${String(reaped.length)} idle worker container(s): ${reaped.join(', ')}`);
   return { reaped };
 }
 
-//? The real deps: list labelled containers via `docker ps`, read statuses from Prisma, probe the editor socket,
-//? and `docker stop` the container.
-function realDeps(): WorkerReapDeps {
+async function loadRealTarget(prisma: PrismaClient, worker: WorkerContainerIdentity): Promise<WorkerReapTarget | null> {
+  return runInTenant(worker.workspaceId, async () => {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        workspaceId: worker.workspaceId,
+        projectId: worker.projectId,
+        key: worker.ticketKey,
+        status: 'needs-input',
+        archived: false,
+      },
+      select: { id: true, key: true, projectId: true, stageId: true, status: true, needsInput: true },
+    });
+    if (!ticket) return null;
+    const session = await prisma.agentSession.findFirst({
+      where: {
+        workspaceId: worker.workspaceId,
+        ticketId: ticket.id,
+        stageId: ticket.stageId,
+        kind: 'worker',
+        sessionKey: `worker:${ticket.id}:${ticket.stageId}`,
+        status: { in: ['busy', 'paused'] },
+        containerId: worker.containerId,
+      },
+      select: { id: true, status: true, containerId: true, runToken: true, runFence: true, startedAt: true },
+    });
+    if (!session?.containerId || !session.runToken || session.runFence <= 0 || (session.status !== 'busy' && session.status !== 'paused')) return null;
+    return {
+      target: {
+        ticketId: ticket.id,
+        ticketKey: ticket.key,
+        projectId: ticket.projectId,
+        stageId: ticket.stageId,
+        sessionId: session.id,
+      },
+      expected: {
+        ticketStatus: ticket.status,
+        needsInputHash: needsInputHash(ticket.needsInput),
+        sessionStatus: session.status,
+        containerId: session.containerId,
+        runToken: session.runToken,
+        runFence: session.runFence,
+        startedAt: session.startedAt.getTime(),
+      },
+    };
+  });
+}
+
+async function stillReapable(
+  prisma: PrismaClient,
+  worker: WorkerContainerIdentity,
+  target: WorkerReapTarget,
+): Promise<boolean> {
+  const editor = await editorSockState(worker.containerId);
+  if (!editor.available || editor.connected) return false;
+  return runInTenant(worker.workspaceId, async () => {
+    const [ticket, session] = await Promise.all([
+      prisma.ticket.findFirst({
+        where: {
+          id: target.target.ticketId,
+          workspaceId: worker.workspaceId,
+          projectId: worker.projectId,
+          key: worker.ticketKey,
+          stageId: target.target.stageId,
+          status: target.expected.ticketStatus,
+          archived: false,
+        },
+        select: { needsInput: true },
+      }),
+      prisma.agentSession.findFirst({
+        where: {
+          id: target.target.sessionId,
+          workspaceId: worker.workspaceId,
+          ticketId: target.target.ticketId,
+          stageId: target.target.stageId,
+          status: 'recovering',
+          containerId: worker.containerId,
+          runToken: target.expected.runToken,
+          runFence: target.expected.runFence,
+          startedAt: new Date(target.expected.startedAt),
+        },
+        select: { id: true },
+      }),
+    ]);
+    return ticket !== null && session !== null && needsInputHash(ticket.needsInput) === target.expected.needsInputHash;
+  });
+}
+
+function realDeps(prisma: PrismaClient): WorkerReapDeps {
   return {
-    listWorkers: async () => {
-      const r = await docker(['ps', '--filter', 'label=org.workspaces.ticket', '--format', '{{.Names}}\t{{.Label "org.workspaces.ticket"}}']);
-      return r.out.split('\n').map((l) => l.trim()).filter((l) => l.length > 0).map((row) => {
-        const [name, ticketKey] = row.split('\t');
-        return { name: name ?? '', ticketKey: ticketKey ?? '' };
-      }).filter((w) => w.name.length > 0 && w.ticketKey.length > 0);
+    listWorkers: listRunningWorkerContainers,
+    loadTarget: (worker) => loadRealTarget(prisma, worker),
+    hasConnectedEditor: async (worker) => {
+      const state = await editorSockState(worker.containerId);
+      return state.available ? state.connected : null;
     },
-    ticketStatus: async (keys) => {
-      const rows = keys.length > 0 ? await getPrismaClient().ticket.findMany({ where: { key: { in: keys } }, select: { key: true, status: true } }) : [];
-      return new Map(rows.map((t) => [t.key, t.status]));
+    idleSince: async (worker, now) => {
+      const key = idleKey(worker);
+      const [readError, current] = await tryCatch(() => redis.get(key));
+      if (readError) return null;
+      if (current !== null) {
+        const parsed = Number(current);
+        return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+      }
+      const [writeError, written] = await tryCatch(() => redis.set(key, String(now), 'PX', IDLE_KEY_TTL_MS, 'NX'));
+      return !writeError && written === 'OK' ? now : null;
     },
-    hasConnectedEditor: async (name) => { const s = await editorSockState(name); return s.connected; },
-    stop: async (name) => { await docker(['stop', name]); },
+    clearIdle: async (worker) => { await tryCatch(() => redis.del(idleKey(worker))); },
+    recover: async (worker, target, now) => {
+      const prepare: AgentRecoveryTransitionInternalAction = {
+        workspaceId: worker.workspaceId,
+        op: 'agent-recovery-transition',
+        target: target.target,
+        payload: { phase: 'prepare', reason: 'worker-reap', expected: target.expected, observedAt: now },
+        userId: 'worker-reaper',
+        clientRequestId: `agent-recovery-prepare:worker-reap:${target.target.sessionId}:${target.expected.runToken}:${String(target.expected.runFence)}:${String(target.expected.startedAt)}`,
+      };
+      return runAgentRecovery({
+        prepare,
+        mode: 'stop-container',
+        shouldProceed: () => stillReapable(prisma, worker, target),
+      });
+    },
   };
 }
 
-//? One reaper pass (called by the @luckystack/cron overlay job; cron's lease guarantees single-instance).
 export async function runWorkerReapTick(): Promise<void> {
-  await reapIdleWorkers(Date.now(), realDeps());
+  await reapIdleWorkers(Date.now(), realDeps(getPrismaClient()));
 }

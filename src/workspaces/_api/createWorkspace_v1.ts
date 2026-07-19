@@ -1,13 +1,9 @@
-//? Workspaces — [create-workspace] typed per-action route (Fase-0 split). Login-only
-//? (the caller becomes Owner) and CREATES the tenant, so it can't be scoped/enqueued
-//? by workspaceId — it's a direct RBAC-gated bootstrap write. Uses `createBlankWorkspace`
-//? (Project + default pipeline + light starter seed) and returns the new id.
+//? Workspaces — [create-workspace] login-only control-API route. The new tenant has
+//? no workspaceId yet, so the authenticated caller enqueues the global Conductor action.
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { createBlankWorkspace } from '../../../server/bootstrap/seedWorkspace';
-import { isPipelinePreset } from '../../../server/bootstrap/defaultPipeline';
-import { sanitizeSections } from '../_data/modules';
+import { enqueueControlAction, isControlActionFailure } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -23,10 +19,17 @@ export interface ApiParams {
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
   const name = data.name.trim();
-  if (name.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
-  const enabledSections = sanitizeSections(data.enabledSections);
-  const rawPreset = typeof data.presetKey === 'string' ? data.presetKey : '';
-  const preset = isPipelinePreset(rawPreset) ? rawPreset : 'professional';
-  const { workspaceId } = await createBlankWorkspace(functions.db.prisma, user.id, name, enabledSections, preset);
-  return { status: 'success', result: { accepted: true, signalSeq: 0, workspaceId } };
+  if (name.length === 0 || !data.clientRequestId) return { status: 'error', errorCode: 'api.invalidRequest' };
+  const [enqueueError, enqueued] = await functions.tryCatch.tryCatch(() => enqueueControlAction({
+    workspaceId: '',
+    op: 'create-workspace',
+    target: {},
+    payload: { name, ...(data.enabledSections ? { enabledSections: data.enabledSections } : {}), ...(data.presetKey ? { presetKey: data.presetKey } : {}) },
+    userId: user.id,
+    clientRequestId: data.clientRequestId,
+  }));
+  if (enqueueError || !enqueued || isControlActionFailure(enqueued.result)) {
+    return { status: 'error', errorCode: 'api.invalidRequest' };
+  }
+  return { status: 'success', result: { accepted: true, signalSeq: enqueued.signalSeq } };
 };

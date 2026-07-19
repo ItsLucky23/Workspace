@@ -210,7 +210,7 @@ B-26 names "reasonable container hygiene" but never lists it. **NEVER `docker ru
 | **CPU** | `--cpus 2` | fair share; ~8 active on the reference host |
 | **Disk** | quota on the worktree volume (e.g. 10g per ticket; storage-driver `--storage-opt size=` or a quota'd mount) | a runaway build/log can't fill the host |
 | **Network** | join `workspaces-net` only; egress via the forward-proxy; **no `--network host`**, no extra published ports | `[07b §5]`/`[07b §6]` |
-| **Restart** | `--restart unless-stopped` | survive orchestrator crash for `resumeAll` (`[07b §9]`) |
+| **Restart** | `--restart unless-stopped` | preserve the container for the cron recovery path (`[07b §9]`) |
 | **Seccomp/AppArmor** | Docker default profiles (not loosened) | baseline syscall filtering |
 | **Auth mount** | RO `.credentials.json`; `denyRead` from Bash | `[07b §2.4]` |
 | **FS** | worktree volume writable; image layers RO; tmpfs for the env-file | `[07b §6.3]` |
@@ -246,6 +246,10 @@ admit(request):
 - **Reclaim before reject** (D87): over `MAX_RESIDENT` or under a RAM watermark, pause+remove the **oldest paused/idle** container (its `AgentSession` → `paused`, container kept for `--resume` only if within the idle window, else `stopped` + volume retained for re-clone), THEN admit.
 - **`previewConcurrencyCap` is a sub-limit in ONE shared budget** — previews and worker containers draw from the same resident pool, not two independent ceilings that over-subscribe the host (`Q-PREVIEW-COST`).
 - **Queue, never hard-reject** when nothing is reclaimable — the request waits and a `Notification` informs the user (B-34).
+- **Owner lease ≠ hard turn maximum (ADR 0279).** Every admitted run owns a short renewable
+  `WS_CAPACITY_LEASE_MS` lease (default 30s; renewal by half-TTL). `WS_TURN_MAX_MS` is only the
+  watchdog's hard policy. Recovery atomically replaces the exact old token/fence with a higher
+  recovery owner before any Docker action; boot never steals a healthy renewing owner.
 
 ### 8.3 Idempotent / rollback-safe launch
 `[07 §A]` step 6 must be transactional past `docker run`: on a partial-launch failure (OOM, image-pull error) the orchestrator rolls back the worktree volume + any POSTed Caddy route + the `AgentSession` row, so no orphan survives. Launch is idempotent (re-running for the same `(ticketId, stageId)` either reuses the live container or cleanly recreates).
@@ -270,7 +274,7 @@ B-31 wants a per-container pty-agent that survives an orchestrator restart, but 
 ### 9.2 Crash-resume re-association (`Q-CT-RESUME`)
 - **Persist `containerId` + `worktreePath` + `ptyAgentUrl` + `claudeSessionId` on the `AgentSession` row** (`[04b §7]`).
 - `--restart unless-stopped` (`[07b §7]`) keeps the container + its pty-agent alive across an orchestrator crash.
-- On boot, **`resumeAll()`** reads `AgentSession` rows in `{ready, busy, paused}`, and for each: re-resolves the container by stored `containerId`, re-attaches the pty-agent at `ptyAgentUrl` (replaying scrollback into the rebuilt cache), **re-mints `channelTokenId`/`hookTokenId`** (`Q-ENG-TOKEN-LIFECYCLE`), and — if a turn was mid-flight — `claude --resume <claudeSessionId>`. Surviving terminals reseed the browser view with no lost scrollback.
+- On boot and every cron interval, the recovery sweep inspects `busy` workers plus durable `recovering`/`stopped` recovery retries. It reconstructs the exact processed prepare, re-resolves the immutable `containerId`, validates workspace/project/ticket labels + `/work/.workspaces-run-owner`, and — where a successor is required — starts the normal higher-fence stage path, which can use `claude --resume <claudeSessionId>`. A stop-recovery replay may accept the exact immutable container when it is already stopped (there is then no live process and Docker `exec` cannot read the marker); it never repeats the stop. A healthy renewing capacity owner is never boot-recovered; a mismatched/nonzero Docker probe never completes or reprovisions. **Not implemented:** a standalone `resumeAll()` that reattaches `ptyAgentUrl` or remints `channelTokenId`/`hookTokenId`.
 - The SSH capability-gate (B-05) still guards the `/pty` namespace; the sessionId resolves to a container, not a host shell.
 
 **No new verbs.** The pty-agent speaks `ws-term:*` (a transport, not a structured-channel verb); the structured channel is unchanged.
@@ -312,7 +316,7 @@ Preview ("Open preview" → a live `dev-<ticketId>.<domain>` app) reuses the con
 - [ ] **Host forward-proxy enforces per-stage egress**; CLI sandbox is defense-in-depth only; boot env via tmpfs env-file, never `--env` (`[07b §6]`).
 - [ ] **Full hardening table applied** — cap-drop ALL, no-new-privileges, non-root, pids 512 / mem 3g / cpu 2 / disk quota, `--restart unless-stopped`, no host network (`[07b §7]`). Never `docker run` without limits.
 - [ ] **CapacityManager** admits under `MAX_RESIDENT` + RAM watermark, reclaims oldest paused/idle else queues; `previewConcurrencyCap` a sub-limit in one shared budget; launch idempotent/rollback-safe; reference host 8 vCPU/32 GB (`[07b §8]`).
-- [ ] **In-container pty-agent** owns node-pty + durable scrollback on a `127.0.0.1` port relayed over `/pty` (`ws-term:*` reused, `XtermTerminal` byte-identical); `resumeAll()` re-associates by stored `containerId`/`worktreePath`/`ptyAgentUrl`, re-mints tokens (`[07b §9]`).
+- [ ] **In-container pty-agent** owns node-pty + durable scrollback on a `127.0.0.1` port relayed over `/pty` (`ws-term:*` reused, `XtermTerminal` byte-identical). Current crash recovery is fenced cron reconstruction + a normal successor; standalone PTY reattachment/token remint remains an explicit unimplemented follow-up (`[07b §9]`).
 - [ ] **Image tag + CLI version stamped** on every `AgentSession`/`TicketEvent`; `images rebuild` control + B-34 notification on Dockerfile change (`[07b §10]`).
 - [ ] **Preview** reuses the base image at the frozen commit, single-port PROD mode, cap re-derived from measured cost, shared CapacityManager budget (`[07b §11]`).
 - [ ] **`runInTenant` wraps the pty-agent relay + the CapacityManager + the reconcile loop** (every non-`/api` worker, `Q-SEC-RUNINTENANT`, `[04b §11c]`).

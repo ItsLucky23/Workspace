@@ -2,15 +2,22 @@
 //? real record/reload cycle against Mongo — recordHandoff persists a Handoff + RESETS the session's
 //? running token estimate (the reset frees context), and latestHandoff reads it back for the reload.
 
+import { redis, tryCatch } from '@luckystack/core';
+
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const ho = await import('../../server/orchestrator/handoff');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
+const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const capacity = await import('../../server/orchestrator/capacity');
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `handoff-${String(stamp)}@youcomm.nl`, name: 'Handoff Owner' } });
 let workspaceId: string | null = null;
+let capacityMember = '';
+let capacityIdentity = '';
+let capacityHeartbeat = '';
 
 try {
   // ---- budget + shouldHandoff (pure) ----
@@ -40,15 +47,33 @@ try {
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
   const ticket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: (await prisma.project.findFirst({ where: { workspaceId: wsId } }))?.id ?? '', key: 'DEV-4444', number: 4444, title: 'Long turn', stageId: 'unrefined', status: 'busy', labels: [], priority: 'normal' } });
-  const sessionKey = 'worker:handoff:unrefined';
-  await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', kind: 'worker', sessionKey, status: 'busy', tokenEstimate: 130000, claudeSessionId: 'cs-old' } });
+  const sessionKey = `worker:${ticket.id}:unrefined`;
+  const runFence = 1;
+  const session = await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: ticket.id, stageId: 'unrefined', kind: 'worker', sessionKey, status: 'busy', tokenEstimate: 130000, claudeSessionId: 'cs-old', runToken: 'handoff-run-token', runFence, containerId: 'handoff-container' } });
+  capacityIdentity = `${wsId}::${ticket.key}`;
+  capacityMember = `${capacityIdentity}::${String(runFence)}::handoff-run-token`;
+  const [activeKey, ownerKey, , , , heartbeatKey] = capacity.capacityRedisKeys(wsId, ticket.key, 'handoff-run-token');
+  capacityHeartbeat = heartbeatKey ?? '';
+  await redis.zadd(activeKey ?? '', Date.now(), capacityMember);
+  await redis.hset(ownerKey ?? '', capacityIdentity, capacityMember);
+  await redis.set(capacityHeartbeat, capacityMember, 'PX', 60_000);
 
-  const id = await ho.recordHandoff(prisma, { workspaceId: wsId, sessionKey, ticketId: ticket.id, stageId: 'unrefined', body: parsed!, reason: 'budget' });
-  assert(id.length > 0, 'recordHandoff persisted a Handoff record');
+  const [outsideWriterError] = await tryCatch(() => ho.recordHandoff(prisma, { id: 'f'.repeat(24), workspaceId: wsId, sessionKey, ticketId: ticket.id, stageId: 'unrefined', body: parsed!, reason: 'budget' }));
+  assert(outsideWriterError !== null && outsideWriterError.message.includes('no active Conductor writer context'), 'the Handoff mutation helper rejects calls outside the writer boundary');
+  await enqueueInternalAction({
+    workspaceId: wsId,
+    op: 'stage-handoff-complete',
+    target: { ticketId: ticket.id, ticketKey: ticket.key, projectId: ticket.projectId, stageId: 'unrefined', sessionId: session.id, runToken: 'handoff-run-token', runFence },
+    payload: { containerId: 'handoff-container', expectedClaudeSessionId: 'cs-old', body: parsed!, reason: 'budget' },
+    userId: 'stage-runner-test',
+    clientRequestId: `handoff-complete-${String(stamp)}`,
+  });
   const rec = await prisma.handoff.findFirst({ where: { workspaceId: wsId, sessionKey } });
+  assert(rec !== null, 'the stage-handoff-complete InternalOp persisted a Handoff record');
   assert(rec !== null && rec.reason === 'budget', 'the Handoff row has the budget reason');
   const sess = await prisma.agentSession.findFirst({ where: { workspaceId: wsId, sessionKey } });
   eq(sess?.tokenEstimate ?? -1, 0, 'the session token estimate is RESET after the handoff (context freed)');
+  eq(sess?.claudeSessionId ?? null, null, 'the same writer op clears claudeSessionId behind session+container CAS');
 
   const back = await ho.latestHandoff(prisma, wsId, sessionKey);
   eq(back?.summary ?? '', 'Building auth', 'latestHandoff reads the stored handoff back for the reload');
@@ -56,6 +81,10 @@ try {
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {
+  const [activeKey, ownerKey] = capacity.capacityRedisKeys('handoff-cleanup', 'cleanup', 'cleanup');
+  if (capacityMember) await redis.zrem(activeKey ?? '', capacityMember).catch(() => undefined);
+  if (capacityIdentity) await redis.hdel(ownerKey ?? '', capacityIdentity).catch(() => undefined);
+  if (capacityHeartbeat) await redis.del(capacityHeartbeat).catch(() => undefined);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

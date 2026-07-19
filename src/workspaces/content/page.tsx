@@ -3,7 +3,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
+import { tryCatch } from '@luckystack/core';
+import { apiRequest, useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -102,7 +103,7 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
 }
 
 export default function Content() {
-  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead } = useWorkspaces();
+  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace } = useWorkspaces();
   const translate = useTranslator();
   const [showArchived, setShowArchived] = useState(false);
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -147,6 +148,28 @@ export default function Content() {
 
   //? CI — the read-only comment inbox (grouped per channel, newest first; no reply surface).
   const [showComments, setShowComments] = useState(false);
+  //? GAP_SCAN F5 — the reply composer: which comment is open, the text (AI-drafted or typed), and whether a
+  //? draft is in flight. The text is ALWAYS the user's to edit before it can be sent.
+  const [replyFor, setReplyFor] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyBusy, setReplyBusy] = useState(false);
+  const openReply = (commentId: string): void => { setReplyFor(commentId); setReplyText(''); };
+  const draftReplyFor = (commentId: string): void => {
+    if (replyBusy) return;
+    setReplyBusy(true);
+    void tryCatch(() => apiRequest({ name: 'workspaces/commentReplyDraft', version: 'v1', data: { workspaceId: activeWorkspace.id, commentId } })).then(([err, res]) => {
+      setReplyBusy(false);
+      if (!err && res?.status === 'success') setReplyText(res.result.text);
+      else notify.error({ key: 'workspaces.comments.draftFailed' });
+    });
+  };
+  const sendReply = (commentId: string): void => {
+    const text = replyText.trim();
+    if (text.length === 0) return;
+    replyToComment(commentId, text);
+    setReplyFor(null);
+    setReplyText('');
+  };
   const channelName = (id: string | null): string => content.channels.find((c) => c.id === id)?.name ?? translate({ key: 'workspaces.comments.noChannel' });
   const commentGroups = useMemo(() => {
     const groups = new Map<string, SocialCommentSummary[]>();
@@ -225,16 +248,39 @@ export default function Content() {
             {commentGroups.map(([chanKey, rows]) => (
               <div key={chanKey || 'none'} className="flex flex-col gap-2">
                 <div className="text-sm font-semibold text-title">{channelName(chanKey || null)}</div>
+                {/* GAP_SCAN F5 — the inbox is no longer read-only: each comment can be replied to. The row
+                    became a div because it now CONTAINS buttons (nested buttons are invalid HTML), so
+                    "mark read" is its own explicit control instead of a side effect of clicking the row. */}
                 {rows.map((c) => (
-                  <button key={c.id} type="button" onClick={() => { if (!c.read) markCommentsRead(c.id); }}
-                    className={`text-left rounded-lg border p-2.5 cursor-pointer transition-colors ${c.read ? 'border-container1-border bg-container1' : 'border-primary/40 bg-primary/5'}`}>
+                  <div key={c.id} className={`rounded-lg border p-2.5 transition-colors ${c.read ? 'border-container1-border bg-container1' : 'border-primary/40 bg-primary/5'}`}>
                     <div className="flex items-center gap-2 text-xs text-muted">
                       <span className="rounded-full bg-container2 px-1.5 py-0.5">{c.platform}</span>
                       <span className="font-medium text-common truncate">{c.author}</span>
                       <span className="ml-auto shrink-0">{new Date(c.publishedAt).toLocaleString()}</span>
                     </div>
                     <div className="text-sm text-common mt-1 whitespace-pre-wrap">{c.text}</div>
-                  </button>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <button type="button" onClick={() => { openReply(c.id); }} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.comments.reply' })}</button>
+                      {!c.read && <button type="button" onClick={() => { markCommentsRead(c.id); }} className="text-xs text-muted hover:text-title cursor-pointer">{translate({ key: 'workspaces.comments.markRead' })}</button>}
+                    </div>
+                    {replyFor === c.id && (
+                      <div className="flex flex-col gap-2 mt-2 pl-3 border-l border-divider">
+                        <textarea
+                          value={replyText} onChange={(e) => { setReplyText(e.target.value); }} rows={2}
+                          placeholder={translate({ key: 'workspaces.comments.replyPlaceholder' })}
+                          className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none"
+                        />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* The AI writes a DRAFT; sending is always the human's click (B-23). */}
+                          <WsButton variant="ghost" icon={replyBusy ? 'spinner' : 'wand-magic-sparkles'} disabled={replyBusy} onClick={() => { draftReplyFor(c.id); }}>
+                            {translate({ key: replyBusy ? 'workspaces.comments.drafting' : 'workspaces.comments.draft' })}
+                          </WsButton>
+                          <WsButton icon="paper-plane" disabled={replyText.trim().length === 0} onClick={() => { sendReply(c.id); }}>{translate({ key: 'workspaces.comments.send' })}</WsButton>
+                          <WsButton variant="ghost" onClick={() => { setReplyFor(null); setReplyText(''); }}>{translate({ key: 'workspaces.comments.cancel' })}</WsButton>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             ))}

@@ -79,7 +79,7 @@ eq(OP_CAPABILITY['mark-read'], null, "'mark-read' is login-only (null)");
 eq(OP_CAPABILITY['accept-suggestion'], null, "'accept-suggestion' is login-only (null)");
 
 // --- 4. CONFIRM_REQUIRED gates the destructive ops (and only those) ----------
-const mustConfirm: ControlOp[] = ['delete-workspace', 'transfer-ownership', 'remove-member', 'kill', 'pause-all', 'env-teardown'];
+const mustConfirm: ControlOp[] = ['delete-workspace', 'transfer-ownership', 'remove-member', 'kill', 'pause-all', 'env-teardown', 'env-rollback'];
 for (const op of mustConfirm) {
   assert(CONFIRM_REQUIRED.has(op), `CONFIRM_REQUIRED gates the destructive op '${op}'`);
 }

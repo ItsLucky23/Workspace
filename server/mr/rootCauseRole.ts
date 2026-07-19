@@ -11,6 +11,7 @@ import { runAiCompletion } from '../ai/registry';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 import { branchDiff } from '../git/repoStore';
 import { retrieve } from '../rag';
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 
 export interface CulpritPick { mrNumber: number | null; reason: string }
 
@@ -59,7 +60,7 @@ export function registerRootCauseRole(): void {
     key: 'root-cause',
     label: 'AI root-cause / rollback',
     description: 'Given a symptom + recent merges, ranks the likely-culprit merge and proposes a safe rollback.',
-    mutates: false,
+    mutates: false, //? The suggestion row is a proposal; rollback remains accept-gated.
     run: async (ctx) => {
       const prisma = getPrismaClient();
       const symptom = typeof ctx.params.symptom === 'string' && ctx.params.symptom.trim().length > 0 ? ctx.params.symptom.trim() : 'a production regression was reported';
@@ -86,6 +87,7 @@ export function registerRootCauseRole(): void {
       if (!culprit) return { kind: 'rollback', title: 'AI root-cause', body: `Could not pin a culprit merge.\n\n${pick.reason}` };
 
       //? Propose — a rollback suggestion the human accepts. The Conductor then reverts + drafts a ticket.
+      assertWorkspaceWriterContext(ctx.workspaceId);
       await prisma.workspaceSuggestion.create({
         data: {
           workspaceId: ctx.workspaceId, type: 'rollback',

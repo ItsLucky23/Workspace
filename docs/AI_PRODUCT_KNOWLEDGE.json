@@ -1,6 +1,6 @@
 {
-  "hash": "66d37b22dd80e4c5",
-  "chunkCount": 213,
+  "hash": "a0ffbc05bd8771a8",
+  "chunkCount": 214,
   "chunks": [
     {
       "id": "cap-001",
@@ -1279,6 +1279,12 @@
       "kind": "decision",
       "title": "GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops",
       "text": "ADR 0278: GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops. The `GAP_SCAN_2026-07-17` audit produced ~37 open items spanning the autopilot chain, the phone-first approve/answer loop, eight orphaned couplings, reliability/observability, two security postures, content depth and six new modules. Delivering them raised three questions that recur across the whole program, and answering them once (here) is what keeps the individual changes consistent. Decision: **1. Security posture changes ship report-first, not enforce-first.** Two items change what is ALLOWED at runtime: tenant scoping on background writers (E2) and worker-container egress (E3). Both now run in a mode that *records* what strict enforcement would have rejected — `tenantGuardReport()` counts unscoped and cross-tenant calls, `egressReport()` counts unconfined worker launches — and an env flag (`WS_TENANT_ENFORCE=1`, `WS_EGRESS=1`) flips each to enforcement. The default for egress changed from *silently open* to *reported open*: the previous default hid the posture entirely, which is the actual defect. Nothing is blocked that was not blocked before. **2. Closing a feature gap adds OPS, never verbs.** The frozen 7+6 structured-channel surface is untouched. Every new capability in this program is a `ControlOp` behind the existing propose→accept→Conductor path: `save-platform-credentials`, `env-rollback`, `document-archive`/`-unarchive`, `content-gen-thumbnail`, `content-reply-c"
+    },
+    {
+      "id": "adr-0279",
+      "kind": "decision",
+      "title": "Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer",
+      "text": "ADR 0279: Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer. The stage writer now treats a CapacityManager `runToken` + monotonic `runFence` as the authority for all stage results, but the watchdog and worker reaper still used the pre-fence model. They directly updated `AgentSession`/`Ticket`, selected containers by reusable ticket name, and used the hard `WS_TURN_MAX_MS` as both the maximum turn policy and capacity-owner TTL. A healthy 30-minute owner could therefore block boot recovery for 30 minutes, while a stale watchdog scan could kill a newer same-container successor. Reaper idle time was process-local and ticket keys were collapsed across workspaces. Reminder writes also lacked compare-and-set/idempotency. Decision: 1. Capacity ownership is a short renewable lease: `WS_CAPACITY_LEASE_MS` defaults to 30 seconds. `WS_TURN_MAX_MS` remains only the hard watchdog policy. Active scores, heartbeat expiry, renewal, stale eviction, and owner checks all use the capacity lease; renewal must run by half its TTL. 2. A server-only `agent-recovery-transition` InternalOp owns `prepare|complete|cancel`: - prepare exact-CASes workspace/project/ticket/stage/status/needs-input plus the exact worker session/container/runToken/runFence/startedAt; - one Redis Lua operation transfers the expected old reservation to a deterministic recovery owner at the next fence (or rejects live/stale authority), then the session becomes `recovering`; - "
     }
   ]
 }

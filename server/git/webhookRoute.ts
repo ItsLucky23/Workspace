@@ -62,6 +62,14 @@ export function verifyGithubHmac(secret: string, raw: string, signature: string)
   return suppliedBuffer.length === expectedBuffer.length && timingSafeEqual(suppliedBuffer, expectedBuffer);
 }
 
+//? Hash both values to a fixed-size digest before comparison: GitLab's shared-token
+//? header and the generic shared-secret header must not short-circuit on length/value.
+export function verifyWebhookSecret(secret: string, supplied: string): boolean {
+  const expectedDigest = createHash('sha256').update(secret).digest();
+  const suppliedDigest = createHash('sha256').update(supplied).digest();
+  return timingSafeEqual(suppliedDigest, expectedDigest);
+}
+
 //? Header ids are hashed before entering the durable signal metadata: still stable
 //? per delivery, but bounded and unable to inject an oversized/hostile request id.
 export function forgeEventRequestId(
@@ -200,7 +208,7 @@ export async function processForgeWebhook(
   const githubSignature = header(input.headers, 'x-hub-signature-256');
   const authenticated = githubSignature.length > 0
     ? verifyGithubHmac(secret, input.rawBody, githubSignature)
-    : (header(input.headers, 'x-webhook-secret') || header(input.headers, 'x-gitlab-token')) === secret;
+    : verifyWebhookSecret(secret, header(input.headers, 'x-webhook-secret') || header(input.headers, 'x-gitlab-token'));
   if (!authenticated) return { code: 401, message: 'bad secret' };
 
   const [parseError, body] = tryCatchSync((): unknown => JSON.parse(input.rawBody));

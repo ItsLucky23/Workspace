@@ -129,3 +129,35 @@ export function buildDubMuxArgs(inName: string, dubAudioName: string, outName: s
     `/media/${outName}`,
   ];
 }
+
+//? GAP_SCAN F2 — narrow a stored `ContentProject.captionStyle` Json blob into a real style. Every field is
+//? validated and out-of-range values are dropped rather than clamped silently, because a 400px font is far
+//? more likely to be a bug than an intent. Returns null for "no style configured" (the plain ffmpeg default).
+export interface StoredCaptionStyle extends CaptionStyle { wordByWord?: boolean }
+
+const HEX = /^[\da-f]{6}$/i;
+
+export function parseCaptionStyle(raw: unknown): StoredCaptionStyle | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const str = (k: string): string | undefined => (typeof o[k] === 'string' && o[k].trim().length > 0 ? o[k].trim() : undefined);
+  const hex = (k: string): string | undefined => { const v = str(k)?.replace('#', ''); return v !== undefined && HEX.test(v) ? v : undefined; };
+  const int = (k: string, min: number, max: number): number | undefined => {
+    const v = o[k];
+    return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : undefined;
+  };
+
+  const style: StoredCaptionStyle = {
+    ...(str('fontName') === undefined ? {} : { fontName: str('fontName') }),
+    ...(int('fontSize', 8, 120) === undefined ? {} : { fontSize: int('fontSize', 8, 120) }),
+    ...(hex('color') === undefined ? {} : { color: hex('color') }),
+    ...(hex('outlineColor') === undefined ? {} : { outlineColor: hex('outlineColor') }),
+    ...(int('outlineWidth', 0, 10) === undefined ? {} : { outlineWidth: int('outlineWidth', 0, 10) }),
+    ...(o.boxed === true ? { boxed: true } : {}),
+    ...(int('alignment', 1, 9) === undefined ? {} : { alignment: int('alignment', 1, 9) }),
+    ...(int('marginV', 0, 400) === undefined ? {} : { marginV: int('marginV', 0, 400) }),
+    ...(o.wordByWord === true ? { wordByWord: true } : {}),
+  };
+  //? An object with nothing recognizable in it is "no style", not an empty style.
+  return Object.keys(style).length > 0 ? style : null;
+}

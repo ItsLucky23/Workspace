@@ -11,6 +11,11 @@ const { publishArtifactSite, unpublishArtifactSite, siteSlug } = await import('.
 const { listLibrary, setAssetStarred } = await import('../../server/content/assetLibrary');
 const { resolvePromptVariant, recordTrial, experimentReport, assignVariant } = await import('../../server/ai/promptExperiment');
 const { recordWatchSnapshot, pruneWatchSnapshots } = await import('../../server/scraper/watch');
+const { runInWriterContext } = await import('../../server/orchestrator/writerContext');
+const { runInTenant } = await import('../../server/tenant/tenantContext');
+
+const inWriter = <T>(workspaceId: string, fn: () => Promise<T>): Promise<T> =>
+  runInWriterContext(workspaceId, async () => runInTenant(workspaceId, fn));
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `gph-${String(stamp)}@youcomm.nl`, name: 'GPH' } });
@@ -126,20 +131,20 @@ try {
 
   /* ---------------------------------------------- G8: watch snapshots */
   const url = 'https://competitor.test/pricing';
-  const first = await recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 20 euro per month for teams of any size.');
+  const first = await inWriter(sourceId, () => recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 20 euro per month for teams of any size.'));
   assert(first.first && !first.changed, 'the first check is a BASELINE, not a change (monitoring must not cry wolf on day one)');
 
-  const same = await recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 20 euro per month for teams of any size.');
+  const same = await inWriter(sourceId, () => recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 20 euro per month for teams of any size.'));
   assert(!same.changed, 'an unchanged page reports no change');
   eq(await prisma.siteSnapshot.count({ where: { workspaceId: sourceId, url } }), 1, 'and does not store a duplicate snapshot');
 
-  const moved = await recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 30 euro per month for teams of any size.');
+  const moved = await inWriter(sourceId, () => recordWatchSnapshot(prisma, sourceId, url, 'Pricing is 30 euro per month for teams of any size.'));
   assert(moved.changed, 'a real change is detected');
   assert(moved.summary.includes('30 euro'), 'and the report names what changed');
   eq(await prisma.siteSnapshot.count({ where: { workspaceId: sourceId, url } }), 2, 'the new state is stored for the next comparison');
 
-  for (let i = 0; i < 5; i++) await recordWatchSnapshot(prisma, sourceId, url, `Pricing is ${String(40 + i)} euro per month for teams of any size.`);
-  eq(await pruneWatchSnapshots(prisma, sourceId, url, 3), 4, 'pruning bounds the history');
+  for (let i = 0; i < 5; i++) await inWriter(sourceId, () => recordWatchSnapshot(prisma, sourceId, url, `Pricing is ${String(40 + i)} euro per month for teams of any size.`));
+  eq(await inWriter(sourceId, () => pruneWatchSnapshots(prisma, sourceId, url, 3)), 4, 'pruning bounds the history');
   eq(await prisma.siteSnapshot.count({ where: { workspaceId: sourceId, url } }), 3, 'keeping the newest snapshots');
 } finally {
   for (const id of created) await cleanupWorkspace(prisma, id);

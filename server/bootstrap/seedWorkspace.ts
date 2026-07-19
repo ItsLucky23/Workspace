@@ -17,6 +17,7 @@ import {
 import { isModuleEnabled } from '../../src/workspaces/_data/modules';
 import { createDefaultPipeline, type PipelinePreset } from './defaultPipeline';
 import { createStarterLibrary } from './starterLibrary';
+import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from './workspaceBuiltins';
 import { rebuildDesignSystemDoc } from '../designer/designSystemDoc';
 import { encryptSecret } from '../crypto/secretBox';
 
@@ -99,10 +100,16 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
     }
   }
 
+  //? Builtin skills + curated Designer gallery are authoritative bootstrap writes. Existing tenants receive
+  //? the same rows through the internal leader backfill; snapshots never seed.
+  const builtins = await ensureWorkspaceBuiltins(prisma, workspaceId);
+
   //? Seed the design-system context-doc so the coding agent knows the named looks (apple, material, …) from
   //? day one — even before the user touches the Designer. Best-effort; never fails workspace creation.
   await rebuildDesignSystemDoc(prisma, workspaceId).catch(() => null);
 
+  //? Derived embeddings start on the next event-loop turn, after any global Conductor writer context ended.
+  void scheduleWorkspaceBuiltinIndexing(prisma, workspaceId, builtins.designArtifactsToIndex);
   return { workspaceId };
 }
 
@@ -261,5 +268,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     await prisma.ticketEvent.create({ data: { workspaceId, ticketId, seq, type: ev.type, actor, text: ev.text } });
   }
 
+  const builtins = await ensureWorkspaceBuiltins(prisma, workspaceId);
+  void scheduleWorkspaceBuiltinIndexing(prisma, workspaceId, builtins.designArtifactsToIndex);
   return { workspaceId };
 }

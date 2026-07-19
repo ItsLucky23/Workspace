@@ -14,7 +14,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style', 'delete-style', 'content-edit-brand', 'content-edit-product', 'save-platform-credentials']);
+const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style', 'delete-style', 'content-edit-brand', 'content-edit-product', 'save-platform-credentials', 'prompt-experiment-save', 'prompt-experiment-stop']);
 const isSettingsOp = (op: string): op is ControlOp => SETTINGS_OPS.has(op);
 
 export interface SyncParams {
@@ -27,6 +27,9 @@ export interface SyncParams {
     channelId?: string; brandVoice?: string; productContext?: string;
     //? A7 — platform app credentials (write-only; never echoed back in the snapshot).
     platform?: string; clientId?: string; clientSecret?: string;
+    //? G7 — prompt A/B experiment (create/update by id, or stop one). `feature` is shared with the
+    //? media-provider ops above — both name an AI/media feature key, so one field serves both.
+    experimentId?: string; variantA?: string; variantB?: string;
     //? Gap-fix — the brand logo (/media upload) the render watermark overlays.
     brandLogoUrl?: string;
   };

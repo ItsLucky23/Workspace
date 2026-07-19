@@ -25,18 +25,33 @@ async function poll<T>(fn: () => Promise<T>, timeoutMs = 4000, stepMs = 50): Pro
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `cw-test-${String(stamp)}@youcomm.nl`, name: 'CW Test' } });
+const ownerB = await prisma.user.create({ data: { email: `cw-test-b-${String(stamp)}@youcomm.nl`, name: 'CW Test B' } });
 let workspaceId: string | null = null;
+let workspaceBId: string | null = null;
 
 try {
   // ---- create-workspace (login-only op, no active workspace yet) ----------------
-  await enqueueControlAction({
-    workspaceId: '', op: 'create-workspace', target: {}, payload: { name: 'CW Test WS' },
-    userId: owner.id, clientRequestId: `cw-${String(stamp)}`,
-  });
+  const sharedClientRequestId = `cw-${String(stamp)}`;
+  const createRequest = {
+    workspaceId: '', op: 'create-workspace' as const, target: {}, payload: { name: 'CW Test WS' },
+    userId: owner.id, clientRequestId: sharedClientRequestId,
+  };
+  const createRequestB = {
+    workspaceId: '', op: 'create-workspace' as const, target: {}, payload: { name: 'CW Test WS B' },
+    userId: ownerB.id, clientRequestId: sharedClientRequestId,
+  };
+  await enqueueControlAction(createRequest);
+  await enqueueControlAction(createRequestB);
+  await enqueueControlAction(createRequest);
+  await enqueueControlAction(createRequestB);
 
   const ws = await poll(() => prisma.workspace.findFirst({ where: { ownerId: owner.id } }));
-  assert(ws !== null, 'create-workspace creates a Workspace owned by the caller');
+  const wsB = await poll(() => prisma.workspace.findFirst({ where: { ownerId: ownerB.id } }));
+  eq(await prisma.workspace.count({ where: { ownerId: owner.id } }), 1, 'a duplicate create-workspace request creates exactly one workspace for user A');
+  eq(await prisma.workspace.count({ where: { ownerId: ownerB.id } }), 1, 'the same request id creates exactly one independent workspace for user B');
+  assert(ws !== null && wsB !== null, 'global dedup is authenticated-user scoped instead of replaying another user outcome');
   workspaceId = ws?.id ?? null;
+  workspaceBId = wsB?.id ?? null;
 
   //? createBlankWorkspace fills roles → member → project → stages AFTER the workspace
   //? row, so poll for the LAST board element (the unrefined stage) before asserting the
@@ -55,6 +70,11 @@ try {
 
   const stages = await prisma.pipelineStage.findMany({ where: { workspaceId: workspaceId ?? '' } });
   assert(stages.length > 0, 'create-workspace seeds the default pipeline stages');
+  const indexedBuiltins = await poll(async () => {
+    const count = await prisma.ragEntry.count({ where: { workspaceId: workspaceId ?? '', commitHash: 'design-library' } });
+    return count === 6 ? count : null;
+  }, 8000);
+  eq(indexedBuiltins, 6, 'new-workspace bootstrap runs immediate derived design indexing after its writer turn');
 
   // ---- quick-add onto the fresh workspace ---------------------------------------
   await enqueueControlAction({
@@ -69,6 +89,8 @@ try {
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {
+  if (workspaceBId) await cleanupWorkspace(prisma, workspaceBId, [ownerB.id]).catch(() => undefined);
+  else await prisma.user.delete({ where: { id: ownerB.id } }).catch(() => undefined);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

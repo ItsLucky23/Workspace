@@ -45,21 +45,35 @@ const fakeForge = (total: number, perPage: number) => async (page: number): Prom
   assert(!capped, 'a natural short-page end is not a cap');
 }
 
-// 3) more full pages than the cap → capped=true (surfaced, never silent)
+// 3) a 100-row GitHub provider page with mostly PRs is still full: filter only
+// after the raw count drives termination, otherwise page 2 is silently lost.
+{
+  let pages = 0;
+  const { rows, capped } = await accumulatePages(async (page) => {
+    pages += 1;
+    if (page === 1) return { rows: [101], rawCount: 100 };
+    return { rows: [102], rawCount: 1 };
+  }, { perPage: 100, maxPages: 20 });
+  eq(rows, [101, 102], 'a full raw page continues even when local filtering leaves one issue');
+  eq(pages, 2, 'raw provider count, not filtered rows, controls termination');
+  assert(!capped, 'the following raw short page is a complete listing');
+}
+
+// 4) more full pages than the cap → capped=true (surfaced, never silent)
 {
   const { rows, capped } = await accumulatePages(fakeForge(100000, 100), { perPage: 100, maxPages: 3 });
   eq(rows.length, 300, 'stops at maxPages * perPage');
   assert(capped, 'capped=true so the caller can log the truncation');
 }
 
-// 4) an oversized provider page cannot defeat the configured per-page count
+// 5) an oversized provider page cannot defeat the configured per-page count
 {
   const { rows, capped } = await accumulatePages(async () => Array.from({ length: 1_000 }, (_v, i) => i), { perPage: 100, maxPages: 1 });
   eq(rows.length, 100, 'an oversized provider page is sliced before accumulation');
   assert(capped, 'the one-page safety bound remains visible');
 }
 
-// 5) transient-error classification
+// 6) transient-error classification
 {
   assert(isTransientForgeError(new Error('gitlab 503')), '5xx is transient');
   assert(isTransientForgeError(new Error('github 429')), '429 is transient');
@@ -69,7 +83,7 @@ const fakeForge = (total: number, perPage: number) => async (page: number): Prom
   assert(!isTransientForgeError(new Error('forge response too large')), 'the local response-size guard is not retried');
 }
 
-// 6) normalized snapshots bound every field, count, and the serialized signal payload
+// 7) normalized snapshots bound every field, count, and the serialized signal payload
 {
   const labels = Array.from({ length: MAX_FORGE_LABELS + 10 }, (_v, i) => `label-${String(i)}-${'x'.repeat(MAX_FORGE_LABEL)}`);
   const rows = Array.from({ length: MAX_FORGE_ISSUES + 10 }, (_v, i) => ({
@@ -91,7 +105,7 @@ const fakeForge = (total: number, perPage: number) => async (page: number): Prom
   assert(Buffer.byteLength(JSON.stringify(snapshot)) <= MAX_FORGE_SIGNAL_BYTES, 'serialized snapshot stays below the safe signal budget');
 }
 
-// 7) dataset ids are stable across provider ordering and result keys are fail-closed
+// 8) dataset ids are stable across provider ordering and result keys are fail-closed
 {
   const first = buildForgeSnapshot('project-a', 'github', 'acme/repo', [
     { iid: 2, title: 'B' },

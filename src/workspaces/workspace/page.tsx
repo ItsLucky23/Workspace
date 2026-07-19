@@ -512,6 +512,8 @@ function WorkflowTab() {
 //? for the live preview flow). Empty clears it → falls back to package.json scripts.dev.
 function DevCommandCard({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
+  const { activeProject } = useWorkspaces();
+  const projectId = activeProject?.id;
   const [cmd, setCmd] = useState('');
   //? D1/E1/E2 — the prod serve command, the stack (any-stack base image + defaults), and the expert custom-base opt-in.
   const [prodCmd, setProdCmd] = useState('');
@@ -521,8 +523,9 @@ function DevCommandCard({ workspaceId }: { workspaceId: string }) {
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
   const save = async (): Promise<void> => {
+    if (!projectId) return;
     setSaving(true); setStatus(null);
-    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, devCommand: cmd, prodCommand: prodCmd, stack, allowCustomBase } }));
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: cmd, prodCommand: prodCmd, stack, allowCustomBase } }));
     setSaving(false);
     if (err || res?.status !== 'success') { setStatus({ kind: 'err', text: translate({ key: 'workspaces.workspaceSettings.devCommandError' }) }); return; }
     setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.devCommandSaved' }) });
@@ -547,7 +550,7 @@ function DevCommandCard({ workspaceId }: { workspaceId: string }) {
         <input type="checkbox" checked={allowCustomBase} onChange={(e) => { setAllowCustomBase(e.target.checked); }} />
         {translate({ key: 'workspaces.workspaceSettings.allowCustomBase' })}
       </label>
-      <div><WsButton icon="check" disabled={saving} onClick={() => { void save(); }}>{translate({ key: saving ? 'workspaces.workspaceSettings.devCommandSaving' : 'workspaces.workspaceSettings.devCommandSave' })}</WsButton></div>
+      <div><WsButton icon="check" disabled={saving || !projectId} onClick={() => { void save(); }}>{translate({ key: saving ? 'workspaces.workspaceSettings.devCommandSaving' : 'workspaces.workspaceSettings.devCommandSave' })}</WsButton></div>
     </div>
   );
 }

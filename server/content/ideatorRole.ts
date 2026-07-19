@@ -3,7 +3,7 @@
 //? Gap-fix (content-keten): the role is now CHANNEL-AWARE — a `channelId` param grounds the idea in
 //? that channel's name/brand voice and scopes the winners feedback to THAT channel (no more mixed
 //? cross-channel signal). Two modes:
-//?  - default (`mutates:true`): the executor GATES the idea into an approval suggestion (B-23).
+//?  - default (`mutates:false`): the role proposes an idea artifact and writes no content.
 //?  - AUTOPILOT channel: the channel owner's explicit autopilot opt-in IS the consent (ADR), so the
 //?    role drives the WHOLE chain — piece (bound to the channel) → full pipeline render → publish —
 //?    entirely through Conductor ops (B-23 intact: the Conductor stays the only writer).
@@ -127,8 +127,8 @@ export function registerContentIdeatorRole(): void {
   registerAgentRole({
     key: 'content-ideator',
     label: 'Content ideator',
-    description: 'Proposes a fresh content idea per targeted channel on a schedule (gated to a suggestion — B-23; an autopilot channel runs the whole chain).',
-    mutates: true,
+    description: 'Proposes a fresh content idea per targeted channel on a schedule; an opted-in autopilot channel runs the whole Conductor chain.',
+    mutates: false,
     run: async (ctx) => {
       const prisma = getPrismaClient();
       //? A1 — resolve the targeted channel SET. No channel bound ⇒ the original theme-only behaviour.

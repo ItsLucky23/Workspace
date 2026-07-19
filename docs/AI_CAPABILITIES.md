@@ -58,6 +58,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/brandImport/v1` | POST | 20 | — | — |
 | `workspaces/buildProjectImage/v1` | POST | 6 | — | — |
 | `workspaces/closePreview/v1` | POST | 12 | — | — |
+| `workspaces/commentReplyDraft/v1` | POST | 20 | — | — |
 | `workspaces/containerTerminals/v1` | POST | 30 | — | — |
 | `workspaces/createWorkspace/v1` | POST | 10 | — | — |
 | `workspaces/deleteWorkspace/v1` | POST | 30 | — | — |
@@ -76,6 +77,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/openEditor/v1` | POST | 12 | — | — |
 | `workspaces/openPreview/v1` | POST | 12 | — | — |
 | `workspaces/openRefPreview/v1` | POST | 12 | — | — |
+| `workspaces/promptExperiments/v1` | POST | 60 | — | — |
 | `workspaces/pushConfig/v1` | POST | 60 | — | — |
 | `workspaces/readWorktreeFile/v1` | POST | 30 | — | — |
 | `workspaces/revokePat/v1` | POST | 20 | — | — |
@@ -84,6 +86,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/saveDockerfile/v1` | POST | 30 | — | ✓ |
 | `workspaces/savePushSubscription/v1` | POST | 30 | — | — |
 | `workspaces/saveWorktreeFile/v1` | POST | 30 | — | — |
+| `workspaces/seoSuggest/v1` | POST | 20 | — | — |
 | `workspaces/snapshot/v1` | POST | 60 | — | ✓ |
 | `workspaces/sshKeyAdd/v1` | POST | 12 | — | — |
 | `workspaces/sshKeyRemove/v1` | POST | 12 | — | — |

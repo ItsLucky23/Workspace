@@ -16,6 +16,7 @@ import { jsonInput } from '../util/json';
 import { parseUnifiedDiff } from './diff';
 import { addReviewComment } from './service';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 
 export interface ReviewFinding { filePath: string; line: number; side: string; body: string }
 
@@ -68,6 +69,7 @@ export function buildReviewPrompt(diffText: string, ragContext: string, productC
 //? On accept (Conductor, B-23): post each proposed finding as a ReviewComment(authorKind:'ai') — no
 //? authorId, so it lands as an AI comment. Reads the `mrId` + `findings` the suggestion's patch carries.
 export async function postAiReviewFindings(prisma: PrismaClient, workspaceId: string, patch: unknown): Promise<number> {
+  assertWorkspaceWriterContext(workspaceId);
   if (patch === null || typeof patch !== 'object') return 0;
   const p = patch as Record<string, unknown>;
   const mrId = typeof p.mrId === 'string' ? p.mrId : '';
@@ -92,7 +94,7 @@ export function registerMrReviewRole(): void {
     key: 'mr-review',
     label: 'AI MR reviewer',
     description: 'Reads an MR diff (RAG-grounded) and proposes line-anchored review findings for a human to accept.',
-    mutates: false,
+    mutates: false, //? The suggestion row is a proposal; posting review comments remains accept-gated.
     run: async (ctx) => {
       const prisma = getPrismaClient();
       const mrSelect = { id: true, projectId: true, sourceBranch: true, targetBranch: true, title: true } as const;
@@ -122,6 +124,7 @@ export function registerMrReviewRole(): void {
 
       //? Propose — a single WorkspaceSuggestion carrying the findings. On accept the Conductor posts
       //? each as a ReviewComment(authorKind:'ai'). The AI never writes the comment itself (B-23).
+      assertWorkspaceWriterContext(ctx.workspaceId);
       await prisma.workspaceSuggestion.create({
         data: {
           workspaceId: ctx.workspaceId, type: 'mr-review',

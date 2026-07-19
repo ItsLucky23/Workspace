@@ -1,10 +1,10 @@
-//? Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the
-//? app's dev server in the ticket container for the preview flow, ADR 0011/Track P4). A direct
-//? `_api` write, workspaceSettings-gated. Empty clears it (falls back to package.json scripts.dev).
+//? Workspaces — save one project's runtime commands/settings. The `_api` route is only the typed,
+//? workspaceSettings-gated control edge; the Conductor performs the exact workspace+project write.
+//? Empty commands clear their override and fall back to package.json scripts.
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { hasCapability, CAP } from '../../../server/control/rbac';
+import { dispatchControlSync } from '../../../server/control/dispatchSync';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -13,29 +13,32 @@ export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
   //? D1/E1/E2 — also set the prod serve command, the stack (any-stack base), and the expert custom-base opt-in.
-  data: { workspaceId: string; devCommand: string; prodCommand?: string; stack?: string; allowCustomBase?: boolean };
+  data: { workspaceId: string; projectId: string; clientRequestId: string; devCommand: string; prodCommand?: string; stack?: string; allowCustomBase?: boolean };
   user: SessionLayout;
   functions: Functions;
 }
 
 const STACKS = new Set(['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic']);
 
-export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  const { workspaceId, devCommand } = data;
-  if (!workspaceId || typeof devCommand !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
-  const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workspaceSettings);
-  if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const trimmed = devCommand.trim();
-  const prod = (data.prodCommand ?? '').trim();
+export async function saveDevCommand(data: ApiParams['data'], userId: string, prisma: Functions['db']['prisma']): Promise<ApiResponse> {
+  const { workspaceId, projectId, clientRequestId, devCommand } = data;
+  if (!workspaceId || !projectId || !clientRequestId || typeof devCommand !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
   const stack = typeof data.stack === 'string' && STACKS.has(data.stack) ? data.stack : undefined;
-  await functions.db.prisma.project.updateMany({
-    where: { workspaceId },
-    data: {
-      devCommand: trimmed.length > 0 ? trimmed : null,
-      ...(data.prodCommand === undefined ? {} : { prodCommand: prod.length > 0 ? prod : null }),
+  const dispatched = await dispatchControlSync({
+    op: 'project-runtime-save', roomCode: workspaceId, userId, prisma, clientRequestId,
+    target: { projectId },
+    payload: {
+      devCommand,
+      ...(data.prodCommand === undefined ? {} : { prodCommand: data.prodCommand }),
       ...(stack ? { stack } : {}),
       ...(typeof data.allowCustomBase === 'boolean' ? { allowCustomBase: data.allowCustomBase } : {}),
     },
   });
+  if (!dispatched.ok) {
+    return { status: 'error', errorCode: dispatched.errorCode === 'auth.forbidden' ? 'auth.forbidden' : 'api.invalidRequest' };
+  }
   return { status: 'success', result: { ok: true } };
-};
+}
+
+export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> =>
+  saveDevCommand(data, user.id, functions.db.prisma);

@@ -122,6 +122,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
       targetBranch: { kind: 'string' },
     },
   },
+  //? Runtime commands/custom-base are an Admin settings form, never AI-proposable.
+  'project-runtime-save': EXCLUDED,
   'save-sections': LATER,
   'save-ai-instruction': LATER,
   'save-ai-provider': LATER,
@@ -337,6 +339,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'studio-unpublish-site': LATER_D,
   //? G4 — which assets belong in the reusable library is a taste call; it stays a UI click.
   'asset-star': LATER,
+  //? G7 — an experiment changes what every later run is measured against; a deliberate settings action.
+  'prompt-experiment-save': LATER, 'prompt-experiment-stop': LATER,
   'content-critique-image': {
     mode: 'enabled',
     hint: 'AI critique of an image asset ("what should change about this photo") — vision feedback + which edit fixes each point. params: pieceId, assetId, prompt? (a specific question)',

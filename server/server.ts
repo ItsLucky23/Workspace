@@ -42,7 +42,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { bootstrapLuckyStack } from '@luckystack/server';
 import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 
-import { reconcileProxyRoutesOnBoot } from './proxy/reconcileOnBoot';
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
 import { registerTlsAsk } from './proxy/tlsAsk';
 import { registerShortLinkRedirect } from './content/shortlinkRoute';
@@ -180,23 +179,10 @@ import { startLeaderElection } from './orchestrator/cluster';
     }
   }
 
-  //? Self-heal per-ticket proxy routes left dangling by a previous run (best-effort, does not
-  //? block startup). Drops caddy `ws-route-*` entries whose upstream container is gone.
-  void reconcileProxyRoutesOnBoot().catch((e: unknown) => { console.error('[proxy] boot-reconcile error:', e); });
-  //? Re-assert the STABLE route for every live persistent environment (ADR 0037) — the reconcile
-  //? above prunes routes without a running container but never RE-ADDS one, so a proxy restart would
-  //? otherwise drop a live env's URL. Idempotent + best-effort; dynamic import (secrets-order, lesson 0010).
-  void import('./deploy/environment').then(({ reassertEnvironmentRoutes }) => reassertEnvironmentRoutes()).catch((e: unknown) => { console.error('[env] boot re-assert error:', e); });
-  //? Recurring background jobs (editor/worker reapers, GitLab sync, scheduled publish, metrics ingest,
-  //? automation cron, demo-watch) are now registered as @luckystack/cron jobs in `luckystack/cron/jobs.ts`
-  //? (ADR 0022) — the overlay auto-loads at boot and the cron package's Redis lease guarantees each fires on
-  //? exactly one instance (replacing the old ad-hoc `setInterval(() => { if (isLeader()) … })` loops).
-  //? Crash-recovery (#1): reconcile interrupted turns on boot + periodically detect stuck/idle turns
-  //? and intervene. Leader-gated (multi-instance-safe). DYNAMIC import so the Conductor's module-level
-  //? `getPrismaClient()` is not pulled into the static graph BEFORE secrets are resolved above (else
-  //? the default client is built with the unresolved DATABASE_URL pointer).
-  const { startTicketWatchdog } = await import('./orchestrator/watchdog');
-  startTicketWatchdog();
+  //? Recurring background jobs (watchdog, editor/worker reapers, GitLab sync, scheduled publish,
+  //? metrics ingest, automation cron, demo-watch) are registered as @luckystack/cron jobs in
+  //? `luckystack/cron/jobs.ts`. Cron's leader + per-run leases replace every domain-level
+  //? setInterval/isLeader timer; the watchdog's runOnStart is its boot-recovery pass.
   //? R3-b — one-time migration of any legacy per-WORKSPACE repo layout into the first project's slot.
   //? Idempotent; dynamic import (secrets-order). Best-effort — never blocks boot.
   void (async () => {

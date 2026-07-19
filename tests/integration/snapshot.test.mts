@@ -46,6 +46,23 @@ try {
   eq(snap.workspaces[0]?.role, 'owner', "the owner's role on the workspace is 'owner'");
   eq(snap.workspaces[0]?.webhookConfigured, true, 'the snapshot exposes only webhook configured metadata');
   assert(!('webhookSecret' in (snap.workspaces[0] ?? {})), 'the snapshot NEVER contains a webhook secret field');
+  eq(snap.aiSkills.length, 5, 'demo bootstrap eagerly provisions the builtin skills');
+  eq(snap.designArtifacts.filter((artifact) => artifact.source === 'seed').length, 6, 'demo bootstrap eagerly provisions the Designer gallery');
+
+  // ---- strict read purity: concurrent snapshots never backfill missing builtins ----
+  await prisma.skill.deleteMany({ where: { workspaceId, builtin: true } });
+  await prisma.designArtifact.deleteMany({ where: { workspaceId, kind: 'theme', source: 'seed' } });
+  const builtinRowsBefore = await prisma.skill.count({ where: { workspaceId, builtin: true } })
+    + await prisma.designArtifact.count({ where: { workspaceId, kind: 'theme', source: 'seed' } });
+  const pureSnapshots = await Promise.all([
+    buildSnapshot(prisma, owner.id, workspaceId),
+    buildSnapshot(prisma, owner.id, workspaceId),
+  ]);
+  const builtinRowsAfter = await prisma.skill.count({ where: { workspaceId, builtin: true } })
+    + await prisma.designArtifact.count({ where: { workspaceId, kind: 'theme', source: 'seed' } });
+  eq(builtinRowsAfter - builtinRowsBefore, 0, 'two concurrent snapshots perform zero builtin mutations');
+  assert(pureSnapshots.every((snapshot) => snapshot.aiSkills.length === 0), 'concurrent snapshots return the current missing-skills state without repairing it');
+  assert(pureSnapshots.every((snapshot) => snapshot.designArtifacts.filter((artifact) => artifact.source === 'seed').length === 0), 'concurrent snapshots return the current missing-gallery state without repairing it');
 
   // ---- secret projections: write-only metadata, no internal rows or encrypted/plaintext values ----
   const secretEnv = snap.envVars.find((env) => env.key === 'PUBLIC_SECRET');

@@ -5,17 +5,18 @@
 //? the Conductor serial chain (the turn is minutes-long). The container-auth spike (07b §2)
 //? proved container-claude authenticates via the projected creds — this is that engine.
 
+import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import * as pty from 'node-pty';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
-import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer } from '../container/runtime';
+import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer, teardownTicketContainer, type ContainerInfo, type DockerResult } from '../container/runtime';
 import { resolveProjectBaseImage } from '../container/baseImages';
 import { workspaceContainerContext } from '../container/composeEngine';
-import { runPipeline } from '../ci/runner';
-import { isTestStage, testStageCiVerdict } from '../ci/gate';
+import { isTestStage } from '../ci/gate';
+import { runStageCiInContainer, type StageCiReport } from '../ci/runner';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
 import type { StageToolCfg } from '../../src/workspaces/_data/types';
@@ -23,25 +24,115 @@ import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta, broadcastAgentTerm } from '../read/broadcast';
-import { jsonInput } from '../util/json';
-import { parseAdvisories } from './questionSet';
 import { pushTicketWork } from '../git/forge';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { skillPromptBlock } from '../ai/skills';
-import { recordTurnSpend } from '../spend/record';
-import { budgetForStage, shouldHandoff, parseHandoff, recordHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
+import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
 import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 import { parseToolTrail } from './toolTrail';
 import { resolveModelChoice, buildTurnArgs } from './modelSelect';
+import { runInTenant } from '../tenant/tenantContext';
+import { enqueueInternalAction, type StageRunTarget, type StageTurnCompleteInternalAction } from './internalOps';
+import { currentWriterScope } from './writerContext';
+import { reservationOwnsSlot, type ReservationGuard } from './capacity';
+import { stageForgeIntentId } from './actionIds';
+import {
+  readStageForgeCompleteResult,
+  readStageForgePrepareResult,
+  readStageSessionStartResult,
+  readStageToolTrailResult,
+  readStageTurnCompleteResult,
+  reloadStageTurnCompleteResult,
+  stageActionPersisted,
+  stageActionResultKeys,
+  type StageTurnCompleteResult,
+} from './stageWriter';
+
+export { resolveStageGate } from './stageWriter';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
 const CAPTURE = '/work/.claude/turn-stop.json';
 //? GAP_SCAN D2 — the PostToolUse hook appends one JSON line per tool call here; drained after each turn.
 const TOOL_TRAIL = '/work/.claude/tool-calls.jsonl';
+const TURN_MARKER = '/work/.claude/stage-turn-marker';
+const RUN_OWNER = '/work/.workspaces-run-owner';
+const RUN_OWNER_LOCK = '/work/.workspaces-run-owner.lock';
+
+export interface StageRunOwner { runToken: string; runFence: number }
+
+function stageRunOwnerValue(owner: StageRunOwner): string | null {
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(owner.runToken) || !Number.isSafeInteger(owner.runFence) || owner.runFence <= 0) return null;
+  return `${String(owner.runFence)}:${owner.runToken}`;
+}
+
+export async function readStageContainerOwner(
+  container: string,
+  runDocker: (args: string[]) => Promise<DockerResult> = docker,
+): Promise<StageRunOwner | null> {
+  const result = await runDocker(['exec', container, 'sh', '-c', `cat ${RUN_OWNER} 2>/dev/null || true`]);
+  if (result.code !== 0) return null;
+  const match = /^(\d+):([A-Za-z0-9._:-]{1,128})$/.exec(result.out.trim());
+  if (!match) return null;
+  const runFence = Number(match[1]);
+  return Number.isSafeInteger(runFence) && runFence > 0 ? { runFence, runToken: match[2] ?? '' } : null;
+}
+
+export async function verifyStageContainerOwner(
+  container: string,
+  owner: StageRunOwner,
+  runDocker: (args: string[]) => Promise<DockerResult> = docker,
+): Promise<boolean> {
+  const expected = stageRunOwnerValue(owner);
+  const current = await readStageContainerOwner(container, runDocker);
+  return expected !== null && current !== null && stageRunOwnerValue(current) === expected;
+}
+
+export interface StageContainerOwnershipDependencies {
+  runDocker?: (args: string[]) => Promise<DockerResult>;
+  ownsSlot?: typeof reservationOwnsSlot;
+  killOldProcess?: typeof killClaudeByContainer;
+}
+
+//? A ticket container's volume survives stage owners. A successor may claim that reusable
+//? worktree only after Redis proves its new token+fence; the old Claude process is killed
+//? before the marker is atomically replaced. Git state and tool-trail recovery files remain.
+export async function ensureStageContainerOwnership(
+  container: string,
+  workspaceId: string,
+  ticketKey: string,
+  owner: StageRunOwner,
+  dependencies: StageContainerOwnershipDependencies = {},
+): Promise<boolean> {
+  const expected = stageRunOwnerValue(owner);
+  if (expected === null) return false;
+  const runDocker = dependencies.runDocker ?? docker;
+  const acquiredLock = await runDocker(['exec', container, 'sh', '-c', `mkdir ${RUN_OWNER_LOCK}`]);
+  if (acquiredLock.code !== 0) return false;
+
+  const [takeoverError, taken] = await tryCatch(async () => {
+    const markerMatches = await verifyStageContainerOwner(container, owner, runDocker);
+    const ownsSlot = dependencies.ownsSlot ?? reservationOwnsSlot;
+    if (!(await ownsSlot(workspaceId, ticketKey, owner.runToken, owner.runFence))) return false;
+    if (markerMatches) return true;
+    const killOldProcess = dependencies.killOldProcess ?? killClaudeByContainer;
+    if (!(await killOldProcess(container))) return false;
+    //? A may pause in/after kill while its short lease expires and B acquires Redis.
+    //? Recheck while the file lock is still held before A can overwrite B's marker.
+    if (!(await ownsSlot(workspaceId, ticketKey, owner.runToken, owner.runFence))) return false;
+    const encoded = Buffer.from(expected, 'utf8').toString('base64');
+    const replaced = await runDocker([
+      'exec', container, 'sh', '-c',
+      `tmp=${RUN_OWNER}.tmp.$$; printf '%s' '${encoded}' | base64 -d > "$tmp" && mv "$tmp" ${RUN_OWNER} && rm -f ${CAPTURE}`,
+    ]);
+    return replaced.code === 0 && await verifyStageContainerOwner(container, owner, runDocker);
+  });
+  const releasedLock = await runDocker(['exec', container, 'sh', '-c', `rmdir ${RUN_OWNER_LOCK}`]);
+  return takeoverError === null && taken === true && releasedLock.code === 0;
+}
 
 //? Write a small text file INTO the container volume as `agent` (the worktree is a docker
 //? volume, not a host path — 07b §4). base64 round-trip so any content is shell-safe.
@@ -82,15 +173,18 @@ function refreshProjectedAuth(): void {
   }
 }
 
-async function projectAuth(container: string): Promise<void> {
+export async function projectAuth(
+  container: string,
+  runDocker: (args: string[]) => Promise<DockerResult> = docker,
+): Promise<void> {
   //? FIXED path (matches the container's CLAUDE_CONFIG_DIR env) — never `~` (docker exec
   //? sets no HOME, so `~` would resolve wrong and claude would fall into the login flow).
   //? Also give the worktree a git identity (local, agent-owned) so a code stage's
   //? `git commit` succeeds instead of hanging on "who are you".
-  await docker(['exec', container, 'sh', '-c',
+  await runDocker(['exec', container, 'sh', '-c',
     'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; '
     + 'git -C /work config user.name "Workspaces AI" 2>/dev/null; git -C /work config user.email "ai@workspaces.local" 2>/dev/null; '
-    + 'rm -f ' + CAPTURE + ' ' + TOOL_TRAIL + '; true']);
+    + 'rm -f ' + CAPTURE + '; true']);
 }
 
 //? Drive ONE interactive `claude` turn inside the container and return its final message.
@@ -98,9 +192,17 @@ async function projectAuth(container: string): Promise<void> {
 //? — NOT by parsing the PTY. We NEVER call `term.kill()` (its Windows conpty console-list
 //? agent can crash the host process); instead `pkill` claude inside the container so the
 //? `docker exec` exits and the PTY closes naturally.
-export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string; model?: string } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string; model?: string; runOwner?: StageRunOwner } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
   const timeoutMs = opts.timeoutMs ?? 240_000;
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
+  //? Every PTY drive, including the self-handoff drive, rechecks both the mutable
+  //? volume marker and Redis authority. A matching stale marker alone cannot relaunch Claude.
+  if (opts.runOwner && (
+    !opts.workspaceId
+    || !opts.ticketKey
+    || !(await reservationOwnsSlot(opts.workspaceId, opts.ticketKey, opts.runOwner.runToken, opts.runOwner.runFence))
+    || !(await verifyStageContainerOwner(container, opts.runOwner))
+  )) return { ok: false, message: '', error: 'stage.ownerMismatch' };
   refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
   await projectAuth(container);
 
@@ -164,34 +266,160 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   return { ok: true, message, ...(claudeSessionId ? { claudeSessionId } : {}) };
 }
 
-//? GAP_SCAN D2 — drain the turn's tool-call trail into ordered TicketEvents, then truncate the file so the
-//? next turn starts clean. Best-effort in every direction: no container, no file, or a malformed line just
-//? means a thinner feed — an audit trail must never be able to fail the turn it is describing.
-export async function persistToolTrail(input: { container: string; workspaceId: string; ticketId: string; stageId: string; sessionKey: string }): Promise<number> {
-  const [readErr, res] = await tryCatch(() => docker(['exec', input.container, 'sh', '-c', `cat ${TOOL_TRAIL} 2>/dev/null`]));
-  if (readErr || res?.code !== 0 || res.out.trim().length === 0) return 0;
-  const entries = parseToolTrail(res.out);
+function stageDigest(...parts: string[]): string {
+  return createHash('sha256').update(parts.join('\0')).digest('hex');
+}
+
+export function stableStageCompletionId(input: { runToken: string; runFence: number; turnMarker: string; message: string; report: StageCiReport | null }): string {
+  return stageDigest(
+    input.runToken,
+    String(input.runFence),
+    input.turnMarker,
+    stageDigest(input.message),
+    stageDigest(JSON.stringify(input.report)),
+  );
+}
+
+export function stableStageHandoffId(input: { runToken: string; runFence: number; turnMarker: string; claudeSessionId: string; body: unknown; reason: string }): string {
+  return stageDigest(
+    input.runToken,
+    String(input.runFence),
+    input.turnMarker,
+    input.claudeSessionId,
+    stageDigest(JSON.stringify(input.body)),
+    input.reason,
+  );
+}
+
+export interface ToolTrailPersistenceDependencies {
+  runDocker?: (args: string[]) => Promise<DockerResult>;
+  enqueue?: typeof enqueueInternalAction;
+}
+
+//? This random-looking marker is persisted in the ticket volume. A crash, failed cleanup,
+//? or successor reservation keeps it, so retained JSONL lines keep the same per-entry IDs.
+async function ensurePersistentTurnMarker(
+  container: string,
+  proposedMarker: string,
+  runDocker: (args: string[]) => Promise<DockerResult> = docker,
+): Promise<string | null> {
+  if (!/^[a-f\d]{64}$/i.test(proposedMarker)) return null;
+  const result = await runDocker(['exec', container, 'sh', '-c', `test -s ${TURN_MARKER} || printf '%s' '${proposedMarker}' > ${TURN_MARKER}; cat ${TURN_MARKER}`]);
+  const marker = result.out.trim();
+  return result.code === 0 && /^[a-f\d]{64}$/i.test(marker) ? marker : null;
+}
+
+//? The marker lives on /work and survives a Node/orchestrator restart. Every retained
+//? raw line receives a stable eventId; batches only satisfy the bounded InternalOp shape.
+//? Truncation + marker removal happen only after every chunk is writer-proven. A failed
+//? cleanup restores both files, allowing a successor token to append without duplicates.
+export async function persistToolTrail(input: {
+  container: string;
+  containerId: string;
+  workspaceId: string;
+  target: StageRunTarget;
+  turnMarker: string;
+}, dependencies: ToolTrailPersistenceDependencies = {}): Promise<number> {
+  const runDocker = dependencies.runDocker ?? docker;
+  const enqueue = dependencies.enqueue ?? enqueueInternalAction;
+  const marker = await ensurePersistentTurnMarker(input.container, input.turnMarker, runDocker);
+  if (marker !== input.turnMarker) return 0;
+  const [readError, result] = await tryCatch(() => runDocker(['exec', input.container, 'sh', '-c', `tail -c 262144 ${TOOL_TRAIL} 2>/dev/null`]));
+  if (readError || result?.code !== 0 || result.out.trim().length === 0) return 0;
+  const entries = parseToolTrail(result.out, { workspaceId: input.workspaceId, sessionId: input.target.sessionId, turnMarker: marker });
   if (entries.length === 0) return 0;
-  const [writeErr] = await tryCatch(async () => {
-    const prisma = getPrismaClient();
-    const last = await prisma.ticketEvent.findFirst({ where: { workspaceId: input.workspaceId, ticketId: input.ticketId }, orderBy: { seq: 'desc' }, select: { seq: true } });
-    let seq = last?.seq ?? 0;
-    await prisma.ticketEvent.createMany({
-      data: entries.map((e) => {
-        seq += 1;
-        return {
-          workspaceId: input.workspaceId, ticketId: input.ticketId, seq, type: e.type, actor: 'ai',
-          sessionKey: input.sessionKey, stageId: input.stageId, text: e.text, metadata: e.metadata,
-        };
-      }),
-    });
-  });
-  if (writeErr) return 0;
-  await tryCatch(() => docker(['exec', input.container, 'sh', '-c', `: > ${TOOL_TRAIL} 2>/dev/null`]));
-  return entries.length;
+
+  let appended = 0;
+  for (let offset = 0; offset < entries.length; offset += 100) {
+    const chunk = entries.slice(offset, offset + 100);
+    const first = chunk[0];
+    const last = chunk.at(-1);
+    if (!first || !last) return 0;
+    const [writeError, enqueued] = await tryCatch(() => enqueue({
+      workspaceId: input.workspaceId,
+      op: 'stage-tool-trail-append',
+      target: input.target,
+      payload: { containerId: input.containerId, entries: chunk },
+      userId: 'stage-runner',
+      clientRequestId: `stage-tool-trail:${input.target.sessionId}:${input.target.runToken}:${String(input.target.runFence)}:${marker}:${first.eventId}:${last.eventId}`,
+    }));
+    if (writeError || !enqueued || !stageActionPersisted(enqueued.result, input.target.ticketKey)) return 0;
+    appended += readStageToolTrailResult(enqueued.result)?.appended ?? 0;
+  }
+
+  const [cleanupError, cleanup] = await tryCatch(() => runDocker([
+    'exec', input.container, 'sh', '-c',
+    `if ! cp ${TOOL_TRAIL} ${TOOL_TRAIL}.persisted-backup 2>/dev/null || ! cp ${TURN_MARKER} ${TURN_MARKER}.persisted-backup 2>/dev/null; then exit 1; fi; `
+      + `if : > ${TOOL_TRAIL} 2>/dev/null && rm -f ${TURN_MARKER}; then `
+      + `rm -f ${TOOL_TRAIL}.persisted-backup ${TURN_MARKER}.persisted-backup || true; exit 0; fi; `
+      + `cp ${TOOL_TRAIL}.persisted-backup ${TOOL_TRAIL} || true; cp ${TURN_MARKER}.persisted-backup ${TURN_MARKER} || true; exit 1`,
+  ]));
+  if (cleanupError || cleanup?.code !== 0) return 0;
+  return appended;
 }
 
 export interface StageRunResult { ok: boolean; kind?: TurnResult['kind']; envelope?: CarryOverEnvelope; message?: string; error?: string }
+
+export type StageCiBoundary = (container: string) => Promise<StageCiReport>;
+
+//? Injectable for no-Docker regression tests. Production executes commands in the CURRENT ticket
+//? container/worktree and returns facts only; no Prisma-writing runPipeline call is reachable here.
+export function runStageCiOutsideWriter(
+  container: string,
+  boundary: StageCiBoundary = runStageCiInContainer,
+): Promise<StageCiReport> {
+  if (currentWriterScope() !== null) throw new Error('[stage-runner] slow CI boundary cannot run under the workspace writer');
+  return boundary(container);
+}
+
+export interface ResolvedStageTurnWriterOutcome {
+  persisted: boolean;
+  keys: string[];
+  completion: StageTurnCompleteResult | null;
+}
+
+//? Terminal replay intentionally loses the rich result. Re-read the current ticket/session/stage
+//? behind the runToken CAS so broadcast/forge/handoff decisions survive a post-write crash.
+export async function resolveStageTurnWriterOutcome(
+  prisma: PrismaClient,
+  workspaceId: string,
+  action: StageTurnCompleteInternalAction,
+  result: unknown,
+): Promise<ResolvedStageTurnWriterOutcome> {
+  const keys = stageActionResultKeys(result);
+  if (!stageActionPersisted(result, action.target.ticketKey)) return { persisted: false, keys: [], completion: null };
+  const rich = readStageTurnCompleteResult(result);
+  return {
+    persisted: true,
+    keys,
+    completion: rich?.applied === true ? rich : await reloadStageTurnCompleteResult(prisma, workspaceId, action),
+  };
+}
+
+export interface StageCleanupDependencies {
+  ownsSlot?: typeof reservationOwnsSlot;
+  readRunOwner?: typeof readStageContainerOwner;
+  teardown?: (workspaceId: string, ticketKey: string) => Promise<void>;
+}
+
+export async function cleanupFailedStageContainer(
+  workspaceId: string,
+  ticketKey: string,
+  runToken: string,
+  runFence: number,
+  container: ContainerInfo,
+  dependencies: StageCleanupDependencies = {},
+): Promise<boolean> {
+  if (!container.created) return false;
+  const ownsSlot = dependencies.ownsSlot ?? reservationOwnsSlot;
+  const readRunOwner = dependencies.readRunOwner ?? readStageContainerOwner;
+  const teardown = dependencies.teardown ?? teardownTicketContainer;
+  if (!(await ownsSlot(workspaceId, ticketKey, runToken, runFence))) return false;
+  const owner = await readRunOwner(container.name);
+  if (owner?.runToken !== runToken || owner.runFence !== runFence) return false;
+  const [error] = await tryCatch(() => teardown(workspaceId, ticketKey));
+  return error === null;
+}
 
 //? Narrow a stored Prisma Json envelope back to a CarryOverEnvelope (never trust the shape).
 function coerceEnvelope(v: unknown): CarryOverEnvelope | null {
@@ -204,25 +432,6 @@ function coerceEnvelope(v: unknown): CarryOverEnvelope | null {
     ...(typeof o.commitHash === 'string' ? { commitHash: o.commitHash } : {}),
     ...(typeof o.complexityScore === 'number' ? { complexityScore: o.complexityScore } : {}),
   };
-}
-
-//? A plain JSON object for the Prisma Json column (CarryOverEnvelope has an optional field).
-function envelopeJson(e: CarryOverEnvelope): Prisma.InputJsonObject {
-  return {
-    summary: e.summary, changedFiles: e.changedFiles, openQuestions: e.openQuestions,
-    ...(e.commitHash ? { commitHash: e.commitHash } : {}),
-    ...(typeof e.complexityScore === 'number' ? { complexityScore: e.complexityScore } : {}),
-  };
-}
-
-//? A4 — the per-workspace autonomy level modulates the per-stage human gate. `gate-every` gates every stage,
-//? `full-auto` skips every (non-destructive) gate, `gate-key-stages` (default) honours the stage's own
-//? `gateForApproval` flag. Destructive/irreversible actions confirm on their own path (B-23) — unaffected.
-//? Pure + exported for tests.
-export function resolveStageGate(stageGate: boolean, level: string | null | undefined): boolean {
-  if (level === 'full-auto') return false;
-  if (level === 'gate-every') return true;
-  return stageGate;
 }
 
 const isObjectId = (value: string): boolean => /^[a-f\d]{24}$/i.test(value);
@@ -270,7 +479,9 @@ export async function loadMcpIntegrations(
 //? The ticket is the authoritative runtime-project source. A stale provisioning request for
 //? another stage, or an identically-keyed stage in a sibling project, fails closed.
 export async function resolveStageRuntime(prisma: PrismaClient, workspaceId: string, ticketKey: string, stageKey: string) {
-  const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey } });
+  const ticket = await prisma.ticket.findFirst({
+    where: { workspaceId, key: ticketKey, archived: false, status: { notIn: ['done', 'paused'] } },
+  });
   if (ticket?.stageId !== stageKey) return null;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: stageKey } });
   return stage ? { ticket, stage } : null;
@@ -300,11 +511,35 @@ export async function resolveNextProjectStage(prisma: PrismaClient, workspaceId:
   return prisma.pipelineStage.findFirst({ where: { workspaceId, projectId, order: { gt: afterOrder } }, orderBy: { order: 'asc' } });
 }
 
+async function updateStageSession(input: {
+  workspaceId: string;
+  target: StageRunTarget;
+  containerId: string;
+  status: 'busy' | 'stopped';
+  reason: string;
+  claudeSessionId?: string;
+}): Promise<boolean> {
+  const [error, enqueued] = await tryCatch(() => enqueueInternalAction({
+    workspaceId: input.workspaceId,
+    op: 'stage-session-update',
+    target: input.target,
+    payload: {
+      containerId: input.containerId,
+      status: input.status,
+      ...(input.claudeSessionId === undefined ? {} : { claudeSessionId: input.claudeSessionId }),
+    },
+    userId: 'stage-runner',
+    clientRequestId: `stage-session-update:${stageDigest(input.target.sessionId, input.target.runToken, input.containerId, input.reason)}`,
+  }));
+  return !error && stageActionPersisted(enqueued?.result, input.target.ticketKey);
+}
+
 //? Run one aiEnabled stage for a ticket: render → materialize → drive claude → parse →
 //? persist carry-over (+ advance the ticket if the stage isn't gated). Best-effort, off the
 //? serial chain.
-export async function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { resume?: boolean; resumePrompt?: string } = {}): Promise<StageRunResult> {
+async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey: string, opts: { runToken: string; runFence: number; reservationGuard: ReservationGuard; resume?: boolean; resumePrompt?: string }): Promise<StageRunResult> {
   const prisma = getPrismaClient();
+  await opts.reservationGuard.assertOwned();
   const runtime = await resolveStageRuntime(prisma, workspaceId, ticketKey, stageKey);
   if (!runtime) return { ok: false, error: 'ticket-or-stage.notFound' };
   const { ticket, stage: stageRow } = runtime;
@@ -344,161 +579,237 @@ export async function runStage(workspaceId: string, ticketKey: string, stageKey:
   const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true } });
   //? K3 — inject the workspace env + service network so the coding agent's build/test reaches the app's services.
   const ctx = await workspaceContainerContext(prisma, workspaceId);
-  const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch ?? ticketKey, image: resolveProjectBaseImage(project), ...ctx });
+  await opts.reservationGuard.assertOwned();
+  const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch ?? ticketKey, runToken: opts.runToken, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'container.launchFailed' };
+  const runOwner: StageRunOwner = { runToken: opts.runToken, runFence: opts.runFence };
+  //? This is the reuse fence: it kills predecessor A before B may materialize config or
+  //? drive a PTY, while preserving the existing /work git checkout and its commits.
+  if (!(await ensureStageContainerOwnership(container.name, workspaceId, ticketKey, runOwner))) {
+    await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
+    return { ok: false, error: 'stage.ownerMismatch' };
+  }
 
   const sessionKey = `worker:${ticket.id}:${stageKey}`;
-  //? #4 self-handoff RELOAD: a prior turn that crossed the token budget wrote a handoff + cleared
-  //? the session's claudeSessionId (a "/clear"). So when this session is starting FRESH (no
-  //? claudeSessionId) and has a stored handoff, inject it as the opening context. A crash-resume
-  //? (#1, which keeps claudeSessionId) continues the old transcript instead, so it skips this.
-  const priorSession = await prisma.agentSession.findFirst({ where: { workspaceId, sessionKey }, select: { claudeSessionId: true } });
-  const [, reloadHandoff] = priorSession?.claudeSessionId
+  const previousSession = await prisma.agentSession.findFirst({
+    where: { workspaceId, ticketId: ticket.id, stageId: stageKey, kind: 'worker', sessionKey },
+    select: { claudeSessionId: true },
+  });
+
+  //? A fresh session reloads its latest self-handoff; a resumable session continues its own transcript.
+  const [, reloadHandoff] = previousSession?.claudeSessionId
     ? [null, null]
     : await tryCatch(() => latestHandoff(prisma, workspaceId, sessionKey));
   const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
 
-  //? X1 — mount only this stage's selected MCP integrations. The typed loader enforces
-  //? tier fail-closed (`ro` omitted, `rw` mounted) and workspace ownership for tools + env refs.
   const integrations = await loadMcpIntegrations(prisma, workspaceId, cfg.tools);
-
   const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice });
-  if (!(await materializeStageConfig(container.name, artifacts))) return { ok: false, error: 'materialize.failed' };
+  if (!(await materializeStageConfig(container.name, artifacts))) {
+    await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
+    return { ok: false, error: 'materialize.failed' };
+  }
 
-  //? The ONE runtime row for this worker session (04b §7) — created here (nothing else
-  //? writes worker rows). Its id anchors the CarryOver; status is Conductor-owned.
-  const session = await prisma.agentSession.upsert({
-    where: { workspaceId_sessionKey: { workspaceId, sessionKey } },
-    create: { workspaceId, ticketId: ticket.id, stageId: stageKey, kind: 'worker', sessionKey, status: 'busy', containerId: container.containerId, worktreePath: '/work', cliVersion: '2.1.198', model: choice.model },
-    update: { status: 'busy', containerId: container.containerId },
-  });
+  //? The slow container launch/config materialization happened without the writer. Revalidate the exact
+  //? ticket/project/stage and persist the unique capacity runToken immediately before PTY; a reused
+  //? container id is binding metadata, never run identity.
+  await opts.reservationGuard.assertOwned();
+  const sessionStartId = stageDigest(ticket.id, stageKey, opts.runToken, String(opts.runFence), container.containerId);
+  const [startError, startedAction] = await tryCatch(() => enqueueInternalAction({
+    workspaceId,
+    op: 'stage-session-start',
+    target: { ticketId: ticket.id, ticketKey, projectId: ticket.projectId, stageId: stageKey },
+    payload: { sessionKey, runToken: opts.runToken, runFence: opts.runFence, containerId: container.containerId, model: choice.model, cliVersion: '2.1.198' },
+    userId: 'stage-runner',
+    clientRequestId: `stage-session-start:${sessionStartId}`,
+  }));
+  const started = readStageSessionStartResult(startedAction?.result);
+  if (startError || !started?.applied || started.session.runToken !== opts.runToken || started.session.runFence !== opts.runFence) {
+    await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
+    return { ok: false, error: 'stage.stale' };
+  }
+  const runTarget: StageRunTarget = {
+    ticketId: ticket.id,
+    ticketKey,
+    projectId: ticket.projectId,
+    stageId: stageKey,
+    sessionId: started.session.id,
+    runToken: opts.runToken,
+    runFence: opts.runFence,
+  };
+  const turnMarker = await ensurePersistentTurnMarker(container.name, stageDigest(started.session.id, randomUUID()));
+  if (!turnMarker) return { ok: false, error: 'stage.turnMarkerFailed' };
 
-  //? Resume (crash-recovery #1) or answer-a-question (#17): when a resumable claude session exists,
-  //? continue it with `--resume`. `resumePrompt` (a human's answer to the ticket's open question)
-  //? becomes the kickoff; otherwise a bare continue-nudge (#1) or a fresh-start (normal run).
   const hasAnswer = opts.resumePrompt !== undefined;
-  const wantResume = (opts.resume === true || hasAnswer) && session.claudeSessionId !== null;
-  const resumeSessionId = wantResume ? (session.claudeSessionId ?? undefined) : undefined;
+  const wantResume = (opts.resume === true || hasAnswer) && started.session.claudeSessionId !== null;
+  const resumeSessionId = wantResume ? (started.session.claudeSessionId ?? undefined) : undefined;
   const kickoff = ((): string => {
     if (hasAnswer) return `The human answered your open question:\n\n${String(opts.resumePrompt)}\n\nContinue this stage using that answer. When you are done, end your final message with the ws-carryover block exactly as instructed.`;
     if (resumeSessionId) return 'Continue exactly where you left off on this stage. When you are done, end your final message with the ws-carryover block exactly as instructed.';
     return 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
   })();
-  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: choice.model });
+  await opts.reservationGuard.assertOwned();
+  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: choice.model, runOwner });
+  await opts.reservationGuard.assertOwned();
   if (!drive.ok) {
-    await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
+    await updateStageSession({ workspaceId, target: runTarget, containerId: container.containerId, status: 'stopped', reason: `${turnMarker}:${drive.error ?? 'turn-failed'}` });
     return { ok: false, error: drive.error ?? 'turn.failed' };
   }
-  //? Capture the resumable claude session id off the Stop hook.
-  if (drive.claudeSessionId) await prisma.agentSession.updateMany({ where: { id: session.id }, data: { claudeSessionId: drive.claudeSessionId } });
 
-  //? D2 — persist WHAT the turn did (files edited, commands run, in order) before anything else can fail.
-  await persistToolTrail({ container: container.name, workspaceId, ticketId: ticket.id, stageId: stageKey, sessionKey });
-
-  //? Cost/usage tracking (#16): record this turn's estimated token usage — input ≈ the rendered
-  //? CLAUDE.md + stage instructions, output ≈ the assistant message (the CLI exposes no usage field
-  //? on the subscription, so we estimate from chars). Best-effort — advisory, never fails the turn.
-  await tryCatch(() => recordTurnSpend(prisma, {
-    workspaceId, userId: ticket.assigneeId ?? null, ticketId: ticket.id, stageId: stageKey, sessionKey,
-    model: choice.model, providerId: 'claude-cli', feature: 'pipeline-agent',
-    inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length, outputChars: drive.message.length,
-  }));
-
-  const result = await parseTurnResult(drive.message);
-  if (result.kind === 'done') {
-    //? Persist the carry-over: the machine envelope + the human one-liner on the ticket, so
-    //? the NEXT stage's promptTemplate chips are filled from it (02 §4).
-    const nextStage = await resolveNextProjectStage(prisma, workspaceId, ticket.projectId, stageRow.order);
-    await prisma.carryOver.create({ data: { workspaceId, ticketId: ticket.id, fromStageId: stageKey, toStageId: nextStage?.key ?? stageKey, sessionId: session.id, envelope: envelopeJson(result.envelope) } });
-    await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { carryOver: result.envelope.summary } });
-    //? W2 — surface NON-blocking questions the agent proceeded past with assumptions on the ticket (append to any
-    //? existing unresolved set, dedup by question) WITHOUT parking it. A human can later resolve them; a divergent
-    //? answer schedules a revision turn (answer-input `advisoryIndex`). The turn otherwise completes normally.
-    if (result.envelope.advisories && result.envelope.advisories.length > 0) {
-      const current = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { advisoryQuestions: true } });
-      const existing = parseAdvisories(current?.advisoryQuestions);
-      const seen = new Set(existing.map((x) => x.q));
-      const additions = result.envelope.advisories.filter((a) => !seen.has(a.q)).map((a) => ({ q: a.q, assumption: a.assumption, a: null, resolved: false }));
-      if (additions.length > 0) await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { advisoryQuestions: jsonInput([...existing, ...additions]) } });
-    }
-    await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: 'stopped' } });
-    //? A4 — the effective gate = the stage's own flag modulated by the workspace autonomy level.
-    const [, wsRow] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { autonomyLevel: true } }));
-    const gated = resolveStageGate(stageRow.gateForApproval, wsRow?.autonomyLevel);
-    //? R2 — a TEST stage auto-fires the deterministic CI gate: a RED run BLOCKS advancement + parks the ticket
-    //? (was free-text only). `runPipeline` self-handles no-ci.yml ('none') / no-docker ('canceled') → nogate.
-    let ciBlocked = false;
-    if (isTestStage(stageRow.kind)) {
-      const [, ci] = await tryCatch(() => runPipeline(prisma, workspaceId, ticket.projectId, { branch: ticket.branch ?? ticketKey, commitHash: ticket.commitHash ?? '', ticketId: ticket.id, trigger: 'test-stage' }));
-      if (ci && testStageCiVerdict(ci.status) === 'fail') {
-        ciBlocked = true;
-        await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { needsInput: 'CI failed — fix the failing tests before this ticket advances.', status: 'needs-input', remindedAt: null } });
-      }
-    }
-    //? Advance the ticket to the next stage unless this stage is gated for human approval OR the CI gate is red.
-    if (nextStage && !gated && !ciBlocked) {
-      await prisma.ticket.updateMany({ where: { workspaceId, key: ticketKey }, data: { stageId: nextStage.key } });
-    }
-    //? Realtime (item 5): the engine advance was silent before — broadcast the updated ticket so
-    //? every board reflects the move + carry-over live (no refetch).
-    await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
-    //? Push-on-approval (item 1, Track F): when the work is ready for a human — this stage gates
-    //? for approval, or it's the terminal stage — push + open an MR per pushPolicy. Fire-and-
-    //? forget so a slow/failed forge never delays or breaks the turn; re-broadcast once an MR lands.
-    if (gated || !nextStage) {
-      void tryCatch(() => pushTicketWork(prisma, workspaceId, ticketKey)).then(([e, r]) => {
-        if (e) console.error(`[forge] ${ticketKey} failed:`, e.message);
-        else if (r && !r.ok) console.warn(`[forge] ${ticketKey}: ${r.error ?? ''}`);
-        else if (r?.mrUrl) { console.log(`[forge] ${ticketKey} MR: ${r.mrUrl}`); void broadcastTicketDelta(prisma, workspaceId, [ticketKey]); }
-      });
-    }
-    //? Push-back on pipeline completion: report to the source GitLab issue (best-effort).
-    if (!nextStage) void postIssueComment(prisma, workspaceId, ticketKey, '🤖 AI completed the pipeline for this ticket.');
-    return { ok: true, kind: 'done', envelope: result.envelope, message: drive.message };
-  }
-  //? needs-input → session parks busy (a human answers); continue → the turn just ended.
-  await prisma.agentSession.updateMany({ where: { id: session.id }, data: { status: result.kind === 'needs-input' ? 'busy' : 'stopped' } });
-
-  //? P-B — SURFACE the agent's question. Previously the parsed questions were dropped, so an agent that
-  //? blocked on `ws-needs-input` parked its session busy but showed the human nothing. Persist the first
-  //? question (already needsInput-encoded by parseTurnResult: plain for free, `@@wsq:` for approve/choice)
-  //? onto the ticket + flip it to needs-input, then broadcast so the board/phone renders the P-B card.
-  //? `answer-input` clears it and resumes the parked session.
-  if (result.kind === 'needs-input') {
-    //? W1 — persist the FULL question set (was: only questions[0], the rest silently dropped). The banner
-    //? stays the first question (back-compat with every existing reader); `needsInputQuestions` carries the
-    //? whole [{q,a}] list so answer-input can step through them + resume once with all answers.
-    const qs = result.questions.map((q) => q.trim()).filter((q) => q.length > 0);
-    if (qs.length > 0) {
-      await prisma.ticket.updateMany({
-        where: { workspaceId, key: ticketKey },
-        data: { needsInput: qs[0], needsInputQuestions: jsonInput(qs.map((q) => ({ q, a: null }))), status: 'needs-input', remindedAt: null },
-      });
-      await broadcastTicketDelta(prisma, workspaceId, [ticketKey]);
-    }
-  }
-
-  //? #4 self-handoff: the session PERSISTS (it didn't complete the stage), so if it crossed its
-  //? token budget, drive a controlled handoff NOW — ask the AI (with its full context) to write a
-  //? handoff, store it, and CLEAR claudeSessionId so the next turn starts fresh + reloads the
-  //? handoff (the "/clear" reset). Best-effort — a failed handoff just leaves the session as-is.
-  await tryCatch(async () => {
-    const budget = budgetForStage(stageRow.modelCfg.contextBudgetTokens);
-    const sess = await prisma.agentSession.findUnique({ where: { id: session.id }, select: { tokenEstimate: true, claudeSessionId: true } });
-    if (!sess?.claudeSessionId) return;
-    //? PreCompact backstop (#4): Claude signalled it is about to auto-compact → force our handoff.
-    const pcProbe = await docker(['exec', container.name, 'sh', '-c', 'test -f /work/.claude/precompact-signal && echo yes || echo no']);
-    const preCompact = pcProbe.out.trim() === 'yes';
-    if (!preCompact && !shouldHandoff(sess.tokenEstimate, budget)) return;
-    const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: sess.claudeSessionId, model: choice.model });
-    const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
-    if (!body) return;
-    await recordHandoff(prisma, { workspaceId, sessionKey, ticketId: ticket.id, stageId: stageKey, body, reason: preCompact ? 'precompact' : 'budget' });
-    //? Reset: drop claudeSessionId → the next turn is a fresh claude session that reloads the handoff.
-    await prisma.agentSession.updateMany({ where: { id: session.id }, data: { claudeSessionId: null } });
-    await docker(['exec', container.name, 'sh', '-c', 'rm -f /work/.claude/precompact-signal']);
-    console.log(`[handoff] ${ticketKey}@${stageKey} token-optimized (${preCompact ? 'precompact' : `est ${String(sess.tokenEstimate)} ≥ ${String(budget)}`})`);
+  await persistToolTrail({
+    container: container.name,
+    containerId: container.containerId,
+    workspaceId,
+    target: runTarget,
+    turnMarker,
   });
 
+  const result = await parseTurnResult(drive.message);
+  //? CI executes against THIS ticket container's current /work and reads its actual HEAD. It returns
+  //? facts only; Pipeline/PipelineRun/PipelineJob/Event writes happen in stage-turn-complete.
+  await opts.reservationGuard.assertOwned();
+  const [ciError, ci] = result.kind === 'done' && isTestStage(stageRow.kind)
+    ? await tryCatch(() => runStageCiOutsideWriter(container.name))
+    : [null, null];
+  if (ciError) console.error(`[ci] ${ticketKey}@${stageKey} failed to produce a report:`, ciError.message);
+  await opts.reservationGuard.assertOwned();
+  const turnId = stableStageCompletionId({
+    runToken: runTarget.runToken,
+    runFence: runTarget.runFence,
+    turnMarker,
+    message: drive.message,
+    report: ci ?? null,
+  });
+  const completionRequest: StageTurnCompleteInternalAction = {
+    workspaceId,
+    op: 'stage-turn-complete',
+    target: runTarget,
+    payload: {
+      containerId: container.containerId,
+      ...(drive.claudeSessionId ? { claudeSessionId: drive.claudeSessionId } : {}),
+      turn: result,
+      spend: {
+        userId: ticket.assigneeId,
+        model: choice.model,
+        inputChars: artifacts.claudeMd.length + artifacts.stageInstructions.length,
+        outputChars: drive.message.length,
+      },
+      ...(ci ? { ci } : {}),
+    },
+    userId: 'stage-runner',
+    clientRequestId: `stage-turn-complete:${turnId}`,
+  };
+  const [completionError, completionAction] = await tryCatch(() => enqueueInternalAction(completionRequest));
+  if (completionError || !completionAction) return { ok: false, error: 'stage.stale' };
+  const outcome = await resolveStageTurnWriterOutcome(prisma, workspaceId, completionRequest, completionAction.result);
+  if (!outcome.persisted) return { ok: false, error: 'stage.stale' };
+  //? Broadcast as soon as the writer proves persistence. Rich result loss on terminal replay can
+  //? never suppress the delta; stale outcomes have no keys and never reach this call.
+  await broadcastTicketDelta(prisma, workspaceId, outcome.keys);
+  const completed = outcome.completion;
+  if (!completed) return { ok: true, kind: result.kind, ...(result.kind === 'done' ? { envelope: result.envelope } : {}), message: drive.message };
+  const currentTicket = await prisma.ticket.findFirst({
+    where: { id: ticket.id, workspaceId, projectId: ticket.projectId, key: ticketKey },
+    select: { branch: true },
+  });
+  const forgeBranch = currentTicket?.branch ?? null;
+
+  if (result.kind === 'done' && completed.forgeRequired && forgeBranch) {
+    //? Durable intent BEFORE the irreversible boundary. Prepare revalidates ticket,
+    //? stage, session, runToken, capacity owner, container, and branch under the writer.
+    const prepareRequestId = `stage-forge-prepare:${stageDigest(runTarget.sessionId, runTarget.runToken, String(runTarget.runFence), container.containerId, forgeBranch)}`;
+    const prepareAction = {
+      workspaceId,
+      op: 'stage-forge-prepare' as const,
+      target: runTarget,
+      payload: { containerId: container.containerId, expectedBranch: forgeBranch },
+      userId: 'stage-runner',
+      clientRequestId: prepareRequestId,
+    };
+    const [prepareError, preparedAction] = await tryCatch(() => enqueueInternalAction(prepareAction));
+    const prepared = readStageForgePrepareResult(preparedAction?.result);
+    const intentId = stageForgeIntentId(workspaceId, prepareRequestId);
+    const preparePersisted = !prepareError
+      && preparedAction !== null
+      && stageActionPersisted(preparedAction.result, ticketKey)
+      && (prepared === null || prepared.intentId === intentId);
+    if (preparePersisted) {
+      await opts.reservationGuard.assertOwned();
+      //? Git push + forge HTTP run with NO workspace writer lease. pushTicketWork
+      //? re-reads expected project+branch immediately before its first external call.
+      const [forgeError, forge] = await tryCatch(() => pushTicketWork(prisma, workspaceId, ticketKey, {
+        ticketId: ticket.id,
+        projectId: ticket.projectId,
+        branch: forgeBranch,
+        assertAuthority: () => opts.reservationGuard.assertOwned(),
+      }));
+      if (forgeError) console.error(`[forge] ${ticketKey} failed:`, forgeError.message);
+      else if (forge && !forge.ok) console.warn(`[forge] ${ticketKey}: ${forge.error ?? ''}`);
+      else if (forge?.mrUrl) {
+        await opts.reservationGuard.assertOwned();
+        const forgeId = stageDigest(intentId, runTarget.runToken, String(runTarget.runFence), forge.mrUrl);
+        const [applyError, appliedAction] = await tryCatch(() => enqueueInternalAction({
+          workspaceId,
+          op: 'stage-forge-complete',
+          target: runTarget,
+          payload: { containerId: container.containerId, intentId, expectedBranch: forgeBranch, mrUrl: forge.mrUrl ?? '' },
+          userId: 'stage-runner',
+          clientRequestId: `stage-forge-complete:${forgeId}`,
+        }));
+        const applied = readStageForgeCompleteResult(appliedAction?.result);
+        if (!applyError && appliedAction && stageActionPersisted(appliedAction.result, ticketKey)) {
+          await broadcastTicketDelta(prisma, workspaceId, stageActionResultKeys(appliedAction.result));
+          if (applied?.changed !== false) {
+            await tryCatch(() => postIssueComment(prisma, workspaceId, ticketKey, `🤖 AI opened a merge request: ${forge.mrUrl ?? ''}`));
+          }
+        }
+      }
+    }
+  }
+  if (result.kind === 'done' && completed.pipelineDone) {
+    await tryCatch(() => postIssueComment(prisma, workspaceId, ticketKey, '🤖 AI completed the pipeline for this ticket.'));
+  }
+  if (result.kind === 'done') return { ok: true, kind: 'done', envelope: result.envelope, message: drive.message };
+
+  //? Handoff PTY drive + precompact-file I/O stay outside the lease. Handoff persistence,
+  //? token reset, and claudeSessionId clear happen together behind the session/container CAS.
+  const handoffSessionId = completed.claudeSessionId;
+  if (handoffSessionId) {
+    await tryCatch(async () => {
+      const budget = budgetForStage(stageRow.modelCfg.contextBudgetTokens);
+      const pcProbe = await docker(['exec', container.name, 'sh', '-c', 'test -f /work/.claude/precompact-signal && echo yes || echo no']);
+      const preCompact = pcProbe.out.trim() === 'yes';
+      if (!preCompact && !shouldHandoff(completed.tokenEstimate, budget)) return;
+      await opts.reservationGuard.assertOwned();
+      const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: handoffSessionId, workspaceId, ticketKey, model: choice.model, runOwner });
+      const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
+      if (!body) return;
+      const reason = preCompact ? 'precompact' : 'budget';
+      await opts.reservationGuard.assertOwned();
+      const handoffId = stableStageHandoffId({
+        runToken: runTarget.runToken,
+        runFence: runTarget.runFence,
+        turnMarker,
+        claudeSessionId: handoffSessionId,
+        body,
+        reason,
+      });
+      const [applyError, appliedAction] = await tryCatch(() => enqueueInternalAction({
+        workspaceId,
+        op: 'stage-handoff-complete',
+        target: runTarget,
+        payload: { containerId: container.containerId, expectedClaudeSessionId: handoffSessionId, body, reason },
+        userId: 'stage-runner',
+        clientRequestId: `stage-handoff-complete:${handoffId}`,
+      }));
+      if (applyError || !appliedAction || !stageActionPersisted(appliedAction.result, ticketKey)) return;
+      await docker(['exec', container.name, 'sh', '-c', 'rm -f /work/.claude/precompact-signal']);
+      console.log(`[handoff] ${ticketKey}@${stageKey} token-optimized (${preCompact ? 'precompact' : `est ${String(completed.tokenEstimate)} ≥ ${String(budget)}`})`);
+    });
+  }
+
   return { ok: true, kind: result.kind, message: drive.message };
+}
+
+export function runStage(workspaceId: string, ticketKey: string, stageKey: string, opts: { runToken: string; runFence: number; reservationGuard: ReservationGuard; resume?: boolean; resumePrompt?: string }): Promise<StageRunResult> {
+  return runInTenant(workspaceId, () => runStageInTenant(workspaceId, ticketKey, stageKey, opts));
 }

@@ -1448,7 +1448,34 @@
       "appCredSaved": "Credentials saved",
       "appCredSource_workspace": "configured in this workspace",
       "appCredSource_env": "using .env fallback",
-      "appCredSource_none": "not configured"
+      "appCredSource_none": "not configured",
+      "libraryStar": "Keep in the library",
+      "seoTitle": "SEO check",
+      "seoDesc": "Score this title and get alternatives, based on what actually earned views on your own account.",
+      "seoAnalyze": "Analyse title",
+      "seoBusy": "Analysing…",
+      "seoOutOf": "/100",
+      "seoScoreOnly": "score only — no AI provider configured",
+      "seoAlternatives": "Suggested titles",
+      "seoTags": "Tags",
+      "seo.empty": "The title is empty.",
+      "seo.tooLong": "Too long — it will be cut off in search.",
+      "seo.tooShort": "Very short — say what the viewer gets.",
+      "seo.weakOpener": "Starts with a filler word.",
+      "seo.noHook": "No hook (a number, a question or \"how\").",
+      "seo.shouting": "ALL CAPS reads as spam.",
+      "seo.repetitive": "Repeats the same words.",
+      "captionStyleTitle": "Caption style",
+      "captionStyleDesc": "How burned-in captions look.",
+      "captionSize": "Font size",
+      "captionColor": "Text colour (hex)",
+      "captionBoxed": "Band behind the text",
+      "captionWordByWord": "Word-by-word reveal",
+      "thumbTitle": "Thumbnail",
+      "thumbDesc": "A bold headline over a background. Leave the background empty for the free template.",
+      "thumbBgPlaceholder": "AI background (optional, costs a generation)",
+      "thumbCompose": "Compose thumbnail",
+      "thumbComposeAi": "Compose with AI background"
     },
     "knowledge": {
       "title": "Knowledge graph",
@@ -1847,7 +1874,10 @@
       "vsVo": "VO",
       "vsScreen": "On screen",
       "vsCta": "CTA",
-      "vsNote": "Script + storyboard generated — full video rendering needs a media/video API key."
+      "vsNote": "Script + storyboard generated — full video rendering needs a media/video API key.",
+      "publishLive": "Publish live",
+      "publishLiveHint": "Serve this page on a public URL",
+      "publishedLive": "Publishing — the page URL appears shortly."
     },
     "uiReview": {
       "title": "Request a UI review",
@@ -2395,7 +2425,8 @@
       "hideArchived": "Hide archived",
       "reuseExisting": "Reuse an existing image",
       "reuseHide": "Hide existing images",
-      "reuseThis": "Attach this asset"
+      "reuseThis": "Attach this asset",
+      "reuseEmpty": "No reusable images in this workspace yet."
     },
     "inspire": {
       "title": "Inspiration",
@@ -2417,7 +2448,15 @@
       "markAllRead": "Mark all read",
       "readOnlyNote": "Read-only: replying stays on the platform itself.",
       "empty": "No comments yet",
-      "emptySub": "Comments on your published posts appear here. YouTube needs the new read permission — reconnect the account once if this stays empty."
+      "emptySub": "Comments on your published posts appear here. YouTube needs the new read permission — reconnect the account once if this stays empty.",
+      "reply": "Reply",
+      "markRead": "Mark read",
+      "replyPlaceholder": "Write a reply…",
+      "draft": "Draft with AI",
+      "drafting": "Drafting…",
+      "send": "Send reply",
+      "cancel": "Cancel",
+      "draftFailed": "Could not draft a reply."
     },
     "voice": {
       "record": "Record a voice message",
@@ -2427,6 +2466,18 @@
       "empty": "Nothing was heard - try again.",
       "speakOn": "Speaking replies aloud (tap to mute)",
       "speakOff": "Speak replies aloud"
+    },
+    "experiments": {
+      "title": "Prompt experiments",
+      "desc": "Run two variants of a prompt against each other and read the verdict — instead of guessing whether a rewrite helped.",
+      "namePlaceholder": "Experiment name (e.g. hook style)",
+      "variantA": "Variant A prompt",
+      "variantB": "Variant B prompt",
+      "start": "Start experiment",
+      "stop": "Stop",
+      "empty": "No experiments yet.",
+      "status_running": "running",
+      "status_stopped": "stopped"
     }
   }
 }

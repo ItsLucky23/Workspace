@@ -11,6 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { persistMediaBytes } from '../media/store';
 import { broadcastContentAssetDelta } from '../read/broadcast';
 import { jsonInput } from '../util/json';
+import { parseCaptionStyle, buildWordCues } from './captionStyle';
 import { renderTimeline, renderScenes, localizeAsset, probeDurationMs, buildTimedSrt, buildTimedVtt, applyCaptions, applyCtaOverlay, applyWatermark, type FfmpegRunner, type DurationProbe, type CaptionSegment } from './render';
 
 export interface AssembleResult {
@@ -34,7 +35,9 @@ export async function assembleContent(
   //? V5/F2 audio-track — the piece's background music + sfx + per-track gains (voice / ducked music) for the mix.
   const music = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'music' }, orderBy: { createdAt: 'desc' } });
   const sfx = await prisma.contentAsset.findFirst({ where: { workspaceId: args.workspaceId, contentProjectId: args.contentProjectId, kind: 'sfx' }, orderBy: { createdAt: 'desc' } });
-  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true, captionMode: true, ctaText: true } });
+  const piece = await prisma.contentProject.findFirst({ where: { workspaceId: args.workspaceId, id: args.contentProjectId }, select: { voiceVolume: true, musicVolume: true, aspectRatio: true, captionMode: true, captionStyle: true, ctaText: true } });
+  //? F2 — the piece's caption LOOK (null = the plain ffmpeg default, i.e. the pre-F2 behaviour).
+  const captionStyleCfg = parseCaptionStyle(piece?.captionStyle);
 
   //? Build the timeline: one clip per beat (its image + duration), narrated over the voiceover.
   const timeline = beats.map((b) => ({ order: b.order, text: b.text, imageAssetId: b.imageAssetId ?? null, durationMs: b.durationMs ?? 3000 }));
@@ -83,7 +86,11 @@ export async function assembleContent(
       return seg;
     });
     const cid = randomUUID();
-    captionsSrtUrl = persistMediaBytes(Buffer.from(buildTimedSrt(segments), 'utf8'), 'srt', `${cid}-cc`).url;
+    //? GAP_SCAN F2 — `wordByWord` splits each segment into cumulative per-word cues (the short-form look).
+    //? The SIDECAR files keep the readable per-segment timing; only the burn-in gets the word cadence, so a
+    //? downloaded .srt stays usable as a transcript.
+    const burnSegments = captionStyleCfg?.wordByWord === true ? buildWordCues(segments) : segments;
+    captionsSrtUrl = persistMediaBytes(Buffer.from(buildTimedSrt(burnSegments), 'utf8'), 'srt', `${cid}-cc`).url;
     captionsVttUrl = persistMediaBytes(Buffer.from(buildTimedVtt(segments), 'utf8'), 'vtt', cid).url;
   }
 
@@ -117,7 +124,7 @@ export async function assembleContent(
   if (render.ok && captionsSrtUrl && (captionMode === 'burn' || captionMode === 'soft') && render.url) {
     const srtName = captionsSrtUrl.replace(/^\/media\//, '');
     const inName = render.url.replace(/^\/media\//, '');
-    const ccUrl = await applyCaptions(inName, srtName, captionMode, opts);
+    const ccUrl = await applyCaptions(inName, srtName, captionMode, { ...opts, ...(captionStyleCfg ? { style: captionStyleCfg } : {}) });
     if (ccUrl) { finalUrl = ccUrl; captionsBurned = true; }
   }
   //? H1 (ads) — a CTA / end-card overlay on the last seconds (a second pass over the current finalUrl, best-effort).

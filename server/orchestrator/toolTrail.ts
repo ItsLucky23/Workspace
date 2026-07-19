@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+
+import { deterministicObjectId } from './actionIds';
+
 //? GAP_SCAN D2 — the per-tool-call turn audit trail.
 //?
 //? Before this, the only record of what an agent turn actually DID was the live PTY tail (broadcast,
@@ -74,21 +78,60 @@ export function toolEventType(call: ToolCallLine): 'file-change' | 'command' | '
 }
 
 export interface ToolTrailEntry {
+  eventId: string;
   type: 'file-change' | 'command' | 'tool-use';
   text: string;
-  metadata: { tool: string; ok: boolean; changedFiles?: string[] };
+  metadata: { tool: string; ok: boolean; changedFiles?: string[]; turnMarker: string; occurrence: number };
 }
 
-//? A whole JSONL blob → the ordered trail. Bounded: a 500-tool turn should not write 500 rows, so only the
-//? newest `max` calls are kept (the tail is what a reviewer reads). Order is preserved.
-export function parseToolTrail(jsonl: string, max = 100): ToolTrailEntry[] {
-  const calls = jsonl.split('\n').map((l) => parseToolCallLine(l)).filter((c): c is ToolCallLine => c !== null);
-  return calls.slice(-max).map((call) => {
+export interface ToolTrailIdentity {
+  workspaceId: string;
+  sessionId: string;
+  turnMarker: string;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((entry) => canonicalJson(entry)).join(',')}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).toSorted().map((key) => `${JSON.stringify(key)}:${canonicalJson(object[key])}`).join(',')}}`;
+}
+
+function normalizedToolLine(line: string): { call: ToolCallLine; raw: string } | null {
+  const trimmed = line.trim();
+  const raw = safeJson(trimmed);
+  const call = parseToolCallLine(trimmed);
+  return raw !== null && call !== null ? { call, raw: canonicalJson(raw) } : null;
+}
+
+//? A whole retained JSONL blob → every ordered trail entry. The file read itself is byte-bounded by
+//? stageRunner; entries are chunked at the InternalOp boundary rather than dropping an arbitrary tail.
+//? Per-entry identity is independent of runToken/fence and batch composition: logical session + the
+//? persistent turn marker + canonical raw payload + its same-payload occurrence ordinal.
+export function parseToolTrail(jsonl: string, identity: ToolTrailIdentity): ToolTrailEntry[] {
+  const normalized = jsonl.split('\n').map((line) => normalizedToolLine(line)).filter((entry): entry is { call: ToolCallLine; raw: string } => entry !== null);
+  const occurrences = new Map<string, number>();
+  return normalized.map(({ call, raw }) => {
+    const occurrence = occurrences.get(raw) ?? 0;
+    occurrences.set(raw, occurrence + 1);
     const file = str(call.input, 'file_path') ?? str(call.input, 'path');
+    const type = toolEventType(call);
+    const rawDigest = createHash('sha256').update(raw).digest('hex');
     return {
-      type: toolEventType(call),
+      eventId: deterministicObjectId(
+        identity.workspaceId,
+        `${identity.sessionId}:${identity.turnMarker}`,
+        `${rawDigest}:${String(occurrence)}`,
+      ),
+      type,
       text: describeToolCall(call),
-      metadata: { tool: call.tool, ok: call.ok, ...(file !== undefined && toolEventType(call) === 'file-change' ? { changedFiles: [file] } : {}) },
+      metadata: {
+        tool: call.tool,
+        ok: call.ok,
+        turnMarker: identity.turnMarker,
+        occurrence,
+        ...(file !== undefined && type === 'file-change' ? { changedFiles: [file] } : {}),
+      },
     };
   });
 }

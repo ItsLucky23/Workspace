@@ -1448,7 +1448,34 @@
       "appCredSaved": "Gegevens opgeslagen",
       "appCredSource_workspace": "ingesteld in deze workspace",
       "appCredSource_env": "gebruikt .env-fallback",
-      "appCredSource_none": "niet ingesteld"
+      "appCredSource_none": "niet ingesteld",
+      "libraryStar": "Bewaar in de bibliotheek",
+      "seoTitle": "SEO-check",
+      "seoDesc": "Beoordeel deze titel en krijg alternatieven, op basis van wat op je eigen account echt views opleverde.",
+      "seoAnalyze": "Titel analyseren",
+      "seoBusy": "Bezig…",
+      "seoOutOf": "/100",
+      "seoScoreOnly": "alleen score — geen AI-provider ingesteld",
+      "seoAlternatives": "Voorgestelde titels",
+      "seoTags": "Tags",
+      "seo.empty": "De titel is leeg.",
+      "seo.tooLong": "Te lang — wordt afgekapt in zoekresultaten.",
+      "seo.tooShort": "Erg kort — zeg wat de kijker krijgt.",
+      "seo.weakOpener": "Begint met een vulwoord.",
+      "seo.noHook": "Geen haakje (getal, vraag of \"hoe\").",
+      "seo.shouting": "ALLEMAAL HOOFDLETTERS leest als spam.",
+      "seo.repetitive": "Herhaalt dezelfde woorden.",
+      "captionStyleTitle": "Ondertitelstijl",
+      "captionStyleDesc": "Hoe ingebrande ondertitels eruitzien.",
+      "captionSize": "Tekstgrootte",
+      "captionColor": "Tekstkleur (hex)",
+      "captionBoxed": "Balk achter de tekst",
+      "captionWordByWord": "Woord-voor-woord",
+      "thumbTitle": "Thumbnail",
+      "thumbDesc": "Een vette kop over een achtergrond. Laat de achtergrond leeg voor het gratis sjabloon.",
+      "thumbBgPlaceholder": "AI-achtergrond (optioneel, kost een generatie)",
+      "thumbCompose": "Thumbnail maken",
+      "thumbComposeAi": "Maken met AI-achtergrond"
     },
     "knowledge": {
       "title": "Kennisgraaf",
@@ -1847,7 +1874,10 @@
       "vsVo": "VO",
       "vsScreen": "In beeld",
       "vsCta": "CTA",
-      "vsNote": "Script + storyboard gegenereerd — volledige video-rendering vereist een media/video-API-key."
+      "vsNote": "Script + storyboard gegenereerd — volledige video-rendering vereist een media/video-API-key.",
+      "publishLive": "Live zetten",
+      "publishLiveHint": "Zet deze pagina op een publieke URL",
+      "publishedLive": "Bezig met publiceren — de URL verschijnt zo."
     },
     "uiReview": {
       "title": "Vraag een UI-review aan",
@@ -2395,7 +2425,8 @@
       "hideArchived": "Verberg gearchiveerd",
       "reuseExisting": "Hergebruik bestaande afbeelding",
       "reuseHide": "Verberg bestaande afbeeldingen",
-      "reuseThis": "Voeg dit bestand toe"
+      "reuseThis": "Voeg dit bestand toe",
+      "reuseEmpty": "Nog geen herbruikbare afbeeldingen in deze workspace."
     },
     "inspire": {
       "title": "Inspiratie",
@@ -2417,7 +2448,15 @@
       "markAllRead": "Alles gelezen",
       "readOnlyNote": "Alleen-lezen: reageren doe je op het platform zelf.",
       "empty": "Nog geen reacties",
-      "emptySub": "Reacties op je gepubliceerde posts verschijnen hier. YouTube heeft de nieuwe lees-permissie nodig — koppel het account één keer opnieuw als dit leeg blijft."
+      "emptySub": "Reacties op je gepubliceerde posts verschijnen hier. YouTube heeft de nieuwe lees-permissie nodig — koppel het account één keer opnieuw als dit leeg blijft.",
+      "reply": "Reageren",
+      "markRead": "Markeer gelezen",
+      "replyPlaceholder": "Schrijf een reactie…",
+      "draft": "Concept met AI",
+      "drafting": "Bezig…",
+      "send": "Reactie versturen",
+      "cancel": "Annuleren",
+      "draftFailed": "Kon geen concept maken."
     },
     "voice": {
       "record": "Spraakbericht opnemen",
@@ -2427,6 +2466,18 @@
       "empty": "Niets gehoord - probeer opnieuw.",
       "speakOn": "Antwoorden worden voorgelezen (tik om te dempen)",
       "speakOff": "Antwoorden voorlezen"
+    },
+    "experiments": {
+      "title": "Prompt-experimenten",
+      "desc": "Zet twee varianten van een prompt tegen elkaar en lees het oordeel — in plaats van gokken of een herschrijving hielp.",
+      "namePlaceholder": "Naam van het experiment (bv. hook-stijl)",
+      "variantA": "Prompt variant A",
+      "variantB": "Prompt variant B",
+      "start": "Experiment starten",
+      "stop": "Stoppen",
+      "empty": "Nog geen experimenten.",
+      "status_running": "loopt",
+      "status_stopped": "gestopt"
     }
   }
 }

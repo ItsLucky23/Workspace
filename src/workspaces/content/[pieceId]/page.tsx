@@ -4,7 +4,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { useTranslator, i18nNotify as notify } from '@luckystack/core/client';
+import { tryCatch } from '@luckystack/core';
+import { apiRequest, useTranslator, i18nNotify as notify } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -38,6 +39,10 @@ function assetHref(url: string): string | null {
 //? A generation action: its content-op + label + icon + whether it needs the reference url / a prompt.
 //? `costFeature` maps the action to the media feature whose € estimate we show BEFORE the user spends (Q1);
 //? `perItem` = the cost is per produced unit (per-beat images), shown as "≈ €X / item".
+//? GAP_SCAN F3 — what the SEO route hands back: a deterministic score (always) + AI alternatives (when a
+//? provider is configured). `aiOk:false` means the score half still stands — that is the point of splitting them.
+interface SeoResult { score: number; issues: string[]; lengthOk: boolean; titles: string[]; description: string; tags: string[]; aiOk: boolean }
+
 interface GenAction { op: string; labelKey: string; icon: IconName; needsRef?: boolean; needsPrompt?: boolean; costFeature?: string; perItem?: boolean }
 const ACTIONS: GenAction[] = [
   //? M1/M3 — the one-shot whole-video pipeline (script → voice → styled scenes → assemble). This is the ONLY
@@ -343,6 +348,17 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
   const [editImageAsset, setEditImageAsset] = useState<ContentAssetSummary | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  //? GAP_SCAN F2 — the caption LOOK, sent with the pipeline run (burn-in only; sidecar/soft ignore it).
+  const [ccSize, setCcSize] = useState('28');
+  const [ccColor, setCcColor] = useState('ffffff');
+  const [ccBoxed, setCcBoxed] = useState(false);
+  const [ccWordByWord, setCcWordByWord] = useState(false);
+  //? GAP_SCAN F3 — the SEO panel's fetched suggestions (null = not asked yet).
+  const [seo, setSeo] = useState<SeoResult | null>(null);
+  const [seoBusy, setSeoBusy] = useState(false);
+  //? GAP_SCAN F1 — the thumbnail composer's inputs.
+  const [thumbHeadline, setThumbHeadline] = useState('');
+  const [thumbPrompt, setThumbPrompt] = useState('');
 
   const piece = useMemo(() => content.pieces.find((p) => p.id === id), [content.pieces, id]);
   //? F8 — a resolved assetId → playable-url map for the timeline preview (scenes carry only asset ids). Declared
@@ -383,6 +399,30 @@ export default function ContentPiece({ params }: { params: Record<string, string
     return action.perItem ? translate({ key: 'workspaces.content.costPerItem', params: [{ key: 'amount', value: euro(cents) }] }) : `≈ ${euro(cents)}`;
   };
 
+  //? GAP_SCAN F3 — ask for SEO suggestions for THIS piece's title. A read (it writes nothing); applying a
+  //? suggestion is the user editing the title, which goes through the normal edit path.
+  const loadSeo = (): void => {
+    if (seoBusy) return;
+    setSeoBusy(true);
+    void tryCatch(() => apiRequest({ name: 'workspaces/seoSuggest', version: 'v1', data: { workspaceId: activeWorkspace.id, title: piece.title, platform: 'youtube' } })).then(([err, res]) => {
+      setSeoBusy(false);
+      if (!err && res?.status === 'success') setSeo(res.result);
+    });
+  };
+
+  //? GAP_SCAN F1 — compose a thumbnail. The template path (headline only) is free; adding a background
+  //? prompt spends an image-gen, so THAT variant gets the same cost-confirm as every other paid op.
+  const composeThumbnail = (): void => {
+    const headline = thumbHeadline.trim() || piece.title;
+    const withAi = thumbPrompt.trim().length > 0;
+    void (async () => {
+      if (withAi && !(await confirmPaid('image-gen', 1))) return;
+      runContentOp('content-gen-thumbnail', piece.id, { headline, ...(withAi ? { backgroundPrompt: thumbPrompt.trim() } : {}) });
+      setThumbHeadline('');
+      setThumbPrompt('');
+    })();
+  };
+
   const fire = (action: GenAction) => {
     void (async () => {
       const label = costLabel(action);
@@ -402,6 +442,15 @@ export default function ContentPiece({ params }: { params: Record<string, string
         if (durMs > 0) payload.durationMs = durMs;
         //? F2 — non-default caption delivery (sidecar is the server default, so only send when it differs).
         if (captionKey !== 'sidecar') payload.captionMode = captionKey;
+        //? F2 — the caption LOOK only matters for a burn-in; sending it otherwise would be noise.
+        if (captionKey === 'burn') {
+          payload.captionStyle = {
+            fontSize: Number(ccSize) || 28,
+            color: ccColor,
+            ...(ccBoxed ? { boxed: true } : {}),
+            ...(ccWordByWord ? { wordByWord: true } : {}),
+          };
+        }
         if (ctaText.trim()) payload.ctaText = ctaText.trim();
         payload.aspectRatio = aspectKey;
       }
@@ -598,6 +647,61 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 <button type="button" disabled={!/^https?:\/\//.test(analyzeVideoUrl.trim()) || analyzeStory.trim().length === 0} onClick={() => { runContentOp('content-analyze-reference-video', piece.id, { referenceVideoUrl: analyzeVideoUrl.trim(), newStory: analyzeStory.trim() }); setAnalyzeVideoUrl(''); setAnalyzeStory(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.analyzeVideoBtn' })}</button>
               </div>
             </Disclosure>
+            {/* GAP_SCAN F3 — title/description/tag suggestions, scored against THIS account's own view
+                counts. The deterministic score works with no key; the alternatives need a provider. */}
+            <Disclosure summary={translate({ key: 'workspaces.content.seoTitle' })}>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-muted">{translate({ key: 'workspaces.content.seoDesc' })}</div>
+                <button type="button" disabled={seoBusy} onClick={loadSeo} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                  {translate({ key: seoBusy ? 'workspaces.content.seoBusy' : 'workspaces.content.seoAnalyze' })}
+                </button>
+                {seo && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${seo.score >= 80 ? 'text-correct' : (seo.score >= 50 ? 'text-warning' : 'text-wrong')}`}>{String(seo.score)}{translate({ key: 'workspaces.content.seoOutOf' })}</span>
+                      {!seo.aiOk && <span className="text-[11px] text-muted">{translate({ key: 'workspaces.content.seoScoreOnly' })}</span>}
+                    </div>
+                    {seo.issues.length > 0 && (
+                      <ul className="flex flex-col gap-0.5">
+                        {seo.issues.map((issue) => <li key={issue} className="text-xs text-muted">{translate({ key: `workspaces.content.${issue}` })}</li>)}
+                      </ul>
+                    )}
+                    {seo.titles.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-muted">{translate({ key: 'workspaces.content.seoAlternatives' })}</span>
+                        {seo.titles.map((t) => <div key={t} className="text-sm text-title rounded-lg border border-container2-border bg-container2 px-2.5 py-1.5">{t}</div>)}
+                      </div>
+                    )}
+                    {seo.tags.length > 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.content.seoTags' })}{': '}{seo.tags.join(', ')}</div>}
+                  </div>
+                )}
+              </div>
+            </Disclosure>
+            {/* GAP_SCAN F2 — how burned-in captions LOOK. Only meaningful with caption delivery on 'burn';
+                a soft track is styled by the player, and sidecar files carry no styling at all. */}
+            {captionKey === 'burn' && (
+              <Disclosure summary={translate({ key: 'workspaces.content.captionStyleTitle' })}>
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs text-muted">{translate({ key: 'workspaces.content.captionStyleDesc' })}</div>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted">{translate({ key: 'workspaces.content.captionSize' })}</span>
+                    <input type="number" min="12" max="80" value={ccSize} onChange={(e) => { setCcSize(e.target.value); }} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted">{translate({ key: 'workspaces.content.captionColor' })}</span>
+                    <input value={ccColor} onChange={(e) => { setCcColor(e.target.value.replace('#', '')); }} placeholder="ffffff" className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted">{translate({ key: 'workspaces.content.captionBoxed' })}</span>
+                    <Toggle on={ccBoxed} onChange={setCcBoxed} label="" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted">{translate({ key: 'workspaces.content.captionWordByWord' })}</span>
+                    <Toggle on={ccWordByWord} onChange={setCcWordByWord} label="" />
+                  </div>
+                </div>
+              </Disclosure>
+            )}
           </section>
 
           {/* Generation actions — each fires its control-op behind a confirm. */}
@@ -625,6 +729,19 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <span className="text-sm font-medium text-title">{translate({ key: 'workspaces.timeline.open' })}</span>
               <span className="ml-auto text-[11px] font-medium text-muted tabular-nums">{piece.scenes.length} {translate({ key: 'workspaces.timeline.scenes' })}</span>
             </button>
+
+            {/* GAP_SCAN F1 — compose a thumbnail: headline over a background. The template path is FREE
+                (no key, no spend); adding a background prompt makes it a paid image-gen, cost-confirmed. */}
+            <Disclosure summary={translate({ key: 'workspaces.content.thumbTitle' })}>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-muted">{translate({ key: 'workspaces.content.thumbDesc' })}</div>
+                <input value={thumbHeadline} onChange={(e) => { setThumbHeadline(e.target.value); }} placeholder={piece.title} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                <input value={thumbPrompt} onChange={(e) => { setThumbPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.content.thumbBgPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                <button type="button" onClick={composeThumbnail} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer flex items-center gap-1.5">
+                  <Icon name="image" /> {translate({ key: thumbPrompt.trim().length > 0 ? 'workspaces.content.thumbComposeAi' : 'workspaces.content.thumbCompose' })}
+                </button>
+              </div>
+            </Disclosure>
 
             <div className="mt-5">
               <div className="flex items-center justify-between gap-2 mb-2">

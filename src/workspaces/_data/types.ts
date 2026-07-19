@@ -607,9 +607,9 @@ export interface Terminal {
 
 //? The ONE canonical runtime row (04b §7) — the orchestrator's durable runtime fact
 //? (the UI `Terminal`/`TerminalProcess` above are the render-view, not the row).
-//? NOTE: this 4-state `status` (ready|busy|paused|stopped) is DISTINCT from
-//? `TicketStatus` (the AI-owned ticket lifecycle) and `StageStatusCfg` — three
-//? separate state machines (Q-DATA-STATUS). No LLM verb mutates this row.
+//? NOTE: runtime status is DISTINCT from `TicketStatus` and `StageStatusCfg`.
+//? `recovering` is a transient, server-owned fenced-recovery state; no LLM/client
+//? surface may set it. No LLM verb mutates this row.
 export interface AgentSession {
   id: string;
   workspaceId: string;
@@ -622,10 +622,12 @@ export interface AgentSession {
   model?: string;                    // resolved model literal at spawn (haiku|sonnet|opus)
   cliVersion?: string;               // EXACT pinned Claude CLI version that ran this session
   baseImageRef?: string;             // resolved L2 image tag (content-hash) this session ran in
+  runToken?: string;                 // unique capacity-reservation owner; authoritative run CAS
+  runFence: number;                  // monotonic per-ticket host fence; lower owners cannot overwrite higher
   containerId?: string;              // L3 per-ticket container id; null for host-side roles
   worktreePath?: string;             // the in-container clone path
   ptyAgentUrl?: string;              // 127.0.0.1:<port> the in-container pty-agent publishes
-  status: 'ready' | 'busy' | 'paused' | 'stopped'; // the SINGLE runtime state machine
+  status: 'ready' | 'busy' | 'paused' | 'recovering' | 'stopped'; // server recovery owns `recovering`
   tokenEstimate: number;             // running estimate for self-handoff / budget trigger; ADVISORY
   durationEstimate?: number;         // seconds; cold-start self-estimate; nullable until a planning stage runs
   channelTokenId?: string;           // id (NOT secret) of the per-session structured-channel token

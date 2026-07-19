@@ -12,15 +12,12 @@
 //? derived from the same `PipelineStage` rows.
 
 import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
-import { tryCatch } from '@luckystack/core';
 
-import { activeCount, queueLength, capacityLimit } from '../orchestrator/capacity';
+import { activeCountReadOnly, queueLength, capacityLimit } from '../orchestrator/capacity';
 import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
-import { ensureBuiltinSkills } from '../ai/skills';
-import { ensureStyleGallery } from '../designer/inspiration';
 import { formatTime, toContentAssetSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { repoStatus } from '../git/repoStore';
@@ -306,10 +303,6 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const dbConnectionRows = activeProjectId ? await tenantDb.dbConnection.findMany({ where: projectScope, orderBy: { createdAt: 'asc' } }) : [];
     const migrationRows = activeProjectId ? await tenantDb.migration.findMany({ where: projectScope, orderBy: { createdAt: 'desc' }, take: 20 }) : [];
 
-    //? INS4 — lazy-seed the curated style-gallery theme presets BEFORE the library read below
-    //? (idempotent, best-effort: a failed seed still returns the snapshot).
-    await tryCatch(() => ensureStyleGallery(prisma, currentWorkspaceId()));
-
     const [memberRows, roleRows, stageRows, ticketRows, sprintRows, suggestionRows, budgetRows, sourceRows, envRows, integrationRows, inviteRows, eventRows, notificationRows, chatRows, noteRows, spendRows, triggerRows, studioBriefRows, studioArtifactRows, studioBrandRow, designArtifactRows, interviewFindingRows, artifactLinkRows, uiReviewRows] = await Promise.all([
       tenantDb.workspaceMember.findMany(),
       tenantDb.workspaceRole.findMany(),
@@ -362,9 +355,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const customTaskRows = await prisma.customAiTask.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
     //? O5 — the workspace's reusable output specs (same explicit scoping fix).
     const outputTemplateRows = await prisma.outputTemplate.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
-    //? SK1 — the workspace's AI skills (universal skills layer). Lazy-seed the builtin set so existing
-    //? workspaces get them on first read; best-effort (a failed seed still returns the snapshot).
-    await tryCatch(() => ensureBuiltinSkills(currentWorkspaceId()));
+    //? SK1 — the workspace's AI skills (universal skills layer). Builtins are provisioned by workspace
+    //? bootstrap + the internal leader backfill; this snapshot remains strictly read-only.
     const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
     //? DOC1 — the workspace's documents (newest-edited first; bounded).
     //? C7 — archived documents ship too (flagged), so the list can offer a restore instead of hiding them forever.
@@ -408,7 +400,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? (visibility-first) — the pause-on-exceeded wiring is the coupled #99 product decision.
     const budgets = budgetRows.map((b): WorkspaceBudget => ({ spent: b.spent, cap: b.cap, alertPct: b.alertPct, currency: '€', id: b.id, label: b.label, enforcement: b.enforcement === 'pauseAll' ? 'pauseAll' : 'pauseNew', enabled: b.enabled, windowStartAt: b.windowStartAt.toISOString() }));
     //? #105/#19 — engine occupancy (global Redis-backed) for the board busy/queued chip.
-    const [activeNow, queuedNow] = await Promise.all([activeCount(Date.now()), queueLength()]);
+    const [activeNow, queuedNow] = await Promise.all([activeCountReadOnly(Date.now()), queueLength()]);
     const capacity = { active: activeNow, queued: queuedNow, limit: capacityLimit() };
 
     //? Content platform (ADR 0069): the in-flight content pieces + the media €-budget status. Content

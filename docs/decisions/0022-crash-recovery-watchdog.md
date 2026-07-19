@@ -1,7 +1,7 @@
 ---
 id: 0022
 title: Crash-recovery watchdog — boot resume + stuck/idle detection
-status: accepted
+status: superseded
 date: 2026-07-03
 tags: [workspaces, orchestrator, crash-recovery, watchdog, resume, multi-instance]
 supersedes: []

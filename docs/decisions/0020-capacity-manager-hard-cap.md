@@ -1,7 +1,7 @@
 ---
 id: 0020
 title: CapacityManager — atomic hard-cap admission queue + urgent force-through
-status: accepted
+status: superseded
 date: 2026-07-03
 tags: [workspaces, orchestrator, capacity, concurrency, multi-instance, redis]
 supersedes: []

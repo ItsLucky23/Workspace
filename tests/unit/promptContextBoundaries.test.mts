@@ -42,6 +42,8 @@ const ctx: Ctx = {
   triggers: [{ id: 'trigger-1', name: hostile }],
   mrs: [{ id: 'mr-1', ticketKey: 'DEV-1', title: hostile }],
   channels: [{ id: 'channel-1', name: hostile }],
+  skills: [],
+  enabledSections: [],
 };
 
 const chatSystem = systemPrompt(ctx, `// src/hostile.ts\n${hostile}`, `capability.md\n${hostile}`);

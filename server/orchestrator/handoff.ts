@@ -12,6 +12,8 @@
 import { tryCatchSync } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
+import { assertWorkspaceWriterContext } from './writerContext';
+
 //? A JSON value → string[] (drops non-strings). Shared by the parse + reload readers.
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
@@ -57,18 +59,21 @@ export function parseHandoff(message: string): HandoffBody | null {
   };
 }
 
-//? Store a Handoff record + reset the session's running token estimate (the reset frees context, so
-//? the estimate starts fresh). Returns the created record's id.
-export async function recordHandoff(prisma: PrismaClient, input: { workspaceId: string; sessionKey: string; ticketId?: string | null; stageId?: string | null; body: HandoffBody; reason: string }): Promise<string> {
-  const rec = await prisma.handoff.create({
-    data: {
+//? Store a Handoff record. The stage writer resets the exact runToken-owned session in the same
+//? writer action after validating the complete run CAS. Returns the created record's id.
+export async function recordHandoff(prisma: PrismaClient, input: { id: string; workspaceId: string; sessionKey: string; ticketId?: string | null; stageId?: string | null; body: HandoffBody; reason: string }): Promise<string> {
+  assertWorkspaceWriterContext(input.workspaceId);
+  const record = await prisma.handoff.upsert({
+    where: { id: input.id },
+    create: {
+      id: input.id,
       workspaceId: input.workspaceId, sessionKey: input.sessionKey, ticketId: input.ticketId ?? null, stageId: input.stageId ?? null,
       body: { summary: input.body.summary, decisions: input.body.decisions, state: input.body.state, next: input.body.next, gotchas: input.body.gotchas, ...(input.body.carried ? { carried: input.body.carried } : {}) },
       reason: input.reason,
     },
+    update: {},
   });
-  await prisma.agentSession.updateMany({ where: { workspaceId: input.workspaceId, sessionKey: input.sessionKey }, data: { tokenEstimate: 0 } });
-  return rec.id;
+  return record.id;
 }
 
 //? The latest handoff for a session (the reload source for the next turn), or null.

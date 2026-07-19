@@ -14,6 +14,8 @@ import type { PrismaClient } from '@prisma/client';
 
 import { tryCatch } from '@luckystack/core';
 
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
+
 //? Whitespace, tracking ids and timestamps churn on every fetch. Without normalizing, EVERY run would
 //? report a change and the watch would be pure noise — the thing that makes monitoring useless in practice.
 export function normalizeForDiff(text: string): string {
@@ -67,6 +69,7 @@ export interface WatchOutcome { first: boolean; changed: boolean; summary: strin
 export async function recordWatchSnapshot(
   prisma: PrismaClient, workspaceId: string, url: string, text: string,
 ): Promise<WatchOutcome> {
+  assertWorkspaceWriterContext(workspaceId);
   const hash = contentHash(text);
   const [, previous] = await tryCatch(() => prisma.siteSnapshot.findFirst({
     where: { workspaceId, url }, orderBy: { createdAt: 'desc' }, select: { hash: true, content: true },
@@ -89,6 +92,7 @@ export async function recordWatchSnapshot(
 
 //? Prune a watch's history so a daily cron cannot grow unbounded. Keeps the newest `keep` snapshots.
 export async function pruneWatchSnapshots(prisma: PrismaClient, workspaceId: string, url: string, keep = 30): Promise<number> {
+  assertWorkspaceWriterContext(workspaceId);
   const rows = await prisma.siteSnapshot.findMany({ where: { workspaceId, url }, orderBy: { createdAt: 'desc' }, select: { id: true }, skip: keep });
   if (rows.length === 0) return 0;
   await tryCatch(() => prisma.siteSnapshot.deleteMany({ where: { id: { in: rows.map((r) => r.id) } } }));

@@ -260,7 +260,9 @@ export async function claimActionOnce(dedupKey: string): Promise<boolean> {
 //? distinguish pending from terminal success/failure. Success may carry ONLY a bounded list of
 //? identifier-shaped result keys so a retry can repeat the original broadcast; arbitrary op results,
 //? Error messages, and secrets never enter Redis. Pending + terminal records are TTL-bounded.
-export const CONTROL_ACTION_OUTCOME_TTL_MS = 60_000;
+//? Deploy/build/CI actions legitimately outlive one minute. Keep their pending owner alive long
+//? enough that a slow external boundary cannot expire and then fail its owner-checked completion.
+export const CONTROL_ACTION_OUTCOME_TTL_MS = 30 * 60_000;
 export const MAX_CONTROL_ACTION_RESULT_KEYS = 2000;
 export const MAX_CONTROL_ACTION_RESULT_KEY_BYTES = 128;
 export const MAX_CONTROL_ACTION_RESULT_KEYS_BYTES = 128_000;
@@ -312,6 +314,14 @@ return redis.call('GET', KEYS[1])
 const COMPLETE_CONTROL_ACTION_LUA = `
 if redis.call('GET', KEYS[1]) == ARGV[1] then
   redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+  return 1
+end
+return 0
+`;
+
+const ABANDON_CONTROL_ACTION_LUA = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  redis.call('DEL', KEYS[1])
   return 1
 end
 return 0
@@ -401,6 +411,17 @@ export async function claimControlAction(dedupKey: string): Promise<ControlActio
 }
 
 //? Owner-checked terminal transition: an expired/stale claimant can never overwrite a newer owner.
+export async function abandonControlAction(dedupKey: string, token: string): Promise<void> {
+  const [error, abandoned] = await tryCatch(() => redis.eval(
+    ABANDON_CONTROL_ACTION_LUA,
+    1,
+    controlActionOutcomeKey(dedupKey),
+    `pending:${token}`,
+  ));
+  if (error) throw error;
+  if (abandoned !== 1) throw new Error('[cluster] control-action claim ownership was lost');
+}
+
 export async function completeControlAction(
   dedupKey: string,
   token: string,

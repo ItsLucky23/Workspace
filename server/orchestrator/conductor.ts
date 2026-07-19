@@ -16,11 +16,12 @@ import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/clie
 
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { currentWorkspaceId, runInTenant } from '../tenant/tenantContext';
+import { currentWorkspaceId, hasTenantScope, runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
 import { credentialKey } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
+import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { isPipelinePreset } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
@@ -43,6 +44,7 @@ import { runCapture, buildCaptureScenario, generateCaptureScenario, coerceScenar
 import { generateReferenceImage } from '../content/referenceImage';
 import { critiqueImage } from '../content/imageCritique';
 import { renderThumbnail } from '../content/thumbnail';
+import { parseCaptionStyle } from '../content/captionStyle';
 import { postReply } from '../content/commentActions';
 import { getValidConnection } from '../content/publishOAuth';
 import { generateShortForm } from '../content/shortForm';
@@ -53,10 +55,10 @@ import { publishAsset, isPublishPlatform, deletePlatformPost } from '../content/
 import { indexChannelBrand } from '../content/brandMemory';
 import { recordAiRun } from '../ai/activity';
 import { jsonInput } from '../util/json';
-import { cloneRepo, addWorktree, isLinked, listRepoDocs, branchHead, initGreenfieldRepo, readRepoBranchFile, commitFilesToBranch } from '../git/repoStore';
-import { runPipeline } from '../ci/runner';
+import { cloneRepo, addWorktree, isLinked, listRepoDocs, initGreenfieldRepo, readRepoBranchFile, commitFilesToBranch } from '../git/repoStore';
+import { applyPublicCiComplete } from '../ci/publicWriter';
 import { postAiReviewFindings } from '../mr/reviewRole';
-import { getAgentRole } from '../automation/agentRoles';
+import { executeAgentRole, getAgentRole } from '../automation/agentRoles';
 import { parseNeedsInputQuestions, applyAnswers, firstUnanswered, buildCombinedAnswerPrompt, parseAdvisories, resolveAdvisory } from './questionSet';
 import { questionPrompt } from '../../src/workspaces/_functions/structuredQuestion';
 import { applyMigration, introspectDb } from '../db/migrate';
@@ -70,6 +72,7 @@ import {
   withWorkspaceLease,
   claimControlAction,
   completeControlAction,
+  abandonControlAction,
   waitForControlActionOutcome,
   boundedControlActionResultKeys,
   type ControlActionFailureCode,
@@ -88,8 +91,9 @@ import { ensureEnvironment, deployEnvironment, teardownEnvironment, rollbackEnvi
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning } from './editGuard';
-import { acquireSlot, releaseSlot, enqueueDeferred, dequeueFairDeferred, inFlightByWorkspace } from './capacity';
-import { killTicketAgent } from './agentControl';
+import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferredUntil, inFlightByWorkspace, recoveryReservation, withReservationRenewal } from './capacity';
+import { ciPublicIntentId, ciPublicIntentSignalId, stageForgeIntentId } from './actionIds';
+import { runAgentRecovery } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
@@ -102,12 +106,30 @@ import { activeThemeTokens, designTokenCssPath, patchManagedThemeCss } from '../
 import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
-import { fireEvent } from '../automation/triggers';
+import { applyAutomationEvent, fireEvent } from '../automation/triggers';
+import { fireCronTrigger } from '../automation/cron';
 import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
-import type { InternalAction, InternalOp } from './internalOps';
-import { assertWriterContext, GLOBAL_WRITER_SCOPE, runInWriterContext } from './writerContext';
+import type { AgentRecoveryTransitionInternalAction, InternalAction, InternalOp, StageDeferUpdateInternalAction } from './internalOps';
+import {
+  applyStageActivationComplete,
+  applyStageDeferUpdate,
+  applyStageForgeComplete,
+  applyStageForgePrepare,
+  applyStageHandoffComplete,
+  applyStageSessionStart,
+  applyStageSessionUpdate,
+  applyStageToolTrailAppend,
+  applyStageTurnComplete,
+  readStageActivationCompleteResult,
+  stageActionPersisted,
+  stageActionResultKeys,
+} from './stageWriter';
+import { applyAgentRecoveryTransition, applyWatchdogReminder, needsInputHash, readRecoveryTransitionResult, reconstructAcceptedRecoveryPrepare, recoveryIntentId } from './recoveryWriter';
+import { assertWriterContext, assertWriterLeaseHeld, currentWriterScope, GLOBAL_WRITER_SCOPE, hasActiveWriterDedupKey, runInWriterContext } from './writerContext';
+
+export { BLOCKED_DEFER_MSG, CAPACITY_DEFER_MSG, EDITOR_DEFER_MSG } from './stageWriter';
 
 //? The Conductor knows the target workspaceId for every action, so it writes via
 //? the plain client with an EXPLICIT `workspaceId` (type-correct; Prisma's input
@@ -245,20 +267,23 @@ function readHooks(v: unknown): Record<string, boolean> {
 //? Workspace teardown — delete every tenant-scoped row, then the workspace (04b §11d).
 //? Live-container teardown (07 §A) precedes this in Fase 2; there are none in Fase 1.
 async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
+  //? Mongo has no relational cascade here. Keep this exhaustive over every tenant-owned Prisma
+  //? delegate: deleting the Workspace row first would strand unreadable data indefinitely.
   await prisma.ticketEvent.deleteMany({ where: { workspaceId } });
   await prisma.ticket.deleteMany({ where: { workspaceId } });
   await prisma.ticketLink.deleteMany({ where: { workspaceId } });
   await prisma.ticketReference.deleteMany({ where: { workspaceId } });
   await prisma.sprint.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceSuggestion.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceNote.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceBudget.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceSignal.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceTrigger.deleteMany({ where: { workspaceId } });
+  await prisma.agentSession.deleteMany({ where: { workspaceId } });
   await prisma.carryOver.deleteMany({ where: { workspaceId } });
   await prisma.handoff.deleteMany({ where: { workspaceId } });
   await prisma.questionSet.deleteMany({ where: { workspaceId } });
-  await prisma.agentSession.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceTrigger.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceSignal.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceSuggestion.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceNote.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceChatMessage.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceBudget.deleteMany({ where: { workspaceId } });
   await prisma.spendRecord.deleteMany({ where: { workspaceId } });
   await prisma.notification.deleteMany({ where: { workspaceId } });
   await prisma.infoSource.deleteMany({ where: { workspaceId } });
@@ -266,9 +291,44 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.envVar.deleteMany({ where: { workspaceId } });
   await prisma.integrationTool.deleteMany({ where: { workspaceId } });
   await prisma.invite.deleteMany({ where: { workspaceId } });
-  await prisma.pipelineStage.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
-  await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
+  await prisma.promptTrial.deleteMany({ where: { workspaceId } });
+  await prisma.promptExperiment.deleteMany({ where: { workspaceId } });
+  await prisma.publishMetricSnapshot.deleteMany({ where: { workspaceId } });
+  await prisma.siteSnapshot.deleteMany({ where: { workspaceId } });
+  await prisma.publishedSite.deleteMany({ where: { workspaceId } });
+  await prisma.uiReviewRequest.deleteMany({ where: { workspaceId } });
+  await prisma.studioArtifact.deleteMany({ where: { workspaceId } });
+  await prisma.studioBrandLibrary.deleteMany({ where: { workspaceId } });
+  await prisma.studioBrief.deleteMany({ where: { workspaceId } });
+  await prisma.designArtifact.deleteMany({ where: { workspaceId } });
+  await prisma.interviewFinding.deleteMany({ where: { workspaceId } });
+  await prisma.ticketArtifactLink.deleteMany({ where: { workspaceId } });
+  await prisma.personalAccessToken.deleteMany({ where: { workspaceId } });
+  await prisma.outputTemplate.deleteMany({ where: { workspaceId } });
+  await prisma.customAiTask.deleteMany({ where: { workspaceId } });
+  await prisma.reviewComment.deleteMany({ where: { workspaceId } });
+  await prisma.reviewThread.deleteMany({ where: { workspaceId } });
+  await prisma.approval.deleteMany({ where: { workspaceId } });
+  await prisma.mergeRequest.deleteMany({ where: { workspaceId } });
+  await prisma.socialComment.deleteMany({ where: { workspaceId } });
+  await prisma.publishJob.deleteMany({ where: { workspaceId } });
+  await prisma.shortLink.deleteMany({ where: { workspaceId } });
+  await prisma.mediaSpend.deleteMany({ where: { workspaceId } });
+  await prisma.mediaBudget.deleteMany({ where: { workspaceId } });
+  await prisma.referenceExample.deleteMany({ where: { workspaceId } });
+  await prisma.skill.deleteMany({ where: { workspaceId } });
+  await prisma.documentRevision.deleteMany({ where: { workspaceId } });
+  await prisma.documentTemplate.deleteMany({ where: { workspaceId } });
+  await prisma.document.deleteMany({ where: { workspaceId } });
+  await prisma.stylePreset.deleteMany({ where: { workspaceId } });
+  await prisma.renderJob.deleteMany({ where: { workspaceId } });
+  await prisma.mediaJob.deleteMany({ where: { workspaceId } });
+  await prisma.videoScene.deleteMany({ where: { workspaceId } });
+  await prisma.beat.deleteMany({ where: { workspaceId } });
+  await prisma.script.deleteMany({ where: { workspaceId } });
+  await prisma.contentAsset.deleteMany({ where: { workspaceId } });
+  await prisma.contentProject.deleteMany({ where: { workspaceId } });
+  await prisma.channel.deleteMany({ where: { workspaceId } });
   await prisma.environment.deleteMany({ where: { workspaceId } });
   await prisma.buildArtifact.deleteMany({ where: { workspaceId } });
   await prisma.pipelineJob.deleteMany({ where: { workspaceId } });
@@ -277,11 +337,13 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.migration.deleteMany({ where: { workspaceId } });
   await prisma.dbConnection.deleteMany({ where: { workspaceId } });
   await prisma.forgeConnection.deleteMany({ where: { workspaceId } });
+  await prisma.serviceStack.deleteMany({ where: { workspaceId } });
   await prisma.service.deleteMany({ where: { workspaceId } });
+  await prisma.pipelineStage.deleteMany({ where: { workspaceId } });
   await prisma.project.deleteMany({ where: { workspaceId } });
-  //? GAP_SCAN D4 — these two were left ORPHANED by the cascade (tenant rows outliving their workspace with
-  //? no way to ever read or delete them). They are tenant data and go with it; the governance trail's
-  //? durability is provided by the out-of-tenant `AuditArchive` mirror, not by leaked rows.
+  await prisma.workspaceRole.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
+  //? Tenant audit/deploy rows are purged; AuditArchive deliberately survives outside the tenant.
   await prisma.deployHistory.deleteMany({ where: { workspaceId } });
   await prisma.auditLog.deleteMany({ where: { workspaceId } });
   await prisma.workspace.delete({ where: { id: workspaceId } });
@@ -306,12 +368,116 @@ export type WriterOp = ControlOp | InternalOp;
 type WriterAction = ControlAction | InternalAction;
 type WriterActionKind = 'public' | 'internal';
 
+function writerSignalId(action: WriterAction): string | undefined {
+  if (action.op === 'stage-forge-prepare') return stageForgeIntentId(action.workspaceId, action.clientRequestId);
+  if (action.op === 'agent-recovery-transition' && action.payload.phase === 'prepare') return recoveryIntentId(action.workspaceId, action.clientRequestId);
+  if (action.op === 'ci-run' && action.payload.phase === 'prepare') return ciPublicIntentSignalId(action.workspaceId, action.clientRequestId);
+  return undefined;
+}
+
+function writerSignalPayload(action: WriterAction): ReturnType<typeof jsonInput> {
+  const base = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
+  if (action.op === 'stage-forge-prepare') {
+    const intentId = stageForgeIntentId(action.workspaceId, action.clientRequestId);
+    return jsonInput({
+      ...base,
+      intent: {
+        id: intentId,
+        ticketId: action.target.ticketId,
+        ticketKey: action.target.ticketKey,
+        projectId: action.target.projectId,
+        stageId: action.target.stageId,
+        sessionId: action.target.sessionId,
+        runToken: action.target.runToken,
+        runFence: action.target.runFence,
+        containerId: action.payload.containerId,
+        expectedBranch: action.payload.expectedBranch,
+      },
+    });
+  }
+  if (action.op === 'agent-recovery-transition' && action.payload.phase === 'prepare') {
+    const intentId = recoveryIntentId(action.workspaceId, action.clientRequestId);
+    const recovery = recoveryReservation(action.workspaceId, action.target.ticketKey, intentId, action.payload.expected.runFence);
+    return jsonInput({
+      ...base,
+      intent: {
+        id: intentId,
+        ticketId: action.target.ticketId,
+        ticketKey: action.target.ticketKey,
+        projectId: action.target.projectId,
+        stageId: action.target.stageId,
+        sessionId: action.target.sessionId,
+        reason: action.payload.reason,
+        expected: action.payload.expected,
+        recovery: { runToken: recovery.runToken, runFence: recovery.fence },
+      },
+    });
+  }
+  if (action.op === 'ci-run' && action.payload.phase === 'prepare') {
+    const binding = asRec(action.payload.binding);
+    return jsonInput({
+      ...base,
+      intent: {
+        id: ciPublicIntentId(action.workspaceId, str(action.target, 'projectId') ?? '', action.clientRequestId),
+        signalId: ciPublicIntentSignalId(action.workspaceId, action.clientRequestId),
+        ticketId: str(binding, 'ticketId') ?? '',
+        ticketKey: str(action.target, 'ticketId') ?? '',
+        projectId: str(action.target, 'projectId') ?? '',
+        branch: str(binding, 'branch') ?? '',
+        commitHash: str(binding, 'commitHash') ?? '',
+        mergeRequestId: str(binding, 'mergeRequestId') ?? null,
+        trigger: str(binding, 'trigger') ?? 'manual',
+      },
+    });
+  }
+  return jsonInput(base);
+}
+
 //? Monotonic per-workspace signal seq (Redis INCR) — the client's merge-on-`seq`
 //? key (CONTROL_API §6.3). Durable across restart; identical shape in Fase 2.
 async function nextSignalSeq(workspaceId: string): Promise<number> {
-  return runInTenant(workspaceId, async () => {
-    const seq = await redis.incr(formatKey('evseq', 'workspace'));
-    return seq;
+  if (hasTenantScope()) {
+    if (currentWorkspaceId() !== workspaceId) throw new Error('[conductor] signal seq tenant does not match the action workspace');
+    return redis.incr(formatKey('evseq', 'workspace'));
+  }
+  return runInTenant(workspaceId, () => redis.incr(formatKey('evseq', 'workspace')));
+}
+
+interface WriterSignalProjection {
+  id: string;
+  seq: number;
+}
+
+//? Deterministic intent rows outlive the Redis dedup TTL. A retry reuses that exact
+//? append-only row (and repairs an unfinished apply) only when kind + request identity match;
+//? it never collides on create or aliases a foreign deterministic id.
+async function appendWriterSignal(
+  action: WriterAction,
+  payload: ReturnType<typeof writerSignalPayload>,
+  signalId: string | undefined,
+  assertAuthority: () => void,
+): Promise<WriterSignalProjection> {
+  if (signalId !== undefined) {
+    assertAuthority();
+    const existing = await prisma.workspaceSignal.findUnique({
+      where: { id: signalId },
+      select: { id: true, workspaceId: true, seq: true, kind: true, payload: true },
+    });
+    if (existing) {
+      const stored = asRec(existing.payload);
+      if (existing.workspaceId !== action.workspaceId || existing.kind !== action.op
+        || str(stored, 'clientRequestId') !== action.clientRequestId) {
+        throw new Error('[conductor] deterministic signal identity collision');
+      }
+      return { id: existing.id, seq: existing.seq };
+    }
+  }
+  assertAuthority();
+  const seq = await nextSignalSeq(action.workspaceId);
+  assertAuthority();
+  return prisma.workspaceSignal.create({
+    data: { ...(signalId ? { id: signalId } : {}), workspaceId: action.workspaceId, seq, kind: action.op, payload },
+    select: { id: true, seq: true },
   });
 }
 
@@ -411,44 +577,59 @@ async function notifyAssignment(workspaceId: string, recipientUserId: string, ti
 //? tickets that already have a branch (a re-move never re-freezes) and no-ops when no
 //? repo is linked or the target stage is not AI-enabled. Best-effort per ticket: a git
 //? failure is logged, never fails the authoritative stage move.
-async function activateWorktreesForStage(workspaceId: string, projectId: string, keys: string[], stageId: string): Promise<void> {
-  if (keys.length === 0) return;
-  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId, key: stageId }, select: { aiEnabled: true } });
-  if (stage?.aiEnabled !== true) return;
-  //? Resolve the branch NAME from the per-workspace strategy (branchStrategy.ts). Loaded once
-  //? per activation; the derived name is persisted on Ticket.branch so it's stable thereafter.
-  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } });
-  const gitCfg = normalizeGitConfig(ws?.gitConfig ?? null);
-  const activated: { key: string; branch: string }[] = [];
-  for (const key of keys) {
-    const ticket = await prisma.ticket.findFirst({ where: { workspaceId, projectId, key }, select: { branch: true, title: true, labels: true, number: true } });
-    if (!ticket || ticket.branch || !isLinked(workspaceId, projectId)) continue;
-    const branchName = resolveBranchName(gitCfg, { key, title: ticket.title, labels: ticket.labels, number: ticket.number });
-    const [error, worktree] = await tryCatch(() => addWorktree(workspaceId, projectId, key, branchName));
-    if (error) { console.error(`[conductor] addWorktree ${key} failed:`, error); continue; }
-    if (worktree) {
-      await prisma.ticket.updateMany({ where: { workspaceId, projectId, key }, data: { branch: worktree.branch, commitHash: worktree.commitHash } });
-      activated.push({ key, branch: worktree.branch });
+async function runStageActivation(workspaceId: string, projectId: string, keys: string[], stageId: string): Promise<void> {
+  await runInTenant(workspaceId, async () => {
+    const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId, key: stageId }, select: { aiEnabled: true } });
+    if (stage?.aiEnabled !== true) return;
+    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } });
+    const gitCfg = normalizeGitConfig(workspace?.gitConfig ?? null);
+    for (const key of keys) {
+      const ticket = await prisma.ticket.findFirst({
+        where: { workspaceId, projectId, key, stageId, archived: false, status: { notIn: ['done', 'paused'] } },
+        select: { id: true, branch: true, title: true, labels: true, number: true },
+      });
+      if (!ticket || ticket.branch || !isLinked(workspaceId, projectId)) continue;
+      const branchName = resolveBranchName(gitCfg, { key, title: ticket.title, labels: ticket.labels, number: ticket.number });
+      //? Bare-repo/worktree git runs after the public writer returned. Only its bounded branch+HEAD
+      //? result re-enters the Conductor, where current ticket/project/stage is revalidated.
+      const [gitError, worktree] = await tryCatch(() => addWorktree(workspaceId, projectId, key, branchName));
+      if (gitError || !worktree) {
+        if (gitError) console.error(`[conductor] addWorktree ${key} failed:`, gitError);
+        continue;
+      }
+      const { enqueueInternalAction } = await import('./internalOps');
+      const [applyError, appliedAction] = await tryCatch(() => enqueueInternalAction({
+        workspaceId,
+        op: 'stage-activation-complete',
+        target: { ticketId: ticket.id, ticketKey: key, projectId, stageId },
+        payload: { branch: worktree.branch, commitHash: worktree.commitHash },
+        userId: 'stage-runner',
+        clientRequestId: `stage-activation:${ticket.id}:${worktree.commitHash}`,
+      }));
+      const applied = readStageActivationCompleteResult(appliedAction?.result);
+      if (applyError || !applied?.applied) continue;
+      await broadcastTicketDelta(prisma, workspaceId, applied.keys);
+      void provisionContainers(workspaceId, [{ key, branch: worktree.branch }], stageId);
     }
-  }
-  //? Run each activated ticket's stage OFF the serial chain (07b §0/§4): the autonomous
-  //? claude turn is minutes-long and the authoritative stage move must return fast for
-  //? realtime. Best-effort — the git/worktree layer is already durable.
-  if (activated.length > 0) void provisionContainers(workspaceId, activated, stageId);
+  });
+}
+
+function activateWorktreesForStage(workspaceId: string, projectId: string, keys: string[], stageId: string): Promise<void> {
+  if (keys.length === 0) return Promise.resolve();
+  //? Schedule after the current public writer action returns, so no git/process/container work can
+  //? inherit or hold its renewable workspace lease.
+  setTimeout(() => {
+    void tryCatch(() => runStageActivation(workspaceId, projectId, keys, stageId)).then(([error]) => {
+      if (error) console.error(`[conductor] stage activation ${stageId} failed:`, error.message);
+    });
+  }, 0);
+  return Promise.resolve();
 }
 
 //? Fire-and-forget autonomous stage execution for freshly-activated tickets (07 §A step
 //? 6-7): launch the container + drive an in-container claude turn on the ticket. Gated on
 //? the Docker daemon (a host without Docker still gets the full git/worktree layer). Each
 //? ticket's turn runs concurrently; errors are logged, never surfaced into the stage move.
-//? The ticket banners set when a turn is deferred; matched exactly to clear them again (never
-//? wipes a real AI open-question). One per defer reason.
-export const EDITOR_DEFER_MSG = '⏸ Editor open — AI-turn uitgesteld';
-export const CAPACITY_DEFER_MSG = '⏳ Wachtrij — te veel AI-turns tegelijk';
-//? Gap-fix — the blocks-gate banner (the open blocker keys are appended). Override: remove the link,
-//? or set the ticket's priority to `urgent` (the same deliberate force the capacity cap honours).
-export const BLOCKED_DEFER_MSG = '🔒 Geblokkeerd door open ticket(s)';
-
 //? The keys of OPEN tickets that block `ticketId` via a TicketLink(rel:'blocks') pointing AT it.
 //? A blocker counts as open unless archived / status 'done' / parked on the 'done' stage. Exported
 //? for the blocks-gate integration test (the live path continues into a real container launch).
@@ -463,96 +644,199 @@ export async function openBlockersFor(db: PrismaClient, workspaceId: string, tic
 //? the ticket is activated (has a branch). Used by `resume` — `activateWorktreesForStage` skips
 //? already-branched tickets, so a resumed ticket is re-provisioned directly here.
 export async function resolveReprovisionTarget(db: PrismaClient, workspaceId: string, key: string) {
-  const ticket = await db.ticket.findFirst({ where: { workspaceId, key }, select: { stageId: true, branch: true, projectId: true } });
+  const ticket = await db.ticket.findFirst({
+    where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused'] } },
+    select: { stageId: true, branch: true, projectId: true },
+  });
   if (!ticket?.branch) return null;
   const stage = await db.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: ticket.stageId }, select: { aiEnabled: true } });
   return stage?.aiEnabled === true ? { key, branch: ticket.branch, stageId: ticket.stageId, projectId: ticket.projectId } : null;
 }
 
-export async function reprovisionTicket(workspaceId: string, key: string, resume = false, resumePrompt?: string): Promise<void> {
-  const target = await resolveReprovisionTarget(prisma, workspaceId, key);
-  if (!target) return;
-  void provisionContainers(workspaceId, [{ key: target.key, branch: target.branch }], target.stageId, resume, resumePrompt);
+export type ProvisionStatus = 'completed' | 'duplicate' | 'queued' | 'skipped' | 'unavailable';
+export interface ProvisionResult { key: string; status: ProvisionStatus }
+export interface ProvisionDependencies { dockerAvailable?: typeof dockerAvailable }
+
+async function reprovisionResolvedTicket(workspaceId: string, key: string, resume: boolean, resumePrompt: string | undefined, waitForRun: boolean): Promise<boolean> {
+  return runInTenant(workspaceId, async () => {
+    const target = await resolveReprovisionTarget(prisma, workspaceId, key);
+    if (!target) return false;
+    const run = provisionContainers(workspaceId, [{ key: target.key, branch: target.branch }], target.stageId, resume, resumePrompt);
+    if (!waitForRun) {
+      void tryCatch(() => run);
+      return true;
+    }
+    const results = await run;
+    return results.some((result) => result.key === key && (result.status === 'completed' || result.status === 'duplicate'));
+  });
 }
 
-async function provisionContainers(workspaceId: string, activated: { key: string; branch: string }[], stageId: string, resume = false, resumePrompt?: string): Promise<void> {
-  if (!(await dockerAvailable())) return;
-  //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
-  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
-  if (ws?.paused === true) { console.log(`[conductor] provisioning skipped — workspace paused`); return; }
-  //? #99 — metered-budget enforcement: a workspace at/over an ENFORCED metered cap stops provisioning NEW
-  //? autonomous turns (running turns finish; the cap resets on its window). Non-destructive pause-new — only
-  //? metered spend (Gemini/media) can trip it; the Claude subscription is 0-cost so it never does (decision B).
-  if (await isSpendEnforcementActive(prisma, workspaceId)) { console.log(`[conductor] provisioning skipped — metered budget cap reached`); return; }
-  for (const { key } of activated) {
-    void tryCatch(async () => {
-      //? Pause (C2): a per-ticket pause skips just this ticket.
-      const t = await prisma.ticket.findFirst({ where: { workspaceId, key }, select: { id: true, status: true, priority: true } });
-      if (t?.status === 'paused') { console.log(`[conductor] runStage ${key}@${stageId} skipped — ticket paused`); return; }
-      //? Gap-fix — the BLOCKS-GATE: `TicketLink(rel:'blocks')` was pure decoration; two linked tickets
-      //? could run (and merge-conflict) in parallel. A ticket whose blocker is still open is DEFERRED
-      //? with a banner naming the blockers. Deliberate override: remove the link, or set priority to
-      //? `urgent` (the same explicit force the capacity cap honours). Checked BEFORE reserving a slot.
-      if (t && t.priority !== 'urgent') {
-        const openBlockers = await openBlockersFor(prisma, workspaceId, t.id);
-        if (openBlockers.length > 0) {
-          console.log(`[conductor] runStage ${key}@${stageId} skipped — blocked by ${openBlockers.join(', ')}`);
-          await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: `${BLOCKED_DEFER_MSG}: ${openBlockers.join(', ')}` } });
-          await broadcastTicketDelta(prisma, workspaceId, [key]);
-          return;
-        }
-      }
-      //? Edit-lock (C4): never drive an autonomous turn on a container a human is editing in the
-      //? live VS Code — that races their worktree. Checked BEFORE reserving a capacity slot so an
-      //? edit-locked ticket never consumes the budget. Skip + banner + broadcast; re-entering
-      //? (editor closed) re-triggers it.
-      if (await isEditorRunning(workspaceId, key)) {
-        console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open (edit-lock)`);
-        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: EDITOR_DEFER_MSG } });
-        await broadcastTicketDelta(prisma, workspaceId, [key]);
-        return;
-      }
-      //? CapacityManager (#12): ATOMIC admission — reserve a slot before the turn runs. An
-      //? `urgent` ticket (the hotfix/security tier) force-passes the cap (merge still needs
-      //? approval, ADR 0018). A rejected turn is parked on the FIFO queue + banner; a completing
-      //? turn releases its slot and drains the next parked turn (`drainCapacityQueue`).
-      const urgent = t?.priority === 'urgent';
-      const admitted = await acquireSlot(key, workspaceId, urgent, Date.now());
-      if (!admitted) {
-        const queued = await enqueueDeferred({ workspaceId, key, stageId });
-        console.log(`[conductor] runStage ${key}@${stageId} deferred — capacity full${queued ? ' (queued)' : ' (already queued)'}`);
-        await prisma.ticket.updateMany({ where: { workspaceId, key }, data: { needsInput: CAPACITY_DEFER_MSG } });
-        await broadcastTicketDelta(prisma, workspaceId, [key]);
-        return;
-      }
-      //? Clear a prior defer banner (editor/capacity/blocks; targeted, leaves real open-questions intact).
-      await prisma.ticket.updateMany({ where: { workspaceId, key, OR: [{ needsInput: { in: [EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG] } }, { needsInput: { startsWith: BLOCKED_DEFER_MSG } }] }, data: { needsInput: null } });
-      try {
-        await runStage(workspaceId, key, stageId, { resume, ...(resumePrompt === undefined ? {} : { resumePrompt }) });
-      } finally {
-        //? Free the slot the moment the turn ends (done/needs-input/continue/failed) and pull the
-        //? next parked turn in — the queue drains at the pace turns complete.
-        await releaseSlot(key, workspaceId);
-        void drainCapacityQueue();
-      }
-    }).then(([error]) => {
-      if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
-    });
+export async function reprovisionTicket(workspaceId: string, key: string, resume = false, resumePrompt?: string): Promise<void> {
+  await reprovisionResolvedTicket(workspaceId, key, resume, resumePrompt, false);
+}
+
+//? Recovery waits for an honest provisioning outcome. `true` still requires the caller to
+//? prove the exact higher-fence AgentSession; queued/unavailable admission is always false.
+export function reprovisionTicketAndWait(workspaceId: string, key: string, resume = false, resumePrompt?: string): Promise<boolean> {
+  return reprovisionResolvedTicket(workspaceId, key, resume, resumePrompt, true);
+}
+
+async function writeStageDefer(
+  workspaceId: string,
+  target: StageDeferUpdateInternalAction['target'],
+  payload: StageDeferUpdateInternalAction['payload'],
+): Promise<void> {
+  const { enqueueInternalAction } = await import('./internalOps');
+  const [error, applied] = await tryCatch(() => enqueueInternalAction({
+    workspaceId,
+    op: 'stage-defer-update',
+    target,
+    payload,
+    userId: 'stage-runner',
+    clientRequestId: `stage-defer:${target.ticketId}:${randomUUID()}`,
+  }));
+  if (!error && applied && stageActionPersisted(applied.result, target.ticketKey)) {
+    await broadcastTicketDelta(prisma, workspaceId, stageActionResultKeys(applied.result));
   }
 }
 
-//? Pull the next capacity-deferred turn off the FIFO queue and re-provision it at its CURRENT
+export async function provisionContainers(
+  workspaceId: string,
+  activated: { key: string; branch: string }[],
+  stageId: string,
+  resume = false,
+  resumePrompt?: string,
+  dependencies: ProvisionDependencies = {},
+): Promise<ProvisionResult[]> {
+  return runInTenant(workspaceId, async () => {
+    const dockerReady = await (dependencies.dockerAvailable ?? dockerAvailable)();
+    //? Pause (C2): pause-all halts ALL autonomous provisioning for the workspace.
+    const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { paused: true } });
+    if (ws?.paused === true) {
+      console.log('[conductor] provisioning skipped — workspace paused');
+      return activated.map(({ key }) => ({ key, status: 'skipped' as const }));
+    }
+    //? Metered-budget enforcement blocks only NEW autonomous turns.
+    if (await isSpendEnforcementActive(prisma, workspaceId)) {
+      console.log('[conductor] provisioning skipped — metered budget cap reached');
+      return activated.map(({ key }) => ({ key, status: 'skipped' as const }));
+    }
+    const runs: Promise<ProvisionResult>[] = [];
+    for (const { key } of activated) {
+      const run = tryCatch(async (): Promise<ProvisionResult> => {
+        const ticket = await prisma.ticket.findFirst({
+          where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused'] } },
+          select: { id: true, status: true, priority: true, projectId: true, stageId: true },
+        });
+        if (ticket?.stageId !== stageId) return { key, status: 'skipped' };
+        const target = { ticketId: ticket.id, ticketKey: key, projectId: ticket.projectId, stageId };
+
+        if (!dockerReady) {
+          const queued = await enqueueDeferred({ workspaceId, key, stageId });
+          await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'capacity', blockers: [] });
+          console.warn(`[conductor] runStage ${key}@${stageId} deferred — Docker unavailable${queued ? ' (queued)' : ''}`);
+          return { key, status: queued ? 'queued' : 'unavailable' };
+        }
+        if (ticket.priority !== 'urgent') {
+          const blockers = await openBlockersFor(prisma, workspaceId, ticket.id);
+          if (blockers.length > 0) {
+            console.log(`[conductor] runStage ${key}@${stageId} skipped — blocked by ${blockers.join(', ')}`);
+            await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'blocked', blockers });
+            return { key, status: 'skipped' };
+          }
+        }
+        if (await isEditorRunning(workspaceId, key)) {
+          console.warn(`[conductor] runStage ${key}@${stageId} skipped — a live editor is open (edit-lock)`);
+          await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'editor', blockers: [] });
+          return { key, status: 'skipped' };
+        }
+
+        const acquired = await acquireSlot(key, workspaceId, ticket.priority === 'urgent', Date.now());
+        if (!acquired.acquired) {
+          //? A duplicate may already be the successor; the recovery caller proves its exact
+          //? higher token/fence before reporting success.
+          if (acquired.reason === 'duplicate') {
+            console.log(`[conductor] runStage ${key}@${stageId} skipped — duplicate turn already active`);
+            return { key, status: 'duplicate' };
+          }
+          const queued = await enqueueDeferred({ workspaceId, key, stageId });
+          console.log(`[conductor] runStage ${key}@${stageId} deferred — capacity ${acquired.reason}${queued ? ' (queued)' : ''}`);
+          await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'capacity', blockers: [] });
+          return { key, status: queued ? 'queued' : 'unavailable' };
+        }
+
+        await writeStageDefer(workspaceId, target, { mode: 'clear', reason: 'capacity', blockers: [] });
+        const [runError, outcome] = await tryCatch(() => withReservationRenewal(acquired.reservation, (reservationGuard) => runStage(workspaceId, key, stageId, {
+          runToken: acquired.reservation.runToken,
+          runFence: acquired.reservation.fence,
+          reservationGuard,
+          resume,
+          ...(resumePrompt === undefined ? {} : { resumePrompt }),
+        })));
+        //? Owner-checked release: after TTL expiry an old run cannot remove a successor's
+        //? reservation. Drain only when THIS exact reservation actually freed capacity.
+        const released = await releaseSlot(acquired.reservation);
+        if (released) void drainCapacityQueue();
+        if (runError || outcome?.ok !== true) {
+          const queued = await enqueueDeferred({ workspaceId, key, stageId });
+          await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'capacity', blockers: [] });
+          if (runError) console.error(`[conductor] runStage ${key}@${stageId} failed:`, runError.message);
+          return { key, status: queued ? 'queued' : 'unavailable' };
+        }
+        return { key, status: 'completed' };
+      }).then(async ([error, result]) => {
+        if (!error && result) return result;
+        if (error) console.error(`[conductor] runStage ${key}@${stageId} failed:`, error.message);
+        const queued = await enqueueDeferred({ workspaceId, key, stageId });
+        return { key, status: queued ? 'queued' as const : 'unavailable' as const };
+      });
+      runs.push(run);
+    }
+    return Promise.all(runs);
+  });
+}
+
+//? Release-driven drain is the fast path; this leader-scheduled backstop also evicts
+//? expired reservations and continuously skips stale queued targets after crashes.
+export const CAPACITY_DRAIN_MS = Number(process.env.WS_CAPACITY_DRAIN_MS ?? '10000');
+
+//? Pull the next capacity-deferred turn off the fair queue and re-provision it at its CURRENT
 //? stage (it may have moved since it was parked). No-op when the queue is empty or the ticket is
-//? no longer activated (moved/archived). Called on every slot release, so the backlog drains
-//? one turn per completion without any polling.
-async function drainCapacityQueue(): Promise<void> {
-  //? H5 — drain FAIRLY: serve the parked turn from the workspace holding the fewest slots (round-robin), so one
-  //? workspace's backlog can't starve the others. Falls back to FIFO within a workspace.
-  const next = await dequeueFairDeferred(await inFlightByWorkspace(Date.now()));
-  if (!next) return;
-  const t = await prisma.ticket.findFirst({ where: { workspaceId: next.workspaceId, key: next.key }, select: { branch: true, stageId: true } });
-  if (!t?.branch) return;
-  void provisionContainers(next.workspaceId, [{ key: next.key, branch: t.branch }], t.stageId);
+//? no longer activated (moved/archived/done/paused). Atomic dequeue remains in capacity.ts Lua.
+export async function resolveCapacityDeferredTarget(item: { workspaceId: string; key: string; stageId: string }): Promise<{ branch: string; stageId: string } | null> {
+  return runInTenant(item.workspaceId, async () => {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        workspaceId: item.workspaceId,
+        key: item.key,
+        archived: false,
+        status: { notIn: ['done', 'paused'] },
+      },
+      select: { branch: true, stageId: true },
+    });
+    return ticket?.branch ? { branch: ticket.branch, stageId: ticket.stageId } : null;
+  });
+}
+
+export interface CapacityDrainDependencies {
+  inFlight?: () => Promise<Record<string, number>>;
+  resolve?: typeof resolveCapacityDeferredTarget;
+  provision?: (workspaceId: string, activated: { key: string; branch: string }[], stageId: string) => Promise<void>;
+}
+
+export async function drainCapacityQueue(dependencies: CapacityDrainDependencies = {}): Promise<void> {
+  //? Keep consuming after stale DB targets. One dead queue head must never strand a
+  //? valid successor; one freed slot still starts at most one valid turn.
+  const inFlight = dependencies.inFlight ?? (() => inFlightByWorkspace(Date.now()));
+  const resolve = dependencies.resolve ?? resolveCapacityDeferredTarget;
+  const resolved = await dequeueDeferredUntil(await inFlight(), resolve);
+  if (!resolved) return;
+  const provision = dependencies.provision ?? provisionContainers;
+  await provision(
+    resolved.item.workspaceId,
+    [{ key: resolved.item.key, branch: resolved.value.branch }],
+    resolved.value.stageId,
+  );
 }
 
 //? The single-writer chains. Login-only ops share ONE global in-process chain; workspace-scoped
@@ -566,6 +850,20 @@ const wsChains = new Map<string, Promise<unknown>>();
 //? Transport callers treat that as a failed ACK while successful `void` results remain valid.
 export function isControlActionFailure(result: unknown): boolean {
   return typeof result === 'object' && result !== null && 'ok' in result && result.ok === false;
+}
+
+function writerActionWasApplied(result: unknown): boolean {
+  if (isControlActionFailure(result)) return false;
+  if (typeof result === 'object' && result !== null && 'applied' in result) return result.applied === true;
+  return true;
+}
+
+async function markWorkspaceSignalProcessed(workspaceId: string, signalId: string): Promise<void> {
+  const marked = await prisma.workspaceSignal.updateMany({
+    where: { workspaceId, id: signalId },
+    data: { processedAt: new Date() },
+  });
+  if (marked.count !== 1) throw new Error('[conductor] durable signal could not be marked processed');
 }
 
 export interface EnqueuedControlAction {
@@ -604,11 +902,40 @@ function replayTerminalControlAction(outcome: ControlActionTerminalOutcome): Enq
     : { signalSeq: outcome.signalSeq };
 }
 
+//? A same-workspace enqueue made while executeAction is already running cannot wait on its own wsChains
+//? tail or reacquire its own lease. It still performs the complete claimed action protocol, but reuses the
+//? active tenant/writer/renewable-lease boundary. No exported direct-execute bypass is introduced.
+async function executeReentrantWriterAction(action: WriterAction): Promise<EnqueuedControlAction> {
+  const workspaceId = action.workspaceId;
+  if (!workspaceId) throw new ControlActionEnqueueError('control.executionFailure');
+  assertWriterContext(workspaceId);
+  if (currentWorkspaceId() !== workspaceId) throw new Error('[conductor] reentrant action tenant does not match the writer workspace');
+
+  const signalPayload = writerSignalPayload(action);
+  const signalId = writerSignalId(action);
+  const signal = await appendWriterSignal(
+    action,
+    signalPayload,
+    signalId,
+    () => { assertWriterLeaseHeld(workspaceId); },
+  );
+  const signalSeq = signal.seq;
+  assertWriterLeaseHeld(workspaceId); // before authoritative action execution
+  const result = await executeAction(action);
+  if (action.op !== 'delete-workspace' && writerActionWasApplied(result)) {
+    assertWriterLeaseHeld(workspaceId);
+    await markWorkspaceSignalProcessed(workspaceId, signal.id);
+  }
+  assertWriterLeaseHeld(workspaceId); // before successful completion / ACK outcome
+  return { signalSeq, result };
+}
+
 //? Run an already-claimed public or internal action through the original serial queues. Keeping the
 //? lease runner injectable makes lease-failure verification instant while production stays identical.
 async function enqueueClaimedWriterAction(
   action: WriterAction,
   options: EnqueueControlActionOptions,
+  dedupKey: string,
 ): Promise<EnqueuedControlAction> {
   //? Login-only public ops (create-workspace / accept-invite) carry NO workspace yet: there is no
   //? per-workspace signal or lease. They serialize on the global chain and receive the explicit
@@ -616,7 +943,7 @@ async function enqueueClaimedWriterAction(
   if (!action.workspaceId) {
     let result: unknown;
     const actionPromise = globalChain.then(async () => {
-      result = await runInWriterContext(GLOBAL_WRITER_SCOPE, () => executeAction(action));
+      result = await runInWriterContext(GLOBAL_WRITER_SCOPE, () => executeAction(action), undefined, dedupKey);
     });
     //? Keep the queue tail recovered for later actions, but await the UNRECOVERED action promise
     //? below so this caller observes execute failures instead of receiving a false-success ACK.
@@ -634,7 +961,14 @@ async function enqueueClaimedWriterAction(
   //? signal, and running the authoritative write. This excludes contenders while ownership is observed;
   //? it is not atomic Redis↔Mongo fencing (event-loop/in-flight-write residuals: ADR 0277).
   const workspaceId = action.workspaceId;
-  const signalPayload = { op: action.op, userId: action.userId, clientRequestId: action.clientRequestId };
+  const activeWriterScope = currentWriterScope();
+  if (activeWriterScope !== null) {
+    assertWriterContext(workspaceId);
+    return runInWriterContext(workspaceId, () => executeReentrantWriterAction(action), undefined, dedupKey);
+  }
+
+  const signalPayload = writerSignalPayload(action);
+  const signalId = writerSignalId(action);
   const runWorkspaceLease = options.workspaceLease ?? withWorkspaceLease;
   let result: unknown;
   let signalSeq = -1;
@@ -642,15 +976,17 @@ async function enqueueClaimedWriterAction(
   const actionPromise = prev.then(() => runWorkspaceLease(workspaceId, async (lease) => {
     //? Renewable-lease checkpoints bracket every irreversible boundary. They fail the caller closed
     //? after an observed lease loss; `lease.signal` is also available to future abort-aware actions.
-    lease.assertHeld(); // before seq allocation
-    signalSeq = await nextSignalSeq(workspaceId);
     await runInTenant(workspaceId, async () => {
-      lease.assertHeld(); // before durable signal append
-      await prisma.workspaceSignal.create({
-        data: { workspaceId, seq: signalSeq, kind: action.op, payload: signalPayload },
-      });
+      const signal = await appendWriterSignal(action, signalPayload, signalId, () => { lease.assertHeld(); });
+      signalSeq = signal.seq;
       lease.assertHeld(); // before authoritative action execution
-      result = await runInWriterContext(workspaceId, () => executeAction(action));
+      result = await runInWriterContext(workspaceId, () => executeAction(action), lease, dedupKey);
+      //? delete-workspace intentionally cascades its own WorkspaceSignal before this point;
+      //? there is no surviving row to mark and successful deletion must not become a false failure.
+      if (action.op !== 'delete-workspace' && writerActionWasApplied(result)) {
+        lease.assertHeld();
+        await markWorkspaceSignalProcessed(workspaceId, signal.id);
+      }
       lease.assertHeld(); // before successful completion / ACK outcome
     });
   }));
@@ -674,12 +1010,27 @@ async function enqueueWriterAction(
   if (writerKind === 'internal' && !action.workspaceId) {
     throw new ControlActionEnqueueError('control.executionFailure');
   }
-  //? Keep the established public key byte-for-byte compatible across rolling deploys: an in-flight
-  //? retry may still need to replay a terminal outcome written by the previous release. Only the new
-  //? server-internal surface needs a namespace to prevent collisions with browser request ids.
-  const dedupKey = writerKind === 'public'
-    ? `${action.workspaceId}:${action.clientRequestId}`
-    : `internal:${action.workspaceId}:${action.clientRequestId}`;
+  const activeWriterScope = currentWriterScope();
+  if (activeWriterScope !== null) {
+    //? Only a leased, tenant-matching workspace execute boundary may reenter. Global nesting remains
+    //? unsupported, and a different workspace fails before it can claim a dedup key.
+    if (!action.workspaceId) throw new ControlActionEnqueueError('control.executionFailure');
+    assertWriterContext(action.workspaceId);
+    if (currentWorkspaceId() !== action.workspaceId) throw new Error('[conductor] nested action tenant does not match the writer workspace');
+    assertWriterLeaseHeld(action.workspaceId);
+  }
+  //? Workspace-scoped public/internal keys stay rollout-compatible. Login-only public actions cannot:
+  //? the old `:${clientRequestId}` key let two authenticated users share one terminal outcome. The new
+  //? user-scoped namespace may re-execute one retry across a rolling deploy, but security wins over
+  //? replay compatibility at this boundary.
+  let dedupKey: string;
+  if (writerKind === 'internal') dedupKey = `internal:${action.workspaceId}:${action.clientRequestId}`;
+  else if (action.workspaceId) dedupKey = `${action.workspaceId}:${action.clientRequestId}`;
+  else dedupKey = `global:${action.userId}:${action.clientRequestId}`;
+  //? A nested replay of any active ancestor key is self-wait: its pending outcome cannot settle until
+  //? this call returns. Reject before Redis claim/poll so it never burns the 2s pending wait. Public and
+  //? internal namespaces remain intentionally distinct even when the raw request id is identical.
+  if (hasActiveWriterDedupKey(dedupKey)) throw new ControlActionEnqueueError('control.pending');
   const claim = await claimControlAction(dedupKey);
   if (claim.state === 'success' || claim.state === 'failure') {
     return replayTerminalControlAction(claim);
@@ -690,12 +1041,22 @@ async function enqueueWriterAction(
     return replayTerminalControlAction(outcome);
   }
 
-  const [executionError, enqueued] = await tryCatch(() => enqueueClaimedWriterAction(action, options));
+  const [executionError, enqueued] = await tryCatch(() => enqueueClaimedWriterAction(action, options, dedupKey));
   if (executionError || !enqueued) {
-    await completeControlAction(dedupKey, claim.token, {
-      state: 'failure',
-      errorCode: 'control.executionFailure',
-    });
+    const repairableInternal = writerKind === 'internal'
+      && (action.op === 'stage-turn-complete'
+        || action.op === 'stage-handoff-complete'
+        || action.op === 'ci-public-complete'
+        || action.op === 'agent-recovery-transition'
+        || action.op === 'watchdog-reminder-apply');
+    //? Deterministic row ids + ledger recomputation make these partial multi-write
+    //? applies repairable. Do not fossilize a crash as terminal failure.
+    await (repairableInternal
+      ? abandonControlAction(dedupKey, claim.token)
+      : completeControlAction(dedupKey, claim.token, {
+        state: 'failure',
+        errorCode: 'control.executionFailure',
+      }));
     throw new ControlActionEnqueueError('control.executionFailure');
   }
   if (isControlActionFailure(enqueued.result)) {
@@ -766,6 +1127,32 @@ async function executeAction(action: WriterAction): Promise<unknown> {
   assertWriterContext(writerScope);
   if (action.workspaceId && currentWorkspaceId() !== action.workspaceId) {
     throw new Error('[conductor] writer tenant context does not match the action workspace');
+  }
+  if (action.op === 'stage-activation-complete') return applyStageActivationComplete(prisma, action.workspaceId, action);
+  if (action.op === 'stage-session-start') return applyStageSessionStart(prisma, action.workspaceId, action);
+  if (action.op === 'stage-session-update') return applyStageSessionUpdate(prisma, action.workspaceId, action);
+  if (action.op === 'stage-tool-trail-append') return applyStageToolTrailAppend(prisma, action.workspaceId, action);
+  if (action.op === 'stage-turn-complete') return applyStageTurnComplete(prisma, action.workspaceId, action);
+  if (action.op === 'stage-handoff-complete') return applyStageHandoffComplete(prisma, action.workspaceId, action);
+  if (action.op === 'stage-forge-prepare') return applyStageForgePrepare(prisma, action.workspaceId, action);
+  if (action.op === 'stage-forge-complete') return applyStageForgeComplete(prisma, action.workspaceId, action);
+  if (action.op === 'stage-defer-update') return applyStageDeferUpdate(prisma, action.workspaceId, action);
+  if (action.op === 'agent-recovery-transition') return applyAgentRecoveryTransition(prisma, action.workspaceId, action);
+  if (action.op === 'watchdog-reminder-apply') return applyWatchdogReminder(prisma, action.workspaceId, action);
+  if (action.op === 'ci-public-complete') return applyPublicCiComplete(prisma, action.workspaceId, action);
+  if (action.op === 'automation-event-apply') {
+    return applyAutomationEvent(prisma, action.workspaceId, action.payload.event, action.payload.depth);
+  }
+  if (action.op === 'automation-cron-fire') {
+    return fireCronTrigger(prisma, action.workspaceId, action.target.triggerId, action.payload.minuteAt);
+  }
+  if (action.op === 'automation-action-run') {
+    return action.payload.mode === 'gated'
+      ? runTriggerAction(prisma, action.workspaceId, action.payload.action, action.payload.requiresApproval)
+      : executeTriggerAction(prisma, action.workspaceId, action.payload.action);
+  }
+  if (action.op === 'workspace-builtins-ensure') {
+    return ensureWorkspaceBuiltins(prisma, action.workspaceId);
   }
   //? Server-only forge inputs are already parsed/fetched and bounded before enqueue.
   //? These cases perform deterministic DB apply only; no external network can hold the lease.
@@ -1032,8 +1419,17 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return;
     }
     case 'delete-workspace': {
-      //? H1 — record BEFORE the cascade wipes the workspace (the row lives under it; a durable copy would need an
-      //? out-of-tenant sink — noted). The intent is audited even though the log is deleted with the workspace.
+      //? Remove every public environment route/container BEFORE deleting its ownership rows. The workspace
+      //? lease remains held so no concurrent Conductor deploy can recreate runtime during the purge; any
+      //? unprovable proxy/Docker teardown fails closed and leaves the tenant rows available for retry.
+      const environments = await prisma.environment.findMany({
+        where: { workspaceId: action.workspaceId },
+        select: { id: true },
+      });
+      for (const environment of environments) {
+        const tornDown = await teardownEnvironment(prisma, action.workspaceId, environment.id);
+        if (!tornDown.ok) throw new Error('[conductor] workspace environment teardown could not be proven');
+      }
       await recordAudit(prisma, action.workspaceId, userId, 'delete-workspace', action.workspaceId);
       await cascadeDeleteWorkspace(action.workspaceId);
       return;
@@ -1225,6 +1621,31 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       } } });
       return cfg;
     }
+    case 'project-runtime-save': {
+      const requestedProjectId = str(target, 'projectId');
+      const devCommand = str(payload, 'devCommand');
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId || devCommand === undefined) return { ok: false, error: 'project.invalidRuntime' };
+
+      const data: Prisma.ProjectUpdateManyMutationInput = {
+        devCommand: devCommand.trim() || null,
+      };
+      if ('prodCommand' in payload) {
+        const prodCommand = str(payload, 'prodCommand');
+        if (prodCommand === undefined) return { ok: false, error: 'project.invalidRuntime' };
+        data.prodCommand = prodCommand.trim() || null;
+      }
+      const stack = str(payload, 'stack');
+      if (stack && ['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'].includes(stack)) data.stack = stack;
+      if ('allowCustomBase' in payload) {
+        if (typeof payload.allowCustomBase !== 'boolean') return { ok: false, error: 'project.invalidRuntime' };
+        data.allowCustomBase = payload.allowCustomBase;
+      }
+
+      const updated = await prisma.project.updateMany({ where: { id: projectId, workspaceId: action.workspaceId }, data });
+      if (updated.count !== 1) return { ok: false, error: 'project.invalidRuntime' };
+      return { projectId, keys: [projectId] };
+    }
     case 'save-ai-instruction': {
       //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings: the instruction + output language (prepended
       //? to every completion) + the per-workspace Gemini model + temperature (P2 — Gemini-only; Claude is PTY).
@@ -1319,9 +1740,75 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return ticketRowsForKeys(action.workspaceId, [key]);
     }
     case 'kill': {
-      //? Stop the ticket's in-flight turn (procps-free) + mark its worker session stopped.
+      //? Manual kill uses the same exact fenced recovery transition as watchdog/reaper. The public
+      //? writer captures the expected session; the nested prepare establishes the recovery fence and
+      //? only then moves the ticket idle. Docker runs after this writer context/lease becomes inactive.
       const key = str(target, 'ticketKey') ?? str(payload, 'ticketKey');
-      if (key) { await killTicketAgent(prisma, action.workspaceId, key); await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key }, data: { status: 'idle' } }); await broadcastTicketDelta(prisma, action.workspaceId, [key]); }
+      if (!key) return;
+      const ticket = await prisma.ticket.findFirst({
+        where: { workspaceId: action.workspaceId, key, archived: false },
+        select: { id: true, key: true, projectId: true, stageId: true, status: true, needsInput: true },
+      });
+      if (!ticket) return;
+      const session = await prisma.agentSession.findFirst({
+        where: {
+          workspaceId: action.workspaceId,
+          ticketId: ticket.id,
+          stageId: ticket.stageId,
+          kind: 'worker',
+          sessionKey: `worker:${ticket.id}:${ticket.stageId}`,
+          status: { in: ['busy', 'paused'] },
+        },
+        select: { id: true, status: true, containerId: true, runToken: true, runFence: true, startedAt: true },
+      });
+      if (!session) {
+        await prisma.ticket.updateMany({ where: { id: ticket.id, workspaceId: action.workspaceId }, data: { status: 'idle' } });
+        await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        return;
+      }
+      if (!session.containerId || !session.runToken || session.runFence <= 0 || (session.status !== 'busy' && session.status !== 'paused')) {
+        return { ok: false, error: 'agent.recoveryPrepare' };
+      }
+      const prepare: AgentRecoveryTransitionInternalAction = {
+        workspaceId: action.workspaceId,
+        op: 'agent-recovery-transition' as const,
+        target: { ticketId: ticket.id, ticketKey: ticket.key, projectId: ticket.projectId, stageId: ticket.stageId, sessionId: session.id },
+        payload: {
+          phase: 'prepare' as const,
+          reason: 'manual-kill' as const,
+          expected: {
+            ticketStatus: ticket.status,
+            needsInputHash: needsInputHash(ticket.needsInput),
+            sessionStatus: session.status,
+            containerId: session.containerId,
+            runToken: session.runToken,
+            runFence: session.runFence,
+            startedAt: session.startedAt.getTime(),
+          },
+          observedAt: Date.now(),
+        },
+        userId: action.userId,
+        clientRequestId: `agent-recovery-prepare:manual-kill:${session.id}:${session.runToken}:${String(session.runFence)}:${String(session.startedAt.getTime())}`,
+      };
+      //? Manual success may not leave this writer until the durable prepare + Redis fence
+      //? are accepted. The nested InternalOp is reentrant under this same tenant/lease.
+      const { enqueueInternalAction } = await import('./internalOps');
+      const [prepareError, preparedEnqueue] = await tryCatch(() => enqueueInternalAction(prepare));
+      const directPrepare = readRecoveryTransitionResult(preparedEnqueue?.result);
+      if (prepareError || (directPrepare?.phase === 'prepare' && !directPrepare.applied)) {
+        return { ok: false, error: 'agent.recoveryPrepare' };
+      }
+      const [reconstructError, reconstructed] = await tryCatch(() => reconstructAcceptedRecoveryPrepare(prisma, prepare));
+      if (reconstructError || reconstructed?.state !== 'recovering') return { ok: false, error: 'agent.recoveryPrepare' };
+      await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+
+      //? Only Docker + complete/cancel detach, after the public action can no longer ACK
+      //? ahead of the fence. runAgentRecovery reconstructs the rich prepare on dedup replay.
+      setTimeout(() => {
+        void tryCatch(() => runAgentRecovery({ prepare, mode: 'kill-claude' })).then(([error]) => {
+          if (error) console.error(`[conductor] manual kill ${key} failed:`, error.message);
+        });
+      }, 0);
       return;
     }
     case 'pause-all': {
@@ -1779,6 +2266,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (capMode === 'sidecar' || capMode === 'burn' || capMode === 'soft') await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { captionMode: capMode } });
       //? H1 (ads) — persist a CTA/end-card line for the ad render (empty clears it).
       if ('ctaText' in payload) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { ctaText: (str(payload, 'ctaText') ?? '').trim() || null } });
+      //? GAP_SCAN F2 — persist the caption LOOK (size/colour/box/word-by-word) so the burn-in pass uses it
+      //? and a re-render keeps it. Validated by `parseCaptionStyle`; an unrecognizable blob clears it back
+      //? to the plain default rather than being stored as junk.
+      if ('captionStyle' in payload) {
+        const parsedStyle = parseCaptionStyle(payload.captionStyle);
+        await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { captionStyle: parsedStyle === null ? null : jsonInput(parsedStyle) } });
+      }
       await runContentPipeline(prisma, { workspaceId: action.workspaceId, contentProjectId, mode, ...(str(payload, 'styleKey') ? { styleKey: str(payload, 'styleKey') } : {}), ...(str(payload, 'extraInstructions') ? { extraInstructions: str(payload, 'extraInstructions') } : {}), ...(durationMs === undefined ? {} : { durationMs }), ...(sceneDurationMs === undefined ? {} : { sceneDurationMs }) });
       broadcastContentDirty(action.workspaceId);
       return;
@@ -1912,6 +2406,31 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? A replied-to comment is handled: mark it read so the inbox reflects reality.
       await prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, id: commentId }, data: { read: true } });
       broadcastContentDirty(action.workspaceId);
+      return { ok: true };
+    }
+    //? GAP_SCAN G7 — create or update a prompt A/B experiment. At most ONE running experiment per feature:
+    //? two overlapping tests on the same prompt make both unreadable, so starting a new one stops the old.
+    case 'prompt-experiment-save': {
+      const feature = str(payload, 'feature');
+      const variantA = str(payload, 'variantA');
+      const variantB = str(payload, 'variantB');
+      const expName = str(payload, 'name') ?? feature ?? 'Experiment';
+      if (!feature || !variantA || !variantB) return { ok: false, status: 'error', error: 'experiment.invalidRequest' };
+      const experimentId = str(payload, 'experimentId');
+      if (experimentId) {
+        await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, id: experimentId }, data: { name: expName, variantA, variantB } });
+        return { id: experimentId };
+      }
+      await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, feature, status: 'running' }, data: { status: 'stopped' } });
+      const experiment = await prisma.promptExperiment.create({ data: { workspaceId: action.workspaceId, feature, name: expName, variantA, variantB, status: 'running' } });
+      return { id: experiment.id };
+    }
+    //? G7 — stop measuring. Trials are KEPT: the whole value of the experiment is the record of what the
+    //? two variants actually achieved, and deleting that on stop would make the feature pointless.
+    case 'prompt-experiment-stop': {
+      const experimentId = str(payload, 'experimentId');
+      if (!experimentId) return { ok: false, status: 'error', error: 'experiment.invalidRequest' };
+      await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, id: experimentId }, data: { status: 'stopped' } });
       return { ok: true };
     }
     //? GAP_SCAN G4 — mark an asset as part of the workspace's reusable library (or take it out).
@@ -3140,15 +3659,55 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!exportProjectId) return { ok: false, status: 'error', error: 'env.noProject' };
       return buildExport(prisma, action.workspaceId, exportProjectId, str(payload, 'kind') ?? 'image', Date.now());
     }
-    //? Run the project's CI at a ticket's MR head (ADR 0039) — feeds the merge/promote gate.
+    //? Phase 1 of public CI: RBAC already ran, and the Conductor only validates +
+    //? durably authorizes one immutable execution. Docker/repo work happens afterward;
+    //? a duplicate request replays only `{keys}` and therefore receives no executable intent.
     case 'ci-run': {
-      const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
-      if (!ticketKey) return { status: 'none', error: 'ci.noTicket' };
-      const ticket = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId, key: ticketKey }, select: { id: true, projectId: true, branch: true } });
-      if (!ticket?.branch) return { status: 'none', error: 'ci.notActivated' };
-      const mr = await prisma.mergeRequest.findFirst({ where: { workspaceId: action.workspaceId, ticketId: ticket.id }, orderBy: { createdAt: 'desc' }, select: { id: true, headSha: true } });
-      const commitHash = mr?.headSha ?? (await branchHead(action.workspaceId, ticket.projectId, ticket.branch));
-      return runPipeline(prisma, action.workspaceId, ticket.projectId, { branch: ticket.branch, commitHash, ticketId: ticket.id, mergeRequestId: mr?.id ?? null, trigger: str(payload, 'trigger') ?? 'manual' });
+      const ticketKey = str(target, 'ticketId');
+      const projectId = str(target, 'projectId');
+      const binding = asRec(payload.binding);
+      const suppliedIntentId = str(payload, 'intentId');
+      const intentId = projectId ? ciPublicIntentId(action.workspaceId, projectId, action.clientRequestId) : null;
+      const expectedTicketId = str(binding, 'ticketId');
+      const expectedBranch = str(binding, 'branch');
+      const expectedCommitHash = str(binding, 'commitHash');
+      const expectedMergeRequestId = str(binding, 'mergeRequestId');
+      const trigger = str(binding, 'trigger') ?? 'manual';
+      if (payload.phase !== 'prepare' || !ticketKey || !projectId || !intentId || suppliedIntentId !== intentId
+        || !expectedTicketId || !expectedBranch || !expectedCommitHash || !/^[a-f\d]{40,64}$/i.test(expectedCommitHash)) {
+        return { ok: false, error: 'ci.prepareRequired' };
+      }
+      const ticket = await prisma.ticket.findFirst({
+        where: { id: expectedTicketId, workspaceId: action.workspaceId, projectId, key: ticketKey, branch: expectedBranch },
+        select: { id: true },
+      });
+      if (!ticket) return { ok: false, error: 'ci.targetChanged' };
+      const latestMr = await prisma.mergeRequest.findFirst({
+        where: { workspaceId: action.workspaceId, projectId, ticketId: ticket.id },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, headSha: true },
+      });
+      if (expectedMergeRequestId) {
+        if (latestMr?.id !== expectedMergeRequestId || latestMr.headSha !== expectedCommitHash) return { ok: false, error: 'ci.targetChanged' };
+      } else if (latestMr !== null) {
+        return { ok: false, error: 'ci.targetChanged' };
+      }
+      return {
+        ok: true,
+        executable: true,
+        keys: [ticketKey],
+        intent: {
+          id: intentId,
+          signalId: ciPublicIntentSignalId(action.workspaceId, action.clientRequestId),
+          ticketId: ticket.id,
+          ticketKey,
+          projectId,
+          branch: expectedBranch,
+          commitHash: expectedCommitHash,
+          mergeRequestId: expectedMergeRequestId ?? null,
+          trigger,
+        },
+      };
     }
     //? Admin override (ADR 0039): allow merge/promote while a required CI run is red (unwedge a broken runner).
     case 'ci-allow-red': {
@@ -3162,7 +3721,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!role) return { ok: false };
       const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
       const mrId = str(payload, 'mrId');
-      const artifact = await role.run({ workspaceId: action.workspaceId, ...(ticketKey ? { ticketKey } : {}), params: mrId ? { mrId } : {} });
+      const artifact = await executeAgentRole(role.key, { workspaceId: action.workspaceId, ...(ticketKey ? { ticketKey } : {}), params: mrId ? { mrId } : {} });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
     //? AI root-cause / rollback (ADR 0042): run the role on a symptom → it PROPOSES a rollback as a
@@ -3170,7 +3729,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'root-cause': {
       const role = getAgentRole('root-cause');
       if (!role) return { ok: false };
-      const artifact = await role.run({ workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
+      const artifact = await executeAgentRole(role.key, { workspaceId: action.workspaceId, params: { symptom: str(payload, 'symptom') ?? '' } });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
     //? Institutional memory (ADR 0045): (re)index the workspace's Handoffs + CarryOvers into the RAG so
@@ -3184,7 +3743,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const role = getAgentRole('plan-critique');
       const ticketKey = str(target, 'ticketId') ?? str(payload, 'ticketKey');
       if (!role || !ticketKey) return { ok: false };
-      const artifact = await role.run({ workspaceId: action.workspaceId, ticketKey, params: {} });
+      const artifact = await executeAgentRole(role.key, { workspaceId: action.workspaceId, ticketKey, params: {} });
       return { ok: true, ...(artifact ? { title: artifact.title, body: artifact.body } : {}) };
     }
     //? User-app DB + migrations (ADR 0043) — B-23: the Conductor writes the connection + applies migrations.
@@ -3311,5 +3870,7 @@ export async function bootstrapWorkspace(input: { name: string; ownerId: string 
     ],
   });
   await prisma.workspaceMember.create({ data: { workspaceId: ws.id, userId: input.ownerId, roleKey: 'owner' } });
+  const builtins = await ensureWorkspaceBuiltins(prisma, ws.id);
+  void scheduleWorkspaceBuiltinIndexing(prisma, ws.id, builtins.designArtifactsToIndex);
   return { workspaceId: ws.id };
 }

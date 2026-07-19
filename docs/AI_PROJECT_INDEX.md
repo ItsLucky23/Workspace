@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (59)
+## API routes (62)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,8 +30,9 @@
 | `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
 | `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
 | `api/workspaces/closePreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
+| `api/workspaces/commentReplyDraft/v1` | POST | login | 20 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | **no** | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
-| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | **no** | — | Workspaces — [create-workspace] typed per-action route (Fase-0 split). Login-only |
+| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | **no** | — | Workspaces — [create-workspace] login-only control-API route. The new tenant has |
 | `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | **no** | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
 | `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
 | `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
@@ -48,14 +49,16 @@
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
 | `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
+| `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/rotateWebhookSecret/v1` | POST | login | 10 | ItsLucky23 | yes | — | Rotates the forge webhook credential. Unlike room-broadcast sync output, this API response |
-| `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — [save-dev-command] set the project's `devCommand` (the command that starts the |
+| `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — save one project's runtime commands/settings. The `_api` route is only the typed, |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
 | `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
 | `api/workspaces/saveWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [save-worktree-file] SAVE an edited file back to a ticket's container worktree (#35, Track D). |
+| `api/workspaces/seoSuggest/v1` | POST | login | 20 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
 | `api/workspaces/sshKeyAdd/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-add] (#76) persist a new SSH key on the CALLER'S account (real product, |
 | `api/workspaces/sshKeyRemove/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-remove] (#76) delete an SSH key from the CALLER'S account. Account-level |
@@ -146,10 +149,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 17 |
+| `ItsLucky23` | 20 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 4/123 routes have a per-route `.tests.ts`.
+**Test coverage**: 4/126 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -172,6 +175,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/brandImport/v1`
 - `api/workspaces/buildProjectImage/v1`
 - `api/workspaces/closePreview/v1`
+- `api/workspaces/commentReplyDraft/v1`
 - `api/workspaces/containerTerminals/v1`
 - `api/workspaces/createWorkspace/v1`
 - `api/workspaces/deleteWorkspace/v1`
@@ -189,21 +193,20 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/openEditor/v1`
 - `api/workspaces/openPreview/v1`
 - `api/workspaces/openRefPreview/v1`
+- `api/workspaces/promptExperiments/v1`
 - `api/workspaces/pushConfig/v1`
 - `api/workspaces/readWorktreeFile/v1`
 - `api/workspaces/revokePat/v1`
 - `api/workspaces/saveDevCommand/v1`
 - `api/workspaces/savePushSubscription/v1`
 - `api/workspaces/saveWorktreeFile/v1`
+- `api/workspaces/seoSuggest/v1`
 - `api/workspaces/sshKeyAdd/v1`
 - `api/workspaces/sshKeyRemove/v1`
 - `api/workspaces/studioBrand/v1`
 - `api/workspaces/studioDelete/v1`
 - `api/workspaces/studioGenerate/v1`
-- `api/workspaces/studioSaveBrief/v1`
-- `api/workspaces/styleExport/v1`
-- `api/workspaces/styleImport/v1`
-- … +69 more
+- … +72 more
 
 ## Pages (32)
 
@@ -235,7 +238,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/pipeline` | workspaces | — | `workspaces/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
 | `/workspaces/scheduled` | workspaces | — | `workspaces/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
 | `/workspaces/scheduled-posts` | workspaces | — | `workspaces/scheduled-posts/page.tsx` | intent: Scheduled posts — a content-lane calendar/list of every publish that's queued for a future |
-| `/workspaces/settings` | plain | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
+| `/workspaces/settings` | workspaces | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
 | `/workspaces/sources` | workspaces | — | `workspaces/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
 | `/workspaces/studio` | workspaces | — | `workspaces/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |
 | `/workspaces/terminals` | workspaces | — | `workspaces/terminals/page.tsx` | Workspaces — Terminals page. Always-dark multi-terminal workspace, gated on |

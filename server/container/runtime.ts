@@ -119,7 +119,31 @@ export function cloneExecArgs(name: string, branch: string, ref?: string): strin
   return ['exec', name, 'git', 'clone', '--branch', branch, '--single-branch', '/mirror', '/work'];
 }
 
-export interface ContainerInfo { containerId: string; name: string; volume: string }
+export interface ContainerInfo { containerId: string; name: string; volume: string; created: boolean }
+export interface WorkerContainerIdentity {
+  workspaceId: string;
+  projectId: string;
+  ticketKey: string;
+  containerId: string;
+  name: string;
+}
+export interface ContainerExecutionIdentity { projectId: string; ref: string; intentId: string }
+
+export async function containerMatchesExecutionIdentity(name: string, identity: ContainerExecutionIdentity): Promise<boolean> {
+  const result = await docker([
+    'inspect', '-f',
+    '{{index .Config.Labels "org.workspaces.project"}}\t{{index .Config.Labels "org.workspaces.ref"}}\t{{index .Config.Labels "org.workspaces.intent"}}',
+    name,
+  ]);
+  return result.code === 0 && result.out === `${identity.projectId}\t${identity.ref}\t${identity.intentId}`;
+}
+
+//? Public CI may stamp a diagnostic owner label on its immutable, intent-scoped container.
+//? Stage ownership is mutable across reuse and therefore lives inside /work/.workspaces-run-owner.
+export async function containerRunToken(name: string): Promise<string | null> {
+  const result = await docker(['inspect', '-f', '{{index .Config.Labels "org.workspaces.run-token"}}', name]);
+  return result.code === 0 && result.out.length > 0 ? result.out : null;
+}
 
 //? Is the Docker daemon reachable? Gates every launch — a host without Docker simply
 //? never provisions containers (the git/worktree layer already works standalone).
@@ -134,7 +158,7 @@ export async function dockerAvailable(): Promise<boolean> {
 //? then clones the frozen `DEV-####` branch into `/work` AS the agent user (so the
 //? checkout is agent-owned). Rolls back the volume/container on a partial failure (§8.3).
 //? Returns null when no repo is linked (no mirror to clone).
-export async function launchTicketContainer(args: { workspaceId: string; projectId: string; ticketKey: string; branch: string; image?: string; ref?: string; env?: Record<string, string>; serviceNetwork?: string }): Promise<ContainerInfo | null> {
+export async function launchTicketContainer(args: { workspaceId: string; projectId: string; ticketKey: string; branch: string; image?: string; ref?: string; runToken?: string; executionIdentity?: ContainerExecutionIdentity; env?: Record<string, string>; serviceNetwork?: string }): Promise<ContainerInfo | null> {
   const { workspaceId, projectId, ticketKey, branch, ref } = args;
   //? Prefer the project's L2 image (Q-CT-IMAGESEL) when the caller resolved one, else L1.
   const image = args.image ?? BASE_IMAGE;
@@ -149,11 +173,17 @@ export async function launchTicketContainer(args: { workspaceId: string; project
   //? Reuse an existing container (re-activation / re-entry) instead of recreating.
   const existing = await docker(['inspect', '-f', '{{.State.Running}}', name]);
   if (existing.code === 0) {
-    if (existing.out !== 'true') await docker(['start', name]);
+    if (args.executionIdentity && !(await containerMatchesExecutionIdentity(name, args.executionIdentity))) {
+      throw new Error('container execution identity mismatch');
+    }
+    if (existing.out !== 'true') {
+      const started = await docker(['start', name]);
+      if (started.code !== 0) throw new Error('container restart failed');
+    }
     //? K3 — ensure a reused container is on the per-workspace service network (idempotent; harmless if already connected).
     if (args.serviceNetwork) await docker(['network', 'connect', args.serviceNetwork, name]);
     const id = await docker(['inspect', '-f', '{{.Id}}', name]);
-    return { containerId: id.out, name, volume };
+    return id.code === 0 && id.out.length > 0 ? { containerId: id.out, name, volume, created: false } : null;
   }
 
   //? RO subscription-auth projection (07b §2): mount the host's ONE-TIME login creds
@@ -188,6 +218,12 @@ export async function launchTicketContainer(args: { workspaceId: string; project
     ...serviceEnvArgs(args.env ?? {}),
     ...egressLaunchArgs(),
     '--label', `org.workspaces.workspace=${workspaceId}`, '--label', `org.workspaces.ticket=${ticketKey}`,
+    '--label', `org.workspaces.project=${projectId}`,
+    ...(args.runToken && args.executionIdentity ? ['--label', `org.workspaces.run-token=${args.runToken}`] : []),
+    ...(args.executionIdentity ? [
+      '--label', `org.workspaces.ref=${args.executionIdentity.ref}`,
+      '--label', `org.workspaces.intent=${args.executionIdentity.intentId}`,
+    ] : []),
     image,
   ]);
   if (run.code !== 0) {
@@ -209,7 +245,7 @@ export async function launchTicketContainer(args: { workspaceId: string; project
   }
   //? K3 — join the per-workspace service network so the app can reach its K1/K2 services by name (best-effort).
   if (args.serviceNetwork) await docker(['network', 'connect', args.serviceNetwork, name]);
-  return { containerId, name, volume };
+  return { containerId, name, volume, created: true };
 }
 
 //? List a workspace's RUNNING ticket containers (by label) → their ticket + container
@@ -224,6 +260,40 @@ export async function listWorkspaceContainers(workspaceId: string): Promise<{ ti
   }).filter((c) => c.container.length > 0 && c.ticketKey.length > 0);
 }
 
+function parseWorkerIdentity(row: string): WorkerContainerIdentity | null {
+  const [containerId, name, workspaceId, projectId, ticketKey] = row.split('\t').map((value) => value.trim());
+  if (!containerId || !name || !workspaceId || !projectId || !ticketKey) return null;
+  return { containerId, name: name.replace(/^\//, ''), workspaceId, projectId, ticketKey };
+}
+
+//? Host-global, read-only runtime enumeration. `--no-trunc` makes containerId the exact
+//? immutable Docker identity; callers must never key this list by ticketKey alone.
+export async function listRunningWorkerContainers(): Promise<WorkerContainerIdentity[]> {
+  const result = await docker([
+    'ps', '--no-trunc', '--filter', 'label=org.workspaces.ticket',
+    '--format', '{{.ID}}\t{{.Names}}\t{{.Label "org.workspaces.workspace"}}\t{{.Label "org.workspaces.project"}}\t{{.Label "org.workspaces.ticket"}}',
+  ]);
+  if (result.code !== 0 || result.out.length === 0) return [];
+  return result.out.split('\n').map((row) => parseWorkerIdentity(row)).filter((identity): identity is WorkerContainerIdentity => identity !== null);
+}
+
+//? Re-inspect one immutable container id immediately before an external recovery action.
+//? Label/name mismatches fail closed instead of falling back to the reusable ticket name.
+export async function inspectWorkerContainer(containerId: string): Promise<WorkerContainerIdentity | null> {
+  const result = await docker([
+    'inspect', '-f',
+    '{{.Id}}\t{{.Name}}\t{{index .Config.Labels "org.workspaces.workspace"}}\t{{index .Config.Labels "org.workspaces.project"}}\t{{index .Config.Labels "org.workspaces.ticket"}}',
+    containerId,
+  ]);
+  return result.code === 0 ? parseWorkerIdentity(result.out) : null;
+}
+
+export async function workerContainerRunning(containerId: string): Promise<boolean | null> {
+  const result = await docker(['inspect', '-f', '{{.State.Running}}', containerId]);
+  if (result.code !== 0) return null;
+  return result.out === 'true' ? true : (result.out === 'false' ? false : null);
+}
+
 //? Is `name` one of OUR containers (carries the workspace label)? The terminal bridge
 //? MUST gate `docker exec` on this — it must never exec into an arbitrary host container.
 export async function isWorkspacesContainer(name: string): Promise<boolean> {
@@ -232,8 +302,9 @@ export async function isWorkspacesContainer(name: string): Promise<boolean> {
 }
 
 //? Remove the ticket's container + its worktree volume (ticket teardown, §4/§7).
-export async function teardownTicketContainer(workspaceId: string, ticketKey: string): Promise<void> {
-  const name = containerName(workspaceId, ticketKey);
+export async function teardownTicketContainer(workspaceId: string, ticketKey: string, ref?: string): Promise<void> {
+  const suffix = ref !== undefined && ref.length > 0 ? refSlug(ref) : undefined;
+  const name = containerName(workspaceId, ticketKey, suffix);
   await docker(['rm', '-f', name]);
-  await docker(['volume', 'rm', '-f', volumeName(workspaceId, ticketKey)]);
+  await docker(['volume', 'rm', '-f', volumeName(workspaceId, ticketKey, suffix)]);
 }

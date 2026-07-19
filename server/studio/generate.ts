@@ -13,6 +13,7 @@ import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 import type { AiFeature } from '../ai/types';
 import { broadcastContentDirty } from '../read/broadcast';
+import { withStudioBriefLock } from './briefLock';
 
 //? Bridge a genuinely-JSON value to Prisma's Json WRITE type (read JsonValue vs write InputJsonValue).
 const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
@@ -181,18 +182,37 @@ export function applyRefine(prompt: string, tweak?: string): string {
 }
 
 export interface GenerateInput { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }
+export interface BeginArtifactDependencies { afterBriefCheck?: () => Promise<void> }
+
+//? Complete only the placeholder created for this workspace/brief while it is still generating. This
+//? compare-and-set makes a deleted artifact and a duplicate/stale detached completion harmless.
+export async function completeArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, data: Prisma.StudioArtifactUpdateManyMutationInput): Promise<boolean> {
+  const updated = await prisma.studioArtifact.updateMany({
+    where: { id: artifactId, workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, status: 'generating' },
+    data,
+  });
+  return updated.count === 1;
+}
 
 //? #168 — create the 'generating' placeholder row IMMEDIATELY (the completion can take ~240s), so the
 //? UI shows an in-progress artifact instead of a frozen button. `finishArtifact` does the slow work +
 //? flips the row to ready/error. Returns the new row id (or an error if the brief is gone).
-export async function beginArtifact(prisma: PrismaClient, input: GenerateInput): Promise<GenerateResult> {
-  const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId }, select: { id: true } });
-  if (!brief) return { ok: false, error: 'studio.briefNotFound' };
-  const meta = KIND_META[input.kind];
-  const art = await prisma.studioArtifact.create({
-    data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
-  });
-  return { ok: true, artifactId: art.id };
+export async function beginArtifact(
+  prisma: PrismaClient,
+  input: GenerateInput,
+  dependencies: BeginArtifactDependencies = {},
+): Promise<GenerateResult> {
+  const [lockError, result] = await tryCatch(() => withStudioBriefLock(input.workspaceId, input.briefId, async () => {
+    const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId }, select: { id: true } });
+    if (!brief) return { ok: false, error: 'studio.briefNotFound' };
+    await dependencies.afterBriefCheck?.();
+    const meta = KIND_META[input.kind];
+    const art = await prisma.studioArtifact.create({
+      data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
+    });
+    return { ok: true, artifactId: art.id };
+  }));
+  return lockError || !result ? { ok: false, error: 'studio.lockUnavailable' } : result;
 }
 
 //? #168 — run the (slow) AI completion for an already-created 'generating' row and flip it to
@@ -201,9 +221,9 @@ export async function beginArtifact(prisma: PrismaClient, input: GenerateInput):
 export async function finishArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput): Promise<GenerateResult> {
   const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
   if (!brief) {
-    await prisma.studioArtifact.update({ where: { id: artifactId }, data: { status: 'error', error: 'studio.briefNotFound' } });
-    broadcastContentDirty(input.workspaceId);
-    return { ok: false, artifactId, error: 'studio.briefNotFound' };
+    const completed = await completeArtifact(prisma, artifactId, input, { status: 'error', error: 'studio.briefNotFound' });
+    if (completed) broadcastContentDirty(input.workspaceId);
+    return { ok: false, artifactId, error: completed ? 'studio.briefNotFound' : 'studio.artifactGone' };
   }
   const meta = KIND_META[input.kind];
   //? Seed the prompt with the workspace's central brand library so the artifact stays on-brand (G-MKT-2).
@@ -225,16 +245,16 @@ export async function finishArtifact(prisma: PrismaClient, artifactId: string, i
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
   const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
   if (!completion.ok || completion.text.trim().length === 0) {
-    await prisma.studioArtifact.update({ where: { id: artifactId }, data: { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' } });
-    broadcastContentDirty(input.workspaceId);
-    return { ok: false, artifactId, error: completion.error ?? 'studio.emptyResponse' };
+    const completed = await completeArtifact(prisma, artifactId, input, { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' });
+    if (completed) broadcastContentDirty(input.workspaceId);
+    return { ok: false, artifactId, error: completed ? completion.error ?? 'studio.emptyResponse' : 'studio.artifactGone' };
   }
 
   const { content, title } = parseArtifact(input.kind, completion.text);
-  await prisma.studioArtifact.update({
-    where: { id: artifactId },
-    data: { title: `${title} — ${brief.productName}`, content: asJson(content), providerId: completion.providerId, status: 'ready', error: null },
+  const completed = await completeArtifact(prisma, artifactId, input, {
+    title: `${title} — ${brief.productName}`, content: asJson(content), providerId: completion.providerId, status: 'ready', error: null,
   });
+  if (!completed) return { ok: false, artifactId, error: 'studio.artifactGone' };
   broadcastContentDirty(input.workspaceId);
   return { ok: true, artifactId };
 }

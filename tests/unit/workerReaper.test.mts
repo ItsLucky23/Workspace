@@ -1,75 +1,132 @@
-//? W3 — the idle worker-container reaper decision logic (pure over injected deps, no Docker/Prisma). Verifies: a
-//? parked (needs-input) worker is STOPPED only after the idle TTL elapses (needs two sweeps); a `busy` worker is
-//? never touched; a parked worker with a live editor connection is spared; and the idle clock is forgotten when
-//? a container disappears. WS_WORKER_IDLE_MIN is read at import → set BEFORE importing the module.
+//? Worker-reaper regressions: exact cross-tenant container identity, Redis-shaped shared
+//? idle clock across alternating cron leaders, editor/status revalidation, and failed stop.
 
 import { assert, eq, report } from '../_helpers.mts';
+import type { WorkerContainerIdentity } from '../../server/container/runtime.ts';
+import type { WorkerReapDeps, WorkerReapTarget } from '../../server/orchestrator/workerReaper.ts';
 
-process.env.WS_WORKER_IDLE_MIN = '20'; // 20 min TTL
-const { reapIdleWorkers } = await import('../../server/orchestrator/workerReaper.ts');
+process.env.WS_WORKER_IDLE_MIN = '20';
+const { reapIdleWorkers, workerContainerIdentity } = await import('../../server/orchestrator/workerReaper.ts');
 const TTL = 20 * 60_000;
+const t0 = 1_000_000_000_000;
 
-function deps(workers: { name: string; ticketKey: string }[], statuses: Record<string, string>, connected: Set<string>, stopped: string[]) {
+function worker(workspaceId: string, projectId: string, containerId: string, name: string): WorkerContainerIdentity {
+  return { workspaceId, projectId, ticketKey: 'DEV-1', containerId, name };
+}
+
+function targetFor(value: WorkerContainerIdentity): WorkerReapTarget {
   return {
-    listWorkers: async () => workers,
-    ticketStatus: async (_keys: string[]) => new Map(Object.entries(statuses)),
-    hasConnectedEditor: async (name: string) => connected.has(name),
-    stop: async (name: string) => { stopped.push(name); },
+    target: { ticketId: `${value.workspaceId}-ticket`, ticketKey: value.ticketKey, projectId: value.projectId, stageId: 'code', sessionId: `${value.containerId}-session` },
+    expected: {
+      ticketStatus: 'needs-input',
+      needsInputHash: 'a'.repeat(64),
+      sessionStatus: 'busy',
+      containerId: value.containerId,
+      runToken: `${value.containerId}-token`,
+      runFence: 3,
+      startedAt: t0 - 1000,
+    },
+  };
+}
+
+function createDeps(input: {
+  workers: WorkerContainerIdentity[];
+  sharedIdle: Map<string, number>;
+  targets?: Set<string>;
+  editors?: Set<string>;
+  editorFailures?: Set<string>;
+  recovery?: Map<string, 'ok' | 'race' | 'docker'>;
+  calls: string[];
+}): WorkerReapDeps {
+  const targets = input.targets ?? new Set(input.workers.map(workerContainerIdentity));
+  const editors = input.editors ?? new Set<string>();
+  return {
+    listWorkers: async () => input.workers,
+    loadTarget: async (value) => targets.has(workerContainerIdentity(value)) ? targetFor(value) : null,
+    hasConnectedEditor: async (value) => {
+      const identity = workerContainerIdentity(value);
+      return input.editorFailures?.has(identity) === true ? null : editors.has(identity);
+    },
+    idleSince: async (value, now) => {
+      const identity = workerContainerIdentity(value);
+      const current = input.sharedIdle.get(identity);
+      if (current !== undefined) return current;
+      input.sharedIdle.set(identity, now);
+      return now;
+    },
+    clearIdle: async (value) => { input.sharedIdle.delete(workerContainerIdentity(value)); },
+    recover: async (value) => {
+      const identity = workerContainerIdentity(value);
+      input.calls.push(identity);
+      const outcome = input.recovery?.get(identity) ?? 'ok';
+      return outcome === 'ok'
+        ? { recovered: true, intentId: `${value.containerId}-intent` }
+        : { recovered: false, reason: outcome };
+    },
   };
 }
 
 try {
-  const t0 = 1_000_000_000_000;
-
-  // a parked worker: first sweep starts its clock (NOT reaped), a sweep past the TTL stops it.
+  // Alternating cron leaders share the host-global timestamp: B reaches the TTL started by A.
   {
-    const stopped: string[] = [];
-    const d = deps([{ name: 'ws-c1', ticketKey: 'DEV-1' }], { 'DEV-1': 'needs-input' }, new Set(), stopped);
-    const first = await reapIdleWorkers(t0, d);
-    eq(first.reaped.length, 0, 'first sight of a parked worker only starts its idle clock');
-    const within = await reapIdleWorkers(t0 + TTL - 1, d);
-    eq(within.reaped.length, 0, 'still within the TTL → not reaped');
-    const past = await reapIdleWorkers(t0 + TTL, d);
-    eq(past.reaped[0], 'ws-c1', 'past the TTL → the parked worker is stopped');
-    eq(stopped[0], 'ws-c1', 'stop() was called on the container');
+    const value = worker('ws-a', 'project-a', 'container-a', 'worker-a');
+    const sharedIdle = new Map<string, number>();
+    const calls: string[] = [];
+    const leaderA = createDeps({ workers: [value], sharedIdle, calls });
+    const leaderB = createDeps({ workers: [value], sharedIdle, calls });
+    eq((await reapIdleWorkers(t0, leaderA)).reaped.length, 0, 'leader A starts the shared idle clock');
+    eq((await reapIdleWorkers(t0 + TTL - 1, leaderB)).reaped.length, 0, 'leader B preserves the prior clock within TTL');
+    eq((await reapIdleWorkers(t0 + TTL, leaderA)).reaped, ['worker-a'], 'alternating instances still reap at one full shared TTL');
+    eq(calls.length, 1, 'one recovery/stop is attempted');
   }
 
-  // a BUSY worker is never reaped, even long past any TTL.
+  // Identical ticket keys in two workspaces never collapse into one map entry.
   {
-    const stopped: string[] = [];
-    const d = deps([{ name: 'ws-busy', ticketKey: 'DEV-2' }], { 'DEV-2': 'busy' }, new Set(), stopped);
-    await reapIdleWorkers(t0, d);
-    const past = await reapIdleWorkers(t0 + TTL * 5, d);
-    eq(past.reaped.length, 0, 'a busy worker is never reaped');
-    eq(stopped.length, 0, 'stop() is never called on a busy worker');
+    const a = worker('ws-a', 'project-a', 'container-same-a', 'same-a');
+    const b = worker('ws-b', 'project-b', 'container-same-b', 'same-b');
+    const sharedIdle = new Map<string, number>();
+    sharedIdle.set(workerContainerIdentity(a), t0);
+    sharedIdle.set(workerContainerIdentity(b), t0);
+    const calls: string[] = [];
+    const targets = new Set([workerContainerIdentity(b)]);
+    const result = await reapIdleWorkers(t0 + TTL, createDeps({ workers: [a, b], sharedIdle, targets, calls }));
+    eq(result.reaped, ['same-b'], 'only the exact workspace/project/container identity is stopped');
+    eq(calls, [workerContainerIdentity(b)], 'same DEV key in workspace A never selects workspace B by key');
   }
 
-  // a parked worker a human is EDITING is spared (connected editor).
+  // Editor and status races are revalidated and perform no stop.
   {
-    const stopped: string[] = [];
-    const d = deps([{ name: 'ws-edit', ticketKey: 'DEV-3' }], { 'DEV-3': 'needs-input' }, new Set(['ws-edit']), stopped);
-    await reapIdleWorkers(t0, d);
-    const past = await reapIdleWorkers(t0 + TTL * 2, d);
-    eq(past.reaped.length, 0, 'a parked worker with a live editor connection is not reaped');
+    const value = worker('ws-race', 'project-race', 'container-race', 'worker-race');
+    const identity = workerContainerIdentity(value);
+    const sharedIdle = new Map([[identity, t0]]);
+    const calls: string[] = [];
+    const editor = await reapIdleWorkers(t0 + TTL, createDeps({ workers: [value], sharedIdle, editors: new Set([identity]), calls }));
+    eq(editor.reaped.length, 0, 'a connected editor cancels the reap before recovery prepare');
+    eq(calls.length, 0, 'editor race sends no stop');
+
+    sharedIdle.set(identity, t0);
+    const status = await reapIdleWorkers(t0 + TTL, createDeps({ workers: [value], sharedIdle, targets: new Set(), calls }));
+    eq(status.reaped.length, 0, 'ticket/session status change fails the exact target re-read');
+    eq(calls.length, 0, 'status race sends no stop');
+
+    sharedIdle.set(identity, t0);
+    const probeFailure = await reapIdleWorkers(t0 + TTL, createDeps({ workers: [value], sharedIdle, editorFailures: new Set([identity]), calls }));
+    eq(probeFailure.reaped.length, 0, 'an unavailable editor probe fails closed');
+    assert(sharedIdle.has(identity), 'editor-probe failure preserves the shared idle age for retry');
+    eq(calls.length, 0, 'editor-probe failure sends no stop');
   }
 
-  // when a parked ticket is answered (status flips off needs-input), its clock resets — a later park re-arms.
+  // A Docker failure is not reported as reaped and the idle clock remains retryable.
   {
-    const stopped: string[] = [];
-    const workers = [{ name: 'ws-c4', ticketKey: 'DEV-4' }];
-    const statuses = { 'DEV-4': 'needs-input' };
-    const d = deps(workers, statuses, new Set(), stopped);
-    await reapIdleWorkers(t0, d); // clock starts
-    statuses['DEV-4'] = 'busy'; // answered → resumed
-    await reapIdleWorkers(t0 + TTL, d); // not reaped (busy); clock cleared
-    statuses['DEV-4'] = 'needs-input'; // parks again
-    const reArm = await reapIdleWorkers(t0 + TTL + 1, d); // clock restarts here, not reaped yet
-    eq(reArm.reaped.length, 0, 'after a resume the idle clock resets — a fresh park is not instantly reaped');
-    const later = await reapIdleWorkers(t0 + TTL + 1 + TTL, d);
-    eq(later.reaped[0], 'ws-c4', 'the re-armed parked worker is reaped after a fresh full TTL');
+    const value = worker('ws-fail', 'project-fail', 'container-fail', 'worker-fail');
+    const identity = workerContainerIdentity(value);
+    const sharedIdle = new Map([[identity, t0]]);
+    const calls: string[] = [];
+    const recovery = new Map([[identity, 'docker' as const]]);
+    const result = await reapIdleWorkers(t0 + TTL, createDeps({ workers: [value], sharedIdle, recovery, calls }));
+    eq(result.reaped.length, 0, 'failed Docker stop never becomes a successful reap');
+    assert(sharedIdle.has(identity), 'failed stop keeps the shared idle timestamp for a later retry');
   }
-
-  eq(0, 0, 'worker-reaper decision logic verified');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 }

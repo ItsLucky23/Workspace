@@ -919,7 +919,7 @@ model TicketEvent {
 //? The ONE canonical runtime row (04b §7 — merges three prior conflicting defs).
 //? The orchestrator's durable runtime fact: socket sessions are ephemeral; the
 //? SessionManager rehydrates PTYs from these rows on boot (resumeAll, 01 §4).
-//? `status` = ready|busy|paused|stopped (canonical 4-set, distinct from
+//? `status` = ready|busy|paused|recovering|stopped (`recovering` is server-only), distinct from
 //? Ticket.status + StageStatusCfg). No LLM verb mutates this row — driven by
 //? [control-API] Conductor actions + Stop/SessionStart hooks.
 model AgentSession {
@@ -940,12 +940,14 @@ model AgentSession {
   baseImageRef     String?                         // resolved L2 image tag (content-hash) this session ran in
 
   // --- container binding (crash-recovery) ---
+  runToken         String?                         // unique CapacityManager reservation owner; authoritative run CAS (container reuse is not identity)
+  runFence         Int      @default(0)            // monotonically increasing per-ticket host fence; lower owners can never overwrite higher
   containerId      String?                         // L3 per-ticket container id; null for host-side reasoning roles
   worktreePath     String?                         // the in-container clone path
   ptyAgentUrl      String?                         // 127.0.0.1:<port> the in-container pty-agent publishes
 
   // --- status (the SINGLE runtime state machine) ---
-  status           String                          // ready | busy | paused | stopped
+  status           String                          // ready | busy | paused | recovering (server-only) | stopped
 
   // --- budget / estimate feed (advisory) ---
   tokenEstimate    Int      @default(0)            // running estimate for the self-handoff / budget trigger; ADVISORY
@@ -1553,6 +1555,9 @@ model ContentProject {
   publishVariants Json?                             // O2 — per-platform post overrides: { [platform]: { caption?, hashtags?, privacy? } }
   format      String   @default("faceless")         // 'faceless' | 'short' | 'explainer' | 'ad' | 'avatar' | 'image'
   aspectRatio String   @default("16:9")             // F1 — render aspect: '16:9' | '9:16' (shorts/reels) | '1:1'; threaded to assemble/render
+  //? GAP_SCAN F2 — the caption LOOK (font size/colour/box/alignment) + `wordByWord` cumulative reveal.
+  //? Null = ffmpeg's plain default (the pre-F2 behaviour), so an existing piece renders exactly as before.
+  captionStyle Json?
   captionMode String   @default("sidecar")          // F2 — captions delivery: 'sidecar' (downloadable .srt/.vtt only) | 'burn' (hard-subtitled into the mp4) | 'soft' (mov_text track)
   ctaText     String?                                // H1 (ads) — a CTA / end-card line overlaid on the last seconds of the rendered ad (null = no overlay)
   stageId     String   @default("idea")             // content pipeline column

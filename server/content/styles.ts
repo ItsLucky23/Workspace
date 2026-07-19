@@ -47,7 +47,7 @@ export async function importStyleSet(prisma: PrismaClient, workspaceId: string, 
     const existing = await prisma.stylePreset.findFirst({ where: { workspaceId, feature: e.feature, key: e.key }, select: { id: true } });
     const preview = { ...(e.previewAssetUrl ? { previewAssetUrl: e.previewAssetUrl } : {}), ...(e.previewKind ? { previewKind: e.previewKind } : {}) };
     await (existing
-      ? prisma.stylePreset.update({ where: { id: existing.id }, data: { label: e.label, systemPrompt: e.systemPrompt, ...preview } })
+      ? prisma.stylePreset.updateMany({ where: { workspaceId, feature: e.feature, key: e.key }, data: { label: e.label, systemPrompt: e.systemPrompt, ...preview } })
       : prisma.stylePreset.create({ data: { workspaceId, feature: e.feature, key: e.key, label: e.label, systemPrompt: e.systemPrompt, builtin: false, ...preview } }));
     written += 1;
   }

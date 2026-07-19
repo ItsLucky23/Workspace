@@ -2,10 +2,16 @@
 //? POSTs a compact event envelope to the configured URL (captured via the injectable poster), returns the
 //? right outcome on success / failure / missing-or-bad url. Real Mongo (executor reads no rows for webhook).
 
+import type { ExecOutcome, TriggerAction } from '../../server/automation/executor';
 import { db, assert, eq, report } from '../_helpers.mts';
 
 const executor = await import('../../server/automation/executor');
+const { runInWriterContext } = await import('../../server/orchestrator/writerContext');
+const { runInTenant } = await import('../../server/tenant/tenantContext');
 await db();
+
+const directExecute = (action: TriggerAction): Promise<ExecOutcome> =>
+  runInWriterContext('ws-1', async () => runInTenant('ws-1', () => executor.executeTriggerAction({} as never, 'ws-1', action)));
 
 let captured: { url: string; body: string } | null = null;
 executor.__setWebhookPoster(async (url, body) => { captured = { url, body }; return { ok: true, status: 200 }; });
@@ -13,7 +19,7 @@ executor.__setWebhookPoster(async (url, body) => { captured = { url, body }; ret
 // happy path — posts the envelope
 {
   captured = null;
-  const out = await executor.executeTriggerAction({} as never, 'ws-1', { action: 'webhook', params: { url: 'https://example.com/hook', payload: { foo: 1 } }, ticketKey: 'DEV-2', triggerName: 'On done' });
+  const out = await directExecute({ action: 'webhook', params: { url: 'https://example.com/hook', payload: { foo: 1 } }, ticketKey: 'DEV-2', triggerName: 'On done' });
   eq(out.status, 'executed', 'a valid webhook posts + reports executed');
   assert(captured !== null, 'the poster was called');
   const cap = captured as unknown as { url: string; body: string };
@@ -28,17 +34,17 @@ executor.__setWebhookPoster(async (url, body) => { captured = { url, body }; ret
 // missing / non-http url → noop, no post
 {
   captured = null;
-  eq((await executor.executeTriggerAction({} as never, 'ws-1', { action: 'webhook', params: {} })).status, 'noop', 'no url → noop');
-  eq((await executor.executeTriggerAction({} as never, 'ws-1', { action: 'webhook', params: { url: 'ftp://x' } })).status, 'noop', 'non-http url → noop');
+  eq((await directExecute({ action: 'webhook', params: {} })).status, 'noop', 'no url → noop');
+  eq((await directExecute({ action: 'webhook', params: { url: 'ftp://x' } })).status, 'noop', 'non-http url → noop');
   assert(captured === null, 'nothing was posted for a bad url');
 }
 
 // poster failure → error outcome, never throws
 {
   executor.__setWebhookPoster(async () => ({ ok: false, status: 500 }));
-  eq((await executor.executeTriggerAction({} as never, 'ws-1', { action: 'webhook', params: { url: 'https://example.com/hook' } })).status, 'error', 'a non-2xx → error');
+  eq((await directExecute({ action: 'webhook', params: { url: 'https://example.com/hook' } })).status, 'error', 'a non-2xx → error');
   executor.__setWebhookPoster(async () => { throw new Error('network'); });
-  eq((await executor.executeTriggerAction({} as never, 'ws-1', { action: 'webhook', params: { url: 'https://example.com/hook' } })).status, 'error', 'a thrown poster → error (never throws out)');
+  eq((await directExecute({ action: 'webhook', params: { url: 'https://example.com/hook' } })).status, 'error', 'a thrown poster → error (never throws out)');
 }
 
 report('tests/integration/webhookAction.test.mts');

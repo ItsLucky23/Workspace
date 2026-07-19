@@ -89,20 +89,31 @@ const failed = parseToolCallLine('{"tool_name":"Bash","tool_input":{"command":"n
 eq(failed?.ok, false, 'an error response marks the call failed');
 assert(describeToolCall(failed!).endsWith('(failed)'), 'and the feed line says so');
 
+const trailIdentity = { workspaceId: 'tool-workspace', sessionId: 'tool-session', turnMarker: 'a'.repeat(64) };
 const trail = parseToolTrail([
   '{"tool_name":"Read","tool_input":{"file_path":"a.ts"}}',
   'garbage',
   '{"tool_name":"Edit","tool_input":{"file_path":"b.ts"}}',
   '{"tool_name":"Bash","tool_input":{"command":"git commit"}}',
-].join('\n'));
+].join('\n'), trailIdentity);
 eq(trail.length, 3, 'the malformed line is dropped, the rest survive');
 eq(trail.map((t) => t.type), ['tool-use', 'file-change', 'command'], 'order is preserved (that IS the audit value)');
 eq(trail[1]?.metadata.changedFiles, ['b.ts'], 'a file-change records which file');
 assert(trail[0]?.metadata.changedFiles === undefined, 'a read does not claim to have changed anything');
+assert(trail.every((entry) => /^[a-f\d]{24}$/.test(entry.eventId)), 'every raw call receives a deterministic Mongo ObjectId');
+const duplicateLines = parseToolTrail([
+  '{"tool_input":{"file_path":"same.ts"},"tool_name":"Read"}',
+  '{"tool_name":"Read","tool_input":{"file_path":"same.ts"}}',
+].join('\n'), trailIdentity);
+assert(duplicateLines[0]?.eventId !== duplicateLines[1]?.eventId, 'same normalized raw entries use an occurrence ordinal instead of colliding');
+eq(duplicateLines, parseToolTrail([
+  '{"tool_input":{"file_path":"same.ts"},"tool_name":"Read"}',
+  '{"tool_name":"Read","tool_input":{"file_path":"same.ts"}}',
+].join('\n'), trailIdentity), 'normalized raw-entry IDs are stable across retries');
 
-const many = parseToolTrail(Array.from({ length: 300 }, (_, i) => `{"tool_name":"Read","tool_input":{"file_path":"f${String(i)}.ts"}}`).join('\n'), 100);
-eq(many.length, 100, 'the trail is bounded');
-assert(many.at(-1)?.text.includes('f299'), 'and keeps the NEWEST calls (the tail is what a reviewer reads)');
+const many = parseToolTrail(Array.from({ length: 300 }, (_, i) => `{"tool_name":"Read","tool_input":{"file_path":"f${String(i)}.ts"}}`).join('\n'), trailIdentity);
+eq(many.length, 300, 'the parser keeps every entry from the byte-bounded recovery file');
+assert(many[0]?.text.includes('f0') && many.at(-1)?.text.includes('f299'), 'no last-100/last-200 batch tail silently drops earlier calls');
 
 /* ------------------------------------------------------------ D3: rollback target */
 

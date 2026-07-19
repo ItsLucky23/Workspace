@@ -6,15 +6,17 @@
 //?
 //? Actions: notify (in-app bell) · emit-signal (WorkspaceSignal) · start-stage (move the ticket,
 //? the #1 watchdog reprovisions it) · invoke-agent-role (dispatch a registered non-coding role →
-//? artifact). Self-contained (no Conductor import → no cycle; the Conductor calls fireEvent).
+//? artifact). Imports of the Conductor bridge stay lazy to avoid the conductor→executor cycle.
 
-import { tryCatch } from '@luckystack/core';
+import { randomUUID } from 'node:crypto';
+
+import { formatKey, redis, tryCatch } from '@luckystack/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 
 import { broadcastTicketDelta } from '../read/broadcast';
 import { sendWebPushMany } from '../hooks/webPush';
-import { withTenant } from '../tenant/tenantGuard';
-import { getAgentRole } from './agentRoles';
+import { assertWorkspaceWriterContext, assertWriterContext, currentWriterScope } from '../orchestrator/writerContext';
+import { executeAgentRole, getAgentRole } from './agentRoles';
 import { docker, dockerAvailable, containerName } from '../container/runtime';
 import { runAiCompletion } from '../ai/registry';
 import { isObviouslyUnsafeOutboundUrl } from '../security/outboundUrl';
@@ -58,6 +60,29 @@ export function registerSignalHook(fn: SignalHook): void { signalHook = fn; }
 
 export interface ExecOutcome { status: 'executed' | 'gated' | 'noop' | 'error'; detail?: string }
 
+function isExecOutcome(value: unknown): value is ExecOutcome {
+  if (value === null || typeof value !== 'object' || !('status' in value)) return false;
+  return value.status === 'executed' || value.status === 'gated' || value.status === 'noop' || value.status === 'error';
+}
+
+async function enqueueActionRun(
+  workspaceId: string,
+  action: TriggerAction,
+  mode: 'gated' | 'execute',
+  requiresApproval: boolean,
+): Promise<ExecOutcome> {
+  const { enqueueInternalAction } = await import('../orchestrator/internalOps');
+  const enqueued = await enqueueInternalAction({
+    workspaceId,
+    op: 'automation-action-run',
+    target: {},
+    payload: { mode, action, requiresApproval },
+    userId: 'automation',
+    clientRequestId: `automation-action-${randomUUID()}`,
+  });
+  return isExecOutcome(enqueued.result) ? enqueued.result : { status: 'noop', detail: 'deduplicated' };
+}
+
 function str(o: Record<string, unknown>, k: string): string | undefined {
   const v = o[k];
   return typeof v === 'string' ? v : undefined;
@@ -79,16 +104,20 @@ export function notificationTarget(input: { ticketKey?: string; roleKey?: string
   return { deepLink: { view }, url: `/?view=${view}` };
 }
 
-//? Directly run an action (past any gate). Best-effort per action; a bad action is a noop, never a
-//? throw, so one misconfigured trigger can't wedge the pipeline.
+//? Directly run an action (past any gate). Outside the matching writer scope this ALWAYS queues a
+//? server-only InternalOp; a wrong active workspace fails instead of silently switching tenants.
 export async function executeTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
-  //? GAP_SCAN E2 — trigger actions are cron-driven, so they had NO tenant scope: every query they made ran
-  //? unscoped and row isolation never applied. The action body now runs inside the trigger's workspace
-  //? scope (report-first — the guard records what strict enforcement would have rejected).
-  return withTenant(workspaceId, 'automation.action', () => runTriggerActionBody(prisma, workspaceId, a));
+  const writerScope = currentWriterScope();
+  if (writerScope === null) return enqueueActionRun(workspaceId, a, 'execute', false);
+  assertWriterContext(workspaceId);
+  return runTriggerActionBody(prisma, workspaceId, a);
 }
 
 async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a: TriggerAction): Promise<ExecOutcome> {
+  assertWorkspaceWriterContext(workspaceId);
+  //? Phase B2 intentionally keeps role AI, webhook, Docker and push work under the renewable lease.
+  //? TODO(B2 follow-up): split those slow effects into claimed work + typed completion without adding
+  //? an ad-hoc job schema. Until then this path is ordered and lease-renewed, but not nonblocking.
   switch (a.action) {
     case 'notify': {
       //? In-app notification to every workspace member (respecting per-user opt-out is the bell's job).
@@ -116,9 +145,9 @@ async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a
     }
     case 'emit-signal': {
       //? Append a WorkspaceSignal (monotonic seq) — the serial signal feed other triggers watch.
-      const last = await prisma.workspaceSignal.findFirst({ where: { workspaceId }, orderBy: { seq: 'desc' }, select: { seq: true } });
       const kind = str(a.params, 'kind') ?? 'custom';
-      await prisma.workspaceSignal.create({ data: { workspaceId, seq: (last?.seq ?? 0) + 1, kind, payload: asJson(a.params.payload) } });
+      const seq = await redis.incr(formatKey('evseq', 'workspace'));
+      await prisma.workspaceSignal.create({ data: { workspaceId, seq, kind, payload: asJson(a.params.payload) } });
       //? #83 — raise the `stage.on_signal` EVENT so triggers can chain off the signal (via the injected hook →
       //? no executor→triggers import cycle). The depth rides through so fireEvent can bound signal→signal chains.
       if (signalHook) signalHook(prisma, workspaceId, kind, a.ticketKey ?? null, a.signalDepth ?? 0);
@@ -143,7 +172,7 @@ async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a
       //? (runTrigger enforces it); here we just run + record its artifact as a notification.
       const role = getAgentRole(str(a.params, 'role') ?? '');
       if (!role) return { status: 'noop', detail: 'unknown-role' };
-      const artifact = await role.run({ workspaceId, ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}), params: a.params });
+      const artifact = await executeAgentRole(role.key, { workspaceId, ...(a.ticketKey ? { ticketKey: a.ticketKey } : {}), params: a.params });
       if (!artifact) return { status: 'executed', detail: 'no-artifact' };
       const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true } });
       //? B3 — a role artifact without a ticket deep-links to that ROLE's page (interviewer findings land on
@@ -192,8 +221,13 @@ async function runTriggerActionBody(prisma: PrismaClient, workspaceId: string, a
 }
 
 //? Run a trigger's action THROUGH the gate. Gated (requiresApproval, or a mutating agent-role) →
-//? open an 'automation' suggestion carrying the action; else execute now.
+//? open an 'automation' suggestion carrying the action; else execute now. External callers enqueue;
+//? only the matching Conductor writer executes the body.
 export async function runTriggerAction(prisma: PrismaClient, workspaceId: string, a: TriggerAction, requiresApproval: boolean): Promise<ExecOutcome> {
+  const writerScope = currentWriterScope();
+  if (writerScope === null) return enqueueActionRun(workspaceId, a, 'gated', requiresApproval);
+  assertWriterContext(workspaceId);
+  assertWorkspaceWriterContext(workspaceId);
   const role = a.action === 'invoke-agent-role' ? getAgentRole(str(a.params, 'role') ?? '') : undefined;
   //? #90 — run-command is ALWAYS operator-gated regardless of the trigger's flag (a human must approve
   //? every arbitrary in-container command run) — invariant #4 safety.
@@ -215,6 +249,7 @@ export async function runTriggerAction(prisma: PrismaClient, workspaceId: string
 //? Execute the action a human just approved (accept-suggestion on an 'automation' suggestion). The
 //? action was stored in the suggestion's `patch`. Returns noop if the patch isn't a valid action.
 export async function executeGatedAction(prisma: PrismaClient, workspaceId: string, patch: unknown): Promise<ExecOutcome> {
+  assertWorkspaceWriterContext(workspaceId);
   if (patch === null || typeof patch !== 'object') return { status: 'noop' };
   const p = patch as Record<string, unknown>;
   const action = typeof p.action === 'string' ? p.action : '';

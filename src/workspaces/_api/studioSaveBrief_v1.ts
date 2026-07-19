@@ -28,6 +28,10 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const productName = (data.productName ?? '').trim();
   if (name.length === 0 || productName.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
   const projectId = (data.projectId ?? '').trim();
+  if (projectId) {
+    const project = await functions.db.prisma.project.findFirst({ where: { workspaceId, id: projectId }, select: { id: true } });
+    if (!project) return { status: 'error', errorCode: 'api.invalidRequest' };
+  }
   const fields = {
     name, productName,
     audience: (data.audience ?? '').trim(),
@@ -39,9 +43,11 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   };
 
   const id = data.id;
-  const brief = id
-    ? await functions.db.prisma.studioBrief.update({ where: { id }, data: fields }).catch(() => null)
-    : await functions.db.prisma.studioBrief.create({ data: { workspaceId, ...fields } });
-  if (!brief) return { status: 'error', errorCode: 'common.500' };
+  if (id) {
+    const updated = await functions.db.prisma.studioBrief.updateMany({ where: { workspaceId, id }, data: fields });
+    if (updated.count !== 1) return { status: 'error', errorCode: 'api.invalidRequest' };
+    return { status: 'success', result: { id } };
+  }
+  const brief = await functions.db.prisma.studioBrief.create({ data: { workspaceId, ...fields } });
   return { status: 'success', result: { id: brief.id } };
 };

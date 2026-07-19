@@ -1254,6 +1254,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setWantProjectId(undefined);
         setLoading(true);
       },
+      //? GAP_SCAN F5 — post the reply the user approved (the AI only ever drafted it). Conductor writes.
+      replyToComment: (commentId, replyText) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-reply-comment', commentId, replyText, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? G4 — star/unstar an asset for the workspace-wide library (B-23 via contentControl).
+      setAssetStarred: (assetId, starred) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'asset-star', assetId, starred, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? G2 — clone this workspace's SETUP into a new one (no tickets, content, credentials or members).
       cloneWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/cloneWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? G5 — `presetKey` picks how heavy the seeded pipeline is (simple/advanced/professional).
@@ -1470,8 +1474,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room }); },
-      //? I1 — run the built-in CI at a ticket's MR head (projectAdmin ci-run op → Conductor → runPipeline).
-      runCi: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
+      //? I1 — projectAdmin resolves + executes immutable-ref CI outside the writer, then dispatches its report.
+      runCi: (ticketKey) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', projectId, ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
       //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes
       //? (Conductor single-writer). The editor calls these so structural edits survive a refresh.
       createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { projectId: input.projectId, key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1625,6 +1629,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      //? GAP_SCAN G7 — start/update a prompt A/B experiment, or stop measuring one.
+      savePromptExperiment: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      stopPromptExperiment: (experimentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-stop', experimentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? A7 — store this workspace's platform APP credentials (write-only; server-encrypted) via B-23.
       savePlatformCredentials: (platform, clientId, clientSecret) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-platform-credentials', platform, clientId, clientSecret, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Edit a channel's brand voice (U4) → updates the channel + re-indexes brand-RAG (B-23).

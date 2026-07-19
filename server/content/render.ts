@@ -8,6 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { buildStyledCaptionArgs, type CaptionStyle } from './captionStyle';
 
 import { tryCatch } from '@luckystack/core';
 
@@ -379,10 +380,13 @@ export function buildCaptionPassArgs(inName: string, srtName: string, outName: s
 
 //? Apply captions to a rendered mp4 → the new served `/media/<name>` url. Best-effort: any failure (no Docker,
 //? a bad srt) yields null so the caller keeps the un-captioned render rather than losing the video.
-export async function applyCaptions(inName: string, srtName: string, mode: 'burn' | 'soft', opts: { run?: FfmpegRunner } = {}): Promise<string | null> {
+export async function applyCaptions(inName: string, srtName: string, mode: 'burn' | 'soft', opts: { run?: FfmpegRunner; style?: CaptionStyle } = {}): Promise<string | null> {
   const run = opts.run ?? dockerFfmpegRunner;
   const outName = `${inName.replace(/\.mp4$/, '')}-cc.mp4`;
-  const [err, res] = await tryCatch(() => run(buildCaptionPassArgs(inName, srtName, outName, mode)));
+  //? GAP_SCAN F2 — a STYLE only applies to a burn-in (a soft `mov_text` track is styled by the player, not
+  //? by us). Without a style this is byte-for-byte the pre-F2 pass, so existing renders are unaffected.
+  const args = mode === 'burn' && opts.style ? buildStyledCaptionArgs(inName, srtName, outName, opts.style) : buildCaptionPassArgs(inName, srtName, outName, mode);
+  const [err, res] = await tryCatch(() => run(args));
   if (err || res?.code !== 0 || !existsSync(path.join(MEDIA_DIR, outName))) return null;
   return `/media/${outName}`;
 }

@@ -12,7 +12,7 @@ export interface CiGate { gated: boolean; status: string; reason?: string }
 //? The CI gate for an MR: given its CURRENT head, is the latest run green? A stale-head green does NOT
 //? pass (mirrors the approval staleness model). No run for this MR ⇒ not gated (nothing has run to be red).
 export async function ciGateForMr(prisma: PrismaClient, workspaceId: string, mergeRequestId: string, headSha: string | null): Promise<CiGate> {
-  const run = await prisma.pipelineRun.findFirst({ where: { workspaceId, mergeRequestId }, orderBy: { startedAt: 'desc' } });
+  const run = await prisma.pipelineRun.findFirst({ where: { workspaceId, mergeRequestId, status: { not: 'canceled' } }, orderBy: { startedAt: 'desc' } });
   if (!run) return { gated: false, status: 'none' };
   if (headSha && run.commitHash !== headSha) return { gated: true, status: 'stale', reason: 'ci-stale' };
   if (run.status === 'success') return { gated: false, status: 'success' };
@@ -24,11 +24,15 @@ export async function ciGateForMr(prisma: PrismaClient, workspaceId: string, mer
 
 //? The project-level "is the latest CI green?" gate for a prod promote (B2's TODO hook). Blocks ONLY when
 //? the latest run for the project actually failed/is running; no run/no pipeline ⇒ green (CI opt-in).
-export async function ciGreenForProject(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<boolean> {
-  const run = await prisma.pipelineRun.findFirst({ where: { workspaceId, projectId }, orderBy: { startedAt: 'desc' }, select: { status: true } });
+export async function ciGreenForProject(prisma: PrismaClient, workspaceId: string, projectId: string, expectedCommit?: string | null): Promise<boolean> {
+  const run = await prisma.pipelineRun.findFirst({
+    where: { workspaceId, projectId, status: { not: 'canceled' } },
+    orderBy: { startedAt: 'desc' },
+    select: { status: true, commitHash: true },
+  });
   if (!run) return true;
-  //? 'canceled' never ran → don't block a promote on a runner that couldn't start.
-  return run.status === 'success' || run.status === 'canceled';
+  if (expectedCommit && run.commitHash !== expectedCommit) return false;
+  return run.status === 'success';
 }
 
 //? Is the workspace's Admin override on? (allow merge/promote while a required run is red — unwedges a
@@ -40,8 +44,17 @@ export async function allowMergeOnRedCI(prisma: PrismaClient, workspaceId: strin
 
 //? Security gate for a prod promote (ADR 0040): does the latest run carry a high/critical finding?
 //? Report-only on dev/merge — only prod-promote is blocked. No run / low severity ⇒ not blocked.
-export async function securityBlocksProdPromote(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<boolean> {
-  const run = await prisma.pipelineRun.findFirst({ where: { workspaceId, projectId }, orderBy: { startedAt: 'desc' }, select: { maxSeverity: true } });
+export async function securityBlocksProdPromote(prisma: PrismaClient, workspaceId: string, projectId: string, expectedCommit?: string | null): Promise<boolean> {
+  const run = await prisma.pipelineRun.findFirst({
+    where: {
+      workspaceId,
+      projectId,
+      status: { not: 'canceled' },
+      ...(expectedCommit ? { commitHash: expectedCommit } : {}),
+    },
+    orderBy: { startedAt: 'desc' },
+    select: { maxSeverity: true },
+  });
   const sev = run?.maxSeverity ?? 'none';
   return (SEVERITY_RANK[sev] ?? 0) >= (SEVERITY_RANK.high ?? 3);
 }

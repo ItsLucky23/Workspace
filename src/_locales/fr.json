@@ -1448,7 +1448,34 @@
       "appCredSaved": "Identifiants enregistrés",
       "appCredSource_workspace": "configuré dans cet espace",
       "appCredSource_env": "utilise le repli .env",
-      "appCredSource_none": "non configuré"
+      "appCredSource_none": "non configuré",
+      "libraryStar": "Garder dans la bibliothèque",
+      "seoTitle": "Vérification SEO",
+      "seoDesc": "Notez ce titre et obtenez des alternatives, d'après ce qui a réellement généré des vues sur votre compte.",
+      "seoAnalyze": "Analyser le titre",
+      "seoBusy": "Analyse…",
+      "seoOutOf": "/100",
+      "seoScoreOnly": "score seul — aucun fournisseur IA configuré",
+      "seoAlternatives": "Titres suggérés",
+      "seoTags": "Tags",
+      "seo.empty": "Le titre est vide.",
+      "seo.tooLong": "Trop long — il sera tronqué.",
+      "seo.tooShort": "Très court — dites ce que le spectateur y gagne.",
+      "seo.weakOpener": "Commence par un mot vide.",
+      "seo.noHook": "Pas d'accroche (chiffre, question ou « comment »).",
+      "seo.shouting": "LES MAJUSCULES font spam.",
+      "seo.repetitive": "Répète les mêmes mots.",
+      "captionStyleTitle": "Style des sous-titres",
+      "captionStyleDesc": "L’apparence des sous-titres incrustés.",
+      "captionSize": "Taille du texte",
+      "captionColor": "Couleur du texte (hex)",
+      "captionBoxed": "Bandeau derrière le texte",
+      "captionWordByWord": "Mot à mot",
+      "thumbTitle": "Miniature",
+      "thumbDesc": "Un titre en gras sur un fond. Laissez le fond vide pour le modèle gratuit.",
+      "thumbBgPlaceholder": "Fond IA (optionnel, coûte une génération)",
+      "thumbCompose": "Créer la miniature",
+      "thumbComposeAi": "Créer avec fond IA"
     },
     "knowledge": {
       "title": "Graphe de connaissances",
@@ -1847,7 +1874,10 @@
       "vsVo": "VO",
       "vsScreen": "À l'écran",
       "vsCta": "CTA",
-      "vsNote": "Script + storyboard générés — le rendu vidéo complet nécessite une clé d'API média/vidéo."
+      "vsNote": "Script + storyboard générés — le rendu vidéo complet nécessite une clé d'API média/vidéo.",
+      "publishLive": "Mettre en ligne",
+      "publishLiveHint": "Servir cette page sur une URL publique",
+      "publishedLive": "Publication en cours — l’URL apparaît sous peu."
     },
     "uiReview": {
       "title": "Demander une revue d'UI",
@@ -2395,7 +2425,8 @@
       "hideArchived": "Masquer les archives",
       "reuseExisting": "Réutiliser une image existante",
       "reuseHide": "Masquer les images existantes",
-      "reuseThis": "Joindre cet élément"
+      "reuseThis": "Joindre cet élément",
+      "reuseEmpty": "Aucune image réutilisable dans cet espace pour l instant."
     },
     "inspire": {
       "title": "Inspiration",
@@ -2417,7 +2448,15 @@
       "markAllRead": "Tout lu",
       "readOnlyNote": "Lecture seule : répondre se fait sur la plateforme elle-même.",
       "empty": "Aucun commentaire",
-      "emptySub": "Les commentaires de vos publications apparaissent ici. YouTube requiert la nouvelle permission de lecture — reconnectez le compte une fois si cela reste vide."
+      "emptySub": "Les commentaires de vos publications apparaissent ici. YouTube requiert la nouvelle permission de lecture — reconnectez le compte une fois si cela reste vide.",
+      "reply": "Répondre",
+      "markRead": "Marquer comme lu",
+      "replyPlaceholder": "Écrire une réponse…",
+      "draft": "Brouillon IA",
+      "drafting": "En cours…",
+      "send": "Envoyer la réponse",
+      "cancel": "Annuler",
+      "draftFailed": "Impossible de créer un brouillon."
     },
     "voice": {
       "record": "Enregistrer un message vocal",
@@ -2427,6 +2466,18 @@
       "empty": "Rien entendu – réessayez.",
       "speakOn": "Réponses lues à voix haute (appuyez pour couper)",
       "speakOff": "Lire les réponses à voix haute"
+    },
+    "experiments": {
+      "title": "Expériences de prompt",
+      "desc": "Comparez deux variantes d’un prompt et lisez le verdict — au lieu de deviner si une réécriture a aidé.",
+      "namePlaceholder": "Nom de l’expérience (ex. style d’accroche)",
+      "variantA": "Prompt variante A",
+      "variantB": "Prompt variante B",
+      "start": "Lancer l’expérience",
+      "stop": "Arrêter",
+      "empty": "Aucune expérience pour le moment.",
+      "status_running": "en cours",
+      "status_stopped": "arrêtée"
     }
   }
 }

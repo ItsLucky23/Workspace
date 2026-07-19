@@ -22,8 +22,8 @@ const idleSince = new Map<string, number>();
 //? Read the editor port's socket states from the container's /proc/net/tcp (procps-free).
 //? `listening` = a LISTEN (0A) socket on the port; `connected` = an ESTABLISHED (01) one.
 //? Exported so the worker-reaper (W3) can skip a container a human is actively editing.
-export async function editorSockState(container: string): Promise<{ listening: boolean; connected: boolean }> {
-  const r = await docker(['exec', container, 'sh', '-c', `grep -i ':${HEX}' /proc/net/tcp /proc/net/tcp6 2>/dev/null`]);
+export async function editorSockState(container: string): Promise<{ available: boolean; listening: boolean; connected: boolean }> {
+  const r = await docker(['exec', container, 'sh', '-c', `grep -i ':${HEX}' /proc/net/tcp /proc/net/tcp6 2>/dev/null; code=$?; [ "$code" -eq 0 ] || [ "$code" -eq 1 ]`]);
   let listening = false;
   let connected = false;
   for (const line of r.out.split('\n')) {
@@ -34,7 +34,7 @@ export async function editorSockState(container: string): Promise<{ listening: b
     if (st === '0A') listening = true;
     else if (st === '01') connected = true;
   }
-  return { listening, connected };
+  return { available: r.code === 0, listening, connected };
 }
 
 //? Kill openvscode-server in the container (procps-free) — mirrors the claude kill in

@@ -19,6 +19,7 @@ const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { dockerAvailable } = await import('../../server/container/runtime');
 const { MEDIA_DIR } = await import('../../server/media/store');
+const { deterministicObjectId } = await import('../../server/orchestrator/actionIds');
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `ins-${String(stamp)}@youcomm.nl`, name: 'INS' } });
@@ -32,13 +33,14 @@ try {
   const createdB = await createBlankWorkspace(prisma, ownerB.id, 'Inspire B');
   wsB = createdB.workspaceId;
 
-  // ---- 1. the style gallery: seeded, idempotent, complete + inactive ----
-  await ensureStyleGallery(prisma, wsId);
-  await ensureStyleGallery(prisma, wsId);
+  // ---- 1. the style gallery: bootstrap-seeded, idempotent, complete + inactive ----
+  await prisma.designArtifact.deleteMany({ where: { workspaceId: wsId, kind: 'theme', source: 'seed' } });
+  await Promise.all([ensureStyleGallery(prisma, wsId), ensureStyleGallery(prisma, wsId)]);
   const seeded = await prisma.designArtifact.findMany({ where: { workspaceId: wsId, kind: 'theme', source: 'seed' } });
   eq(seeded.length, 6, 'the 6 gallery presets seeded exactly once (idempotent)');
   eq(GALLERY_PRESET_NAMES.length, 6, 'and the exported name list matches');
   assert(seeded.every((a) => !a.active), 'presets never activate themselves');
+  assert(seeded.every((artifact) => artifact.id === deterministicObjectId(wsId, artifact.name, 'builtin-design-artifact')), 'every newly-seeded preset has its deterministic workspace+name ObjectId');
   for (const a of seeded) {
     const content = a.content as { light?: Record<string, string>; dark?: Record<string, string> };
     for (const mode of ['light', 'dark'] as const) {
@@ -60,9 +62,9 @@ try {
   eq(await compareDesigns(wsId, shotUrl ?? '', shotUrl ?? ''), null, 'compare without a vision provider returns null');
   eq(await prisma.uiReviewRequest.count({ where: { workspaceId: wsId } }), 0, 'and no review row was fabricated');
 
-  // ---- 4. snapshot: gallery lazily seeds for OTHER workspaces + the 8-model tenant-scoping fix ----
+  // ---- 4. snapshot: reads the bootstrap gallery + the 8-model tenant-scoping fix ----
   const snapB1 = await buildSnapshot(prisma, ownerB.id, wsB);
-  assert(snapB1.designArtifacts.filter((a) => a.source === 'seed').length >= 6, "workspace B's snapshot lazily seeded its OWN gallery");
+  eq(snapB1.designArtifacts.filter((a) => a.source === 'seed').length, 6, "workspace B's snapshot reads its bootstrap gallery without seeding");
   //? Plant foreign rows in B; A's snapshot must not see ANY of them (was: unscoped tenantDb reads).
   await prisma.designArtifact.create({ data: { workspaceId: wsB, kind: 'theme', name: `B-theme-${String(stamp)}`, content: {}, source: 'manual' } });
   await enqueueControlAction({

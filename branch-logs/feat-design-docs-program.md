@@ -243,3 +243,53 @@ browser: labels now render ("Blank", "Templates", "Apply tokens", …).
 **Verification**: `npm run typecheck`, `npm run lint` (0 errors), `npm run ai:lint` (clean) en `npm run build` groen. Tests: newModules 57 + 48, contentDepth 74, reliabilityGuards 50, couplingBridges 42 + 13, phoneLoopIntegrity 33, publishHealthStagger 21, platformCredentials 22, publishHealth 16, deployAudit 16, plus bestaande suites (opCatalogParity 54, securityGuards 33, snapshot 33, settings 27, seed 61, scheduledPublish 32) allemaal groen.
 
 **Notes / decisions**: ADR 0278 legt de drie programma-brede keuzes vast (security-guards report-first, gaps sluiten met ops i.p.v. verbs, eerlijke no-ops voor wat een platform niet ondersteunt). Descoped door de eigenaar: F6, G1, G6. E4 was al gedaan door de parallelle AI. Twee vondsten tijdens het werk: de cascade liet `AuditLog`- en `DeployHistory`-rijen wees achter (nu opgeruimd), en `isModuleEnabled` is te los voor op-gating (modules delen secties) — daarom keyt `opAvailable` op de definiërende sectie per module.
+
+## 2026-07-18 23:22 — Automation/role writer-ordering B2 fase 1
+
+**User prompt (samenvatting)**: Sluit automation/role direct-writer ordering met drie server-only InternalOps, zonder jobschema, publiek op-contract, Studio-B5, schema/migratie/generator of commit; behoud alle gelijktijdige forge-edits.
+
+**Wat ik heb gedaan**:
+- Toegevoegd: `automation-event-apply`, `automation-cron-fire` en `automation-action-run`, met begrensde typed payloads en zonder overlap met `ControlOp`/RBAC/proposal/sync-surfaces.
+- `fireEvent` enqueueët altijd achter de workspace-chain; event- en cronhandlers re-readen triggerstate en voeren match/debounce/dedupe/action/`lastFiredAt` uit onder tenant + renewable writer lease. Cron gebruikt een stabiel trigger+minuut request-id.
+- Externe trigger/action/role-aanroepen lopen via InternalOps; matching writer scope voert direct uit, wrong-workspace faalt. Findings, rol-suggesties, MR-comment-apply en scraper-watchmutaties hebben writer+tenant assertions op de mutatiegrens.
+- Signal-recursie blijft gequeued en begrensd; emit-signal gebruikt de gedeelde Redis-seq. AI/webhook/Docker/push blijven in deze fase eerlijk onder de renewable lease met een expliciete follow-up-TODO.
+
+**Files touched**: `server/automation/{agentRoles,cron,executor,triggers}.ts`, `server/orchestrator/{conductor,internalOps,writerContext}.ts`, `server/interviewer/findings.ts`, `server/mr/{reviewRole,rootCauseRole}.ts`, `server/reasoning/planCritiqueRole.ts`, `server/scraper/watch.ts`, en gerichte automation/writer/watch/webhook-tests.
+
+**Verification**: typecheck groen; build groen; ai:lint schoon; volledige lint 0 errors / 25 bestaande warnings. Automation 31/31, writer-foundation 34/34 + 15/15, content-role 7/7, webhook 12/12, multi-project 69/69, watch/new-modules 48/48, MR-review 9/9, rollback 12/12, plan-critique 6/6, Studio 33/33. Run-command ordering/no-op 1/1; live Docker-leg overgeslagen omdat Docker niet beschikbaar was.
+
+**Notes / decisions**: Geen schema, migratie, publiek verb, generator, ADR of commit. De reeds dirty forge-files zijn niet door deze taak aangepast of teruggedraaid.
+
+## 2026-07-19 06:02 — Fenced watchdog/worker-reaper recovery
+
+**User prompt (samenvatting)**: Implementeer de blockers uit `results/27` als één veilige recovery-lane: splits de korte capacity-lease van de harde turn-max, routeer recovery/reminders/sessionstatus via typed InternalOps, verifieer immutable Docker-identiteit + run-owner, verhuis watchdog naar cron en maak reaper-idle clusterduurzaam; behoud alle dirty work en commit/migreer niet.
+
+**Wat ik heb gedaan**:
+- `WS_CAPACITY_LEASE_MS` (standaard 30s) losgemaakt van `WS_TURN_MAX_MS`; admission/heartbeat/renewal/stale eviction gebruiken uitsluitend de korte lease. Recovery neemt de exacte oude token/fence atomair over met een deterministische hogere recovery-owner; oude releases/callbacks kunnen een successor niet raken.
+- Server-only `agent-recovery-transition` (`prepare|complete|cancel`) en `watchdog-reminder-apply` toegevoegd aan de InternalOp/Conductor-lane, inclusief exact ticket/session-CAS, processed durable intent, transient `recovering`, recovery-owner-verificatie en idempotente notification/timestamp-CAS. Ook manual kill gebruikt nu hetzelfde recoveryprotocol in plaats van een directe AgentSession-write.
+- Docker recovery controleert immutable container-ID, workspace/project/ticket-labels en `/work/.workspaces-run-owner`, handelt nonzero inspect/exec/stop en eindtoestand fail-closed af, en voert Docker buiten de writerlease uit; complete/reprovision gebeurt pas daarna en awaited. Session start reset `startedAt` + heartbeat.
+- Watchdog geregistreerd als `@luckystack/cron` `runOnStart` job; de boottimer verwijderd. Tenantwerk loopt onder `runInTenant`; reminders gaan door InternalOps en push door een once-claim. Worker-reaper gebruikt exacte cross-tenant identities, host-global Redis-idle timestamps en een tweede editor/statusprobe; een onbeschikbare editorprobe of Dockerfout stopt niets.
+- Env-templates, runtime/schema-contractcommentaar, 04b/07b builddocs en ADR 0279 bijgewerkt; ADRs 0020/0022 gemarkeerd als superseded en decision-index geregenereerd.
+
+**Files touched**: `.env{,.local}_template`, `luckystack/cron/jobs.ts`, `prisma/schema.prisma`, `server/container/runtime.ts`, `server/proxy/editorReaper.ts`, `server/orchestrator/{agentControl,capacity,conductor,internalOps,recoveryWriter,stageWriter,watchdog,workerReaper}.ts`, `server/server.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_docs/{04b_DATA_MODEL_ADDENDA,07b_CONTAINER_RUNTIME}.md`, `docs/decisions/{0020,0022,0279-*}.md`, `docs/AI_DECISIONS_INDEX.md`, plus gerichte capacity/recovery/watchdog/reminder/stage-writer/reaper-tests.
+
+**Verification**: typecheck groen; ai:lint schoon; build groen (alleen bestaande Vite chunk-warnings); volledige lint 0 errors / 25 reeds bestaande warnings. Capacity 66/66, recovery writer 28/28, watchdog 21/21, reminders 13/13, stage writer 157/157, worker-reaper 15/15 en reliability guards 53/53 groen. De Redis-capacity/recovery-suites zijn bewust sequentieel gedraaid omdat zij dezelfde host-global testkeys gebruiken.
+
+**Notes / decisions**: ADR 0279 legt de split lease/hard-max en het fenced prepare→external→complete/cancel-contract vast. Geen migratie, package-install, publiek op/verb, proxy-boot-leaderfix, worktree-orphanfix of commit. Alle vooraf bestaande en gelijktijdige dirty changes zijn behouden. `npm run ai:index` bestaat niet in dit project; `npm run ai:decisions` is wel succesvol uitgevoerd.
+
+## 2026-07-19 06:50 — P1 recovery-hardening na SOL-review
+
+**User prompt (samenvatting)**: Los de zes P1 recovery-issues uit `results/28-sol-recovery-review.md` op: crash-resume, Redis fail-closed, successor-proof, atomische stage-owner-takeover, synchroon gefencete manual kill en eerlijke provisioning/retries; corrigeer docs/ADR en voeg regressies toe zonder schema/migratie/commit/publiek op/casts of verlies van dirty work.
+
+**Wat ik heb gedaan**:
+- Recovery reconstrueert een geaccepteerde deterministische prepare na een procescrash, herstelt zo nodig de exacte verlopen recovery-reservering en hervat ook partiële cancel-, reeds-uitgevoerde container-stop- en stopped/provisioning-retries.
+- Redis owner/release/cancel/fence-paden zijn strict en falen bij onzekerheid; recovery meldt pas succes na bewijs van een nieuwe token met een strikt hogere fence.
+- Stage-owner takeover gebruikt één atomische lock rond marker-read, beide Redis-checks, stale-process-kill en atomische marker-replacement; cleanup en A/B-interleaving zijn getest.
+- Manual kill wacht vóór de publieke success-ACK synchroon op recovery-prepare/fencing. Provisioning geeft typed `started|queued|unavailable|duplicate`-uitkomsten en zet bij Docker/admission-onbeschikbaarheid een duurzame retry klaar.
+- Watchdog scant nu ook `recovering` en relevante `stopped` recoveryrijen. ADR 0279 en 04b/07b documenteren de retry/fail-closed-semantiek en claimen niet langer dat standalone `resumeAll` al token-remint/PTy-reattach doet.
+
+**Files touched**: `server/orchestrator/{agentControl,capacity,conductor,recoveryWriter,stageRunner,watchdog}.ts`, `tests/integration/{capacity,recoveryWriter,stageWriter,watchdog}.test.mts`, `tests/unit/writerFoundation.test.mts`, `docs/decisions/0279-fenced-agent-recovery-writer.md`, `docs/AI_DECISIONS_INDEX.md`, `src/workspaces/_docs/{04b_DATA_MODEL_ADDENDA,07b_CONTAINER_RUNTIME}.md`.
+
+**Verification**: 446 gerichte assertions groen (recovery 50, watchdog 24, capacity 69, stage writer 164, writer foundation 26 + 98, worker-reaper 15); typecheck, ai:lint en build groen; volledige lint 0 errors / 25 reeds bestaande, out-of-scope warnings. `git diff --check` schoon voor alle taakbestanden en geen `as any`/`as unknown as` toegevoegd.
+
+**Notes / decisions**: Geen schema, migratie, package-install, publieke op/verb, unsafe cast of commit. De grote vooraf bestaande dirty worktree — inclusief reeds dirty schema-, env-, forge- en writerfiles — is niet teruggedraaid of buiten deze herstelpatch opgeschoond.

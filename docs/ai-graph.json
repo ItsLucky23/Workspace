@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 253,
-    "edges": 380,
-    "symbols": 343,
-    "callEdges": 62
+    "nodes": 257,
+    "edges": 381,
+    "symbols": 370,
+    "callEdges": 85
   },
   "nodes": [
     {
@@ -349,6 +349,11 @@
       "route": "api/workspaces/closePreview/v1"
     },
     {
+      "id": "workspaces/_api/commentReplyDraft_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/commentReplyDraft/v1"
+    },
+    {
       "id": "workspaces/_api/containerTerminals_v1.ts",
       "kind": "api",
       "route": "api/workspaces/containerTerminals/v1"
@@ -444,6 +449,11 @@
       "route": "api/workspaces/openRefPreview/v1"
     },
     {
+      "id": "workspaces/_api/promptExperiments_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/promptExperiments/v1"
+    },
+    {
       "id": "workspaces/_api/pushConfig_v1.ts",
       "kind": "api",
       "route": "api/workspaces/pushConfig/v1"
@@ -492,6 +502,11 @@
       "id": "workspaces/_api/saveWorktreeFile_v1.ts",
       "kind": "api",
       "route": "api/workspaces/saveWorktreeFile/v1"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/seoSuggest/v1"
     },
     {
       "id": "workspaces/_api/snapshot_v1.tests.ts",
@@ -567,6 +582,11 @@
       "id": "workspaces/_api/workspaceImport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/workspaceImport/v1"
+    },
+    {
+      "id": "workspaces/_components/AssetPicker.tsx",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_components/AutomationPanel.tsx",
@@ -1484,8 +1504,8 @@
       "to": "_sockets/apiRequest.ts"
     },
     {
-      "from": "workspaces/_api/createWorkspace_v1.ts",
-      "to": "workspaces/_data/modules.ts"
+      "from": "workspaces/_components/AssetPicker.tsx",
+      "to": "workspaces/_components/Icon.tsx"
     },
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
@@ -2437,6 +2457,10 @@
     },
     {
       "from": "workspaces/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/AssetPicker.tsx"
+    },
+    {
+      "from": "workspaces/documents/[docId]/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -3129,6 +3153,9 @@
     "settings/_api/listSessions_v1.ts": [
       "settings/_api/revokeSession_v1.ts"
     ],
+    "workspaces/_components/AssetPicker.tsx": [
+      "workspaces/documents/[docId]/page.tsx"
+    ],
     "workspaces/_components/AutomationPanel.tsx": [
       "workspaces/pipeline/page.tsx"
     ],
@@ -3143,6 +3170,7 @@
     "workspaces/_components/Icon.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AssetPicker.tsx",
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/Glossary.tsx",
       "workspaces/_components/ImageEditor.tsx",
@@ -3331,7 +3359,6 @@
     "workspaces/_data/modules.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
-      "workspaces/_api/createWorkspace_v1.ts",
       "workspaces/_components/ModulePicker.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
@@ -3733,8 +3760,8 @@
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 49,
-      "directDependents": 44
+      "dependents": 50,
+      "directDependents": 45
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
@@ -3787,8 +3814,8 @@
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
-      "dependents": 16,
-      "directDependents": 12
+      "dependents": 15,
+      "directDependents": 11
     },
     {
       "id": "workspaces/_functions/uploadMedia.ts",
@@ -4285,6 +4312,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/commentReplyDraft_v1.ts::<module>",
+      "file": "workspaces/_api/commentReplyDraft_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/commentReplyDraft_v1.ts::main",
+      "file": "workspaces/_api/commentReplyDraft_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/containerTerminals_v1.ts::<module>",
       "file": "workspaces/_api/containerTerminals_v1.ts",
       "name": "<module>",
@@ -4567,6 +4606,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/promptExperiments_v1.ts::<module>",
+      "file": "workspaces/_api/promptExperiments_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/promptExperiments_v1.ts::main",
+      "file": "workspaces/_api/promptExperiments_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/pushConfig_v1.ts::<module>",
       "file": "workspaces/_api/pushConfig_v1.ts",
       "name": "<module>",
@@ -4657,6 +4708,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/saveDevCommand_v1.ts::saveDevCommand",
+      "file": "workspaces/_api/saveDevCommand_v1.ts",
+      "name": "saveDevCommand",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/saveDockerfile_v1.tests.ts::<module>",
       "file": "workspaces/_api/saveDockerfile_v1.tests.ts",
       "name": "<module>",
@@ -4719,6 +4776,18 @@
     {
       "id": "workspaces/_api/saveWorktreeFile_v1.ts::main",
       "file": "workspaces/_api/saveWorktreeFile_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.ts::<module>",
+      "file": "workspaces/_api/seoSuggest_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.ts::main",
+      "file": "workspaces/_api/seoSuggest_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -4799,6 +4868,18 @@
       "file": "workspaces/_api/studioDelete_v1.ts",
       "name": "<module>",
       "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioDelete_v1.ts::afterBriefCheck",
+      "file": "workspaces/_api/studioDelete_v1.ts",
+      "name": "afterBriefCheck",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",
+      "file": "workspaces/_api/studioDelete_v1.ts",
+      "name": "deleteStudioBrief",
+      "kind": "function"
     },
     {
       "id": "workspaces/_api/studioDelete_v1.ts::main",
@@ -5443,6 +5524,18 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::abandonExternal",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "abandonExternal",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::acquireCapacity",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "acquireCapacity",
+      "kind": "fn"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::authorize",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "authorize",
@@ -5455,9 +5548,39 @@
       "kind": "method"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::claimExternal",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "claimExternal",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::complete",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "complete",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::completeExternal",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "completeExternal",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::currentHead",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "currentHead",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "defaultForgeResyncDependencies",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::defaultPublicCiRunDependencies",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "defaultPublicCiRunDependencies",
       "kind": "function"
     },
     {
@@ -5473,10 +5596,28 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "dispatchPublicCiRun",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::execute",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "execute",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "fetchSnapshot",
       "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::internalCompletionPersisted",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "internalCompletionPersisted",
+      "kind": "function"
     },
     {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp",
@@ -5485,10 +5626,58 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::loadPrepared",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "loadPrepared",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::loadPreparedPublicCiIntent",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "loadPreparedPublicCiIntent",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/projectAdmin_server_v1.ts::main",
       "file": "workspaces/_sync/projectAdmin_server_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "preparedPublicCiIntent",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::releaseCapacity",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "releaseCapacity",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::resolve",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "resolve",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::resolvePublicCiTarget",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "resolvePublicCiTarget",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::withCapacityRenewal",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "withCapacityRenewal",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/projectAdmin_server_v1.ts::withExternalRenewal",
+      "file": "workspaces/_sync/projectAdmin_server_v1.ts",
+      "name": "withExternalRenewal",
+      "kind": "fn"
     },
     {
       "id": "workspaces/_sync/quickAdd_server_v1.ts::<module>",
@@ -5979,10 +6168,6 @@
       "to": "settings/_api/listSessions_v1.ts::sessionHandle"
     },
     {
-      "from": "workspaces/_api/createWorkspace_v1.ts::main",
-      "to": "workspaces/_data/modules.ts::sanitizeSections"
-    },
-    {
       "from": "workspaces/_api/designerInspiration_v1.ts::main",
       "to": "workspaces/_api/designerInspiration_v1.ts::asViewport"
     },
@@ -6031,6 +6216,10 @@
       "to": "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest"
     },
     {
+      "from": "workspaces/_api/saveDevCommand_v1.ts::main",
+      "to": "workspaces/_api/saveDevCommand_v1.ts::saveDevCommand"
+    },
+    {
       "from": "workspaces/_api/saveDockerfile_v1.tests.ts::run",
       "to": "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser"
     },
@@ -6049,6 +6238,14 @@
     {
       "from": "workspaces/_api/snapshot_v1.tests.ts::run",
       "to": "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",
+      "to": "workspaces/_api/studioDelete_v1.ts::afterBriefCheck"
+    },
+    {
+      "from": "workspaces/_api/studioDelete_v1.ts::main",
+      "to": "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief"
     },
     {
       "from": "workspaces/_data/seed.ts::<module>",
@@ -6147,12 +6344,96 @@
       "to": "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot"
     },
     {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::abandonExternal"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::acquireCapacity"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::authorize"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::broadcast"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::claimExternal"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::complete"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::completeExternal"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::currentHead"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::defaultPublicCiRunDependencies"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatch"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::execute"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::internalCompletionPersisted"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::loadPrepared"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::releaseCapacity"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::resolve"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::withCapacityRenewal"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::withExternalRenewal"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::loadPreparedPublicCiIntent",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent"
+    },
+    {
       "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
       "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync"
     },
     {
       "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::main",
       "to": "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp"
+    },
+    {
+      "from": "workspaces/_sync/projectAdmin_server_v1.ts::resolve",
+      "to": "workspaces/_sync/projectAdmin_server_v1.ts::resolvePublicCiTarget"
     },
     {
       "from": "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace",
@@ -6249,6 +6530,9 @@
     "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest": [
       "workspaces/_api/rotateWebhookSecret_v1.ts::main"
     ],
+    "workspaces/_api/saveDevCommand_v1.ts::saveDevCommand": [
+      "workspaces/_api/saveDevCommand_v1.ts::main"
+    ],
     "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser": [
       "workspaces/_api/saveDockerfile_v1.tests.ts::run"
     ],
@@ -6264,8 +6548,14 @@
     "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail": [
       "workspaces/_api/snapshot_v1.tests.ts::run"
     ],
+    "workspaces/_api/studioDelete_v1.ts::afterBriefCheck": [
+      "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",
+      "workspaces/_api/studioDelete_v1.ts::main"
+    ],
+    "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief": [
+      "workspaces/_api/studioDelete_v1.ts::main"
+    ],
     "workspaces/_data/modules.ts::sanitizeSections": [
-      "workspaces/_api/createWorkspace_v1.ts::main",
       "workspaces/_sync/saveSections_server_v1.ts::main"
     ],
     "workspaces/_data/seed.ts::baseStatuses": [
@@ -6324,30 +6614,102 @@
     "workspaces/_sync/documentsControl_server_v1.ts::isDocumentOp": [
       "workspaces/_sync/documentsControl_server_v1.ts::main"
     ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::abandonExternal": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::acquireCapacity": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
     "workspaces/_sync/projectAdmin_server_v1.ts::authorize": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::broadcast": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::claimExternal": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::complete": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::completeExternal": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::currentHead": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::defaultForgeResyncDependencies": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::defaultPublicCiRunDependencies": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
     "workspaces/_sync/projectAdmin_server_v1.ts::dispatch": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::execute": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/projectAdmin_server_v1.ts::fetchSnapshot": [
       "workspaces/_sync/projectAdmin_server_v1.ts::dispatchForgeResync",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::internalCompletionPersisted": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
     "workspaces/_sync/projectAdmin_server_v1.ts::isProjectAdminOp": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::loadPrepared": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::preparedPublicCiIntent": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::loadPreparedPublicCiIntent",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::releaseCapacity": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::resolve": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::resolvePublicCiTarget": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main",
+      "workspaces/_sync/projectAdmin_server_v1.ts::resolve"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::withCapacityRenewal": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
+      "workspaces/_sync/projectAdmin_server_v1.ts::main"
+    ],
+    "workspaces/_sync/projectAdmin_server_v1.ts::withExternalRenewal": [
+      "workspaces/_sync/projectAdmin_server_v1.ts::dispatchPublicCiRun",
       "workspaces/_sync/projectAdmin_server_v1.ts::main"
     ],
     "workspaces/_sync/saveIntegration_server_v1.ts::integrationEnvRefsBelongToWorkspace": [

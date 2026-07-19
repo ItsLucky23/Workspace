@@ -52,7 +52,7 @@ const [runError] = await tryCatch(async () => {
   const eventB = parseWebhookEvent({
     object_kind: 'issue',
     project: { path_with_namespace: 'acme/web' },
-    object_attributes: { iid: 42, action: 'open', title: 'For B', state: 'opened' },
+    object_attributes: { iid: 42, action: 'open', title: 'For B', state: 'opened', url: 'https://gitlab.example/acme/web/-/issues/42' },
   });
   eq(await apply(eventB, `wh-b-${String(stamp)}`), ['DEV-42'], 'the project-B issue is applied');
   const ticketB = await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-42' }, select: { projectId: true } });
@@ -62,7 +62,7 @@ const [runError] = await tryCatch(async () => {
   const eventA = parseWebhookEvent({
     object_kind: 'issue',
     project: { path_with_namespace: 'acme/api' },
-    object_attributes: { iid: 43, action: 'open', title: 'For A', state: 'opened' },
+    object_attributes: { iid: 43, action: 'open', title: 'For A', state: 'opened', url: 'https://gitlab.example/acme/api/-/issues/43' },
   });
   await apply(eventA, `wh-a-${String(stamp)}`);
   eq((await prisma.ticket.findFirst({ where: { workspaceId, key: 'DEV-43' }, select: { projectId: true } }))?.projectId, projectA.id, 'the API issue routes to project A');

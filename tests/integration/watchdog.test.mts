@@ -1,114 +1,184 @@
-//? Integration test for the crash-recovery watchdog (#1) against the REAL Prisma. Covers the pure
-//? decision matrix (classifyBusySession / isRealNeedsInput), the boot reconciliation
-//? (resumeEngineOnBoot with an injected container-lister — no Docker), and stuck-turn detection in a
-//? sweep. Re-fires themselves need Docker; here we assert the OBSERVABLE state transitions the
-//? watchdog makes (a stale busy session → stopped, a live-container interrupt → left busy to resume,
-//? a done ticket's session → stopped, a parked turn → untouched, a hung turn → killed/stopped).
+//? Watchdog cron-sweep regressions: healthy renewable owner is untouched, expired owner is
+//? offered for boot recovery, only hard turn-max may revoke a live owner, stale/done cleanup
+//? does not reprovision, and dropped provisioning is deduped through the injected engine seam.
+
+process.env.WS_CAPACITY_LEASE_MS = '30000';
+process.env.WS_TURN_MAX_MS = '100000';
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const wd = await import('../../server/orchestrator/watchdog');
+const watchdog = await import('../../server/orchestrator/watchdog');
+const capacity = await import('../../server/orchestrator/capacity');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
-const { createDefaultPipeline } = await import('../../server/bootstrap/defaultPipeline');
 const { EDITOR_DEFER_MSG, CAPACITY_DEFER_MSG } = await import('../../server/orchestrator/conductor');
+const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const { needsInputHash, readRecoveryTransitionResult } = await import('../../server/orchestrator/recoveryWriter');
 
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `wd-${String(stamp)}@youcomm.nl`, name: 'WD Owner' } });
-let workspaceId: string | null = null;
-
-//? Create a busy worker session for a ticket, optionally aged (startedAt in the past).
-async function busySession(wsId: string, ticketId: string, stageId: string, key: string, agedMs = 0): Promise<string> {
-  const s = await prisma.agentSession.create({
-    data: { workspaceId: wsId, ticketId, stageId, kind: 'worker', sessionKey: `worker:${ticketId}:${stageId}:${key}`, status: 'busy', claudeSessionId: `cs-${key}`, startedAt: new Date(Date.now() - agedMs) },
-  });
-  return s.id;
-}
-const statusOf = async (id: string): Promise<string> => (await prisma.agentSession.findUnique({ where: { id } }))?.status ?? '';
+let workspaceId = '';
+const reservations: Awaited<ReturnType<typeof capacity.acquireSlot>>[] = [];
 
 try {
-  // ---- pure decision matrix (no DB) ----
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'resume', 'live container + running stage → resume');
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: false }), 'reprovision', 'dead container → reprovision fresh');
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: true, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'stop', 'done ticket → stop the stale session');
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: false, stageAiEnabled: false, realNeedsInput: false, hasContainer: true }), 'stop', 'non-AI stage → stop');
-  eq(wd.classifyBusySession({ wsPaused: true, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'skip', 'workspace paused → skip');
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: true, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'skip', 'ticket paused → skip');
-  eq(wd.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: true, hasContainer: true }), 'skip', 'real human question → skip');
+  eq(watchdog.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'resume', 'live running stage classifies for resume');
+  eq(watchdog.classifyBusySession({ wsPaused: false, ticketPaused: false, ticketDone: true, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'stop', 'done ticket classifies for cleanup only');
+  eq(watchdog.classifyBusySession({ wsPaused: true, ticketPaused: false, ticketDone: false, stageAiEnabled: true, realNeedsInput: false, hasContainer: true }), 'skip', 'paused workspace is skipped');
+  eq(watchdog.isRealNeedsInput(EDITOR_DEFER_MSG), false, 'editor defer is not a human question');
+  eq(watchdog.isRealNeedsInput(CAPACITY_DEFER_MSG), false, 'capacity defer is not a human question');
+  eq(watchdog.isRealNeedsInput('Which database?'), true, 'real question remains parked');
 
-  eq(wd.isRealNeedsInput(null), false, 'no banner → not a real question');
-  eq(wd.isRealNeedsInput(EDITOR_DEFER_MSG), false, 'editor defer banner → not a real question');
-  eq(wd.isRealNeedsInput(CAPACITY_DEFER_MSG), false, 'capacity defer banner → not a real question');
-  eq(wd.isRealNeedsInput('Which database should I use?'), true, 'a real question → parked');
-
-  // ---- boot reconciliation with an injected container set ----
-  const created = await createBlankWorkspace(prisma, owner.id, 'WD WS');
+  const created = await createBlankWorkspace(prisma, owner.id, 'Watchdog recovery');
   workspaceId = created.workspaceId;
-  const wsId = created.workspaceId;
-  const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
-  const aiStage = await prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, aiEnabled: true, gateForApproval: false } });
-  assert(aiStage !== null, 'the seeded workspace has an AI-enabled non-gate stage to test on');
-  const stageId = aiStage?.key ?? '';
+  const project = await prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+  const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: project?.id ?? '', aiEnabled: true, gateForApproval: false } });
+  assert(project !== null && stage !== null, 'workspace has a project and runnable AI stage');
+  if (!project || !stage) throw new Error('watchdog fixture failed');
 
-  const mk = async (n: number, patch: Record<string, unknown>): Promise<{ id: string; key: string; sid: string }> => {
-    const key = `DEV-${String(8000 + n)}`;
-    const t = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key, number: 8000 + n, title: `WD ${String(n)}`, stageId, status: 'idle', labels: [], branch: key, priority: 'normal', ...patch } });
-    const sid = await busySession(wsId, t.id, stageId, key);
-    return { id: t.id, key, sid };
+  let number = 9000;
+  const makeRun = async (suffix: string, acquireAt: number, startedAt: number, ticketStatus = 'busy') => {
+    number += 1;
+    const key = `DEV-${String(number)}`;
+    const ticket = await prisma.ticket.create({ data: { workspaceId, projectId: project.id, key, number, title: suffix, stageId: stage.key, status: ticketStatus, archived: false, branch: key, labels: [], priority: 'normal' } });
+    const acquired = await capacity.acquireSlot(key, workspaceId, false, acquireAt);
+    assert(acquired.acquired, `${suffix} gets its initial capacity owner`);
+    if (!acquired.acquired) throw new Error('capacity fixture failed');
+    reservations.push(acquired);
+    const session = await prisma.agentSession.create({
+      data: {
+        workspaceId,
+        ticketId: ticket.id,
+        stageId: stage.key,
+        kind: 'worker',
+        sessionKey: `worker:${ticket.id}:${stage.key}`,
+        status: 'busy',
+        containerId: `${suffix}-container`,
+        runToken: acquired.reservation.runToken,
+        runFence: acquired.reservation.fence,
+        startedAt: new Date(startedAt),
+      },
+    });
+    return { ticket, session, reservation: acquired.reservation };
   };
 
-  const alive = await mk(1, {});                                   // container alive → resume (stays busy)
-  const dead = await mk(2, {});                                    // container gone → reprovision (stopped)
-  const done = await mk(3, { status: 'done' });                   // done → stop
-  const paused = await mk(4, { status: 'paused' });               // paused → skip (stays busy)
-  const asking = await mk(5, { needsInput: 'Which DB?' });        // real question → skip (stays busy)
+  const now = Date.now();
+  const healthy = await makeRun('healthy', now, now);
+  const recovered: { sessionId: string; reason: string; provision: boolean }[] = [];
+  const healthySweep = await watchdog.runWatchdogSweep(now + 1000, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return true; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  eq(recovered.length, 0, 'healthy renewing owner is not boot-recovered or stolen');
+  eq(healthySweep.recovered, 0, 'healthy sweep reports no recovery');
+  eq((await prisma.agentSession.findUnique({ where: { id: healthy.session.id } }))?.status, 'busy', 'healthy session remains busy');
+  await capacity.releaseSlot(healthy.reservation);
 
-  //? Inject: only `alive`'s container survived a crash.
-  await wd.resumeEngineOnBoot({ listContainers: async () => new Set([alive.key]) });
+  const expiredAt = 1_000_000;
+  const expired = await makeRun('expired', expiredAt, now);
+  const expiredSweep = await watchdog.runWatchdogSweep(expiredAt + 30_001, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return true; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === expired.session.id && entry.reason === 'boot'), 'expired owner is offered to boot recovery');
+  assert(expiredSweep.recovered >= 1, 'expired recovery is counted');
 
-  eq(await statusOf(alive.sid), 'busy', 'a live-container interrupt is left busy (resumed in place)');
-  eq(await statusOf(dead.sid), 'stopped', 'a dead-container interrupt is stopped (then reprovisioned fresh)');
-  eq(await statusOf(done.sid), 'stopped', "a done ticket's stale session is stopped");
-  eq(await statusOf(paused.sid), 'busy', 'a paused ticket is left parked (untouched)');
-  eq(await statusOf(asking.sid), 'busy', 'a ticket waiting on a human question is left parked');
+  const prepareRequestId = `agent-recovery-prepare:boot:${expired.session.id}:${expired.reservation.runToken}:${String(expired.reservation.fence)}:${String(expired.session.startedAt.getTime())}`;
+  const prepare = {
+    workspaceId,
+    op: 'agent-recovery-transition' as const,
+    target: { ticketId: expired.ticket.id, ticketKey: expired.ticket.key, projectId: project.id, stageId: stage.key, sessionId: expired.session.id },
+    payload: {
+      phase: 'prepare' as const,
+      reason: 'boot' as const,
+      expected: {
+        ticketStatus: expired.ticket.status,
+        needsInputHash: needsInputHash(expired.ticket.needsInput),
+        sessionStatus: 'busy' as const,
+        containerId: expired.session.containerId ?? '',
+        runToken: expired.reservation.runToken,
+        runFence: expired.reservation.fence,
+        startedAt: expired.session.startedAt.getTime(),
+      },
+      observedAt: expiredAt + 30_001,
+    },
+    userId: 'watchdog-test',
+    clientRequestId: prepareRequestId,
+  };
+  const prepared = await enqueueInternalAction(prepare);
+  const preparedResult = readRecoveryTransitionResult(prepared.result);
+  assert(preparedResult?.applied === true && preparedResult.phase === 'prepare', 'crash fixture has an accepted durable prepare');
+  recovered.length = 0;
+  await watchdog.runWatchdogSweep(now + 40_000, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return false; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === expired.session.id && entry.reason === 'boot'), 'cron reconstructs and continues a recovering prepare after process crash');
 
-  // ---- stuck-turn detection in a sweep ----
-  const stuckTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-8100', number: 8100, title: 'stuck', stageId, status: 'busy', labels: [], branch: 'DEV-8100', priority: 'normal' } });
-  const freshTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-8101', number: 8101, title: 'fresh', stageId, status: 'busy', labels: [], branch: 'DEV-8101', priority: 'normal' } });
-  const stuckSid = await busySession(wsId, stuckTicket.id, stageId, 'stuck', 60 * 60 * 1000); // 1h old
-  const freshSid = await busySession(wsId, freshTicket.id, stageId, 'fresh', 0);              // brand new, other ticket
+  if (!preparedResult?.applied || preparedResult.phase !== 'prepare') throw new Error('watchdog prepare fixture failed');
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'agent-recovery-transition',
+    target: prepare.target,
+    payload: {
+      phase: 'complete',
+      reason: 'boot',
+      expected: prepare.payload.expected,
+      intentId: preparedResult.intentId,
+    },
+    userId: 'watchdog-test',
+    clientRequestId: `watchdog-complete-${preparedResult.intentId}`,
+  });
+  recovered.length = 0;
+  await watchdog.runWatchdogSweep(now + 50_000, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return false; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === expired.session.id && entry.provision), 'stopped recovery without a successor remains a cron-visible provisioning retry');
 
-  //? A clean IDLE candidate: activated, AI-enabled non-gate stage, status idle, NO session ever ran
-  //? on this stage → the sweep should flag it for re-provision (a dropped provisioning turn).
-  const idleTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: project?.id ?? '', key: 'DEV-8102', number: 8102, title: 'idle', stageId, status: 'idle', labels: [], branch: 'DEV-8102', priority: 'normal' } });
+  const stuck = await makeRun('stuck', now, now - 100_001);
+  recovered.length = 0;
+  const stuckSweep = await watchdog.runWatchdogSweep(now, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return true; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === stuck.session.id && entry.reason === 'stuck' && entry.provision), 'only hard turn-max routes a live owner to stuck recovery + reprovision');
+  assert(stuckSweep.stuck >= 1, 'hard-stuck intervention is counted');
 
-  const sweep = await wd.runWatchdogSweep(Date.now());
-  eq(await statusOf(stuckSid), 'stopped', 'a hung turn older than the turn-max is killed (session stopped)');
-  eq(await statusOf(freshSid), 'busy', 'a fresh turn is NOT treated as stuck');
-  assert(sweep.stuck >= 1, 'the sweep reports the stuck intervention');
-  assert(sweep.idle >= 1, 'the sweep flags an activated no-session idle ticket for re-provision');
+  const done = await makeRun('done', now, now, 'done');
+  await capacity.releaseSlot(done.reservation);
+  recovered.length = 0;
+  await watchdog.runWatchdogSweep(now + 31_000, {
+    workspaceIds: [workspaceId],
+    recover: async (input) => { recovered.push({ sessionId: input.sessionId, reason: input.reason, provision: input.provision }); return true; },
+    reprovision: async () => undefined,
+    pushReminder: async () => false,
+  });
+  assert(recovered.some((entry) => entry.sessionId === done.session.id && !entry.provision), 'done/stale session cleanup never starts a successor');
 
-  //? Give the idle ticket a session for its current stage → a re-sweep must NOT re-fire it (its turn
-  //? already ran; only NEVER-run stages are idle). The idle count drops by exactly one.
-  await prisma.agentSession.create({ data: { workspaceId: wsId, ticketId: idleTicket.id, stageId, kind: 'worker', sessionKey: `worker:${idleTicket.id}:${stageId}`, status: 'stopped' } });
-  const sweep2 = await wd.runWatchdogSweep(Date.now());
-  eq(sweep2.idle, sweep.idle - 1, 'a stage that already produced a session is no longer flagged idle');
-
-  // ---- multi-project duplicate-key regression -----------------------------------
-  // Project A marks this key non-AI while project B keeps the IDENTICAL key AI-enabled.
-  // Boot recovery for B must consult (workspaceId, projectId, key), not A's first row.
-  const projectB = await prisma.project.create({ data: { workspaceId: wsId, name: 'WD Project B', gitlabPath: '' } });
-  await createDefaultPipeline(prisma, wsId, projectB.id);
-  await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: project?.id ?? '', key: stageId }, data: { aiEnabled: false } });
-  await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: projectB.id, key: stageId }, data: { aiEnabled: true } });
-  const projectBTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: projectB.id, key: 'DEV-8200', number: 8200, title: 'project B recovery', stageId, status: 'idle', labels: [], branch: 'DEV-8200', priority: 'normal' } });
-  const projectBSession = await busySession(wsId, projectBTicket.id, stageId, 'project-b');
-  await wd.resumeEngineOnBoot({ listContainers: async () => new Set([projectBTicket.key]) });
-  eq(await statusOf(projectBSession), 'busy', 'watchdog uses B stage config despite A having the same disabled key');
-  eq((await prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId: project?.id ?? '', key: stageId } }))?.aiEnabled, false, 'watchdog never mutates sibling project A stage config');
+  const idle = await prisma.ticket.create({ data: { workspaceId, projectId: project.id, key: 'DEV-9999', number: 9999, title: 'dropped', stageId: stage.key, status: 'idle', archived: false, branch: 'DEV-9999', labels: [], priority: 'normal' } });
+  const reprovisioned: string[] = [];
+  const idleSweep = await watchdog.runWatchdogSweep(now, {
+    workspaceIds: [workspaceId],
+    recover: async () => false,
+    reprovision: async (_ws, key) => { reprovisioned.push(key); },
+    pushReminder: async () => false,
+  });
+  eq(reprovisioned, [idle.key], 'a never-run activated stage reaches the engine reprovision seam once');
+  eq(idleSweep.idle, 1, 'dropped provisioning is counted once');
 } catch (error) {
-  assert(false, `unexpected error during the run: ${String(error)}`);
+  assert(false, `unexpected error during watchdog run: ${String(error)}`);
 } finally {
+  for (const result of reservations) if (result.acquired) await capacity.releaseSlot(result.reservation);
   if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
 }

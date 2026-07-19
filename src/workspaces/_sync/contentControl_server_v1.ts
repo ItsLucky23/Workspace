@@ -32,6 +32,7 @@ export interface SyncParams {
     //? F5 — reply to a comment in the inbox (the text the user approved).
     commentId?: string; replyText?: string;
     //? G4 — star/unstar an asset for the workspace-wide library.
+    //? (`assetId` is already declared below — the same field identifies the asset for every asset-scoped op.)
     starred?: boolean;
     op: string; clientRequestId: string;
     contentProjectId?: string; projectId?: string;

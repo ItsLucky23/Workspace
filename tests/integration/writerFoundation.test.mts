@@ -7,8 +7,9 @@ import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
-const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
+const { ControlActionEnqueueError, enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { enqueueInternalAction } = await import('../../server/orchestrator/internalOps');
+const roles = await import('../../server/automation/agentRoles');
 const { currentWriterScope } = await import('../../server/orchestrator/writerContext');
 const { claimControlAction, completeControlAction } = await import('../../server/orchestrator/cluster');
 
@@ -100,9 +101,107 @@ const [runError] = await tryCatch(async () => {
   eq(replayedInternal.signalSeq, internalResult.signalSeq, 'an internal duplicate replays its terminal outcome');
   const afterReplay = documentAsset((await prisma.document.findUnique({ where: { id: document.id } }))?.assets, sourceUrl);
   eq(afterReplay?.extractedText, 'Internal extracted source text.', 'terminal internal dedup prevents duplicate execution');
-  eq(currentWriterScope(), null, 'writer context is absent after both executeAction calls settle');
+
+  //? A grandchild that reuses the top action's internal dedup key sees it in writer ALS and receives
+  //? control.pending immediately. The intermediate parent catches that expected refusal and completes.
+  const ancestorRequestId = `writer-ancestor-${String(stamp)}`;
+  const nestedRequestId = `writer-ancestor-nested-${String(stamp)}`;
+  let ancestorChildCode: string | null = null;
+  let ancestorChildElapsedMs = Number.POSITIVE_INFINITY;
+  roles.registerAgentRole({
+    key: 'writer-ancestor-leaf', label: 'Writer ancestor leaf', description: 'test', mutates: false,
+    run: async (ctx) => {
+      const startedAt = Date.now();
+      const [nestedError] = await tryCatch(() => enqueueInternalAction({
+        workspaceId: ctx.workspaceId, op: 'document-set-asset-text', target: { documentId: document.id },
+        payload: { url: sourceUrl, text: 'Must never land.', status: 'ok' }, userId: owner.id, clientRequestId: ancestorRequestId,
+      }));
+      ancestorChildElapsedMs = Date.now() - startedAt;
+      ancestorChildCode = nestedError instanceof ControlActionEnqueueError ? nestedError.code : nestedError?.message ?? null;
+      return { kind: 'test', title: 'Expected ancestor refusal', body: ancestorChildCode ?? 'missing' };
+    },
+  });
+  roles.registerAgentRole({
+    key: 'writer-ancestor-parent', label: 'Writer ancestor parent', description: 'test', mutates: false,
+    run: async (ctx) => {
+      await enqueueInternalAction({
+        workspaceId: ctx.workspaceId, op: 'automation-action-run', target: {}, userId: owner.id, clientRequestId: nestedRequestId,
+        payload: { mode: 'execute', requiresApproval: false, action: { action: 'invoke-agent-role', params: { role: 'writer-ancestor-leaf' } } },
+      });
+      return null;
+    },
+  });
+  const ancestorParent = await enqueueInternalAction({
+    workspaceId, op: 'automation-action-run', target: {}, userId: owner.id, clientRequestId: ancestorRequestId,
+    payload: { mode: 'execute', requiresApproval: false, action: { action: 'invoke-agent-role', params: { role: 'writer-ancestor-parent' } } },
+  });
+  eq(ancestorChildCode, 'control.pending', 'a grandchild reusing any active ancestor key fails as control.pending');
+  assert(ancestorChildElapsedMs < 750, 'ancestor-key refusal is immediate and never incurs the 2s pending wait');
+  const ancestorReplay = await enqueueInternalAction({
+    workspaceId, op: 'automation-action-run', target: {}, userId: owner.id, clientRequestId: ancestorRequestId,
+    payload: { mode: 'execute', requiresApproval: false, action: { action: 'invoke-agent-role', params: { role: 'writer-ancestor-parent' } } },
+  });
+  eq(ancestorReplay.signalSeq, ancestorParent.signalSeq, 'the parent that handled control.pending completes to a replayable terminal success');
+  const blockedAncestorSignals = await prisma.workspaceSignal.findMany({ where: { workspaceId, kind: 'document-set-asset-text' }, select: { payload: true } });
+  eq(blockedAncestorSignals.filter(({ payload }) => signalRequestId(payload) === ancestorRequestId).length, 0, 'the refused ancestor-key child appends no signal and performs no write');
+
+  //? Internal/public namespaces remain distinct inside the same active writer tree even when the raw id matches.
+  const crossNamespaceRequestId = `writer-cross-namespace-${String(stamp)}`;
+  roles.registerAgentRole({
+    key: 'writer-cross-namespace', label: 'Writer cross namespace', description: 'test', mutates: false,
+    run: async (ctx) => {
+      await enqueueControlAction({ workspaceId: ctx.workspaceId, op: 'rename-workspace', target: {}, payload: { name: 'Nested namespace allowed' }, userId: owner.id, clientRequestId: crossNamespaceRequestId });
+      return null;
+    },
+  });
+  await enqueueInternalAction({
+    workspaceId, op: 'automation-action-run', target: {}, userId: owner.id, clientRequestId: crossNamespaceRequestId,
+    payload: { mode: 'execute', requiresApproval: false, action: { action: 'invoke-agent-role', params: { role: 'writer-cross-namespace' } } },
+  });
+  eq((await prisma.workspace.findUnique({ where: { id: workspaceId } }))?.name, 'Nested namespace allowed', 'same raw id remains allowed across active internal/public namespaces');
+
+  //? If a role does not handle the immediate child refusal, the parent deterministically fails and its
+  //? terminal failure replays; the recovered workspace queue still accepts the next action.
+  const failingRequestId = `writer-self-fail-${String(stamp)}`;
+  let failingChildCode: string | null = null;
+  let failingChildElapsedMs = Number.POSITIVE_INFINITY;
+  roles.registerAgentRole({
+    key: 'writer-self-fail', label: 'Writer self fail', description: 'test', mutates: false,
+    run: async (ctx) => {
+      const startedAt = Date.now();
+      const [nestedError] = await tryCatch(() => enqueueInternalAction({
+        workspaceId: ctx.workspaceId, op: 'document-set-asset-text', target: { documentId: document.id },
+        payload: { url: sourceUrl, text: 'Must still never land.', status: 'ok' }, userId: owner.id, clientRequestId: failingRequestId,
+      }));
+      failingChildElapsedMs = Date.now() - startedAt;
+      failingChildCode = nestedError instanceof ControlActionEnqueueError ? nestedError.code : nestedError?.message ?? null;
+      if (nestedError) throw nestedError;
+      return null;
+    },
+  });
+  const enqueueFailingParent = (): Promise<unknown> => enqueueInternalAction({
+    workspaceId, op: 'automation-action-run', target: {}, userId: owner.id, clientRequestId: failingRequestId,
+    payload: { mode: 'execute', requiresApproval: false, action: { action: 'invoke-agent-role', params: { role: 'writer-self-fail' } } },
+  });
+  const [failingParentError] = await tryCatch(enqueueFailingParent);
+  eq(failingChildCode, 'control.pending', 'a direct same-key child also receives control.pending');
+  assert(failingChildElapsedMs < 750, 'direct same-key refusal is immediate and never self-waits');
+  assert(failingParentError instanceof ControlActionEnqueueError && failingParentError.code === 'control.executionFailure', 'an unhandled child refusal makes the parent fail predictably');
+  const replayStartedAt = Date.now();
+  const [failingReplayError] = await tryCatch(enqueueFailingParent);
+  assert(Date.now() - replayStartedAt < 750, 'the terminal parent failure replays without waiting');
+  assert(failingReplayError instanceof ControlActionEnqueueError && failingReplayError.code === 'control.executionFailure', 'the failed parent replays its stable terminal failure');
+
+  const recoveryRequestId = `writer-recovery-${String(stamp)}`;
+  await enqueueInternalAction({
+    workspaceId, op: 'document-set-asset-text', target: { documentId: document.id },
+    payload: { url: sourceUrl, text: 'Queue recovered.', status: 'ok' }, userId: owner.id, clientRequestId: recoveryRequestId,
+  });
+  eq(documentAsset((await prisma.document.findUnique({ where: { id: document.id } }))?.assets, sourceUrl)?.extractedText, 'Queue recovered.', 'the writer queue remains usable after the predictable parent failure');
+  eq(currentWriterScope(), null, 'writer context is absent after all executeAction calls settle');
 });
 
+roles.resetAgentRoles();
 if (runError) assert(false, `unexpected writer foundation error: ${runError.message}`);
 if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id]);
 else await prisma.user.deleteMany({ where: { id: owner.id } });

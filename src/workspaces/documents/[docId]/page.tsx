@@ -15,6 +15,7 @@ import MarkdownView from '../../_components/MarkdownView';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { EmptyState, Segmented, WsButton } from '../../_components/primitives';
 import DiffView from '../../board/[ticketId]/DiffView';
+import { AssetPicker, type PickableAsset } from '../../_components/AssetPicker';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { lineDiff, diffStat } from '../lineDiff';
 
@@ -35,7 +36,7 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, content: contentSnapshot, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
+  const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
 
   const [title, setTitle] = useState(doc?.title ?? '');
@@ -46,13 +47,12 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   const [aiInstruction, setAiInstruction] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [imgPrompt, setImgPrompt] = useState('');
-  //? C2 — the workspace's already-approved, ready image assets: reusing one costs nothing.
+  //? C2 + G4 — the WORKSPACE-WIDE library (starred first) instead of a per-piece scrape: the same index the
+  //? content module offers, so an asset made anywhere is reusable here.
   const [showReuse, setShowReuse] = useState(false);
-  const reusableAssets = contentSnapshot.pieces
-    .flatMap((piece) => piece.assets.map((a) => ({ ...a, pieceTitle: piece.title })))
-    .filter((a) => a.status === 'ready' && !a.stub && (a.kind === 'image' || a.kind === 'thumbnail'))
-    .map((a) => ({ id: a.id, url: a.url, label: a.pieceTitle }))
-    .slice(0, 12);
+  const reusableAssets: PickableAsset[] = contentSnapshot.assetLibrary
+    .filter((a) => a.kind === 'image' || a.kind === 'thumbnail')
+    .map((a) => ({ id: a.id, kind: a.kind, url: a.url, pieceTitle: a.pieceTitle, starred: a.starred }));
   const [exporting, setExporting] = useState<string | null>(null);
   //? Draft review: rendered preview vs a line diff against the current content (apply = consent, B-23).
   const [draftView, setDraftView] = useState<'diff' | 'preview'>('diff');
@@ -210,15 +210,15 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           )}
         </div>
         {showReuse && (
-          <div className="flex gap-2 flex-wrap mt-1">
-            {reusableAssets.map((a) => (
-              <button key={a.id} type="button" onClick={() => { genDocumentImage(doc.id, imgPrompt.trim(), a.id); setImgPrompt(''); setShowReuse(false); }}
-                className="w-28 shrink-0 text-left cursor-pointer" title={translate({ key: 'workspaces.documents.reuseThis' })}>
-                <img src={a.url} alt={a.label} className="w-28 h-20 object-cover rounded-lg border border-container1-border hover:border-primary-border transition-colors" />
-                <span className="text-[11px] text-muted truncate block mt-0.5">{a.label}</span>
-              </button>
-            ))}
-          </div>
+          <AssetPicker
+            assets={reusableAssets}
+            kinds={['image', 'thumbnail']}
+            onPick={(asset) => { genDocumentImage(doc.id, imgPrompt.trim(), asset.id); setImgPrompt(''); setShowReuse(false); }}
+            onToggleStar={(asset) => { setAssetStarred(asset.id, !asset.starred); }}
+            emptyLabel={translate({ key: 'workspaces.documents.reuseEmpty' })}
+            pickHint={translate({ key: 'workspaces.documents.reuseThis' })}
+            starHint={translate({ key: 'workspaces.content.libraryStar' })}
+          />
         )}
       </div>
 

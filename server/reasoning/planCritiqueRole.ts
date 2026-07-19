@@ -11,6 +11,7 @@ import { registerAgentRole } from '../automation/agentRoles';
 import { runAiCompletion } from '../ai/registry';
 import { retrieveMemory } from '../rag/memory';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
 
 //? Pull the plan text out of a CarryOver `envelope` JSON ({ summary, openQuestions[], changedFiles[] }).
 //? Exported for tests. Returns '' when there's no usable plan.
@@ -47,7 +48,7 @@ export function registerPlanCritiqueRole(): void {
     key: 'plan-critique',
     label: 'Plan critique',
     description: 'Adversarially attacks a ticket plan before implement and proposes the gaps to fold in.',
-    mutates: false,
+    mutates: false, //? The suggestion row is a derived critique; applying it remains a human action.
     run: async (ctx) => {
       const prisma = getPrismaClient();
       if (!ctx.ticketKey) return { kind: 'plan-critique', title: 'Plan critique', body: 'No ticket to critique.' };
@@ -65,6 +66,7 @@ export function registerPlanCritiqueRole(): void {
       if (err || !res?.ok || res.text.trim().length === 0) return { kind: 'plan-critique', title: 'Plan critique', body: `Critique failed: ${err?.message ?? res?.error ?? 'unknown'}` };
 
       //? Propose — an advisory suggestion the human folds into the plan before implement (no auto-apply).
+      assertWorkspaceWriterContext(ctx.workspaceId);
       await prisma.workspaceSuggestion.create({
         data: { workspaceId: ctx.workspaceId, type: 'plan-critique', title: `Plan critique: ${ctx.ticketKey}`, body: res.text.trim().slice(0, 4000), ticketIds: [], patch: { ticketKey: ctx.ticketKey }, status: 'open' },
       });

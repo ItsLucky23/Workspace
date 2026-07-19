@@ -1,8 +1,9 @@
 //? Web-scraper ⇄ AgentRole bridge (Marketing "reach"). Registers a schedulable `scraper` role so a
 //? cron WorkspaceTrigger can fetch a configured page and extract the useful bits (what it's about,
 //? offerings, lead/contact signals) for outreach — surfaced as a notification via the executor.
-//? Non-coding, `mutates:false` (propose-only). A GUARDED fetch: http(s) only, timeout, size-capped,
-//? never throws (never breaks the trigger pipeline). Call `registerScraperRole()` once at boot.
+//? Non-coding, `mutates:false`: watch snapshots are derived cache rows, not an authoritative action
+//? requiring consent. A GUARDED fetch: http(s) only, timeout, size-capped, never throws (never breaks
+//? the trigger pipeline). Call `registerScraperRole()` once at boot.
 
 import { getPrismaClient } from '@luckystack/core';
 
@@ -49,7 +50,7 @@ export function registerScraperRole(): void {
     key: 'scraper',
     label: 'Web scraper',
     description: 'Fetches a web page and extracts key info / leads for outreach (schedulable).',
-    mutates: false,
+    mutates: false, //? Persisting watch-cache snapshots is derived bookkeeping, not an applied action.
     run: async (ctx) => {
       const url = typeof ctx.params.url === 'string' ? ctx.params.url : '';
       if (!url) return { kind: 'scrape-result', title: 'Web scraper', body: 'No URL configured for this task (set params.url).' };

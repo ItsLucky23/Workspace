@@ -4,6 +4,8 @@
 
 import type { PrismaClient } from '@prisma/client';
 
+import { assertWorkspaceWriterContext } from '../orchestrator/writerContext';
+
 export type FindingArea = 'reliability' | 'dx' | 'ux' | 'performance' | 'security' | 'product' | 'other';
 const AREAS: readonly FindingArea[] = ['reliability', 'dx', 'ux', 'performance', 'security', 'product', 'other'];
 const areaOf = (raw: string): FindingArea => {
@@ -38,6 +40,7 @@ export function parseFindings(markdown: string): ParsedFinding[] {
 
 //? Persist parsed findings for a workspace; returns how many were written.
 export async function recordFindings(prisma: PrismaClient, workspaceId: string, findings: ParsedFinding[]): Promise<number> {
+  assertWorkspaceWriterContext(workspaceId);
   if (findings.length === 0) return 0;
   await prisma.interviewFinding.createMany({
     data: findings.map((f) => ({ workspaceId, area: f.area, severity: f.severity, title: f.title, summary: f.summary })),
