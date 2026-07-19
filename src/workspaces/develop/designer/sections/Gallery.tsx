@@ -5,7 +5,7 @@
 //? path). Tailwind colour classes inside the preview read the OVERRIDDEN `--color-*` vars, so the whole
 //? subtree re-themes; `--ds-*` (radius/shadow) drive the shapes via inline style.
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { motion, useReducedMotion } from 'motion/react';
 
@@ -13,7 +13,7 @@ import { useTranslator, i18nNotify as notify, apiRequest, tryCatch } from '@luck
 
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import Icon from '../../../_components/Icon';
-import { WsButton } from '../../../_components/primitives';
+import { IconButton, PopMenu, WsButton } from '../../../_components/primitives';
 import { PREMADE_LOOKS, resolveLook, lookToArtifacts, isActiveLook, type ResolvedLook } from '../premades';
 import { validArtifactContent } from '../persisted';
 import { SEED_ANIMS, FADE_ANIM, animFrom, ANIM_TO, animTransition } from '../animations';
@@ -105,7 +105,10 @@ async function saveArtifact(workspaceId: string, artifact: { kind: string; name:
   return !err && res?.status === 'success';
 }
 
-export default function Gallery() {
+//? `inspiration` is the INS import form (defined in page.tsx so the C8 live-URL coupling stays there);
+//? the Gallery owns its entry point — a secondary header button — because it is a Gallery input, not
+//? page chrome.
+export default function Gallery({ inspiration }: { inspiration?: ReactNode }) {
   const translate = useTranslator();
   const d = useDesigner();
   const { activeWorkspace, refetch } = useWorkspaces();
@@ -113,6 +116,7 @@ export default function Gallery() {
   const [replay, setReplay] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pendingLook, setPendingLook] = useState<ResolvedLook | null>(null);
+  const [inspireOpen, setInspireOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const selected = resolveLook(selectedId);
 
@@ -159,45 +163,63 @@ export default function Gallery() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.gallery.title' })}</div>
-          <p className="text-sm text-muted">{translate({ key: 'workspaces.gallery.subtitle' })}</p>
-        </div>
-        <WsButton variant="ghost" icon="up-right-from-square" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.gallery.import' })}</WsButton>
-        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = ''; }} />
-      </div>
-      {/* catalog grid — compact thumbnails */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {PREMADE_LOOKS.map((look) => {
-          const r = resolveLook(look.id);
-          if (!r) return null;
-          return (
-            <button key={look.id} type="button" onClick={() => { setSelectedId(look.id); }} className={`text-left rounded-xl border transition-colors cursor-pointer overflow-hidden ${look.id === selectedId ? 'border-primary ring-2 ring-primary/30' : 'border-container1-border hover:border-container1-hover'}`}>
-              <LookPreview resolved={r} mode={d.mode} compact loop />
-              <div className="px-3 py-2">
-                <div className="text-sm font-medium text-title">{look.name}</div>
-                <div className="text-xs text-muted line-clamp-1">{look.description}</div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      {/* selected look — full preview + apply */}
-      {selected && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-container1-border bg-container1/40 p-3">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-title">{selected.look.name}</div>
-            <div className="flex items-center gap-2">
-              <WsButton variant="ghost" icon="bolt" onClick={() => { setReplay((v) => v + 1); }}>{translate({ key: 'workspaces.gallery.replay' })}</WsButton>
-              <WsButton variant="ghost" icon="copy" onClick={copyLook} disabled={busy}>{translate({ key: 'workspaces.gallery.copy' })}</WsButton>
-              <WsButton icon={busy ? 'spinner' : 'check'} onClick={useLook}>{translate({ key: 'workspaces.gallery.use' })}</WsButton>
-            </div>
+    <div className={`h-full min-h-0 overflow-y-auto p-4 md:p-6`}>
+      <div className={`max-w-6xl flex flex-col gap-4`}>
+        {/* header — the rarer inputs (JSON import, save-a-copy) live in ONE overflow menu; inspiration
+            import opens on demand (it is a Gallery input, not something every visit needs on screen) */}
+        <div className={`flex flex-wrap items-start justify-between gap-3`}>
+          <div className={`min-w-0`}>
+            <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.gallery.title' })}</div>
+            <p className={`text-sm text-muted`}>{translate({ key: 'workspaces.gallery.subtitle' })}</p>
           </div>
-          <LookPreview resolved={selected} mode={d.mode} replayKey={replay} loop />
+          <div className={`flex items-center gap-2 shrink-0`}>
+            {inspiration != null && <WsButton variant="secondary" icon="eye" onClick={() => { setInspireOpen((v) => !v); }}>{translate({ key: 'workspaces.gallery.importInspiration' })}</WsButton>}
+            <PopMenu ariaLabel={translate({ key: 'workspaces.designer.moreActions' })} items={[
+              { label: translate({ key: 'workspaces.gallery.import' }), icon: 'file-lines', onClick: () => { fileRef.current?.click(); } },
+              { label: translate({ key: 'workspaces.gallery.copy' }), icon: 'copy', onClick: copyLook },
+            ]} />
+          </div>
+          <input ref={fileRef} type="file" accept="application/json,.json" className={`hidden`} onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = ''; }} />
         </div>
-      )}
+        {/* INS — inspiration import, one tap away from the Gallery header */}
+        {inspiration != null && inspireOpen && (
+          <div className={`rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-3`}>
+            <div className={`text-sm font-medium text-title`}>{translate({ key: 'workspaces.inspire.title' })}</div>
+            {inspiration}
+          </div>
+        )}
+        {/* catalog grid — compact thumbnails */}
+        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3`}>
+          {PREMADE_LOOKS.map((look) => {
+            const r = resolveLook(look.id);
+            if (!r) return null;
+            return (
+              <button key={look.id} type="button" onClick={() => { setSelectedId(look.id); }} className={`text-left rounded-xl border transition-colors cursor-pointer overflow-hidden ${look.id === selectedId ? 'border-primary ring-2 ring-primary/30' : 'border-container1-border hover:border-container1-hover'}`}>
+                <LookPreview resolved={r} mode={d.mode} compact loop />
+                <div className={`px-3 py-2`}>
+                  <div className={`text-sm font-medium text-title`}>{look.name}</div>
+                  <div className={`text-xs text-muted line-clamp-1`}>{look.description}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {/* selected look — full preview with THE page primary: "Use this look" */}
+        {selected && (
+          <div className={`flex flex-col gap-3 rounded-2xl border border-container1-border bg-container1/40 p-3 md:p-4`}>
+            <div className={`flex flex-wrap items-center gap-2`}>
+              <div className={`min-w-0`}>
+                <div className={`text-sm font-semibold text-title`}>{selected.look.name}</div>
+                <div className={`text-xs text-muted`}>{selected.look.description}</div>
+              </div>
+              <div className={`flex-1`} />
+              <IconButton icon="arrows-rotate" title={translate({ key: 'workspaces.gallery.replay' })} onClick={() => { setReplay((v) => v + 1); }} />
+              <WsButton icon={busy ? 'spinner' : 'check'} disabled={busy} className={busy ? '[&_svg]:animate-spin' : ''} onClick={useLook}>{translate({ key: 'workspaces.gallery.use' })}</WsButton>
+            </div>
+            <LookPreview resolved={selected} mode={d.mode} replayKey={replay} loop />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

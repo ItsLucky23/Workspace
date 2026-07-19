@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 261,
-    "edges": 390,
+    "nodes": 288,
+    "edges": 515,
     "symbols": 371,
     "callEdges": 86
   },
@@ -1104,6 +1104,16 @@
       "route": "sync/workspaces/uiReviewCreate/v1"
     },
     {
+      "id": "workspaces/content/[pieceId]/AssetCard.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/[pieceId]/assetHref.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/[pieceId]/page.tsx",
       "kind": "page",
       "route": null
@@ -1124,13 +1134,33 @@
       "route": null
     },
     {
+      "id": "workspaces/content/documents/TemplateManager.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/insights/page.tsx",
       "kind": "page",
       "route": null
     },
     {
+      "id": "workspaces/content/marketing/cards.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/marketing/kinds.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/marketing/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/marketing/panels.tsx",
+      "kind": "other",
       "route": null
     },
     {
@@ -1144,8 +1174,48 @@
       "route": null
     },
     {
+      "id": "workspaces/content/settings/AdminTab.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/settings/BrandStylesTab.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/settings/ChannelsTab.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/settings/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/settings/portalForms.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/settings/SavedNote.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/settings/shared.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/studio/BrandPanel.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/studio/content.ts",
+      "kind": "other",
       "route": null
     },
     {
@@ -1154,13 +1224,38 @@
       "route": null
     },
     {
+      "id": "workspaces/content/studio/previews.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/answers/page.tsx",
       "kind": "page",
       "route": null
     },
     {
+      "id": "workspaces/develop/backlog/BulkBar.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/backlog/forms.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/backlog/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "kind": "other",
       "route": null
     },
     {
@@ -1176,6 +1271,36 @@
     {
       "id": "workspaces/develop/board/[ticketId]/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/boardFilters.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/BoardHeader.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/KanbanCard.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/OnboardingBanner.tsx",
+      "kind": "other",
       "route": null
     },
     {
@@ -1269,6 +1394,11 @@
       "route": null
     },
     {
+      "id": "workspaces/develop/pipeline/stageTabs.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/scheduled/page.tsx",
       "kind": "page",
       "route": null
@@ -1281,6 +1411,11 @@
     {
       "id": "workspaces/develop/terminals/page.tsx",
       "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "kind": "other",
       "route": null
     },
     {
@@ -1980,6 +2115,22 @@
       "to": "workspaces/_functions/controlApi.ts"
     },
     {
+      "from": "workspaces/content/[pieceId]/AssetCard.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/AssetCard.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/AssetCard.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/AssetCard.tsx",
+      "to": "workspaces/content/[pieceId]/assetHref.ts"
+    },
+    {
       "from": "workspaces/content/[pieceId]/page.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
     },
@@ -2018,6 +2169,14 @@
     {
       "from": "workspaces/content/[pieceId]/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/content/[pieceId]/AssetCard.tsx"
+    },
+    {
+      "from": "workspaces/content/[pieceId]/page.tsx",
+      "to": "workspaces/content/[pieceId]/assetHref.ts"
     },
     {
       "from": "workspaces/content/documents/[docId]/page.tsx",
@@ -2081,10 +2240,22 @@
     },
     {
       "from": "workspaces/content/documents/page.tsx",
-      "to": "workspaces/_data/types.ts"
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/documents/page.tsx",
+      "to": "workspaces/content/documents/TemplateManager.tsx"
+    },
+    {
+      "from": "workspaces/content/documents/TemplateManager.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/documents/TemplateManager.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/documents/TemplateManager.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2101,11 +2272,87 @@
     },
     {
       "from": "workspaces/content/insights/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/content/marketing/kinds.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/kinds.ts",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/kinds.ts",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
-      "to": "workspaces/content/studio/page.tsx"
+      "to": "workspaces/content/marketing/cards.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/marketing/kinds.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/marketing/panels.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/panels.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/panels.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/panels.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/panels.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/panels.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/page.tsx",
@@ -2137,23 +2384,99 @@
     },
     {
       "from": "workspaces/content/scheduled-posts/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/scheduled-posts/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
-      "from": "workspaces/content/settings/page.tsx",
+      "from": "workspaces/content/settings/AdminTab.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
     },
     {
-      "from": "workspaces/content/settings/page.tsx",
+      "from": "workspaces/content/settings/AdminTab.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/AdminTab.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/AdminTab.tsx",
+      "to": "workspaces/content/settings/SavedNote.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/AdminTab.tsx",
+      "to": "workspaces/content/settings/shared.ts"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
       "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/_components/MediaUploadButton.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/content/settings/portalForms.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/content/settings/SavedNote.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/content/settings/shared.ts"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/content/settings/portalForms.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/content/settings/shared.ts"
     },
     {
       "from": "workspaces/content/settings/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/content/settings/page.tsx",
-      "to": "workspaces/_components/MediaUploadButton.tsx"
     },
     {
       "from": "workspaces/content/settings/page.tsx",
@@ -2162,6 +2485,62 @@
     {
       "from": "workspaces/content/settings/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
+      "to": "workspaces/content/settings/AdminTab.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
+      "to": "workspaces/content/settings/BrandStylesTab.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/page.tsx",
+      "to": "workspaces/content/settings/ChannelsTab.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/portalForms.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/portalForms.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/settings/portalForms.tsx",
+      "to": "workspaces/_components/MediaUploadButton.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/portalForms.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/portalForms.tsx",
+      "to": "workspaces/content/settings/shared.ts"
+    },
+    {
+      "from": "workspaces/content/settings/SavedNote.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/content/studio/content.ts"
     },
     {
       "from": "workspaces/content/studio/page.tsx",
@@ -2188,6 +2567,30 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/content/studio/BrandPanel.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/content/studio/content.ts"
+    },
+    {
+      "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/content/studio/previews.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/previews.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/previews.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/studio/previews.tsx",
+      "to": "workspaces/content/studio/content.ts"
+    },
+    {
       "from": "workspaces/develop/answers/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -2202,6 +2605,34 @@
     {
       "from": "workspaces/develop/answers/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/BulkBar.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/BulkBar.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/BulkBar.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/forms.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/forms.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/backlog/forms.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/forms.tsx",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/develop/backlog/page.tsx",
@@ -2230,6 +2661,58 @@
     {
       "from": "workspaces/develop/backlog/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/page.tsx",
+      "to": "workspaces/develop/backlog/BulkBar.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/page.tsx",
+      "to": "workspaces/develop/backlog/forms.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "_components/editor/CodeEditorPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "_components/editor/editorThemes.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "_components/editor/fileTree.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "_components/editor/VsCodeEmbed.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/DiffView.tsx",
@@ -2253,22 +2736,6 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "_components/editor/CodeEditorPanel.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "_components/editor/editorThemes.ts"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "_components/editor/fileTree.ts"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "_components/editor/VsCodeEmbed.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/page.tsx",
       "to": "_functions/menuHandler.ts"
     },
     {
@@ -2282,10 +2749,6 @@
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "workspaces/_components/XtermTerminal.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
@@ -2309,23 +2772,131 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
-      "to": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx"
+      "to": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx"
     },
     {
-      "from": "workspaces/develop/board/page.tsx",
+      "from": "workspaces/develop/board/[ticketId]/page.tsx",
+      "to": "workspaces/develop/board/[ticketId]/CodePanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/page.tsx",
+      "to": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/page.tsx",
+      "to": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "to": "workspaces/_components/XtermTerminal.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
     },
     {
-      "from": "workspaces/develop/board/page.tsx",
+      "from": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/boardFilters.ts",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_functions/priority.ts"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/develop/board/boardFilters.ts"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/_functions/priority.ts"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/OnboardingBanner.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/OnboardingBanner.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/OnboardingBanner.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/develop/board/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/page.tsx",
-      "to": "workspaces/_components/motion.tsx"
     },
     {
       "from": "workspaces/develop/board/page.tsx",
@@ -2337,11 +2908,23 @@
     },
     {
       "from": "workspaces/develop/board/page.tsx",
-      "to": "workspaces/_functions/priority.ts"
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/develop/board/page.tsx",
-      "to": "workspaces/_shell/WorkspacesContext.tsx"
+      "to": "workspaces/develop/board/boardFilters.ts"
+    },
+    {
+      "from": "workspaces/develop/board/page.tsx",
+      "to": "workspaces/develop/board/BoardHeader.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/page.tsx",
+      "to": "workspaces/develop/board/KanbanCard.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/page.tsx",
+      "to": "workspaces/develop/board/OnboardingBanner.tsx"
     },
     {
       "from": "workspaces/develop/designer/animations.ts",
@@ -2406,6 +2989,10 @@
     {
       "from": "workspaces/develop/designer/page.tsx",
       "to": "workspaces/develop/designer/themes.ts"
+    },
+    {
+      "from": "workspaces/develop/designer/page.tsx",
+      "to": "workspaces/develop/designer/ui.tsx"
     },
     {
       "from": "workspaces/develop/designer/persisted.ts",
@@ -2617,11 +3204,19 @@
     },
     {
       "from": "workspaces/develop/designer/ui.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/designer/ui.tsx",
       "to": "workspaces/develop/designer/fonts.ts"
     },
     {
       "from": "workspaces/develop/interviewer/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/interviewer/page.tsx",
+      "to": "workspaces/_components/motion.tsx"
     },
     {
       "from": "workspaces/develop/interviewer/page.tsx",
@@ -2634,10 +3229,6 @@
     {
       "from": "workspaces/develop/interviewer/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
-    },
-    {
-      "from": "workspaces/develop/pipeline/page.tsx",
-      "to": "_components/dropdown/Dropdown.tsx"
     },
     {
       "from": "workspaces/develop/pipeline/page.tsx",
@@ -2665,6 +3256,34 @@
     },
     {
       "from": "workspaces/develop/pipeline/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/page.tsx",
+      "to": "workspaces/develop/pipeline/stageTabs.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/_data/seed.ts"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -2717,10 +3336,6 @@
     },
     {
       "from": "workspaces/develop/terminals/page.tsx",
-      "to": "_functions/menuHandler.ts"
-    },
-    {
-      "from": "workspaces/develop/terminals/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2729,15 +3344,35 @@
     },
     {
       "from": "workspaces/develop/terminals/page.tsx",
-      "to": "workspaces/_components/XtermTerminal.tsx"
-    },
-    {
-      "from": "workspaces/develop/terminals/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/develop/terminals/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/page.tsx",
+      "to": "workspaces/develop/terminals/TerminalPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "workspaces/_components/XtermTerminal.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/insights/activity/page.tsx",
@@ -2895,16 +3530,35 @@
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -2912,10 +3566,14 @@
       "workspaces/develop/designer/sections/Gallery.tsx",
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
+      "workspaces/develop/designer/sections/Typography.tsx",
+      "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -2941,10 +3599,19 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -2953,6 +3620,7 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
@@ -2966,8 +3634,16 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -2978,6 +3654,7 @@
       "workspaces/develop/designer/sections/Typography.tsx",
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
@@ -2994,8 +3671,16 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3006,6 +3691,7 @@
       "workspaces/develop/designer/sections/Typography.tsx",
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
@@ -3018,6 +3704,7 @@
     ],
     "_components/editor/CodeEditorPanel.tsx": [
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/editor/editorThemes.ts": [
@@ -3026,12 +3713,14 @@
       "_components/editor/MonacoEditor.tsx",
       "_components/editor/VsCodeEmbed.tsx",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/editor/FileExplorer.tsx": [
       "_components/editor/CodeEditorPanel.tsx",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/editor/fileTree.ts": [
@@ -3039,17 +3728,20 @@
       "_components/editor/FileExplorer.tsx",
       "_components/editor/sampleWorkspace.ts",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/editor/languages.ts": [
       "_components/editor/CodeEditorPanel.tsx",
       "_components/editor/FileExplorer.tsx",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/editor/MonacoEditor.tsx": [
       "_components/editor/CodeEditorPanel.tsx",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -3057,6 +3749,7 @@
       "_components/editor/CodeEditorPanel.tsx",
       "_components/editor/MonacoEditor.tsx",
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -3065,6 +3758,7 @@
     ],
     "_components/editor/VsCodeEmbed.tsx": [
       "editor-demo/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/ErrorPage.tsx": [
@@ -3139,10 +3833,19 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3151,6 +3854,7 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
@@ -3244,18 +3948,39 @@
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/SavedNote.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3268,8 +3993,10 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -3289,7 +4016,10 @@
     "workspaces/_components/MediaUploadButton.tsx": [
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
       "workspaces/develop/designer/page.tsx"
     ],
     "workspaces/_components/ModulePicker.tsx": [
@@ -3318,16 +4048,35 @@
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3335,10 +4084,14 @@
       "workspaces/develop/designer/sections/Gallery.tsx",
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
+      "workspaces/develop/designer/sections/Typography.tsx",
+      "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -3365,16 +4118,35 @@
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3382,10 +4154,14 @@
       "workspaces/develop/designer/sections/Gallery.tsx",
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
+      "workspaces/develop/designer/sections/Typography.tsx",
+      "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -3406,7 +4182,9 @@
       "workspaces/content/[pieceId]/page.tsx"
     ],
     "workspaces/_components/XtermTerminal.tsx": [
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx"
     ],
     "workspaces/_data/chatOps.ts": [
@@ -3457,6 +4235,7 @@
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/types.ts": [
@@ -3483,20 +4262,42 @@
       "workspaces/_sync/saveGitConfig_server_v1.ts",
       "workspaces/_sync/saveIntegration_server_v1.ts",
       "workspaces/_sync/saveStageConfig_server_v1.ts",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/lineDiff.ts",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/DiffView.tsx",
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
@@ -3504,10 +4305,14 @@
       "workspaces/develop/designer/sections/Gallery.tsx",
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
+      "workspaces/develop/designer/sections/Typography.tsx",
+      "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -3556,20 +4361,42 @@
       "workspaces/_sync/saveIntegration_server_v1.ts",
       "workspaces/_sync/saveStageConfig_server_v1.ts",
       "workspaces/_sync/skillsControl_server_v1.ts",
+      "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/lineDiff.ts",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/backlog/BulkBar.tsx",
+      "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/DiffView.tsx",
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
@@ -3577,10 +4404,14 @@
       "workspaces/develop/designer/sections/Gallery.tsx",
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
+      "workspaces/develop/designer/sections/Typography.tsx",
+      "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/activity/page.tsx",
       "workspaces/insights/knowledge/page.tsx",
@@ -3597,6 +4428,8 @@
       "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/priority.ts": [
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx"
     ],
@@ -3619,7 +4452,10 @@
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx",
       "workspaces/develop/designer/page.tsx"
     ],
     "workspaces/_functions/useEscapeKey.ts": [
@@ -3672,16 +4508,27 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/page.tsx",
+      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/OnboardingBanner.tsx",
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -3694,6 +4541,7 @@
       "workspaces/develop/designer/state.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
@@ -3717,19 +4565,106 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx"
     ],
+    "workspaces/content/[pieceId]/AssetCard.tsx": [
+      "workspaces/content/[pieceId]/page.tsx"
+    ],
+    "workspaces/content/[pieceId]/assetHref.ts": [
+      "workspaces/content/[pieceId]/AssetCard.tsx",
+      "workspaces/content/[pieceId]/page.tsx"
+    ],
     "workspaces/content/documents/lineDiff.ts": [
       "workspaces/content/documents/[docId]/page.tsx"
     ],
-    "workspaces/content/studio/page.tsx": [
+    "workspaces/content/documents/TemplateManager.tsx": [
+      "workspaces/content/documents/page.tsx"
+    ],
+    "workspaces/content/marketing/cards.tsx": [
       "workspaces/content/marketing/page.tsx"
+    ],
+    "workspaces/content/marketing/kinds.ts": [
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/page.tsx"
+    ],
+    "workspaces/content/marketing/panels.tsx": [
+      "workspaces/content/marketing/page.tsx"
+    ],
+    "workspaces/content/settings/AdminTab.tsx": [
+      "workspaces/content/settings/page.tsx"
+    ],
+    "workspaces/content/settings/BrandStylesTab.tsx": [
+      "workspaces/content/settings/page.tsx"
+    ],
+    "workspaces/content/settings/ChannelsTab.tsx": [
+      "workspaces/content/settings/page.tsx"
+    ],
+    "workspaces/content/settings/portalForms.tsx": [
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx"
+    ],
+    "workspaces/content/settings/SavedNote.tsx": [
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/page.tsx"
+    ],
+    "workspaces/content/settings/shared.ts": [
+      "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx",
+      "workspaces/content/settings/portalForms.tsx"
+    ],
+    "workspaces/content/studio/BrandPanel.tsx": [
+      "workspaces/content/studio/page.tsx"
+    ],
+    "workspaces/content/studio/content.ts": [
+      "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/page.tsx",
+      "workspaces/content/studio/previews.tsx"
+    ],
+    "workspaces/content/studio/previews.tsx": [
+      "workspaces/content/studio/page.tsx"
+    ],
+    "workspaces/develop/backlog/BulkBar.tsx": [
+      "workspaces/develop/backlog/page.tsx"
+    ],
+    "workspaces/develop/backlog/forms.tsx": [
+      "workspaces/develop/backlog/page.tsx"
+    ],
+    "workspaces/develop/board/[ticketId]/ActivityPanel.tsx": [
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/develop/board/[ticketId]/CodePanel.tsx": [
+      "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "workspaces/develop/board/[ticketId]/DiffView.tsx": [
       "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx": [
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/develop/board/[ticketId]/TerminalPanel.tsx": [
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx": [
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/develop/board/boardFilters.ts": [
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/page.tsx"
+    ],
+    "workspaces/develop/board/BoardHeader.tsx": [
+      "workspaces/develop/board/page.tsx"
+    ],
+    "workspaces/develop/board/KanbanCard.tsx": [
+      "workspaces/develop/board/page.tsx"
+    ],
+    "workspaces/develop/board/OnboardingBanner.tsx": [
+      "workspaces/develop/board/page.tsx"
     ],
     "workspaces/develop/designer/animations.ts": [
       "workspaces/develop/designer/page.tsx",
@@ -3824,86 +4759,92 @@
       "workspaces/develop/designer/sections/Styles.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
       "workspaces/develop/designer/sections/Typography.tsx"
+    ],
+    "workspaces/develop/pipeline/stageTabs.tsx": [
+      "workspaces/develop/pipeline/page.tsx"
+    ],
+    "workspaces/develop/terminals/TerminalPanel.tsx": [
+      "workspaces/develop/terminals/page.tsx"
     ]
   },
   "godNodes": [
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 62,
+      "dependents": 88,
       "directDependents": 8
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 54,
-      "directDependents": 32
+      "dependents": 80,
+      "directDependents": 46
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 51,
-      "directDependents": 46
-    },
-    {
-      "id": "workspaces/_shell/WorkspacesContext.tsx",
-      "kind": "other",
-      "dependents": 46,
-      "directDependents": 37
+      "dependents": 74,
+      "directDependents": 64
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 44,
+      "dependents": 67,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 43,
-      "directDependents": 8
+      "dependents": 66,
+      "directDependents": 10
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 42,
-      "directDependents": 38
+      "dependents": 65,
+      "directDependents": 61
+    },
+    {
+      "id": "workspaces/_shell/WorkspacesContext.tsx",
+      "kind": "other",
+      "dependents": 58,
+      "directDependents": 50
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 32,
+      "dependents": 42,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 32,
-      "directDependents": 25
+      "dependents": 42,
+      "directDependents": 33
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 26,
+      "dependents": 35,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 24,
-      "directDependents": 20
+      "dependents": 33,
+      "directDependents": 26
+    },
+    {
+      "id": "workspaces/_functions/uploadMedia.ts",
+      "kind": "other",
+      "dependents": 16,
+      "directDependents": 4
     },
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
       "dependents": 15,
-      "directDependents": 11
-    },
-    {
-      "id": "workspaces/_functions/uploadMedia.ts",
-      "kind": "other",
-      "dependents": 13,
-      "directDependents": 4
+      "directDependents": 12
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -3930,6 +4871,12 @@
       "directDependents": 4
     },
     {
+      "id": "_components/editor/editorThemes.ts",
+      "kind": "component",
+      "dependents": 8,
+      "directDependents": 7
+    },
+    {
       "id": "_sockets/syncRequest.ts",
       "kind": "other",
       "dependents": 8,
@@ -3948,12 +4895,6 @@
       "directDependents": 2
     },
     {
-      "id": "_components/editor/editorThemes.ts",
-      "kind": "component",
-      "dependents": 7,
-      "directDependents": 7
-    },
-    {
       "id": "_providers/socketStatusProvider.tsx",
       "kind": "other",
       "dependents": 7,
@@ -3966,13 +4907,13 @@
       "directDependents": 1
     },
     {
-      "id": "workspaces/_components/ModulePicker.tsx",
+      "id": "workspaces/_components/MediaUploadButton.tsx",
       "kind": "other",
       "dependents": 7,
-      "directDependents": 2
+      "directDependents": 5
     },
     {
-      "id": "workspaces/_data/nav.ts",
+      "id": "workspaces/_components/ModulePicker.tsx",
       "kind": "other",
       "dependents": 7,
       "directDependents": 2

@@ -1,7 +1,8 @@
 //? Designer › Animations — a motion playground. Preview a preset on a real sample element, tune it
-//? with sliders (offset / scale / rotate / duration / bounce / easing), see the easing curve, and
-//? (next phase) have the AI generate one. Presets are seeded to the app's real springs. The preview
-//? re-plays automatically on any change (the motion element is keyed on the spec) + a Replay button.
+//? with sliders (offset / scale / rotate / duration / bounce / easing), see the easing curve, and save
+//? the tuned spec (#161 — the section's one write). Presets are seeded to the app's real springs. The
+//? preview re-plays automatically on any change (the motion element is keyed on the spec) + a Replay
+//? button. Library rail collapses to a Dropdown on phone; AI generation happens in the page-level bar.
 
 import { useState } from 'react';
 
@@ -10,10 +11,10 @@ import { motion } from 'motion/react';
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../../_components/Icon';
-import { WsButton } from '../../../_components/primitives';
+import { WsButton, type PopMenuItem } from '../../../_components/primitives';
 import { useDesigner } from '../state';
 import { ANIM_TO, EASING_BEZIER, animChips, animFrom, animTransition, type AnimEasing } from '../animations';
-import { RenameField, SectionHead, Slider, SourceBadge } from '../ui';
+import { LibraryRail, RenameField, SectionHead, Slider, SourceBadge } from '../ui';
 
 const EASINGS: AnimEasing[] = ['spring', 'easeOut', 'easeInOut', 'easeIn', 'linear'];
 
@@ -27,30 +28,36 @@ export default function Animations() {
   const playKey = `${a.id}:${String(a.fade)}:${String(a.x)}:${String(a.y)}:${String(a.scale)}:${String(a.rotate)}:${a.easing}:${String(a.duration)}:${String(a.bounce)}:${String(replay)}`;
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* rail */}
-      <div className="w-64 shrink-0 border-r border-divider flex flex-col min-h-0">
-        <div className="px-4 pt-4 pb-2 shrink-0"><div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.designer.animations' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.designer.animationsSub' })}</div></div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 flex flex-col gap-1">
-          {d.anims.map((an) => (
-            <div key={an.id} onClick={() => { d.setActiveAnimId(an.id); }} className={`group rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${an.id === d.activeAnimId ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
-              <div className="flex items-center gap-2">
-                <RenameField value={an.name} onRename={(n) => { d.renameAnim(an.id, n); }} className="flex-1 min-w-0 text-sm text-title" />
-                {an.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeAnim(an.id); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
-              </div>
-              <div className="flex flex-wrap gap-1 mt-1">{animChips(an).slice(0, 3).map((c) => <span key={c} className="text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5">{c}</span>)}</div>
-            </div>
-          ))}
-        </div>
-        <div className="shrink-0 border-t border-divider p-2">
-          <button type="button" onClick={d.addAnim} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="text-muted" /> {translate({ key: 'workspaces.designer.newAnim' })}</button>
-        </div>
-      </div>
+    <div className={`flex flex-col md:flex-row h-full min-h-0`}>
+      <LibraryRail
+        title={translate({ key: 'workspaces.designer.animations' })}
+        sub={translate({ key: 'workspaces.designer.animationsSub' })}
+        addLabel={translate({ key: 'workspaces.designer.newAnim' })}
+        menuLabel={translate({ key: 'workspaces.designer.moreActions' })}
+        items={d.anims}
+        activeId={d.activeAnimId}
+        onSelect={(id) => { d.setActiveAnimId(id); }}
+        onRename={(id, n) => { d.renameAnim(id, n); }}
+        onAdd={d.addAnim}
+        rowBelow={(an) => <div className={`flex flex-wrap gap-1 mt-1`}>{animChips(an).slice(0, 3).map((c) => <span key={c} className={`text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5`}>{c}</span>)}</div>}
+        menuFor={(an) => {
+          const menu: PopMenuItem[] = [];
+          if (an.source !== 'seed') menu.push({ label: translate({ key: 'workspaces.designer.delete' }), icon: 'trash', danger: true, onClick: () => { d.removeAnim(an.id); } });
+          return menu;
+        }}
+      />
 
       {/* playground + editor */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-5 max-w-4xl">
-        <SectionHead icon="wave-square" title={a.name} sub={a.description || translate({ key: 'workspaces.designer.animationsSub' })}
-          right={<div className="flex items-center gap-2"><SourceBadge source={a.source} /><WsButton icon="rotate" onClick={() => { setReplay((r) => r + 1); }}>{translate({ key: 'workspaces.designer.replay' })}</WsButton>{/* #161 — save the animation to the library (survives reload). */}<WsButton variant="secondary" icon="check" onClick={() => { void d.saveAnimation().then((ok) => { if (ok) notify.success({ key: 'workspaces.designer.animSaved' }); else notify.error({ key: 'workspaces.designer.animSaveFailed' }); }); }}>{translate({ key: 'workspaces.designer.saveAnim' })}</WsButton></div>} />
+      <div className={`flex-1 min-h-0 overflow-y-auto p-4 md:p-6 flex flex-col gap-5 max-w-4xl`}>
+        <SectionHead icon="wave-square"
+          title={<RenameField value={a.name} onRename={(n) => { d.renameAnim(a.id, n); }} className={`min-w-0`} />}
+          sub={a.description || translate({ key: 'workspaces.designer.animationsSub' })}
+          right={<div className={`flex items-center gap-2`}>
+            <SourceBadge source={a.source} />
+            <WsButton variant="ghost" icon="arrows-rotate" onClick={() => { setReplay((r) => r + 1); }}>{translate({ key: 'workspaces.designer.replay' })}</WsButton>
+            {/* #161 — the section's one write: save the tuned animation to the library (survives reload). */}
+            <WsButton icon="check" onClick={() => { void d.saveAnimation().then((ok) => { if (ok) notify.success({ key: 'workspaces.designer.animSaved' }); else notify.error({ key: 'workspaces.designer.animSaveFailed' }); }); }}>{translate({ key: 'workspaces.designer.saveAnim' })}</WsButton>
+          </div>} />
 
         {/* stage */}
         <div className="rounded-2xl border border-container1-border bg-container1 p-8 flex items-center justify-center min-h-52 overflow-hidden">

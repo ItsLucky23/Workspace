@@ -1,19 +1,20 @@
 //? Designer › Styles — the "design skills" layer (Apple, Material, Brutalist, …). A style is the
 //? visual LANGUAGE around the colours: radius, elevation, borders, density, typography, motion. The
-//? showcase on the right is built from `--ds-*` CSS variables, so switching or editing a style
-//? re-shapes real sample components LIVE (under the active theme's colours). Manual editor for the
-//? simple knobs; the AI-generate hook lands in the next phase.
+//? showcase is built from `--ds-*` CSS variables, so switching or editing a style re-shapes real
+//? sample components LIVE (under the active theme's colours). Library rail (chips per style, delete
+//? behind a per-row menu, Dropdown on phone) + the showcase-first editor; AI generation happens in
+//? the page-level unified AI bar.
 
 import type { CSSProperties } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../../_components/Icon';
-import { WsButton } from '../../../_components/primitives';
+import { WsButton, type PopMenuItem } from '../../../_components/primitives';
 import { useDesigner } from '../state';
 import { themeVars } from '../themes';
 import { styleChips, styleVars, type BorderTreatment, type Density, type MotionFeel } from '../styles';
-import { FontPicker, RenameField, SectionHead, Slider, SourceBadge, inputCls } from '../ui';
+import { FontPicker, LibraryRail, RenameField, SectionHead, Slider, SourceBadge, inputCls } from '../ui';
 
 const BORDERS: BorderTreatment[] = ['none', 'hairline', 'solid', 'bold'];
 const DENSITIES: Density[] = ['compact', 'cozy', 'comfortable'];
@@ -31,30 +32,31 @@ export default function Styles() {
   const s = d.activeStyle;
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* rail */}
-      <div className="w-64 shrink-0 border-r border-divider flex flex-col min-h-0">
-        <div className="px-4 pt-4 pb-2 shrink-0"><div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.designer.styles' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.designer.stylesSub' })}</div></div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 flex flex-col gap-1">
-          {d.styles.map((st) => (
-            <div key={st.id} onClick={() => { d.setActiveStyleId(st.id); }} className={`group rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${st.id === d.activeStyleId ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
-              <div className="flex items-center gap-2">
-                <RenameField value={st.name} onRename={(n) => { d.renameStyle(st.id, n); }} className="flex-1 min-w-0 text-sm text-title" />
-                {st.source !== 'seed' && <button type="button" onClick={(e) => { e.stopPropagation(); d.removeStyle(st.id); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>}
-              </div>
-              <div className="flex flex-wrap gap-1 mt-1">{styleChips(st).slice(0, 3).map((c) => <span key={c} className="text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5">{c}</span>)}</div>
-            </div>
-          ))}
-        </div>
-        <div className="shrink-0 border-t border-divider p-2">
-          <button type="button" onClick={d.addStyle} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="plus" className="text-muted" /> {translate({ key: 'workspaces.designer.newStyle' })}</button>
-        </div>
-      </div>
+    <div className={`flex flex-col md:flex-row h-full min-h-0`}>
+      <LibraryRail
+        title={translate({ key: 'workspaces.designer.styles' })}
+        sub={translate({ key: 'workspaces.designer.stylesSub' })}
+        addLabel={translate({ key: 'workspaces.designer.newStyle' })}
+        menuLabel={translate({ key: 'workspaces.designer.moreActions' })}
+        items={d.styles}
+        activeId={d.activeStyleId}
+        onSelect={(id) => { d.setActiveStyleId(id); }}
+        onRename={(id, n) => { d.renameStyle(id, n); }}
+        onAdd={d.addStyle}
+        rowBelow={(st) => <div className={`flex flex-wrap gap-1 mt-1`}>{styleChips(st).slice(0, 3).map((c) => <span key={c} className={`text-[10px] rounded bg-container2 text-muted px-1.5 py-0.5`}>{c}</span>)}</div>}
+        menuFor={(st) => {
+          const menu: PopMenuItem[] = [];
+          if (st.source !== 'seed') menu.push({ label: translate({ key: 'workspaces.designer.delete' }), icon: 'trash', danger: true, onClick: () => { d.removeStyle(st.id); } });
+          return menu;
+        }}
+      />
 
       {/* showcase + editor */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-5 max-w-4xl">
-        <SectionHead icon="wand-magic-sparkles" title={s.name} sub={s.description || translate({ key: 'workspaces.designer.stylesSub' })}
-          right={<div className="flex items-center gap-2"><SourceBadge source={s.source} /><WsButton variant="secondary" icon="copy" onClick={() => { d.duplicateStyle(s.id); }}>{translate({ key: 'workspaces.designer.duplicate' })}</WsButton></div>} />
+      <div className={`flex-1 min-h-0 overflow-y-auto p-4 md:p-6 flex flex-col gap-5 max-w-4xl`}>
+        <SectionHead icon="wand-magic-sparkles"
+          title={<RenameField value={s.name} onRename={(n) => { d.renameStyle(s.id, n); }} className={`min-w-0`} />}
+          sub={s.description || translate({ key: 'workspaces.designer.stylesSub' })}
+          right={<div className={`flex items-center gap-2`}><SourceBadge source={s.source} /><WsButton variant="secondary" icon="copy" onClick={() => { d.duplicateStyle(s.id); }}>{translate({ key: 'workspaces.designer.duplicate' })}</WsButton></div>} />
 
         {/* live style-aware showcase (theme colours + style shape) */}
         <div className="rounded-2xl border border-container1-border overflow-hidden" style={{ ...themeVars(d.tokens), ...styleVars(s) }}>

@@ -388,6 +388,7 @@
       "start": "Début",
       "end": "Fin",
       "gain": "Volume",
+      "gainValue": "Volume : {{n}}×",
       "apply": "Enregistrer comme nouveau"
     },
     "imageEditor": {
@@ -417,6 +418,7 @@
       "saved": "Image modifiée enregistree."
     },
     "gallery": {
+      "importInspiration": "Importer une inspiration",
       "title": "Galerie de design",
       "subtitle": "Looks d'UI prêts à l'emploi — prévisualisez et appliquez une identité complète (palette, style, polices, animation), puis personnalisez.",
       "navHome": "Accueil",
@@ -497,6 +499,15 @@
       "invitesHeading": "Vos invitations"
     },
     "pipeline": {
+      "tabStages": "Étapes",
+      "tabAutomations": "Automatisations",
+      "stageActions": "Actions de l’étape",
+      "advanced": "Avancé",
+      "emptyTitle": "Voici le pipeline de votre projet",
+      "emptyBody": "Chaque ticket traverse ces étapes, chacune pilotée par sa propre IA dans son propre conteneur. Ajoutez votre première étape pour définir ce qui se passe en premier (p. ex. Refine ou Plan).",
+      "addStatus": "Ajouter un statut",
+      "emitDisclosure": "Ce que chaque étape doit émettre",
+      "automationsIntro": "Les automatisations réagissent aux événements du pipeline (un ticket créé, une étape terminée, un cron) et déclenchent une action — une notification, un démarrage d’étape, un agent. Créez votre premier déclencheur.",
       "systemPrompt": "Persona IA (system prompt)",
       "systemPromptHint": "L'identité de base + le style de raisonnement de l'agent de cette étape — superposé à vos instructions.",
       "systemPromptPlaceholder": "ex. Vous êtes un staff engineer produisant un plan d'implémentation rigoureux.",
@@ -1154,6 +1165,31 @@
       "scheduleBtn": "Planifier"
     },
     "content": {
+      "emptyTeach": "Voici ton studio de contenu — décris en un court brief ce que tu veux créer, et l'IA le fait passer par le script, les médias, le montage, la relecture et la publication. Crée ta première pièce pour commencer.",
+      "moreMenu": "Plus",
+      "moreGenerations": "Plus de générations",
+      "outputSettings": "Paramètres de sortie",
+      "toolsTitle": "Outils supplémentaires",
+      "toolsDesc": "Enregistreur de démo, analyse de vidéo de référence, vérification SEO et le compositeur de miniatures.",
+      "assetsEmptyTitle": "Rien de généré pour l'instant",
+      "assetsEmptyTeach": "Choisissez un style, décrivez ce que vous voulez et appuyez sur Générer la vidéo complète — l'IA écrit le script, le met en voix, construit les scènes et assemble le résultat. Chaque génération demande confirmation avant de dépenser de l'argent.",
+      "assetActions": "Actions sur la ressource",
+      "insightsTabPerformance": "Performance",
+      "insightsTabLinks": "Liens & A/B",
+      "perfEmptyTitle": "Rien à mesurer pour l'instant",
+      "perfEmptySub": "Dès que vous créez des contenus sur le tableau, leur progression et leur coût d'IA apparaissent ici.",
+      "linksEmptyTitle": "Aucun lien traçable pour l'instant",
+      "linksEmptySub": "Créez un lien traçable /l/<slug> pour n'importe quelle URL afin de compter les clics et de trouver votre gagnant A/B.",
+      "brandEmptySub": "Connectez d'abord un canal — vous pourrez ensuite écrire la voix de marque que l'IA utilise pour cette plateforme.",
+      "settingsIntro": "Apprenez votre marque à l'IA, puis gérez les styles, les chaînes et la publication.",
+      "tabBrand": "Marque & styles",
+      "tabChannels": "Chaînes & publication",
+      "tabAdmin": "Admin",
+      "brandEmptyTitle": "Apprenez votre marque à l'IA",
+      "stylesEmptyTeach": "Les styles sont des rendus réutilisables (un prompt système par fonctionnalité) que vos contenus choisissent par nom — créez votre premier style.",
+      "stylesMenu": "Actions de style",
+      "channelsEmptyTeach": "Une chaîne est une plateforme + une identité de marque où votre contenu est publié. Créez-en une pour commencer à planifier des contenus.",
+      "keysTeach": "Connectez une clé de fournisseur IA (stockée chiffrée, jamais réaffichée) pour activer la génération réelle — attention à l'avertissement de coût.",
       "title": "Contenu",
       "subtitle": "Contenu IA — du brief à une pièce téléchargeable et publiable.",
       "empty": "Pas encore de contenu",
@@ -1480,6 +1516,14 @@
       "thumbComposeAi": "Créer avec fond IA"
     },
     "knowledge": {
+      "emptyTeach": "Voici la carte de connaissances de votre espace de travail : chaque source de contexte, ticket et contenu apparaît comme un point, relié aux travaux associés. Ajoutez des sources ou créez des tickets et des contenus, puis actualisez pour voir les connexions se former.",
+      "hintTap": "Touchez un nœud pour le mettre en avant avec ses connexions.",
+      "typeSource": "Source",
+      "typeTicket": "Ticket",
+      "typePiece": "Contenu",
+      "connectedTo": "Relié à ({{count}})",
+      "noConnections": "Pas encore de connexions.",
+      "detailClose": "Fermer",
       "title": "Graphe de connaissances",
       "subtitle": "Comment vos sources, tickets et contenus sont liés.",
       "refresh": "Actualiser",
@@ -1495,6 +1539,18 @@
       "hint": "Cliquez sur un nœud pour le mettre en avant avec ses connexions."
     },
     "usage": {
+      "costValue": "€{{n}}",
+      "tabDelivery": "Livraison",
+      "tabPeople": "Personnes",
+      "pageEmptySub": "Cette page montrera combien de tokens vos étapes IA consomment — par jour, par ticket et par personne — dès qu'un ticket passe par le pipeline. Lancez un ticket sur le tableau pour voir vos premières données ici.",
+      "pageEmptyCta": "Aller au tableau",
+      "budgetsDisclosure": "Budgets et plafonds",
+      "capSingular": "plafond",
+      "capPlural": "plafonds",
+      "capAlertStrip": "Les dépenses approchent du plafond",
+      "capAlertView": "Voir les budgets",
+      "openCountHint": "{{count}} ouverts",
+      "doneCountHint": "{{count}} terminés",
       "title": "Utilisation",
       "subtitle": "Volume de tokens et temps · exécuté sur le CLI Claude Pro Max (pas d’API facturée)",
       "activityTitle": "Activité · 7 derniers jours",
@@ -1567,6 +1623,13 @@
       "preview": "Aperçu"
     },
     "ticket": {
+      "detailsDisclosure": "Détails",
+      "settingsDisclosure": "Paramètres du ticket",
+      "codeDiffMode": "Vue diff",
+      "noTerminalStageSub": "Cette étape n'exécute aucun processus, il n'y a donc pas de terminal.",
+      "noActivitySub": "Tout ce que l'agent et votre équipe font sur ce ticket apparaît ici.",
+      "noLinksTeachSub": "Les tickets liés apparaissent ici — l'IA en suggère automatiquement.",
+      "sourcesCount": "{{count}} sources",
       "tabOverview": "Aperçu",
       "tabTerminal": "Terminal",
       "tabFiles": "Fichiers et réfs",
@@ -1658,6 +1721,9 @@
       "serviceRoot": "Projet entier"
     },
     "terminals": {
+      "subtitle": "Un shell en direct dans chaque conteneur de ticket actif — observez l'IA ou intervenez vous-même.",
+      "emptyBody": "Les terminaux vous donnent un shell en direct dans chaque conteneur de ticket actif. Rien ne tourne pour le moment — activez une étape d'un ticket (ou démarrez un conteneur depuis la page Pipeline) et son terminal apparaîtra ici automatiquement en quelques secondes.",
+      "emptyHint": "Ouvrir la page Pipeline",
       "restart": "Redémarrer",
       "clear": "Effacer",
       "rename": "Renommer",
@@ -1684,6 +1750,13 @@
       "resizeTitle": "Glisser pour ajuster la hauteur"
     },
     "sources": {
+      "subtitle": "Les documents de contexte sont chargés en entier avant chaque exécution de l'IA · les skills et outils MCP sont appelés à la demande.",
+      "maintenance": "Maintenance",
+      "codeIndex": "Index du code",
+      "ragNotIndexedHint": "Liez un dépôt et lancez « Réindexer le code » depuis le menu Maintenance pour rendre votre code consultable par l'IA.",
+      "emptyDocsSub": "Les sources sont ce que l'IA de votre workspace lit avant de travailler. Téléversez une spec ou des notes (.md/.txt), ou liez un dépôt et scannez-le pour générer des documents automatiquement.",
+      "emptySkillsTitle": "Pas encore de skills",
+      "emptySkillsSub": "Les skills et outils MCP sont des capacités que l'IA peut appeler à la demande. Ils apparaissent ici une fois le workspace indexé.",
       "noStages": "Aucune étape",
       "summary": "Résumé",
       "source": "Source",
@@ -1791,6 +1864,33 @@
       "urgentHint": "Ignore la limite de capacité · nécessite toujours une approbation pour fusionner"
     },
     "studio": {
+      "marketingIntro": "Marketeur IA : transformez votre brief produit en supports marketing prêts à l'emploi.",
+      "marketingEmptyTitle": "Le marketing commence par un brief produit",
+      "marketingEmptyBody": "Quelques lignes sur ce que vous vendez et à qui. Le marketeur IA en fait des textes, des e-mails, des publicités, un calendrier social et plus encore.",
+      "createFirstBrief": "Créer votre premier brief",
+      "noArtifactsTitle": "Rien n'a encore été généré pour ce brief",
+      "noArtifactsBody": "Choisissez un type d'asset ci-dessus — chaque résultat apparaît ici en aperçu en direct, à affiner, régénérer ou envoyer vers Contenu.",
+      "generateHeading": "Créer un support marketing",
+      "refineToggle": "Instructions d'affinage",
+      "refineActive": "Appliqué à chaque génération",
+      "assetsHeading": "Assets générés",
+      "briefMenu": "Options du brief",
+      "artifactMenu": "Options de l'asset",
+      "deleteBrief": "Supprimer le brief",
+      "tabAssets": "Ressources",
+      "tabBrand": "Marque",
+      "brandColours": "{{count}} couleurs",
+      "emptyTitle": "Décrivez votre produit une fois — générez tout",
+      "emptyBody": "Studio transforme un brief produit court en ressources design et marketing générées par l'IA — landing pages, kits de marque, textes, publicités et plus. Commencez par décrire votre produit.",
+      "emptyBriefTitle": "Rien n'a encore été généré pour ce brief",
+      "emptyBriefBody": "Choisissez un type de ressource ci-dessus (essayez Landing page ou Kit de marque) et l'IA en rédigera une version avec un aperçu en direct.",
+      "emptyBriefBodyMarketing": "Choisissez un type de ressource ci-dessus (essayez Texte marketing ou un Jeu de publicités) et l'IA en rédigera une version avec un aperçu en direct.",
+      "generateHint": "Choisissez un type de ressource — l'IA le rédige à partir de ce brief, avec un aperçu en direct.",
+      "refineTitle": "Instructions d'affinage",
+      "artifactsTitle": "Ressources générées",
+      "briefActions": "Actions du brief",
+      "artifactActions": "Actions de la ressource",
+      "brandActions": "Actions du kit de marque",
       "briefs": "Briefs",
       "newBrief": "Nouveau brief",
       "noBriefs": "Aucun brief.",
@@ -1886,6 +1986,8 @@
       "publishedLive": "Publication en cours — l’URL apparaît sous peu."
     },
     "uiReview": {
+      "emptyTitle": "Pas encore de retours UI.",
+      "emptySub": "Quand vous ou l'IA signalez un écran à retravailler, il arrive ici et peut devenir un ticket de refonte.",
       "title": "Demander une revue d'UI",
       "desc": "Signalez ce qui cloche — téléversez des captures, cochez les problèmes, ajoutez des notes. Cela devient un ticket de refonte.",
       "inboxTitle": "Boîte de revues ({{n}})",
@@ -1908,6 +2010,15 @@
       "sent": "Envoyé"
     },
     "designer": {
+      "feedbackSub": "Demandez une revue d'UI et suivez-la — chaque demande arrive ici dans la boîte de réception et peut devenir un ticket de refonte.",
+      "noSystemTitle": "Aucun design system n'est encore actif dans ce projet.",
+      "noSystemSub": "Choisissez un look dans la galerie ou générez un thème, puis « Utiliser dans le projet » pour que l'agent de code construise dans votre image.",
+      "browseLooks": "Parcourir les looks",
+      "moreActions": "Plus d'actions",
+      "delete": "Supprimer",
+      "stopCompare": "Arrêter la comparaison",
+      "applied": "Jetons de design appliqués.",
+      "applyFailed": "Impossible d'appliquer les jetons.",
       "title": "Designer",
       "intro": "Un seul endroit pour garder toute l'UI de votre produit cohérente. Parcourez chaque composant, changez de thème et voyez tout se redessiner instantanément pour choisir ce qui convient.",
       "themes": "Thèmes",
@@ -1972,6 +2083,7 @@
       "tagline": "See, compare and edit every part of your product's visual language.",
       "previewingWith": "Previewing with",
       "section": {
+        "feedback": "Retours",
         "gallery": "Galerie",
         "components": "Components",
         "styles": "Styles",
@@ -2093,6 +2205,11 @@
       "applyTokens": "Apply tokens"
     },
     "interviewer": {
+      "emptyTitle": "Posez-moi toutes vos questions sur ce code",
+      "emptySub": "J'ai le contexte complet du dépôt — je peux expliquer comment les choses fonctionnent, suggérer des améliorations ou élaborer un plan pour une nouvelle fonctionnalité. Choisissez une suggestion ci-dessous ou tapez votre propre question.",
+      "generateTitle": "Générer des idées d'amélioration",
+      "generateHint": "L'IA analyse le dépôt et dépose ses conclusions ici sous forme de cartes à transformer en tickets. Limitez-la éventuellement à un domaine — laissez vide pour analyser tout le projet.",
+      "findingsIntro": "Les idées que l'IA a trouvées dans votre dépôt — conservées jusqu'à ce que vous en fassiez un ticket ou que vous les rejetiez.",
       "title": "Interviewer",
       "generateNow": "Générer des idées",
       "focusPlaceholder": "Focus (facultatif) — p. ex. le flux d'authentification",
@@ -2115,12 +2232,23 @@
       "dismiss": "Ignorer"
     },
     "scheduledPosts": {
+      "emptyTitle": "Rien de planifié pour l'instant",
+      "emptyHint": "Cette page se remplit automatiquement. Planifiez une publication sur un contenu — choisissez une plateforme et une heure future — et elle apparaîtra ici, groupée par jour.",
+      "goToContent": "Aller au contenu",
+      "whyFailed": "Pourquoi ça a échoué",
+      "attempts": "Tentatives : {{count}}",
       "title": "Publications planifiées",
       "tagline": "Publications programmées pour une heure définie.",
       "empty": "Aucune publication planifiée. Planifiez une publication depuis un contenu pour la voir ici.",
       "failed": "failed"
     },
     "scheduled": {
+      "emptyTitle": "Rien de planifié pour l'instant",
+      "emptySub": "Une tâche planifiée s'exécute sur un minuteur — laissez un rôle IA (comme l'Interviewer) travailler pour vous chaque matin, ou envoyez-vous une notification récurrente.",
+      "emptyCta": "Nouvelle tâche planifiée",
+      "advanced": "Avancé",
+      "taskMenu": "Options de la tâche",
+      "delete": "Supprimer la tâche",
       "title": "Scheduled tasks",
       "tagline": "Run an AI role or a notification on a schedule.",
       "new": "New task",
@@ -2208,6 +2336,10 @@
       "deleteConfirmBody": "Supprimer « {{name}} » ? Cette action est irréversible."
     },
     "board": {
+      "filterSprint": "Sprint",
+      "moreActions": "Plus d'actions",
+      "newTicketOptions": "Options",
+      "emptyStagesTeach": "Ce tableau montre vos tickets qui avancent à travers les étapes du pipeline — les étapes apparaissent dès que l'espace de travail est configuré.",
       "startWithAi": "Démarrer avec l'IA tout de suite",
       "openTicket": "Ouvrir le ticket",
       "openTerminal": "Ouvrir le terminal",
@@ -2256,6 +2388,12 @@
       "clearFilters": "Effacer les filtres"
     },
     "activity": {
+      "sub": "Tout ce qui se passe dans vos tickets, en direct — cliquez sur un identifiant de ticket pour l'ouvrir.",
+      "emptyTeachTitle": "Rien ici pour l'instant",
+      "emptyTeachSub": "L'activité est le journal en direct de tout ce qui se passe dans vos tickets : travail de l'IA, commandes, modifications de fichiers, merges et commentaires. Dès qu'un ticket lance son pipeline, les événements apparaissent ici en temps réel.",
+      "openBoard": "Ouvrir le tableau",
+      "emptyFilterTitle": "Aucun événement {{f}} pour l'instant",
+      "resetFilter": "Revenir à Tout",
       "title": "Activité",
       "live": "en direct",
       "filterAll": "Tout",
@@ -2274,6 +2412,15 @@
       "labelCi": "CI"
     },
     "backlog": {
+      "subtitle": "Tous les tickets de l'espace de travail, groupés par sprint.",
+      "filters": "Filtres",
+      "personFilterLabel": "Personne",
+      "selectTickets": "Sélectionner des tickets",
+      "moreActions": "Plus d'actions",
+      "sprintOptions": "Options du sprint",
+      "actions": "Actions",
+      "emptyTeachTitle": "Voici votre backlog",
+      "emptyTeachSub": "Chaque ticket de l'espace de travail se trouve ici, groupé par sprint. Rédigez un court ticket et le pipeline (affiner → planifier → implémenter) prend le relais.",
       "title": "Backlog",
       "countOfTotal": "{{count}} sur {{total}}",
       "done": "Terminé",
@@ -2365,6 +2512,10 @@
       "offlineRetry": "Réessayer"
     },
     "documents": {
+      "useTemplate": "Utiliser un modèle",
+      "emptyTeach": "Les documents sont les textes rédigés par l'IA de votre espace de travail — specs, plans, briefs, feuilles. Saisissez un titre ci-dessus et cliquez sur Créer ; dans l'éditeur, l'IA rédige et vous approuvez chaque modification.",
+      "emptyAction": "Créez votre premier document",
+      "docActions": "Actions du document",
       "title": "Documents",
       "subtitle": "Documents rédigés par l'IA : specs, plans, briefs et feuilles — vous validez chaque modification de l'IA.",
       "newPlaceholder": "Titre du nouveau document…",
@@ -2423,6 +2574,7 @@
       "draftDiff": "Diff",
       "draftPreview": "Preview",
       "historyTitle": "History",
+      "revisionMeta": "{{time}} · {{note}}",
       "restore": "Restaurer",
       "restoreConfirmTitle": "Restore this version?",
       "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first.",
@@ -2448,6 +2600,7 @@
       "useLive": "utiliser le site en ligne"
     },
     "comments": {
+      "replyNote": "L'IA ne rédige un brouillon de réponse que si tu le demandes — l'envoi reste toujours ton clic.",
       "tab": "Commentaires",
       "noChannel": "Sans chaîne",
       "refresh": "Actualiser",
@@ -2525,6 +2678,11 @@
       "developer": "Développeur"
     },
     "answers": {
+      "addNote": "Ajouter une note",
+      "details": "Détails",
+      "stageLabel": "Étape : {{s}}",
+      "emptyTeach": "Répondez directement sur la carte — inutile de chercher le ticket.",
+      "viewBoard": "Voir le tableau",
       "heading": "Réponses",
       "sub": "Tout ce qui vous attend, au même endroit.",
       "emptyTitle": "Rien ne vous attend",

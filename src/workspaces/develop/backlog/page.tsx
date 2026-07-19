@@ -1,10 +1,11 @@
-//? Workspaces — Backlog. All tickets grouped into collapsible sprint sections
-//? (one big collection you can open/close per sprint). Search + quick-filter
-//? segments + a per-person filter (creator OR assignee). The first linked
-//? avatar is the creator, the second the assignee. Checkboxes are hidden until
-//? you enter Select mode (bulk action bar). Renders live snapshot rows.
+//? intent: The Backlog — every ticket in the workspace in one grouped list (collapsible
+//? sprint sections + a virtual no-sprint "Backlog" group). Find tickets (search, quick
+//? filters, person filter behind a Filters disclosure), create them (ONE primary "New
+//? ticket" action — also per sprint and from the teaching empty state), and bulk-manage
+//? a selection via the bottom bar. Sprint management + select mode live behind small
+//? overflow menus so the first screen stays simple. Renders live snapshot rows.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -12,13 +13,15 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
+import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { Popover, SPRING_SOFT } from '../../_components/motion';
-import { AvatarStack, EmptyState, LabelChip, Segmented, StatusPill, useClickAway, WsButton } from '../../_components/primitives';
+import { SPRING_SOFT } from '../../_components/motion';
+import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-import type { Member, Sprint, Ticket, TicketStatus } from '../../_data/types';
+import type { Ticket, TicketStatus } from '../../_data/types';
+import { BulkActionsBar, type BulkPicker, type PickerItem } from './BulkBar';
+import { NewBacklogTicketForm, SprintEditForm, SprintForm } from './forms';
 
 type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
 
@@ -42,143 +45,13 @@ function relativeTime(iso: string | undefined): string {
 
 export const template = 'workspaces';
 
-//? #1 — edit a sprint: activate/deactivate, rename, set/clear the start+end dates. Opened via
-//? menuHandler → `sprint-edit` op. Only changed fields are sent.
-function SprintEditForm({ sprint, onSave }: { sprint: { id: string; name: string; active: boolean; start?: string | null; end?: string | null }; onSave: (input: { sprintId: string; name?: string; active?: boolean; startAt?: string; endAt?: string }) => void }) {
-  const translate = useTranslator();
-  const [name, setName] = useState(sprint.name);
-  const [active, setActive] = useState(sprint.active);
-  const [startAt, setStartAt] = useState(sprint.start ?? '');
-  const [endAt, setEndAt] = useState(sprint.end ?? '');
-  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
-  const submit = () => {
-    if (name.trim().length === 0) return;
-    onSave({ sprintId: sprint.id, name: name.trim(), active, startAt, endAt });
-    void menuHandler.close();
-  };
-  return (
-    <div className="w-full flex flex-col gap-3 p-5">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.editSprint' })}</div>
-      <input value={name} onChange={(e) => { setName(e.target.value); }} className={fieldCls} />
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.sprintStart' })}</span><input type="date" value={startAt} onChange={(e) => { setStartAt(e.target.value); }} className={fieldCls} /></label>
-        <label className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.sprintEnd' })}</span><input type="date" value={endAt} onChange={(e) => { setEndAt(e.target.value); }} className={fieldCls} /></label>
-      </div>
-      <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
-        <input type="checkbox" checked={active} onChange={(e) => { setActive(e.target.checked); }} className="accent-primary" />
-        {translate({ key: 'workspaces.backlog.sprintSetActive' })}
-      </label>
-      <div className="flex items-center justify-end gap-2">
-        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="check" disabled={name.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.backlog.sprintSaveEdit' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
-//? Minimal create-sprint menu (opened via menuHandler → `sprint-create` op). Name
-//? input auto-focuses; the new sprint starts inactive (the user activates it later).
-function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
-  const translate = useTranslator();
-  const [name, setName] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { inputRef.current?.focus(); }, []);
-  const submit = () => { const n = name.trim(); if (!n) return; onCreate(n); void menuHandler.close(); };
-  return (
-    <div className="w-full flex flex-col gap-3 p-5">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.newSprint' })}</div>
-      <input
-        ref={inputRef}
-        value={name} onChange={(e) => { setName(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder={translate({ key: 'workspaces.backlog.sprintNamePlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
-      <div className="flex items-center justify-end gap-2">
-        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
-//? Create-ticket menu (opened via menuHandler → `quick-add` op). Title auto-focuses;
-//? the sprint picker chooses the target sprint or "Backlog" (no sprint). New tickets
-//? always enter at `unrefined` (Conductor-enforced). `quickAdd` + `sprints` come in as
-//? props since the menu renders outside the Workspaces provider. `initialSprintId`
-//? preselects a sprint when opened from a sprint's own "add ticket" row.
-function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprintId }: {
-  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => void;
-  sprints: Sprint[];
-  members: Member[];
-  initialSprintId?: string;
-}) {
-  const translate = useTranslator();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [labelsText, setLabelsText] = useState('');
-  const [sprintId, setSprintId] = useState(initialSprintId ?? 'backlog');
-  const [assigneeId, setAssigneeId] = useState('unassigned');
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { inputRef.current?.focus(); }, []);
-  const sprintItems: DropdownItem[] = [
-    { id: 'backlog', value: 'backlog', item: translate({ key: 'workspaces.backlog.title' }) },
-    ...sprints.map((s) => ({ id: s.id, value: s.id, item: s.name })),
-  ];
-  const assigneeItems: DropdownItem[] = [
-    { id: 'unassigned', value: 'unassigned', item: translate({ key: 'workspaces.board.unassigned' }) },
-    ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
-  ];
-  const submit = () => {
-    const t = title.trim();
-    if (!t) return;
-    const labels = labelsText.split(',').map((l) => l.trim()).filter((l) => l.length > 0);
-    quickAdd({
-      title: t,
-      sprintId: sprintId === 'backlog' ? undefined : sprintId,
-      ...(description.trim().length > 0 ? { description: description.trim() } : {}),
-      ...(labels.length > 0 ? { labels } : {}),
-      ...(assigneeId === 'unassigned' ? {} : { assigneeId }),
-    });
-    void menuHandler.close();
-  };
-  return (
-    <div className="w-full flex flex-col gap-3 p-5">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.backlog.newTicket' })}</div>
-      <input
-        ref={inputRef}
-        value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder={translate({ key: 'workspaces.backlog.ticketTitlePlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
-      <textarea
-        value={description} onChange={(e) => { setDescription(e.target.value); }}
-        placeholder={translate({ key: 'workspaces.ticket.addDescriptionPlaceholder' })}
-        rows={3}
-        className="resize-y px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-common focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
-      <div className="flex gap-2">
-        <Dropdown size="md" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
-        <Dropdown size="md" value={assigneeItems.find((a) => a.id === assigneeId)} items={assigneeItems} onChange={(it) => { setAssigneeId(String(it.id)); }} />
-      </div>
-      <input
-        value={labelsText} onChange={(e) => { setLabelsText(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder={translate({ key: 'workspaces.backlog.labelsPlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
-      <div className="flex items-center justify-end gap-2">
-        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
 export default function Backlog() {
   const translate = useTranslator();
   const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, editSprint, quickAdd } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>(() => Object.fromEntries(sprints.map((s) => [s.id, true])));
@@ -217,6 +90,13 @@ export default function Backlog() {
     ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
   ];
 
+  const quickOptions: { id: Quick; label: string }[] = [
+    { id: 'all', label: translate({ key: 'workspaces.backlog.filterAll' }) },
+    { id: 'unrefined', label: translate({ key: 'workspaces.backlog.filterUnrefined' }) },
+    { id: 'needs-input', label: translate({ key: 'workspaces.backlog.filterNeedsInput' }) },
+    { id: 'done', label: translate({ key: 'workspaces.backlog.done' }) },
+  ];
+
   //? Bulk action bar (13) — picker items resolve against the current `selected`
   //? set, then apply the [control-API] bulk op + reset the selection.
   const selectedIds = [...selected];
@@ -239,53 +119,120 @@ export default function Backlog() {
     { label: translate({ key: 'workspaces.backlog.title' }), onClick: () => { bulkSprint(selectedIds, ''); finishBulk(); } },
     ...sprints.filter((s) => s.id !== 'backlog').map((s) => ({ label: s.name, onClick: () => { bulkSprint(selectedIds, s.id); finishBulk(); } })),
   ];
+  const pickers: BulkPicker[] = [
+    { icon: 'diagram-project', label: translate({ key: 'workspaces.backlog.move' }), items: moveItems },
+    { icon: 'circle-check', label: translate({ key: 'workspaces.backlog.status' }), items: statusItems },
+    { icon: 'users', label: translate({ key: 'workspaces.backlog.assign' }), items: assignItems },
+    { icon: 'calendar-day', label: translate({ key: 'workspaces.backlog.sprint' }), items: sprintItems },
+  ];
+  //? Archive is destructive — the menuHandler.confirm gate stays in front of the op
+  //? on BOTH the inline (sm+) button and the phone "Actions" popover.
+  const archiveSelected = () => {
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.backlog.archiveConfirmTitle', params: [{ key: 'count', value: String(selected.size) }] }),
+      content: translate({ key: 'workspaces.backlog.archiveConfirmContent' }),
+    }).then((ok) => { if (ok) { bulkArchive(selectedIds); finishBulk(); } });
+  };
+
+  //? Secondary/rare actions live behind the header overflow menu — the header keeps
+  //? ONE dominant primary action ("New ticket"). Select mode is entered here; leaving
+  //? it uses the visible "Done" button that appears while it is on.
+  const overflowItems: PopMenuItem[] = [
+    { label: translate({ key: 'workspaces.backlog.newSprint' }), icon: 'calendar-day', onClick: openNewSprint },
+    ...(selectMode ? [] : [{ label: translate({ key: 'workspaces.backlog.selectTickets' }), icon: 'circle-check', onClick: () => { setSelectMode(true); setSelected(new Set()); } }]),
+  ];
+
+  //? The quick segment counts as an active filter too: at phone width it lives INSIDE
+  //? the panel, so the trigger must light up even when the panel is closed.
+  const filtersActive = person !== 'all' || quick !== 'all';
 
   return (
-    <div className="relative flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.backlog.title' })}</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted hidden sm:inline">{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
+    <div className={`relative flex flex-col h-full min-h-0`}>
+      <div className={`flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
+        <div className={`min-w-0`}>
+          <div className={`flex items-baseline gap-2 min-w-0`}>
+            <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.backlog.title' })}</h1>
+            <span className={`text-sm text-muted whitespace-nowrap`}>{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
+          </div>
+          <p className={`hidden md:block text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.backlog.subtitle' })}</p>
+        </div>
+        <div className={`flex items-center gap-2 shrink-0`}>
+          {selectMode && <WsButton variant="secondary" icon="check" onClick={() => { setSelectMode(false); setSelected(new Set()); }}>{translate({ key: 'workspaces.backlog.done' })}</WsButton>}
           <WsButton icon="plus" onClick={() => { openNewTicket(); }}>{translate({ key: 'workspaces.backlog.newTicket' })}</WsButton>
-          <WsButton variant="secondary" icon="plus" onClick={openNewSprint}>{translate({ key: 'workspaces.backlog.newSprint' })}</WsButton>
-          <WsButton variant={selectMode ? 'primary' : 'secondary'} icon="circle-check" onClick={() => { setSelectMode((m) => !m); setSelected(new Set()); }}>{selectMode ? translate({ key: 'workspaces.backlog.done' }) : translate({ key: 'workspaces.backlog.select' })}</WsButton>
+          <PopMenu
+            ariaLabel={translate({ key: 'workspaces.backlog.moreActions' })}
+            items={overflowItems}
+            triggerClass={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer`}
+          />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 pb-3">
-        <div className="flex items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 min-w-52">
-          <Icon name="magnifying-glass" className="text-muted" />
-          <input value={q} onChange={(e) => { setQ(e.target.value); }} placeholder={translate({ key: 'workspaces.backlog.searchPlaceholder' })} className="bg-transparent text-sm text-title flex-1 focus:outline-none" />
+      {/* Search stays visible everywhere; the person filter (and, at phone width, the
+          quick-filter segments) sit behind the Filters disclosure to keep row one calm. */}
+      <div className={`flex flex-col gap-2 px-4 md:px-6 pb-3`}>
+        <div className={`flex items-center gap-2`}>
+          <div className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 flex-1 sm:flex-initial sm:w-64`}>
+            <Icon name="magnifying-glass" className={`text-muted`} />
+            <input value={q} onChange={(e) => { setQ(e.target.value); }} placeholder={translate({ key: 'workspaces.backlog.searchPlaceholder' })} className={`bg-transparent text-sm text-title flex-1 min-w-0 focus:outline-none`} />
+          </div>
+          <div className={`hidden sm:block`}>
+            <Segmented<Quick> value={quick} onChange={setQuick} options={quickOptions} />
+          </div>
+          <IconButton icon="filter" title={translate({ key: 'workspaces.backlog.filters' })} active={filtersOpen || filtersActive} onClick={() => { setFiltersOpen((o) => !o); }} />
         </div>
-        <Segmented<Quick>
-          value={quick} onChange={setQuick}
-          options={[{ id: 'all', label: translate({ key: 'workspaces.backlog.filterAll' }) }, { id: 'unrefined', label: translate({ key: 'workspaces.backlog.filterUnrefined' }) }, { id: 'needs-input', label: translate({ key: 'workspaces.backlog.filterNeedsInput' }) }, { id: 'done', label: translate({ key: 'workspaces.backlog.done' }) }]}
-        />
-        <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => { setPerson(String(it.id)); }} />
+        {filtersOpen && (
+          <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-container1-border bg-container1 px-3 py-2.5`}>
+            <div className={`sm:hidden`}>
+              <Segmented<Quick> value={quick} onChange={setQuick} options={quickOptions} />
+            </div>
+            <div className={`flex items-center gap-2`}>
+              <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.backlog.personFilterLabel' })}</span>
+              <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => { setPerson(String(it.id)); }} />
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-24">
-        {/* min-width keeps every row + the collapse toggles from compressing; the
-            area scrolls horizontally instead when the pane gets narrow. */}
-        <div className="flex flex-col gap-3 min-w-[44rem]">
-          {filtered.length === 0 && <EmptyState icon="list-check" title={translate({ key: 'workspaces.backlog.emptyTitle' })} sub={translate({ key: 'workspaces.backlog.emptySub' })} />}
+      <div className={`flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-24`}>
+        <div className={`flex flex-col gap-3`}>
+          {/* Teaching empty state: the workspace has NO tickets at all — say what this
+              place is for and hand over the primary action right there. */}
+          {tickets.length === 0 && (
+            <EmptyState
+              icon="list-check"
+              title={translate({ key: 'workspaces.backlog.emptyTeachTitle' })}
+              sub={translate({ key: 'workspaces.backlog.emptyTeachSub' })}
+              action={<WsButton icon="plus" onClick={() => { openNewTicket(); }}>{translate({ key: 'workspaces.backlog.newTicket' })}</WsButton>}
+            />
+          )}
+          {tickets.length > 0 && filtered.length === 0 && (
+            <EmptyState icon="magnifying-glass" title={translate({ key: 'workspaces.backlog.emptyTitle' })} sub={translate({ key: 'workspaces.backlog.emptySub' })} />
+          )}
           {filtered.length > 0 && groups.map(({ sprint, rows }) => {
             const open = openSprints[sprint.id] ?? true;
             return (
-              <div key={sprint.id} className="rounded-2xl border border-container1-border bg-container1 overflow-hidden">
-                <div className="w-full flex items-center hover:bg-container1-hover transition-colors">
+              <div key={sprint.id} className={`rounded-2xl border border-container1-border bg-container1`}>
+                <div className={`w-full flex items-center rounded-t-2xl hover:bg-container1-hover transition-colors ${open ? '' : 'rounded-b-2xl'}`}>
                   <button type="button" onClick={() => { setOpenSprints((p) => ({ ...p, [sprint.id]: !open })); }}
-                    className="flex-1 min-w-0 flex items-center justify-between gap-3 px-4 h-12 cursor-pointer">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className="inline-flex w-4 justify-center text-muted shrink-0"><Icon name="angle-down" /></motion.span>
-                      <span className="text-sm font-semibold text-title whitespace-nowrap">{sprint.name}</span>
-                      {sprint.start && <span className="text-xs text-muted whitespace-nowrap">{sprint.start}–{sprint.end}</span>}
-                      {sprint.active && <span className="shrink-0 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-medium">{translate({ key: 'workspaces.backlog.sprintActive' })}</span>}
+                    className={`flex-1 min-w-0 flex items-center justify-between gap-3 px-4 h-12 cursor-pointer`}>
+                    <span className={`flex items-center gap-2 min-w-0`}>
+                      <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className={`inline-flex w-4 justify-center text-muted shrink-0`}><Icon name="angle-down" /></motion.span>
+                      <span className={`text-sm font-semibold text-title whitespace-nowrap`}>{sprint.name}</span>
+                      {sprint.start && <span className={`hidden sm:inline text-xs text-muted whitespace-nowrap`}>{sprint.start}–{sprint.end}</span>}
+                      {sprint.active && <span className={`shrink-0 rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[11px] font-medium`}>{translate({ key: 'workspaces.backlog.sprintActive' })}</span>}
                     </span>
-                    <span className="shrink-0 rounded-full bg-container2 px-2 text-xs text-muted">{rows.length}</span>
+                    <span className={`shrink-0 rounded-full bg-container2 px-2 text-xs text-muted`}>{rows.length}</span>
                   </button>
-                  {/* #1 — edit a sprint (activate / rename / dates). Not on the synthetic Backlog group. */}
-                  {sprint.id !== 'backlog' && <button type="button" onClick={() => { void menuHandler.open(<SprintEditForm sprint={sprint} onSave={editSprint} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }} title={translate({ key: 'workspaces.backlog.editSprint' })} className="px-3 h-12 flex items-center text-muted hover:text-title cursor-pointer shrink-0"><Icon name="pen" /></button>}
+                  {/* #1 — edit a sprint (activate / rename / dates): relocated from an always-visible
+                      pen icon into a small per-sprint overflow menu. Not on the synthetic Backlog group. */}
+                  {sprint.id !== 'backlog' && (
+                    <div className={`pr-2 shrink-0 flex items-center`}>
+                      <PopMenu
+                        ariaLabel={translate({ key: 'workspaces.backlog.sprintOptions' })}
+                        items={[{ label: translate({ key: 'workspaces.backlog.editSprint' }), icon: 'gear', onClick: () => { void menuHandler.open(<SprintEditForm sprint={sprint} onSave={editSprint} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } }]}
+                      />
+                    </div>
+                  )}
                 </div>
                 <AnimatePresence initial={false}>
                   {open && (
@@ -295,14 +242,14 @@ export default function Backlog() {
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ type: 'spring', duration: 0.34, bounce: 0 }}
-                      className="overflow-hidden border-t border-divider"
+                      className={`overflow-hidden rounded-b-2xl border-t border-divider`}
                     >
-                      {rows.length === 0 && <div className="px-4 py-4 text-sm text-muted text-center">{translate({ key: 'workspaces.backlog.noTickets' })}</div>}
+                      {rows.length === 0 && <div className={`px-4 py-4 text-sm text-muted text-center`}>{translate({ key: 'workspaces.backlog.noTickets' })}</div>}
                       {rows.map((t) => (
                         <Row key={t.id} ticket={t} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
                       ))}
                       <button type="button" onClick={() => { openNewTicket(sprint.id === 'backlog' ? undefined : sprint.id); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors">
+                        className={`w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors`}>
                         <Icon name="plus" /> {translate({ key: 'workspaces.backlog.addTicket' })}
                       </button>
                     </motion.div>
@@ -311,28 +258,29 @@ export default function Backlog() {
               </div>
             );
           })}
+          {/* "New sprint" also lives here as a discoverable row at the end of the group
+              list (same op as the overflow-menu entry). */}
+          {filtered.length > 0 && (
+            <button type="button" onClick={openNewSprint}
+              className={`w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-container1-border px-4 py-3 text-sm text-muted hover:text-title hover:bg-container1 cursor-pointer transition-colors`}>
+              <Icon name="plus" /> {translate({ key: 'workspaces.backlog.newSprint' })}
+            </button>
+          )}
         </div>
       </div>
 
       {selectMode && selected.size > 0 && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-4 z-20 flex items-center gap-1 rounded-2xl border border-container1-border bg-container1 shadow-lg px-2 py-1.5">
-          <span className="px-2 text-sm text-title">{translate({ key: 'workspaces.backlog.selectedCount', params: [{ key: 'count', value: String(selected.size) }] })}</span>
-          <div className="w-px h-5 bg-divider mx-1" />
-          <BulkPickerButton icon="diagram-project" label={translate({ key: 'workspaces.backlog.move' })} items={moveItems} />
-          <BulkPickerButton icon="circle-check" label={translate({ key: 'workspaces.backlog.status' })} items={statusItems} />
-          <BulkPickerButton icon="users" label={translate({ key: 'workspaces.backlog.assign' })} items={assignItems} />
-          <BulkPickerButton icon="calendar-day" label={translate({ key: 'workspaces.backlog.sprint' })} items={sprintItems} />
-          <BarBtn
-            icon="box-archive" label={translate({ key: 'workspaces.backlog.archive' })} danger
-            onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.backlog.archiveConfirmTitle', params: [{ key: 'count', value: String(selected.size) }] }), content: translate({ key: 'workspaces.backlog.archiveConfirmContent' }) }).then((ok) => { if (ok) { bulkArchive(selectedIds); finishBulk(); } }); }}
-          />
-          <button type="button" onClick={() => { setSelected(new Set()); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1"><Icon name="xmark" /></button>
-        </div>
+        <BulkActionsBar count={selected.size} pickers={pickers} onArchive={archiveSelected} onClear={() => { setSelected(new Set()); }} />
       )}
     </div>
   );
 }
 
+//? One ticket row. Desktop keeps the progressive columns (stage at lg+, status at md+,
+//? avatars + time at sm+); below sm the row STACKS — title + label chips on top, then a
+//? wrapping meta line (id · status · avatars · time) — instead of forcing horizontal
+//? scroll (the old min-w-[44rem] wrapper is gone). Row click opens the ticket; the
+//? select-mode checkbox stops propagation so toggling never fires openTicket.
 function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
   ticket: Ticket; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
 }) {
@@ -340,51 +288,33 @@ function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
   const { stages, ticketMembers } = useWorkspaces();
   const stageName = (id: string) => stages.find((s) => s.id === id)?.name ?? id;
   const linked = ticketMembers(ticket);
+  //? status 'idle' renders as "No AI" text, not a StatusPill.
+  const statusCell = ticket.status === 'idle'
+    ? <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.backlog.noAi' })}</span>
+    : <StatusPill status={ticket.status} />;
   return (
-    <div onClick={onOpen} className={`flex items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
+    <div onClick={onOpen} className={`flex items-start sm:items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
       {selectMode && (
-        <span onClick={(e) => { e.stopPropagation(); }} className="flex items-center">
-          <input type="checkbox" checked={selected} onChange={onToggle} className="accent-primary cursor-pointer" />
+        <span onClick={(e) => { e.stopPropagation(); }} className={`flex items-center pt-1 sm:pt-0`}>
+          <input type="checkbox" checked={selected} onChange={onToggle} className={`accent-primary cursor-pointer`} />
         </span>
       )}
-      <span className="font-mono text-xs text-muted w-20 shrink-0">{ticket.id}</span>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-title truncate">{ticket.title}</div>
-        {ticket.labels.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{ticket.labels.map((l) => <LabelChip key={l} name={l} />)}</div>}
+      <span className={`hidden sm:block font-mono text-xs text-muted w-20 shrink-0`}>{ticket.id}</span>
+      <div className={`flex-1 min-w-0`}>
+        <div className={`text-sm text-title truncate`}>{ticket.title}</div>
+        {ticket.labels.length > 0 && <div className={`flex flex-wrap gap-1 mt-1`}>{ticket.labels.map((l) => <LabelChip key={l} name={l} />)}</div>}
+        <div className={`flex sm:hidden flex-wrap items-center gap-x-3 gap-y-1 mt-1.5`}>
+          <span className={`font-mono text-xs text-muted`}>{ticket.id}</span>
+          {statusCell}
+          {linked.length > 0 && <AvatarStack users={linked} size={18} />}
+          <span className={`text-xs text-muted`}>{relativeTime(ticket.lastActivityAt)}</span>
+        </div>
       </div>
-      <span className="hidden lg:block text-xs text-common w-28 shrink-0 truncate">{stageName(ticket.stageId)}</span>
-      <span className="hidden md:flex w-28 shrink-0">{ticket.status === 'idle' ? <span className="text-xs text-muted">{translate({ key: 'workspaces.backlog.noAi' })}</span> : <StatusPill status={ticket.status} />}</span>
-      <span className="hidden sm:flex w-16 shrink-0 justify-end" title={translate({ key: 'workspaces.backlog.creatorAssignee' })}>{linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className="text-xs text-muted">—</span>}</span>
-      <span className="text-xs text-muted w-10 shrink-0 text-right">{relativeTime(ticket.lastActivityAt)}</span>
-    </div>
-  );
-}
-
-function BarBtn({ icon, label, danger, onClick }: { icon: Parameters<typeof Icon>[0]['name']; label: string; danger?: boolean; onClick?: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 h-8 text-sm cursor-pointer transition-colors ${danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}>
-      <Icon name={icon} /> {label}
-    </button>
-  );
-}
-
-//? A bulk-bar button (13) that opens a click-away popover of choices instead of
-//? navigating — used for the Move/Status/Assign/Sprint pickers. Opens upward
-//? since the bar sits pinned to the bottom of the screen.
-interface PickerItem { label: string; onClick: () => void }
-function BulkPickerButton({ icon, label, items }: { icon: Parameters<typeof Icon>[0]['name']; label: string; items: PickerItem[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
-  return (
-    <div className="relative" ref={ref}>
-      <BarBtn icon={icon} label={label} onClick={() => { setOpen((o) => !o); }} />
-      <Popover open={open} className="absolute z-30 bottom-full left-0 mb-1 min-w-[180px] max-h-64 overflow-auto rounded-xl border border-container1-border bg-container1 p-1 shadow-lg">
-        {items.map((it) => (
-          <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }} className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer text-left truncate">
-            {it.label}
-          </button>
-        ))}
-      </Popover>
+      <span className={`hidden lg:block text-xs text-common w-28 shrink-0 truncate`}>{stageName(ticket.stageId)}</span>
+      <span className={`hidden md:flex w-28 shrink-0`}>{statusCell}</span>
+      {/* AvatarStack semantics: first avatar = creator, second = assignee (ticketMembers). */}
+      <span className={`hidden sm:flex w-16 shrink-0 justify-end`} title={translate({ key: 'workspaces.backlog.creatorAssignee' })}>{linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className={`text-xs text-muted`}>—</span>}</span>
+      <span className={`hidden sm:block text-xs text-muted w-10 shrink-0 text-right`}>{relativeTime(ticket.lastActivityAt)}</span>
     </div>
   );
 }

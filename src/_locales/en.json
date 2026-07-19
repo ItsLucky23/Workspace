@@ -388,6 +388,7 @@
       "start": "Start",
       "end": "End",
       "gain": "Volume",
+      "gainValue": "Volume: {{n}}×",
       "apply": "Save as new"
     },
     "imageEditor": {
@@ -417,6 +418,7 @@
       "saved": "Edited image saved."
     },
     "gallery": {
+      "importInspiration": "Import inspiration",
       "title": "Design gallery",
       "subtitle": "Premade UI looks — preview and apply a full identity (palette, style, fonts, motion), then customize.",
       "navHome": "Home",
@@ -497,6 +499,15 @@
       "invitesHeading": "Your invitations"
     },
     "pipeline": {
+      "tabStages": "Stages",
+      "tabAutomations": "Automations",
+      "stageActions": "Stage actions",
+      "advanced": "Advanced",
+      "emptyTitle": "This is your project's pipeline",
+      "emptyBody": "Every ticket travels through these stages, each run by its own AI in its own container. Add your first stage to define what happens first (e.g. Refine or Plan).",
+      "addStatus": "Add status",
+      "emitDisclosure": "What each stage must emit",
+      "automationsIntro": "Automations react to pipeline events (a ticket created, a stage completed, a cron) and fire an action — a notification, a stage start, an agent. Create your first trigger.",
       "systemPrompt": "AI persona (system prompt)",
       "systemPromptHint": "The base identity + reasoning style for this stage's agent — layered above your instructions.",
       "systemPromptPlaceholder": "e.g. You are a staff engineer producing a rigorous implementation plan.",
@@ -1154,6 +1165,31 @@
       "scheduleBtn": "Schedule"
     },
     "content": {
+      "emptyTeach": "This is your content studio — describe what you want to make in a short brief, and the AI takes it through script, media, assembly, review and publishing. Create your first piece to start.",
+      "moreMenu": "More",
+      "moreGenerations": "More generations",
+      "outputSettings": "Output settings",
+      "toolsTitle": "Extra tools",
+      "toolsDesc": "Demo recorder, reference-video analysis, SEO check and the thumbnail composer.",
+      "assetsEmptyTitle": "Nothing generated yet",
+      "assetsEmptyTeach": "Pick a style, describe what you want, and hit Generate full video — the AI writes the script, voices it, builds the scenes and assembles the result. Every generation asks before spending money.",
+      "assetActions": "Asset actions",
+      "insightsTabPerformance": "Performance",
+      "insightsTabLinks": "Links & A/B",
+      "perfEmptyTitle": "Nothing to measure yet",
+      "perfEmptySub": "Once you create content pieces on the board, their progress and AI cost show up here.",
+      "linksEmptyTitle": "No trackable links yet",
+      "linksEmptySub": "Create a trackable /l/<slug> link for any URL to count clicks and find your A/B winner.",
+      "brandEmptySub": "Connect a channel first — then you can write the brand voice the AI uses for that platform.",
+      "settingsIntro": "Teach the AI your brand, then manage styles, channels and publishing.",
+      "tabBrand": "Brand & styles",
+      "tabChannels": "Channels & publishing",
+      "tabAdmin": "Admin",
+      "brandEmptyTitle": "Teach the AI your brand",
+      "stylesEmptyTeach": "Styles are reusable looks (a system prompt per feature) your pieces pick by name — create your first style.",
+      "stylesMenu": "Style actions",
+      "channelsEmptyTeach": "A channel is a platform + brand identity your content publishes to. Create one to start planning pieces.",
+      "keysTeach": "Connect an AI provider key (stored encrypted, never shown back) to turn on real generation — mind the cost warning.",
       "title": "Content",
       "subtitle": "AI content — from brief to a downloadable, publishable piece.",
       "empty": "No content pieces yet",
@@ -1480,6 +1516,14 @@
       "thumbComposeAi": "Compose with AI background"
     },
     "knowledge": {
+      "emptyTeach": "This is your workspace's knowledge map: every context source, ticket and content piece appears as a dot, connected to related work. Add sources or create tickets and content, then refresh to see the connections form.",
+      "hintTap": "Tap a node to focus it and its connections.",
+      "typeSource": "Source",
+      "typeTicket": "Ticket",
+      "typePiece": "Content piece",
+      "connectedTo": "Connected to ({{count}})",
+      "noConnections": "No connections yet.",
+      "detailClose": "Close",
       "title": "Knowledge graph",
       "subtitle": "How your sources, tickets and content pieces relate.",
       "refresh": "Refresh",
@@ -1495,6 +1539,18 @@
       "hint": "Click a node to focus it and its connections."
     },
     "usage": {
+      "costValue": "€{{n}}",
+      "tabDelivery": "Delivery",
+      "tabPeople": "People",
+      "pageEmptySub": "This page will show how many tokens your AI stages consume — per day, per ticket and per person — as soon as a ticket runs through the pipeline. Start a ticket on the board to see your first data here.",
+      "pageEmptyCta": "Go to the board",
+      "budgetsDisclosure": "Budgets & caps",
+      "capSingular": "cap",
+      "capPlural": "caps",
+      "capAlertStrip": "Spend is near its cap",
+      "capAlertView": "View budgets",
+      "openCountHint": "{{count}} open",
+      "doneCountHint": "{{count}} done",
       "title": "Usage",
       "subtitle": "Token volume & time · running on the Claude Pro Max CLI (no metered API)",
       "activityTitle": "Activity · last 7 days",
@@ -1567,6 +1623,13 @@
       "preview": "Preview"
     },
     "ticket": {
+      "detailsDisclosure": "Details",
+      "settingsDisclosure": "Ticket settings",
+      "codeDiffMode": "Diff view",
+      "noTerminalStageSub": "This stage runs no processes, so there is no terminal.",
+      "noActivitySub": "Everything the agent and your team do on this ticket lands here.",
+      "noLinksTeachSub": "Related tickets show up here — the AI suggests some automatically.",
+      "sourcesCount": "{{count}} sources",
       "tabOverview": "Overview",
       "tabTerminal": "Terminal",
       "tabFiles": "Files & refs",
@@ -1658,6 +1721,9 @@
       "serviceRoot": "Whole project"
     },
     "terminals": {
+      "subtitle": "A live shell inside each running ticket container — watch the AI work, or step in and type yourself.",
+      "emptyBody": "Terminals give you a live shell inside each running ticket container. Nothing is running right now — activate a ticket's stage (or start a container from the Pipeline page) and its terminal appears here automatically within a few seconds.",
+      "emptyHint": "Open the Pipeline page",
       "restart": "Restart",
       "clear": "Clear",
       "rename": "Rename",
@@ -1684,6 +1750,13 @@
       "resizeTitle": "Drag to resize height"
     },
     "sources": {
+      "subtitle": "Context docs are loaded whole before each AI run · skills & MCP tools are called on demand.",
+      "maintenance": "Maintenance",
+      "codeIndex": "Code index",
+      "ragNotIndexedHint": "Link a repo and run 'Reindex code' from the Maintenance menu to make your codebase searchable for the AI.",
+      "emptyDocsSub": "Sources are what your workspace AI reads before it works. Upload a spec or notes (.md/.txt), or link a repo and scan it to generate docs automatically.",
+      "emptySkillsTitle": "No skills yet",
+      "emptySkillsSub": "Skills and MCP tools are capabilities the AI can call on demand. They appear here once the workspace is indexed.",
       "noStages": "No stages",
       "summary": "Summary",
       "source": "Source",
@@ -1791,6 +1864,33 @@
       "urgentHint": "Skips the capacity cap · still needs approval to merge"
     },
     "studio": {
+      "marketingIntro": "AI marketer: turn your product brief into marketing assets.",
+      "marketingEmptyTitle": "Marketing starts with a product brief",
+      "marketingEmptyBody": "A few lines about what you're selling and to whom. The AI marketer turns it into copy, emails, ads, a social calendar and more.",
+      "createFirstBrief": "Create your first brief",
+      "noArtifactsTitle": "Nothing generated for this brief yet",
+      "noArtifactsBody": "Pick an asset type above — each result appears here as a live preview you can refine, regenerate or send to Content.",
+      "generateHeading": "Create a marketing asset",
+      "refineToggle": "Refine instructions",
+      "refineActive": "Applied to every generation",
+      "assetsHeading": "Generated assets",
+      "briefMenu": "Brief options",
+      "artifactMenu": "Asset options",
+      "deleteBrief": "Delete brief",
+      "tabAssets": "Assets",
+      "tabBrand": "Brand",
+      "brandColours": "{{count}} colours",
+      "emptyTitle": "Describe your product once — generate everything",
+      "emptyBody": "Studio turns a short product brief into AI-generated design and marketing assets — landing pages, brand kits, copy, ads and more. Start by describing your product.",
+      "emptyBriefTitle": "Nothing generated for this brief yet",
+      "emptyBriefBody": "Pick an asset type above (try Landing page or Brand kit) and the AI will draft it with a live preview.",
+      "emptyBriefBodyMarketing": "Pick an asset type above (try Marketing copy or an Ad set) and the AI will draft it with a live preview.",
+      "generateHint": "Pick an asset type — the AI drafts it from this brief, with a live preview.",
+      "refineTitle": "Refine instructions",
+      "artifactsTitle": "Generated assets",
+      "briefActions": "Brief actions",
+      "artifactActions": "Asset actions",
+      "brandActions": "Brand kit actions",
       "briefs": "Briefs",
       "newBrief": "New brief",
       "noBriefs": "No briefs yet.",
@@ -1886,6 +1986,8 @@
       "publishedLive": "Publishing — the page URL appears shortly."
     },
     "uiReview": {
+      "emptyTitle": "No UI feedback yet.",
+      "emptySub": "When you or the AI flags a screen that needs work, it lands here and can become a redesign ticket.",
       "title": "Request a UI review",
       "desc": "Flag what feels off — upload screenshots, tick the problems, add notes. It becomes a redesign ticket.",
       "inboxTitle": "Review inbox ({{n}})",
@@ -1908,6 +2010,15 @@
       "sent": "Sent"
     },
     "designer": {
+      "feedbackSub": "Request a UI review and follow it up — every request lands in the inbox here and can become a redesign ticket.",
+      "noSystemTitle": "No design system is active in this project yet.",
+      "noSystemSub": "Pick a look in the Gallery or generate a theme, then 'Use in project' so the coding agent builds on-brand.",
+      "browseLooks": "Browse looks",
+      "moreActions": "More actions",
+      "delete": "Delete",
+      "stopCompare": "Stop comparing",
+      "applied": "Design tokens applied.",
+      "applyFailed": "Could not apply the tokens.",
       "title": "Designer",
       "intro": "One place to keep your whole product UI consistent. Browse every component we ship, switch between design themes, and see everything re-render instantly so you can pick what fits.",
       "themes": "Themes",
@@ -1972,6 +2083,7 @@
       "tagline": "See, compare and edit every part of your product's visual language.",
       "previewingWith": "Previewing with",
       "section": {
+        "feedback": "Feedback",
         "gallery": "Gallery",
         "components": "Components",
         "styles": "Styles",
@@ -2093,6 +2205,11 @@
       "applyTokens": "Apply tokens"
     },
     "interviewer": {
+      "emptyTitle": "Ask me anything about this codebase",
+      "emptySub": "I have full repo context — I can explain how things work, suggest improvements, or work out a plan for a new feature. Pick a starter below or type your own question.",
+      "generateTitle": "Generate improvement ideas",
+      "generateHint": "The AI scans the repo and posts its findings here as cards you can turn into tickets. Optionally narrow it to one area — leave empty to scan the whole project.",
+      "findingsIntro": "Ideas the AI found in your repo — saved until you turn them into a ticket or dismiss them.",
       "title": "Interviewer",
       "generateNow": "Generate ideas now",
       "focusPlaceholder": "Focus (optional) — e.g. the auth flow",
@@ -2115,12 +2232,23 @@
       "dismiss": "Dismiss"
     },
     "scheduledPosts": {
+      "emptyTitle": "Nothing scheduled yet",
+      "emptyHint": "This page fills up automatically. Schedule a publish on a content piece — pick a platform and a future time — and it will appear here, grouped by day.",
+      "goToContent": "Go to content",
+      "whyFailed": "Why it failed",
+      "attempts": "Attempts: {{count}}",
       "title": "Scheduled posts",
       "tagline": "Publishes queued to go out at a set time.",
       "empty": "No scheduled posts yet. Schedule a publish from a content piece to see it here.",
       "failed": "failed"
     },
     "scheduled": {
+      "emptyTitle": "Nothing scheduled yet",
+      "emptySub": "A scheduled task runs on a timer — let an AI role (like the Interviewer) work for you every morning, or send yourself a recurring notification.",
+      "emptyCta": "New scheduled task",
+      "advanced": "Advanced",
+      "taskMenu": "Task options",
+      "delete": "Delete task",
       "title": "Scheduled tasks",
       "tagline": "Run an AI role or a notification on a schedule.",
       "new": "New task",
@@ -2208,6 +2336,10 @@
       "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone."
     },
     "board": {
+      "filterSprint": "Sprint",
+      "moreActions": "More actions",
+      "newTicketOptions": "Options",
+      "emptyStagesTeach": "This board shows your tickets moving through the pipeline stages — stages appear once the workspace is set up.",
       "openTicket": "Open ticket",
       "openTerminal": "Open terminal",
       "addReference": "Add reference…",
@@ -2256,6 +2388,12 @@
       "clearFilters": "Clear filters"
     },
     "activity": {
+      "sub": "Everything that happens across your tickets, as it happens — click a ticket id to jump into that ticket.",
+      "emptyTeachTitle": "Nothing here yet",
+      "emptyTeachSub": "Activity is the live log of everything that happens across your tickets: AI work, commands, file changes, merges and comments. As soon as a ticket runs its pipeline, events appear here in real time.",
+      "openBoard": "Open the board",
+      "emptyFilterTitle": "No {{f}} events yet",
+      "resetFilter": "Switch back to All",
       "title": "Activity",
       "live": "live",
       "filterAll": "All",
@@ -2274,6 +2412,15 @@
       "labelCi": "CI"
     },
     "backlog": {
+      "subtitle": "Every ticket in the workspace, grouped by sprint.",
+      "filters": "Filters",
+      "personFilterLabel": "Person",
+      "selectTickets": "Select tickets",
+      "moreActions": "More actions",
+      "sprintOptions": "Sprint options",
+      "actions": "Actions",
+      "emptyTeachTitle": "This is your backlog",
+      "emptyTeachSub": "Every ticket in the workspace lives here, grouped by sprint. Write a short ticket and the pipeline (refine → plan → implement) takes it from there.",
       "title": "Backlog",
       "countOfTotal": "{{count}} of {{total}}",
       "done": "Done",
@@ -2365,6 +2512,10 @@
       "offlineRetry": "Retry now"
     },
     "documents": {
+      "useTemplate": "Use a template",
+      "emptyTeach": "Documents are your workspace's AI-drafted write-ups — specs, plans, briefs, sheets. Type a title above and hit Create; in the editor the AI drafts and you approve every change.",
+      "emptyAction": "Create your first document",
+      "docActions": "Document actions",
       "title": "Documents",
       "subtitle": "AI-drafted workspace documents: specs, plans, briefs and sheets — you approve every AI change.",
       "newPlaceholder": "New document title…",
@@ -2423,6 +2574,7 @@
       "draftDiff": "Diff",
       "draftPreview": "Preview",
       "historyTitle": "History",
+      "revisionMeta": "{{time}} · {{note}}",
       "restore": "Restore",
       "restoreConfirmTitle": "Restore this version?",
       "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first.",
@@ -2448,6 +2600,7 @@
       "useLive": "use live site"
     },
     "comments": {
+      "replyNote": "The AI only drafts a reply when you ask — sending is always your click.",
       "tab": "Comments",
       "noChannel": "No channel",
       "refresh": "Refresh",
@@ -2525,6 +2678,11 @@
       "developer": "Developer"
     },
     "answers": {
+      "addNote": "Add a note",
+      "details": "Details",
+      "stageLabel": "Stage: {{s}}",
+      "emptyTeach": "Answer it right on the card — no need to hunt for the ticket.",
+      "viewBoard": "View the board",
       "heading": "Answers",
       "sub": "Every AI waiting on you, in one place.",
       "emptyTitle": "Nothing is waiting on you",

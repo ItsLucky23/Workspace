@@ -1,14 +1,15 @@
 //? Designer — small shared UI bits reused across the sections (Components / Styles / Animations /
 //? Themes / Typography): an inline rename field, a source badge (built-in / AI / custom), a section
-//? header, and the shared input class. Kept tiny + presentational.
+//? header, the responsive library rail, and the shared input class. Kept tiny + presentational.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
+import { PopMenu, type PopMenuItem } from '../../_components/primitives';
 import { FONT_LIBRARY, fontByStack } from './fonts';
 
 export const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
@@ -46,8 +47,9 @@ export function SourceBadge({ source }: { source: 'seed' | 'ai' | 'manual' }) {
   return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.tint}`}><Icon name={meta.icon} className="text-[10px]" />{translate({ key: `workspaces.designer.source.${source}` })}</span>;
 }
 
-//? A section title + subtitle + optional right-hand actions row.
-export function SectionHead({ icon, title, sub, right }: { icon: string; title: string; sub: string; right?: React.ReactNode }) {
+//? A section title + subtitle + optional right-hand actions row. `title` accepts a node so a section
+//? can put its RenameField in the heading (the phone-width rename surface once the rail collapses).
+export function SectionHead({ icon, title, sub, right }: { icon: string; title: ReactNode; sub: string; right?: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
       <div className="flex items-start gap-2.5 min-w-0">
@@ -59,6 +61,62 @@ export function SectionHead({ icon, title, sub, right }: { icon: string; title: 
       </div>
       {right}
     </div>
+  );
+}
+
+//? The shared library rail for Themes / Styles / Animations. On ≥md: the classic w-64 list (inline
+//? rename, per-row actions behind a PopMenu, "+ New" pinned at the bottom). On phone the fixed rail
+//? was the main width problem (it squeezed the editor), so it collapses to a Dropdown picker + ONE
+//? actions menu (the active item's actions + "+ New"); renaming happens in the editor's heading.
+export interface LibraryRailItem { id: string; name: string; source: 'seed' | 'ai' | 'manual' }
+export function LibraryRail<T extends LibraryRailItem>({ title, sub, addLabel, menuLabel, items, activeId, onSelect, onRename, onAdd, menuFor, rowLeft, rowBelow }: {
+  title: string; sub: string; addLabel: string; menuLabel: string;
+  items: T[]; activeId: string;
+  onSelect: (id: string) => void; onRename: (id: string, name: string) => void; onAdd: () => void;
+  menuFor: (item: T) => PopMenuItem[];
+  rowLeft?: (item: T) => ReactNode; rowBelow?: (item: T) => ReactNode;
+}) {
+  const ddItems: DropdownItem[] = items.map((it) => ({ id: it.id, value: it.id, item: it.name }));
+  const activeDd = ddItems.find((i) => i.id === activeId);
+  const active = items.find((i) => i.id === activeId);
+  const activeMenu = active ? menuFor(active) : [];
+  const addItem: PopMenuItem = { label: addLabel, icon: 'plus', onClick: onAdd };
+  const phoneMenu: PopMenuItem[] = activeMenu.length > 0 ? [...activeMenu, { divider: true }, addItem] : [addItem];
+  return (
+    <>
+      {/* phone: picker + one actions menu instead of the fixed rail */}
+      <div className={`md:hidden shrink-0 border-b border-divider px-3 py-2 flex items-center gap-2`}>
+        <div className={`flex-1 min-w-0`}>
+          <Dropdown items={ddItems} {...(activeDd ? { value: activeDd } : {})} onChange={(i) => { onSelect(String(i.id)); }} size="md" />
+        </div>
+        <PopMenu ariaLabel={menuLabel} items={phoneMenu} />
+      </div>
+      {/* ≥md: the classic rail */}
+      <div className={`hidden md:flex w-64 shrink-0 border-r border-divider flex-col min-h-0`}>
+        <div className={`px-4 pt-4 pb-2 shrink-0`}>
+          <div className={`text-sm font-semibold text-title`}>{title}</div>
+          <div className={`text-xs text-muted mt-0.5`}>{sub}</div>
+        </div>
+        <div className={`flex-1 min-h-0 overflow-y-auto px-2 pb-2 flex flex-col gap-1`}>
+          {items.map((it) => {
+            const menu = menuFor(it);
+            return (
+              <div key={it.id} onClick={() => { onSelect(it.id); }} className={`group rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${it.id === activeId ? 'bg-container1 ring-1 ring-primary/40' : 'hover:bg-container1/60'}`}>
+                <div className={`flex items-center gap-2`}>
+                  {rowLeft?.(it)}
+                  <RenameField value={it.name} onRename={(n) => { onRename(it.id, n); }} className={`flex-1 min-w-0 text-sm text-title`} />
+                  {menu.length > 0 && <PopMenu ariaLabel={menuLabel} items={menu} />}
+                </div>
+                {rowBelow?.(it)}
+              </div>
+            );
+          })}
+        </div>
+        <div className={`shrink-0 border-t border-divider p-2`}>
+          <button type="button" onClick={onAdd} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-common hover:bg-container2 cursor-pointer`}><Icon name="plus" className={`text-muted`} /> {addLabel}</button>
+        </div>
+      </div>
+    </>
   );
 }
 

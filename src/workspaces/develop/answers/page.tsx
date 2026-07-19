@@ -1,4 +1,4 @@
-//? intent: One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to.
+//? intent: The cross-ticket answer inbox — every AI question waiting on you, highest-priority and longest-waiting first, answered directly on its card (approve / pick an option / type); stage metadata and the optional approve-note sit behind small per-card disclosures.
 //?
 //? The cross-ticket answer inbox. A server-built `answerQueue` has existed in the snapshot since ADR 0048
 //? and was rendered by NOTHING — the data was plumbed all the way to the client and then dropped on the floor.
@@ -12,6 +12,10 @@
 //? showed why: answering cleared the ticket server-side, the ticket delta arrived — and the inbox kept
 //? showing the answered question, because no delta ever updates a separate `answerQueue` array. Tickets are
 //? what the realtime layer actually keeps current, so the queue is computed from them and cannot go stale.
+//?
+//? KISS pass: the answer control is the card's ONE primary thing. The optional approve-note and the
+//? stage/open-count metadata moved behind tiny per-card toggles so a first glance is just
+//? "which ticket · how long has it waited · the question · the buttons".
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -19,8 +23,7 @@ import Icon from '../../_components/Icon';
 import { EmptyState, StatusPill, WsButton } from '../../_components/primitives';
 import { parseStructuredQuestion } from '../../_functions/structuredQuestion';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export const template = 'workspaces';
 
@@ -47,10 +50,15 @@ function isStale(iso: string | undefined): boolean {
 //? it in one place should not have to relearn it in the other.
 function QueueCard({ item }: { item: { ticketKey: string; title: string; question: string; priority: string; stageId: string; waitingSince?: string; openCount: number } }) {
   const translate = useTranslator();
-  const navigate = useNavigate();
-  const { answerInput, isAnswerPending } = useWorkspaces();
+  const { answerInput, isAnswerPending, openTicket } = useWorkspaces();
   const [reply, setReply] = useState('');
   const [note, setNote] = useState('');
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  //? Focus the note input when the toggle opens it (user-initiated, so a11y-safe — avoids the
+  //? `autoFocus` prop the jsx-a11y rule bans for on-load focus).
+  const noteRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (noteOpen) noteRef.current?.focus(); }, [noteOpen]);
 
   const sq = parseStructuredQuestion(item.question);
   const pending = isAnswerPending(item.ticketKey);
@@ -63,49 +71,58 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
     answerInput(item.ticketKey, value);
     setReply('');
     setNote('');
+    setNoteOpen(false);
   };
   const withNote = (decision: string) => { answer(note.trim().length > 0 ? `${decision}: ${note.trim()}` : decision); };
+  //? Collapsing the note discards it: what is visible is exactly what gets sent — no hidden text riding
+  //? along on an Approve.
+  const toggleNote = () => {
+    if (noteOpen) setNote('');
+    setNoteOpen(!noteOpen);
+  };
 
   return (
     <div className={`rounded-xl border bg-container1 p-4 flex flex-col gap-2 ${stale ? 'border-warning' : 'border-container1-border'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className={`flex items-start justify-between gap-3`}>
+        <div className={`min-w-0 flex-1 flex flex-col gap-0.5`}>
+          <div className={`flex items-center gap-2 flex-wrap`}>
             {/* The ticket key stays a link: answering is the common case, but "what IS this?" needs an exit. */}
-            <button type="button" onClick={() => { void navigate(`/workspaces/board/${item.ticketKey}`); }} className="text-xs font-mono text-primary hover:underline cursor-pointer">{item.ticketKey}</button>
+            <button type="button" onClick={() => { openTicket(item.ticketKey); }} className={`text-xs font-mono text-primary hover:underline cursor-pointer`}>{item.ticketKey}</button>
             <StatusPill status="needs-input" />
-            <span className="text-xs text-muted">{item.stageId}</span>
-            {item.openCount > 1 && (
-              <span className="text-[11px] rounded-md bg-container2 px-1.5 py-0.5 text-muted">{translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openCount - 1) }] })}</span>
-            )}
           </div>
-          <div className="text-sm font-medium text-title truncate">{item.title}</div>
+          <div className={`text-sm font-medium text-title truncate`}>{item.title}</div>
         </div>
         {waited !== null && (
           <span className={`text-xs shrink-0 ${stale ? 'text-warning' : 'text-muted'}`}>
-            {stale && <Icon name="triangle-exclamation" className="mr-1" />}{waited}
+            {stale && <Icon name="triangle-exclamation" className={`mr-1`} />}{waited}
           </span>
         )}
       </div>
 
-      <p className="text-sm text-common">{sq.prompt}</p>
+      <p className={`text-sm text-common`}>{sq.prompt}</p>
 
       {sq.kind === 'approve' && (
-        <div className="flex flex-col gap-2">
-          <input
-            value={note} onChange={(e) => { setNote(e.target.value); }} disabled={pending}
-            placeholder={translate({ key: 'workspaces.ticket.notePlaceholder' })}
-            className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50"
-          />
-          <div className="flex items-center gap-2">
+        <div className={`flex flex-col gap-2`}>
+          <div className={`flex flex-wrap items-center gap-2`}>
             <WsButton icon={pending ? 'spinner' : 'check'} disabled={pending} onClick={() => { withNote(translate({ key: 'workspaces.ticket.approved' })); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.approve' })}</WsButton>
             <WsButton variant="ghost" icon="xmark" disabled={pending} onClick={() => { withNote(translate({ key: 'workspaces.ticket.rejected' })); }}>{translate({ key: 'workspaces.ticket.reject' })}</WsButton>
+            {/* The note is the rare case, so it expands on demand — Approve/Reject stay one tap. */}
+            <button type="button" aria-expanded={noteOpen} disabled={pending} onClick={toggleNote} className={`inline-flex items-center gap-1.5 text-xs text-muted hover:text-common cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}>
+              <Icon name={noteOpen ? 'xmark' : 'plus'} />{translate({ key: 'workspaces.answers.addNote' })}
+            </button>
           </div>
+          {noteOpen && (
+            <input
+              ref={noteRef} value={note} onChange={(e) => { setNote(e.target.value); }} disabled={pending}
+              placeholder={translate({ key: 'workspaces.ticket.notePlaceholder' })}
+              className={`h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
+            />
+          )}
         </div>
       )}
 
       {sq.kind === 'choice' && (
-        <div className="flex flex-wrap gap-2">
+        <div className={`flex flex-wrap gap-2`}>
           {sq.options.map((opt) => (
             <WsButton key={opt} variant="ghost" disabled={pending} onClick={() => { answer(opt); }}>{opt}</WsButton>
           ))}
@@ -113,16 +130,49 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
       )}
 
       {sq.kind === 'free' && (
-        <div className="flex items-center gap-2">
+        <div className={`flex flex-wrap items-center gap-2`}>
           <input
             value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') answer(reply); }}
             placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })} disabled={pending}
-            className="flex-1 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50"
+            className={`flex-1 min-w-40 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
           />
           <WsButton icon={pending ? 'spinner' : undefined} disabled={pending} onClick={() => { answer(reply); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.send' })}</WsButton>
         </div>
       )}
+
+      {/* Metadata nobody needs for the decision itself — which pipeline stage is asking, whether more
+          questions follow — folds away so the card stays scannable at phone width. */}
+      <div className={`flex flex-col gap-1.5`}>
+        <button type="button" aria-expanded={detailsOpen} onClick={() => { setDetailsOpen(!detailsOpen); }} className={`self-start inline-flex items-center gap-1.5 text-xs text-muted hover:text-common cursor-pointer`}>
+          <Icon name="caret-down" className={`transition-transform motion-reduce:transition-none ${detailsOpen ? 'rotate-180' : ''}`} />
+          {translate({ key: 'workspaces.answers.details' })}
+        </button>
+        {detailsOpen && (
+          <div className={`flex items-center gap-2 flex-wrap text-xs text-muted`}>
+            <span>{translate({ key: 'workspaces.answers.stageLabel', params: [{ key: 's', value: item.stageId }] })}</span>
+            {item.openCount > 1 && (
+              <span className={`text-[11px] rounded-md bg-container2 px-1.5 py-0.5`}>{translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openCount - 1) }] })}</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+//? An empty inbox is the GOOD state here, so it reads as "nothing is blocked on you" rather than as an
+//? error or an unfinished screen — and it teaches what will show up here, with the board as the way to
+//? watch the running work that will produce the next question.
+function InboxEmpty() {
+  const translate = useTranslator();
+  const { navigate } = useWorkspaces();
+  return (
+    <EmptyState
+      icon="circle-check"
+      title={translate({ key: 'workspaces.answers.emptyTitle' })}
+      sub={`${translate({ key: 'workspaces.answers.emptySub' })} ${translate({ key: 'workspaces.answers.emptyTeach' })}`}
+      action={<WsButton variant="secondary" icon="table-columns" onClick={() => { navigate('board'); }}>{translate({ key: 'workspaces.answers.viewBoard' })}</WsButton>}
+    />
   );
 }
 
@@ -150,23 +200,15 @@ export default function Answers() {
     }), [tickets]);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.answers.heading' })}</h1>
-        <p className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.answers.sub' })}</p>
+    <div className={`flex flex-col h-full min-h-0`}>
+      <div className={`px-4 md:px-6 py-3 md:py-4`}>
+        <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.answers.heading' })}</h1>
+        <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.answers.sub' })}</p>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
-        <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
+      <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8`}>
+        <div className={`max-w-2xl mx-auto w-full flex flex-col gap-3`}>
           {answerQueue.length === 0
-            ? (
-              //? An empty inbox is the GOOD state here, so it reads as "nothing is blocked on you" rather
-              //? than as an error or an unfinished screen.
-              <EmptyState
-                icon="circle-check"
-                title={translate({ key: 'workspaces.answers.emptyTitle' })}
-                sub={translate({ key: 'workspaces.answers.emptySub' })}
-              />
-            )
+            ? <InboxEmpty />
             : answerQueue.map((item) => <QueueCard key={item.ticketKey} item={item} />)}
         </div>
       </div>

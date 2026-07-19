@@ -1,14 +1,20 @@
-//? Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents
-//? (commands, file-changes, AI messages, status/stage moves, MRs, comments)
-//? across every ticket. Filter by who/what; click a ticket to open it. Mirrors
-//? the append-only TicketEvent log. Dummy data; desktop-first.
+//? intent: Workspaces — Activity: the live, workspace-wide chronological feed of everything
+//? that happens across tickets (commands, file changes, AI messages, status moves, merges,
+//? CI, comments). Scan the timeline and click a ticket id to jump into that ticket; the
+//? who/what filter sits on its own compact row so the header never cramps at phone width.
+//? Renders purely from context (dummy data today; the real TicketEvent log wires in later).
+//?
+//? KISS pass: title + Live badge + a one-line "what is this" sub; the Segmented filter moved
+//? out of the title row onto its own scrollable line (its only secondary control, one tap
+//? away); the empty state TEACHES what lands here and points at the Board, and a
+//? filtered-to-zero state offers a one-tap reset back to All.
 
 import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
-import { AvatarBubble, EmptyState, Segmented } from '../../_components/primitives';
+import { AvatarBubble, EmptyState, Segmented, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member } from '../../_data/types';
 
@@ -27,6 +33,16 @@ const EVENT_LABEL: Record<ActivityEvent['type'], string> = {
   command: 'workspaces.activity.labelCommand', 'file-change': 'workspaces.activity.labelFile', 'ai-message': 'workspaces.activity.labelAi', 'status-change': 'workspaces.activity.labelStatus', mr: 'workspaces.activity.labelMerge', comment: 'workspaces.activity.labelComment', ci: 'workspaces.activity.labelCi',
 };
 
+const FILTER_LABEL: Record<Filter, string> = {
+  all: 'workspaces.activity.filterAll',
+  ai: 'workspaces.activity.filterAi',
+  people: 'workspaces.activity.filterPeople',
+  merges: 'workspaces.activity.filterMerges',
+};
+
+//? Deliberate matching semantics (do not "simplify"): 'merges' catches BOTH the GitLab actor
+//? and merge-typed events from anyone; 'people' is everyone who is not the AI and not GitLab
+//? (unknown/fallback actors included); 'ai' is the agent actor only.
 function matches(e: ActivityEvent, f: Filter): boolean {
   if (f === 'all') return true;
   if (f === 'ai') return e.actor === 'ai';
@@ -34,16 +50,19 @@ function matches(e: ActivityEvent, f: Filter): boolean {
   return e.actor !== 'ai' && e.actor !== 'mr';
 }
 
+//? Four actor branches by design: AI agent → robot on primary tint, GitLab → merge icon on
+//? correct tint, a known member → their avatar, anything else → a neutral user fallback.
 function ActorBadge({ actor, membersById }: { actor: string; membersById: Record<string, Member> }) {
-  if (actor === 'ai') return <span className="w-7 h-7 rounded-full bg-primary/12 text-primary flex items-center justify-center shrink-0"><Icon name="robot" className="text-xs" /></span>;
-  if (actor === 'mr') return <span className="w-7 h-7 rounded-full bg-correct/15 text-correct flex items-center justify-center shrink-0"><Icon name="code-merge" className="text-xs" /></span>;
+  if (actor === 'ai') return <span className={`w-7 h-7 rounded-full bg-primary/12 text-primary flex items-center justify-center shrink-0`}><Icon name="robot" className={`text-xs`} /></span>;
+  if (actor === 'mr') return <span className={`w-7 h-7 rounded-full bg-correct/15 text-correct flex items-center justify-center shrink-0`}><Icon name="code-merge" className={`text-xs`} /></span>;
   const member = membersById[actor];
-  if (member) return <div className="w-7 h-7 shrink-0"><AvatarBubble user={member} size={28} /></div>;
-  return <span className="w-7 h-7 rounded-full bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="user" className="text-xs" /></span>;
+  if (member) return <div className={`w-7 h-7 shrink-0`}><AvatarBubble user={member} size={28} /></div>;
+  return <span className={`w-7 h-7 rounded-full bg-container2 text-muted flex items-center justify-center shrink-0`}><Icon name="user" className={`text-xs`} /></span>;
 }
 
 function actorName(actor: string, translate: ReturnType<typeof useTranslator>, membersById: Record<string, Member>): string {
   if (actor === 'ai') return translate({ key: 'workspaces.activity.actorAgent' });
+  //? 'GitLab' is a product name, not a translatable string — hardcoded on purpose.
   if (actor === 'mr') return 'GitLab';
   return membersById[actor]?.name ?? actor;
 }
@@ -52,40 +71,66 @@ export const template = 'workspaces';
 
 export default function Activity() {
   const translate = useTranslator();
-  const { openTicket, activityEvents, membersById } = useWorkspaces();
+  const { openTicket, navigate, activityEvents, membersById } = useWorkspaces();
   const [filter, setFilter] = useState<Filter>('all');
   const events = useMemo(() => activityEvents.filter((e) => matches(e, filter)), [activityEvents, filter]);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.activity.title' })}</h1>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-correct/15 text-correct px-2 h-6 text-xs font-medium"><span className="w-1.5 h-1.5 rounded-full bg-correct motion-safe:animate-pulse" /> {translate({ key: 'workspaces.activity.live' })}</span>
+    <div className={`flex flex-col h-full min-h-0`}>
+      {/* Header: what this page IS (title + live signal + one-line teach), then the filter on
+          its own row — the old title-row placement wrapped awkwardly at phone width. */}
+      <div className={`px-4 md:px-6 py-3 md:py-4 shrink-0`}>
+        <div className={`flex items-center gap-3 flex-wrap`}>
+          <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.activity.title' })}</h1>
+          <span className={`inline-flex items-center gap-1.5 rounded-full bg-correct/15 text-correct px-2 h-6 text-xs font-medium`}><span className={`w-1.5 h-1.5 rounded-full bg-correct motion-safe:animate-pulse`} /> {translate({ key: 'workspaces.activity.live' })}</span>
         </div>
-        <Segmented<Filter>
-          value={filter} onChange={setFilter}
-          options={[{ id: 'all', label: translate({ key: 'workspaces.activity.filterAll' }) }, { id: 'ai', label: translate({ key: 'workspaces.activity.filterAi' }) }, { id: 'people', label: translate({ key: 'workspaces.activity.filterPeople' }) }, { id: 'merges', label: translate({ key: 'workspaces.activity.filterMerges' }) }]}
-        />
+        <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.activity.sub' })}</p>
+        <div className={`mt-3 overflow-x-auto ws-no-scrollbar`}>
+          <Segmented<Filter>
+            value={filter} onChange={setFilter}
+            options={[{ id: 'all', label: translate({ key: FILTER_LABEL.all }) }, { id: 'ai', label: translate({ key: FILTER_LABEL.ai }) }, { id: 'people', label: translate({ key: FILTER_LABEL.people }) }, { id: 'merges', label: translate({ key: FILTER_LABEL.merges }) }]}
+          />
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
-        <div className="max-w-3xl mx-auto w-full">
-          {events.length === 0 && <EmptyState icon="wave-square" title={translate({ key: 'workspaces.activity.emptyTitle' })} sub={translate({ key: 'workspaces.activity.emptySub' })} />}
+      <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8`}>
+        <div className={`max-w-3xl mx-auto w-full`}>
+          {/* Truly nothing yet: teach what this feed is and point at where work STARTS (the
+              board) — this page has no in-page create on purpose. */}
+          {activityEvents.length === 0 && (
+            <EmptyState
+              icon="wave-square"
+              title={translate({ key: 'workspaces.activity.emptyTeachTitle' })}
+              sub={translate({ key: 'workspaces.activity.emptyTeachSub' })}
+              action={<WsButton variant="secondary" icon="table-columns" onClick={() => { navigate('board'); }}>{translate({ key: 'workspaces.activity.openBoard' })}</WsButton>}
+            />
+          )}
+          {/* Events exist but the active filter hides them all: lighter variant + one-tap reset. */}
+          {activityEvents.length > 0 && events.length === 0 && (
+            <EmptyState
+              icon="filter"
+              title={translate({ key: 'workspaces.activity.emptyFilterTitle', params: [{ key: 'f', value: translate({ key: FILTER_LABEL[filter] }) }] })}
+              sub={translate({ key: 'workspaces.activity.emptySub' })}
+              action={<WsButton variant="ghost" icon="arrows-rotate" onClick={() => { setFilter('all'); }}>{translate({ key: 'workspaces.activity.resetFilter' })}</WsButton>}
+            />
+          )}
           {events.map((e, i) => (
-            <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className="flex gap-3">
-              <div className="flex flex-col items-center">
+            //? Composite key on purpose: events carry no id (yet), and time alone can collide.
+            <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className={`flex gap-3`}>
+              <div className={`flex flex-col items-center`}>
                 <ActorBadge actor={e.actor} membersById={membersById} />
-                {i < events.length - 1 && <span className="w-px flex-1 bg-divider my-1" />}
+                {i < events.length - 1 && <span className={`w-px flex-1 bg-divider my-1`} />}
               </div>
-              <div className="pb-5 min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-title">{actorName(e.actor, translate, membersById)}</span>
+              <div className={`pb-5 min-w-0 flex-1`}>
+                <div className={`flex items-center gap-2 flex-wrap`}>
+                  <span className={`text-sm font-medium text-title`}>{actorName(e.actor, translate, membersById)}</span>
                   <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${EVENT_TINT[e.type]}`}>{translate({ key: EVENT_LABEL[e.type] })}</span>
-                  <button type="button" onClick={() => { openTicket(e.ticketId); }} className="font-mono text-xs text-primary hover:underline cursor-pointer">{e.ticketId}</button>
-                  <span className="text-xs text-muted">· {e.time}</span>
+                  {/* The page's one op-triggering control: openTicket (back-stack push, opens a
+                      ticket tab) — never swap this for chrome navigation. */}
+                  <button type="button" onClick={() => { openTicket(e.ticketId); }} className={`font-mono text-xs text-primary hover:underline cursor-pointer`}>{e.ticketId}</button>
+                  <span className={`text-xs text-muted`}>· {e.time}</span>
                 </div>
-                <div className="text-sm text-common mt-1 break-words">{e.text}</div>
+                <div className={`text-sm text-common mt-1 break-words`}>{e.text}</div>
               </div>
             </div>
           ))}

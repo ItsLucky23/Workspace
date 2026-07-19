@@ -1,15 +1,16 @@
-//? intent: Interviewer — ask the AI anything about THIS codebase and think through new plans
-//? together. It has repo context (via the Workspace-AI), so you can ask "how does the auth flow
-//? work?", "what's worth improving?", or "work out a plan for feature X" and get a worked-out
-//? answer. Deeper RAG search + structured question/idea cards land in a following phase; this is
-//? the free-form planning chat on top of the existing repo-aware `workspaces/aiChat` backend.
+//? intent: Interviewer — a repo-aware AI chat: ask how this codebase works, what's worth improving,
+//? or work out a plan for a new feature, and turn the AI's persisted findings into board tickets.
+//? One primary action (ask a question in the composer / tap a starter); the findings list lives
+//? behind a "Findings (n)" header pill and "Generate ideas" (+ its focus field) behind a small
+//? header dialog, so the chat keeps the whole screen. Backend: the repo-aware `workspaces/aiChat`.
 
 import { useEffect, useRef, useState } from 'react';
 
 import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon, { type IconName } from '../../_components/Icon';
-import { WsButton } from '../../_components/primitives';
+import { Popover } from '../../_components/motion';
+import { EmptyState, useClickAway, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { InterviewFinding } from '../../_data/types';
 
@@ -18,7 +19,7 @@ export const template = 'workspaces';
 interface Msg { id: string; role: 'user' | 'ai'; text: string; pending?: boolean }
 let seq = 0;
 
-//? Finding areas → an icon + accent (for the grouped findings panel). ADR 0034.
+//? Finding areas → an icon + accent (for the findings view). ADR 0034.
 const AREA_META: Record<string, { icon: IconName; tint: string }> = {
   reliability: { icon: 'shield-halved', tint: 'text-correct' },
   security: { icon: 'lock', tint: 'text-wrong' },
@@ -31,9 +32,10 @@ const AREA_META: Record<string, { icon: IconName; tint: string }> = {
 const areaMeta = (area: string): { icon: IconName; tint: string } => AREA_META[area] ?? { icon: 'circle-dot', tint: 'text-muted' };
 
 //? Starter prompts — clickable so a first-time visitor instantly sees what this page is for.
-const STARTERS: { icon: string; key: string }[] = [
+//? The translated starter text IS the prompt that gets sent to the AI.
+const STARTERS: { icon: IconName; key: string }[] = [
   { icon: 'magnifying-glass', key: 'explain' },
-  { icon: 'lightbulb', key: 'improve' },
+  { icon: 'bolt', key: 'improve' },
   { icon: 'diagram-project', key: 'plan' },
   { icon: 'shield-halved', key: 'risks' },
 ];
@@ -44,16 +46,19 @@ export default function Interviewer() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  //? Focus (gap-fix): narrows "Generate ideas now" to one area (e.g. "the auth flow"); empty = whole project.
-  const [focus, setFocus] = useState('');
+  //? Secondary surface: 'findings' swaps the middle area for the persisted findings list (header pill).
+  const [view, setView] = useState<'chat' | 'findings'>('chat');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
+  const showFindings = view === 'findings' && interviewFindings.length > 0;
+
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages, showFindings]);
 
   const ask = (text: string) => {
     const trimmed = text.trim();
     const workspaceId = activeWorkspace.id;
     if (!trimmed || !workspaceId || busy) return;
+    setView('chat'); //? sending is always a chat action — bring the conversation back on screen
     const stamp = String(seq + 1); seq += 1;
     const aiId = `a${stamp}`;
     setMessages((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
@@ -73,28 +78,43 @@ export default function Interviewer() {
   const empty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* intro header — always visible so the page's purpose is obvious */}
-      <div className="px-5 md:px-6 pt-5 pb-3 border-b border-divider shrink-0">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-title">
-            <span className="w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center"><Icon name="comments" /></span>
-            <span className="text-xl font-semibold">{translate({ key: 'workspaces.interviewer.title' })}</span>
+    <div className={`flex flex-col h-full min-h-0`}>
+      {/* compact header — the page's purpose in one line; rare actions stay small on the right */}
+      <div className={`px-5 md:px-6 pt-5 pb-3 border-b border-divider shrink-0`}>
+        <div className={`flex items-start justify-between gap-3 flex-wrap`}>
+          <div className={`min-w-0`}>
+            <div className={`flex items-center gap-2 text-title`}>
+              <span className={`w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center`}><Icon name="comment" /></span>
+              <span className={`text-xl font-semibold`}>{translate({ key: 'workspaces.interviewer.title' })}</span>
+            </div>
+            <p className={`text-sm text-muted mt-1.5 max-w-2xl`}>{translate({ key: 'workspaces.interviewer.intro' })}</p>
           </div>
-          {/* #167 — invoke the interviewer agent-role on demand; the findings surface via the snapshot when ready. */}
-          <div className="flex items-center gap-2">
-            <input value={focus} onChange={(e) => { setFocus(e.target.value); }} placeholder={translate({ key: 'workspaces.interviewer.focusPlaceholder' })} className="hidden sm:block h-9 w-52 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary" />
-            <WsButton variant="secondary" icon="lightbulb" onClick={() => { runAgentRole('interviewer', focus); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }}>{translate({ key: 'workspaces.interviewer.generateNow' })}</WsButton>
+          <div className={`flex items-center gap-2 shrink-0`}>
+            {/* findings affordance (ADR 0034) — count stays visible here; the list itself opens on demand */}
+            {interviewFindings.length > 0 && (
+              <button
+                type="button" aria-pressed={showFindings}
+                onClick={() => { setView(view === 'findings' ? 'chat' : 'findings'); }}
+                className={`inline-flex items-center gap-1.5 rounded-full h-9 px-3.5 text-sm font-medium transition-colors cursor-pointer ${showFindings ? 'bg-primary/12 text-primary' : 'bg-container2 text-common hover:bg-container2-hover'}`}
+              >
+                <Icon name="list-check" />
+                {translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}
+              </button>
+            )}
+            {/* #167 — invoke the interviewer agent-role on demand; findings surface via the snapshot when ready. */}
+            <GenerateIdeasMenu onGenerate={(focus) => { runAgentRole('interviewer', focus); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }} />
           </div>
         </div>
-        <p className="text-sm text-muted mt-1.5 max-w-2xl">{translate({ key: 'workspaces.interviewer.intro' })}</p>
       </div>
 
-      {/* findings (ADR 0034) — categorised, persisted ideas from the interviewer role; turn one into a ticket */}
-      {interviewFindings.length > 0 && (
-        <div className="shrink-0 border-b border-divider px-5 md:px-6 py-3 max-h-64 overflow-y-auto bg-container1/30">
-          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
-          <div className="flex flex-col gap-2 max-w-3xl">
+      {/* middle — the conversation (default), or the persisted findings list when the pill is active */}
+      {showFindings ? (
+        <div className={`flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5`}>
+          <div className={`max-w-2xl mx-auto flex flex-col gap-2.5`}>
+            <div className={`mb-1`}>
+              <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
+              <p className={`text-xs text-muted mt-0.5`}>{translate({ key: 'workspaces.interviewer.findingsIntro' })}</p>
+            </div>
             {interviewFindings.map((f) => (
               <FindingRow key={f.id} f={f} translate={translate}
                 onMakeTicket={() => { makeTicketFromFinding(f.id); }}
@@ -103,38 +123,43 @@ export default function Interviewer() {
             ))}
           </div>
         </div>
+      ) : (
+        <div ref={scrollRef} className={`flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5`}>
+          {empty ? (
+            <div className={`max-w-2xl mx-auto`}>
+              <EmptyState
+                icon="comment"
+                title={translate({ key: 'workspaces.interviewer.emptyTitle' })}
+                sub={translate({ key: 'workspaces.interviewer.emptySub' })}
+                action={
+                  <div className={`grid sm:grid-cols-2 gap-3`}>
+                    {STARTERS.map((s) => (
+                      <button key={s.key} type="button" onClick={() => { ask(translate({ key: `workspaces.interviewer.starter.${s.key}` })); }}
+                        className={`flex items-start gap-3 rounded-2xl border border-container1-border bg-container1 p-4 text-left hover:border-primary hover:bg-container1-hover transition-colors cursor-pointer`}>
+                        <span className={`w-8 h-8 shrink-0 rounded-lg bg-primary/12 text-primary flex items-center justify-center`}><Icon name={s.icon} /></span>
+                        <span className={`text-sm text-common`}>{translate({ key: `workspaces.interviewer.starter.${s.key}` })}</span>
+                      </button>
+                    ))}
+                  </div>
+                }
+              />
+            </div>
+          ) : (
+            <div className={`max-w-2xl mx-auto flex flex-col gap-4`}>
+              {messages.map((m) => <Bubble key={m.id} m={m} />)}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* conversation */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5">
-        {empty ? (
-          <div className="max-w-2xl mx-auto flex flex-col gap-4 pt-6">
-            <div className="text-sm font-medium text-common">{translate({ key: 'workspaces.interviewer.startersTitle' })}</div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {STARTERS.map((s) => (
-                <button key={s.key} type="button" onClick={() => { ask(translate({ key: `workspaces.interviewer.starter.${s.key}` })); }}
-                  className="flex items-start gap-3 rounded-2xl border border-container1-border bg-container1 p-4 text-left hover:border-primary hover:bg-container1-hover transition-colors cursor-pointer">
-                  <span className="w-8 h-8 shrink-0 rounded-lg bg-primary/12 text-primary flex items-center justify-center"><Icon name={s.icon} /></span>
-                  <span className="text-sm text-common">{translate({ key: `workspaces.interviewer.starter.${s.key}` })}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto flex flex-col gap-4">
-            {messages.map((m) => <Bubble key={m.id} m={m} />)}
-          </div>
-        )}
-      </div>
-
-      {/* composer */}
-      <div className="shrink-0 border-t border-divider p-3 md:px-6">
-        <div className="max-w-2xl mx-auto flex items-end gap-2">
+      {/* composer — the primary action, always pinned at the bottom */}
+      <div className={`shrink-0 border-t border-divider p-3 md:px-6`}>
+        <div className={`max-w-2xl mx-auto flex items-end gap-2`}>
           <textarea
             value={draft} onChange={(e) => { setDraft(e.target.value); }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft); } }}
             rows={1} placeholder={translate({ key: 'workspaces.interviewer.placeholder' })}
-            className="flex-1 min-w-0 resize-none max-h-40 px-3.5 py-2.5 rounded-2xl border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+            className={`flex-1 min-w-0 resize-none max-h-40 px-3.5 py-2.5 rounded-2xl border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`}
           />
           <WsButton icon="paper-plane" onClick={() => { ask(draft); }} disabled={busy || draft.trim().length === 0}>{translate({ key: 'workspaces.interviewer.send' })}</WsButton>
         </div>
@@ -143,26 +168,56 @@ export default function Interviewer() {
   );
 }
 
+//? "Generate ideas now" + its focus field, behind a small header dialog. This makes the focus
+//? feature usable on phones (it was `hidden sm:block` before). Fire-and-forget by design: results
+//? arrive asynchronously via the workspace snapshot (`interviewFindings`), so no local spinner.
+function GenerateIdeasMenu({ onGenerate }: { onGenerate: (focus: string) => void }) {
+  const translate = useTranslator();
+  const [open, setOpen] = useState(false);
+  //? Focus (gap-fix): narrows the run to one area (e.g. "the auth flow"); empty = whole project.
+  const [focus, setFocus] = useState('');
+  const ref = useClickAway<HTMLDivElement>(open, () => { setOpen(false); });
+  return (
+    <div className={`relative`} ref={ref}>
+      <WsButton variant="secondary" icon="wand-magic-sparkles" title={translate({ key: 'workspaces.interviewer.generateNow' })} onClick={() => { setOpen(!open); }}>
+        <span className={`hidden sm:inline`}>{translate({ key: 'workspaces.interviewer.generateNow' })}</span>
+      </WsButton>
+      <Popover open={open} className={`absolute right-0 top-10 z-40 w-72 rounded-xl border border-container1-border bg-container1 p-3 shadow-lg`}>
+        <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.generateTitle' })}</div>
+        <p className={`text-xs text-muted mt-1`}>{translate({ key: 'workspaces.interviewer.generateHint' })}</p>
+        <input
+          value={focus} onChange={(e) => { setFocus(e.target.value); }}
+          placeholder={translate({ key: 'workspaces.interviewer.focusPlaceholder' })}
+          className={`mt-2.5 w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary`}
+        />
+        <WsButton icon="wand-magic-sparkles" className={`mt-2.5 w-full`} onClick={() => { onGenerate(focus); setOpen(false); }}>
+          {translate({ key: 'workspaces.interviewer.generateNow' })}
+        </WsButton>
+      </Popover>
+    </div>
+  );
+}
+
 function FindingRow({ f, translate, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
   const meta = areaMeta(f.area);
   const accepted = f.status === 'accepted';
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-container1-border bg-container1 p-2.5">
-      <span className={`w-7 h-7 shrink-0 rounded-lg bg-container2 flex items-center justify-center ${meta.tint}`}><Icon name={meta.icon} className="text-sm" /></span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-title">{f.title}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-container2 text-muted uppercase shrink-0">{f.area}</span>
-          {f.severity === 'high' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-wrong/12 text-wrong shrink-0">{translate({ key: 'workspaces.interviewer.high' })}</span>}
+    <div className={`flex items-start gap-2.5 rounded-xl border border-container1-border bg-container1 p-2.5`}>
+      <span className={`w-7 h-7 shrink-0 rounded-lg bg-container2 flex items-center justify-center ${meta.tint}`}><Icon name={meta.icon} className={`text-sm`} /></span>
+      <div className={`min-w-0 flex-1`}>
+        <div className={`flex items-center gap-1.5 flex-wrap`}>
+          <span className={`text-sm font-medium text-title`}>{f.title}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded bg-container2 text-muted uppercase shrink-0`}>{f.area}</span>
+          {f.severity === 'high' && <span className={`text-[10px] px-1.5 py-0.5 rounded bg-wrong/12 text-wrong shrink-0`}>{translate({ key: 'workspaces.interviewer.high' })}</span>}
         </div>
-        {f.summary.length > 0 && <div className="text-xs text-muted mt-0.5">{f.summary}</div>}
+        {f.summary.length > 0 && <div className={`text-xs text-muted mt-0.5`}>{f.summary}</div>}
       </div>
       {accepted ? (
-        <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className="text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center enabled:hover:underline enabled:cursor-pointer disabled:cursor-default"><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
+        <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className={`text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center enabled:hover:underline enabled:cursor-pointer disabled:cursor-default`}><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
       ) : (
-        <div className="flex items-center gap-1.5 shrink-0 self-center">
-          <button type="button" onClick={onMakeTicket} className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1"><Icon name="plus" className="text-xs" />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
-          <button type="button" onClick={onDismiss} title={translate({ key: 'workspaces.interviewer.dismiss' })} className="text-muted hover:text-wrong cursor-pointer p-1"><Icon name="xmark" className="text-xs" /></button>
+        <div className={`flex items-center gap-1.5 shrink-0 self-center`}>
+          <button type="button" onClick={onMakeTicket} className={`text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
+          <button type="button" onClick={onDismiss} title={translate({ key: 'workspaces.interviewer.dismiss' })} className={`text-muted hover:text-wrong cursor-pointer p-1`}><Icon name="xmark" className={`text-xs`} /></button>
         </div>
       )}
     </div>
@@ -173,10 +228,10 @@ function Bubble({ m }: { m: Msg }) {
   const mine = m.role === 'user';
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      {!mine && <span className="w-7 h-7 shrink-0 mr-2 rounded-lg bg-primary/12 text-primary flex items-center justify-center self-end"><Icon name="robot" /></span>}
+      {!mine && <span className={`w-7 h-7 shrink-0 mr-2 rounded-lg bg-primary/12 text-primary flex items-center justify-center self-end`}><Icon name="robot" /></span>}
       <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${mine ? 'bg-primary text-title-primary' : 'bg-container1 border border-container1-border text-common'}`}>
         {m.pending
-          ? <span className="inline-flex gap-1 py-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-current opacity-40 motion-safe:animate-pulse" style={{ animationDelay: `${String(i * 150)}ms` }} />)}</span>
+          ? <span className={`inline-flex gap-1 py-1`}>{[0, 1, 2].map((i) => <span key={i} className={`w-1.5 h-1.5 rounded-full bg-current opacity-40 motion-safe:animate-pulse`} style={{ animationDelay: `${String(i * 150)}ms` }} />)}</span>
           : m.text}
       </div>
     </div>

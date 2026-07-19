@@ -1,46 +1,44 @@
-//? intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/
-//? marketer roles generate a landing page, marketing copy, a brand kit, and a go-to-market strategy,
-//? each live-previewed. Built on the pluggable AI-provider layer (ADR 0007) + the AgentRole registry.
+//? intent: Studio — describe your product once in a short BRIEF and let the AI designer + marketer
+//? generate ready-to-use assets from it: a landing page, brand kit, marketing copy, emails, ads, a
+//? social calendar, names, ad creatives and video scripts — each a live-previewed card you can
+//? regenerate, publish live or send onward. The brand library sits behind a secondary tab; rare
+//? per-card actions live in overflow menus. Built on the pluggable AI-provider layer (ADR 0007).
 
 import { useEffect, useState } from 'react';
 
-import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
-import Icon from '../../_components/Icon';
-import { WsButton } from '../../_components/primitives';
+import Icon, { type IconName } from '../../_components/Icon';
+import { Disclosure, EmptyState, PopMenu, Segmented, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
+import { BrandPanel } from './BrandPanel';
+import { ArtifactBody } from './previews';
+import { asRecord, asStr, downloadHtmlAsPng, inputCls } from './content';
 
 export const template = 'workspaces';
 
-const KINDS: { kind: StudioArtifactKind; icon: string; role: 'designer' | 'marketer' }[] = [
-  { kind: 'landing', icon: 'window-maximize', role: 'designer' },
-  { kind: 'component', icon: 'cube', role: 'designer' },
-  { kind: 'brand', icon: 'palette', role: 'designer' },
-  { kind: 'copy', icon: 'pen-nib', role: 'marketer' },
-  { kind: 'strategy', icon: 'chess-knight', role: 'marketer' },
-  { kind: 'email', icon: 'envelope', role: 'marketer' },
-  { kind: 'ads', icon: 'bullhorn', role: 'marketer' },
-  { kind: 'social', icon: 'calendar-days', role: 'marketer' },
-  { kind: 'names', icon: 'signature', role: 'marketer' },
-  { kind: 'thumbnail', icon: 'image', role: 'marketer' },
-  { kind: 'videoScript', icon: 'film', role: 'marketer' },
+const KINDS: { kind: StudioArtifactKind; icon: IconName; role: 'designer' | 'marketer' }[] = [
+  { kind: 'landing', icon: 'display', role: 'designer' },
+  { kind: 'component', icon: 'table-columns', role: 'designer' },
+  { kind: 'brand', icon: 'wand-magic-sparkles', role: 'designer' },
+  { kind: 'copy', icon: 'file-lines', role: 'marketer' },
+  { kind: 'strategy', icon: 'diagram-project', role: 'marketer' },
+  { kind: 'email', icon: 'paper-plane', role: 'marketer' },
+  { kind: 'ads', icon: 'bolt', role: 'marketer' },
+  { kind: 'social', icon: 'calendar-day', role: 'marketer' },
+  { kind: 'names', icon: 'list-check', role: 'marketer' },
+  { kind: 'thumbnail', icon: 'crop', role: 'marketer' },
+  { kind: 'videoScript', icon: 'play', role: 'marketer' },
 ];
-
-const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
-
-//? ---- content readers (the AI content is `unknown`; read defensively, no casts to `any`) ----
-function asRecord(v: unknown): Record<string, unknown> { return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}; }
-function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
-function asStrArr(v: unknown): string[] { return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; }
 
 export default function Studio() { return <StudioSurface variant="studio" />; }
 
 //? The shared Studio surface. `variant` gives /studio (design + marketing kinds) and /marketing (marketing kinds
 //? only) their own page + focus while sharing the brief workspace + generator — the user chose a split marketing
-//? page over one shared Studio. `/marketing` re-uses this with variant="marketing".
+//? page over one shared Studio. `/marketing` re-uses this with variant="marketing" (marketer kinds, no Brand tab).
 export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
   const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
@@ -60,21 +58,23 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
   //? Marketing focuses on the marketer kinds; Studio shows both designer + marketer groups.
   const roles: readonly ('designer' | 'marketer')[] = variant === 'marketing' ? ['marketer'] : ['designer', 'marketer'];
   const [selectedId, setSelectedId] = useState<string | null>(studioBriefs[0]?.id ?? null);
-  const [editing, setEditing] = useState<boolean>(studioBriefs.length === 0);
+  const [editing, setEditing] = useState(false);
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
-  const [showBrand, setShowBrand] = useState(false);
+  const [tab, setTab] = useState<'assets' | 'brand'>('assets');
   const [refine, setRefine] = useState('');   //? I4 — an optional refine instruction applied to (re)generation.
 
   useEffect(() => {
     if (selectedId && !studioBriefs.some((b) => b.id === selectedId)) setSelectedId(studioBriefs[0]?.id ?? null);
-    if (!selectedId && studioBriefs[0]) setSelectedId(studioBriefs[0].id);
-  }, [studioBriefs, selectedId]);
+    //? don't auto-select while a NEW brief is being drafted (selectedId is deliberately null then) —
+    //? re-selecting would flip the form into edit-mode of the first brief.
+    if (!selectedId && studioBriefs[0] && !editing) setSelectedId(studioBriefs[0].id);
+  }, [studioBriefs, selectedId, editing]);
 
   const selected = studioBriefs.find((b) => b.id === selectedId) ?? null;
   const artifacts = studioArtifacts.filter((a) => a.briefId === selectedId);
 
   const runGenerate = async (kind: StudioArtifactKind) => {
-    if (!selected) return;
+    if (!selected || busyKind !== null) return;
     setBusyKind(kind);
     await generateArtifact(selected.id, kind, refine.trim() || undefined);
     setBusyKind(null);
@@ -85,83 +85,150 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
     content: translate({ key: 'workspaces.studio.deleteBriefBody' }),
   }).then((ok) => { if (ok) { deleteBrief(b.id); if (selectedId === b.id) setSelectedId(null); } });
 
+  const startNewBrief = () => { setEditing(true); setSelectedId(null); setTab('assets'); };
+  const openBrief = (id: string) => { setSelectedId(id); setEditing(false); };
+
+  //? The brand tab keeps the old rail-subtitle signal ("N colours" / set / not set) so brand state
+  //? stays visible without opening the panel.
+  const brandSignal = studioBrand
+    ? (studioBrand.palette.length > 0
+      ? translate({ key: 'workspaces.studio.brandColours', params: [{ key: 'count', value: String(studioBrand.palette.length) }] })
+      : translate({ key: 'workspaces.studio.brandSet' }))
+    : translate({ key: 'workspaces.studio.brandUnset' });
+  const brandOpen = variant === 'studio' && tab === 'brand';
+
   return (
-    <div className="flex h-full min-h-0">
-      {/* ---- Left rail: brand library + briefs ---- */}
-      <div className="w-64 shrink-0 border-r border-divider flex flex-col min-h-0">
-        <div className="px-2 pt-3 shrink-0">
-          <div onClick={() => { setShowBrand(true); }} className={`flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${showBrand ? 'bg-container1' : 'hover:bg-container1/60'}`}>
-            <Icon name="swatchbook" className="text-primary" />
-            <div className="min-w-0 flex-1"><div className="text-sm font-medium text-title truncate">{translate({ key: 'workspaces.studio.brandLibrary' })}</div><div className="text-xs text-muted truncate">{studioBrand ? (studioBrand.palette.length > 0 ? `${String(studioBrand.palette.length)} colours` : translate({ key: 'workspaces.studio.brandSet' })) : translate({ key: 'workspaces.studio.brandUnset' })}</div></div>
-          </div>
+    <div className={`flex flex-col h-full min-h-0`}>
+      {/* ---- Assets | Brand — the brand library is a secondary tab, only on the studio variant ---- */}
+      {variant === 'studio' && (
+        <div className={`px-4 md:px-6 pt-4 shrink-0`}>
+          <Segmented
+            options={[
+              { id: 'assets', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="table-cells-large" />{translate({ key: 'workspaces.studio.tabAssets' })}</span> },
+              { id: 'brand', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="book-open" />{translate({ key: 'workspaces.studio.tabBrand' })}<span className={`text-xs text-muted font-normal`}>· {brandSignal}</span></span> },
+            ]}
+            value={tab} onChange={setTab}
+          />
         </div>
-        <div className="flex items-center justify-between gap-2 px-4 py-3 shrink-0 border-t border-divider mt-2">
-          <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.studio.briefs' })}</div>
-          <button type="button" onClick={() => { setEditing(true); setSelectedId(null); setShowBrand(false); }} className="text-muted hover:text-primary cursor-pointer" title={translate({ key: 'workspaces.studio.newBrief' })}><Icon name="plus" /></button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 flex flex-col gap-1">
-          {studioBriefs.length === 0 && <div className="text-xs text-muted px-2 py-4 text-center">{translate({ key: 'workspaces.studio.noBriefs' })}</div>}
-          {studioBriefs.map((b) => (
-            <div key={b.id} onClick={() => { setSelectedId(b.id); setEditing(false); setShowBrand(false); }} className={`group flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selectedId === b.id && !editing && !showBrand ? 'bg-container1' : 'hover:bg-container1/60'}`}>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm text-title truncate">{b.name}</div>
-                <div className="text-xs text-muted truncate">{b.productName}</div>
-              </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); removeBrief(b); }} className="text-muted hover:text-wrong opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
-      {/* ---- Main ---- */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {showBrand
-          ? <BrandPanel />
-          : (selected && !editing
-          ? (
-            <div className="p-5 md:p-6 flex flex-col gap-5 max-w-5xl">
-              {/* brief header */}
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-xl font-semibold text-title">{selected.productName}</div>
-                  <div className="text-sm text-muted mt-0.5">{selected.name} · {selected.audience || translate({ key: 'workspaces.studio.noAudience' })}</div>
+      {brandOpen
+        ? <div className={`flex-1 min-h-0 overflow-y-auto`}><BrandPanel /></div>
+        : (
+          <div className={`flex flex-1 min-h-0`}>
+            {/* ---- Brief rail (md+): pick a brief; creating one is a labelled action ---- */}
+            {studioBriefs.length > 0 && (
+              <div className={`hidden md:flex w-64 shrink-0 border-r border-divider flex-col min-h-0`}>
+                <div className={`flex items-center justify-between gap-2 px-4 py-3 shrink-0`}>
+                  <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.studio.briefs' })}</div>
+                  <button type="button" onClick={startNewBrief} className={`inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover cursor-pointer`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.studio.newBrief' })}</button>
                 </div>
-                <WsButton variant="secondary" icon="pen" onClick={() => { setEditing(true); }}>{translate({ key: 'workspaces.studio.editBrief' })}</WsButton>
+                <div className={`flex-1 min-h-0 overflow-y-auto px-2 pb-3 flex flex-col gap-1`}>
+                  {studioBriefs.map((b) => (
+                    <div key={b.id} onClick={() => { openBrief(b.id); }} className={`rounded-lg px-3 py-2 cursor-pointer transition-colors ${selectedId === b.id && !editing ? 'bg-container1' : 'hover:bg-container1/60'}`}>
+                      <div className={`text-sm text-title truncate`}>{b.name}</div>
+                      <div className={`text-xs text-muted truncate`}>{b.productName}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* generate row — grouped by role (Designer / Marketer) */}
-              <div className="flex flex-col gap-3">
-                {roles.map((role) => (
-                  <div key={role}>
-                    <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                      <Icon name={role === 'designer' ? 'palette' : 'bullhorn'} className="text-disabled" />
-                      {translate({ key: `workspaces.studio.role.${role}` })}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                      {KINDS.filter((k) => k.role === role).map(({ kind, icon }) => (
-                        <button key={kind} type="button" disabled={busyKind !== null} onClick={() => { void runGenerate(kind); }}
-                          className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container1 px-3 py-2.5 text-sm text-title hover:border-primary hover:bg-container1-hover transition-colors ${busyKind === null ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-                          <Icon name={busyKind === kind ? 'spinner' : icon} className={busyKind === kind ? 'animate-spin text-primary' : 'text-primary'} />
-                          <span className="truncate">{translate({ key: `workspaces.studio.kind.${kind}` })}</span>
-                        </button>
-                      ))}
-                    </div>
+            {/* ---- Main ---- */}
+            <div className={`flex-1 min-h-0 overflow-y-auto`}>
+              {studioBriefs.length === 0 && !editing
+                ? (
+                  //? Teaching empty state — explains what Studio is FOR and offers the one primary action.
+                  <div className={`h-full flex items-center justify-center p-6`}>
+                    <EmptyState
+                      icon="wand-magic-sparkles"
+                      title={translate({ key: 'workspaces.studio.emptyTitle' })}
+                      sub={translate({ key: 'workspaces.studio.emptyBody' })}
+                      action={<WsButton icon="plus" onClick={() => { setEditing(true); }}>{translate({ key: 'workspaces.studio.createFirstBrief' })}</WsButton>}
+                    />
                   </div>
-                ))}
-                {/* I4 — an optional refine instruction applied to (re)generation. */}
-                <input value={refine} onChange={(e) => { setRefine(e.target.value); }} placeholder={translate({ key: 'workspaces.studio.refinePlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                {busyKind && <div className="text-xs text-muted flex items-center gap-1.5"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</div>}
-              </div>
+                )
+                : (selected && !editing
+                  ? (
+                    <div className={`p-4 md:p-6 flex flex-col gap-6 max-w-5xl`}>
+                      {/* phone brief switcher — the rail is md+; below that a horizontal chip row */}
+                      <div className={`md:hidden flex items-center gap-1.5 overflow-x-auto ws-no-scrollbar`}>
+                        {studioBriefs.map((b) => (
+                          <button key={b.id} type="button" onClick={() => { openBrief(b.id); }} className={`shrink-0 rounded-full border px-3 h-8 text-sm transition-colors cursor-pointer ${selectedId === b.id ? 'bg-primary/10 border-primary-border text-primary' : 'bg-container1 border-container1-border text-common'}`}>
+                            {b.name}
+                          </button>
+                        ))}
+                        <button type="button" onClick={startNewBrief} className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border border-dashed border-container1-border px-3 h-8 text-sm text-muted hover:text-primary transition-colors cursor-pointer`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.studio.newBrief' })}</button>
+                      </div>
 
-              {/* artifacts */}
-              <div className="flex flex-col gap-4">
-                {artifacts.length === 0 && !busyKind && <div className="text-sm text-muted py-8 text-center border border-dashed border-container1-border rounded-2xl">{translate({ key: 'workspaces.studio.noArtifacts' })}</div>}
-                {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
-              </div>
+                      {/* brief header — edit stays a labelled button; delete moves into the overflow menu */}
+                      <div className={`flex items-start justify-between gap-3`}>
+                        <div className={`min-w-0`}>
+                          <div className={`text-xl font-semibold text-title truncate`}>{selected.productName}</div>
+                          <div className={`text-sm text-muted mt-0.5 truncate`}>{selected.name} · {selected.audience || translate({ key: 'workspaces.studio.noAudience' })}</div>
+                        </div>
+                        <div className={`flex items-center gap-1.5 shrink-0`}>
+                          <WsButton variant="secondary" onClick={() => { setEditing(true); }}>{translate({ key: 'workspaces.studio.editBrief' })}</WsButton>
+                          <PopMenu
+                            ariaLabel={translate({ key: 'workspaces.studio.briefActions' })}
+                            items={[{ icon: 'trash', label: translate({ key: 'workspaces.studio.deleteBrief' }), danger: true, onClick: () => { removeBrief(selected); } }]}
+                          />
+                        </div>
+                      </div>
+
+                      {/* ---- Generate — THE primary action, grouped by role (Designer / Marketer) ---- */}
+                      <div className={`flex flex-col gap-3`}>
+                        <div>
+                          <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.studio.generate' })}</div>
+                          <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.generateHint' })}</div>
+                        </div>
+                        {roles.map((role) => (
+                          <div key={role}>
+                            <div className={`text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5`}>
+                              <Icon name={role === 'designer' ? 'sliders' : 'chart-column'} className={`text-disabled`} />
+                              {translate({ key: `workspaces.studio.role.${role}` })}
+                            </div>
+                            <div className={`grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2`}>
+                              {KINDS.filter((k) => k.role === role).map(({ kind, icon }) => (
+                                <button key={kind} type="button" disabled={busyKind !== null} onClick={() => { void runGenerate(kind); }}
+                                  className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container1 px-3 py-2.5 text-sm text-title hover:border-primary hover:bg-container1-hover transition-colors ${busyKind === null ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                                  <Icon name={busyKind === kind ? 'spinner' : icon} className={busyKind === kind ? 'animate-spin text-primary' : 'text-primary'} />
+                                  <span className={`truncate`}>{translate({ key: `workspaces.studio.kind.${kind}` })}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {/* I4 — the optional refine instruction, collapsed by default; the badge shows it will be applied. */}
+                        <Disclosure summary={(
+                          <span className={`inline-flex items-center gap-2`}>
+                            {translate({ key: 'workspaces.studio.refineTitle' })}
+                            {refine.trim().length > 0 && <span className={`inline-flex items-center gap-1.5 text-xs font-normal text-primary`}><span className={`w-1.5 h-1.5 rounded-full bg-primary`} />{translate({ key: 'workspaces.studio.refineActive' })}</span>}
+                          </span>
+                        )}>
+                          <input value={refine} onChange={(e) => { setRefine(e.target.value); }} placeholder={translate({ key: 'workspaces.studio.refinePlaceholder' })} className={inputCls} />
+                        </Disclosure>
+                        {busyKind && <div className={`text-xs text-muted flex items-center gap-1.5`}><Icon name="spinner" className={`animate-spin`} />{translate({ key: 'workspaces.studio.generating' })}</div>}
+                      </div>
+
+                      {/* ---- Generated assets ---- */}
+                      <div className={`flex flex-col gap-3`}>
+                        <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.studio.artifactsTitle' })}</div>
+                        {artifacts.length === 0 && !busyKind && (
+                          <EmptyState
+                            icon="wand-magic-sparkles"
+                            title={translate({ key: 'workspaces.studio.emptyBriefTitle' })}
+                            sub={translate({ key: variant === 'marketing' ? 'workspaces.studio.emptyBriefBodyMarketing' : 'workspaces.studio.emptyBriefBody' })}
+                          />
+                        )}
+                        {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
+                      </div>
+                    </div>
+                  )
+                  : <BriefForm key={selected?.id ?? 'new'} brief={editing ? selected : null} onSaved={() => { setEditing(false); }} onCancel={studioBriefs.length > 0 ? () => { setEditing(false); if (!selectedId) setSelectedId(studioBriefs[0]?.id ?? null); } : undefined} />)}
             </div>
-          )
-          : <BriefForm key={selected?.id ?? 'new'} brief={editing ? selected : null} onSaved={() => { setEditing(false); }} onCancel={studioBriefs.length > 0 ? () => { setEditing(false); if (!selectedId) setSelectedId(studioBriefs[0]?.id ?? null); } : undefined} />)}
-      </div>
+          </div>
+        )}
     </div>
   );
 }
@@ -188,8 +255,8 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
   };
 
   const field = (label: string, value: string, set: (v: string) => void, placeholder: string, area = false) => (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted">{label}</span>
+    <div className={`flex flex-col gap-1`}>
+      <span className={`text-xs text-muted`}>{label}</span>
       {area
         ? <textarea value={value} onChange={(e) => { set(e.target.value); }} placeholder={placeholder} rows={3} className={`${inputCls} h-auto py-2 resize-y`} />
         : <input value={value} onChange={(e) => { set(e.target.value); }} placeholder={placeholder} className={inputCls} />}
@@ -197,16 +264,16 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
   );
 
   return (
-    <div className="p-5 md:p-6 max-w-2xl flex flex-col gap-4">
-      <div className="text-lg font-semibold text-title">{translate({ key: brief ? 'workspaces.studio.editBrief' : 'workspaces.studio.newBrief' })}</div>
-      <div className="text-sm text-muted -mt-2">{translate({ key: 'workspaces.studio.briefIntro' })}</div>
+    <div className={`p-4 md:p-6 max-w-2xl flex flex-col gap-4`}>
+      <div className={`text-lg font-semibold text-title`}>{translate({ key: brief ? 'workspaces.studio.editBrief' : 'workspaces.studio.newBrief' })}</div>
+      <div className={`text-sm text-muted -mt-2`}>{translate({ key: 'workspaces.studio.briefIntro' })}</div>
       {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
       {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
       {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
       {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
       {field(translate({ key: 'workspaces.studio.fieldGoals' }), goals, setGoals, translate({ key: 'workspaces.studio.fieldGoalsPlaceholder' }), true)}
       {field(translate({ key: 'workspaces.studio.fieldNotes' }), notes, setNotes, translate({ key: 'workspaces.studio.fieldNotesPlaceholder' }), true)}
-      <div className="flex items-center justify-end gap-2 pt-1">
+      <div className={`flex items-center justify-end gap-2 pt-1`}>
         {onCancel && <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>}
         <WsButton icon="check" onClick={() => { void save(); }} disabled={!canSave || saving}>{translate({ key: 'workspaces.studio.saveBrief' })}</WsButton>
       </div>
@@ -214,376 +281,51 @@ function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | null; on
   );
 }
 
-//? ---- Artifact card (renders by kind) ----
+//? ---- Artifact card ----
+//? Promoted, point-of-the-card actions (Use as brand / Send to Content / Publish live) stay visible
+//? and labelled; secondary ones (Copy HTML, Download PNG, Regenerate, Delete) live in the overflow menu.
 function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
+  const html = asStr(c.html);
+  const htmlKind = artifact.kind === 'landing' || artifact.kind === 'component' || artifact.kind === 'thumbnail';
+  const menu: PopMenuItem[] = [
+    ...(htmlKind && artifact.status === 'ready' && html.trim().length > 0
+      ? [
+        { icon: 'copy' as IconName, label: translate({ key: 'workspaces.studio.copyHtml' }), onClick: () => { void navigator.clipboard.writeText(html); } },
+        //? #170 — download the card as a social-sized PNG (client-side raster; falls back to Copy HTML on taint).
+        { icon: 'crop' as IconName, label: translate({ key: 'workspaces.studio.downloadPng' }), onClick: () => { downloadHtmlAsPng(html, () => { notify.error({ key: 'workspaces.studio.pngFailed' }); }); } },
+      ]
+      : []),
+    //? Regenerate shares the generate mutual-exclusion: inert while any generation is busy.
+    { icon: 'arrows-rotate', label: translate({ key: 'workspaces.studio.regenerate' }), onClick: () => { if (!busy) onRegenerate(); } },
+    { divider: true },
+    { icon: 'trash', label: translate({ key: 'workspaces.studio.deleteArtifact' }), danger: true, onClick: onDelete },
+  ];
   return (
-    <div className="rounded-2xl border border-container1-border bg-container1 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-divider">
-        <Icon name={KINDS.find((k) => k.kind === artifact.kind)?.icon ?? 'file'} className="text-primary" />
-        <div className="text-sm font-medium text-title flex-1 truncate">{artifact.title}</div>
+    <div className={`rounded-2xl border border-container1-border bg-container1 overflow-hidden`}>
+      <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 border-b border-divider`}>
+        <Icon name={KINDS.find((k) => k.kind === artifact.kind)?.icon ?? 'file-lines'} className={`text-primary`} />
+        <div className={`text-sm font-medium text-title flex-1 min-w-0 truncate`}>{artifact.title}</div>
         {/* #168 — a 'generating' artifact shows an in-progress spinner until the detached completion flips it. */}
-        {artifact.status === 'generating' && <span className="text-xs text-muted flex items-center gap-1.5"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</span>}
-        {artifact.status === 'error' && <span className="text-xs text-wrong">{translate({ key: 'workspaces.studio.failed' })}</span>}
-        {onPromote && <button type="button" onClick={onPromote} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.useAsBrandHint' })}><Icon name="swatchbook" className="text-xs" />{translate({ key: 'workspaces.studio.useAsBrand' })}</button>}
-        {onSendToContent && <button type="button" onClick={onSendToContent} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.sendToContentHint' })}><Icon name="paper-plane" className="text-xs" />{translate({ key: 'workspaces.studio.sendToContent' })}</button>}
-        {/* G3 — one click from "generated page" to a real public URL. */}
-        {onPublishLive && <button type="button" onClick={onPublishLive} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1" title={translate({ key: 'workspaces.studio.publishLiveHint' })}><Icon name="globe" className="text-xs" />{translate({ key: 'workspaces.studio.publishLive' })}</button>}
-        <button type="button" disabled={busy} onClick={onRegenerate} className={`text-muted hover:text-primary ${busy ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`} title={translate({ key: 'workspaces.studio.regenerate' })}><Icon name="rotate" className="text-xs" /></button>
-        <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer" title={translate({ key: 'workspaces.studio.deleteArtifact' })}><Icon name="trash-can" className="text-xs" /></button>
+        {artifact.status === 'generating' && <span className={`text-xs text-muted flex items-center gap-1.5`}><Icon name="spinner" className={`animate-spin`} />{translate({ key: 'workspaces.studio.generating' })}</span>}
+        {artifact.status === 'error' && <span className={`text-xs text-wrong`}>{translate({ key: 'workspaces.studio.failed' })}</span>}
+        {onPromote && <button type="button" onClick={onPromote} className={`text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1`} title={translate({ key: 'workspaces.studio.useAsBrandHint' })}><Icon name="book-open" className={`text-xs`} />{translate({ key: 'workspaces.studio.useAsBrand' })}</button>}
+        {onSendToContent && <button type="button" onClick={onSendToContent} className={`text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1`} title={translate({ key: 'workspaces.studio.sendToContentHint' })}><Icon name="paper-plane" className={`text-xs`} />{translate({ key: 'workspaces.studio.sendToContent' })}</button>}
+        {/* G3 — one click from "generated page" to a real public URL (re-publish updates the same URL). */}
+        {onPublishLive && <button type="button" onClick={onPublishLive} className={`text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1`} title={translate({ key: 'workspaces.studio.publishLiveHint' })}><Icon name="up-right-from-square" className={`text-xs`} />{translate({ key: 'workspaces.studio.publishLive' })}</button>}
+        <PopMenu ariaLabel={translate({ key: 'workspaces.studio.artifactActions' })} items={menu} />
       </div>
-      <div className="p-4">
-        {artifact.status === 'generating' && <div className="text-sm text-muted flex items-center gap-2"><Icon name="spinner" className="animate-spin" />{translate({ key: 'workspaces.studio.generating' })}</div>}
-        {artifact.status === 'error' && <div className="text-sm text-muted">{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>}
+      <div className={`p-4`}>
+        {artifact.status === 'generating' && <div className={`text-sm text-muted flex items-center gap-2`}><Icon name="spinner" className={`animate-spin`} />{translate({ key: 'workspaces.studio.generating' })}</div>}
+        {artifact.status === 'error' && <div className={`text-sm text-muted`}>{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>}
         {artifact.status === 'ready' && <ArtifactBody kind={artifact.kind} c={c} />}
       </div>
-      <div className="px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2">
-        <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
-        {artifact.providerId && <span>· {artifact.providerId}</span>}
-        <span className="ml-auto">{when}</span>
-      </div>
-    </div>
-  );
-}
-
-//? Render the artifact body by kind (avoids a nested ternary at the call site).
-function ArtifactBody({ kind, c }: { kind: StudioArtifactKind; c: Record<string, unknown> }): React.ReactNode {
-  if (kind === 'landing' || kind === 'component' || kind === 'thumbnail') return <LandingPreview html={asStr(c.html)} />;
-  if (kind === 'videoScript') return <VideoScriptPreview c={c} />;
-  if (kind === 'brand') return <BrandPreview c={c} />;
-  if (kind === 'copy') return <CopyPreview c={c} />;
-  if (kind === 'strategy') return <StrategyPreview markdown={asStr(c.markdown)} />;
-  if (kind === 'email') return <EmailPreview c={c} />;
-  if (kind === 'ads') return <AdsPreview c={c} />;
-  if (kind === 'social') return <SocialPreview c={c} />;
-  return <NamesPreview c={c} />;
-}
-
-//? #170 — client-side render-to-PNG: rasterize the generated HTML card into a social-sized PNG via an
-//? SVG <foreignObject> → <img> → <canvas> → blob, then download it. Fully client-side (no image provider).
-//? Best-effort: an external image / cross-origin asset TAINTS the canvas so `toBlob` yields null — we notify
-//? and the user falls back to Copy HTML (the owner picked client render-to-PNG knowing this limit).
-const PNG_W = 1200;
-const PNG_H = 630;
-function downloadHtmlAsPng(html: string, onFail: () => void): void {
-  //? Wrap the card in a namespaced foreignObject at social-card dimensions.
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${String(PNG_W)}" height="${String(PNG_H)}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${String(PNG_W)}px;height:${String(PNG_H)}px;overflow:hidden;background:#ffffff">${html}</div></foreignObject></svg>`;
-  const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  const img = new Image();
-  img.addEventListener('load', () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = PNG_W; canvas.height = PNG_H;
-    const cx = canvas.getContext('2d');
-    if (!cx) { onFail(); return; }
-    cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, PNG_W, PNG_H);
-    cx.drawImage(img, 0, 0);
-    //? toBlob is null when the canvas is tainted (external asset) — honest failure, not a broken file.
-    canvas.toBlob((blob) => {
-      if (!blob) { onFail(); return; }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'design.png';
-      a.click();
-      URL.revokeObjectURL(url);
-    }, 'image/png');
-  });
-  img.addEventListener('error', () => { onFail(); });
-  img.src = svgUrl;
-}
-
-function LandingPreview({ html }: { html: string }) {
-  const translate = useTranslator();
-  const [full, setFull] = useState(false);
-  if (html.trim().length === 0) return <div className="text-sm text-muted">{translate({ key: 'workspaces.studio.empty' })}</div>;
-  return (
-    <div className="flex flex-col gap-2">
-      <div className={`rounded-xl border border-container1-border overflow-hidden bg-white ${full ? 'h-[70vh]' : 'h-96'}`}>
-        {/* sandboxed: no scripts run — a safe visual preview of the generated page */}
-        <iframe title="landing-preview" srcDoc={html} sandbox="" className="w-full h-full border-0" />
-      </div>
-      <div className="flex items-center gap-2">
-        <WsButton variant="ghost" icon={full ? 'compress' : 'expand'} onClick={() => { setFull((v) => !v); }}>{translate({ key: full ? 'workspaces.studio.collapse' : 'workspaces.studio.expand' })}</WsButton>
-        <WsButton variant="ghost" icon="copy" onClick={() => { void navigator.clipboard.writeText(html); }}>{translate({ key: 'workspaces.studio.copyHtml' })}</WsButton>
-        {/* #170 — download the card as a social-sized PNG (client-side raster; falls back to Copy HTML on taint). */}
-        <WsButton variant="ghost" icon="file-export" onClick={() => { downloadHtmlAsPng(html, () => { notify.error({ key: 'workspaces.studio.pngFailed' }); }); }}>{translate({ key: 'workspaces.studio.downloadPng' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
-function BrandPreview({ c }: { c: Record<string, unknown> }) {
-  const translate = useTranslator();
-  const palette = Array.isArray(c.palette) ? c.palette.map((x) => asRecord(x)) : [];
-  const typo = asRecord(c.typography);
-  const taglines = asStrArr(c.taglines);
-  const logoIdeas = asStrArr(c.logoIdeas);
-  return (
-    <div className="flex flex-col gap-4">
-      {palette.length > 0 && (
-        <div>
-          <div className="text-xs text-muted mb-1.5">{translate({ key: 'workspaces.studio.palette' })}</div>
-          <div className="flex flex-wrap gap-2">
-            {palette.map((p, i) => (
-              <div key={`${asStr(p.hex)}-${String(i)}`} className="flex flex-col items-center gap-1">
-                <div className="w-14 h-14 rounded-lg border border-container1-border" style={{ backgroundColor: asStr(p.hex) }} />
-                <span className="text-[11px] text-muted">{asStr(p.name)}</span>
-                <span className="text-[10px] text-disabled font-mono">{asStr(p.hex)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {(asStr(typo.heading) || asStr(typo.body)) && (
-        <div className="text-sm text-common"><span className="text-muted">{translate({ key: 'workspaces.studio.typography' })}: </span>{asStr(typo.heading)} / {asStr(typo.body)}</div>
-      )}
-      {asStr(c.voice) && <div className="text-sm text-common"><span className="text-muted">{translate({ key: 'workspaces.studio.voice' })}: </span>{asStr(c.voice)}</div>}
-      {taglines.length > 0 && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.studio.taglines' })}</div><ul className="list-disc list-inside text-sm text-common">{taglines.map((t, i) => <li key={`${t.slice(0,12)}-${String(i)}`}>{t}</li>)}</ul></div>}
-      {logoIdeas.length > 0 && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.studio.logoIdeas' })}</div><ul className="list-disc list-inside text-sm text-common">{logoIdeas.map((t, i) => <li key={`${t.slice(0,12)}-${String(i)}`}>{t}</li>)}</ul></div>}
-    </div>
-  );
-}
-
-function CopyPreview({ c }: { c: Record<string, unknown> }) {
-  const sections = Array.isArray(c.sections) ? c.sections.map((x) => asRecord(x)) : [];
-  if (sections.length === 0) return <div className="text-sm text-muted">—</div>;
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      {sections.map((s, i) => (
-        <div key={`${asStr(s.channel)}-${String(i)}`} className="rounded-xl border border-container1-border bg-container2/30 p-3">
-          <div className="text-sm font-medium text-title mb-1.5">{asStr(s.channel)}</div>
-          <ul className="flex flex-col gap-1.5">{asStrArr(s.items).map((it, j) => <li key={`${it.slice(0,12)}-${String(j)}`} className="text-sm text-common">{it}</li>)}</ul>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmailPreview({ c }: { c: Record<string, unknown> }) {
-  const emails = Array.isArray(c.emails) ? c.emails.map((x) => asRecord(x)) : [];
-  if (emails.length === 0) return <div className="text-sm text-muted">—</div>;
-  return (
-    <div className="flex flex-col gap-3">
-      {emails.map((e, i) => (
-        <div key={`${asStr(e.subject).slice(0, 16)}-${String(i)}`} className="rounded-xl border border-container1-border bg-container2/30 p-3">
-          <div className="text-sm font-medium text-title">{i + 1}. {asStr(e.subject)}</div>
-          {asStr(e.preview) && <div className="text-xs text-muted mt-0.5 italic">{asStr(e.preview)}</div>}
-          <div className="text-sm text-common mt-2 whitespace-pre-wrap">{asStr(e.body)}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AdsPreview({ c }: { c: Record<string, unknown> }) {
-  const ads = Array.isArray(c.ads) ? c.ads.map((x) => asRecord(x)) : [];
-  if (ads.length === 0) return <div className="text-sm text-muted">—</div>;
-  return (
-    <div className="grid md:grid-cols-2 gap-3">
-      {ads.map((a, i) => (
-        <div key={`${asStr(a.headline).slice(0, 16)}-${String(i)}`} className="rounded-xl border border-container1-border bg-container2/30 p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted mb-1">{asStr(a.platform)}</div>
-          <div className="text-sm font-medium text-title">{asStr(a.headline)}</div>
-          <div className="text-sm text-common mt-1">{asStr(a.body)}</div>
-          {asStr(a.cta) && <div className="inline-block mt-2 rounded-md bg-primary/15 text-primary text-xs px-2 py-0.5">{asStr(a.cta)}</div>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SocialPreview({ c }: { c: Record<string, unknown> }) {
-  const posts = Array.isArray(c.posts) ? c.posts.map((x) => asRecord(x)) : [];
-  if (posts.length === 0) return <div className="text-sm text-muted">—</div>;
-  return (
-    <div className="flex flex-col gap-2">
-      {posts.map((p, i) => (
-        <div key={`${asStr(p.day).slice(0, 10)}-${String(i)}`} className="flex gap-3 rounded-xl border border-container1-border bg-container2/30 p-3">
-          <div className="shrink-0 w-24 text-xs text-muted"><div className="font-medium text-common">{asStr(p.day)}</div>{asStr(p.platform)}</div>
-          <div className="min-w-0 flex-1"><div className="text-sm font-medium text-title">{asStr(p.hook)}</div><div className="text-sm text-common mt-0.5">{asStr(p.body)}</div></div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function NamesPreview({ c }: { c: Record<string, unknown> }) {
-  const translate = useTranslator();
-  const names = Array.isArray(c.names) ? c.names.map((x) => asRecord(x)) : [];
-  const taglines = asStrArr(c.taglines);
-  const domains = asStrArr(c.domains);
-  return (
-    <div className="flex flex-col gap-4">
-      {names.length > 0 && (
-        <div className="grid md:grid-cols-2 gap-2">
-          {names.map((n, i) => (
-            <div key={`${asStr(n.name).slice(0, 16)}-${String(i)}`} className="rounded-xl border border-container1-border bg-container2/30 p-3">
-              <div className="text-sm font-semibold text-title">{asStr(n.name)}</div>
-              <div className="text-xs text-muted mt-0.5">{asStr(n.rationale)}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {taglines.length > 0 && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.studio.taglines' })}</div><ul className="list-disc list-inside text-sm text-common">{taglines.map((t, i) => <li key={`${t.slice(0, 12)}-${String(i)}`}>{t}</li>)}</ul></div>}
-      {domains.length > 0 && <div className="flex flex-wrap gap-1.5">{domains.map((d, i) => <span key={`${d}-${String(i)}`} className="rounded-md bg-container2 text-xs text-common px-2 py-0.5 font-mono">{d}</span>)}</div>}
-    </div>
-  );
-}
-
-function VideoScriptPreview({ c }: { c: Record<string, unknown> }) {
-  const translate = useTranslator();
-  const scenes = Array.isArray(c.scenes) ? c.scenes.map((x) => asRecord(x)) : [];
-  const hook = asStr(c.hook); const cta = asStr(c.cta);
-  const dur = typeof c.durationSec === 'number' ? c.durationSec : null;
-  const ctaLine = `${translate({ key: 'workspaces.studio.vsCta' })}: ${cta}`;
-  if (scenes.length === 0 && hook.length === 0) return <div className="text-sm text-muted">—</div>;
-  return (
-    <div className="flex flex-col gap-3">
-      {hook && <div className="rounded-xl bg-primary/8 border border-primary-border/40 p-3"><div className="text-[11px] uppercase tracking-wide text-primary mb-0.5">{translate({ key: 'workspaces.studio.vsHook' })}</div><div className="text-sm font-medium text-title">{hook}</div>{dur !== null && <div className="text-xs text-muted mt-1">{translate({ key: 'workspaces.studio.vsDuration', params: [{ key: 'sec', value: String(dur) }] })}</div>}</div>}
-      {scenes.map((s, i) => {
-        const vo = asStr(s.voiceover); const screen = asStr(s.onScreen);
-        const shotLine = typeof s.seconds === 'number' ? `${asStr(s.shot)} · ${String(s.seconds)}s` : asStr(s.shot);
-        const voLine = `${translate({ key: 'workspaces.studio.vsVo' })}: ${vo}`;
-        const screenLine = `${translate({ key: 'workspaces.studio.vsScreen' })}: ${screen}`;
-        return (
-          <div key={`${asStr(s.shot).slice(0, 12)}-${String(i)}`} className="flex gap-3 rounded-xl border border-container1-border bg-container2/30 p-3">
-            <div className="shrink-0 w-7 h-7 rounded-lg bg-container2 text-muted text-sm font-semibold flex items-center justify-center">{i + 1}</div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-title">{shotLine}</div>
-              {vo && <div className="text-sm text-common mt-0.5">{voLine}</div>}
-              {screen && <div className="text-xs text-muted mt-0.5">{screenLine}</div>}
-            </div>
-          </div>
-        );
-      })}
-      {cta && <div className="text-sm text-title">{ctaLine}</div>}
-      <div className="text-xs text-muted flex items-center gap-1.5 rounded-lg bg-container2/40 p-2"><Icon name="circle-info" className="text-primary" />{translate({ key: 'workspaces.studio.vsNote' })}</div>
-    </div>
-  );
-}
-
-function StrategyPreview({ markdown }: { markdown: string }) {
-  const translate = useTranslator();
-  if (markdown.trim().length === 0) return <div className="text-sm text-muted">{translate({ key: 'workspaces.studio.empty' })}</div>;
-  //? Minimal, safe markdown render — headings + bullets + paragraphs, no HTML injection.
-  return <div className="text-sm text-common leading-relaxed">{markdown.split('\n').map((line, i) => renderMdLine(line, i))}</div>;
-}
-
-function renderMdLine(line: string, key: number): React.ReactNode {
-  const t = line.trim();
-  if (t.length === 0) return <div key={key} className="h-2" />;
-  if (t.startsWith('### ')) return <div key={key} className="text-sm font-semibold text-title mt-2">{t.slice(4)}</div>;
-  if (t.startsWith('## ')) return <div key={key} className="text-base font-semibold text-title mt-3">{t.slice(3)}</div>;
-  if (t.startsWith('# ')) return <div key={key} className="text-lg font-semibold text-title mt-3">{t.slice(2)}</div>;
-  if (t.startsWith('- ') || t.startsWith('* ')) return <div key={key} className="flex gap-2 pl-2"><span className="text-muted">•</span><span>{stripInline(t.slice(2))}</span></div>;
-  return <div key={key}>{stripInline(t)}</div>;
-}
-//? strip **bold**/`code` markers for a plain readable render (no dangerouslySetInnerHTML).
-function stripInline(s: string): string { return s.replaceAll(/\*\*(.+?)\*\*/g, '$1').replaceAll(/`(.+?)`/g, '$1'); }
-
-//? ---- Central brand library panel (ADR 0013 G-MKT-2) ----
-//? #164 — paste a portable brand-kit JSON (from another workspace's Export) to import it. Rendered in
-//? the menuHandler overlay; on success it refetches so the imported palette/voice/taglines show.
-function BrandImportForm({ workspaceId, onImported }: { workspaceId: string; onImported: () => void }) {
-  const translate = useTranslator();
-  const [kit, setKit] = useState('');
-  const [busy, setBusy] = useState(false);
-  const submit = () => {
-    if (busy || kit.trim().length === 0) return;
-    setBusy(true);
-    void apiRequest({ name: 'workspaces/brandImport', version: 'v1', data: { workspaceId, kit: kit.trim() } }).then((r) => {
-      setBusy(false);
-      if (r.status === 'success') { notify.success({ key: 'workspaces.studio.brandImported' }); void menuHandler.close(); onImported(); }
-      else notify.error({ key: 'workspaces.studio.brandImportFailed' });
-    });
-  };
-  return (
-    <div className="w-full flex flex-col gap-3 p-5">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.studio.brandImportTitle' })}</div>
-      <textarea value={kit} onChange={(e) => { setKit(e.target.value); }} rows={8} placeholder={translate({ key: 'workspaces.studio.brandImportPlaceholder' })} className={`${inputCls} h-auto py-2 font-mono resize-y`} />
-      <div className="flex items-center justify-end gap-2">
-        <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="file-import" disabled={busy || kit.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.studio.brandImportAction' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
-function BrandPanel() {
-  const translate = useTranslator();
-  const { studioBrand, saveBrand, activeWorkspace, refetch } = useWorkspaces();
-  //? #164 — portable brand-kit export (copy JSON to clipboard) + import (paste JSON).
-  const exportBrand = () => {
-    void apiRequest({ name: 'workspaces/brandExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
-      if (r.status !== 'success' || r.result.kit.length === 0) { notify.error({ key: 'workspaces.studio.brandExportEmpty' }); return; }
-      void navigator.clipboard.writeText(r.result.kit).then(() => { notify.success({ key: 'workspaces.studio.brandExported' }); }, () => { notify.error({ key: 'workspaces.studio.brandExportFailed' }); });
-    });
-  };
-  const importBrand = () => { void menuHandler.open(<BrandImportForm workspaceId={activeWorkspace.id} onImported={refetch} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
-  const [palette, setPalette] = useState<{ name: string; hex: string }[]>(studioBrand?.palette ?? []);
-  const [heading, setHeading] = useState(studioBrand?.typography.heading ?? '');
-  const [body, setBody] = useState(studioBrand?.typography.body ?? '');
-  const [voice, setVoice] = useState(studioBrand?.voice ?? '');
-  const [taglines, setTaglines] = useState((studioBrand?.taglines ?? []).join('\n'));
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setPalette(studioBrand?.palette ?? []);
-    setHeading(studioBrand?.typography.heading ?? '');
-    setBody(studioBrand?.typography.body ?? '');
-    setVoice(studioBrand?.voice ?? '');
-    setTaglines((studioBrand?.taglines ?? []).join('\n'));
-  }, [studioBrand]);
-
-  const save = async () => {
-    setSaving(true);
-    await saveBrand({ palette: palette.filter((p) => p.hex.trim().length > 0), typography: { heading: heading.trim(), body: body.trim() }, voice: voice.trim(), taglines: taglines.split('\n').map((t) => t.trim()).filter(Boolean) });
-    setSaving(false);
-  };
-  const setColor = (i: number, patch: Partial<{ name: string; hex: string }>) => { setPalette((p) => p.map((c, j) => (j === i ? { ...c, ...patch } : c))); };
-
-  return (
-    <div className="p-5 md:p-6 max-w-2xl flex flex-col gap-5">
-      <div>
-        <div className="text-xl font-semibold text-title">{translate({ key: 'workspaces.studio.brandLibrary' })}</div>
-        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.studio.brandIntro' })}</div>
-      </div>
-
-      {/* palette editor */}
-      <div>
-        <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-title">{translate({ key: 'workspaces.studio.palette' })}</span>
-          <button type="button" onClick={() => { setPalette((p) => [...p, { name: '', hex: '#6366F1' }]); }} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1"><Icon name="plus" className="text-xs" />{translate({ key: 'workspaces.studio.addColour' })}</button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {palette.length === 0 && <div className="text-sm text-muted">{translate({ key: 'workspaces.studio.brandEmptyPalette' })}</div>}
-          {palette.map((c, i) => (
-            // eslint-disable-next-line react-x/no-array-index-key -- an editable positional list; a value-key would lose input focus on edit
-            <div key={i} className="flex items-center gap-2">
-              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'} onChange={(e) => { setColor(i, { hex: e.target.value }); }} className="w-9 h-9 rounded-lg border border-container1-border cursor-pointer bg-transparent p-0.5" />
-              <input value={c.name} onChange={(e) => { setColor(i, { name: e.target.value }); }} placeholder={translate({ key: 'workspaces.studio.colourName' })} className={`flex-1 ${inputCls}`} />
-              <input value={c.hex} onChange={(e) => { setColor(i, { hex: e.target.value }); }} placeholder="#4B3FDE" className={`w-28 font-mono ${inputCls}`} />
-              <button type="button" onClick={() => { setPalette((p) => p.filter((_, j) => j !== i)); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="trash-can" className="text-xs" /></button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.studio.fontHeading' })}</span><input value={heading} onChange={(e) => { setHeading(e.target.value); }} placeholder="Sora" className={inputCls} /></div>
-        <div className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.studio.fontBody' })}</span><input value={body} onChange={(e) => { setBody(e.target.value); }} placeholder="Inter" className={inputCls} /></div>
-      </div>
-      <div className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.studio.voice' })}</span><textarea value={voice} onChange={(e) => { setVoice(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.studio.voicePlaceholder' })} className={`${inputCls} h-auto py-2 resize-y`} /></div>
-      <div className="flex flex-col gap-1"><span className="text-xs text-muted">{translate({ key: 'workspaces.studio.taglinesOnePerLine' })}</span><textarea value={taglines} onChange={(e) => { setTaglines(e.target.value); }} rows={3} className={`${inputCls} h-auto py-2 resize-y`} /></div>
-
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <div className="text-xs text-muted flex items-center gap-1.5"><Icon name="wand-magic-sparkles" className="text-primary" />{translate({ key: 'workspaces.studio.brandTip' })}</div>
-        <div className="flex items-center gap-2">
-          {/* #164 — portable brand-kit export (copy JSON) + import (paste JSON). */}
-          <WsButton variant="ghost" icon="file-export" onClick={exportBrand}>{translate({ key: 'workspaces.studio.brandExport' })}</WsButton>
-          <WsButton variant="ghost" icon="file-import" onClick={importBrand}>{translate({ key: 'workspaces.studio.brandImport' })}</WsButton>
-          <WsButton icon="check" onClick={() => { void save(); }} disabled={saving}>{translate({ key: 'workspaces.studio.saveBrand' })}</WsButton>
-        </div>
+      {/* demoted metadata: one muted line; the provider hides behind a tooltip on the kind label */}
+      <div className={`px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2`}>
+        <span {...(artifact.providerId ? { title: artifact.providerId } : {})}>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
+        <span className={`ml-auto`}>{when}</span>
       </div>
     </div>
   );

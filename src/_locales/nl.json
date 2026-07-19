@@ -388,6 +388,7 @@
       "start": "Begin",
       "end": "Einde",
       "gain": "Volume",
+      "gainValue": "Volume: {{n}}×",
       "apply": "Opslaan als nieuw"
     },
     "imageEditor": {
@@ -417,6 +418,7 @@
       "saved": "Bewerkt beeld opgeslagen."
     },
     "gallery": {
+      "importInspiration": "Inspiratie importeren",
       "title": "Design-galerij",
       "subtitle": "Kant-en-klare UI-looks — bekijk en pas een volledige identiteit toe (palet, stijl, fonts, motion), en customize daarna.",
       "navHome": "Home",
@@ -497,6 +499,15 @@
       "invitesHeading": "Je uitnodigingen"
     },
     "pipeline": {
+      "tabStages": "Stages",
+      "tabAutomations": "Automatiseringen",
+      "stageActions": "Stage-acties",
+      "advanced": "Geavanceerd",
+      "emptyTitle": "Dit is de pipeline van je project",
+      "emptyBody": "Elk ticket doorloopt deze stages, elk uitgevoerd door z'n eigen AI in z'n eigen container. Voeg je eerste stage toe om te bepalen wat er als eerste gebeurt (bijv. Refine of Plan).",
+      "addStatus": "Status toevoegen",
+      "emitDisclosure": "Wat elke stage moet uitgeven",
+      "automationsIntro": "Automatiseringen reageren op pipeline-events (een aangemaakt ticket, een afgeronde stage, een cron) en vuren een actie af — een melding, een stage-start, een agent. Maak je eerste trigger aan.",
       "systemPrompt": "AI-persona (system-prompt)",
       "systemPromptHint": "De basis-identiteit + redeneerstijl van de agent van deze fase — gelaagd boven je instructies.",
       "systemPromptPlaceholder": "bijv. Je bent een staff engineer die een rigoureus implementatieplan maakt.",
@@ -1154,6 +1165,31 @@
       "scheduleBtn": "Inplannen"
     },
     "content": {
+      "emptyTeach": "Dit is je contentstudio — beschrijf in een korte briefing wat je wilt maken, en de AI loodst het door script, media, montage, review en publicatie. Maak je eerste stuk om te beginnen.",
+      "moreMenu": "Meer",
+      "moreGenerations": "Meer generaties",
+      "outputSettings": "Uitvoerinstellingen",
+      "toolsTitle": "Extra tools",
+      "toolsDesc": "Demo-opname, referentievideo-analyse, SEO-check en de thumbnail-maker.",
+      "assetsEmptyTitle": "Nog niets gegenereerd",
+      "assetsEmptyTeach": "Kies een stijl, beschrijf wat je wilt en klik op Hele video genereren — de AI schrijft het script, spreekt het in, bouwt de scènes en zet het resultaat in elkaar. Elke generatie vraagt eerst om bevestiging voordat er geld wordt uitgegeven.",
+      "assetActions": "Asset-acties",
+      "insightsTabPerformance": "Prestaties",
+      "insightsTabLinks": "Links & A/B",
+      "perfEmptyTitle": "Nog niets te meten",
+      "perfEmptySub": "Zodra je contentstukken op het bord maakt, verschijnen hun voortgang en AI-kosten hier.",
+      "linksEmptyTitle": "Nog geen trackbare links",
+      "linksEmptySub": "Maak een trackbare /l/<slug>-link voor elke URL om kliks te tellen en je A/B-winnaar te vinden.",
+      "brandEmptySub": "Koppel eerst een kanaal — daarna schrijf je de merkstem die de AI voor dat platform gebruikt.",
+      "settingsIntro": "Leer de AI je merk kennen en beheer daarna stijlen, kanalen en publicatie.",
+      "tabBrand": "Merk & stijlen",
+      "tabChannels": "Kanalen & publicatie",
+      "tabAdmin": "Beheer",
+      "brandEmptyTitle": "Leer de AI je merk kennen",
+      "stylesEmptyTeach": "Stijlen zijn herbruikbare looks (een systeemprompt per feature) die je pieces op naam kiezen — maak je eerste stijl.",
+      "stylesMenu": "Stijl-acties",
+      "channelsEmptyTeach": "Een kanaal is een platform + merkidentiteit waarop je content publiceert. Maak er één aan om pieces te plannen.",
+      "keysTeach": "Koppel een AI-provider-key (versleuteld opgeslagen, nooit teruggetoond) om echte generatie aan te zetten — let op de kostenwaarschuwing.",
       "title": "Content",
       "subtitle": "AI-content — van brief tot een downloadbaar, publiceerbaar stuk.",
       "empty": "Nog geen content",
@@ -1480,6 +1516,14 @@
       "thumbComposeAi": "Maken met AI-achtergrond"
     },
     "knowledge": {
+      "emptyTeach": "Dit is de kenniskaart van je workspace: elke contextbron, elk ticket en elk content-stuk verschijnt als een punt, verbonden met gerelateerd werk. Voeg bronnen toe of maak tickets en content aan, en vernieuw daarna om de verbindingen te zien ontstaan.",
+      "hintTap": "Tik op een knoop om die en zijn verbindingen te focussen.",
+      "typeSource": "Bron",
+      "typeTicket": "Ticket",
+      "typePiece": "Content-stuk",
+      "connectedTo": "Verbonden met ({{count}})",
+      "noConnections": "Nog geen verbindingen.",
+      "detailClose": "Sluiten",
       "title": "Kennisgraaf",
       "subtitle": "Hoe je bronnen, tickets en content-stukken samenhangen.",
       "refresh": "Vernieuwen",
@@ -1495,6 +1539,18 @@
       "hint": "Klik op een knoop om die en zijn verbindingen te focussen."
     },
     "usage": {
+      "costValue": "€{{n}}",
+      "tabDelivery": "Oplevering",
+      "tabPeople": "Mensen",
+      "pageEmptySub": "Deze pagina laat zien hoeveel tokens je AI-stages verbruiken — per dag, per ticket en per persoon — zodra een ticket door de pipeline loopt. Start een ticket op het bord om hier je eerste data te zien.",
+      "pageEmptyCta": "Naar het bord",
+      "budgetsDisclosure": "Budgetten & limieten",
+      "capSingular": "limiet",
+      "capPlural": "limieten",
+      "capAlertStrip": "Uitgaven naderen de limiet",
+      "capAlertView": "Bekijk budgetten",
+      "openCountHint": "{{count}} open",
+      "doneCountHint": "{{count}} afgerond",
       "title": "Verbruik",
       "subtitle": "Tokenvolume & tijd · draait op de Claude Pro Max CLI (geen gemeterde API)",
       "activityTitle": "Activiteit · laatste 7 dagen",
@@ -1567,6 +1623,13 @@
       "preview": "Preview"
     },
     "ticket": {
+      "detailsDisclosure": "Details",
+      "settingsDisclosure": "Ticketinstellingen",
+      "codeDiffMode": "Diff-weergave",
+      "noTerminalStageSub": "Deze fase draait geen processen, dus er is geen terminal.",
+      "noActivitySub": "Alles wat de agent en je team op dit ticket doen, komt hier terecht.",
+      "noLinksTeachSub": "Gerelateerde tickets verschijnen hier — de AI stelt er automatisch een paar voor.",
+      "sourcesCount": "{{count}} bronnen",
       "tabOverview": "Overzicht",
       "tabTerminal": "Terminal",
       "tabFiles": "Bestanden & refs",
@@ -1658,6 +1721,9 @@
       "serviceRoot": "Hele project"
     },
     "terminals": {
+      "subtitle": "Een live shell in elke draaiende ticket-container — kijk mee met de AI of grijp zelf in.",
+      "emptyBody": "Terminals geven je een live shell in elke draaiende ticket-container. Er draait nu niets — activeer een fase van een ticket (of start een container vanaf de Pipeline-pagina) en de terminal verschijnt hier binnen een paar seconden vanzelf.",
+      "emptyHint": "Open de Pipeline-pagina",
       "restart": "Herstarten",
       "clear": "Wissen",
       "rename": "Hernoemen",
@@ -1684,6 +1750,13 @@
       "resizeTitle": "Sleep om de hoogte aan te passen"
     },
     "sources": {
+      "subtitle": "Contextdocumenten worden vóór elke AI-run volledig geladen · skills & MCP-tools worden op aanvraag aangeroepen.",
+      "maintenance": "Onderhoud",
+      "codeIndex": "Code-index",
+      "ragNotIndexedHint": "Koppel een repository en draai 'Code herindexeren' via het Onderhoud-menu om je codebase doorzoekbaar te maken voor de AI.",
+      "emptyDocsSub": "Bronnen zijn wat je workspace-AI leest voordat die aan het werk gaat. Upload een spec of notities (.md/.txt), of koppel een repository en scan die om automatisch documenten te genereren.",
+      "emptySkillsTitle": "Nog geen skills",
+      "emptySkillsSub": "Skills en MCP-tools zijn vaardigheden die de AI op aanvraag kan aanroepen. Ze verschijnen hier zodra de workspace geïndexeerd is.",
       "noStages": "Geen stages",
       "summary": "Samenvatting",
       "source": "Bron",
@@ -1791,6 +1864,33 @@
       "urgentHint": "Slaat de capaciteitslimiet over · vereist nog steeds goedkeuring om te mergen"
     },
     "studio": {
+      "marketingIntro": "AI-marketeer: maak van je productbrief kant-en-klare marketing-assets.",
+      "marketingEmptyTitle": "Marketing begint met een productbrief",
+      "marketingEmptyBody": "Een paar regels over wat je verkoopt en aan wie. De AI-marketeer maakt er copy, e-mails, advertenties, een socialkalender en meer van.",
+      "createFirstBrief": "Maak je eerste brief",
+      "noArtifactsTitle": "Nog niets gegenereerd voor deze brief",
+      "noArtifactsBody": "Kies hierboven een assettype — elk resultaat verschijnt hier als live preview die je kunt verfijnen, opnieuw genereren of naar Content sturen.",
+      "generateHeading": "Maak een marketing-asset",
+      "refineToggle": "Verfijninstructies",
+      "refineActive": "Toegepast op elke generatie",
+      "assetsHeading": "Gegenereerde assets",
+      "briefMenu": "Briefopties",
+      "artifactMenu": "Assetopties",
+      "deleteBrief": "Brief verwijderen",
+      "tabAssets": "Assets",
+      "tabBrand": "Merk",
+      "brandColours": "{{count}} kleuren",
+      "emptyTitle": "Beschrijf je product één keer — genereer alles",
+      "emptyBody": "Studio maakt van een korte productbrief AI-gegenereerde design- en marketing-assets — landingspagina's, brand kits, teksten, advertenties en meer. Begin met je product te beschrijven.",
+      "emptyBriefTitle": "Nog niets gegenereerd voor deze brief",
+      "emptyBriefBody": "Kies hierboven een asset-type (probeer Landingspagina of Brand kit) en de AI maakt een eerste versie met live preview.",
+      "emptyBriefBodyMarketing": "Kies hierboven een asset-type (probeer Marketingtekst of een Advertentieset) en de AI maakt een eerste versie met live preview.",
+      "generateHint": "Kies een asset-type — de AI maakt het op basis van deze brief, met live preview.",
+      "refineTitle": "Verfijn-instructies",
+      "artifactsTitle": "Gegenereerde assets",
+      "briefActions": "Brief-acties",
+      "artifactActions": "Asset-acties",
+      "brandActions": "Brand-kit-acties",
       "briefs": "Briefs",
       "newBrief": "Nieuwe brief",
       "noBriefs": "Nog geen briefs.",
@@ -1886,6 +1986,8 @@
       "publishedLive": "Bezig met publiceren — de URL verschijnt zo."
     },
     "uiReview": {
+      "emptyTitle": "Nog geen UI-feedback.",
+      "emptySub": "Als jij of de AI een scherm markeert dat werk nodig heeft, landt het hier en kan het een redesign-ticket worden.",
       "title": "Vraag een UI-review aan",
       "desc": "Meld wat niet klopt — upload screenshots, vink de problemen aan, voeg notities toe. Het wordt een redesign-ticket.",
       "inboxTitle": "Review-inbox ({{n}})",
@@ -1908,6 +2010,15 @@
       "sent": "Verzonden"
     },
     "designer": {
+      "feedbackSub": "Vraag een UI-review aan en volg 'm op — elk verzoek landt hier in de inbox en kan een redesign-ticket worden.",
+      "noSystemTitle": "Er is nog geen design system actief in dit project.",
+      "noSystemSub": "Kies een look in de galerij of genereer een thema, en dan 'Gebruik in project' zodat de code-agent on-brand bouwt.",
+      "browseLooks": "Bekijk looks",
+      "moreActions": "Meer acties",
+      "delete": "Verwijderen",
+      "stopCompare": "Stop vergelijken",
+      "applied": "Design-tokens toegepast.",
+      "applyFailed": "Kon de tokens niet toepassen.",
       "title": "Designer",
       "intro": "Eén plek om je hele product-UI consistent te houden. Bekijk elk component dat we hebben, wissel tussen design-thema's, en zie alles direct hertekenen zodat je kunt kiezen wat past.",
       "themes": "Thema's",
@@ -1972,6 +2083,7 @@
       "tagline": "Zie, vergelijk en bewerk elk onderdeel van de visuele taal van je product.",
       "previewingWith": "Preview met",
       "section": {
+        "feedback": "Feedback",
         "gallery": "Galerij",
         "components": "Componenten",
         "styles": "Styles",
@@ -2093,6 +2205,11 @@
       "applyTokens": "Tokens toepassen"
     },
     "interviewer": {
+      "emptyTitle": "Vraag me alles over deze codebase",
+      "emptySub": "Ik heb volledige repo-context — ik kan uitleggen hoe dingen werken, verbeteringen voorstellen of een plan uitwerken voor een nieuwe feature. Kies een starter hieronder of typ je eigen vraag.",
+      "generateTitle": "Verbeterideeën genereren",
+      "generateHint": "De AI scant de repo en zet zijn bevindingen hier neer als kaarten die je in tickets kunt omzetten. Beperk het eventueel tot één gebied — leeg laten scant het hele project.",
+      "findingsIntro": "Ideeën die de AI in je repo vond — bewaard totdat je er een ticket van maakt of ze afwijst.",
       "title": "Interviewer",
       "generateNow": "Genereer nu ideeën",
       "focusPlaceholder": "Focus (optioneel) — bijv. de auth-flow",
@@ -2115,12 +2232,23 @@
       "dismiss": "Negeren"
     },
     "scheduledPosts": {
+      "emptyTitle": "Nog niets ingepland",
+      "emptyHint": "Deze pagina vult zich automatisch. Plan een publicatie in op een contentstuk — kies een platform en een tijdstip in de toekomst — en die verschijnt hier, gegroepeerd per dag.",
+      "goToContent": "Naar content",
+      "whyFailed": "Waarom dit mislukte",
+      "attempts": "Pogingen: {{count}}",
       "title": "Geplande posts",
       "tagline": "Publicaties die klaarstaan om op een ingesteld moment te verschijnen.",
       "empty": "Nog geen geplande posts. Plan een publicatie vanuit een contentstuk om het hier te zien.",
       "failed": "mislukt"
     },
     "scheduled": {
+      "emptyTitle": "Nog niets ingepland",
+      "emptySub": "Een geplande taak draait op een timer — laat een AI-rol (zoals de Interviewer) elke ochtend voor je werken, of stuur jezelf een terugkerende melding.",
+      "emptyCta": "Nieuwe geplande taak",
+      "advanced": "Geavanceerd",
+      "taskMenu": "Taakopties",
+      "delete": "Taak verwijderen",
       "title": "Geplande taken",
       "tagline": "Draai een AI-rol of een notificatie op schema.",
       "new": "Nieuwe taak",
@@ -2208,6 +2336,10 @@
       "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt."
     },
     "board": {
+      "filterSprint": "Sprint",
+      "moreActions": "Meer acties",
+      "newTicketOptions": "Opties",
+      "emptyStagesTeach": "Dit bord toont je tickets terwijl ze door de pipeline-fases bewegen — fases verschijnen zodra de workspace is ingericht.",
       "openTicket": "Ticket openen",
       "openTerminal": "Terminal openen",
       "addReference": "Referentie toevoegen…",
@@ -2256,6 +2388,12 @@
       "clearFilters": "Filters wissen"
     },
     "activity": {
+      "sub": "Alles wat er in je tickets gebeurt, op het moment zelf — klik op een ticket-id om dat ticket te openen.",
+      "emptyTeachTitle": "Nog niets te zien",
+      "emptyTeachSub": "Activiteit is het live logboek van alles wat er in je tickets gebeurt: AI-werk, commando's, bestandswijzigingen, merges en reacties. Zodra een ticket zijn pipeline draait, verschijnen gebeurtenissen hier in realtime.",
+      "openBoard": "Open het bord",
+      "emptyFilterTitle": "Nog geen {{f}}-gebeurtenissen",
+      "resetFilter": "Terug naar Alle",
       "title": "Activiteit",
       "live": "live",
       "filterAll": "Alle",
@@ -2274,6 +2412,15 @@
       "labelCi": "CI"
     },
     "backlog": {
+      "subtitle": "Elk ticket in de workspace, gegroepeerd per sprint.",
+      "filters": "Filters",
+      "personFilterLabel": "Persoon",
+      "selectTickets": "Tickets selecteren",
+      "moreActions": "Meer acties",
+      "sprintOptions": "Sprintopties",
+      "actions": "Acties",
+      "emptyTeachTitle": "Dit is je backlog",
+      "emptyTeachSub": "Elk ticket in de workspace staat hier, gegroepeerd per sprint. Schrijf een kort ticket en de pipeline (verfijnen → plannen → bouwen) neemt het over.",
       "title": "Backlog",
       "countOfTotal": "{{count}} van {{total}}",
       "done": "Klaar",
@@ -2365,6 +2512,10 @@
       "offlineRetry": "Nu opnieuw proberen"
     },
     "documents": {
+      "useTemplate": "Gebruik een sjabloon",
+      "emptyTeach": "Documenten zijn de AI-geschreven stukken van je workspace — specs, plannen, briefings, sheets. Typ hierboven een titel en klik op Aanmaken; in de editor schrijft de AI concepten en keur jij elke wijziging goed.",
+      "emptyAction": "Maak je eerste document",
+      "docActions": "Documentacties",
       "title": "Documenten",
       "subtitle": "AI-geschreven workspace-documenten: specs, plannen, briefings en sheets — jij keurt elke AI-wijziging goed.",
       "newPlaceholder": "Titel van nieuw document…",
@@ -2423,6 +2574,7 @@
       "draftDiff": "Verschil",
       "draftPreview": "Voorbeeld",
       "historyTitle": "Geschiedenis",
+      "revisionMeta": "{{time}} · {{note}}",
       "restore": "Terugzetten",
       "restoreConfirmTitle": "Deze versie herstellen?",
       "restoreConfirmBody": "Deze revisie als huidige inhoud herstellen? De huidige versie wordt eerst in de geschiedenis bewaard.",
@@ -2448,6 +2600,7 @@
       "useLive": "gebruik live site"
     },
     "comments": {
+      "replyNote": "De AI schrijft alleen een concept-antwoord als jij erom vraagt — versturen blijft altijd jouw klik.",
       "tab": "Reacties",
       "noChannel": "Geen kanaal",
       "refresh": "Verversen",
@@ -2525,6 +2678,11 @@
       "developer": "Ontwikkelaar"
     },
     "answers": {
+      "addNote": "Notitie toevoegen",
+      "details": "Details",
+      "stageLabel": "Fase: {{s}}",
+      "emptyTeach": "Beantwoord de vraag direct op de kaart — je hoeft het ticket niet op te zoeken.",
+      "viewBoard": "Bekijk het bord",
       "heading": "Antwoorden",
       "sub": "Alles wat op jou wacht, op één plek.",
       "emptyTitle": "Er wacht niets op jou",

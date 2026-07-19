@@ -388,6 +388,7 @@
       "start": "Anfang",
       "end": "Ende",
       "gain": "Lautstärke",
+      "gainValue": "Lautstärke: {{n}}×",
       "apply": "Als neu speichern"
     },
     "imageEditor": {
@@ -417,6 +418,7 @@
       "saved": "Bearbeitetes Bild gespeichert."
     },
     "gallery": {
+      "importInspiration": "Inspiration importieren",
       "title": "Design-Galerie",
       "subtitle": "Vorgefertigte UI-Looks — eine komplette Identität (Palette, Stil, Schriften, Motion) live ansehen, anwenden und dann anpassen.",
       "navHome": "Start",
@@ -497,6 +499,15 @@
       "invitesHeading": "Deine Einladungen"
     },
     "pipeline": {
+      "tabStages": "Stages",
+      "tabAutomations": "Automatisierungen",
+      "stageActions": "Stage-Aktionen",
+      "advanced": "Erweitert",
+      "emptyTitle": "Das ist die Pipeline deines Projekts",
+      "emptyBody": "Jedes Ticket durchläuft diese Stages, jede mit eigener AI im eigenen Container. Füge deine erste Stage hinzu, um festzulegen, was zuerst passiert (z. B. Refine oder Plan).",
+      "addStatus": "Status hinzufügen",
+      "emitDisclosure": "Was jede Stage ausgeben muss",
+      "automationsIntro": "Automatisierungen reagieren auf Pipeline-Events (ein erstelltes Ticket, eine abgeschlossene Stage, ein Cron) und lösen eine Aktion aus — eine Benachrichtigung, einen Stage-Start, einen Agenten. Erstelle deinen ersten Trigger.",
       "systemPrompt": "KI-Persona (System-Prompt)",
       "systemPromptHint": "Die Basis-Identität + der Denkstil des Agenten dieser Phase — über deinen Anweisungen geschichtet.",
       "systemPromptPlaceholder": "z. B. Du bist ein Staff Engineer, der einen rigorosen Implementierungsplan erstellt.",
@@ -1154,6 +1165,31 @@
       "scheduleBtn": "Planen"
     },
     "content": {
+      "emptyTeach": "Das ist dein Content-Studio — beschreibe in einem kurzen Briefing, was du erstellen willst, und die KI führt es durch Skript, Medien, Montage, Review und Veröffentlichung. Erstelle dein erstes Stück, um zu starten.",
+      "moreMenu": "Mehr",
+      "moreGenerations": "Weitere Generierungen",
+      "outputSettings": "Ausgabe-Einstellungen",
+      "toolsTitle": "Extra-Tools",
+      "toolsDesc": "Demo-Aufnahme, Referenzvideo-Analyse, SEO-Check und der Thumbnail-Editor.",
+      "assetsEmptyTitle": "Noch nichts generiert",
+      "assetsEmptyTeach": "Wähle einen Stil, beschreibe, was du willst, und drücke Ganzes Video erzeugen — die KI schreibt das Skript, vertont es, baut die Szenen und fügt das Ergebnis zusammen. Jede Generierung fragt nach, bevor Geld ausgegeben wird.",
+      "assetActions": "Asset-Aktionen",
+      "insightsTabPerformance": "Leistung",
+      "insightsTabLinks": "Links & A/B",
+      "perfEmptyTitle": "Noch nichts zu messen",
+      "perfEmptySub": "Sobald du Contentstücke auf dem Board erstellst, erscheinen hier ihr Fortschritt und die KI-Kosten.",
+      "linksEmptyTitle": "Noch keine trackbaren Links",
+      "linksEmptySub": "Erstelle einen trackbaren /l/<slug>-Link für jede URL, um Klicks zu zählen und deinen A/B-Gewinner zu finden.",
+      "brandEmptySub": "Verbinde zuerst einen Kanal — danach schreibst du die Markenstimme, die die KI für diese Plattform nutzt.",
+      "settingsIntro": "Bring der KI deine Marke bei und verwalte dann Stile, Kanäle und Veröffentlichung.",
+      "tabBrand": "Marke & Stile",
+      "tabChannels": "Kanäle & Veröffentlichung",
+      "tabAdmin": "Admin",
+      "brandEmptyTitle": "Bring der KI deine Marke bei",
+      "stylesEmptyTeach": "Stile sind wiederverwendbare Looks (ein System-Prompt pro Feature), die deine Pieces per Name wählen — erstelle deinen ersten Stil.",
+      "stylesMenu": "Stil-Aktionen",
+      "channelsEmptyTeach": "Ein Kanal ist eine Plattform + Markenidentität, auf der dein Content veröffentlicht wird. Lege einen an, um Pieces zu planen.",
+      "keysTeach": "Hinterlege einen AI-Provider-Key (verschlüsselt gespeichert, nie wieder angezeigt), um echte Generierung einzuschalten — beachte die Kostenwarnung.",
       "title": "Content",
       "subtitle": "KI-Content — vom Briefing bis zum herunterladbaren, veröffentlichbaren Stück.",
       "empty": "Noch keine Inhalte",
@@ -1480,6 +1516,14 @@
       "thumbComposeAi": "Mit KI-Hintergrund erstellen"
     },
     "knowledge": {
+      "emptyTeach": "Das ist die Wissenskarte deines Workspace: jede Kontextquelle, jedes Ticket und jeder Inhalt erscheint als Punkt, verbunden mit verwandter Arbeit. Füge Quellen hinzu oder erstelle Tickets und Inhalte, und aktualisiere dann, um die Verbindungen entstehen zu sehen.",
+      "hintTap": "Tippe auf einen Knoten, um ihn und seine Verbindungen zu fokussieren.",
+      "typeSource": "Quelle",
+      "typeTicket": "Ticket",
+      "typePiece": "Inhalt",
+      "connectedTo": "Verbunden mit ({{count}})",
+      "noConnections": "Noch keine Verbindungen.",
+      "detailClose": "Schließen",
       "title": "Wissensgraph",
       "subtitle": "Wie deine Quellen, Tickets und Inhalte zusammenhängen.",
       "refresh": "Aktualisieren",
@@ -1495,6 +1539,18 @@
       "hint": "Klicke auf einen Knoten, um ihn und seine Verbindungen zu fokussieren."
     },
     "usage": {
+      "costValue": "€{{n}}",
+      "tabDelivery": "Auslieferung",
+      "tabPeople": "Personen",
+      "pageEmptySub": "Diese Seite zeigt, wie viele Tokens deine KI-Stages verbrauchen — pro Tag, pro Ticket und pro Person — sobald ein Ticket die Pipeline durchläuft. Starte ein Ticket auf dem Board, um hier deine ersten Daten zu sehen.",
+      "pageEmptyCta": "Zum Board",
+      "budgetsDisclosure": "Budgets & Limits",
+      "capSingular": "Limit",
+      "capPlural": "Limits",
+      "capAlertStrip": "Ausgaben nähern sich dem Limit",
+      "capAlertView": "Budgets ansehen",
+      "openCountHint": "{{count}} offen",
+      "doneCountHint": "{{count}} erledigt",
       "title": "Nutzung",
       "subtitle": "Token-Volumen & Zeit · läuft über die Claude Pro Max CLI (keine metered API)",
       "activityTitle": "Aktivität · letzte 7 Tage",
@@ -1567,6 +1623,13 @@
       "preview": "Vorschau"
     },
     "ticket": {
+      "detailsDisclosure": "Details",
+      "settingsDisclosure": "Ticket-Einstellungen",
+      "codeDiffMode": "Diff-Ansicht",
+      "noTerminalStageSub": "Diese Phase führt keine Prozesse aus, daher gibt es kein Terminal.",
+      "noActivitySub": "Alles, was der Agent und dein Team an diesem Ticket tun, landet hier.",
+      "noLinksTeachSub": "Verwandte Tickets erscheinen hier — die KI schlägt automatisch welche vor.",
+      "sourcesCount": "{{count}} Quellen",
       "tabOverview": "Übersicht",
       "tabTerminal": "Terminal",
       "tabFiles": "Dateien & Refs",
@@ -1658,6 +1721,9 @@
       "serviceRoot": "Ganzes Projekt"
     },
     "terminals": {
+      "subtitle": "Eine Live-Shell in jedem laufenden Ticket-Container — sieh der KI zu oder greif selbst ein.",
+      "emptyBody": "Terminals geben dir eine Live-Shell in jedem laufenden Ticket-Container. Gerade läuft nichts — aktiviere eine Phase eines Tickets (oder starte einen Container über die Pipeline-Seite) und das Terminal erscheint hier automatisch innerhalb weniger Sekunden.",
+      "emptyHint": "Pipeline-Seite öffnen",
       "restart": "Neustart",
       "clear": "Leeren",
       "rename": "Umbenennen",
@@ -1684,6 +1750,13 @@
       "resizeTitle": "Ziehen, um die Höhe anzupassen"
     },
     "sources": {
+      "subtitle": "Kontextdokumente werden vor jedem AI-Lauf vollständig geladen · Skills & MCP-Tools werden bei Bedarf aufgerufen.",
+      "maintenance": "Wartung",
+      "codeIndex": "Code-Index",
+      "ragNotIndexedHint": "Verknüpfe ein Repository und führe 'Code neu indizieren' im Wartung-Menü aus, damit die AI deine Codebasis durchsuchen kann.",
+      "emptyDocsSub": "Quellen sind das, was deine Workspace-AI liest, bevor sie arbeitet. Lade eine Spec oder Notizen hoch (.md/.txt) oder verknüpfe ein Repository und scanne es, um Dokumente automatisch zu erzeugen.",
+      "emptySkillsTitle": "Noch keine Skills",
+      "emptySkillsSub": "Skills und MCP-Tools sind Fähigkeiten, die die AI bei Bedarf aufrufen kann. Sie erscheinen hier, sobald der Workspace indexiert ist.",
       "noStages": "Keine Stages",
       "summary": "Zusammenfassung",
       "source": "Quelle",
@@ -1791,6 +1864,33 @@
       "urgentHint": "Überspringt das Kapazitätslimit · benötigt weiterhin eine Freigabe zum Mergen"
     },
     "studio": {
+      "marketingIntro": "KI-Marketer: Verwandle dein Produktbriefing in fertige Marketing-Assets.",
+      "marketingEmptyTitle": "Marketing beginnt mit einem Produktbriefing",
+      "marketingEmptyBody": "Ein paar Zeilen darüber, was du verkaufst und an wen. Der KI-Marketer macht daraus Texte, E-Mails, Anzeigen, einen Social-Kalender und mehr.",
+      "createFirstBrief": "Erstes Briefing erstellen",
+      "noArtifactsTitle": "Für dieses Briefing wurde noch nichts generiert",
+      "noArtifactsBody": "Wähle oben einen Asset-Typ — jedes Ergebnis erscheint hier als Live-Vorschau, die du verfeinern, neu generieren oder an Content senden kannst.",
+      "generateHeading": "Marketing-Asset erstellen",
+      "refineToggle": "Verfeinerungshinweise",
+      "refineActive": "Gilt für jede Generierung",
+      "assetsHeading": "Generierte Assets",
+      "briefMenu": "Briefing-Optionen",
+      "artifactMenu": "Asset-Optionen",
+      "deleteBrief": "Briefing löschen",
+      "tabAssets": "Assets",
+      "tabBrand": "Marke",
+      "brandColours": "{{count}} Farben",
+      "emptyTitle": "Beschreibe dein Produkt einmal — generiere alles",
+      "emptyBody": "Studio macht aus einem kurzen Produkt-Brief KI-generierte Design- und Marketing-Assets — Landingpages, Brand-Kits, Texte, Anzeigen und mehr. Beginne damit, dein Produkt zu beschreiben.",
+      "emptyBriefTitle": "Für diesen Brief wurde noch nichts generiert",
+      "emptyBriefBody": "Wähle oben einen Asset-Typ (probiere Landingpage oder Brand-Kit) und die KI entwirft ihn mit Live-Vorschau.",
+      "emptyBriefBodyMarketing": "Wähle oben einen Asset-Typ (probiere Marketing-Texte oder ein Anzeigen-Set) und die KI entwirft ihn mit Live-Vorschau.",
+      "generateHint": "Wähle einen Asset-Typ — die KI erstellt ihn aus diesem Brief, mit Live-Vorschau.",
+      "refineTitle": "Verfeinerungs-Anweisungen",
+      "artifactsTitle": "Generierte Assets",
+      "briefActions": "Brief-Aktionen",
+      "artifactActions": "Asset-Aktionen",
+      "brandActions": "Brand-Kit-Aktionen",
       "briefs": "Briefings",
       "newBrief": "Neues Briefing",
       "noBriefs": "Noch keine Briefings.",
@@ -1886,6 +1986,8 @@
       "publishedLive": "Wird veröffentlicht — die URL erscheint gleich."
     },
     "uiReview": {
+      "emptyTitle": "Noch kein UI-Feedback.",
+      "emptySub": "Wenn du oder die KI einen Bildschirm markierst, der Arbeit braucht, landet er hier und kann ein Redesign-Ticket werden.",
       "title": "UI-Review anfordern",
       "desc": "Melde, was sich falsch anfühlt — Screenshots hochladen, Probleme ankreuzen, Notizen hinzufügen. Es wird ein Redesign-Ticket.",
       "inboxTitle": "Review-Inbox ({{n}})",
@@ -1908,6 +2010,15 @@
       "sent": "Gesendet"
     },
     "designer": {
+      "feedbackSub": "Fordere ein UI-Review an und verfolge es — jede Anfrage landet hier im Eingang und kann ein Redesign-Ticket werden.",
+      "noSystemTitle": "In diesem Projekt ist noch kein Designsystem aktiv.",
+      "noSystemSub": "Wähle einen Look in der Galerie oder generiere ein Theme, dann 'Im Projekt verwenden', damit der Coding-Agent markenkonform baut.",
+      "browseLooks": "Looks durchstöbern",
+      "moreActions": "Weitere Aktionen",
+      "delete": "Löschen",
+      "stopCompare": "Vergleich beenden",
+      "applied": "Design-Tokens angewendet.",
+      "applyFailed": "Die Tokens konnten nicht angewendet werden.",
       "title": "Designer",
       "intro": "Ein Ort, um deine gesamte Produkt-UI konsistent zu halten. Sieh dir jede Komponente an, wechsle zwischen Design-Themes und beobachte, wie alles sofort neu rendert, damit du wählen kannst, was passt.",
       "themes": "Themes",
@@ -1972,6 +2083,7 @@
       "tagline": "See, compare and edit every part of your product's visual language.",
       "previewingWith": "Previewing with",
       "section": {
+        "feedback": "Feedback",
         "gallery": "Galerie",
         "components": "Components",
         "styles": "Styles",
@@ -2093,6 +2205,11 @@
       "applyTokens": "Apply tokens"
     },
     "interviewer": {
+      "emptyTitle": "Frag mich alles über diese Codebase",
+      "emptySub": "Ich habe vollen Repo-Kontext — ich kann erklären, wie Dinge funktionieren, Verbesserungen vorschlagen oder einen Plan für ein neues Feature ausarbeiten. Wähle unten einen Starter oder stelle deine eigene Frage.",
+      "generateTitle": "Verbesserungsideen generieren",
+      "generateHint": "Die KI scannt das Repo und legt ihre Ergebnisse hier als Karten ab, die du in Tickets umwandeln kannst. Optional auf einen Bereich eingrenzen — leer lassen scannt das ganze Projekt.",
+      "findingsIntro": "Ideen, die die KI in deinem Repo gefunden hat — gespeichert, bis du ein Ticket daraus machst oder sie verwirfst.",
       "title": "Interviewer",
       "generateNow": "Jetzt Ideen generieren",
       "focusPlaceholder": "Fokus (optional) — z. B. der Auth-Flow",
@@ -2115,12 +2232,23 @@
       "dismiss": "Verwerfen"
     },
     "scheduledPosts": {
+      "emptyTitle": "Noch nichts eingeplant",
+      "emptyHint": "Diese Seite füllt sich automatisch. Plane eine Veröffentlichung auf einem Content-Stück — wähle eine Plattform und einen zukünftigen Zeitpunkt — und sie erscheint hier, nach Tag gruppiert.",
+      "goToContent": "Zu Content",
+      "whyFailed": "Warum es fehlgeschlagen ist",
+      "attempts": "Versuche: {{count}}",
       "title": "Geplante Beiträge",
       "tagline": "Veröffentlichungen, die für einen bestimmten Zeitpunkt eingeplant sind.",
       "empty": "Noch keine geplanten Beiträge. Plane eine Veröffentlichung aus einem Content-Stück, um sie hier zu sehen.",
       "failed": "failed"
     },
     "scheduled": {
+      "emptyTitle": "Noch nichts geplant",
+      "emptySub": "Eine geplante Aufgabe läuft nach Zeitplan — lass eine KI-Rolle (wie den Interviewer) jeden Morgen für dich arbeiten oder schick dir selbst eine wiederkehrende Benachrichtigung.",
+      "emptyCta": "Neue geplante Aufgabe",
+      "advanced": "Erweitert",
+      "taskMenu": "Aufgabenoptionen",
+      "delete": "Aufgabe löschen",
       "title": "Scheduled tasks",
       "tagline": "Run an AI role or a notification on a schedule.",
       "new": "New task",
@@ -2208,6 +2336,10 @@
       "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden."
     },
     "board": {
+      "filterSprint": "Sprint",
+      "moreActions": "Weitere Aktionen",
+      "newTicketOptions": "Optionen",
+      "emptyStagesTeach": "Dieses Board zeigt, wie deine Tickets durch die Pipeline-Phasen wandern — Phasen erscheinen, sobald der Workspace eingerichtet ist.",
       "startWithAi": "Sofort mit KI starten",
       "openTicket": "Ticket öffnen",
       "openTerminal": "Terminal öffnen",
@@ -2256,6 +2388,12 @@
       "clearFilters": "Filter zurücksetzen"
     },
     "activity": {
+      "sub": "Alles, was in deinen Tickets passiert, in Echtzeit — klicke auf eine Ticket-ID, um das Ticket zu öffnen.",
+      "emptyTeachTitle": "Noch nichts zu sehen",
+      "emptyTeachSub": "Aktivität ist das Live-Protokoll von allem, was in deinen Tickets passiert: KI-Arbeit, Befehle, Dateiänderungen, Merges und Kommentare. Sobald ein Ticket seine Pipeline durchläuft, erscheinen die Ereignisse hier in Echtzeit.",
+      "openBoard": "Board öffnen",
+      "emptyFilterTitle": "Noch keine {{f}}-Ereignisse",
+      "resetFilter": "Zurück zu Alle",
       "title": "Aktivität",
       "live": "live",
       "filterAll": "Alle",
@@ -2274,6 +2412,15 @@
       "labelCi": "CI"
     },
     "backlog": {
+      "subtitle": "Jedes Ticket im Workspace, gruppiert nach Sprint.",
+      "filters": "Filter",
+      "personFilterLabel": "Person",
+      "selectTickets": "Tickets auswählen",
+      "moreActions": "Weitere Aktionen",
+      "sprintOptions": "Sprint-Optionen",
+      "actions": "Aktionen",
+      "emptyTeachTitle": "Das ist dein Backlog",
+      "emptyTeachSub": "Jedes Ticket im Workspace steht hier, gruppiert nach Sprint. Schreib ein kurzes Ticket und die Pipeline (Verfeinern → Planen → Umsetzen) übernimmt den Rest.",
       "title": "Backlog",
       "countOfTotal": "{{count}} von {{total}}",
       "done": "Fertig",
@@ -2365,6 +2512,10 @@
       "offlineRetry": "Jetzt erneut senden"
     },
     "documents": {
+      "useTemplate": "Vorlage verwenden",
+      "emptyTeach": "Dokumente sind die KI-entworfenen Texte deines Workspace — Specs, Pläne, Briefings, Sheets. Gib oben einen Titel ein und klicke auf Erstellen; im Editor entwirft die KI und du genehmigst jede Änderung.",
+      "emptyAction": "Erstes Dokument erstellen",
+      "docActions": "Dokumentaktionen",
       "title": "Dokumente",
       "subtitle": "KI-verfasste Workspace-Dokumente: Specs, Pläne, Briefings und Sheets — du bestätigst jede KI-Änderung.",
       "newPlaceholder": "Titel des neuen Dokuments…",
@@ -2423,6 +2574,7 @@
       "draftDiff": "Diff",
       "draftPreview": "Preview",
       "historyTitle": "History",
+      "revisionMeta": "{{time}} · {{note}}",
       "restore": "Wiederherstellen",
       "restoreConfirmTitle": "Restore this version?",
       "restoreConfirmBody": "Restore this revision as the current content? The current version is saved to history first.",
@@ -2448,6 +2600,7 @@
       "useLive": "Live-Site nutzen"
     },
     "comments": {
+      "replyNote": "Die KI entwirft nur dann eine Antwort, wenn du darum bittest — gesendet wird immer erst durch deinen Klick.",
       "tab": "Kommentare",
       "noChannel": "Kein Kanal",
       "refresh": "Aktualisieren",
@@ -2525,6 +2678,11 @@
       "developer": "Entwickler"
     },
     "answers": {
+      "addNote": "Notiz hinzufügen",
+      "details": "Details",
+      "stageLabel": "Phase: {{s}}",
+      "emptyTeach": "Beantworte die Frage direkt auf der Karte — das Ticket musst du nicht heraussuchen.",
+      "viewBoard": "Zum Board",
       "heading": "Antworten",
       "sub": "Alles, was auf dich wartet, an einem Ort.",
       "emptyTitle": "Es wartet nichts auf dich",

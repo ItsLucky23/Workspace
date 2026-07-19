@@ -222,28 +222,28 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/settings` | home | yes | `settings/page.tsx` | — |
 | `/settings/confirm-email` | plain | — | `settings/confirm-email/page.tsx` | — |
 | `/workspaces` | plain | — | `workspaces/page.tsx` | intent: the /workspaces entry point — forwards to the Develop board, the canonical home of a |
-| `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio — a board of your AI content pieces (script → media → assemble → |
-| `/workspaces/content/[pieceId]` | workspaces | — | `workspaces/content/[pieceId]/page.tsx` | intent: a content piece's detail — its stage/status, the generation controls (write · voice · images · |
-| `/workspaces/content/documents` | workspaces | — | `workspaces/content/documents/page.tsx` | intent: Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). See |
+| `/workspaces/content` | workspaces | — | `workspaces/content/page.tsx` | intent: the Content studio home — ONE primary action (create a new piece) above the 6-stage kanban of |
+| `/workspaces/content/[pieceId]` | workspaces | — | `workspaces/content/[pieceId]/page.tsx` | intent: a content piece's detail — ONE dominant "Generate full video" action (≈€ shown, always cost- |
+| `/workspaces/content/documents` | workspaces | — | `workspaces/content/documents/page.tsx` | intent: Documents — the workspace's AI-drafted document library (specs, plans, briefs, sheets). One |
 | `/workspaces/content/documents/[docId]` | workspaces | — | `workspaces/content/documents/[docId]/page.tsx` | intent: a document's editor — write markdown (or let the AI draft it: generate/rewrite/summarize/ |
-| `/workspaces/content/insights` | workspaces | — | `workspaces/content/insights/page.tsx` | intent: content insights — how much you've made and what it cost (analytics), your style library, and |
-| `/workspaces/content/marketing` | workspaces | — | `workspaces/content/marketing/page.tsx` | intent: Marketing — take your product to market. The AI marketer role turns a short product |
-| `/workspaces/content/scheduled-posts` | workspaces | — | `workspaces/content/scheduled-posts/page.tsx` | intent: Scheduled posts — a content-lane calendar/list of every publish that's queued for a future |
-| `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: content setup & settings — connect your AI media provider keys (encrypted) and set a media |
-| `/workspaces/content/studio` | workspaces | — | `workspaces/content/studio/page.tsx` | intent: Studio — the AI design + marketing tool. A user writes a product BRIEF; the AI designer/ |
-| `/workspaces/develop/answers` | workspaces | — | `workspaces/develop/answers/page.tsx` | intent: One place to answer every AI that is waiting on you, without hunting for the ticket it belongs to. |
-| `/workspaces/develop/backlog` | workspaces | — | `workspaces/develop/backlog/page.tsx` | Workspaces — Backlog. All tickets grouped into collapsible sprint sections |
-| `/workspaces/develop/board` | workspaces | — | `workspaces/develop/board/page.tsx` | Workspaces — the scrum board. Kanban across the 7 pipeline stages. |
-| `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | Workspaces — ticket detail. Header (id/issue/status/branch/MR/cost/preview + |
-| `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — a broad visual editor for the whole product UI, not just a component list. |
-| `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — ask the AI anything about THIS codebase and think through new plans |
-| `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | Workspaces — Pipeline editor. THE core surface: tickets flow through these |
-| `/workspaces/develop/scheduled` | workspaces | — | `workspaces/develop/scheduled/page.tsx` | intent: Scheduled tasks — run something on a schedule (a cron job, in plain language). Pick a |
-| `/workspaces/develop/sources` | workspaces | — | `workspaces/develop/sources/page.tsx` | Workspaces — Sources page. Context docs (loaded whole, frozen per commit) |
-| `/workspaces/develop/terminals` | workspaces | — | `workspaces/develop/terminals/page.tsx` | Workspaces — Terminals page. Always-dark multi-terminal workspace, gated on |
-| `/workspaces/insights/activity` | workspaces | — | `workspaces/insights/activity/page.tsx` | Workspaces — Activity. A workspace-wide, chronological feed of TicketEvents |
-| `/workspaces/insights/knowledge` | workspaces | — | `workspaces/insights/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — visualises the workspace's knowledge as |
-| `/workspaces/insights/usage` | workspaces | — | `workspaces/insights/usage/page.tsx` | Workspaces — Usage. No monetary budget/cap/alert (we run Claude via the Pro |
+| `/workspaces/content/insights` | workspaces | — | `workspaces/content/insights/page.tsx` | intent: content insights — a tabbed KISS dashboard: Performance (pieces made/done/published + AI cost), |
+| `/workspaces/content/marketing` | workspaces | — | `workspaces/content/marketing/page.tsx` | intent: Marketing — take your product to market, KISS-first: write a short product brief once, |
+| `/workspaces/content/scheduled-posts` | workspaces | — | `workspaces/content/scheduled-posts/page.tsx` | intent: Scheduled posts — a read-only content-lane queue of every publish that's set for a future |
+| `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: the Content module's setup & settings home, KISS-shaped — teach the AI your brand first (the |
+| `/workspaces/content/studio` | workspaces | — | `workspaces/content/studio/page.tsx` | intent: Studio — describe your product once in a short BRIEF and let the AI designer + marketer |
+| `/workspaces/develop/answers` | workspaces | — | `workspaces/develop/answers/page.tsx` | intent: The cross-ticket answer inbox — every AI question waiting on you, highest-priority and longest-waiting first, answered directly on its card (approve / pick an option / type); stage metadata and the optional approve-note sit behind small per-card disclosures. |
+| `/workspaces/develop/backlog` | workspaces | — | `workspaces/develop/backlog/page.tsx` | intent: The Backlog — every ticket in the workspace in one grouped list (collapsible |
+| `/workspaces/develop/board` | workspaces | — | `workspaces/develop/board/page.tsx` | intent: The scrum board of a Develop workspace — a kanban of tickets per pipeline |
+| `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | intent: Follow ONE AI-driven ticket and steer it: answer the agent's question when |
+| `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — shape the product's whole visual language and make it the design system the |
+| `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — a repo-aware AI chat: ask how this codebase works, what's worth improving, |
+| `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | intent: the project's AI pipeline — the ordered stages every ticket flows through, each stage run |
+| `/workspaces/develop/scheduled` | workspaces | — | `workspaces/develop/scheduled/page.tsx` | intent: Scheduled tasks — run something on a timer, in plain language. One primary "New task" |
+| `/workspaces/develop/sources` | workspaces | — | `workspaces/develop/sources/page.tsx` | intent: Sources — what the workspace's AI works from: context docs (loaded whole, |
+| `/workspaces/develop/terminals` | workspaces | — | `workspaces/develop/terminals/page.tsx` | intent: Terminals — a live shell inside each running ticket container: watch what the AI and its |
+| `/workspaces/insights/activity` | workspaces | — | `workspaces/insights/activity/page.tsx` | intent: Workspaces — Activity: the live, workspace-wide chronological feed of everything |
+| `/workspaces/insights/knowledge` | workspaces | — | `workspaces/insights/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — the workspace's context sources, tickets and |
+| `/workspaces/insights/usage` | workspaces | — | `workspaces/insights/usage/page.tsx` | intent: Show where the workspace's AI effort goes — tokens per day/ticket/person/provider — plus delivery analytics, spend caps and an AI root-cause diagnosis. |
 | `/workspaces/settings` | workspaces | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
 | `/workspaces/workspace` | workspaces | — | `workspaces/workspace/page.tsx` | Workspaces — workspace settings. Members + per-member role (searchable |
 

@@ -229,7 +229,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           <div className="flex flex-col gap-1">
             {doc.revisions.slice(0, 12).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">
-                <span className="text-muted truncate">{`${new Date(r.createdAt).toLocaleString()} · ${r.note}`}</span>
+                <span className="text-muted truncate">{translate({ key: 'workspaces.documents.revisionMeta', params: [{ key: 'time', value: new Date(r.createdAt).toLocaleString() }, { key: 'note', value: r.note }] })}</span>
                 <WsButton variant="ghost" icon="clock-rotate-left" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.documents.restoreConfirmTitle' }), content: translate({ key: 'workspaces.documents.restoreConfirmBody' }) }).then((ok) => { if (ok) restoreDocumentRevision(doc.id, r.id); }); }}>{translate({ key: 'workspaces.documents.restore' })}</WsButton>
               </div>
             ))}

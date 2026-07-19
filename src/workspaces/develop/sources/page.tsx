@@ -1,9 +1,12 @@
-//? Workspaces — Sources page. Context docs (loaded whole, frozen per commit)
-//? and Skills/MCP (queried on demand). Generated docs show which branches
-//? aren't folded in yet. Clicking a doc opens a read-only preview (right sheet,
-//? lots of content); Details opens a small CENTERED overlay via menuHandler
-//? (little data — no big sidebar). Docs + skills come from InfoSource rows via
-//? the workspace realtime snapshot. Desktop-first.
+//? intent: Sources — what the workspace's AI works from: context docs (loaded whole,
+//? frozen per commit) and skills/MCP tools (called on demand). Primary action =
+//? upload a spec (.md/.txt → InfoSource). Maintenance ops (scan repo / reindex
+//? code / reindex memory) sit together in one secondary header menu; the RAG
+//? code-index status lives in a collapsed disclosure under the Docs tab; the rare
+//? per-doc AI-editable setting moved into the Details dialog. Clicking a doc opens
+//? a read-only preview (right sheet, lots of content); Details opens a small
+//? CENTERED overlay via menuHandler (little data). Phone-first: the header wraps
+//? so Upload stays full-width tappable, grids collapse to one column.
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -13,8 +16,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { Sheet } from '../../_components/motion';
-import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
-import type { InfoDoc, SkillEntry } from '../../_data/types';
+import { Disclosure, EmptyState, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
+import type { InfoDoc, RagIndexStatus, SkillEntry } from '../../_data/types';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
 const SOURCE_TINT: Record<InfoDoc['source'], string> = {
@@ -27,34 +30,44 @@ const SOURCE_TINT: Record<InfoDoc['source'], string> = {
 
 function StageChips({ stages }: { stages?: string[] }) {
   const translate = useTranslator();
-  if (!stages || stages.length === 0) return <span className="text-sm text-muted">{translate({ key: 'workspaces.sources.noStages' })}</span>;
+  if (!stages || stages.length === 0) return <span className={`text-sm text-muted`}>{translate({ key: 'workspaces.sources.noStages' })}</span>;
   return (
-    <div className="flex flex-wrap gap-1">
-      {stages.map((s) => <span key={s} className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-common">{s}</span>)}
+    <div className={`flex flex-wrap gap-1`}>
+      {stages.map((s) => <span key={s} className={`rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-common`}>{s}</span>)}
     </div>
   );
 }
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 py-2.5 border-b border-divider last:border-0">
-      <span className="text-xs text-muted">{label}</span>
-      <div className="text-sm text-title">{children}</div>
+    <div className={`flex flex-col gap-1 py-2.5 border-b border-divider last:border-0`}>
+      <span className={`text-xs text-muted`}>{label}</span>
+      <div className={`text-sm text-title`}>{children}</div>
     </div>
   );
 }
 
-//? Rendered inside menuHandler's centered modal.
-function DocDetail({ doc }: { doc: InfoDoc }) {
+//? Rendered inside menuHandler's centered modal — ABOVE WorkspacesProvider, so the
+//? toggle op is injected as a prop (lesson 0011: never useWorkspaces in here).
+//? Local state keeps the toggle live across taps; `next` (not a stale doc closure)
+//? is what reaches toggleSkill, so double-toggling stays correct.
+function DocDetail({ doc, onSetAiEditable }: { doc: InfoDoc; onSetAiEditable: (next: boolean) => void }) {
   const translate = useTranslator();
+  const [aiEditable, setAiEditable] = useState(doc.aiEditable);
   return (
-    <div className="p-5 w-full">
+    <div className={`p-5 w-full`}>
       <DetailHead title={doc.name} />
       <DetailRow label={translate({ key: 'workspaces.sources.summary' })}>{doc.summary}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.source' })}>{doc.source}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.lastUpdated' })}>{doc.updated} · {doc.note}</DetailRow>
-      {doc.pendingBranches && <DetailRow label={translate({ key: 'workspaces.sources.notYetProcessed' })}><span className="text-warning">{doc.pendingBranches.join(', ')}</span></DetailRow>}
+      {doc.pendingBranches && <DetailRow label={translate({ key: 'workspaces.sources.notYetProcessed' })}><span className={`text-warning`}>{doc.pendingBranches.join(', ')}</span></DetailRow>}
       <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}><StageChips stages={doc.usedByStages} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.aiEditable' })}>
+        <div className={`flex flex-col gap-1.5`}>
+          <Toggle on={aiEditable} onChange={(next) => { setAiEditable(next); onSetAiEditable(next); }} />
+          <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.sources.aiEditableHint' })}</span>
+        </div>
+      </DetailRow>
     </div>
   );
 }
@@ -62,7 +75,7 @@ function DocDetail({ doc }: { doc: InfoDoc }) {
 function SkillDetail({ skill }: { skill: SkillEntry }) {
   const translate = useTranslator();
   return (
-    <div className="p-5 w-full">
+    <div className={`p-5 w-full`}>
       <DetailHead title={skill.name} />
       <DetailRow label={translate({ key: 'workspaces.sources.whatItDoes' })}>{skill.description ?? '—'}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.type' })}>{skill.kind === 'frozen' ? translate({ key: 'workspaces.sources.frozenPerCommit' }) : translate({ key: 'workspaces.sources.live' })}{skill.model ? ` · ${skill.model}` : ''}</DetailRow>
@@ -75,48 +88,69 @@ function SkillDetail({ skill }: { skill: SkillEntry }) {
 
 function DetailHead({ title }: { title: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 mb-2">
-      <span className="font-mono text-sm font-semibold text-title truncate">{title}</span>
-      <button type="button" onClick={() => menuHandler.close()} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="xmark" /></button>
+    <div className={`flex items-center justify-between gap-2 mb-2`}>
+      <span className={`font-mono text-sm font-semibold text-title truncate`}>{title}</span>
+      <button type="button" onClick={() => menuHandler.close()} className={`w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer`}><Icon name="xmark" /></button>
     </div>
   );
 }
 
 const openDetail = (el: React.ReactElement) => void menuHandler.open(el, { dimBackground: true, background: 'bg-container1', size: 'md' });
 
-function DocCard({ doc, onOpen, onToggleAiEditable }: { doc: InfoDoc; onOpen: () => void; onToggleAiEditable: () => void }) {
+//? The RAG status, out of the header: collapsed row that keeps the headline
+//? (files·chunks, or the "not indexed" hint) visible and tucks the technical
+//? detail (embedder, commit) behind one tap.
+function CodeIndexStatus({ ragIndex }: { ragIndex: RagIndexStatus | null }) {
+  const translate = useTranslator();
+  const indexed = ragIndex !== null && ragIndex.files > 0;
+  return (
+    <Disclosure
+      summary={(
+        <span className={`flex items-center gap-2 min-w-0`}>
+          <Icon name="database" className={`text-muted`} />
+          <span className={`shrink-0`}>{translate({ key: 'workspaces.sources.codeIndex' })}</span>
+          <span className={`text-xs font-normal font-mono text-muted truncate`}>
+            {indexed
+              ? translate({ key: 'workspaces.sources.ragIndexed', params: [{ key: 'files', value: ragIndex.files }, { key: 'chunks', value: ragIndex.chunks }] })
+              : translate({ key: 'workspaces.sources.ragNotIndexed' })}
+          </span>
+        </span>
+      )}
+    >
+      {indexed
+        ? <div className={`font-mono text-xs text-muted`}>{translate({ key: 'workspaces.sources.ragEmbedder', params: [{ key: 'embedder', value: ragIndex.embedder || '—' }, { key: 'commit', value: ragIndex.commitHash ? ragIndex.commitHash.slice(0, 7) : '—' }] })}</div>
+        : <div className={`text-xs text-muted`}>{translate({ key: 'workspaces.sources.ragNotIndexedHint' })}</div>}
+    </Disclosure>
+  );
+}
+
+function DocCard({ doc, onOpen, onSetAiEditable }: { doc: InfoDoc; onOpen: () => void; onSetAiEditable: (next: boolean) => void }) {
   const translate = useTranslator();
   const { scanDocs } = useWorkspaces();
-  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} />); } }];
+  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} onSetAiEditable={onSetAiEditable} />); } }];
   //? #66 — 'Regenerate' re-runs the doc scan (the available action in the frozen surface; no per-doc op).
   if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: () => { scanDocs(); notify.success({ key: 'workspaces.sources.regenerateQueued' }); } });
   return (
-    <div className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2">
-      <button type="button" onClick={onOpen} className="flex items-center justify-between gap-2 text-left cursor-pointer group">
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon name="file-lines" className="text-muted" />
-          <span className="font-mono text-sm text-title truncate group-hover:underline">{doc.name}</span>
+    <div className={`rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2`}>
+      <div className={`flex items-center justify-between gap-2`}>
+        <button type="button" onClick={onOpen} className={`flex items-center gap-2 min-w-0 text-left cursor-pointer group`}>
+          <Icon name="file-lines" className={`text-muted`} />
+          <span className={`font-mono text-sm text-title truncate group-hover:underline`}>{doc.name}</span>
+        </button>
+        <div className={`flex items-center gap-1.5 shrink-0`}>
+          <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${SOURCE_TINT[doc.source]}`}>{doc.source}</span>
+          <PopMenu items={menuItems} ariaLabel={doc.name} />
         </div>
-        <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${SOURCE_TINT[doc.source]}`}>{doc.source}</span>
-      </button>
-      <div className="flex items-center gap-2 text-xs text-muted">
-        <span>{translate({ key: 'workspaces.sources.updatedAt', params: [{ key: 'date', value: doc.updated }] })}</span><span>·</span><span className="font-mono">{doc.note}</span>
+      </div>
+      <div className={`flex items-center gap-2 text-xs text-muted min-w-0`}>
+        <span className={`shrink-0`}>{translate({ key: 'workspaces.sources.updatedAt', params: [{ key: 'date', value: doc.updated }] })}</span><span>·</span><span className={`font-mono truncate`}>{doc.note}</span>
       </div>
       {doc.pendingBranches && doc.pendingBranches.length > 0 && (
-        <div className="flex items-center gap-1.5 text-xs text-warning">
-          <Icon name="triangle-exclamation" />
+        <div className={`flex items-start gap-1.5 text-xs text-warning`}>
+          <Icon name="triangle-exclamation" className={`mt-0.5`} />
           <span>{translate({ key: 'workspaces.sources.notProcessedInFile', params: [{ key: 'branches', value: doc.pendingBranches.join(', ') }] })}</span>
         </div>
       )}
-      <div className="flex items-center gap-3 mt-1">
-        <div className="flex items-center gap-1.5" title={translate({ key: 'workspaces.sources.aiEditableHint' })}>
-          <span className="text-[11px] text-muted">{translate({ key: 'workspaces.sources.aiEditable' })}</span>
-          <Toggle on={doc.aiEditable} onChange={onToggleAiEditable} />
-        </div>
-        <div className="ml-auto">
-          <PopMenu items={menuItems} />
-        </div>
-      </div>
     </div>
   );
 }
@@ -128,17 +162,17 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
   //? #66 — 'Reindex' rebuilds the RAG code index (workspace-level scan-index; no per-skill op).
   if (skill.kind === 'frozen') menuItems.push({ label: translate({ key: 'workspaces.sources.reindex' }), icon: 'database', onClick: () => { scanIndex(); notify.success({ key: 'workspaces.sources.reindexQueued' }); } });
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3">
+    <div className={`flex items-center gap-3 rounded-xl border border-container1-border bg-container1 px-4 py-3`}>
       <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${skill.on ? 'bg-primary/12 text-primary' : 'bg-container2 text-muted'}`}><Icon name="robot" /></span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-title truncate">{skill.name}</span>
+      <div className={`min-w-0 flex-1`}>
+        <div className={`flex items-center gap-2`}>
+          <span className={`text-sm font-medium text-title truncate`}>{skill.name}</span>
           <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${skill.kind === 'frozen' ? 'bg-secondary/12 text-secondary' : 'bg-correct/15 text-correct'}`}>{skill.kind}</span>
         </div>
-        <div className="text-xs text-muted truncate">{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
+        <div className={`text-xs text-muted truncate`}>{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
       <Toggle on={skill.on} onChange={onToggle} />
-      <PopMenu items={menuItems} />
+      <PopMenu items={menuItems} ariaLabel={skill.name} />
     </div>
   );
 }
@@ -159,6 +193,8 @@ export default function Sources() {
     if (!file) return;
     void file.text().then((text) => { if (text.trim().length > 0) addInfoDoc(file.name, text); });
   };
+  const openUpload = () => { fileRef.current?.click(); };
+  const startReindex = () => { setReindexing(true); scanIndex(); };
   //? Clear the pending state once the reindex delta lands (the RAG status updates).
   useEffect(() => { setReindexing(false); }, [ragIndex]);
 
@@ -167,70 +203,88 @@ export default function Sources() {
     { id: 'skills', label: translate({ key: 'workspaces.sources.tabSkills' }), icon: 'robot', count: skills.length },
   ];
 
+  //? One secondary menu for the maintenance ops — never standalone buttons next to the primary Upload.
+  const maintenanceItems: PopMenuItem[] = [];
+  if (repo.linked) maintenanceItems.push(
+    { label: translate({ key: 'workspaces.sources.scanRepo' }), icon: 'magnifying-glass', onClick: () => { scanDocs(); } },
+    { label: translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' }), icon: 'database', onClick: reindexing ? undefined : startReindex },
+  );
+  maintenanceItems.push({ label: translate({ key: 'workspaces.sources.reindexMemory' }), icon: 'robot', onClick: () => { indexMemory(); } });
+
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4">
-        <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.sources.title' })}</h1>
-          {tab === 'docs' && (
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted font-mono">
-              <Icon name="database" className="text-muted" />
-              {ragIndex && ragIndex.files > 0
-                ? (
-                  <>
-                    <span>{translate({ key: 'workspaces.sources.ragIndexed', params: [{ key: 'files', value: ragIndex.files }, { key: 'chunks', value: ragIndex.chunks }] })}</span>
-                    <span>· {translate({ key: 'workspaces.sources.ragEmbedder', params: [{ key: 'embedder', value: ragIndex.embedder || '—' }, { key: 'commit', value: ragIndex.commitHash ? ragIndex.commitHash.slice(0, 7) : '—' }] })}</span>
-                  </>
-                )
-                : <span>{translate({ key: 'workspaces.sources.ragNotIndexed' })}</span>}
-            </div>
-          )}
+    <div className={`flex flex-col h-full min-h-0`}>
+      <input ref={fileRef} type="file" accept=".md,.txt,.markdown,text/plain,text/markdown" onChange={onUploadDoc} className={`hidden`} />
+
+      {/* Header: title + one-line explainer; on phone the actions wrap to their own row so Upload stays full-width tappable. */}
+      <div className={`flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
+        <div className={`min-w-0`}>
+          <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.sources.title' })}</h1>
+          <p className={`mt-1 text-sm text-muted`}>{translate({ key: 'workspaces.sources.subtitle' })}</p>
         </div>
         {tab === 'docs' && (
-          <div className="flex items-center gap-2 shrink-0">
-            {(() => {
-              const items: PopMenuItem[] = [];
-              if (repo.linked) items.push(
-                { label: translate({ key: 'workspaces.sources.scanRepo' }), icon: 'magnifying-glass', onClick: () => { scanDocs(); } },
-                { label: translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' }), icon: 'database', onClick: reindexing ? undefined : () => { setReindexing(true); scanIndex(); } },
-              );
-              items.push({ label: translate({ key: 'workspaces.sources.reindexMemory' }), icon: 'robot', onClick: () => { indexMemory(); } });
-              return <PopMenu items={items} />;
-            })()}
-            <input ref={fileRef} type="file" accept=".md,.txt,.markdown,text/plain,text/markdown" onChange={onUploadDoc} className="hidden" />
-            <WsButton icon="plus" onClick={() => { fileRef.current?.click(); }}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
+          <div className={`flex items-center gap-2 shrink-0`}>
+            <PopMenu items={maintenanceItems} label={translate({ key: 'workspaces.sources.maintenance' })} />
+            <WsButton icon="plus" onClick={openUpload} className={`flex-1 md:flex-initial`}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
           </div>
         )}
       </div>
 
-      <div className="px-4 md:px-6 mt-3">
+      <div className={`px-4 md:px-6`}>
         <Tabs tabs={tabs} active={tab} onChange={setTab} />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
+      <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5`}>
         {tab === 'docs' && (
-          docs.length === 0
-            ? <EmptyState icon="file-lines" title={translate({ key: 'workspaces.sources.emptyDocsTitle' })} />
-            : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onToggleAiEditable={() => { toggleSkill(d.id, !d.aiEditable); }} />)}</div>
+          <div className={`flex flex-col gap-4`}>
+            <CodeIndexStatus ragIndex={ragIndex} />
+            {docs.length === 0
+              ? (
+                <EmptyState
+                  icon="file-lines"
+                  title={translate({ key: 'workspaces.sources.emptyDocsTitle' })}
+                  sub={translate({ key: 'workspaces.sources.emptyDocsSub' })}
+                  action={(
+                    <div className={`flex flex-col sm:flex-row items-center justify-center gap-2`}>
+                      <WsButton icon="plus" onClick={openUpload}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
+                      {repo.linked && <WsButton variant="secondary" icon="magnifying-glass" onClick={() => { scanDocs(); }}>{translate({ key: 'workspaces.sources.scanRepo' })}</WsButton>}
+                    </div>
+                  )}
+                />
+              )
+              : <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} />)}</div>}
+          </div>
         )}
         {tab === 'skills' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            {skills.map((s) => (
-              <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} />
-            ))}
-          </div>
+          skills.length === 0
+            ? (
+              <EmptyState
+                icon="robot"
+                title={translate({ key: 'workspaces.sources.emptySkillsTitle' })}
+                sub={translate({ key: 'workspaces.sources.emptySkillsSub' })}
+                action={repo.linked
+                  ? <WsButton variant="secondary" icon="database" onClick={startReindex} disabled={reindexing}>{translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' })}</WsButton>
+                  : undefined}
+              />
+            )
+            : (
+              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2`}>
+                {skills.map((s) => (
+                  <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} />
+                ))}
+              </div>
+            )
         )}
       </div>
 
-      <Sheet open={preview !== null} onClose={() => { setPreview(null); }} side="right" className="flex flex-col">
+      <Sheet open={preview !== null} onClose={() => { setPreview(null); }} side="right" className={`flex flex-col`}>
         {preview && (
           <>
-            <div className="flex items-center justify-between gap-2 px-4 h-14 border-b border-divider shrink-0">
-              <span className="font-mono text-sm text-title truncate">{preview.name}</span>
-              <button type="button" onClick={() => { setPreview(null); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="xmark" /></button>
+            <div className={`flex items-center justify-between gap-2 px-4 h-14 border-b border-divider shrink-0`}>
+              <span className={`font-mono text-sm text-title truncate`}>{preview.name}</span>
+              <button type="button" onClick={() => { setPreview(null); }} className={`w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer`}><Icon name="xmark" /></button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <pre className="whitespace-pre-wrap font-mono text-xs text-common leading-relaxed">{preview.content}</pre>
+            <div className={`flex-1 min-h-0 overflow-y-auto p-4`}>
+              <pre className={`whitespace-pre-wrap font-mono text-xs text-common leading-relaxed`}>{preview.content}</pre>
             </div>
           </>
         )}
