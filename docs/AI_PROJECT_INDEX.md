@@ -80,70 +80,70 @@
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `sync/workspaces/acceptSuggestion/v1` | yes | — | login | — | **no** | — | Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI |
-| `sync/workspaces/addComment/v1` | yes | — | login | — | **no** | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
-| `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | **no** | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
-| `sync/workspaces/agentControl/v1` | yes | — | login | — | **no** | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
-| `sync/workspaces/agentTerm/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
-| `sync/workspaces/answerInput/v1` | yes | — | login | — | **no** | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
-| `sync/workspaces/archive/v1` | yes | — | login | — | **no** | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
-| `sync/workspaces/bulkArchive/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
-| `sync/workspaces/bulkAssign/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-assign] REALTIME write via `_sync`. (Re)assigns ticket(s), then |
-| `sync/workspaces/bulkMove/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-move] REALTIME write via `_sync`. Moves ticket(s) to a stage, |
-| `sync/workspaces/bulkSprint/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
-| `sync/workspaces/bulkStatus/v1` | yes | — | login | — | **no** | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
-| `sync/workspaces/changeRole/v1` | yes | — | login | — | **no** | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
-| `sync/workspaces/cloneWorkspace/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `sync/workspaces/commentInbox/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `sync/workspaces/contentAssetDelta/v1` | yes | — | login | — | **no** | — | Workspaces — [content-asset-delta] BROADCAST-ONLY realtime carrier. Mid-generation media jobs |
-| `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
-| `sync/workspaces/contentDirty/v1` | yes | — | login | — | **no** | — | Workspaces — [content-dirty] BROADCAST-ONLY realtime carrier. A coarse "the content slice changed" |
-| `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `sync/workspaces/copyWorkspaceAssets/v1` | yes | — | login | — | **no** | — | Workspaces — [copy-workspace-assets] via `_sync` (FREEDOM_PROGRAM R2). Copy the user-authored styles + the |
-| `sync/workspaces/customTask/v1` | yes | — | login | — | **no** | — | Workspaces — [custom-task] ops via `_sync` (FREEDOM_PROGRAM E5). Create/update/delete a user-defined AI |
-| `sync/workspaces/documentsControl/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `sync/workspaces/findingAction/v1` | yes | — | login | — | **no** | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
-| `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | **no** | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
-| `sync/workspaces/invite/v1` | yes | — | login | — | **no** | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
-| `sync/workspaces/linkRepo/v1` | yes | — | login | — | **no** | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
-| `sync/workspaces/mrAction/v1` | yes | — | login | — | **no** | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
-| `sync/workspaces/outputTemplate/v1` | yes | — | login | — | **no** | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
-| `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
-| `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). |
+| `sync/workspaces/acceptSuggestion/v1` | yes | — | login | — | yes | — | Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI |
+| `sync/workspaces/addComment/v1` | yes | — | login | — | yes | — | Workspaces — [add-comment] REALTIME write via `_sync`. Appends a user comment to a |
+| `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | yes | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
+| `sync/workspaces/agentControl/v1` | yes | — | login | — | yes | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
+| `sync/workspaces/agentTerm/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
+| `sync/workspaces/answerInput/v1` | yes | — | login | — | yes | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
+| `sync/workspaces/archive/v1` | yes | — | login | — | yes | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
+| `sync/workspaces/bulkArchive/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
+| `sync/workspaces/bulkAssign/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-assign] REALTIME write via `_sync`. (Re)assigns ticket(s), then |
+| `sync/workspaces/bulkMove/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-move] REALTIME write via `_sync`. Moves ticket(s) to a stage, |
+| `sync/workspaces/bulkSprint/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-sprint] REALTIME write via `_sync`. Moves ticket(s) to a sprint, |
+| `sync/workspaces/bulkStatus/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-status] REALTIME write via `_sync`. Sets ticket(s) status, then |
+| `sync/workspaces/changeRole/v1` | yes | — | login | — | yes | — | Workspaces — [change-role] REALTIME write via `_sync`. Changes a member's role, |
+| `sync/workspaces/cloneWorkspace/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `sync/workspaces/commentInbox/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `sync/workspaces/contentAssetDelta/v1` | yes | — | login | — | yes | — | Workspaces — [content-asset-delta] BROADCAST-ONLY realtime carrier. Mid-generation media jobs |
+| `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
+| `sync/workspaces/contentDirty/v1` | yes | — | login | — | yes | — | Workspaces — [content-dirty] BROADCAST-ONLY realtime carrier. A coarse "the content slice changed" |
+| `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `sync/workspaces/copyWorkspaceAssets/v1` | yes | — | login | — | yes | — | Workspaces — [copy-workspace-assets] via `_sync` (FREEDOM_PROGRAM R2). Copy the user-authored styles + the |
+| `sync/workspaces/customTask/v1` | yes | — | login | — | yes | — | Workspaces — [custom-task] ops via `_sync` (FREEDOM_PROGRAM E5). Create/update/delete a user-defined AI |
+| `sync/workspaces/documentsControl/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `sync/workspaces/findingAction/v1` | yes | — | login | — | yes | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
+| `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | yes | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
+| `sync/workspaces/invite/v1` | yes | — | login | — | yes | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
+| `sync/workspaces/linkRepo/v1` | yes | — | login | — | yes | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
+| `sync/workspaces/mrAction/v1` | yes | — | login | — | yes | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
+| `sync/workspaces/outputTemplate/v1` | yes | — | login | — | yes | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
+| `sync/workspaces/presence/v1` | yes | — | login | — | yes | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
+| `sync/workspaces/projectAdmin/v1` | yes | — | login | — | yes | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | yes | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
-| `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
-| `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
-| `sync/workspaces/removeMember/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-member] REALTIME write via `_sync`. Removes a member, then |
-| `sync/workspaces/renameWorkspace/v1` | yes | — | login | — | **no** | — | Workspaces — [rename-workspace] REALTIME write via `_sync`. Renames the workspace, |
-| `sync/workspaces/revokeInvite/v1` | yes | — | login | — | **no** | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
-| `sync/workspaces/roleCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
-| `sync/workspaces/roleUpdate/v1` | yes | — | login | — | **no** | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
-| `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
-| `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
-| `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | **no** | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
-| `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | **no** | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
-| `sync/workspaces/saveEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
-| `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
-| `sync/workspaces/saveIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
-| `sync/workspaces/saveSections/v1` | yes | — | login | — | **no** | — | Workspaces — [save-sections] REALTIME write via `_sync`. Persists the workspace's enabled |
-| `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | **no** | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
-| `sync/workspaces/scanDocs/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
-| `sync/workspaces/scanIndex/v1` | yes | — | login | — | **no** | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
-| `sync/workspaces/serviceProvision/v1` | yes | — | login | — | **no** | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
-| `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | **no** | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
-| `sync/workspaces/skillsControl/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `sync/workspaces/skillToggle/v1` | yes | — | login | — | **no** | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
-| `sync/workspaces/sprintCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
-| `sync/workspaces/sprintEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [sprint-edit] REALTIME write via `_sync`. Activates / renames / (re)dates a sprint, |
-| `sync/workspaces/stageCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
-| `sync/workspaces/stageDelete/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-delete] (R1) durably REMOVE a pipeline stage. The client refetches the pipeline after. |
-| `sync/workspaces/stageReorder/v1` | yes | — | login | — | **no** | — | Workspaces — [stage-reorder] (R1) persist a new pipeline stage ORDER (drag-reorder survives a refresh). |
-| `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | **no** | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
-| `sync/workspaces/ticketEdit/v1` | yes | — | login | — | **no** | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
-| `sync/workspaces/transferOwnership/v1` | yes | — | login | — | **no** | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
-| `sync/workspaces/triggerAction/v1` | yes | — | login | — | **no** | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
-| `sync/workspaces/uiReviewAction/v1` | yes | — | login | ItsLucky23 | **no** | — | Workspaces — [ui-review-to-ticket / ui-review-dismiss] (U2 gap-fix) act on an open "unfuck the UI" |
-| `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | **no** | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
+| `sync/workspaces/removeEnv/v1` | yes | — | login | — | yes | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
+| `sync/workspaces/removeIntegration/v1` | yes | — | login | — | yes | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
+| `sync/workspaces/removeMember/v1` | yes | — | login | — | yes | — | Workspaces — [remove-member] REALTIME write via `_sync`. Removes a member, then |
+| `sync/workspaces/renameWorkspace/v1` | yes | — | login | — | yes | — | Workspaces — [rename-workspace] REALTIME write via `_sync`. Renames the workspace, |
+| `sync/workspaces/revokeInvite/v1` | yes | — | login | — | yes | — | Workspaces — [revoke-invite] REALTIME write via `_sync`. Revokes a pending invite, |
+| `sync/workspaces/roleCreate/v1` | yes | — | login | — | yes | — | Workspaces — [role-create] REALTIME write via `_sync`. Creates a custom RBAC role, |
+| `sync/workspaces/roleUpdate/v1` | yes | — | login | — | yes | — | Workspaces — [role-update] REALTIME write via `_sync`. Updates a role's label / |
+| `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
+| `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
+| `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
+| `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | yes | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
+| `sync/workspaces/saveEnv/v1` | yes | — | login | — | yes | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
+| `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
+| `sync/workspaces/saveIntegration/v1` | yes | — | login | — | yes | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
+| `sync/workspaces/saveSections/v1` | yes | — | login | — | yes | — | Workspaces — [save-sections] REALTIME write via `_sync`. Persists the workspace's enabled |
+| `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
+| `sync/workspaces/scanDocs/v1` | yes | — | login | — | yes | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
+| `sync/workspaces/scanIndex/v1` | yes | — | login | — | yes | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
+| `sync/workspaces/serviceProvision/v1` | yes | — | login | — | yes | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
+| `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | yes | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
+| `sync/workspaces/skillsControl/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `sync/workspaces/skillToggle/v1` | yes | — | login | — | yes | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
+| `sync/workspaces/sprintCreate/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
+| `sync/workspaces/sprintEdit/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-edit] REALTIME write via `_sync`. Activates / renames / (re)dates a sprint, |
+| `sync/workspaces/stageCreate/v1` | yes | — | login | — | yes | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
+| `sync/workspaces/stageDelete/v1` | yes | — | login | — | yes | — | Workspaces — [stage-delete] (R1) durably REMOVE a pipeline stage. The client refetches the pipeline after. |
+| `sync/workspaces/stageReorder/v1` | yes | — | login | — | yes | — | Workspaces — [stage-reorder] (R1) persist a new pipeline stage ORDER (drag-reorder survives a refresh). |
+| `sync/workspaces/ticketArtifact/v1` | yes | — | login | — | yes | — | Workspaces — ticket ↔ artifact link writes via `_sync` (ADR 0034). Two control-ops through the |
+| `sync/workspaces/ticketEdit/v1` | yes | — | login | — | yes | — | Workspaces — [ticket-edit] REALTIME write via `_sync`. Edits a ticket's title / |
+| `sync/workspaces/transferOwnership/v1` | yes | — | login | — | yes | — | Workspaces — [transfer-ownership] REALTIME write via `_sync`. Transfers ownership |
+| `sync/workspaces/triggerAction/v1` | yes | — | login | — | yes | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
+| `sync/workspaces/uiReviewAction/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [ui-review-to-ticket / ui-review-dismiss] (U2 gap-fix) act on an open "unfuck the UI" |
+| `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | yes | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
 
 ## Ownership & coverage
 
@@ -154,61 +154,7 @@
 | `ItsLucky23` | 22 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 65/128 routes have a per-route `.tests.ts`.
-
-_Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
-
-- `sync/workspaces/acceptSuggestion/v1`
-- `sync/workspaces/addComment/v1`
-- `sync/workspaces/addInfoDoc/v1`
-- `sync/workspaces/agentControl/v1`
-- `sync/workspaces/agentTerm/v1`
-- `sync/workspaces/answerInput/v1`
-- `sync/workspaces/archive/v1`
-- `sync/workspaces/bulkArchive/v1`
-- `sync/workspaces/bulkAssign/v1`
-- `sync/workspaces/bulkMove/v1`
-- `sync/workspaces/bulkSprint/v1`
-- `sync/workspaces/bulkStatus/v1`
-- `sync/workspaces/changeRole/v1`
-- `sync/workspaces/cloneWorkspace/v1`
-- `sync/workspaces/commentInbox/v1`
-- `sync/workspaces/contentAssetDelta/v1`
-- `sync/workspaces/contentControl/v1`
-- `sync/workspaces/contentDirty/v1`
-- `sync/workspaces/contentSettings/v1`
-- `sync/workspaces/copyWorkspaceAssets/v1`
-- `sync/workspaces/customTask/v1`
-- `sync/workspaces/documentsControl/v1`
-- `sync/workspaces/findingAction/v1`
-- `sync/workspaces/gitlabSettings/v1`
-- `sync/workspaces/invite/v1`
-- `sync/workspaces/linkRepo/v1`
-- `sync/workspaces/mrAction/v1`
-- `sync/workspaces/outputTemplate/v1`
-- `sync/workspaces/presence/v1`
-- `sync/workspaces/projectAdmin/v1`
-- `sync/workspaces/removeEnv/v1`
-- `sync/workspaces/removeIntegration/v1`
-- `sync/workspaces/removeMember/v1`
-- `sync/workspaces/renameWorkspace/v1`
-- `sync/workspaces/revokeInvite/v1`
-- `sync/workspaces/roleCreate/v1`
-- `sync/workspaces/roleUpdate/v1`
-- `sync/workspaces/rotateWebhookSecret/v1`
-- `sync/workspaces/saveAiInstruction/v1`
-- `sync/workspaces/saveAiProvider/v1`
-- `sync/workspaces/saveAutonomy/v1`
-- `sync/workspaces/saveEnv/v1`
-- `sync/workspaces/saveGitConfig/v1`
-- `sync/workspaces/saveIntegration/v1`
-- `sync/workspaces/saveSections/v1`
-- `sync/workspaces/saveStageConfig/v1`
-- `sync/workspaces/scanDocs/v1`
-- `sync/workspaces/scanIndex/v1`
-- `sync/workspaces/serviceProvision/v1`
-- `sync/workspaces/serviceTeardown/v1`
-- … +13 more
+**Test coverage**: 128/128 routes have a per-route `.tests.ts`.
 
 ## Pages (35)
 
