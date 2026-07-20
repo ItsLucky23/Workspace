@@ -384,6 +384,14 @@ Daarna het volle bewijs: "Can I publish videos to TikTok…" → gegrond antwoor
 
 **Notes / decisions**: **ADR 0282** (parity-by-default-tranche + copilot-lane i.p.v. nieuwe verbs + project-facts + prompt-transport). Onderweg drie dev-serverinstanties per ongeluk gestapeld (supervisor respawnt na port-PID-kill) → lesson 0016; opgeruimd naar één instantie. Beperkingen genoteerd: product-kenniscorpus dekt geen page-intents (regen-script leest alleen capabilities.md + ADR's); testaccount-workspace heeft nu één gearchiveerd ticket (DEV-3) als levend fixture-bewijs.
 
+## 2026-07-20 02:20 — owner-besluit: ai-skill-delete alsnog chat-proposable (ADR 0283) + merge naar main
+
+**User prompt**: "skills verwijderen mag de AI ook, merge ook alles naar main en run dev server en client."
+
+**Wat ik heb gedaan**: de OPEN VRAAG uit ADR 0282 beslist door de owner → `ai-skill-delete` naar `enabled` (catalogus + `CHAT_ENABLED_OPS` + dispatcher op de bestaande `skillsControl`-route; destructive-confirm blijft), `couplingBridges` pint nu de nieuwe beslissing (enabled + destructive), parity-tabel-rij terug. Vastgelegd als **ADR 0283**. Daarna de hele branch (IA-verbouwing · KISS-golf · AI-parity · deze flip) naar `main` gemerged en de dev-runtimes gestart.
+
+**Verification**: couplingBridges 43/43 · opCatalogParity 346/346 · surfaceReachability 104/104 · lint 0 errors.
+
 
 ## 2026-07-19 — Antwoord-inbox, per-service CI, en de suite-ruis (punten 2/3/4)
 

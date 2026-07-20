@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `074586853523c658` · 17 capabilities · 200 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `88c39da246971513` · 17 capabilities · 201 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -226,3 +226,4 @@
 - `adr-0280` Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs
 - `adr-0281` CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit"
 - `adr-0282` Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A
+- `adr-0283` ai-skill-delete is chat-proposable — the owner overrules the UI-only pin

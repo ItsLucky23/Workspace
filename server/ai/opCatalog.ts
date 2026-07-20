@@ -310,11 +310,10 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'reset a BUILT-IN AI skill back to its shipped instruction. params: skillId (from the skills list below)',
     params: { skillId: { kind: 'skillId', required: true } },
   },
-  //? Deliberately `later`, NOT part of the parity tranche: deleting a user-authored skill from a chat
-  //? turn stays a UI-only action (pinned by couplingBridges; toggle-off covers the chat use case).
-  //? OPEN VRAAG: the owner may consciously overrule this — flip mode + CHAT_ENABLED_OPS + dispatcher.
+  //? ADR 0283 — the owner consciously overruled the earlier "delete stays UI-only" pin (2026-07-20):
+  //? the assistant may propose skill deletion; destructive keeps the extra explicit confirm on accept.
   'ai-skill-delete': {
-    mode: 'later', destructive: true,
+    mode: 'enabled', destructive: true,
     hint: 'permanently delete an AI skill. params: skillId (from the skills list below). Destructive — the user gets an extra confirm; prefer ai-skill-toggle off unless the user explicitly wants it gone',
     params: { skillId: { kind: 'skillId', required: true } },
   },

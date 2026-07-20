@@ -701,6 +701,10 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     if (!sourceId || on === undefined) return;
     void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId, on, clientRequestId: x.nextReqId() }, receiver: x.room });
   },
+  'ai-skill-delete': (p, x) => {
+    const skillId = str(p, 'skillId'); if (!skillId) return;
+    void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-delete', skillId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   'create-info-source': (p, x) => {
     const name = str(p, 'name'); const content = str(p, 'content');
     if (!name || !content) return;

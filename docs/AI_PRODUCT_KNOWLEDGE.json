@@ -1,6 +1,6 @@
 {
-  "hash": "074586853523c658",
-  "chunkCount": 217,
+  "hash": "88c39da246971513",
+  "chunkCount": 218,
   "chunks": [
     {
       "id": "cap-001",
@@ -1303,6 +1303,12 @@
       "kind": "decision",
       "title": "Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A",
       "text": "ADR 0282: Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A.  Decision: "
+    },
+    {
+      "id": "adr-0283",
+      "kind": "decision",
+      "title": "ai-skill-delete is chat-proposable — the owner overrules the UI-only pin",
+      "text": "ADR 0283: ai-skill-delete is chat-proposable — the owner overrules the UI-only pin.  Decision: "
     }
   ]
 }

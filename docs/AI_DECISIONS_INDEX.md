@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (200)
+## Decisions (201)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -213,6 +213,7 @@
 | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs | 🟢 accepted | frontend, navbar, ux, ia, routing, restructure | 0068 | `docs/decisions/0280-module-based-nav-categories.md` |
 | 0281 | CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit | 🟢 accepted | ci, monorepo, gates, schema, mongodb | — | `docs/decisions/0281-per-service-ci-and-unit-scope.md` |
 | 0282 | Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A | 🟢 accepted | workspace-ai, chat, op-catalog, parity, copilot, rag, b-23 | — | `docs/decisions/0282-assistant-parity-tranche.md` |
+| 0283 | ai-skill-delete is chat-proposable — the owner overrules the UI-only pin | 🟢 accepted | workspace-ai, chat, op-catalog, skills, b-23 | — | `docs/decisions/0283-skill-delete-chat-proposable.md` |
 
 ## Summaries
 
@@ -1831,6 +1832,14 @@ _(no Decision section found — fill it in)_
 _(no Decision section found — fill it in)_
 
 → `docs/decisions/0282-assistant-parity-tranche.md`
+
+### 0283 — ai-skill-delete is chat-proposable — the owner overrules the UI-only pin
+
+**0283** · accepted · tags: workspace-ai, chat, op-catalog, skills, b-23 · 2026-07-20
+
+_(no Decision section found — fill it in)_
+
+→ `docs/decisions/0283-skill-delete-chat-proposable.md`
 
 ## Code governed by decisions
 

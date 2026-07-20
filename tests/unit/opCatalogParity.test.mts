@@ -181,6 +181,7 @@ try {
     ['trigger-toggle', { triggerId: 'trig1', enabled: false }, { triggerId: 'ghost', enabled: true }],
     ['trigger-delete', { triggerId: 'trig1' }, { triggerId: 'ghost' }],
     ['skill-toggle', { sourceId: 'src1', on: false }, { sourceId: 'ghost', on: true }],
+    ['ai-skill-delete', { skillId: 'skill1' }, { skillId: 'ghost' }],
     ['create-info-source', { name: 'notes.md', content: '# hi' }, { name: 'notes.md' }],
     ['link-repo', { gitUrl: 'https://github.com/x/y.git' }, {}],
     // settings + budgets

@@ -27,8 +27,10 @@ for (const op of ['ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset'] as const
   eq(PROPOSE_CATALOG[op].mode, 'enabled', `${op} is proposable from chat`);
   assert(CHAT_ENABLED_OPS.includes(op), `${op} is in the client twin`);
 }
-//? Deleting a user-authored skill from a chat turn stays a UI-only action.
-eq(PROPOSE_CATALOG['ai-skill-delete'].mode, 'later', 'skill DELETE deliberately stays out of chat');
+//? ADR 0283 — the owner overruled the earlier UI-only pin: skill DELETE is chat-proposable,
+//? guarded by the destructive accept-confirm like every other destructive op.
+eq(PROPOSE_CATALOG['ai-skill-delete'].mode, 'enabled', 'skill DELETE is chat-proposable by owner decision (ADR 0283)');
+eq(PROPOSE_CATALOG['ai-skill-delete'].destructive, true, 'and stays destructive-confirmed');
 assert(read('src/workspaces/_functions/chatDispatch.ts').includes("'ai-skill-toggle': skill("), 'the client can dispatch a skill proposal');
 
 /* ------------------------------------------------------------ C4: the catalog is filtered by enabled modules */
