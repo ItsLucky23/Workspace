@@ -6,13 +6,17 @@ import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 //?  [1] with no draft yet → ok = false, error "dockerfile.noDraft".
 //?  [2] after a draft is written → ok = true, the exact bytes come back.
 //?
-//? Integration: a throwaway first-login user (Owner, so it holds workspaceSettings) drives
-//? the route; the draft is seeded via the same server helper the save route uses, and the
-//? draft file + every seeded row are torn down in a `finally`.
+//? Integration: `loginSeededUser` creates a real `User` (a genuine ObjectId — the
+//? harness's synthetic `test-user-<ts>` fallback is NOT a valid ObjectId), logs in as
+//? it (Owner, so it holds workspaceSettings), and explicitly seeds a demo workspace
+//? (first-login auto-seed was removed in commit 42632a2, so login alone no longer
+//? populates one). The draft is seeded via the same server helper the save route uses;
+//? the draft file + every seeded row are torn down in a `finally`.
 
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { saveDockerfileDraft } from '../../../server/container/dockerfileDraft';
+import { loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
 
 interface GetOk { status: 'success'; result: { ok: boolean; dockerfile: string; error?: string } }
 interface GetErr { status: 'error'; errorCode?: string }
@@ -20,67 +24,32 @@ type GetResponse = GetOk | GetErr;
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 
-const uniqueEmail = (tag: string): string => `lstest_getdockerfile_${tag}_${String(Date.now())}_${String(Math.floor(Math.random() * 1e6))}@youcomm.nl`;
-
-async function cleanupUser(db: TestContext['prisma'], userId: string): Promise<void> {
-  const memberships = await db.workspaceMember.findMany({ where: { userId } });
-  const workspaceIds = [...new Set(memberships.map((m) => m.workspaceId))];
-  for (const workspaceId of workspaceIds) {
-    const members = await db.workspaceMember.findMany({ where: { workspaceId } });
-    const demoUserIds = members.map((m) => m.userId).filter((id) => id !== userId);
-    await db.ticketEvent.deleteMany({ where: { workspaceId } });
-    await db.ticket.deleteMany({ where: { workspaceId } });
-    await db.workspaceSuggestion.deleteMany({ where: { workspaceId } });
-    await db.workspaceBudget.deleteMany({ where: { workspaceId } });
-    await db.workspaceSignal.deleteMany({ where: { workspaceId } });
-    await db.sprint.deleteMany({ where: { workspaceId } });
-    await db.infoSource.deleteMany({ where: { workspaceId } });
-    await db.envVar.deleteMany({ where: { workspaceId } });
-    await db.integrationTool.deleteMany({ where: { workspaceId } });
-    await db.invite.deleteMany({ where: { workspaceId } });
-    await db.pipelineStage.deleteMany({ where: { workspaceId } });
-    await db.workspaceRole.deleteMany({ where: { workspaceId } });
-    await db.workspaceMember.deleteMany({ where: { workspaceId } });
-    await db.project.deleteMany({ where: { workspaceId } });
-    await db.workspace.deleteMany({ where: { id: workspaceId } });
-    rmSync(path.join(process.cwd(), 'data', 'workspaces', workspaceId), { recursive: true, force: true });
-    if (demoUserIds.length > 0) await db.user.deleteMany({ where: { id: { in: demoUserIds } } });
-  }
-  await db.user.deleteMany({ where: { id: userId } });
-}
-
-async function seededWorkspaceId(ctx: TestContext, userId: string): Promise<string | undefined> {
-  const member = await ctx.prisma.workspaceMember.findFirst({ where: { userId } });
-  return member?.workspaceId;
+async function cleanupRoute(ctx: TestContext, workspaceId: string, userId: string): Promise<void> {
+  rmSync(path.join(process.cwd(), 'data', 'workspaces', workspaceId), { recursive: true, force: true });
+  await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
 }
 
 export const customTests: CustomTestCase[] = [
   {
     name: 'with no draft yet, returns ok=false / dockerfile.noDraft',
     run: async (ctx: TestContext) => {
-      const { userId } = await ctx.session.login({ email: uniqueEmail('c1') });
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'getdockerfile_c1');
       try {
-        const workspaceId = await seededWorkspaceId(ctx, userId);
-        ctx.expect.ok(workspaceId !== undefined, 'the first-login seed created a workspace');
-        if (workspaceId === undefined) return;
         const res = await ctx.callApi<{ workspaceId: string }, GetResponse>({ workspaceId });
         ctx.expect.ok(
           res.status === 'success' && !res.result.ok && res.result.error === 'dockerfile.noDraft',
           'a workspace with no generated draft reports "dockerfile.noDraft"',
         );
       } finally {
-        await cleanupUser(ctx.prisma, userId);
+        await cleanupRoute(ctx, workspaceId, userId);
       }
     },
   },
   {
     name: 'after a draft is written, returns ok=true with the exact bytes',
     run: async (ctx: TestContext) => {
-      const { userId } = await ctx.session.login({ email: uniqueEmail('c2') });
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'getdockerfile_c2');
       try {
-        const workspaceId = await seededWorkspaceId(ctx, userId);
-        ctx.expect.ok(workspaceId !== undefined, 'the first-login seed created a workspace');
-        if (workspaceId === undefined) return;
         //? R3-b — the draft is per-project; seed + read the workspace's first project's slot.
         const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
         ctx.expect.ok(project !== null, 'the seed created a project');
@@ -95,7 +64,7 @@ export const customTests: CustomTestCase[] = [
           'the persisted draft bytes are returned verbatim',
         );
       } finally {
-        await cleanupUser(ctx.prisma, userId);
+        await cleanupRoute(ctx, workspaceId, userId);
       }
     },
   },

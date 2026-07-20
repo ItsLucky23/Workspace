@@ -1,15 +1,19 @@
 import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 
+import { loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
+
 //? Per-route tests for `workspaces/snapshot/v1` — the read snapshot that backs
 //? `useWorkspaceData()`. The auto-sweep already covers contract/auth/rate-limit/fuzz;
 //? these cases assert the business-logic the sweep can't reach:
-//?  [1] first-login seed populates the snapshot (workspaces non-empty, tickets array).
+//?  [1] a seeded workspace populates the snapshot (workspaces non-empty, tickets array).
 //?  [2] `stages[].id` is the stable slug (`PipelineStage.key`), NOT the raw ObjectId.
 //?
-//? Integration test: a throwaway user is logged in (which fires the first-login seed
-//? via the `postLogin` hook), then every row it created is torn down in a `finally`
-//? so no data leaks — the seed's workspace, its tenant-scoped rows, the demo member
-//? Users, and the throwaway login user itself.
+//? Integration test: `loginSeededUser` creates a real `User` (a genuine ObjectId — the
+//? harness's synthetic `test-user-<ts>` fallback is NOT a valid ObjectId and breaks
+//? `buildSnapshot`'s `@db.ObjectId` queries on `user.id`), logs in as it, then
+//? explicitly seeds a demo workspace (first-login auto-seed was removed in commit
+//? 42632a2 — onboarding now owns the zero-workspace path, so login alone no longer
+//? populates anything). Teardown via the shared `cleanupWorkspace` harness helper.
 
 //? Response envelope the route returns (`{ status, result }`). Only the fields these
 //? cases assert on are modelled; the rest of the snapshot is intentionally omitted.
@@ -30,43 +34,11 @@ type SnapshotResponse = SnapshotOk | SnapshotErr;
 //? snapshot maps `PipelineStage.key` (a slug like `unrefined`) onto the frontend `id`.
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
-//? Tear down everything the first-login seed created for `userId`: for each workspace
-//? the user belongs to, delete the tenant-scoped rows, the demo member Users, then the
-//? workspace; finally delete the throwaway login user. Mirrors the Conductor's
-//? `cascadeDeleteWorkspace` (which is private to the orchestrator, so it's inlined here).
-async function cleanupUser(db: TestContext['prisma'], userId: string): Promise<void> {
-  const memberships = await db.workspaceMember.findMany({ where: { userId } });
-  const workspaceIds = [...new Set(memberships.map((m) => m.workspaceId))];
-  for (const workspaceId of workspaceIds) {
-    const members = await db.workspaceMember.findMany({ where: { workspaceId } });
-    const demoUserIds = members.map((m) => m.userId).filter((id) => id !== userId);
-    await db.ticketEvent.deleteMany({ where: { workspaceId } });
-    await db.ticket.deleteMany({ where: { workspaceId } });
-    await db.workspaceSuggestion.deleteMany({ where: { workspaceId } });
-    await db.workspaceBudget.deleteMany({ where: { workspaceId } });
-    await db.workspaceSignal.deleteMany({ where: { workspaceId } });
-    await db.sprint.deleteMany({ where: { workspaceId } });
-    await db.infoSource.deleteMany({ where: { workspaceId } });
-    await db.envVar.deleteMany({ where: { workspaceId } });
-    await db.integrationTool.deleteMany({ where: { workspaceId } });
-    await db.invite.deleteMany({ where: { workspaceId } });
-    await db.pipelineStage.deleteMany({ where: { workspaceId } });
-    await db.workspaceRole.deleteMany({ where: { workspaceId } });
-    await db.workspaceMember.deleteMany({ where: { workspaceId } });
-    await db.project.deleteMany({ where: { workspaceId } });
-    await db.workspace.deleteMany({ where: { id: workspaceId } });
-    if (demoUserIds.length > 0) await db.user.deleteMany({ where: { id: { in: demoUserIds } } });
-  }
-  await db.user.deleteMany({ where: { id: userId } });
-}
-
-const uniqueEmail = (tag: string): string => `lstest_snapshot_${tag}_${String(Date.now())}_${String(Math.floor(Math.random() * 1e6))}@youcomm.nl`;
-
 export const customTests: CustomTestCase[] = [
   {
-    name: 'first-login seed populates the snapshot (workspaces non-empty, tickets array)',
+    name: 'a seeded workspace populates the snapshot (workspaces non-empty, tickets array)',
     run: async (ctx: TestContext) => {
-      const { userId } = await ctx.session.login({ email: uniqueEmail('c1') });
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'snapshot_c1');
       try {
         const res = await ctx.callApi<{ workspaceId?: string }, SnapshotResponse>({});
         ctx.expect.eq(res.status, 'success', 'snapshot returns status "success"');
@@ -79,14 +51,14 @@ export const customTests: CustomTestCase[] = [
           'result.result.tickets is an array',
         );
       } finally {
-        await cleanupUser(ctx.prisma, userId);
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },
   {
     name: 'stages[0].id is a slug, not a 24-char ObjectId',
     run: async (ctx: TestContext) => {
-      const { userId } = await ctx.session.login({ email: uniqueEmail('c2') });
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'snapshot_c2');
       try {
         const res = await ctx.callApi<{ workspaceId?: string }, SnapshotResponse>({});
         ctx.expect.ok(res.status === 'success', 'snapshot returns status "success"');
@@ -98,7 +70,7 @@ export const customTests: CustomTestCase[] = [
           `stages[0].id (${first?.id ?? 'undefined'}) is a slug, not a 24-char ObjectId`,
         );
       } finally {
-        await cleanupUser(ctx.prisma, userId);
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },

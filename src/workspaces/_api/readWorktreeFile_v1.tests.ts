@@ -1,0 +1,75 @@
+import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
+
+import { createRealUser, loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
+
+//? Per-route tests for `workspaces/readWorktreeFile/v1`. The auto-sweep already covers
+//? contract/auth/rate-limit/fuzz; these cases assert what runs BEFORE the (Docker-dependent,
+//? not deterministically testable here) container exec: RBAC (`hasCapability(CAP.workTickets)`)
+//? and `isSafeWorktreePath` (checked before `dockerAvailable()`, so a traversal path is refused
+//? deterministically regardless of whether Docker is installed in this environment).
+//?
+//? Integration test: `loginSeededUser` creates a real `User` + logs in + seeds a demo
+//? workspace/project/tickets. Teardown via the shared `cleanupWorkspace` harness helper.
+
+interface ReadErr { status: 'error'; errorCode: string }
+interface ReadOk { status: 'success'; result: { ok: boolean; content?: string; error?: string } }
+type ReadResponse = ReadErr | ReadOk;
+
+export const customTests: CustomTestCase[] = [
+  {
+    name: 'missing path returns api.invalidRequest',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'readWorktree_c1');
+      try {
+        const ticket = await ctx.prisma.ticket.findFirst({ where: { workspaceId }, select: { key: true } });
+        ctx.expect.ok(ticket !== null, 'the seeded workspace has at least one ticket');
+        if (!ticket) return;
+        const res = await ctx.callApi<{ workspaceId: string; ticketKey: string; path: string }, ReadResponse>({
+          workspaceId, ticketKey: ticket.key, path: '',
+        });
+        ctx.expect.eq(res.status, 'error', 'empty path is rejected');
+        ctx.expect.ok(res.status === 'error' && res.errorCode === 'api.invalidRequest', 'errorCode is api.invalidRequest');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'a user with no membership on the workspace is refused with auth.forbidden',
+    run: async (ctx: TestContext) => {
+      const { userId: ownerId, workspaceId } = await loginSeededUser(ctx, 'readWorktree_c2_owner');
+      const outsider = await createRealUser(ctx.prisma, 'readWorktree_c2_outsider');
+      try {
+        await ctx.session.login({ id: outsider.id, email: outsider.email, name: outsider.name });
+        const ticket = await ctx.prisma.ticket.findFirst({ where: { workspaceId }, select: { key: true } });
+        ctx.expect.ok(ticket !== null, 'the seeded workspace has at least one ticket');
+        if (!ticket) return;
+        const res = await ctx.callApi<{ workspaceId: string; ticketKey: string; path: string }, ReadResponse>({
+          workspaceId, ticketKey: ticket.key, path: 'README.md',
+        });
+        ctx.expect.eq(res.status, 'error', 'a non-member is refused');
+        ctx.expect.ok(res.status === 'error' && res.errorCode === 'auth.forbidden', 'errorCode is auth.forbidden');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [ownerId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'a path-traversal attempt is refused with editor.pathInvalid before Docker is touched',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'readWorktree_c3');
+      try {
+        const ticket = await ctx.prisma.ticket.findFirst({ where: { workspaceId }, select: { key: true } });
+        ctx.expect.ok(ticket !== null, 'the seeded workspace has at least one ticket');
+        if (!ticket) return;
+        const res = await ctx.callApi<{ workspaceId: string; ticketKey: string; path: string }, ReadResponse>({
+          workspaceId, ticketKey: ticket.key, path: '../../etc/passwd',
+        });
+        ctx.expect.eq(res.status, 'success', 'the route still returns a success envelope (the read itself failed, not the request)');
+        ctx.expect.ok(res.status === 'success' && !res.result.ok && res.result.error === 'editor.pathInvalid', 'result.ok is false with error editor.pathInvalid');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+];

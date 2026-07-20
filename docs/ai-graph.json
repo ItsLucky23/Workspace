@@ -2,15 +2,25 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 293,
+    "nodes": 353,
     "edges": 524,
-    "symbols": 386,
-    "callEdges": 92
+    "symbols": 497,
+    "callEdges": 83
   },
   "nodes": [
     {
+      "id": "_api/logout_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "_api/logout_v1.ts",
       "kind": "api",
+      "route": null
+    },
+    {
+      "id": "_api/session_v1.tests.ts",
+      "kind": "other",
       "route": null
     },
     {
@@ -239,9 +249,19 @@
       "route": null
     },
     {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "reset-password/_api/confirmReset_v1.ts",
       "kind": "api",
       "route": "api/reset-password/confirmReset/v1"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "reset-password/_api/sendReset_v1.ts",
@@ -254,9 +274,19 @@
       "route": null
     },
     {
+      "id": "settings/_api/changePassword_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "settings/_api/changePassword_v1.ts",
       "kind": "api",
       "route": "api/settings/changePassword/v1"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "settings/_api/confirmEmailChange_v1.ts",
@@ -264,9 +294,19 @@
       "route": "api/settings/confirmEmailChange/v1"
     },
     {
+      "id": "settings/_api/deleteAccount_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "settings/_api/deleteAccount_v1.ts",
       "kind": "api",
       "route": "api/settings/deleteAccount/v1"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "settings/_api/listSessions_v1.ts",
@@ -274,9 +314,19 @@
       "route": "api/settings/listSessions/v1"
     },
     {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "settings/_api/requestEmailChange_v1.ts",
       "kind": "api",
       "route": "api/settings/requestEmailChange/v1"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "settings/_api/revokeSession_v1.ts",
@@ -284,14 +334,29 @@
       "route": "api/settings/revokeSession/v1"
     },
     {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "settings/_api/signOutEverywhere_v1.ts",
       "kind": "api",
       "route": "api/settings/signOutEverywhere/v1"
     },
     {
+      "id": "settings/_api/updatePreferences_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "settings/_api/updatePreferences_v1.ts",
       "kind": "api",
       "route": "api/settings/updatePreferences/v1"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "settings/_api/updateUser_v1.ts",
@@ -309,9 +374,19 @@
       "route": null
     },
     {
+      "id": "workspaces/_api/acceptInvite_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/acceptInvite_v1.ts",
       "kind": "api",
       "route": "api/workspaces/acceptInvite/v1"
+    },
+    {
+      "id": "workspaces/_api/aiChat_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/aiChat_v1.ts",
@@ -319,9 +394,19 @@
       "route": "api/workspaces/aiChat/v1"
     },
     {
+      "id": "workspaces/_api/aiProviderHealth_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/aiProviderHealth_v1.ts",
       "kind": "api",
       "route": "api/workspaces/aiProviderHealth/v1"
+    },
+    {
+      "id": "workspaces/_api/auditLog_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/auditLog_v1.ts",
@@ -329,9 +414,19 @@
       "route": "api/workspaces/auditLog/v1"
     },
     {
+      "id": "workspaces/_api/brandExport_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/brandExport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/brandExport/v1"
+    },
+    {
+      "id": "workspaces/_api/brandImport_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/brandImport_v1.ts",
@@ -339,9 +434,19 @@
       "route": "api/workspaces/brandImport/v1"
     },
     {
+      "id": "workspaces/_api/buildProjectImage_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/buildProjectImage_v1.ts",
       "kind": "api",
       "route": "api/workspaces/buildProjectImage/v1"
+    },
+    {
+      "id": "workspaces/_api/closePreview_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/closePreview_v1.ts",
@@ -349,9 +454,19 @@
       "route": "api/workspaces/closePreview/v1"
     },
     {
+      "id": "workspaces/_api/commentReplyDraft_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/commentReplyDraft_v1.ts",
       "kind": "api",
       "route": "api/workspaces/commentReplyDraft/v1"
+    },
+    {
+      "id": "workspaces/_api/containerTerminals_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/containerTerminals_v1.ts",
@@ -359,9 +474,19 @@
       "route": "api/workspaces/containerTerminals/v1"
     },
     {
+      "id": "workspaces/_api/createWorkspace_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/createWorkspace_v1.ts",
       "kind": "api",
       "route": "api/workspaces/createWorkspace/v1"
+    },
+    {
+      "id": "workspaces/_api/deleteWorkspace_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/deleteWorkspace_v1.ts",
@@ -369,9 +494,19 @@
       "route": "api/workspaces/deleteWorkspace/v1"
     },
     {
+      "id": "workspaces/_api/designerGenerateAsset_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/designerGenerateAsset_v1.ts",
       "kind": "api",
       "route": "api/workspaces/designerGenerateAsset/v1"
+    },
+    {
+      "id": "workspaces/_api/designerGenerateTheme_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/designerGenerateTheme_v1.ts",
@@ -379,9 +514,19 @@
       "route": "api/workspaces/designerGenerateTheme/v1"
     },
     {
+      "id": "workspaces/_api/designerInspiration_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/designerInspiration_v1.ts",
       "kind": "api",
       "route": "api/workspaces/designerInspiration/v1"
+    },
+    {
+      "id": "workspaces/_api/designerLibrary_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/designerLibrary_v1.ts",
@@ -389,14 +534,29 @@
       "route": "api/workspaces/designerLibrary/v1"
     },
     {
+      "id": "workspaces/_api/devLaunchEditor_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/devLaunchEditor_v1.ts",
       "kind": "api",
       "route": "api/workspaces/devLaunchEditor/v1"
     },
     {
+      "id": "workspaces/_api/generateDockerfile_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/generateDockerfile_v1.ts",
       "kind": "api",
       "route": "api/workspaces/generateDockerfile/v1"
+    },
+    {
+      "id": "workspaces/_api/generateDocs_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/generateDocs_v1.ts",
@@ -414,9 +574,19 @@
       "route": "api/workspaces/getDockerfile/v1"
     },
     {
+      "id": "workspaces/_api/issuePat_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/issuePat_v1.ts",
       "kind": "api",
       "route": "api/workspaces/issuePat/v1"
+    },
+    {
+      "id": "workspaces/_api/knowledgeGraph_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/knowledgeGraph_v1.ts",
@@ -424,9 +594,19 @@
       "route": "api/workspaces/knowledgeGraph/v1"
     },
     {
+      "id": "workspaces/_api/listPats_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/listPats_v1.ts",
       "kind": "api",
       "route": "api/workspaces/listPats/v1"
+    },
+    {
+      "id": "workspaces/_api/markRead_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/markRead_v1.ts",
@@ -434,9 +614,19 @@
       "route": "api/workspaces/markRead/v1"
     },
     {
+      "id": "workspaces/_api/openEditor_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/openEditor_v1.ts",
       "kind": "api",
       "route": "api/workspaces/openEditor/v1"
+    },
+    {
+      "id": "workspaces/_api/openPreview_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/openPreview_v1.ts",
@@ -444,9 +634,19 @@
       "route": "api/workspaces/openPreview/v1"
     },
     {
+      "id": "workspaces/_api/openRefPreview_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/openRefPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/openRefPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/promptExperiments_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/promptExperiments_v1.ts",
@@ -454,9 +654,19 @@
       "route": "api/workspaces/promptExperiments/v1"
     },
     {
+      "id": "workspaces/_api/pushConfig_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/pushConfig_v1.ts",
       "kind": "api",
       "route": "api/workspaces/pushConfig/v1"
+    },
+    {
+      "id": "workspaces/_api/readWorktreeFile_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/readWorktreeFile_v1.ts",
@@ -484,6 +694,11 @@
       "route": "api/workspaces/repoTree/v1"
     },
     {
+      "id": "workspaces/_api/revokePat_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/revokePat_v1.ts",
       "kind": "api",
       "route": "api/workspaces/revokePat/v1"
@@ -497,6 +712,11 @@
       "id": "workspaces/_api/rotateWebhookSecret_v1.ts",
       "kind": "api",
       "route": "api/workspaces/rotateWebhookSecret/v1"
+    },
+    {
+      "id": "workspaces/_api/saveDevCommand_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/saveDevCommand_v1.ts",
@@ -514,14 +734,29 @@
       "route": "api/workspaces/saveDockerfile/v1"
     },
     {
+      "id": "workspaces/_api/savePushSubscription_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/savePushSubscription_v1.ts",
       "kind": "api",
       "route": "api/workspaces/savePushSubscription/v1"
     },
     {
+      "id": "workspaces/_api/saveWorktreeFile_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/saveWorktreeFile_v1.ts",
       "kind": "api",
       "route": "api/workspaces/saveWorktreeFile/v1"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/seoSuggest_v1.ts",
@@ -539,9 +774,19 @@
       "route": "api/workspaces/snapshot/v1"
     },
     {
+      "id": "workspaces/_api/sshKeyAdd_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/sshKeyAdd_v1.ts",
       "kind": "api",
       "route": "api/workspaces/sshKeyAdd/v1"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/sshKeyRemove_v1.ts",
@@ -549,9 +794,19 @@
       "route": "api/workspaces/sshKeyRemove/v1"
     },
     {
+      "id": "workspaces/_api/studioBrand_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/studioBrand_v1.ts",
       "kind": "api",
       "route": "api/workspaces/studioBrand/v1"
+    },
+    {
+      "id": "workspaces/_api/studioDelete_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/studioDelete_v1.ts",
@@ -559,9 +814,19 @@
       "route": "api/workspaces/studioDelete/v1"
     },
     {
+      "id": "workspaces/_api/studioGenerate_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/studioGenerate_v1.ts",
       "kind": "api",
       "route": "api/workspaces/studioGenerate/v1"
+    },
+    {
+      "id": "workspaces/_api/studioSaveBrief_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/studioSaveBrief_v1.ts",
@@ -569,9 +834,19 @@
       "route": "api/workspaces/studioSaveBrief/v1"
     },
     {
+      "id": "workspaces/_api/styleExport_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/styleExport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/styleExport/v1"
+    },
+    {
+      "id": "workspaces/_api/styleImport_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/styleImport_v1.ts",
@@ -579,9 +854,19 @@
       "route": "api/workspaces/styleImport/v1"
     },
     {
+      "id": "workspaces/_api/timeTravelPreview_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/timeTravelPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/timeTravelPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/voiceSynthesize_v1.ts",
@@ -589,14 +874,29 @@
       "route": "api/workspaces/voiceSynthesize/v1"
     },
     {
+      "id": "workspaces/_api/voiceTranscribe_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/voiceTranscribe_v1.ts",
       "kind": "api",
       "route": "api/workspaces/voiceTranscribe/v1"
     },
     {
+      "id": "workspaces/_api/workspaceExport_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_api/workspaceExport_v1.ts",
       "kind": "api",
       "route": "api/workspaces/workspaceExport/v1"
+    },
+    {
+      "id": "workspaces/_api/workspaceImport_v1.tests.ts",
+      "kind": "other",
+      "route": null
     },
     {
       "id": "workspaces/_api/workspaceImport_v1.ts",
@@ -4995,6 +5295,18 @@
   ],
   "symbols": [
     {
+      "id": "_api/logout_v1.tests.ts::<module>",
+      "file": "_api/logout_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/logout_v1.tests.ts::run",
+      "file": "_api/logout_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "_api/logout_v1.ts::<module>",
       "file": "_api/logout_v1.ts",
       "name": "<module>",
@@ -5005,6 +5317,18 @@
       "file": "_api/logout_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "_api/session_v1.tests.ts::<module>",
+      "file": "_api/session_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "_api/session_v1.tests.ts::run",
+      "file": "_api/session_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "_api/session_v1.ts::<module>",
@@ -5169,6 +5493,18 @@
       "kind": "module"
     },
     {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::<module>",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/confirmReset_v1.tests.ts::run",
+      "file": "reset-password/_api/confirmReset_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "reset-password/_api/confirmReset_v1.ts::<module>",
       "file": "reset-password/_api/confirmReset_v1.ts",
       "name": "<module>",
@@ -5179,6 +5515,18 @@
       "file": "reset-password/_api/confirmReset_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts::<module>",
+      "file": "reset-password/_api/sendReset_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "reset-password/_api/sendReset_v1.tests.ts::run",
+      "file": "reset-password/_api/sendReset_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "reset-password/_api/sendReset_v1.ts::<module>",
@@ -5193,6 +5541,18 @@
       "kind": "function"
     },
     {
+      "id": "settings/_api/changePassword_v1.tests.ts::<module>",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/changePassword_v1.tests.ts::run",
+      "file": "settings/_api/changePassword_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "settings/_api/changePassword_v1.ts::<module>",
       "file": "settings/_api/changePassword_v1.ts",
       "name": "<module>",
@@ -5203,6 +5563,18 @@
       "file": "settings/_api/changePassword_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::<module>",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/confirmEmailChange_v1.tests.ts::run",
+      "file": "settings/_api/confirmEmailChange_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "settings/_api/confirmEmailChange_v1.ts::<module>",
@@ -5217,6 +5589,18 @@
       "kind": "function"
     },
     {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::<module>",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/deleteAccount_v1.tests.ts::run",
+      "file": "settings/_api/deleteAccount_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "settings/_api/deleteAccount_v1.ts::<module>",
       "file": "settings/_api/deleteAccount_v1.ts",
       "name": "<module>",
@@ -5227,6 +5611,18 @@
       "file": "settings/_api/deleteAccount_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts::<module>",
+      "file": "settings/_api/listSessions_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/listSessions_v1.tests.ts::run",
+      "file": "settings/_api/listSessions_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "settings/_api/listSessions_v1.ts::<module>",
@@ -5247,6 +5643,18 @@
       "kind": "function"
     },
     {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts::<module>",
+      "file": "settings/_api/requestEmailChange_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/requestEmailChange_v1.tests.ts::run",
+      "file": "settings/_api/requestEmailChange_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "settings/_api/requestEmailChange_v1.ts::<module>",
       "file": "settings/_api/requestEmailChange_v1.ts",
       "name": "<module>",
@@ -5256,6 +5664,24 @@
       "id": "settings/_api/requestEmailChange_v1.ts::main",
       "file": "settings/_api/requestEmailChange_v1.ts",
       "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::<module>",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::run",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "settings/_api/revokeSession_v1.tests.ts::sessionHandle",
+      "file": "settings/_api/revokeSession_v1.tests.ts",
+      "name": "sessionHandle",
       "kind": "function"
     },
     {
@@ -5271,6 +5697,18 @@
       "kind": "function"
     },
     {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::<module>",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/signOutEverywhere_v1.tests.ts::run",
+      "file": "settings/_api/signOutEverywhere_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "settings/_api/signOutEverywhere_v1.ts::<module>",
       "file": "settings/_api/signOutEverywhere_v1.ts",
       "name": "<module>",
@@ -5283,6 +5721,18 @@
       "kind": "function"
     },
     {
+      "id": "settings/_api/updatePreferences_v1.tests.ts::<module>",
+      "file": "settings/_api/updatePreferences_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updatePreferences_v1.tests.ts::run",
+      "file": "settings/_api/updatePreferences_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "settings/_api/updatePreferences_v1.ts::<module>",
       "file": "settings/_api/updatePreferences_v1.ts",
       "name": "<module>",
@@ -5293,6 +5743,18 @@
       "file": "settings/_api/updatePreferences_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::<module>",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "settings/_api/updateUser_v1.tests.ts::run",
+      "file": "settings/_api/updateUser_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "settings/_api/updateUser_v1.ts::<module>",
@@ -5313,6 +5775,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/acceptInvite_v1.tests.ts::<module>",
+      "file": "workspaces/_api/acceptInvite_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/acceptInvite_v1.tests.ts::run",
+      "file": "workspaces/_api/acceptInvite_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/acceptInvite_v1.ts::<module>",
       "file": "workspaces/_api/acceptInvite_v1.ts",
       "name": "<module>",
@@ -5323,6 +5797,18 @@
       "file": "workspaces/_api/acceptInvite_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/aiChat_v1.tests.ts::<module>",
+      "file": "workspaces/_api/aiChat_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/aiChat_v1.tests.ts::run",
+      "file": "workspaces/_api/aiChat_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/aiChat_v1.ts::<module>",
@@ -5337,6 +5823,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/aiProviderHealth_v1.tests.ts::<module>",
+      "file": "workspaces/_api/aiProviderHealth_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/aiProviderHealth_v1.tests.ts::run",
+      "file": "workspaces/_api/aiProviderHealth_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/aiProviderHealth_v1.ts::<module>",
       "file": "workspaces/_api/aiProviderHealth_v1.ts",
       "name": "<module>",
@@ -5347,6 +5845,18 @@
       "file": "workspaces/_api/aiProviderHealth_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/auditLog_v1.tests.ts::<module>",
+      "file": "workspaces/_api/auditLog_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/auditLog_v1.tests.ts::run",
+      "file": "workspaces/_api/auditLog_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/auditLog_v1.ts::<module>",
@@ -5361,6 +5871,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/brandExport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/brandExport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/brandExport_v1.tests.ts::run",
+      "file": "workspaces/_api/brandExport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/brandExport_v1.ts::<module>",
       "file": "workspaces/_api/brandExport_v1.ts",
       "name": "<module>",
@@ -5371,6 +5893,18 @@
       "file": "workspaces/_api/brandExport_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/brandImport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/brandImport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/brandImport_v1.tests.ts::run",
+      "file": "workspaces/_api/brandImport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/brandImport_v1.ts::<module>",
@@ -5385,6 +5919,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/buildProjectImage_v1.tests.ts::<module>",
+      "file": "workspaces/_api/buildProjectImage_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/buildProjectImage_v1.tests.ts::run",
+      "file": "workspaces/_api/buildProjectImage_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/buildProjectImage_v1.ts::<module>",
       "file": "workspaces/_api/buildProjectImage_v1.ts",
       "name": "<module>",
@@ -5395,6 +5941,18 @@
       "file": "workspaces/_api/buildProjectImage_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/closePreview_v1.tests.ts::<module>",
+      "file": "workspaces/_api/closePreview_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/closePreview_v1.tests.ts::run",
+      "file": "workspaces/_api/closePreview_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/closePreview_v1.ts::<module>",
@@ -5409,6 +5967,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/commentReplyDraft_v1.tests.ts::<module>",
+      "file": "workspaces/_api/commentReplyDraft_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/commentReplyDraft_v1.tests.ts::run",
+      "file": "workspaces/_api/commentReplyDraft_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/commentReplyDraft_v1.ts::<module>",
       "file": "workspaces/_api/commentReplyDraft_v1.ts",
       "name": "<module>",
@@ -5419,6 +5989,18 @@
       "file": "workspaces/_api/commentReplyDraft_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/containerTerminals_v1.tests.ts::<module>",
+      "file": "workspaces/_api/containerTerminals_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/containerTerminals_v1.tests.ts::run",
+      "file": "workspaces/_api/containerTerminals_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/containerTerminals_v1.ts::<module>",
@@ -5433,6 +6015,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/createWorkspace_v1.tests.ts::<module>",
+      "file": "workspaces/_api/createWorkspace_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/createWorkspace_v1.tests.ts::run",
+      "file": "workspaces/_api/createWorkspace_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/createWorkspace_v1.ts::<module>",
       "file": "workspaces/_api/createWorkspace_v1.ts",
       "name": "<module>",
@@ -5443,6 +6037,18 @@
       "file": "workspaces/_api/createWorkspace_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/deleteWorkspace_v1.tests.ts::<module>",
+      "file": "workspaces/_api/deleteWorkspace_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/deleteWorkspace_v1.tests.ts::run",
+      "file": "workspaces/_api/deleteWorkspace_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/deleteWorkspace_v1.ts::<module>",
@@ -5457,6 +6063,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerGenerateAsset_v1.tests.ts::<module>",
+      "file": "workspaces/_api/designerGenerateAsset_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/designerGenerateAsset_v1.tests.ts::run",
+      "file": "workspaces/_api/designerGenerateAsset_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/designerGenerateAsset_v1.ts::<module>",
       "file": "workspaces/_api/designerGenerateAsset_v1.ts",
       "name": "<module>",
@@ -5469,6 +6087,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerGenerateTheme_v1.tests.ts::<module>",
+      "file": "workspaces/_api/designerGenerateTheme_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/designerGenerateTheme_v1.tests.ts::run",
+      "file": "workspaces/_api/designerGenerateTheme_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/designerGenerateTheme_v1.ts::<module>",
       "file": "workspaces/_api/designerGenerateTheme_v1.ts",
       "name": "<module>",
@@ -5479,6 +6109,18 @@
       "file": "workspaces/_api/designerGenerateTheme_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.tests.ts::<module>",
+      "file": "workspaces/_api/designerInspiration_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.tests.ts::run",
+      "file": "workspaces/_api/designerInspiration_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/designerInspiration_v1.ts::<module>",
@@ -5517,6 +6159,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerLibrary_v1.tests.ts::<module>",
+      "file": "workspaces/_api/designerLibrary_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/designerLibrary_v1.tests.ts::run",
+      "file": "workspaces/_api/designerLibrary_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/designerLibrary_v1.ts::<module>",
       "file": "workspaces/_api/designerLibrary_v1.ts",
       "name": "<module>",
@@ -5527,6 +6181,18 @@
       "file": "workspaces/_api/designerLibrary_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/devLaunchEditor_v1.tests.ts::<module>",
+      "file": "workspaces/_api/devLaunchEditor_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/devLaunchEditor_v1.tests.ts::run",
+      "file": "workspaces/_api/devLaunchEditor_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/devLaunchEditor_v1.ts::<module>",
@@ -5553,6 +6219,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/generateDockerfile_v1.tests.ts::<module>",
+      "file": "workspaces/_api/generateDockerfile_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/generateDockerfile_v1.tests.ts::run",
+      "file": "workspaces/_api/generateDockerfile_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/generateDockerfile_v1.ts::<module>",
       "file": "workspaces/_api/generateDockerfile_v1.ts",
       "name": "<module>",
@@ -5563,6 +6241,24 @@
       "file": "workspaces/_api/generateDockerfile_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/generateDocs_v1.tests.ts::<module>",
+      "file": "workspaces/_api/generateDocs_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/generateDocs_v1.tests.ts::createRealUser",
+      "file": "workspaces/_api/generateDocs_v1.tests.ts",
+      "name": "createRealUser",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_api/generateDocs_v1.tests.ts::run",
+      "file": "workspaces/_api/generateDocs_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/generateDocs_v1.ts::<module>",
@@ -5583,9 +6279,9 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/getDockerfile_v1.tests.ts::cleanupUser",
+      "id": "workspaces/_api/getDockerfile_v1.tests.ts::cleanupRoute",
       "file": "workspaces/_api/getDockerfile_v1.tests.ts",
-      "name": "cleanupUser",
+      "name": "cleanupRoute",
       "kind": "function"
     },
     {
@@ -5593,18 +6289,6 @@
       "file": "workspaces/_api/getDockerfile_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/getDockerfile_v1.tests.ts::seededWorkspaceId",
-      "file": "workspaces/_api/getDockerfile_v1.tests.ts",
-      "name": "seededWorkspaceId",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/getDockerfile_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/getDockerfile_v1.ts::<module>",
@@ -5619,6 +6303,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/issuePat_v1.tests.ts::<module>",
+      "file": "workspaces/_api/issuePat_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/issuePat_v1.tests.ts::run",
+      "file": "workspaces/_api/issuePat_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/issuePat_v1.ts::<module>",
       "file": "workspaces/_api/issuePat_v1.ts",
       "name": "<module>",
@@ -5629,6 +6325,18 @@
       "file": "workspaces/_api/issuePat_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/knowledgeGraph_v1.tests.ts::<module>",
+      "file": "workspaces/_api/knowledgeGraph_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/knowledgeGraph_v1.tests.ts::run",
+      "file": "workspaces/_api/knowledgeGraph_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/knowledgeGraph_v1.ts::<module>",
@@ -5643,6 +6351,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/listPats_v1.tests.ts::<module>",
+      "file": "workspaces/_api/listPats_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/listPats_v1.tests.ts::run",
+      "file": "workspaces/_api/listPats_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/listPats_v1.ts::<module>",
       "file": "workspaces/_api/listPats_v1.ts",
       "name": "<module>",
@@ -5653,6 +6373,18 @@
       "file": "workspaces/_api/listPats_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/markRead_v1.tests.ts::<module>",
+      "file": "workspaces/_api/markRead_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/markRead_v1.tests.ts::run",
+      "file": "workspaces/_api/markRead_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/markRead_v1.ts::<module>",
@@ -5667,6 +6399,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/openEditor_v1.tests.ts::<module>",
+      "file": "workspaces/_api/openEditor_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/openEditor_v1.tests.ts::run",
+      "file": "workspaces/_api/openEditor_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/openEditor_v1.ts::<module>",
       "file": "workspaces/_api/openEditor_v1.ts",
       "name": "<module>",
@@ -5677,6 +6421,18 @@
       "file": "workspaces/_api/openEditor_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/openPreview_v1.tests.ts::<module>",
+      "file": "workspaces/_api/openPreview_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/openPreview_v1.tests.ts::run",
+      "file": "workspaces/_api/openPreview_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/openPreview_v1.ts::<module>",
@@ -5691,6 +6447,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/openRefPreview_v1.tests.ts::<module>",
+      "file": "workspaces/_api/openRefPreview_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/openRefPreview_v1.tests.ts::run",
+      "file": "workspaces/_api/openRefPreview_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/openRefPreview_v1.ts::<module>",
       "file": "workspaces/_api/openRefPreview_v1.ts",
       "name": "<module>",
@@ -5701,6 +6469,24 @@
       "file": "workspaces/_api/openRefPreview_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/promptExperiments_v1.tests.ts::<module>",
+      "file": "workspaces/_api/promptExperiments_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/promptExperiments_v1.tests.ts::createRealUser",
+      "file": "workspaces/_api/promptExperiments_v1.tests.ts",
+      "name": "createRealUser",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_api/promptExperiments_v1.tests.ts::run",
+      "file": "workspaces/_api/promptExperiments_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/promptExperiments_v1.ts::<module>",
@@ -5715,6 +6501,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/pushConfig_v1.tests.ts::<module>",
+      "file": "workspaces/_api/pushConfig_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/pushConfig_v1.tests.ts::run",
+      "file": "workspaces/_api/pushConfig_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/pushConfig_v1.ts::<module>",
       "file": "workspaces/_api/pushConfig_v1.ts",
       "name": "<module>",
@@ -5725,6 +6523,18 @@
       "file": "workspaces/_api/pushConfig_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/readWorktreeFile_v1.tests.ts::<module>",
+      "file": "workspaces/_api/readWorktreeFile_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/readWorktreeFile_v1.tests.ts::run",
+      "file": "workspaces/_api/readWorktreeFile_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/readWorktreeFile_v1.ts::<module>",
@@ -5745,9 +6555,9 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/repoFile_v1.tests.ts::cleanupUser",
+      "id": "workspaces/_api/repoFile_v1.tests.ts::firstProjectId",
       "file": "workspaces/_api/repoFile_v1.tests.ts",
-      "name": "cleanupUser",
+      "name": "firstProjectId",
       "kind": "function"
     },
     {
@@ -5755,18 +6565,6 @@
       "file": "workspaces/_api/repoFile_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId",
-      "file": "workspaces/_api/repoFile_v1.tests.ts",
-      "name": "seededWorkspaceId",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/repoFile_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/repoFile_v1.ts::<module>",
@@ -5787,9 +6585,9 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/repoTree_v1.tests.ts::cleanupUser",
+      "id": "workspaces/_api/repoTree_v1.tests.ts::firstProjectId",
       "file": "workspaces/_api/repoTree_v1.tests.ts",
-      "name": "cleanupUser",
+      "name": "firstProjectId",
       "kind": "function"
     },
     {
@@ -5797,18 +6595,6 @@
       "file": "workspaces/_api/repoTree_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId",
-      "file": "workspaces/_api/repoTree_v1.tests.ts",
-      "name": "seededWorkspaceId",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/repoTree_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/repoTree_v1.ts::<module>",
@@ -5821,6 +6607,18 @@
       "file": "workspaces/_api/repoTree_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/revokePat_v1.tests.ts::<module>",
+      "file": "workspaces/_api/revokePat_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/revokePat_v1.tests.ts::run",
+      "file": "workspaces/_api/revokePat_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/revokePat_v1.ts::<module>",
@@ -5841,22 +6639,10 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace",
-      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
-      "name": "cleanupRouteWorkspace",
-      "kind": "function"
-    },
-    {
       "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
       "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/rotateWebhookSecret_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/rotateWebhookSecret_v1.ts::<module>",
@@ -5875,6 +6661,18 @@
       "file": "workspaces/_api/rotateWebhookSecret_v1.ts",
       "name": "rotateWebhookSecretRequest",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/saveDevCommand_v1.tests.ts::<module>",
+      "file": "workspaces/_api/saveDevCommand_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/saveDevCommand_v1.tests.ts::run",
+      "file": "workspaces/_api/saveDevCommand_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/saveDevCommand_v1.ts::<module>",
@@ -5901,9 +6699,9 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser",
+      "id": "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupRoute",
       "file": "workspaces/_api/saveDockerfile_v1.tests.ts",
-      "name": "cleanupUser",
+      "name": "cleanupRoute",
       "kind": "function"
     },
     {
@@ -5911,18 +6709,6 @@
       "file": "workspaces/_api/saveDockerfile_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/saveDockerfile_v1.tests.ts::seededWorkspaceId",
-      "file": "workspaces/_api/saveDockerfile_v1.tests.ts",
-      "name": "seededWorkspaceId",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_api/saveDockerfile_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/saveDockerfile_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/saveDockerfile_v1.ts::<module>",
@@ -5937,6 +6723,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/savePushSubscription_v1.tests.ts::<module>",
+      "file": "workspaces/_api/savePushSubscription_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/savePushSubscription_v1.tests.ts::run",
+      "file": "workspaces/_api/savePushSubscription_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/savePushSubscription_v1.ts::<module>",
       "file": "workspaces/_api/savePushSubscription_v1.ts",
       "name": "<module>",
@@ -5949,6 +6747,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/saveWorktreeFile_v1.tests.ts::<module>",
+      "file": "workspaces/_api/saveWorktreeFile_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/saveWorktreeFile_v1.tests.ts::run",
+      "file": "workspaces/_api/saveWorktreeFile_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/saveWorktreeFile_v1.ts::<module>",
       "file": "workspaces/_api/saveWorktreeFile_v1.ts",
       "name": "<module>",
@@ -5959,6 +6769,18 @@
       "file": "workspaces/_api/saveWorktreeFile_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.tests.ts::<module>",
+      "file": "workspaces/_api/seoSuggest_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/seoSuggest_v1.tests.ts::run",
+      "file": "workspaces/_api/seoSuggest_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/seoSuggest_v1.ts::<module>",
@@ -5979,22 +6801,10 @@
       "kind": "module"
     },
     {
-      "id": "workspaces/_api/snapshot_v1.tests.ts::cleanupUser",
-      "file": "workspaces/_api/snapshot_v1.tests.ts",
-      "name": "cleanupUser",
-      "kind": "function"
-    },
-    {
       "id": "workspaces/_api/snapshot_v1.tests.ts::run",
       "file": "workspaces/_api/snapshot_v1.tests.ts",
       "name": "run",
       "kind": "method"
-    },
-    {
-      "id": "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail",
-      "file": "workspaces/_api/snapshot_v1.tests.ts",
-      "name": "uniqueEmail",
-      "kind": "function"
     },
     {
       "id": "workspaces/_api/snapshot_v1.ts::<module>",
@@ -6009,6 +6819,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/sshKeyAdd_v1.tests.ts::<module>",
+      "file": "workspaces/_api/sshKeyAdd_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/sshKeyAdd_v1.tests.ts::run",
+      "file": "workspaces/_api/sshKeyAdd_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/sshKeyAdd_v1.ts::<module>",
       "file": "workspaces/_api/sshKeyAdd_v1.ts",
       "name": "<module>",
@@ -6019,6 +6841,18 @@
       "file": "workspaces/_api/sshKeyAdd_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.tests.ts::<module>",
+      "file": "workspaces/_api/sshKeyRemove_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/sshKeyRemove_v1.tests.ts::run",
+      "file": "workspaces/_api/sshKeyRemove_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/sshKeyRemove_v1.ts::<module>",
@@ -6033,6 +6867,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/studioBrand_v1.tests.ts::<module>",
+      "file": "workspaces/_api/studioBrand_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioBrand_v1.tests.ts::run",
+      "file": "workspaces/_api/studioBrand_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/studioBrand_v1.ts::<module>",
       "file": "workspaces/_api/studioBrand_v1.ts",
       "name": "<module>",
@@ -6043,6 +6889,18 @@
       "file": "workspaces/_api/studioBrand_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/studioDelete_v1.tests.ts::<module>",
+      "file": "workspaces/_api/studioDelete_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioDelete_v1.tests.ts::run",
+      "file": "workspaces/_api/studioDelete_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/studioDelete_v1.ts::<module>",
@@ -6069,6 +6927,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/studioGenerate_v1.tests.ts::<module>",
+      "file": "workspaces/_api/studioGenerate_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioGenerate_v1.tests.ts::run",
+      "file": "workspaces/_api/studioGenerate_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/studioGenerate_v1.ts::<module>",
       "file": "workspaces/_api/studioGenerate_v1.ts",
       "name": "<module>",
@@ -6079,6 +6949,18 @@
       "file": "workspaces/_api/studioGenerate_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/studioSaveBrief_v1.tests.ts::<module>",
+      "file": "workspaces/_api/studioSaveBrief_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioSaveBrief_v1.tests.ts::run",
+      "file": "workspaces/_api/studioSaveBrief_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/studioSaveBrief_v1.ts::<module>",
@@ -6093,6 +6975,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/styleExport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/styleExport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/styleExport_v1.tests.ts::run",
+      "file": "workspaces/_api/styleExport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/styleExport_v1.ts::<module>",
       "file": "workspaces/_api/styleExport_v1.ts",
       "name": "<module>",
@@ -6103,6 +6997,18 @@
       "file": "workspaces/_api/styleExport_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/styleImport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/styleImport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/styleImport_v1.tests.ts::run",
+      "file": "workspaces/_api/styleImport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/styleImport_v1.ts::<module>",
@@ -6117,6 +7023,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/timeTravelPreview_v1.tests.ts::<module>",
+      "file": "workspaces/_api/timeTravelPreview_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/timeTravelPreview_v1.tests.ts::run",
+      "file": "workspaces/_api/timeTravelPreview_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/timeTravelPreview_v1.ts::<module>",
       "file": "workspaces/_api/timeTravelPreview_v1.ts",
       "name": "<module>",
@@ -6127,6 +7045,18 @@
       "file": "workspaces/_api/timeTravelPreview_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.tests.ts::<module>",
+      "file": "workspaces/_api/voiceSynthesize_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/voiceSynthesize_v1.tests.ts::run",
+      "file": "workspaces/_api/voiceSynthesize_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/voiceSynthesize_v1.ts::<module>",
@@ -6141,6 +7071,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/voiceTranscribe_v1.tests.ts::<module>",
+      "file": "workspaces/_api/voiceTranscribe_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/voiceTranscribe_v1.tests.ts::run",
+      "file": "workspaces/_api/voiceTranscribe_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/voiceTranscribe_v1.ts::<module>",
       "file": "workspaces/_api/voiceTranscribe_v1.ts",
       "name": "<module>",
@@ -6153,6 +7095,18 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/workspaceExport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/workspaceExport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/workspaceExport_v1.tests.ts::run",
+      "file": "workspaces/_api/workspaceExport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/workspaceExport_v1.ts::<module>",
       "file": "workspaces/_api/workspaceExport_v1.ts",
       "name": "<module>",
@@ -6163,6 +7117,18 @@
       "file": "workspaces/_api/workspaceExport_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/workspaceImport_v1.tests.ts::<module>",
+      "file": "workspaces/_api/workspaceImport_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/workspaceImport_v1.tests.ts::run",
+      "file": "workspaces/_api/workspaceImport_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/workspaceImport_v1.ts::<module>",
@@ -7357,6 +8323,10 @@
       "to": "settings/_api/listSessions_v1.ts::sessionHandle"
     },
     {
+      "from": "settings/_api/revokeSession_v1.tests.ts::run",
+      "to": "settings/_api/revokeSession_v1.tests.ts::sessionHandle"
+    },
+    {
       "from": "settings/_api/revokeSession_v1.ts::main",
       "to": "settings/_api/listSessions_v1.ts::sessionHandle"
     },
@@ -7385,48 +8355,24 @@
       "to": "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror"
     },
     {
-      "from": "workspaces/_api/getDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/getDockerfile_v1.tests.ts::cleanupUser"
+      "from": "workspaces/_api/generateDocs_v1.tests.ts::run",
+      "to": "workspaces/_api/generateDocs_v1.tests.ts::createRealUser"
     },
     {
       "from": "workspaces/_api/getDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/getDockerfile_v1.tests.ts::seededWorkspaceId"
+      "to": "workspaces/_api/getDockerfile_v1.tests.ts::cleanupRoute"
     },
     {
-      "from": "workspaces/_api/getDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail"
-    },
-    {
-      "from": "workspaces/_api/repoFile_v1.tests.ts::run",
-      "to": "workspaces/_api/repoFile_v1.tests.ts::cleanupUser"
+      "from": "workspaces/_api/promptExperiments_v1.tests.ts::run",
+      "to": "workspaces/_api/promptExperiments_v1.tests.ts::createRealUser"
     },
     {
       "from": "workspaces/_api/repoFile_v1.tests.ts::run",
-      "to": "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId"
-    },
-    {
-      "from": "workspaces/_api/repoFile_v1.tests.ts::run",
-      "to": "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail"
+      "to": "workspaces/_api/repoFile_v1.tests.ts::firstProjectId"
     },
     {
       "from": "workspaces/_api/repoTree_v1.tests.ts::run",
-      "to": "workspaces/_api/repoTree_v1.tests.ts::cleanupUser"
-    },
-    {
-      "from": "workspaces/_api/repoTree_v1.tests.ts::run",
-      "to": "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId"
-    },
-    {
-      "from": "workspaces/_api/repoTree_v1.tests.ts::run",
-      "to": "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail"
-    },
-    {
-      "from": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
-      "to": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace"
-    },
-    {
-      "from": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
-      "to": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail"
+      "to": "workspaces/_api/repoTree_v1.tests.ts::firstProjectId"
     },
     {
       "from": "workspaces/_api/rotateWebhookSecret_v1.ts::main",
@@ -7438,23 +8384,7 @@
     },
     {
       "from": "workspaces/_api/saveDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser"
-    },
-    {
-      "from": "workspaces/_api/saveDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/saveDockerfile_v1.tests.ts::seededWorkspaceId"
-    },
-    {
-      "from": "workspaces/_api/saveDockerfile_v1.tests.ts::run",
-      "to": "workspaces/_api/saveDockerfile_v1.tests.ts::uniqueEmail"
-    },
-    {
-      "from": "workspaces/_api/snapshot_v1.tests.ts::run",
-      "to": "workspaces/_api/snapshot_v1.tests.ts::cleanupUser"
-    },
-    {
-      "from": "workspaces/_api/snapshot_v1.tests.ts::run",
-      "to": "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail"
+      "to": "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupRoute"
     },
     {
       "from": "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",
@@ -7714,6 +8644,9 @@
       "settings/_api/listSessions_v1.ts::main",
       "settings/_api/revokeSession_v1.ts::main"
     ],
+    "settings/_api/revokeSession_v1.tests.ts::sessionHandle": [
+      "settings/_api/revokeSession_v1.tests.ts::run"
+    ],
     "workspaces/_api/designerInspiration_v1.ts::asViewport": [
       "workspaces/_api/designerInspiration_v1.ts::main"
     ],
@@ -7733,38 +8666,20 @@
       "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror",
       "workspaces/_api/devLaunchEditor_v1.ts::main"
     ],
-    "workspaces/_api/getDockerfile_v1.tests.ts::cleanupUser": [
+    "workspaces/_api/generateDocs_v1.tests.ts::createRealUser": [
+      "workspaces/_api/generateDocs_v1.tests.ts::run"
+    ],
+    "workspaces/_api/getDockerfile_v1.tests.ts::cleanupRoute": [
       "workspaces/_api/getDockerfile_v1.tests.ts::run"
     ],
-    "workspaces/_api/getDockerfile_v1.tests.ts::seededWorkspaceId": [
-      "workspaces/_api/getDockerfile_v1.tests.ts::run"
+    "workspaces/_api/promptExperiments_v1.tests.ts::createRealUser": [
+      "workspaces/_api/promptExperiments_v1.tests.ts::run"
     ],
-    "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/getDockerfile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/repoFile_v1.tests.ts::cleanupUser": [
+    "workspaces/_api/repoFile_v1.tests.ts::firstProjectId": [
       "workspaces/_api/repoFile_v1.tests.ts::run"
     ],
-    "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId": [
-      "workspaces/_api/repoFile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/repoFile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/repoTree_v1.tests.ts::cleanupUser": [
+    "workspaces/_api/repoTree_v1.tests.ts::firstProjectId": [
       "workspaces/_api/repoTree_v1.tests.ts::run"
-    ],
-    "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId": [
-      "workspaces/_api/repoTree_v1.tests.ts::run"
-    ],
-    "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/repoTree_v1.tests.ts::run"
-    ],
-    "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace": [
-      "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run"
-    ],
-    "workspaces/_api/rotateWebhookSecret_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run"
     ],
     "workspaces/_api/rotateWebhookSecret_v1.ts::rotateWebhookSecretRequest": [
       "workspaces/_api/rotateWebhookSecret_v1.ts::main"
@@ -7772,20 +8687,8 @@
     "workspaces/_api/saveDevCommand_v1.ts::saveDevCommand": [
       "workspaces/_api/saveDevCommand_v1.ts::main"
     ],
-    "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupUser": [
+    "workspaces/_api/saveDockerfile_v1.tests.ts::cleanupRoute": [
       "workspaces/_api/saveDockerfile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/saveDockerfile_v1.tests.ts::seededWorkspaceId": [
-      "workspaces/_api/saveDockerfile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/saveDockerfile_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/saveDockerfile_v1.tests.ts::run"
-    ],
-    "workspaces/_api/snapshot_v1.tests.ts::cleanupUser": [
-      "workspaces/_api/snapshot_v1.tests.ts::run"
-    ],
-    "workspaces/_api/snapshot_v1.tests.ts::uniqueEmail": [
-      "workspaces/_api/snapshot_v1.tests.ts::run"
     ],
     "workspaces/_api/studioDelete_v1.ts::afterBriefCheck": [
       "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",

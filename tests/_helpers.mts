@@ -6,6 +6,7 @@
 
 import { config as loadEnv } from 'dotenv';
 import type { PrismaClient } from '@prisma/client';
+import type { TestContext } from '@luckystack/test-runner';
 
 loadEnv({ path: '.env' });
 loadEnv({ path: '.env.local' });
@@ -111,6 +112,43 @@ export async function cleanupWorkspace(prisma: PrismaClient, workspaceId: string
   await prisma.pushSubscription.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.sshKey.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+}
+
+//? `ctx.session.login()` (from `@luckystack/test-runner`) never touches Mongo — it just
+//? writes a session record. Call it with NO `id` and it falls back to a synthetic
+//? `test-user-<ts>-<hex>` string, which is NOT a valid 24-char hex Mongo ObjectId; any
+//? route that then does a Prisma query on `user.id` against an `@db.ObjectId` field
+//? (e.g. `workspaceMember.findMany({ where: { userId } })`) throws "Malformed ObjectID".
+//? Separately, the app's first-login auto-seed (`postLogin` hook → `seedDemoWorkspace`)
+//? was intentionally REMOVED (commit 42632a2) — onboarding now owns the zero-workspace
+//? path, so logging in (real id or not) no longer populates a workspace by itself.
+//? `createRealUser` fixes the first problem: create an actual `User` row so you have a
+//? genuine ObjectId to pass as `login({ id })`. `loginSeededUser` fixes both: create the
+//? real user, log in AS it, then explicitly seed a demo workspace the same way
+//? `tests/integration/seed.test.mts` does. Tear down with `cleanupWorkspace(ctx.prisma,
+//? workspaceId, [userId])` (or, if seeding never ran, `ctx.prisma.user.delete`).
+
+//? Create a real `User` row with a genuine Mongo ObjectId. Use this (then
+//? `ctx.session.login({ id: user.id, email: user.email, name: user.name })`) for any
+//? route whose handler touches `user.id` in a Prisma query — even if the route doesn't
+//? need a seeded workspace.
+export async function createRealUser(prisma: PrismaClient, tag: string): Promise<{ id: string; email: string; name: string }> {
+  const email = `lstest_${tag}_${String(Date.now())}_${String(Math.floor(Math.random() * 1e6))}@youcomm.nl`;
+  const user = await prisma.user.create({ data: { email, name: 'Test User' } });
+  return { id: user.id, email: user.email, name: user.name ?? 'Test User' };
+}
+
+//? Create a real user, log in as it (real ObjectId, not the harness's synthetic
+//? fallback), then explicitly seed a demo workspace (workspace + roles + members +
+//? pipeline + tickets — MIGRATION §5.2) since login no longer does this itself. Returns
+//? the ids a case needs for both the API call and teardown. Clean up with
+//? `cleanupWorkspace(ctx.prisma, workspaceId, [userId])` in a `finally`.
+export async function loginSeededUser(ctx: TestContext, tag: string): Promise<{ userId: string; workspaceId: string }> {
+  const user = await createRealUser(ctx.prisma, tag);
+  await ctx.session.login({ id: user.id, email: user.email, name: user.name });
+  const { seedDemoWorkspace } = await import('../server/bootstrap/seedWorkspace');
+  const seeded = await seedDemoWorkspace(ctx.prisma, user.id);
+  return { userId: user.id, workspaceId: seeded.workspaceId };
 }
 
 // ---- a tiny assertion runner (per-process counters) ----

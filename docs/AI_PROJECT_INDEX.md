@@ -11,70 +11,70 @@
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `api/reset-password/confirmReset/v1` | POST | public | 5 | — | **no** | — | — |
-| `api/reset-password/sendReset/v1` | POST | public | 5 | — | **no** | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
-| `api/settings/changePassword/v1` | POST | login | 10 | — | **no** | — | — |
-| `api/settings/confirmEmailChange/v1` | POST | public | 10 | — | **no** | — | — |
-| `api/settings/deleteAccount/v1` | POST | login | 3 | — | **no** | — | — |
-| `api/settings/listSessions/v1` | POST | login | 30 | — | **no** | — | — |
-| `api/settings/requestEmailChange/v1` | POST | login | 5 | — | **no** | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
-| `api/settings/revokeSession/v1` | POST | login | 20 | — | **no** | — | — |
-| `api/settings/signOutEverywhere/v1` | POST | login | 5 | — | **no** | — | — |
-| `api/settings/updatePreferences/v1` | POST | login | 30 | — | **no** | — | — |
-| `api/settings/updateUser/v1` | POST | login | 20 | — | **no** | — | — |
-| `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | **no** | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
-| `api/workspaces/aiChat/v1` | POST | login | 20 | — | **no** | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
-| `api/workspaces/aiProviderHealth/v1` | POST | login | 12 | ItsLucky23 | **no** | — | Workspaces — [ai-provider-health] (gap-fix) the provider health read: which AI backends are usable |
-| `api/workspaces/auditLog/v1` | POST | login | 12 | — | **no** | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
-| `api/workspaces/brandExport/v1` | POST | login | 30 | — | **no** | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
-| `api/workspaces/brandImport/v1` | POST | login | 20 | — | **no** | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
-| `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | **no** | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
-| `api/workspaces/closePreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
-| `api/workspaces/commentReplyDraft/v1` | POST | login | 20 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | **no** | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
-| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | **no** | — | Workspaces — [create-workspace] login-only control-API route. The new tenant has |
-| `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | **no** | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
-| `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
-| `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | **no** | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
-| `api/workspaces/designerInspiration/v1` | POST | login | 10 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `api/workspaces/designerLibrary/v1` | POST | login | 40 | — | **no** | — | Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR |
-| `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | **no** | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
-| `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
-| `api/workspaces/generateDocs/v1` | POST | login | 6 | — | **no** | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
+| `api/reset-password/confirmReset/v1` | POST | public | 5 | — | yes | — | — |
+| `api/reset-password/sendReset/v1` | POST | public | 5 | — | yes | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
+| `api/settings/changePassword/v1` | POST | login | 10 | — | yes | — | — |
+| `api/settings/confirmEmailChange/v1` | POST | public | 10 | — | yes | — | — |
+| `api/settings/deleteAccount/v1` | POST | login | 3 | — | yes | — | — |
+| `api/settings/listSessions/v1` | POST | login | 30 | — | yes | — | — |
+| `api/settings/requestEmailChange/v1` | POST | login | 5 | — | yes | — | `validator` is CommonJS; its .d.ts does not declare a default export but |
+| `api/settings/revokeSession/v1` | POST | login | 20 | — | yes | — | — |
+| `api/settings/signOutEverywhere/v1` | POST | login | 5 | — | yes | — | — |
+| `api/settings/updatePreferences/v1` | POST | login | 30 | — | yes | — | — |
+| `api/settings/updateUser/v1` | POST | login | 20 | — | yes | — | — |
+| `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | yes | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
+| `api/workspaces/aiChat/v1` | POST | login | 20 | — | yes | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/aiProviderHealth/v1` | POST | login | 12 | ItsLucky23 | yes | — | Workspaces — [ai-provider-health] (gap-fix) the provider health read: which AI backends are usable |
+| `api/workspaces/auditLog/v1` | POST | login | 12 | — | yes | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
+| `api/workspaces/brandExport/v1` | POST | login | 30 | — | yes | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
+| `api/workspaces/brandImport/v1` | POST | login | 20 | — | yes | — | R3 — import a portable brand-kit JSON into the workspace brand library (upsert). Membership-gated + a |
+| `api/workspaces/buildProjectImage/v1` | POST | login | 6 | — | yes | — | Workspaces — [build-project-image] register-flow C: build the AI-authored draft |
+| `api/workspaces/closePreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
+| `api/workspaces/commentReplyDraft/v1` | POST | login | 20 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | yes | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
+| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | yes | — | Workspaces — [create-workspace] login-only control-API route. The new tenant has |
+| `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | yes | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
+| `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | yes | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
+| `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | yes | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
+| `api/workspaces/designerInspiration/v1` | POST | login | 10 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `api/workspaces/designerLibrary/v1` | POST | login | 40 | — | yes | — | Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR |
+| `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | yes | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
+| `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | yes | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
+| `api/workspaces/generateDocs/v1` | POST | login | 6 | — | yes | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
-| `api/workspaces/issuePat/v1` | POST | login | 10 | — | **no** | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
-| `api/workspaces/knowledgeGraph/v1` | POST | login | 12 | — | **no** | — | Workspaces — [knowledge-graph] (N1) the Obsidian-view data: the workspace knowledge as nodes (sources / |
-| `api/workspaces/listPats/v1` | POST | login | 30 | — | **no** | — | X3 — list the caller's Personal Access Tokens for a workspace (prefix + name + scopes; NEVER the raw token |
-| `api/workspaces/markRead/v1` | POST | login | 30 | — | **no** | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
-| `api/workspaces/openEditor/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
-| `api/workspaces/openPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
-| `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
-| `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
-| `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
+| `api/workspaces/issuePat/v1` | POST | login | 10 | — | yes | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
+| `api/workspaces/knowledgeGraph/v1` | POST | login | 12 | — | yes | — | Workspaces — [knowledge-graph] (N1) the Obsidian-view data: the workspace knowledge as nodes (sources / |
+| `api/workspaces/listPats/v1` | POST | login | 30 | — | yes | — | X3 — list the caller's Personal Access Tokens for a workspace (prefix + name + scopes; NEVER the raw token |
+| `api/workspaces/markRead/v1` | POST | login | 30 | — | yes | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
+| `api/workspaces/openEditor/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
+| `api/workspaces/openPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
+| `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
+| `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `api/workspaces/pushConfig/v1` | POST | login | 60 | — | yes | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
+| `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/repoFile/v1` | POST | login | 60 | ItsLucky23 | yes | — | Workspaces — [repo-file] read ONE file's content from the active project's linked repo at its baseline |
 | `api/workspaces/repoTree/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [repo-tree] list EVERY file of the active project's linked repo at its baseline branch, |
-| `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
+| `api/workspaces/revokePat/v1` | POST | login | 20 | — | yes | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/rotateWebhookSecret/v1` | POST | login | 10 | ItsLucky23 | yes | — | Rotates the forge webhook credential. Unlike room-broadcast sync output, this API response |
-| `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — save one project's runtime commands/settings. The `_api` route is only the typed, |
+| `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | yes | — | Workspaces — save one project's runtime commands/settings. The `_api` route is only the typed, |
 | `api/workspaces/saveDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft |
-| `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | **no** | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
-| `api/workspaces/saveWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [save-worktree-file] SAVE an edited file back to a ticket's container worktree (#35, Track D). |
-| `api/workspaces/seoSuggest/v1` | POST | login | 20 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
+| `api/workspaces/savePushSubscription/v1` | POST | login | 30 | — | yes | — | Store (or remove) a browser Web Push subscription for the current user (FREEDOM_PROGRAM A1). The client |
+| `api/workspaces/saveWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [save-worktree-file] SAVE an edited file back to a ticket's container worktree (#35, Track D). |
+| `api/workspaces/seoSuggest/v1` | POST | login | 20 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `api/workspaces/snapshot/v1` | POST | login | 60 | — | yes | — | Workspaces — the read snapshot route (server side of `useWorkspaceData()`). |
-| `api/workspaces/sshKeyAdd/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-add] (#76) persist a new SSH key on the CALLER'S account (real product, |
-| `api/workspaces/sshKeyRemove/v1` | POST | login | 12 | — | **no** | — | Workspaces — [ssh-key-remove] (#76) delete an SSH key from the CALLER'S account. Account-level |
-| `api/workspaces/studioBrand/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — the central brand library (ADR 0013 G-MKT-2). `op:'save'` upserts the |
-| `api/workspaces/studioDelete/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
-| `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | **no** | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
-| `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | **no** | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
-| `api/workspaces/styleExport/v1` | POST | login | 30 | — | **no** | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
-| `api/workspaces/styleImport/v1` | POST | login | 20 | — | **no** | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
-| `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | **no** | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
-| `api/workspaces/voiceSynthesize/v1` | POST | login | 20 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `api/workspaces/voiceTranscribe/v1` | POST | login | 30 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
-| `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | **no** | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
-| `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | **no** | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
+| `api/workspaces/sshKeyAdd/v1` | POST | login | 12 | — | yes | — | Workspaces — [ssh-key-add] (#76) persist a new SSH key on the CALLER'S account (real product, |
+| `api/workspaces/sshKeyRemove/v1` | POST | login | 12 | — | yes | — | Workspaces — [ssh-key-remove] (#76) delete an SSH key from the CALLER'S account. Account-level |
+| `api/workspaces/studioBrand/v1` | POST | login | 30 | — | yes | — | Workspaces Studio — the central brand library (ADR 0013 G-MKT-2). `op:'save'` upserts the |
+| `api/workspaces/studioDelete/v1` | POST | login | 30 | — | yes | — | Workspaces Studio — delete a brief (and its artifacts) or a single artifact. Membership-gated. |
+| `api/workspaces/studioGenerate/v1` | POST | login | 10 | — | yes | — | Workspaces Studio — generate an artifact (landing page / copy / brand kit / strategy) from a |
+| `api/workspaces/studioSaveBrief/v1` | POST | login | 30 | — | yes | — | Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is |
+| `api/workspaces/styleExport/v1` | POST | login | 30 | — | yes | — | R1 — export a workspace's user-authored styles as a portable JSON set (copy/apply to another workspace). |
+| `api/workspaces/styleImport/v1` | POST | login | 20 | — | yes | — | R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin |
+| `api/workspaces/timeTravelPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [time-travel-preview] (T3) run a ticket's app at a RESOLVED time-travel ref: a raw commit, a |
+| `api/workspaces/voiceSynthesize/v1` | POST | login | 20 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `api/workspaces/voiceTranscribe/v1` | POST | login | 30 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
+| `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
+| `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
 ## Sync routes (64)
 
@@ -154,61 +154,61 @@
 | `ItsLucky23` | 22 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 6/128 routes have a per-route `.tests.ts`.
+**Test coverage**: 64/128 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
-- `api/reset-password/confirmReset/v1`
-- `api/reset-password/sendReset/v1`
-- `api/settings/changePassword/v1`
-- `api/settings/confirmEmailChange/v1`
-- `api/settings/deleteAccount/v1`
-- `api/settings/listSessions/v1`
-- `api/settings/requestEmailChange/v1`
-- `api/settings/revokeSession/v1`
-- `api/settings/signOutEverywhere/v1`
-- `api/settings/updatePreferences/v1`
-- `api/settings/updateUser/v1`
-- `api/workspaces/acceptInvite/v1`
-- `api/workspaces/aiChat/v1`
-- `api/workspaces/aiProviderHealth/v1`
-- `api/workspaces/auditLog/v1`
-- `api/workspaces/brandExport/v1`
-- `api/workspaces/brandImport/v1`
-- `api/workspaces/buildProjectImage/v1`
-- `api/workspaces/closePreview/v1`
-- `api/workspaces/commentReplyDraft/v1`
-- `api/workspaces/containerTerminals/v1`
-- `api/workspaces/createWorkspace/v1`
-- `api/workspaces/deleteWorkspace/v1`
-- `api/workspaces/designerGenerateAsset/v1`
-- `api/workspaces/designerGenerateTheme/v1`
-- `api/workspaces/designerInspiration/v1`
-- `api/workspaces/designerLibrary/v1`
-- `api/workspaces/devLaunchEditor/v1`
-- `api/workspaces/generateDockerfile/v1`
-- `api/workspaces/generateDocs/v1`
-- `api/workspaces/issuePat/v1`
-- `api/workspaces/knowledgeGraph/v1`
-- `api/workspaces/listPats/v1`
-- `api/workspaces/markRead/v1`
-- `api/workspaces/openEditor/v1`
-- `api/workspaces/openPreview/v1`
-- `api/workspaces/openRefPreview/v1`
-- `api/workspaces/promptExperiments/v1`
-- `api/workspaces/pushConfig/v1`
-- `api/workspaces/readWorktreeFile/v1`
-- `api/workspaces/revokePat/v1`
-- `api/workspaces/saveDevCommand/v1`
-- `api/workspaces/savePushSubscription/v1`
-- `api/workspaces/saveWorktreeFile/v1`
-- `api/workspaces/seoSuggest/v1`
-- `api/workspaces/sshKeyAdd/v1`
-- `api/workspaces/sshKeyRemove/v1`
-- `api/workspaces/studioBrand/v1`
-- `api/workspaces/studioDelete/v1`
-- `api/workspaces/studioGenerate/v1`
-- … +72 more
+- `sync/workspaces/acceptSuggestion/v1`
+- `sync/workspaces/addComment/v1`
+- `sync/workspaces/addInfoDoc/v1`
+- `sync/workspaces/agentControl/v1`
+- `sync/workspaces/agentTerm/v1`
+- `sync/workspaces/answerInput/v1`
+- `sync/workspaces/archive/v1`
+- `sync/workspaces/bulkArchive/v1`
+- `sync/workspaces/bulkAssign/v1`
+- `sync/workspaces/bulkMove/v1`
+- `sync/workspaces/bulkSprint/v1`
+- `sync/workspaces/bulkStatus/v1`
+- `sync/workspaces/changeRole/v1`
+- `sync/workspaces/cloneWorkspace/v1`
+- `sync/workspaces/commentInbox/v1`
+- `sync/workspaces/contentAssetDelta/v1`
+- `sync/workspaces/contentControl/v1`
+- `sync/workspaces/contentDirty/v1`
+- `sync/workspaces/contentSettings/v1`
+- `sync/workspaces/copyWorkspaceAssets/v1`
+- `sync/workspaces/customTask/v1`
+- `sync/workspaces/documentsControl/v1`
+- `sync/workspaces/findingAction/v1`
+- `sync/workspaces/gitlabSettings/v1`
+- `sync/workspaces/invite/v1`
+- `sync/workspaces/linkRepo/v1`
+- `sync/workspaces/mrAction/v1`
+- `sync/workspaces/outputTemplate/v1`
+- `sync/workspaces/presence/v1`
+- `sync/workspaces/projectAdmin/v1`
+- `sync/workspaces/quickAdd/v1`
+- `sync/workspaces/removeEnv/v1`
+- `sync/workspaces/removeIntegration/v1`
+- `sync/workspaces/removeMember/v1`
+- `sync/workspaces/renameWorkspace/v1`
+- `sync/workspaces/revokeInvite/v1`
+- `sync/workspaces/roleCreate/v1`
+- `sync/workspaces/roleUpdate/v1`
+- `sync/workspaces/rotateWebhookSecret/v1`
+- `sync/workspaces/saveAiInstruction/v1`
+- `sync/workspaces/saveAiProvider/v1`
+- `sync/workspaces/saveAutonomy/v1`
+- `sync/workspaces/saveEnv/v1`
+- `sync/workspaces/saveGitConfig/v1`
+- `sync/workspaces/saveIntegration/v1`
+- `sync/workspaces/saveSections/v1`
+- `sync/workspaces/saveStageConfig/v1`
+- `sync/workspaces/scanDocs/v1`
+- `sync/workspaces/scanIndex/v1`
+- `sync/workspaces/serviceProvision/v1`
+- … +14 more
 
 ## Pages (35)
 
