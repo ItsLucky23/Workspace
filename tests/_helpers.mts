@@ -151,6 +151,22 @@ export async function loginSeededUser(ctx: TestContext, tag: string): Promise<{ 
   return { userId: user.id, workspaceId: seeded.workspaceId };
 }
 
+//? Grant the CURRENT test session room membership for a workspace. The harness's `callSync` is
+//? plain HTTP, so the socket-only `joinRoom` event (which persists `roomCodes` on the session)
+//? never fires — without this, every sync call dies on `sync.notRoomMember` BEFORE the route's
+//? own RBAC runs. This persists exactly what the real joinRoom event persists; it reproduces the
+//? real authorization state, it does not bypass it. Call it after login and before any
+//? `callSync({...}, { receiver: workspaceId })` — also for a deliberate OUTSIDER user when you
+//? want to assert the RBAC boundary in isolation (room-admitted, but never a WorkspaceMember).
+export async function joinRoom(ctx: TestContext, workspaceId: string): Promise<void> {
+  const { token } = ctx.session.current();
+  if (!token) throw new Error('joinRoom: no active session');
+  const { getSession, saveSession } = await import('@luckystack/login');
+  const session = await getSession(token);
+  if (!session) throw new Error('joinRoom: session not found');
+  await saveSession(token, { ...session, roomCodes: [workspaceId] });
+}
+
 // ---- a tiny assertion runner (per-process counters) ----
 let passed = 0;
 let failed = 0;
