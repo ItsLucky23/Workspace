@@ -12,6 +12,9 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?      itself never dereferences the artifact row).
 //?  [2] tenant/RBAC boundary — a user who is a room member but NOT a `WorkspaceMember`
 //?      of this workspace is rejected with `auth.forbidden`, and no link is created.
+//?  [3] `ticket-unlink-artifact` removes the `TicketArtifactLink` row; asserted via the
+//?      real Prisma post-condition on a fixture link (plain Prisma delete, no infra
+//?      dependency).
 
 interface TicketArtifactInput {
   op: string;
@@ -19,6 +22,7 @@ interface TicketArtifactInput {
   ticketId?: string;
   artifactId?: string;
   artifactKind?: string;
+  linkId?: string;
 }
 interface TicketArtifactOk {
   status: 'success';
@@ -93,6 +97,38 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.ok(link === null, 'no link was created for the rejected call');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'ticket-unlink-artifact removes the TicketArtifactLink row (Prisma post-condition after Conductor completion)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'ticketartifact_c3');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const ticket = await ctx.prisma.ticket.findFirst({ where: { workspaceId } });
+        if (!ticket) throw new Error('seeded workspace has no tickets');
+        const artifactId = fakeObjectId();
+        const fixture = await ctx.prisma.ticketArtifactLink.create({
+          data: { workspaceId, ticketId: ticket.id, artifactId, artifactKind: 'design', linkedBy: userId },
+        });
+
+        const res = await ctx.callSync<TicketArtifactInput, TicketArtifactResponse>(
+          { op: 'ticket-unlink-artifact', linkId: fixture.id, clientRequestId: `ta-c3-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'success', 'ticket-unlink-artifact returns status "success"');
+
+        //? `poll()` stops on the first non-null/undefined value, so poll for the row's ABSENCE by
+        //? returning a sentinel once it's gone (a `null` Prisma result would otherwise be read as "not ready yet").
+        const gone = await poll(async () => {
+          const row = await ctx.prisma.ticketArtifactLink.findFirst({ where: { id: fixture.id } });
+          return row === null ? ('gone' as const) : null;
+        });
+        ctx.expect.ok(gone === 'gone', 'the Conductor deleted the TicketArtifactLink row (post-condition, not just the ack)');
+      } finally {
+        await ctx.prisma.ticketArtifactLink.deleteMany({ where: { workspaceId } });
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },

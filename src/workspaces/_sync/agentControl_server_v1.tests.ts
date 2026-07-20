@@ -18,6 +18,9 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?      'paused'; asserted via the REAL Prisma post-condition, not just the ack.
 //?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` of this
 //?      workspace is rejected with `auth.forbidden`, and the ticket is left untouched.
+//?  [3] `pause-all`/`resume-all` are also pure Prisma writes (`prisma.workspace.update({
+//?      paused })`, no container touch), so both are proven end-to-end via the REAL
+//?      `Workspace.paused` post-condition, not just the ack's `workspacePaused` echo.
 //?
 //? //? TODO needs Docker — `resume` (reprovisionTicket) and `kill` (AgentSession/container
 //? inspection) happy paths are container-dependent and are NOT covered by this batch.
@@ -102,6 +105,41 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.eq(ticket?.status, seededTicket?.status, 'the ticket status was left untouched by the rejected call');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'happy path: pause-all flips Workspace.paused true, resume-all flips it back (Docker-free ops; Prisma post-condition)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'agentcontrol_c3');
+      try {
+        await joinRoom(ctx, workspaceId);
+
+        const pauseRes = await ctx.callSync<AgentControlInput, AgentControlResponse>(
+          { op: 'pause-all', clientRequestId: `ac-c3-pause-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(pauseRes.status, 'success', 'agentControl(pause-all) returns status "success"');
+
+        const paused = await poll(async () => {
+          const workspace = await ctx.prisma.workspace.findFirst({ where: { id: workspaceId } });
+          return workspace?.paused === true ? workspace : null;
+        });
+        ctx.expect.ok(paused !== null, 'the Conductor persisted Workspace.paused as true (post-condition, not just the ack)');
+
+        const resumeRes = await ctx.callSync<AgentControlInput, AgentControlResponse>(
+          { op: 'resume-all', clientRequestId: `ac-c3-resume-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(resumeRes.status, 'success', 'agentControl(resume-all) returns status "success"');
+
+        const resumed = await poll(async () => {
+          const workspace = await ctx.prisma.workspace.findFirst({ where: { id: workspaceId } });
+          return workspace?.paused === false ? workspace : null;
+        });
+        ctx.expect.ok(resumed !== null, 'the Conductor persisted Workspace.paused as false (post-condition, not just the ack)');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },

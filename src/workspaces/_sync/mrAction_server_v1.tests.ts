@@ -9,8 +9,10 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?  [1] happy path — 'create' opens an MR for a ticket with a `branch` (no bare git clone
 //?      exists in this harness, so `createMr` gracefully persists `headSha: null` — proven
 //?      by `server/git/repoStore.ts` `branchHead`'s `existsSync` guard; no Docker/PTY
-//?      needed), then 'comment' adds a review thread+comment on it — both asserted via the
-//?      REAL Prisma post-condition (MergeRequest / ReviewComment rows), not just the ack.
+//?      needed), then 'comment' adds a review thread+comment on it, then 'approve' and
+//?      'resolve' (both pure DB writes, no Docker/git needed) — all asserted via the
+//?      REAL Prisma post-condition (MergeRequest / ReviewComment / Approval / ReviewThread
+//?      rows), not just the ack.
 //?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` is rejected
 //?      with `auth.forbidden`, and no MergeRequest is created.
 //?
@@ -71,6 +73,29 @@ export const customTests: CustomTestCase[] = [
 
         const comment = await poll(() => ctx.prisma.reviewComment.findFirst({ where: { workspaceId, mergeRequestId: mr?.id, body } }));
         ctx.expect.ok(comment !== null, 'the Conductor persisted the ReviewComment (post-condition, not just the ack)');
+
+        const approveRes = await ctx.callSync<MrActionInput, MrActionResponse>(
+          { clientRequestId: `mr-c1-approve-${String(Date.now())}`, action: 'approve', ticketKey: key, mrId: mr?.id },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(approveRes.status, 'success', 'mr-approve returns status "success"');
+
+        const approval = await poll(() => ctx.prisma.approval.findFirst({ where: { workspaceId, mergeRequestId: mr?.id, userId } }));
+        ctx.expect.ok(approval !== null, 'the Conductor persisted the Approval (post-condition, not just the ack)');
+
+        const thread = await poll(() => ctx.prisma.reviewThread.findFirst({ where: { workspaceId, mergeRequestId: mr?.id, id: comment?.threadId } }));
+        ctx.expect.ok(thread !== null, 'the review thread created alongside the comment exists');
+        const resolveRes = await ctx.callSync<MrActionInput, MrActionResponse>(
+          { clientRequestId: `mr-c1-resolve-${String(Date.now())}`, action: 'resolve', ticketKey: key, threadId: thread?.id, resolved: true },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(resolveRes.status, 'success', 'mr-resolve returns status "success"');
+
+        const resolvedThread = await poll(async () => {
+          const row = await ctx.prisma.reviewThread.findFirst({ where: { workspaceId, id: thread?.id } });
+          return row?.resolved === true ? row : null;
+        });
+        ctx.expect.ok(resolvedThread !== null, 'the Conductor persisted the thread as resolved (post-condition, not just the ack)');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }

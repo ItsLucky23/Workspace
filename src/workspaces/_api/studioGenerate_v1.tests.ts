@@ -65,17 +65,9 @@ export const customTests: CustomTestCase[] = [
           kind: 'copy',
         });
         ctx.expect.eq(res.status, 'error', 'studioGenerate rejects an unknown briefId');
-        // BUG(route): `beginArtifact` (server/studio/generate.ts) passes `briefId` straight into
-        // `prisma.studioBrief.findFirst({ where: { id: briefId } })` on a Mongo `@db.ObjectId` field,
-        // inside the `withStudioBriefLock` callback. A non-24-hex-char briefId throws "Malformed
-        // ObjectID" from THAT query — not a lock-acquisition failure — but `beginArtifact`'s outer
-        // `tryCatch(() => withStudioBriefLock(...))` catches ANY thrown error (lock timeout OR callback
-        // error alike) and reports it as `studio.lockUnavailable`, mislabeling a data-validation gap as
-        // a concurrency issue. Asserting CURRENT actual behavior; the intended contract is
-        // `studio.briefNotFound` (or `api.invalidRequest` for a malformed id).
         ctx.expect.ok(
-          res.status === 'error' && res.errorCode === 'studio.lockUnavailable',
-          `errorCode is "studio.lockUnavailable" (got ${res.status === 'error' ? String(res.errorCode) : res.status}) — BUG(route): should be studio.briefNotFound`,
+          res.status === 'error' && res.errorCode === 'studio.briefNotFound',
+          `errorCode is "studio.briefNotFound" (got ${res.status === 'error' ? String(res.errorCode) : res.status})`,
         );
         const after = await ctx.prisma.studioArtifact.count({ where: { workspaceId } });
         ctx.expect.eq(after, before, 'no StudioArtifact row was created');

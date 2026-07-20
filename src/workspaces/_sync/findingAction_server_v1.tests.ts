@@ -10,6 +10,9 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?      post-condition, not just the ack.
 //?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` is rejected
 //?      with `auth.forbidden`, and the finding is left untouched (still 'open').
+//?  [3] happy path — `finding-dismiss` on an open InterviewFinding flips it to 'dismissed';
+//?      asserted via the REAL Prisma post-condition, not just the ack (the RBAC-rejected
+//?      case above only proves the finding stays 'open' when the call is refused).
 
 interface FindingActionInput { op: string; clientRequestId: string; findingId?: string; projectId?: string }
 interface FindingActionOk { status: 'success' }
@@ -86,6 +89,30 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.eq(unchanged?.status, 'open', 'the finding was left untouched by the rejected call');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'happy path: finding-dismiss flips an open finding to dismissed (Prisma post-condition)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'findingaction_c3');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const finding = await ctx.prisma.interviewFinding.create({
+          data: { workspaceId, area: 'reliability', severity: 'normal', title: `Dismiss finding ${String(Date.now())}`, summary: 'A test finding', status: 'open' },
+        });
+
+        const res = await ctx.callSync<FindingActionInput, FindingActionResponse>(
+          { op: 'finding-dismiss', clientRequestId: `fa-c3-${String(Date.now())}`, findingId: finding.id },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'success', 'finding-dismiss returns status "success"');
+
+        const dismissed = await poll(() => ctx.prisma.interviewFinding.findFirst({ where: { workspaceId, id: finding.id, status: 'dismissed' } }));
+        ctx.expect.ok(dismissed !== null, 'the Conductor flipped the finding to dismissed (post-condition, not just the ack)');
+      } finally {
+        await ctx.prisma.interviewFinding.deleteMany({ where: { workspaceId } });
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },

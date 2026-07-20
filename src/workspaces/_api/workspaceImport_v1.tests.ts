@@ -51,17 +51,10 @@ export const customTests: CustomTestCase[] = [
 
         const member = await ctx.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id } });
         ctx.expect.ok(member !== null, 'the caller is a member of the newly created workspace');
-        // BUG(route): `importWorkspaceBundle` (server/export/workspaceImport.ts) creates the new
-        // workspace via `createBlankWorkspace`, which — when the Development module is on (the
-        // legacy-all-on default when no `enabledSections` is passed, which this call site never
-        // passes) — ALSO seeds its own "ONE active sprint + TWO example tickets" starter content
-        // (seedWorkspace.ts, item 11). Those 2 starter tickets land in the SAME workspace alongside
-        // the 2 real tickets recreated from the bundle, so the DB ends up with 4 Ticket rows even
-        // though `result.tickets` (asserted above) correctly reports only the 2 bundle-derived ones.
-        // Asserting CURRENT actual behavior; the intended contract is that an import recreates
-        // ONLY the bundle's own tickets, with no phantom starter/example tickets mixed in.
+        //? An import recreates ONLY the bundle's own tickets — `createBlankWorkspace` is called with
+        //? `skipStarterSeed: true` from the import path, so no phantom starter/example tickets mix in.
         const tickets = await ctx.prisma.ticket.findMany({ where: { workspaceId } });
-        ctx.expect.eq(tickets.length, 4, '4 Ticket rows exist (2 bundle-imported + 2 starter-seeded by createBlankWorkspace) — BUG(route): should be 2');
+        ctx.expect.eq(tickets.length, 2, 'exactly the 2 bundle-imported Ticket rows exist, no phantom starter tickets');
       } finally {
         await (workspaceId ? cleanupWorkspace(ctx.prisma, workspaceId, [user.id]) : ctx.prisma.user.delete({ where: { id: user.id } }));
       }

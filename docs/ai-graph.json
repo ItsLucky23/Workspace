@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 419,
     "edges": 534,
-    "symbols": 799,
-    "callEdges": 257
+    "symbols": 800,
+    "callEdges": 258
   },
   "nodes": [
     {
@@ -8383,6 +8383,12 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_sync/contentControl_server_v1.tests.ts::fakeObjectId",
+      "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
+      "name": "fakeObjectId",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/contentControl_server_v1.tests.ts::fn",
       "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
       "name": "fn",
@@ -10874,6 +10880,10 @@
     },
     {
       "from": "workspaces/_sync/contentControl_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/contentControl_server_v1.tests.ts::fakeObjectId"
+    },
+    {
+      "from": "workspaces/_sync/contentControl_server_v1.tests.ts::run",
       "to": "workspaces/_sync/contentControl_server_v1.tests.ts::poll"
     },
     {
@@ -11829,6 +11839,9 @@
     ],
     "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset": [
       "workspaces/_sync/contentAssetDelta_server_v1.ts::main"
+    ],
+    "workspaces/_sync/contentControl_server_v1.tests.ts::fakeObjectId": [
+      "workspaces/_sync/contentControl_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/contentControl_server_v1.tests.ts::fn": [
       "workspaces/_sync/contentControl_server_v1.tests.ts::poll",

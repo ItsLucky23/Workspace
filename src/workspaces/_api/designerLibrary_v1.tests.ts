@@ -60,14 +60,9 @@ export const customTests: CustomTestCase[] = [
           artifactId: 'not-a-real-artifact-id',
         });
         ctx.expect.eq(res.status, 'error', 'designerLibrary setActive rejects an unknown artifactId');
-        // BUG(route): `setActiveDesignArtifact` (server/designer/library.ts) queries
-        // `designArtifact.findFirst({ where: { id } })` on a Mongo `@db.ObjectId` field with the raw
-        // artifactId, uncaught. A non-24-hex-char id throws "Malformed ObjectID" instead of resolving to
-        // "not found", so the route surfaces `api.internalServerError` instead of the intended
-        // `api.notFound`. Asserting CURRENT actual behavior; the intended contract is `api.notFound`.
         ctx.expect.ok(
-          res.status === 'error' && res.errorCode === 'api.internalServerError',
-          `errorCode is "api.internalServerError" (got ${res.status === 'error' ? String(res.errorCode) : res.status}) — BUG(route): should be api.notFound`,
+          res.status === 'error' && res.errorCode === 'api.notFound',
+          `errorCode is "api.notFound" (got ${res.status === 'error' ? String(res.errorCode) : res.status})`,
         );
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
