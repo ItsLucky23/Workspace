@@ -1,5 +1,21 @@
 # Branch log — `main`
 
+## 2026-07-20 — Setup-readiness: geblokkeerde features leggen zichzelf uit (nieuwe-user UX, ADR 0284)
+
+**User prompt:** ga over de codebase — verbeter de UX voor nieuwe users. Nu werkt veel niet als X niet gedaan is (geen git-repo → hele Develop-module dood, missende keys → whatever) zonder dat het duidelijk is. Wil over ALLE modules fatsoenlijke UI-feedback: WAT/WAAROM iets niet werkt + HOE te fixen, met slimme knoppen (bv. naar workspace-management om een repo te koppelen), én permissie-bewust (geen toegang → "vraag de owner / iemand met permissie X"). Andere AI is met tests bezig.
+
+**Aanpak (2 user-keuzes vooraf via AskUserQuestion):** volledig fundament (readiness + myPerms in snapshot + deep-link naar tab) + alles-met-uitleg (infra-gates uitleg-notice, media-zonder-key waarschuwing). Eerst 4 parallelle verkenners: gates-inventaris (12 gates), RBAC-model, UI-bouwstenen, fix-bestemmingen.
+
+**Fundament (server):** `server/read/readiness.ts` (nieuw) — `hostReadiness` (docker-probe + Claude-CLI + VAPID/enc-key env, **30s TTL-cache** zodat de snapshot-hot-path nooit `docker info` shelt) + `buildReadiness` (combineert host + workspace-signalen: `__provider_key_<id>` EnvVar-KEYS presence-only + env-fallbacks FAL_KEY/GEMINI_API_KEY/… ). Snapshot (`workspaceSnapshot.ts`) draagt nu `readiness` + de caller's resolved `myPerms` (raw rolKey → `WorkspaceRole.perms`, spiegelt server-`hasCapability`, custom rollen kloppen) + `myRoleKey`. `claudeCliAvailable` geëxporteerd. Client-type `WorkspaceReadiness` in `types.ts`.
+
+**Fundament (client):** `_data/capabilities.ts` (nieuw) — CAP-index-mirror van server-rbac + `capLabelKey`. Context/provider: `readiness`, `can(cap)`, `focusSetup({view,tab})` + `settingsFocus`-store (mirror van copilotPrefill). `_components/SetupNotice.tsx` (nieuw) — de ENE canonieke "feature heeft setup X nodig"-notice: EmptyState/SectionCard-compositie, permissie-bewust (CTA-knop met deep-link als `can(cap)`, anders "vraag iemand met <cap>"), infra-variant zonder knop + env-hint. De 3 settings-pagina's (workspace/settings/content-settings) consumeren `settingsFocus` → juiste tab i.p.v. default.
+
+**Gates bekabeld:** repo→Code+Terminals · docker→Terminals · media-stub→content-piece+Studio+Designer · AI-provider→Workspace-AI-paneel+Studio · publishing→content-piece (alleen als er assets zijn). Sources bewust gelaten (werkt via upload zonder repo).
+
+**Files touched:** `server/read/{readiness.ts (new), workspaceSnapshot.ts}`, `server/ai/providers/claudeCli.ts`, `src/workspaces/_data/{types.ts, capabilities.ts (new)}`, `src/workspaces/_components/SetupNotice.tsx (new)`, `_shell/{WorkspacesContext,WorkspacesProvider,Shell}.tsx`, `develop/{code,terminals,designer}/page.tsx`, `content/[pieceId]/page.tsx`, `content/studio/page.tsx`, `content/settings/page.tsx`, `settings/page.tsx`, `workspace/page.tsx`, `src/_locales/×4`, `tests/integration/setupReadiness.test.mts (new)`, `docs/decisions/0284-*.md (new)`.
+
+**Verify:** typecheck 0, eslint 0-errors (26 pre-existing warnings, niet aangeraakt — Rule 27), ai:lint clean, vite build ✓, generateArtifacts ✓, setupReadiness 144/144, snapshot 38/38 (buildSnapshot intact). **Developer-acties:** server herstarten (nieuwe snapshot-velden); geen db-push nodig (readiness/myPerms zijn afgeleid, geen schema). **Te testen:** open Code/Terminals zonder repo → notice + "Repository koppelen" (owner/admin) of "vraag iemand met workspace-instellingen" (member); content-piece zonder fal-key → media-waarschuwing; Workspace-AI-paneel zonder provider → AI-notice.
+
 ## 2026-07-14 — 2FA + email-code login UI (frontend voor de 0.6.7-backend)
 
 **User prompt:** ja 2FA integreren met UI; ik voeg de key toe; committen is goed.
@@ -4351,3 +4367,16 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched**: 60 nieuwe + 6 herschreven/gefixte `*_v1.tests.ts` onder `src/**/_api/`, `tests/_helpers.mjs` (harnas-seam).
 
 **Verification**: custom-laag **150/150** (alle per-route-tests, incl. de 7 voorheen-falende stubs en de 2 herschreven repo-tests) · lint 0 errors · tsc server 0. Coverage: van 6/128 naar 66/128 routes met een eigen `.tests.ts` (de rest van de 128 telt `_sync`-routes en al-gedekte mee — de _api-inventaris is nu volledig).
+
+## 2026-07-20 23:55 — test-programma fases A–D compleet: bugfixes · 63 sync-routes · effect-matrix 148 ops · Playwright 24 specs
+
+**User prompt (samenvatting)**: akkoord op het 4-fasen-programma met twee nuances (stub-paden tellen als testbaar; alleen échte remotes/third-party uitsluiten) — alles in één doorlopende run, Sonnet-agents, commit per fase.
+
+**Fase A** (`eb3adac`): de 3 route-bugs gefixt — `isObjectId`-guards (designerLibrary → `api.notFound`, studioGenerate → `studio.briefNotFound` vóór het lock), `skipStarterSeed`-opt-out op `createBlankWorkspace` (call-site-audit: onboarding/clone ongewijzigd) — en de `BUG(route)`-asserts omgeklapt.
+**Fase B** (`ccfa7fe` + `227dfff`): alle 63 resterende `_sync`-routes een per-route-test. Fundament: gedeelde `joinRoom`-helper (HTTP-harnas heeft geen socket-roomCodes → álles zou op `sync.notRoomMember` stranden; de helper persisteert exact wat het echte joinRoom-event persisteert) + poll-na-ack-discipline (Conductor-ACK ≠ postconditie). 7 Docker/forge-afhankelijke routes: boundary-tests + expliciete TODO i.p.v. nep-groen.
+**Fase C** (`da1733f`): effect-matrix over alle 148 enabled ops — 111 al gedekt, 19 gaten gevuld in de bestaande per-route-bestanden, 18 uitgesloten mét reden (13 `excluded:infra`, 4 `excluded:ai-cost` zonder stub-pad, 1 `excluded:external`). Meta-bewaker `tests/unit/opEffectCoverage.test.mts` (452 asserties) pint matrix↔catalogus 1:1; een nieuwe op zonder classificatie of een herlevende gap = rood. Dit sluit de lesson-0017-klasse structureel.
+**Fase D** (deze commit): Playwright-laag — `tests/e2e/fixtures.ts` (API-registratie + cookie, rate-limit-retry, onboarding-helper), testid-conventie (`ws-<pagina>-<element>`, alleen waar role/label niet volstaat, elke tag heeft een gebruikende spec), 6 spec-bestanden / **24 specs**: auth+onboarding, nav-categorieën, board (incl. de no-repo-waarschuwing en archive→kaart-weg — de twee live gevonden bugs als blijvende regressie), ticket-tabs, backlog-filters, pipeline, lege-staten, documents-CRUD, Git-tab-label, Modules-toggle-persistentie, insights, sign-out. Oude kapotte placeholder (`example.spec.ts`, pinde Vite-default 5173 i.p.v. onze 5391) verwijderd conform zijn eigen header.
+
+**Verification**: Playwright **24/24** (volledige suite, serieel; specs individueel 2-3× groen gedraaid door de schrijvers) · custom-laag **290/290** (schone solo-run — er bleken 7 sweep-processen van agents parallel te draaien die elkaar via route-rate-limits vals rood duwden; opgeruimd, dát waren de eerdere "transients") · `opEffectCoverage` 452/452 · lint 0 errors (fill-golf-errors gefixt) · tsc client+server 0.
+
+**Notes**: totale route-dekking nu 130/130 routes (66 `_api` + 64 `_sync`) met eigen businesslogica-tests + de effect-matrix erbovenop + 24 deterministische browser-specs — geen LLM in de vaste testloop. **Let op**: enkele testid-regels leven in paginabestanden die de parallelle setup-readiness-sessie óók bewerkt (backlog, ticket, workspace, terminals) — die rijden mee met díe commit; de specs draaien er al groen op. Sweep-run-recept + de zelf-match-valkuil van procesqueries (een zoekopdracht naar 'x' matcht zijn eigen commandline) staan in deze log als naslaag.

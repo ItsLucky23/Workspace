@@ -46,10 +46,10 @@ export const customTests: CustomTestCase[] = [
         await joinRoom(ctx, workspaceId);
         const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
         if (!project) throw new Error('seeded workspace has no project');
-        const key = `DEV-${String(Date.now() % 100000)}`;
+        const key = `DEV-${String(Date.now() % 100_000)}`;
         const ticket = await ctx.prisma.ticket.create({
           data: {
-            workspaceId, projectId: project.id, key, number: Date.now() % 100000,
+            workspaceId, projectId: project.id, key, number: Date.now() % 100_000,
             title: 'MR action test ticket', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature/mr-action-test',
           },
         });
@@ -109,10 +109,10 @@ export const customTests: CustomTestCase[] = [
       try {
         const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
         if (!project) throw new Error('seeded workspace has no project');
-        const key = `DEV-${String(Date.now() % 100000)}`;
+        const key = `DEV-${String(Date.now() % 100_000)}`;
         await ctx.prisma.ticket.create({
           data: {
-            workspaceId, projectId: project.id, key, number: Date.now() % 100000,
+            workspaceId, projectId: project.id, key, number: Date.now() % 100_000,
             title: 'MR action outsider test ticket', stageId: 'unrefined', status: 'idle', labels: [], branch: 'feature/mr-action-outsider',
           },
         });

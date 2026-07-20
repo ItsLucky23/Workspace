@@ -57,7 +57,7 @@ export const customTests: CustomTestCase[] = [
 
         const after = await poll(async () => {
           const ws = await ctx.prisma.workspace.findUnique({ where: { id: workspaceId } });
-          if (ws && ws.webhookSecret && ws.webhookSecret !== (before?.webhookSecret ?? null)) return ws;
+          if (ws?.webhookSecret && ws.webhookSecret !== (before?.webhookSecret ?? null)) return ws;
           return null;
         });
         ctx.expect.ok(after !== null, 'the Conductor rotated the secret to a new, non-empty value');

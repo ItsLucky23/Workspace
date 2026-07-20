@@ -207,7 +207,7 @@ export const customTests: CustomTestCase[] = [
         );
         ctx.expect.eq(res.status, 'success', 'content-trim-audio returns status "success"');
 
-        const trimmed = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, parentId: src.id } }), 15000);
+        const trimmed = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, parentId: src.id } }), 15_000);
         ctx.expect.ok(trimmed !== null, 'the Conductor persisted the trimmed sibling ContentAsset (post-condition, not just the ack)');
         ctx.expect.eq(trimmed?.kind, 'voice', 'the trimmed asset keeps the source kind');
         ctx.expect.ok((trimmed?.url ?? '').includes('-trim-'), 'the trimmed asset url carries the ffmpeg trim suffix (a real new file, not the source reused)');

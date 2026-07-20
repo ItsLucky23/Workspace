@@ -40,12 +40,12 @@ export const customTests: CustomTestCase[] = [
         await joinRoom(ctx, workspaceId);
         const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
         if (!project) throw new Error('seeded workspace has no project');
-        const key = `DEV-${String(Date.now() % 100000)}`;
+        const key = `DEV-${String(Date.now() % 100_000)}`;
         const q1 = 'What color scheme?';
         const q2 = 'Which font family?';
         await ctx.prisma.ticket.create({
           data: {
-            workspaceId, projectId: project.id, key, number: Date.now() % 100000,
+            workspaceId, projectId: project.id, key, number: Date.now() % 100_000,
             title: 'Answer input test ticket', stageId: 'unrefined', status: 'needs-input', labels: [],
             needsInput: q1, needsInputQuestions: [{ q: q1, a: null }, { q: q2, a: null }],
           },
@@ -76,11 +76,11 @@ export const customTests: CustomTestCase[] = [
       try {
         const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
         if (!project) throw new Error('seeded workspace has no project');
-        const key = `DEV-${String(Date.now() % 100000)}`;
+        const key = `DEV-${String(Date.now() % 100_000)}`;
         const q1 = 'Should not be answered?';
         await ctx.prisma.ticket.create({
           data: {
-            workspaceId, projectId: project.id, key, number: Date.now() % 100000,
+            workspaceId, projectId: project.id, key, number: Date.now() % 100_000,
             title: 'Answer input outsider test ticket', stageId: 'unrefined', status: 'needs-input', labels: [],
             needsInput: q1, needsInputQuestions: [{ q: q1, a: null }],
           },

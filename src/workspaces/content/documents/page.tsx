@@ -106,7 +106,7 @@ export default function DocumentsPage() {
 
       <div className={`flex flex-col gap-2`}>
         {visibleDocuments.map((d) => (
-          <div key={d.id} className={`rounded-xl border border-container1-border bg-container1 p-3 flex items-center gap-2 hover:border-primary-border transition-colors`}>
+          <div key={d.id} data-testid={`ws-documents-row-${d.id}`} className={`rounded-xl border border-container1-border bg-container1 p-3 flex items-center gap-2 hover:border-primary-border transition-colors`}>
             {/* The whole card body navigates — one comfortable tap target on a phone. */}
             <button type="button" onClick={() => { navigate(`documents/${d.id}`); }} className={`flex-1 min-w-0 text-left cursor-pointer`}>
               <div className={`flex items-center gap-2`}>
