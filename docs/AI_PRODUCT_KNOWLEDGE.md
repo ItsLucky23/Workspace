@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `517ed4ff9c2a4c66` · 17 capabilities · 201 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `b8f9348c2d132c11` · 17 capabilities · 202 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -227,3 +227,4 @@
 - `adr-0281` 0281-per-service-ci-and-unit-scope
 - `adr-0282` 0282-assistant-parity-tranche
 - `adr-0283` 0283-skill-delete-chat-proposable
+- `adr-0284` Blocked features explain themselves — a snapshot `readiness` block + resolved `myPerms` drive a permission-aware "what's missing / how to fix it" notice

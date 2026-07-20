@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (201)
+## Decisions (202)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -214,6 +214,7 @@
 | 0281 | CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit | 🟢 accepted | ci, monorepo, gates, schema, mongodb | — | `docs/decisions/0281-per-service-ci-and-unit-scope.md` |
 | 0282 | Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A | 🟢 accepted | workspace-ai, chat, op-catalog, parity, copilot, rag, b-23 | — | `docs/decisions/0282-assistant-parity-tranche.md` |
 | 0283 | ai-skill-delete is chat-proposable — the owner overrules the UI-only pin | 🟢 accepted | workspace-ai, chat, op-catalog, skills, b-23 | — | `docs/decisions/0283-skill-delete-chat-proposable.md` |
+| 0284 | Blocked features explain themselves — a snapshot `readiness` block + resolved `myPerms` drive a permission-aware "what's missing / how to fix it" notice | 🟢 accepted | ux, onboarding, snapshot, rbac, readiness | — | `docs/decisions/0284-setup-readiness-and-permission-aware-fix-routing.md` |
 
 ## Summaries
 
@@ -1840,6 +1841,14 @@ _(no Decision section found — fill it in)_
 _(no Decision section found — fill it in)_
 
 → `docs/decisions/0283-skill-delete-chat-proposable.md`
+
+### 0284 — Blocked features explain themselves — a snapshot `readiness` block + resolved `myPerms` drive a permission-aware "what's missing / how to fix it" notice
+
+**0284** · accepted · tags: ux, onboarding, snapshot, rbac, readiness · 2026-07-20
+
+*1. The snapshot ships a `readiness` block + the caller's resolved `myPerms` + raw `myRoleKey`.** `readiness` is the set of "is this actually set up?" booleans (repo linked, AI text, per-media-provider key, publishing connected, docker, push, secret-manager). Host-level probes (Docker via `docker info`, the Claude CLI probe) are **cached with a 30s TTL** so the per-snapshot hot-path never shells out; config-presence checks (stored `__provider_key_<id>` EnvVar KEYS — presence only, never decrypted — plus env fallbacks and VAPID/enc-key env) are trivial. `myPerms` resolves the caller's **raw** role key against `WorkspaceRole.perms` (mirroring the server `hasCapability`), so a custom role resolves correctly — the flattened `Workspace.role` collapses those to `member`.
+
+→ `docs/decisions/0284-setup-readiness-and-permission-aware-fix-routing.md`
 
 ## Code governed by decisions
 

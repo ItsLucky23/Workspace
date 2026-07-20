@@ -110,7 +110,7 @@
 | `sync/workspaces/outputTemplate/v1` | yes | — | login | — | **no** | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
 | `sync/workspaces/presence/v1` | yes | — | login | — | **no** | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
 | `sync/workspaces/projectAdmin/v1` | yes | — | login | — | **no** | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). |
-| `sync/workspaces/quickAdd/v1` | yes | — | login | — | **no** | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
+| `sync/workspaces/quickAdd/v1` | yes | — | login | — | yes | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
 | `sync/workspaces/removeEnv/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-env] REALTIME write via `_sync`. Deletes an env var, then |
 | `sync/workspaces/removeIntegration/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-integration] REALTIME write via `_sync`. Deletes an |
 | `sync/workspaces/removeMember/v1` | yes | — | login | — | **no** | — | Workspaces — [remove-member] REALTIME write via `_sync`. Removes a member, then |
@@ -154,7 +154,7 @@
 | `ItsLucky23` | 22 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 64/128 routes have a per-route `.tests.ts`.
+**Test coverage**: 65/128 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -188,7 +188,6 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/outputTemplate/v1`
 - `sync/workspaces/presence/v1`
 - `sync/workspaces/projectAdmin/v1`
-- `sync/workspaces/quickAdd/v1`
 - `sync/workspaces/removeEnv/v1`
 - `sync/workspaces/removeIntegration/v1`
 - `sync/workspaces/removeMember/v1`
@@ -208,7 +207,8 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `sync/workspaces/scanDocs/v1`
 - `sync/workspaces/scanIndex/v1`
 - `sync/workspaces/serviceProvision/v1`
-- … +14 more
+- `sync/workspaces/serviceTeardown/v1`
+- … +13 more
 
 ## Pages (35)
 

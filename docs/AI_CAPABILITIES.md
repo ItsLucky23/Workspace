@@ -140,7 +140,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/outputTemplate/v1` | — | — | — |
 | `workspaces/presence/v1` | — | — | — |
 | `workspaces/projectAdmin/v1` | — | — | — |
-| `workspaces/quickAdd/v1` | — | — | — |
+| `workspaces/quickAdd/v1` | — | — | ✓ |
 | `workspaces/removeEnv/v1` | — | — | — |
 | `workspaces/removeIntegration/v1` | — | — | — |
 | `workspaces/removeMember/v1` | — | — | — |
