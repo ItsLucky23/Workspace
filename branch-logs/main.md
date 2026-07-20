@@ -4308,3 +4308,18 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 - **CI**: content-"Comments"-toggle opent de read-only-inbox met de expliciete "Read-only: replying stays on the platform itself."-notitie + "No comments yet" — GEEN reply-knoppen (bewust).
 **Niet-getest (bewust):** YouTube/TikTok-publish (uitgesloten per /goal) + de fysieke mic-capture (browser-native, geen driver). **Test-fixture:** enabledSections van de e2e-workspaces kregen documents/content toegevoegd voor de render-verificatie (non-destructief, test-workspaces).
 **Suite-status:** 8 nieuwe integratie-suites elk groen (skillsLayer 28 · documentsModule 22 · documentExport 24 · designerInspiration 23 · commentInbox 21 · evalPipeline 19 · kgBudgetAndTranscode 14 · voiceLayer 10 = 161 asserties) + regressie-batch groen (golf5Media 16 · studioSendToContent 8 · uiReview 38 · accountManagement 11 · answerQueue 5 · channelAutopilot 13). Pre-existing (niet van dit programma): 7 per-route scaffold-stubs (`snapshot_v1.tests.ts`/`saveDockerfile_v1.tests.ts` — fake `test-user-<ts>`-ObjectId-harnass-bug, laatst geraakt in 90c5a46).
+
+## 2026-07-20 03:05 — agent-hints zonder repo + "Git"-tab (na merge van feat/design-docs-program)
+
+**User prompt (samenvatting)**: (1) In een workspace zónder gelinkte repo en zonder AI-config is "Pause agent" een pure visuele status-flip, de "no AI"-chip is verwarrend en er start nooit een agent — "dan verwacht je errors of UI-hints dat het hieraan ligt." (2) Het settings-subitem "GitLab" hernoemen naar "Git", want je kunt daar ook GitHub koppelen.
+
+**Wat ik heb gedaan**
+- **Pause-guard met uitleg** (KanbanCard + ticket-detail): zonder `ctx.repo.linked` blokkeert "Pause agent" en toont een warning-toast (`workspaces.board.agentNeedsRepo`, 4 talen): geen agent kán draaien zolang er geen repository gekoppeld is — koppel er één via Instellingen → Workspace → Git en check de AI-instellingen. Resume blijft toegestaan zodat een al-gepauzeerd ticket zijn schone status terugkrijgt. De zinloze status-flip is weg.
+- **Chip verduidelijkt**: `status==='idle'` toont nu "AI idle" (was "no AI" — las als "deze stage heeft geen AI") + tooltip met dezelfde uitleg wanneer er geen repo gelinkt is.
+- **Tab hernoemd**: `tabGitlab`-waarde → "Git" in 4 talen (de pagina koppelt GitHub én GitLab; key-naam blijft, alleen het label).
+
+**Files touched**: `develop/board/KanbanCard.tsx`, `develop/board/[ticketId]/page.tsx`, 4 locales.
+
+**Verification**: lint 0 errors · ai:lint schoon · live browser-check: pause-klik → toast zichtbaar, géén "Resume agent"-flip meer; chip toont "AI idle"; workspace-settings toont "Git"-tab (geen "GitLab").
+
+**Notes**: dit is het lesson-0017-patroon in het klein (knop zonder effect). Groter open punt genoteerd: bij een wél-gelinkte repo hoort een move naar een AI-stage zichtbaar een agent te starten of uit te leggen waarom niet (autonomy/capaciteit/containers) — dat is orchestrator-UX voor een aparte sessie.

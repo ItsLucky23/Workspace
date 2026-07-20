@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { apiRequest, useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -168,7 +168,9 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
   //? role is not 'member').
   const showDevOps = isModuleEnabled(ctx.activeWorkspace.enabledSections, 'development') && ctx.activeWorkspace.role !== 'member';
   const agentMenu: PopMenuItem[] = [
-    { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { ctx.pauseTicket(ticket.id); } },
+    //? Same guard as the board card: without a linked repo, "pause" is a meaningless status flip —
+    //? explain the blocker instead (owner report 2026-07-20).
+    { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { if (!ctx.repo.linked) { notify.warning({ key: 'workspaces.board.agentNeedsRepo' }); return; } ctx.pauseTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.ticket.resumeAgent' }), icon: 'play', onClick: () => { ctx.resumeTicket(ticket.id); } },
     { label: translate({ key: 'workspaces.ticket.critiquePlan' }), icon: 'wand-magic-sparkles', onClick: () => { ctx.planCritique(ticket.id); } },
     { divider: true },

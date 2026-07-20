@@ -5,7 +5,7 @@
 
 import { useRef, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -71,7 +71,16 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
     { label: translate({ key: 'workspaces.board.moveToStage' }), icon: 'arrow-right-arrow-left', onClick: () => { void menuHandler.open(<StageMovePicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { void menuHandler.open(<ArtifactLinkPicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { divider: true },
-    { label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause', onClick: () => { if (paused) ctx.resumeTicket(ticket.id); else ctx.pauseTicket(ticket.id); } },
+    {
+      label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause',
+      onClick: () => {
+        //? Without a linked repository no agent can ever run, so pausing was a pure visual status
+        //? flip (owner report 2026-07-20). Explain the blocker instead of silently toggling; resume
+        //? stays allowed so an already-paused ticket can be restored to its clean state.
+        if (!paused && !ctx.repo.linked) { notify.warning({ key: 'workspaces.board.agentNeedsRepo' }); return; }
+        if (paused) ctx.resumeTicket(ticket.id); else ctx.pauseTicket(ticket.id);
+      },
+    },
     { label: translate({ key: 'workspaces.board.copyDevId' }), icon: 'copy', onClick: () => void navigator.clipboard.writeText(ticket.id) },
     { divider: true },
     {
@@ -122,7 +131,11 @@ export function KanbanCard({ ticket }: { ticket: Ticket }) {
         </span>
         <div className={`flex items-center gap-1`} {...stop}>
           {ticket.status === 'idle'
-            ? <span className={`inline-flex items-center gap-1 text-xs text-muted`}><Icon name="moon" /> {translate({ key: 'workspaces.board.noAi' })}</span>
+            ? (
+              //? The chip means "no agent is running on this ticket" (NOT "this stage has AI off").
+              //? Without a linked repo the tooltip explains why one never will.
+              <span title={ctx.repo.linked ? undefined : translate({ key: 'workspaces.board.agentNeedsRepo' })} className={`inline-flex items-center gap-1 text-xs text-muted`}><Icon name="moon" /> {translate({ key: 'workspaces.board.noAi' })}</span>
+            )
             : <StatusPill status={ticket.status} />}
           <PopMenu
             items={cardMenuItems(ticket, ctx, translate)}

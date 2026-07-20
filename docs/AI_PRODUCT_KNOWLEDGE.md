@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `88c39da246971513` · 17 capabilities · 201 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `517ed4ff9c2a4c66` · 17 capabilities · 201 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -39,14 +39,14 @@
 - `adr-0012` The AI engine and a human's live editor never run on a ticket's container at once (edit-lock), and stale proxy routes self-heal on boot
 - `adr-0013` Engine control-plane completion — push-on-approval, pause/kill controls, off-chain realtime broadcast, and preview exposure
 - `adr-0014` Market-hardening — GitLab issue ingestion, a concurrent-turn CapacityManager, edge-auth on subdomains, and Sentry error tracking
-- `adr-0015` Multi-instance safety (Deel A) — leader-elected loops, a per-workspace cross-instance write-lease, and cross-instance dedup
+- `adr-0015` 0015-multi-instance-safety-deel-a
 - `adr-0016` Egress control on worker containers — an internal network + an allowlist forward proxy
 - `adr-0017` RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context
 - `adr-0018` Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge
 - `adr-0019` Ticket priority (one field, `urgent` = hotfix tier) + notification preferences
-- `adr-0020` CapacityManager — atomic hard-cap admission queue + urgent force-through
+- `adr-0020` 0020-capacity-manager-hard-cap
 - `adr-0021` Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible)
-- `adr-0022` Crash-recovery watchdog — boot resume + stuck/idle detection
+- `adr-0022` 0022-crash-recovery-watchdog
 - `adr-0023` In-container pty-agent — durable scrollback + crash-resume for container terminals
 - `adr-0024` Close client gaps — needs-input answer-to-AI + realtime presence
 - `adr-0025` Cost/usage tracking — record token estimates, display only (no hard stop)
@@ -219,11 +219,11 @@
 - `adr-0273` 0273-comment-inbox-read-only-youtube-tiktok
 - `adr-0274` 0274-pipeline-role-prompt-eval-replay-harness
 - `adr-0275` 0275-voice-interface-provider-abstracted-stt-plus-tts
-- `adr-0276` Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS
-- `adr-0277` Renewable workspace lease with fail-closed Conductor guard, without claiming database fencing
-- `adr-0278` GAP_SCAN program — report-first security guards, additive ops, and honest platform no-ops
-- `adr-0279` Watchdog and reaper recovery use a short renewable capacity lease plus a durable fenced recovery writer
-- `adr-0280` Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs
-- `adr-0281` CI, previews and build exports are scoped to a monorepo UNIT, and every gate means "every unit"
-- `adr-0282` Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A
-- `adr-0283` ai-skill-delete is chat-proposable — the owner overrules the UI-only pin
+- `adr-0276` 0276-revision-safe-managed-design-token-apply
+- `adr-0277` 0277-renewable-workspace-lease-with-fail-closed-guard
+- `adr-0278` 0278-gap-scan-program-report-first-guards-and-additive-ops
+- `adr-0279` 0279-fenced-agent-recovery-writer
+- `adr-0280` 0280-module-based-nav-categories
+- `adr-0281` 0281-per-service-ci-and-unit-scope
+- `adr-0282` 0282-assistant-parity-tranche
+- `adr-0283` 0283-skill-delete-chat-proposable
