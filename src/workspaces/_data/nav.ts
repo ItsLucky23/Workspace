@@ -16,6 +16,7 @@ export const VIEW_CATEGORY: Record<string, NavCategory> = {
   backlog: 'develop',
   pipeline: 'develop',
   terminals: 'develop',
+  code: 'develop',
   designer: 'develop',
   interviewer: 'develop',
   sources: 'develop',

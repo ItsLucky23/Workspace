@@ -1032,6 +1032,7 @@
       "save": "Secties opslaan",
       "needOne": "Houd minstens één sectie aan.",
       "board": "Board",
+      "code": "Code",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Activiteit",
@@ -2334,6 +2335,17 @@
       "runNow": "Nu draaien",
       "deleteConfirmTitle": "Automatisering verwijderen?",
       "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt."
+    },
+    "code": {
+      "title": "Code",
+      "subtitle": "Blader door de volledige codebase van de gekoppelde repository (alleen-lezen).",
+      "emptyTitle": "Geen repository gekoppeld",
+      "openSettings": "Instellingen openen",
+      "files": "Bestanden",
+      "binaryFile": "Binair bestand — geen voorbeeld beschikbaar.",
+      "truncated": "Groot bestand — eerste 200 KB weergegeven.",
+      "treeError": "Kon de bestandsboom niet laden.",
+      "fileError": "Kon dit bestand niet openen."
     },
     "board": {
       "filterSprint": "Sprint",

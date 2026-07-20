@@ -87,6 +87,9 @@ export const NAV_ITEMS: NavDef[] = [
   //? …the machine that moves it (the pipeline lives with the board it drives)…
   { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'develop' },
   { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'develop' },
+  //? The whole-codebase browser (owner decision 2026-07-20): the linked repo's baseline tree, read-only,
+  //? as a first-class destination — previously the code was only reachable inside a ticket's live editor.
+  { id: 'code', icon: 'code', label: 'Code', group: 'develop' },
   //? …and the repo-bound tools.
   { id: 'designer', icon: 'palette', label: 'Designer', group: 'develop' },
   { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'develop' },

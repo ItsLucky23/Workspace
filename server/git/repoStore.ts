@@ -223,12 +223,86 @@ export async function showRepoFile(workspaceId: string, projectId: string, ref: 
   return out.slice(0, 60_000);
 }
 
+//? A single file entry in the workspace-level Code browser's tree: its repo-relative path + blob size
+//? in bytes. The browser reads the bare clone directly (like `listRepoFiles`) — no checkout, nothing
+//? authoritative written — so the whole codebase is reachable from the nav, not only the per-ticket editor.
+export interface RepoTreeEntry { path: string; size: number }
+export interface RepoTreeResult { linked: boolean; branch?: string; entries?: RepoTreeEntry[]; truncated?: boolean }
+
+//? Bounds so a pathological monorepo can't stream an unbounded tree / a huge blob to the browser.
+const MAX_TREE_ENTRIES = 5000;
+const MAX_FILE_BYTES = 200_000;
+
+//? List every file of the linked repo at its OWN default-branch pointer (the branch comes from
+//? `repoStatus`, never a client-supplied ref — the browser only ever sees the baseline branch).
+//? `git ls-tree -r -l <branch>` yields `<mode> <type> <object> <size>\t<path>` per blob; we parse the
+//? path + size. Returns { linked:false } when no repo is linked; caps at MAX_TREE_ENTRIES.
+export async function repoTree(workspaceId: string, projectId: string): Promise<RepoTreeResult> {
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (!existsSync(bare)) return { linked: false };
+  const status = await repoStatus(workspaceId, projectId);
+  const ref = status.branch && status.branch.length > 0 ? status.branch : 'HEAD';
+  const listing = await git(['--git-dir', bare, 'ls-tree', '-r', '-l', ref]).catch(() => '');
+  const entries: RepoTreeEntry[] = [];
+  for (const line of listing.split('\n')) {
+    if (line.length === 0) continue;
+    //? Split the path off the TAB first (a path never contains a tab); the left side is the padded
+    //? `mode type object size` quadruple. `-r` lists only blobs, so the size is always numeric.
+    const tab = line.indexOf('\t');
+    if (tab === -1) continue;
+    const meta = line.slice(0, tab).trim().split(/\s+/);
+    if (meta.length < 4) continue;
+    const size = Number.parseInt(meta[3] ?? '', 10);
+    entries.push({ path: line.slice(tab + 1), size: Number.isNaN(size) ? 0 : size });
+    if (entries.length >= MAX_TREE_ENTRIES) break;
+  }
+  const result: RepoTreeResult = { linked: true, entries };
+  if (status.branch) result.branch = status.branch;
+  if (entries.length >= MAX_TREE_ENTRIES) result.truncated = true;
+  return result;
+}
+
+//? One file read for the Code browser: its content (bounded), or a flag when the blob is binary /
+//? was truncated. `error` is a typed reason the UI maps to copy.
+export interface RepoFileResult {
+  ok: boolean;
+  content?: string;
+  binary?: boolean;
+  truncated?: boolean;
+  size?: number;
+  error?: 'repo.notLinked' | 'repo.invalidPath' | 'repo.fileMissing';
+}
+
+//? Read one file at the repo's baseline branch straight from the bare clone. The path is traversal-
+//? guarded (`validRepoPath` — no leading `/`, no `..`, no drive/control chars) and must resolve to a
+//? BLOB in the tree; a NUL byte marks the blob binary (returned WITHOUT content); content beyond
+//? MAX_FILE_BYTES is truncated. The ref is the repo's own branch, never a client ref.
+export async function readRepoFileAt(workspaceId: string, projectId: string, filePath: string): Promise<RepoFileResult> {
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (!existsSync(bare)) return { ok: false, error: 'repo.notLinked' };
+  if (!validRepoPath(filePath)) return { ok: false, error: 'repo.invalidPath' };
+  const status = await repoStatus(workspaceId, projectId);
+  const ref = status.branch && status.branch.length > 0 ? status.branch : 'HEAD';
+  //? Confirm the path is a real blob at this ref before reading (a dir / an absent path → fileMissing).
+  const entry = await git(['--git-dir', bare, 'ls-tree', ref, '--', filePath]).catch(() => '');
+  if (!/\bblob\b/.test(entry)) return { ok: false, error: 'repo.fileMissing' };
+  const raw = await git(['--git-dir', bare, 'show', `${ref}:${filePath}`], { trimOutput: false }).catch(() => null);
+  if (raw === null) return { ok: false, error: 'repo.fileMissing' };
+  //? Binary → the flag, no content (a NUL byte in the blob is the signal; scanning the bounded head
+  //? keeps a huge blob cheap to classify). `fromCodePoint(0)` avoids a literal NUL in source.
+  if (raw.slice(0, MAX_FILE_BYTES).includes(String.fromCodePoint(0))) return { ok: true, binary: true, size: raw.length };
+  const truncated = raw.length > MAX_FILE_BYTES;
+  return { ok: true, content: raw.slice(0, MAX_FILE_BYTES), size: raw.length, ...(truncated ? { truncated: true } : {}) };
+}
+
 //? Unified diff of `source` against `target` (three-dot = changes on source since it forked) from
-//? the bare clone — the MR review diff. '' when unlinked or a ref is missing.
+//? the bare clone — the MR review diff. '' when unlinked or a ref is missing. -U15: fifteen context
+//? lines per hunk (owner request 2026-07-20) so a reviewer sees the surrounding code, not bare +/-
+//? lines; the parser's 2000-lines-per-file cap keeps a pathological diff bounded regardless.
 export async function branchDiff(workspaceId: string, projectId: string, target: string, source: string): Promise<string> {
   const bare = bareRepoPath(workspaceId, projectId);
   if (!existsSync(bare)) return '';
-  return git(['--git-dir', bare, 'diff', `${target}...${source}`]).catch(() => '');
+  return git(['--git-dir', bare, 'diff', '-U15', `${target}...${source}`]).catch(() => '');
 }
 
 //? The commit sha at the tip of `branch` (the MR head — approvals stale when it changes). '' if missing.

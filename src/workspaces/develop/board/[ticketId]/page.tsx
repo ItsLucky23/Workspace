@@ -33,6 +33,10 @@ export default function TicketPage({ params }: { params: Record<string, string |
   const ctx = useWorkspaces();
   const ticket = ctx.tickets.find((t) => t.id === id);
   const [tab, setTab] = useState('overview');
+  //? Review → Code hand-off: previewing a changed file from the Review tab switches to Code and asks it to
+  //? open that file in the requested editor mode. Cleared when the Code tab is opened directly (below), so a
+  //? plain visit lands on the default diff view rather than resurrecting a stale preview target.
+  const [codePreview, setCodePreview] = useState<{ mode: 'diff' | 'changes' | 'live'; file: string } | null>(null);
 
   //? KISS: 5 tabs instead of 8 — "Files & refs" merged into Code (its diff-view mode
   //? shows the same changed-file set), Links + Stage history folded into Activity as
@@ -88,15 +92,15 @@ export default function TicketPage({ params }: { params: Record<string, string |
       <TicketControls ticket={ticket} primary={standingPrimary} />
 
       <div className="px-4 md:px-6">
-        <Tabs tabs={TABS} active={tab} onChange={setTab} />
+        <Tabs tabs={TABS} active={tab} onChange={(id) => { if (id === 'code') setCodePreview(null); setTab(id); }} />
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
         <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
-          {tab === 'code' && <CodePanel files={ticket.files ?? []} workspaceId={ctx.activeWorkspace.id} ticketKey={ticket.id} />}
+          {tab === 'code' && <CodePanel files={ticket.files ?? []} workspaceId={ctx.activeWorkspace.id} ticketKey={ticket.id} initialMode={codePreview?.mode} initialFile={codePreview?.file} />}
           {tab === 'terminal' && <TerminalPanel ticketId={ticket.id} stageId={ticket.stageId} />}
-          {tab === 'review' && <MrReviewPanel ticket={ticket} />}
+          {tab === 'review' && <MrReviewPanel ticket={ticket} onPreviewFile={(path, mode) => { setCodePreview({ mode, file: path }); setTab('code'); }} />}
           {tab === 'activity' && <ActivityPanel ticket={ticket} />}
         </div>
       </div>

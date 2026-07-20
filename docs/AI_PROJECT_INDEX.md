@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (62)
+## API routes (64)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -52,6 +52,8 @@
 | `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | **no** | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | **no** | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
+| `api/workspaces/repoFile/v1` | POST | login | 60 | ItsLucky23 | yes | — | Workspaces — [repo-file] read ONE file's content from the active project's linked repo at its baseline |
+| `api/workspaces/repoTree/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [repo-tree] list EVERY file of the active project's linked repo at its baseline branch, |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | **no** | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/rotateWebhookSecret/v1` | POST | login | 10 | ItsLucky23 | yes | — | Rotates the forge webhook credential. Unlike room-broadcast sync output, this API response |
 | `api/workspaces/saveDevCommand/v1` | POST | login | 30 | — | **no** | — | Workspaces — save one project's runtime commands/settings. The `_api` route is only the typed, |
@@ -149,10 +151,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 20 |
+| `ItsLucky23` | 22 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 4/126 routes have a per-route `.tests.ts`.
+**Test coverage**: 6/128 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
@@ -208,7 +210,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 - `api/workspaces/studioGenerate/v1`
 - … +72 more
 
-## Pages (34)
+## Pages (35)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -235,6 +237,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/develop/backlog` | workspaces | — | `workspaces/develop/backlog/page.tsx` | intent: The Backlog — every ticket in the workspace in one grouped list (collapsible |
 | `/workspaces/develop/board` | workspaces | — | `workspaces/develop/board/page.tsx` | intent: The scrum board of a Develop workspace — a kanban of tickets per pipeline |
 | `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | intent: Follow ONE AI-driven ticket and steer it: answer the agent's question when |
+| `/workspaces/develop/code` | workspaces | — | `workspaces/develop/code/page.tsx` | intent: Code — a read-only browser for the WHOLE codebase of the workspace's linked project repo, |
 | `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — shape the product's whole visual language and make it the design system the |
 | `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — a repo-aware AI chat: ask how this codebase works, what's worth improving, |
 | `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | intent: the project's AI pipeline — the ordered stages every ticket flows through, each stage run |

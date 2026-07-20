@@ -166,7 +166,7 @@ function viewFromPath(pathname: string): WsView {
   return first || 'board';
 }
 const VIEW_LABELS: Record<string, string> = {
-  board: 'Board', backlog: 'Backlog', terminals: 'Terminals', activity: 'Activity',
+  board: 'Board', backlog: 'Backlog', terminals: 'Terminals', code: 'Code', activity: 'Activity',
   sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
   knowledge: 'Knowledge', content: 'Content', 'scheduled-posts': 'Scheduled posts', settings: 'Account', workspace: 'Workspace',

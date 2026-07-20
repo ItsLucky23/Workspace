@@ -8,10 +8,14 @@ import { useEffect, useState } from 'react';
 
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
-import Icon from './Icon';
+import Icon, { type IconName } from './Icon';
 import { AvatarBubble, EmptyState, WsButton } from './primitives';
 import type { MrDiffFile, MrDiffLine, MrThread, MrView, Ticket } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+
+//? The three editors a changed file can be previewed in — the same trio as the ticket's Code tab
+//? (lightweight diff · Monaco source-control diff · live in-container VS Code).
+type PreviewMode = 'diff' | 'changes' | 'live';
 
 const ROW_TINT: Record<MrDiffLine['kind'], string> = { add: 'bg-correct/10', del: 'bg-wrong/10', ctx: '', hunk: 'bg-container2' };
 const TEXT_TINT: Record<MrDiffLine['kind'], string> = { add: 'text-correct', del: 'text-wrong', ctx: 'text-common', hunk: 'text-muted' };
@@ -45,7 +49,7 @@ function anchorOf(line: MrDiffLine): { no: number; side: 'old' | 'new' } | null 
 }
 const normSide = (side: string): 'old' | 'new' => (side === 'old' ? 'old' : 'new');
 
-export default function MrReviewPanel({ ticket }: { ticket: Ticket }) {
+export default function MrReviewPanel({ ticket, onPreviewFile }: { ticket: Ticket; onPreviewFile?: (path: string, mode: PreviewMode) => void }) {
   const translate = useTranslator();
   const { mrAction, mrByBranch } = useWorkspaces();
   const branch = ticket.branch ?? '';
@@ -77,10 +81,10 @@ export default function MrReviewPanel({ ticket }: { ticket: Ticket }) {
     if (phase === 'ready') return <EmptyState icon="code-merge" title={translate({ key: 'workspaces.mr.noMr' })} />;
     return <EmptyState icon="clock" title={translate({ key: 'workspaces.mr.loading' })} />;
   }
-  return <MrBody mr={mr} ticketKey={ticket.id} />;
+  return <MrBody mr={mr} ticketKey={ticket.id} onPreviewFile={onPreviewFile} />;
 }
 
-function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
+function MrBody({ mr, ticketKey, onPreviewFile }: { mr: MrView; ticketKey: string; onPreviewFile?: (path: string, mode: PreviewMode) => void }) {
   const translate = useTranslator();
   const { mrAction, currentUser, runCi, activeWorkspace, allowCiRed } = useWorkspaces();
   const [busy, setBusy] = useState<null | 'approve' | 'merge' | 'rollback'>(null);
@@ -244,7 +248,7 @@ function MrBody({ mr, ticketKey }: { mr: MrView; ticketKey: string }) {
         </div>
       )}
       <div className="flex flex-col gap-3">
-        {mr.diff.files.map((f) => <FileDiff key={f.path} file={f} mr={mr} ticketKey={ticketKey} />)}
+        {mr.diff.files.map((f) => <FileDiff key={f.path} file={f} mr={mr} ticketKey={ticketKey} onPreviewFile={onPreviewFile} />)}
       </div>
     </div>
   );
@@ -280,7 +284,7 @@ function Approvals({ mr }: { mr: MrView }) {
   );
 }
 
-function FileDiff({ file, mr, ticketKey }: { file: MrDiffFile; mr: MrView; ticketKey: string }) {
+function FileDiff({ file, mr, ticketKey, onPreviewFile }: { file: MrDiffFile; mr: MrView; ticketKey: string; onPreviewFile?: (path: string, mode: PreviewMode) => void }) {
   const translate = useTranslator();
   const { mrAction } = useWorkspaces();
   const [open, setOpen] = useState(true);
@@ -291,20 +295,32 @@ function FileDiff({ file, mr, ticketKey }: { file: MrDiffFile; mr: MrView; ticke
 
   return (
     <div className="rounded-xl border border-container1-border overflow-hidden">
-      <button
-        type="button" onClick={() => { setOpen((v) => !v); }}
-        className="w-full flex items-center justify-between gap-3 bg-container1 hover:bg-container1-hover px-3 h-10 cursor-pointer transition-colors"
-      >
-        <span className="flex items-center gap-2 min-w-0">
-          <Icon name={open ? 'angle-down' : 'angle-right'} className="text-muted" />
-          <span className="font-mono text-xs text-title truncate" title={file.path}>{file.path}</span>
-          <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${FILE_STATUS_TINT[file.status]}`}>{translate({ key: FILE_STATUS_KEY[file.status] })}</span>
-        </span>
-        <span className="flex items-center gap-2 text-xs font-mono shrink-0">
-          <span className="text-correct">+{file.additions}</span>
-          <span className="text-wrong">−{file.deletions}</span>
-        </span>
-      </button>
+      <div className="w-full flex items-center bg-container1">
+        <button
+          type="button" onClick={() => { setOpen((v) => !v); }}
+          className="flex-1 min-w-0 flex items-center justify-between gap-3 hover:bg-container1-hover px-3 h-10 cursor-pointer transition-colors"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <Icon name={open ? 'angle-down' : 'angle-right'} className="text-muted" />
+            <span className="font-mono text-xs text-title truncate" title={file.path}>{file.path}</span>
+            <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${FILE_STATUS_TINT[file.status]}`}>{translate({ key: FILE_STATUS_KEY[file.status] })}</span>
+          </span>
+          <span className="flex items-center gap-2 text-xs font-mono shrink-0">
+            <span className="text-correct">+{file.additions}</span>
+            <span className="text-wrong">−{file.deletions}</span>
+          </span>
+        </button>
+        {onPreviewFile && (
+          //? Preview this changed file in one of the ticket's editors — the same three modes as the Code tab.
+          //? Icon-only to stay compact in the file header; each carries a translated tooltip + accessible name.
+          //? (A dropdown menu would be clipped by this row's `overflow-hidden` container, so a button row it is.)
+          <div className="flex items-center gap-0.5 pr-2 shrink-0">
+            <PreviewButton icon="code-branch" label={translate({ key: 'workspaces.ticket.codeDiffMode' })} onClick={() => { onPreviewFile(file.path, 'diff'); }} />
+            <PreviewButton icon="pen" label={translate({ key: 'workspaces.ticket.codeChanges' })} onClick={() => { onPreviewFile(file.path, 'changes'); }} />
+            <PreviewButton icon="display" label={translate({ key: 'workspaces.ticket.openLiveEditor' })} onClick={() => { onPreviewFile(file.path, 'live'); }} />
+          </div>
+        )}
+      </div>
       {open && (
         <div className="border-t border-divider overflow-x-auto font-mono text-xs leading-relaxed">
           {file.lines.map((line, i) => {
@@ -463,5 +479,19 @@ function Composer({ onSubmit, onCancel }: { onSubmit: (body: string) => Promise<
         <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.mr.cancel' })}</WsButton>
       </div>
     </div>
+  );
+}
+
+//? Compact icon-only trigger to preview a changed file in one of the ticket editors, shown in the MR file
+//? header when the panel is given an `onPreviewFile` handler. Icon-only → the tooltip doubles as the
+//? accessible name (mirrors the IconButton primitive).
+function PreviewButton({ icon, label, onClick }: { icon: IconName; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button" title={label} aria-label={label} onClick={onClick}
+      className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-primary transition-colors cursor-pointer"
+    >
+      <Icon name={icon} />
+    </button>
   );
 }

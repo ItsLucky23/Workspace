@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 288,
-    "edges": 516,
-    "symbols": 372,
-    "callEdges": 86
+    "nodes": 293,
+    "edges": 524,
+    "symbols": 386,
+    "callEdges": 92
   },
   "nodes": [
     {
@@ -462,6 +462,26 @@
       "id": "workspaces/_api/readWorktreeFile_v1.ts",
       "kind": "api",
       "route": "api/workspaces/readWorktreeFile/v1"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/repoFile/v1"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/repoTree/v1"
     },
     {
       "id": "workspaces/_api/revokePat_v1.ts",
@@ -1305,6 +1325,11 @@
     },
     {
       "id": "workspaces/develop/board/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/code/page.tsx",
       "kind": "page",
       "route": null
     },
@@ -2931,6 +2956,38 @@
       "to": "workspaces/develop/board/OnboardingBanner.tsx"
     },
     {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "_components/editor/editorThemes.ts"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "_components/editor/FileExplorer.tsx"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "_components/editor/fileTree.ts"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "_components/editor/languages.ts"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "_components/editor/MonacoEditor.tsx"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/code/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/develop/designer/animations.ts",
       "to": "workspaces/develop/designer/styles.ts"
     },
@@ -3565,6 +3622,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -3719,13 +3777,15 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/editor/FileExplorer.tsx": [
       "_components/editor/CodeEditorPanel.tsx",
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "workspaces/develop/board/[ticketId]/page.tsx"
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/fileTree.ts": [
       "_components/editor/CodeEditorPanel.tsx",
@@ -3733,20 +3793,23 @@
       "_components/editor/sampleWorkspace.ts",
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "workspaces/develop/board/[ticketId]/page.tsx"
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/languages.ts": [
       "_components/editor/CodeEditorPanel.tsx",
       "_components/editor/FileExplorer.tsx",
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "workspaces/develop/board/[ticketId]/page.tsx"
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/MonacoEditor.tsx": [
       "_components/editor/CodeEditorPanel.tsx",
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/editor/monacoSetup.ts": [
@@ -3755,6 +3818,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/editor/sampleWorkspace.ts": [
@@ -3987,6 +4051,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4083,6 +4148,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -4153,6 +4219,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -4303,6 +4370,7 @@
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4402,6 +4470,7 @@
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4535,6 +4604,7 @@
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4775,44 +4845,44 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 88,
+      "dependents": 89,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 80,
+      "dependents": 81,
       "directDependents": 46
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 74,
-      "directDependents": 64
+      "dependents": 75,
+      "directDependents": 65
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 67,
+      "dependents": 68,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 66,
+      "dependents": 67,
       "directDependents": 10
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 65,
-      "directDependents": 61
+      "dependents": 66,
+      "directDependents": 62
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 58,
-      "directDependents": 50
+      "dependents": 59,
+      "directDependents": 51
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -4869,16 +4939,16 @@
       "directDependents": 7
     },
     {
+      "id": "_components/editor/editorThemes.ts",
+      "kind": "component",
+      "dependents": 9,
+      "directDependents": 8
+    },
+    {
       "id": "workspaces/develop/designer/animations.ts",
       "kind": "other",
       "dependents": 9,
       "directDependents": 4
-    },
-    {
-      "id": "_components/editor/editorThemes.ts",
-      "kind": "component",
-      "dependents": 8,
-      "directDependents": 7
     },
     {
       "id": "_sockets/syncRequest.ts",
@@ -4899,6 +4969,18 @@
       "directDependents": 2
     },
     {
+      "id": "_components/editor/fileTree.ts",
+      "kind": "component",
+      "dependents": 7,
+      "directDependents": 5
+    },
+    {
+      "id": "_components/editor/monacoSetup.ts",
+      "kind": "component",
+      "dependents": 7,
+      "directDependents": 1
+    },
+    {
       "id": "_providers/socketStatusProvider.tsx",
       "kind": "other",
       "dependents": 7,
@@ -4909,18 +4991,6 @@
       "kind": "other",
       "dependents": 7,
       "directDependents": 1
-    },
-    {
-      "id": "workspaces/_components/MediaUploadButton.tsx",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 5
-    },
-    {
-      "id": "workspaces/_components/ModulePicker.tsx",
-      "kind": "other",
-      "dependents": 7,
-      "directDependents": 2
     }
   ],
   "symbols": [
@@ -5665,6 +5735,90 @@
     {
       "id": "workspaces/_api/readWorktreeFile_v1.ts::main",
       "file": "workspaces/_api/readWorktreeFile_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts::<module>",
+      "file": "workspaces/_api/repoFile_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts::cleanupUser",
+      "file": "workspaces/_api/repoFile_v1.tests.ts",
+      "name": "cleanupUser",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts::run",
+      "file": "workspaces/_api/repoFile_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId",
+      "file": "workspaces/_api/repoFile_v1.tests.ts",
+      "name": "seededWorkspaceId",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail",
+      "file": "workspaces/_api/repoFile_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.ts::<module>",
+      "file": "workspaces/_api/repoFile_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/repoFile_v1.ts::main",
+      "file": "workspaces/_api/repoFile_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts::<module>",
+      "file": "workspaces/_api/repoTree_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts::cleanupUser",
+      "file": "workspaces/_api/repoTree_v1.tests.ts",
+      "name": "cleanupUser",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts::run",
+      "file": "workspaces/_api/repoTree_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId",
+      "file": "workspaces/_api/repoTree_v1.tests.ts",
+      "name": "seededWorkspaceId",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail",
+      "file": "workspaces/_api/repoTree_v1.tests.ts",
+      "name": "uniqueEmail",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.ts::<module>",
+      "file": "workspaces/_api/repoTree_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/repoTree_v1.ts::main",
+      "file": "workspaces/_api/repoTree_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -7243,6 +7397,30 @@
       "to": "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail"
     },
     {
+      "from": "workspaces/_api/repoFile_v1.tests.ts::run",
+      "to": "workspaces/_api/repoFile_v1.tests.ts::cleanupUser"
+    },
+    {
+      "from": "workspaces/_api/repoFile_v1.tests.ts::run",
+      "to": "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId"
+    },
+    {
+      "from": "workspaces/_api/repoFile_v1.tests.ts::run",
+      "to": "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail"
+    },
+    {
+      "from": "workspaces/_api/repoTree_v1.tests.ts::run",
+      "to": "workspaces/_api/repoTree_v1.tests.ts::cleanupUser"
+    },
+    {
+      "from": "workspaces/_api/repoTree_v1.tests.ts::run",
+      "to": "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId"
+    },
+    {
+      "from": "workspaces/_api/repoTree_v1.tests.ts::run",
+      "to": "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail"
+    },
+    {
       "from": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run",
       "to": "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace"
     },
@@ -7563,6 +7741,24 @@
     ],
     "workspaces/_api/getDockerfile_v1.tests.ts::uniqueEmail": [
       "workspaces/_api/getDockerfile_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoFile_v1.tests.ts::cleanupUser": [
+      "workspaces/_api/repoFile_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoFile_v1.tests.ts::seededWorkspaceId": [
+      "workspaces/_api/repoFile_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoFile_v1.tests.ts::uniqueEmail": [
+      "workspaces/_api/repoFile_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoTree_v1.tests.ts::cleanupUser": [
+      "workspaces/_api/repoTree_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoTree_v1.tests.ts::seededWorkspaceId": [
+      "workspaces/_api/repoTree_v1.tests.ts::run"
+    ],
+    "workspaces/_api/repoTree_v1.tests.ts::uniqueEmail": [
+      "workspaces/_api/repoTree_v1.tests.ts::run"
     ],
     "workspaces/_api/rotateWebhookSecret_v1.tests.ts::cleanupRouteWorkspace": [
       "workspaces/_api/rotateWebhookSecret_v1.tests.ts::run"

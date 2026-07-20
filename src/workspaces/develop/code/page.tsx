@@ -1,0 +1,179 @@
+//? intent: Code — a read-only browser for the WHOLE codebase of the workspace's linked project repo,
+//? reachable from the nav (Develop → Code). Pick a file in the tree on the left, read it syntax-
+//? highlighted on the right. Until now only the per-ticket live editor could show repo files; this brings
+//? the entire baseline-branch tree to a first-class destination. Phone-width: the tree collapses to a
+//? disclosure above the preview. One primary interaction — pick a file, read it.
+
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
+
+import { buildTree } from 'src/_components/editor/fileTree';
+import { FileExplorer } from 'src/_components/editor/FileExplorer';
+import { languageForPath } from 'src/_components/editor/languages';
+import { getPalette, loadThemeId } from 'src/_components/editor/editorThemes';
+
+import Icon from '../../_components/Icon';
+import { EmptyState, WsButton } from '../../_components/primitives';
+import { useWorkspaces } from '../../_shell/WorkspacesContext';
+
+//? Lazy so Monaco (multi-MB) only loads once a file is actually opened.
+const LazyMonacoEditor = lazy(() => import('src/_components/editor/MonacoEditor').then((m) => ({ default: m.MonacoEditor })));
+
+interface RepoTreeEntry { path: string; size: number }
+interface OpenFile { path: string; content: string; binary: boolean; truncated: boolean }
+
+export const template = 'workspaces';
+
+//? Page header: title + baseline-branch chip + (phone-only) tree toggle. Its own component so it can
+//? translate/render on both the linked + empty-state paths without prop-drilling the translator.
+function CodeHeader({ branch, onToggleFiles }: { branch: string | null; onToggleFiles: (() => void) | null }) {
+  const translate = useTranslator();
+  return (
+    <div className={`flex items-start justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
+      <div className={`min-w-0`}>
+        <div className={`flex items-center gap-3 flex-wrap`}>
+          <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.code.title' })}</h1>
+          {branch !== null && <span className={`inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common`}><Icon name="code-branch" /> {branch}</span>}
+        </div>
+        <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.code.subtitle' })}</p>
+      </div>
+      {onToggleFiles !== null && (
+        <button type="button" onClick={onToggleFiles} className={`md:hidden inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-container2 px-3 h-9 text-sm font-medium text-common hover:bg-container2-hover cursor-pointer`}>
+          <Icon name="bars" /> {translate({ key: 'workspaces.code.files' })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function CodeBrowser() {
+  const translate = useTranslator();
+  const { repo, activeWorkspace, activeProjectId, navigate } = useWorkspaces();
+  const themeId = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
+  const palette = getPalette(themeId);
+
+  const [entries, setEntries] = useState<RepoTreeEntry[]>([]);
+  const [branch, setBranch] = useState<string | null>(null);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [activePath, setActivePath] = useState<string | null>(null);
+  const [file, setFile] = useState<OpenFile | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  //? Monotonic request tokens: a later request bumps the ref, so a stale tree/file response (from a
+  //? project switch or a quick second click) is dropped instead of clobbering the newer state.
+  const treeReqRef = useRef(0);
+  const fileReqRef = useRef(0);
+
+  const tree = useMemo(() => buildTree(entries.map((e) => e.path)), [entries]);
+
+  //? Load the whole-repo listing whenever the linked repo / active project changes.
+  useEffect(() => {
+    if (!repo.linked) { setEntries([]); setBranch(null); return; }
+    const req = treeReqRef.current + 1;
+    treeReqRef.current = req;
+    setTreeLoading(true); setTreeError(false);
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({
+        name: 'workspaces/repoTree', version: 'v1',
+        data: { workspaceId: activeWorkspace.id, ...(activeProjectId ? { projectId: activeProjectId } : {}) },
+      }));
+      //? Drop a superseded response (deps changed / component gone).
+      if (req !== treeReqRef.current) return;
+      setTreeLoading(false);
+      if (error || res?.status !== 'success') { setTreeError(true); return; }
+      if (!res.result.linked) { setEntries([]); setBranch(null); return; }
+      const list = res.result.entries ?? [];
+      setEntries(list);
+      setBranch(res.result.branch ?? null);
+      //? Open only the TOP-LEVEL folders so a large repo lands tidy, not fully-unfolded.
+      const built = buildTree(list.map((e) => e.path));
+      setExpanded(new Set(built.filter((n) => n.type === 'dir').map((n) => n.path)));
+    })();
+  }, [repo.linked, activeWorkspace.id, activeProjectId]);
+
+  const toggleDir = (path: string): void => {
+    setExpanded((prev) => { const next = new Set(prev); if (next.has(path)) next.delete(path); else next.add(path); return next; });
+  };
+
+  const openFile = (path: string): void => {
+    setActivePath(path);
+    setDrawerOpen(false);
+    setFileLoading(true); setFileError(false); setFile(null);
+    const req = fileReqRef.current + 1;
+    fileReqRef.current = req;
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({
+        name: 'workspaces/repoFile', version: 'v1',
+        data: { workspaceId: activeWorkspace.id, ...(activeProjectId ? { projectId: activeProjectId } : {}), path },
+      }));
+      //? Drop a stale response if the user has since picked another file.
+      if (req !== fileReqRef.current) return;
+      setFileLoading(false);
+      if (error || res?.status !== 'success' || !res.result.ok) { setFileError(true); return; }
+      setFile({ path, content: res.result.content ?? '', binary: res.result.binary ?? false, truncated: res.result.truncated ?? false });
+    })();
+  };
+
+  if (!repo.linked) {
+    return (
+      <div className={`flex flex-col h-full min-h-0`}>
+        <CodeHeader branch={null} onToggleFiles={null} />
+        <EmptyState
+          icon="code"
+          title={translate({ key: 'workspaces.code.emptyTitle' })}
+          sub={translate({ key: 'workspaces.board.agentNeedsRepo' })}
+          action={<WsButton icon="gear" onClick={() => { navigate('settings'); }}>{translate({ key: 'workspaces.code.openSettings' })}</WsButton>}
+        />
+      </div>
+    );
+  }
+
+  const treePanel = (
+    <div className={`h-full min-h-0 overflow-hidden rounded-lg border border-container1-border`} style={{ background: palette.bgAlt }}>
+      {treeLoading && entries.length === 0
+        ? <div className={`h-full flex items-center justify-center text-sm text-muted`}>{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>
+        : (treeError
+          ? <div className={`h-full flex items-center justify-center px-4 text-center text-sm text-wrong`}>{translate({ key: 'workspaces.code.treeError' })}</div>
+          : <FileExplorer tree={tree} activePath={activePath} onOpen={openFile} palette={palette} expanded={expanded} onToggleDir={toggleDir} />)}
+    </div>
+  );
+
+  //? The right pane's content, chosen by state (loading → error → nothing-picked → binary → editor).
+  //? A function of early returns rather than a deep ternary chain.
+  const renderPreview = (): ReactNode => {
+    if (fileLoading) return <div className={`h-full flex items-center justify-center text-sm text-muted`}>{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>;
+    if (fileError) return <div className={`h-full flex items-center justify-center text-sm text-wrong`}>{translate({ key: 'workspaces.code.fileError' })}</div>;
+    if (file === null) return <div className={`h-full flex items-center justify-center px-6 text-center text-sm text-muted`}>{translate({ key: 'workspaces.editor.openFileHint' })}</div>;
+    if (file.binary) return <div className={`h-full flex flex-col items-center justify-center gap-2 text-sm text-muted`}><Icon name="file-lines" className={`text-3xl text-disabled`} />{translate({ key: 'workspaces.code.binaryFile' })}</div>;
+    return (
+      <Suspense fallback={<div className={`h-full flex items-center justify-center text-sm text-muted`}>{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>}>
+        <LazyMonacoEditor value={file.content} language={languageForPath(file.path)} theme={themeId} path={file.path} readOnly minimap={false} />
+      </Suspense>
+    );
+  };
+
+  return (
+    <div className={`flex flex-col h-full min-h-0`}>
+      <CodeHeader branch={branch} onToggleFiles={() => { setDrawerOpen((o) => !o); }} />
+      <div className={`flex-1 min-h-0 flex flex-col md:flex-row gap-3 px-4 md:px-6 pb-6`}>
+        {/* Desktop: a fixed tree column. */}
+        <div className={`hidden md:block md:w-72 shrink-0 min-h-0`}>{treePanel}</div>
+        {/* Phone: the tree is a disclosure ABOVE the preview, toggled from the header. */}
+        {drawerOpen && <div className={`md:hidden h-64 shrink-0`}>{treePanel}</div>}
+        {/* Preview */}
+        <div className={`flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden rounded-lg border border-container1-border`} style={{ background: palette.bg }}>
+          <div className={`flex items-center gap-2 px-3 h-9 shrink-0 border-b border-divider`}>
+            <span className={`text-[13px] font-mono truncate`} style={{ color: palette.fg }}>{activePath ?? translate({ key: 'workspaces.editor.openFileHint' })}</span>
+            <div className={`flex-1`} />
+            {file?.truncated === true && <span className={`text-[11px] rounded px-1.5 py-0.5 bg-warning/15 text-warning whitespace-nowrap`}>{translate({ key: 'workspaces.code.truncated' })}</span>}
+          </div>
+          <div className={`flex-1 min-h-0`}>{renderPreview()}</div>
+        </div>
+      </div>
+    </div>
+  );
+}

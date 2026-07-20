@@ -1032,6 +1032,7 @@
       "save": "Save sections",
       "needOne": "Keep at least one section enabled.",
       "board": "Board",
+      "code": "Code",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Activity",
@@ -2334,6 +2335,17 @@
       "runNow": "Run now",
       "deleteConfirmTitle": "Delete automation?",
       "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone."
+    },
+    "code": {
+      "title": "Code",
+      "subtitle": "Browse the whole codebase of the linked repository (read-only).",
+      "emptyTitle": "No repository linked",
+      "openSettings": "Open settings",
+      "files": "Files",
+      "binaryFile": "Binary file — no preview available.",
+      "truncated": "Large file — showing the first 200 KB.",
+      "treeError": "Could not load the file tree.",
+      "fileError": "Could not open this file."
     },
     "board": {
       "filterSprint": "Sprint",

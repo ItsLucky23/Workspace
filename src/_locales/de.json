@@ -1032,6 +1032,7 @@
       "save": "Bereiche speichern",
       "needOne": "Mindestens einen Bereich aktiviert lassen.",
       "board": "Board",
+      "code": "Code",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Aktivität",
@@ -2334,6 +2335,17 @@
       "runNow": "Jetzt ausführen",
       "deleteConfirmTitle": "Automatisierung löschen?",
       "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden."
+    },
+    "code": {
+      "title": "Code",
+      "subtitle": "Durchsuche die gesamte Codebasis des verknüpften Repositorys (schreibgeschützt).",
+      "emptyTitle": "Kein Repository verknüpft",
+      "openSettings": "Einstellungen öffnen",
+      "files": "Dateien",
+      "binaryFile": "Binärdatei — keine Vorschau verfügbar.",
+      "truncated": "Große Datei — erste 200 KB werden angezeigt.",
+      "treeError": "Der Dateibaum konnte nicht geladen werden.",
+      "fileError": "Diese Datei konnte nicht geöffnet werden."
     },
     "board": {
       "filterSprint": "Sprint",

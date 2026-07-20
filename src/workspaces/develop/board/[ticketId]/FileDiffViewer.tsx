@@ -3,7 +3,7 @@
 //? a collapsible section (open/close like GitLab) rendering the inline diff.
 //? Read-only; dummy data.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -13,7 +13,7 @@ import type { TicketFile } from '../../../_data/types';
 
 const baseName = (path: string) => path.split('/').pop() ?? path;
 
-export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
+export default function FileDiffViewer({ files, initialFile }: { files: TicketFile[]; initialFile?: string }) {
   const translate = useTranslator();
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(files.map((f) => [f.path, true])));
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -22,6 +22,14 @@ export default function FileDiffViewer({ files }: { files: TicketFile[] }) {
     setOpen((prev) => ({ ...prev, [path]: true }));
     sectionRefs.current[path]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  //? When this viewer is opened via a "preview this file" affordance (the MR review tab's per-file
+  //? controls), land on that file: ensure its section is expanded and scroll it into view on mount.
+  useEffect(() => {
+    if (initialFile === undefined) return;
+    setOpen((prev) => (prev[initialFile] ? prev : { ...prev, [initialFile]: true }));
+    sectionRefs.current[initialFile]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [initialFile]);
 
   return (
     <div className="flex gap-4 items-start">

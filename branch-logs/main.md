@@ -4323,3 +4323,19 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Verification**: lint 0 errors · ai:lint schoon · live browser-check: pause-klik → toast zichtbaar, géén "Resume agent"-flip meer; chip toont "AI idle"; workspace-settings toont "Git"-tab (geen "GitLab").
 
 **Notes**: dit is het lesson-0017-patroon in het klein (knop zonder effect). Groter open punt genoteerd: bij een wél-gelinkte repo hoort een move naar een AI-stage zichtbaar een agent te starten of uit te leggen waarom niet (autonomy/capaciteit/containers) — dat is orchestrator-UX voor een aparte sessie.
+
+## 2026-07-20 09:15 — Code als eigen Develop-bestemming · Review-diff ±15 regels context · per-bestand editor-previews
+
+**User prompt (samenvatting)**: "Wat is het verschil tussen het Code- en Review-tabje op een ticket? Als Code de hele codebase toont: maak dat een eigen tabje in de main navbar onder Develop; Review = écht de changes, met ±15 regels context per change, en per bestand kunnen previewen in de verschillende editors."
+
+**Wat ik heb gedaan** (2 parallelle agents + eigen integratie):
+- **`develop/code` — workspace-brede code-browser** (nieuw nav-item "Code" onder Develop, na Terminals): twee nieuwe read-only `_api`-routes op de bare clone (`repoTree_v1` = `git ls-tree -r -l` van de baseline-branch, cap 5000; `repoFile_v1` = `git show`, traversal-guarded, 200KB-cap, binary-detectie) + pagina met bestandsboom (hergebruikte FileExplorer) en lazy read-only Monaco; telefoon: boom als drawer. Lege-staat zonder repo herbruikt `agentNeedsRepo` + Open settings. Sectie-gated ('code' bij development-module); `navStructure` EXPECTED bijgewerkt (owner-besluit). Nieuwe helpers `repoTree`/`readRepoFileAt` in `repoStore.ts`; eigen unit-suite `repoBrowser` (echte temp-bare-repo) 13/13 + per-route scaffold-tests gevuld.
+- **Review-diff context**: `branchDiff` draait nu `git diff -U15` — vijftien contextregels per hunk (parser-caps 200 files/2000 regels blijven de bovengrens); geldt ook voor wat de AI-reviewer ziet.
+- **Per-bestand editor-previews in Review**: `MrReviewPanel` kreeg optionele `onPreviewFile(path, mode)` → compacte 3-knops rij per gewijzigd bestand (diff · Monaco · live); ticketpagina wisselt naar het Code-tabje met `initialMode`/`initialFile` (diff scrollt naar het bestand; Monaco opent erop; live selecteert alleen de modus — bewust géén auto-containerstart vanaf een preview-klik). Direct Code-tab-bezoek reset de preview-target.
+- **Integratie**: 10 nieuwe `workspaces.code.*`-keys + `sections.code` in 4 talen; indexes geregenereerd.
+
+**Files touched**: nieuw `_api/{repoTree,repoFile}_v1.ts` (+ `.tests.ts`), `develop/code/page.tsx`, `tests/unit/repoBrowser.test.mts`; gewijzigd `server/git/repoStore.ts`, `_shell/{Shell,WorkspacesContext,WorkspacesProvider}.tsx`, `_data/{nav,modules}.ts`, `_components/MrReviewPanel.tsx`, `develop/board/[ticketId]/{page,CodePanel,FileDiffViewer}.tsx`, `tests/unit/navStructure.test.mts`, 4 locales.
+
+**Verification**: locales parse OK · lint 0 errors · ai:lint schoon · build groen (1m13) · tsc server+client 0 · navStructure 70/70 · surfaceReachability 104/104 · repoBrowser 13/13. **Browser-e2e**: sectie 'code' via Settings → Modules aangezet (saveSections-op door de Conductor; eerste poging leerde: de dráaiende backend valideerde tegen de oude sectielijst en stripte 'code' — na verse serverstart correct), `/workspaces/develop/code` rendert met lerende lege-staat + Open settings; gating-bounce vooraf bevestigd. Preview-knoppen niet browser-getest (vereist een MR met changes — geen repo in de test-workspace); compile + component-analyse dekken het.
+
+**Notes**: bestaande dev-workspaces zien "Code" pas na aanzetten in Settings → Modules (persisted sectielijsten); nieuwe development-workspaces krijgen hem automatisch. Live-editor-preview selecteert bewust alleen de modus (containerstart blijft een expliciete gebruikersklik).

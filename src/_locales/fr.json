@@ -1032,6 +1032,7 @@
       "save": "Enregistrer les sections",
       "needOne": "Gardez au moins une section activée.",
       "board": "Tableau",
+      "code": "Code",
       "backlog": "Backlog",
       "terminals": "Terminaux",
       "activity": "Activité",
@@ -2334,6 +2335,17 @@
       "runNow": "Exécuter maintenant",
       "deleteConfirmTitle": "Supprimer l'automatisation ?",
       "deleteConfirmBody": "Supprimer « {{name}} » ? Cette action est irréversible."
+    },
+    "code": {
+      "title": "Code",
+      "subtitle": "Parcourez toute la base de code du dépôt lié (lecture seule).",
+      "emptyTitle": "Aucun dépôt lié",
+      "openSettings": "Ouvrir les paramètres",
+      "files": "Fichiers",
+      "binaryFile": "Fichier binaire — aucun aperçu disponible.",
+      "truncated": "Fichier volumineux — les 200 premiers Ko affichés.",
+      "treeError": "Impossible de charger l'arborescence.",
+      "fileError": "Impossible d'ouvrir ce fichier."
     },
     "board": {
       "filterSprint": "Sprint",

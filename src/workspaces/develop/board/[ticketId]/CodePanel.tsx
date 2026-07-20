@@ -43,11 +43,17 @@ function ticketFilesToEditor(files: TicketFile[]): { editorFiles: EditorFile[]; 
   return { editorFiles, changes };
 }
 
-export default function CodePanel({ files, workspaceId, ticketKey }: { files: TicketFile[]; workspaceId: string; ticketKey: string }) {
+export default function CodePanel({ files, workspaceId, ticketKey, initialMode, initialFile }: { files: TicketFile[]; workspaceId: string; ticketKey: string; initialMode?: 'diff' | 'changes' | 'live'; initialFile?: string }) {
   const translate = useTranslator();
   const theme = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
-  const { editorFiles, changes } = ticketFilesToEditor(files);
-  const [mode, setMode] = useState<'diff' | 'changes' | 'live'>('diff');
+  //? Preview-target (from the MR review tab's per-file affordance): in "changes" mode, float the requested
+  //? file to the front so the Monaco panel opens it (it selects files[0]/changes[0] by default). Diff mode
+  //? scrolls to it instead (FileDiffViewer handles that); live mode is the container VS Code — no file targeting.
+  const editorInput = (initialMode === 'changes' && initialFile !== undefined)
+    ? files.toSorted((a, b) => Number(b.path === initialFile) - Number(a.path === initialFile))
+    : files;
+  const { editorFiles, changes } = ticketFilesToEditor(editorInput);
+  const [mode, setMode] = useState<'diff' | 'changes' | 'live'>(initialMode ?? 'diff');
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -92,7 +98,7 @@ export default function CodePanel({ files, workspaceId, ticketKey }: { files: Ti
                 {/* Fase 2: reference picker not wired yet — kept reachable, but ghost so it never reads as a working primary. */}
                 <WsButton variant="ghost" icon="link" onClick={() => { /* Fase 2: reference picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
               </div>
-              <FileDiffViewer files={files} />
+              <FileDiffViewer files={files} initialFile={initialMode === 'diff' ? initialFile : undefined} />
             </div>
           )
       )}
