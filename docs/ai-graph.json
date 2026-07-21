@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 426,
     "edges": 555,
-    "symbols": 816,
-    "callEdges": 267
+    "symbols": 817,
+    "callEdges": 268
   },
   "nodes": [
     {
@@ -7592,6 +7592,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/studioGenerate_v1.ts::resultError",
+      "file": "workspaces/_api/studioGenerate_v1.ts",
+      "name": "resultError",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/studioSaveBrief_v1.tests.ts::<module>",
       "file": "workspaces/_api/studioSaveBrief_v1.tests.ts",
       "name": "<module>",
@@ -10920,6 +10926,10 @@
       "to": "workspaces/_api/studioGenerate_v1.ts::firstResultKey"
     },
     {
+      "from": "workspaces/_api/studioGenerate_v1.ts::main",
+      "to": "workspaces/_api/studioGenerate_v1.ts::resultError"
+    },
+    {
       "from": "workspaces/_data/seed.ts::<module>",
       "to": "workspaces/_data/seed.ts::baseStatuses"
     },
@@ -11948,6 +11958,9 @@
     ],
     "workspaces/_api/studioGenerate_v1.ts::firstResultKey": [
       "workspaces/_api/studioGenerate_v1.ts::complete",
+      "workspaces/_api/studioGenerate_v1.ts::main"
+    ],
+    "workspaces/_api/studioGenerate_v1.ts::resultError": [
       "workspaces/_api/studioGenerate_v1.ts::main"
     ],
     "workspaces/_data/modules.ts::sanitizeSections": [

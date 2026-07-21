@@ -23,6 +23,11 @@ function firstResultKey(result: unknown): string | undefined {
   return result.keys.find((key): key is string => typeof key === 'string');
 }
 
+function resultError(result: unknown): string | undefined {
+  if (result === null || typeof result !== 'object' || !('error' in result) || typeof result.error !== 'string') return undefined;
+  return result.error;
+}
+
 export interface ApiParams {
   data: { workspaceId: string; briefId: string; kind: string; tweak?: string; clientRequestId?: string };
   user: SessionLayout;
@@ -33,6 +38,9 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const { workspaceId, briefId, kind, tweak } = data;
   if (!workspaceId || !briefId || !isArtifactKind(kind)) return { status: 'error', errorCode: 'api.invalidRequest' };
   if (!(await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets))) return { status: 'error', errorCode: 'auth.forbidden' };
+  //? The typed internal op deliberately accepts only ObjectIds. Preserve the route's domain contract
+  //? instead of letting an unknown malformed brief id escape its validator as api.internalServerError.
+  if (!/^[a-f\d]{24}$/i.test(briefId)) return { status: 'error', errorCode: 'studio.briefNotFound' };
 
   //? #168 — create the 'generating' placeholder + return immediately; run the slow completion detached
   //? (it flips the row to ready/error + rebroadcasts). Previously this awaited the full ~240s generation,
@@ -49,7 +57,9 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     userId: user.id,
     clientRequestId: `studio-begin:${clientRequestId}`,
   });
-  if (firstResultKey(begun.result) !== artifactId) return { status: 'error', errorCode: 'studio.generateFailed' };
+  if (firstResultKey(begun.result) !== artifactId) {
+    return { status: 'error', errorCode: resultError(begun.result) === 'studio.briefNotFound' ? 'studio.briefNotFound' : 'studio.generateFailed' };
+  }
   broadcastContentDirty(workspaceId);
   void functions.tryCatch.tryCatch(() => finishArtifact(functions.db.prisma, artifactId, input, {
     //? AI/provider/RAG work remains outside the lease; only the deterministic completion CAS re-enters.

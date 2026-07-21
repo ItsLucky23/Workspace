@@ -1,7 +1,6 @@
 //? Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an
-//? ephemeral, ref-scoped container + expose it at a ref subdomain. A direct `_api` op (NOT a Conductor control-op)
-//? — the container launch + dev-server boot are slow and must not block the serial writer, like openPreview.
-//? Gated on `workTickets`.
+//? ephemeral, ref-scoped container + expose it at a ref subdomain. The Conductor durably prepares the intent;
+//? container launch + dev-server boot run outside its serial writer lease. Gated on `workTickets`.
 
 import { randomUUID } from 'node:crypto';
 
@@ -10,6 +9,7 @@ import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated
 import { hasCapability, CAP } from '../../../server/control/rbac';
 import { runtimeLaunchIntentId } from '../../../server/orchestrator/actionIds';
 import { runDurableRuntimeLaunch } from '../../../server/orchestrator/runtimeJobs';
+import { isSafeRef } from '../../../server/container/runtime';
 
 export const rateLimit: number | false = 12;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -27,6 +27,9 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || !ticketKey || !ref) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
+  //? Reject malformed refs before preparing a durable runtime intent. Besides avoiding useless signals,
+  //? this preserves the public domain error instead of collapsing it into runtime.intentRejected.
+  if (!isSafeRef(ref)) return { status: 'success', result: { ok: false, error: 'preview.badRef' } };
   const ticket = await functions.db.prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { projectId: true } });
   if (!ticket) return { status: 'error', errorCode: 'api.invalidRequest' };
   const suppliedRequestId = data.clientRequestId?.trim();

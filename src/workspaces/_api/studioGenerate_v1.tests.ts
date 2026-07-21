@@ -9,7 +9,7 @@ import { loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
 //? auth/rate-limit/fuzz; these cases assert the business-logic the sweep can't reach:
 //?  [1] a valid briefId + kind immediately creates a `StudioArtifact` placeholder row (status
 //?      'generating' or already flipped by the detached completion) and returns its id.
-//?  [2] an unknown `briefId` is rejected with `studio.briefNotFound`, no row created.
+//?  [2] malformed and valid-but-missing `briefId`s return `studio.briefNotFound`, no row created.
 //?
 //? Integration test: `loginSeededUser` creates a real `User` (a genuine ObjectId) and seeds a demo
 //? workspace. Teardown via the shared `cleanupWorkspace` helper.
@@ -54,20 +54,29 @@ export const customTests: CustomTestCase[] = [
     },
   },
   {
-    name: 'an unknown briefId is rejected with studio.briefNotFound, no row created',
+    name: 'malformed and missing briefIds return studio.briefNotFound without creating a row',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'studiogen_c2');
       try {
         const before = await ctx.prisma.studioArtifact.count({ where: { workspaceId } });
-        const res = await ctx.callApi<{ workspaceId: string; briefId: string; kind: string }, GenerateResponse>({
+        const malformed = await ctx.callApi<{ workspaceId: string; briefId: string; kind: string }, GenerateResponse>({
           workspaceId,
           briefId: 'not-a-real-brief-id',
           kind: 'copy',
         });
-        ctx.expect.eq(res.status, 'error', 'studioGenerate rejects an unknown briefId');
         ctx.expect.ok(
-          res.status === 'error' && res.errorCode === 'studio.briefNotFound',
-          `errorCode is "studio.briefNotFound" (got ${res.status === 'error' ? String(res.errorCode) : res.status})`,
+          malformed.status === 'error' && malformed.errorCode === 'studio.briefNotFound',
+          `malformed id returns "studio.briefNotFound" (got ${malformed.status === 'error' ? String(malformed.errorCode) : malformed.status})`,
+        );
+
+        const missing = await ctx.callApi<{ workspaceId: string; briefId: string; kind: string }, GenerateResponse>({
+          workspaceId,
+          briefId: '000000000000000000000001',
+          kind: 'copy',
+        });
+        ctx.expect.ok(
+          missing.status === 'error' && missing.errorCode === 'studio.briefNotFound',
+          `missing ObjectId returns "studio.briefNotFound" (got ${missing.status === 'error' ? String(missing.errorCode) : missing.status})`,
         );
         const after = await ctx.prisma.studioArtifact.count({ where: { workspaceId } });
         ctx.expect.eq(after, before, 'no StudioArtifact row was created');
