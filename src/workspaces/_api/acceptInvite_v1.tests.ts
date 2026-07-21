@@ -10,8 +10,7 @@ import { loginSeededUser, createRealUser, cleanupWorkspace } from '../../../test
 //?      WorkspaceMember row (with the invite's `roleKey`) and flips the invite to
 //?      'accepted' — the actual tenant-join effect, not just the ACK envelope.
 //?  [2] F3's email-binding guard: a token whose invite email does NOT match the
-//?      caller's own email is silently ignored (still ACKs `accepted: true` — the op
-//?      never fails, it just no-ops) — no WorkspaceMember is created and the invite
+//?      caller's own email fails closed — no WorkspaceMember is created and the invite
 //?      stays 'pending'.
 //?
 //? Integration test: `loginSeededUser` seeds the inviting workspace (owner); a second
@@ -57,7 +56,7 @@ export const customTests: CustomTestCase[] = [
     },
   },
   {
-    name: 'a mismatched-email invite is silently ignored (no membership created)',
+    name: 'a mismatched-email invite fails closed (no membership created)',
     run: async (ctx: TestContext) => {
       const { userId: ownerId, workspaceId } = await loginSeededUser(ctx, 'acceptInvite_c2_owner');
       const stranger = await createRealUser(ctx.prisma, 'acceptInvite_c2_stranger');
@@ -70,7 +69,8 @@ export const customTests: CustomTestCase[] = [
           inviteToken: invite.token,
           clientRequestId: `acceptinv-mismatch-${String(Date.now())}`,
         });
-        ctx.expect.eq(res.status, 'success', 'the op still ACKs (it no-ops rather than fails)');
+        ctx.expect.eq(res.status, 'error', 'the mismatched caller is rejected');
+        if (res.status === 'error') ctx.expect.eq(res.errorCode, 'api.invalidRequest', 'the route exposes only the stable invalid-request code');
         const member = await ctx.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: stranger.id }, select: { id: true } });
         ctx.expect.eq(member, null, 'no WorkspaceMember row was created for the mismatched caller');
         const inviteRow = await ctx.prisma.invite.findUnique({ where: { id: invite.id }, select: { status: true } });

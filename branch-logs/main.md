@@ -4464,3 +4464,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** Conductor + route-API's; `server/ai/{opCatalog,workspaceChat,registry,promptBudget}.ts`; proxy/editor/preview/deploy-runtime; media store/upload/download/providers; deploy/env/docs; ADRs 0289–0291 en regressietests.
 
 **Verify:** typecheck 0 · lint 0 warnings/errors · ai:lint schoon · unit **106/106 files groen** · build warningvrij groen (de eerste parallelle build naast de unit-suite raakte lokaal Node heap-OOM; de verplichte seriële rerun was groen). Gerichte route-writer 9/9, promptbudget/toolfilter, edge-auth/proxycollision, mediaownership en egress-policy groen. Live Docker/netwerk/media/platformgedrag blijft voor de expliciete infrastructuur-E2E. De volledige `test:ws`-ronde vond daarna drie stale source-shape-tests en één ontbrekende route-testshim; die zijn bijgewerkt. Daarbij werd een echte owner-regressie zichtbaar en gesloten: invite-accept kan de canonieke `Workspace.ownerId` nooit meer via een role-upsert demoteren. Finale repositoryronde: typecheck/lint/ai:lint/build schoon en **305/305 testfiles groen**.
+
+## 2026-07-21 12:00 — Verse runtimes en volledige HTTP + Playwright E2E
+
+**User prompt:** restart zelf alle benodigde processen en zet de Playwright-E2E door.
+
+**Wat ik deed:** de oude backend/client-procesbomen gestopt, `npm run server` en `npm run client` opnieuw gestart en readiness op backend `4787` plus frontend `5391` bewezen. De volledige HTTP-sweep vond één stale customtest: mismatched-email invite-accept verwachtte nog het oude success-no-opgedrag; de test volgt nu de geharde fail-closed `api.invalidRequest`-respons. Daarna de volledige route-suite en Playwright serieel herhaald.
+
+**Files touched:** `src/workspaces/_api/acceptInvite_v1.tests.ts` en branch-log.
+
+**Verify:** backend/client beide HTTP 200 · HTTP-routeharnas **432 passed, 0 failed** (292/292 custom, auth 60/60, fuzz 66/66) · Playwright Chromium **24/24** serieel groen. De 118 expliciete contract/rate-limit-skips zijn harnasclassificaties met reden, geen rode tests. Runtimes zijn bewust actief gelaten.
