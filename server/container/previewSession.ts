@@ -11,8 +11,9 @@ import { getPrismaClient } from '@luckystack/core';
 import { launchTicketContainer, docker } from './runtime';
 import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
 import { workspaceContainerContext } from './composeEngine';
+import { ensureWorkerProxyNetwork } from './egress';
 import { waitForContainerReady } from './health';
-import { getProxyProvider, previewRoute, baseDomain } from '../proxy';
+import { getProxyProvider, previewRoute, previewRouteId, baseDomain } from '../proxy';
 import { workdirOrRoot } from '../deploy/servicePath';
 
 const PREVIEW_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
@@ -42,7 +43,7 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   if (!container) return { ok: false, error: 'preview.noContainer' };
 
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).
-  await docker(['network', 'create', NET]);
+  if (!(await ensureWorkerProxyNetwork(NET))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
   await docker(['network', 'connect', NET, container.name]);
 
   //? Start the dev server detached in /work. HOST/PORT env cover CRA/Next; Vite needs the flags
@@ -68,7 +69,7 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
 
 //? Stop exposing a ticket's preview: remove its proxy route. The dev-server process is left to
 //? the container's teardown lifecycle (per-ticket container).
-export async function closePreviewForTicket(_workspaceId: string, ticketKey: string): Promise<{ ok: boolean }> {
-  await getProxyProvider().removeRoute(ticketKey.toLowerCase());
+export async function closePreviewForTicket(workspaceId: string, ticketKey: string): Promise<{ ok: boolean }> {
+  await getProxyProvider().removeRoute(previewRouteId(workspaceId, ticketKey));
   return { ok: true };
 }

@@ -95,7 +95,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (op === 'inspire-url') {
     const url = str(data.url);
     if (!/^https?:\/\//.test(url)) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const shot = await captureUrlScreenshot(url, asViewport(data.viewport));
+    const shot = await captureUrlScreenshot(url, asViewport(data.viewport), workspaceId);
     if (!shot) return { status: 'error', errorCode: 'inspire.captureFailed' };
     const theme = await extractThemeFromScreenshot(workspaceId, shot, str(data.hint));
     if (!theme) return { status: 'error', errorCode: 'inspire.extractFailed' };
@@ -132,7 +132,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (clientRequestId.length === 0 || projectId.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
   //? Each side is EITHER an already-uploaded /media/ screenshot OR a URL we capture first (at `viewport`).
   const vp = asViewport(data.viewport);
-  const resolveSide = async (v: string): Promise<string | null> => (v.startsWith('/media/') ? v : (/^https?:\/\//.test(v) ? captureUrlScreenshot(v, vp) : null));
+  const resolveSide = async (v: string): Promise<string | null> => (v.startsWith('/media/') ? v : (/^https?:\/\//.test(v) ? captureUrlScreenshot(v, vp, workspaceId) : null));
   const own = await resolveSide(str(data.ownUrl));
   const insp = await resolveSide(str(data.inspirationUrl));
   if (!own || !insp) return { status: 'error', errorCode: 'inspire.captureFailed' };

@@ -882,6 +882,7 @@ export async function enqueueWorkspaceRouteWrite<T>(
     await runInTenant(workspaceId, async () => {
       await runInWriterContext(workspaceId, async () => {
         lease.assertHeld();
+        // luckystack-allow tenant-scope: creation includes workspaceId in data and executes inside runInTenant; create has no where clause.
         const signal = await prisma.workspaceSignal.create({
           data: {
             workspaceId,
@@ -3387,7 +3388,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const doc = await prisma.document.findFirst({ where: { workspaceId: action.workspaceId, id: documentId } });
       if (!doc) return;
       const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { brandLogoUrl: true } });
-      const res = await exportDocument({ id: doc.id, title: doc.title, content: doc.content }, format, ws?.brandLogoUrl ?? null);
+      const res = await exportDocument({ id: doc.id, title: doc.title, content: doc.content }, format, ws?.brandLogoUrl ?? null, action.workspaceId);
       if (!res.ok || !res.url) return { ok: false, status: 'error', error: res.error ?? 'export.failed' };
       const prevAssets2 = Array.isArray(doc.assets) ? doc.assets : [];
       await prisma.document.updateMany({ where: { workspaceId: action.workspaceId, id: documentId }, data: { assets: [...prevAssets2, { kind: 'export', url: res.url, label: format }] } });

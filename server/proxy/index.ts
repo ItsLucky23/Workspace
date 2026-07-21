@@ -38,47 +38,43 @@ export function getProxyProvider(): ProxyProvider {
   return cached;
 }
 
-//? Build the preview route for a ticket: host = `<branch-slug>.<baseDomain>`, target =
-//? `<containerName>:<port>` on the shared container network. `id` is the (unique) ticket key
-//? so upsert/remove/reconcile are idempotent per ticket. `port` is the in-container preview
-//? server (defaults to the Vite dev port, 07b §5.2).
-export function previewRoute(input: { ticketKey: string; branch: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
+//? Route identities and generated hosts include the full workspace id. Ticket keys, branch names,
+//? project names and environment ids are tenant-local; using them alone lets one workspace overwrite
+//? another workspace's proxy route.
+export const previewRouteId = (workspaceId: string, ticketKey: string): string => `preview-${workspaceId}-${ticketKey}`.toLowerCase();
+export const editorRouteId = (workspaceId: string, ticketKey: string): string => `vscode-${workspaceId}-${ticketKey}`.toLowerCase();
+export const environmentRouteId = (workspaceId: string, envId: string): string => `env-${workspaceId}-${envId}`.toLowerCase();
+
+//? Build the preview route for a ticket. Workspace ownership is mandatory and scopes both route id
+//? and host so identical branch/ticket names in two tenants can coexist without route takeover.
+export function previewRoute(input: { ticketKey: string; branch: string; containerName: string; port?: number; workspaceId: string }): ProxyRoute {
   return {
-    id: input.ticketKey.toLowerCase(),
-    host: `${deriveHostSlug(input.branch)}.${baseDomain()}`,
+    id: previewRouteId(input.workspaceId, input.ticketKey),
+    host: `${deriveHostSlug(`${input.workspaceId}-${input.branch}`)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
-    //? Carry the workspace so edge-auth verifies membership on this preview subdomain.
-    ...(input.workspaceId === undefined ? {} : {
-      workspaceId: input.workspaceId,
-      ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
-    }),
+    workspaceId: input.workspaceId,
+    ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
   };
 }
 
-//? T1 — the route for a REF-preview: keyed by ticket + ref (distinct id + host per ref) so two refs of one
-//? branch coexist. host = `<branch-slug>-<refSlug>.<baseDomain>`, id = `<ticketKey>-ref-<refSlug>`.
-export function refPreviewRoute(input: { ticketKey: string; branch: string; refSlug: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
+//? T1 — a workspace-scoped REF-preview: keyed by tenant + ticket + ref so refs and tenants coexist.
+export function refPreviewRoute(input: { ticketKey: string; branch: string; refSlug: string; containerName: string; port?: number; workspaceId: string }): ProxyRoute {
   return {
-    id: `${input.ticketKey.toLowerCase()}-ref-${input.refSlug}`,
-    host: `${deriveHostSlug(`${input.branch}-${input.refSlug}`)}.${baseDomain()}`,
+    id: `${previewRouteId(input.workspaceId, input.ticketKey)}-ref-${input.refSlug}`,
+    host: `${deriveHostSlug(`${input.workspaceId}-${input.branch}-${input.refSlug}`)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
-    ...(input.workspaceId === undefined ? {} : {
-      workspaceId: input.workspaceId,
-      ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
-    }),
+    workspaceId: input.workspaceId,
+    ...(edgeAuthBackend() === undefined ? {} : { forwardAuth: edgeAuthBackend() }),
   };
 }
 
-//? Build the STABLE route for a persistent environment (ADR 0037, B1): host =
-//? `<kind>-<serviceSlug>.<baseDomain>`, target = `<containerName>:<port>`. Unlike previewRoute
-//? (keyed by ticket + branch, ephemeral), the id/host are stable across deploys so the URL never
-//? changes. `serviceSlug` falls back to the project slug for a single-service (project-root) env.
-export function envRoute(input: { envId: string; kind: string; serviceSlug: string; containerName: string; port?: number; workspaceId?: string }): ProxyRoute {
+//? Build the STABLE workspace-scoped route for a persistent environment.
+export function envRoute(input: { envId: string; kind: string; serviceSlug: string; containerName: string; port?: number; workspaceId: string }): ProxyRoute {
   return {
-    id: `env-${input.envId}`.toLowerCase(),
-    host: `${deriveHostSlug(`${input.kind}-${input.serviceSlug}`)}.${baseDomain()}`,
+    id: environmentRouteId(input.workspaceId, input.envId),
+    host: `${deriveHostSlug(`${input.workspaceId}-${input.kind}-${input.serviceSlug}`)}.${baseDomain()}`,
     target: `${input.containerName}:${String(input.port ?? 5173)}`,
-    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+    workspaceId: input.workspaceId,
   };
 }
 

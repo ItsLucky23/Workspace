@@ -84,7 +84,12 @@ if [ -f "../docker/base.Dockerfile" ]; then
 fi
 
 # --- 4. the shared ticket-container network (external in compose; the app + ticket containers use it) ---
-docker network inspect workspaces-net >/dev/null 2>&1 || { log "creating the workspaces-net network"; docker network create workspaces-net >/dev/null; }
+if docker network inspect workspaces-net >/dev/null 2>&1; then
+  [ "$(docker network inspect -f '{{.Internal}}' workspaces-net)" = "true" ] || die "workspaces-net exists but is not internal; recreate it with: docker network rm workspaces-net && docker network create --internal workspaces-net"
+else
+  log "creating the internal workspaces-net network"
+  docker network create --internal workspaces-net >/dev/null
+fi
 
 # --- 5. bring up the stack ---
 log "building + starting the stack (this can take a few minutes on first run)…"

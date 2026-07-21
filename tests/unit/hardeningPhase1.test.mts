@@ -8,8 +8,12 @@ import { readFileSync } from 'node:fs';
 
 import { signMediaUrl, signMediaName, verifyMediaSignature, readSignatureParams, platformFetchableUrl, DEFAULT_MEDIA_TTL_MS } from '../../server/media/signedUrl.ts';
 import { safeMediaPath } from '../../server/media/download.ts';
+import { MEDIA_DIR, persistMediaBytes, readMediaWorkspace } from '../../server/media/store.ts';
 import { withSignedMedia } from '../../server/deploy/staticSite.ts';
 import { parseFrozenIntent } from '../../server/content/publish.ts';
+import { randomUUID } from 'node:crypto';
+import { rmSync } from 'node:fs';
+import path from 'node:path';
 import { assert, eq, report } from '../_helpers.mts';
 
 const read = (p: string): string => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
@@ -45,6 +49,11 @@ eq(signMediaUrl('https://cdn.example/x.png', 'https://example.test'), 'https://c
 //? The traversal guard must still hold — the new auth is in ADDITION to it, not instead of it.
 eq(safeMediaPath('/media/../../etc/passwd'), null, 'path traversal is still refused');
 eq(safeMediaPath('/media/sub/dir.png'), null, 'nested paths are still refused');
+const ownedId = `owner-${randomUUID()}`;
+const owned = persistMediaBytes(Buffer.from('owned'), 'txt', ownedId, '64b64b64b64b64b64b64b64b');
+eq(readMediaWorkspace(owned.url.slice('/media/'.length)), '64b64b64b64b64b64b64b64b', 'media promotion records exact workspace ownership');
+rmSync(owned.path, { force: true });
+rmSync(path.join(MEDIA_DIR, '.owners', `${owned.url.slice('/media/'.length)}.owner`), { force: true });
 
 const downloadSrc = read('server/media/download.ts');
 assert(downloadSrc.includes('readSession'), 'an unsigned /media request now requires a session');

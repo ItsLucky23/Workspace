@@ -6,7 +6,7 @@ import { parseToolCallLine, describeToolCall, toolEventType, parseToolTrail } fr
 import { previousLiveCommit } from '../../server/deploy/deployHistory.ts';
 import { withTenant, tenantGuardReport, resetTenantGuardReport } from '../../server/tenant/tenantGuard.ts';
 import { runInTenant } from '../../server/tenant/tenantContext.ts';
-import { egressMode, egressReport, noteUnconfinedWorker, resetEgressReport } from '../../server/container/egress.ts';
+import { egressMode, egressReport, noteUnconfinedWorker, resetEgressReport, ensureWorkerProxyNetwork } from '../../server/container/egress.ts';
 import { assert, eq, report } from '../_helpers.mts';
 
 /* ------------------------------------------------------------ D1: concurrency cap */
@@ -143,13 +143,28 @@ resetTenantGuardReport();
 /* ------------------------------------------------------------ E3: egress posture */
 
 const prevEgress = process.env.WS_EGRESS;
+const prevNodeEnv = process.env.NODE_ENV;
 delete process.env.WS_EGRESS;
-eq(egressMode(), 'report', 'unset defaults to REPORT (was: silently open)');
+process.env.NODE_ENV = 'development';
+eq(egressMode(), 'report', 'unset defaults to REPORT in development');
+process.env.NODE_ENV = 'production';
+eq(egressMode(), 'enforce', 'unset defaults to ENFORCE in production');
+const unsafeExisting = await ensureWorkerProxyNetwork('proxy-net', async () => ({ code: 0, out: 'false', err: '' }));
+eq(unsafeExisting, false, 'enforcement rejects an existing internet-routed proxy network');
+let createArgs: string[] = [];
+const safeCreated = await ensureWorkerProxyNetwork('proxy-net', async (args) => {
+  if (args[1] === 'inspect') return { code: 1, out: '', err: 'missing' };
+  createArgs = args;
+  return { code: 0, out: '', err: '' };
+});
+eq(safeCreated, true, 'enforcement can create a safe proxy network');
+assert(createArgs.includes('--internal'), 'the newly-created proxy network is internal');
 process.env.WS_EGRESS = '1';
 eq(egressMode(), 'enforce', 'WS_EGRESS=1 enforces confinement');
 process.env.WS_EGRESS = '0';
 eq(egressMode(), 'off', 'WS_EGRESS=0 is an explicit opt-out (no reporting noise)');
 if (prevEgress === undefined) delete process.env.WS_EGRESS; else process.env.WS_EGRESS = prevEgress;
+if (prevNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = prevNodeEnv;
 
 resetEgressReport();
 noteUnconfinedWorker(T);

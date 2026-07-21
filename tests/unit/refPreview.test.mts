@@ -36,8 +36,8 @@ import { refPreviewRoute } from '../../server/proxy/index.ts';
   assert(n1 !== n2 && n1.includes('-ref-') && n2.includes('-ref-'), 'each ref gets its own ref-scoped container name');
   eq(containerName('ws1', 'DEV-1'), 'ws-ws1-dev-1', 'no suffix → the plain worker container name (unchanged)');
 
-  const r1 = refPreviewRoute({ ticketKey: 'DEV-1', branch: 'DEV-1', refSlug: refSlug('aaaa1111'), containerName: n1 });
-  const r2 = refPreviewRoute({ ticketKey: 'DEV-1', branch: 'DEV-1', refSlug: refSlug('bbbb2222'), containerName: n2 });
+  const r1 = refPreviewRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', branch: 'DEV-1', refSlug: refSlug('aaaa1111'), containerName: n1 });
+  const r2 = refPreviewRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', branch: 'DEV-1', refSlug: refSlug('bbbb2222'), containerName: n2 });
   assert(r1.id !== r2.id, 'the two ref routes have distinct ids (idempotent per ref)');
   assert(r1.host !== r2.host, 'the two ref routes have distinct subdomains (side-by-side)');
   assert(r1.target === `${n1}:5173` && r2.target === `${n2}:5173`, 'each route targets its own ref container');

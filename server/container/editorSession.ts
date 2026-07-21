@@ -16,9 +16,10 @@ import { docker, containerName, launchTicketContainer } from './runtime';
 import { waitForContainerReady } from './health';
 import { startEditorInContainer, EDITOR_IN_CONTAINER_PORT } from './editorServer';
 import { captureProfileFromContainer } from './editorProfile';
+import { ensureWorkerProxyNetwork } from './egress';
 import { isEditorRunning } from '../orchestrator/editGuard';
 import { deriveHostSlug } from '../git/branchStrategy';
-import { getProxyProvider, baseDomain, edgeAuthBackend, type ProxyRoute } from '../proxy';
+import { getProxyProvider, baseDomain, edgeAuthBackend, editorRouteId, type ProxyRoute } from '../proxy';
 
 //? The shared docker network the proxy dials container names on. Host-level infra config.
 const EDITOR_NET = process.env.WS_NET ?? 'workspaces-net';
@@ -43,8 +44,8 @@ export interface OpenEditorResult { ok: boolean; url?: string; host?: string; to
 //? to `host.docker.internal:80` (the host backend, reachable from the Caddy container in dev).
 export function editorRoute(input: { workspaceId: string; ticketKey: string; branch: string; containerName: string }): ProxyRoute {
   return {
-    id: `vscode-${input.ticketKey.toLowerCase()}`,
-    host: `vscode-${deriveHostSlug(input.branch)}.${baseDomain()}`,
+    id: editorRouteId(input.workspaceId, input.ticketKey),
+    host: `vscode-${deriveHostSlug(`${input.workspaceId}-${input.branch}`)}.${baseDomain()}`,
     target: `${input.containerName}:${String(EDITOR_IN_CONTAINER_PORT)}`,
     //? host→workspace for /editor-auth-check membership (the proxy writes it to the Redis map on
     //? upsert). Without it the edge-auth degrades to logged-in-only (any member of any workspace).
@@ -54,9 +55,10 @@ export function editorRoute(input: { workspaceId: string; ticketKey: string; bra
 }
 
 //? Ensure the shared proxy network exists + the container is attached (both idempotent).
-async function attachToProxyNet(name: string): Promise<void> {
-  await docker(['network', 'create', EDITOR_NET]); // errors if it exists — ignored
+async function attachToProxyNet(name: string): Promise<boolean> {
+  if (!(await ensureWorkerProxyNetwork(EDITOR_NET))) return false;
   await docker(['network', 'connect', EDITOR_NET, name]); // errors if already attached — ignored
+  return true;
 }
 
 //? Upsert the ticket's editor route and build the reachable URL. Shared by the fresh-launch
@@ -89,7 +91,7 @@ export async function openEditorForTicket(input: {
   //? REUSE: the editor is still serving for this ticket → same token/URL, just re-ensure the
   //? net + route (a reopen shouldn't launch a second openvscode or mint a new token).
   if (cached !== undefined && await isEditorRunning(input.workspaceId, input.ticketKey)) {
-    await attachToProxyNet(name);
+    if (!(await attachToProxyNet(name))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
     return finalizeEditor(input.workspaceId, input.ticketKey, input.branch, name, cached);
   }
 
@@ -103,7 +105,7 @@ export async function openEditorForTicket(input: {
   if (launchErr) return { ok: false, error: `editor.launchFailed: ${String(launchErr).slice(0, 150)}` };
   if (!container) return { ok: false, error: 'editor.noContainer' };
   //? Put it on the proxy network so the proxy can dial it by name.
-  await attachToProxyNet(container.name);
+  if (!(await attachToProxyNet(container.name))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
   //? Install openvscode (if needed) + project the user's profile + start the workbench.
   const token = randomUUID();
   const started = await startEditorInContainer({
@@ -128,7 +130,7 @@ export async function closeEditorForTicket(input: { workspaceId: string; ticketK
   const name = containerName(input.workspaceId, input.ticketKey);
   editorTokens.delete(cacheKey(input.workspaceId, input.ticketKey));
   const captured = await captureProfileFromContainer(name, input.userId);
-  await getProxyProvider().removeRoute(`vscode-${input.ticketKey.toLowerCase()}`);
+  await getProxyProvider().removeRoute(editorRouteId(input.workspaceId, input.ticketKey));
   //? Stop the workbench process but keep the container (the agent may still be using it).
   await docker(['exec', name, 'bash', '-lc', 'pkill -f openvscode-server || true']);
   return captured.ok ? { ok: true } : { ok: false, error: captured.error };

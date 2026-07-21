@@ -64,7 +64,7 @@ export async function buildProjectImage(prisma: PrismaClient, workspaceId: strin
   }
   //? buildProjectImage is the SOLE writer of baseImageRef (dockerfileGen sets only the draft).
   //? ADR 0035: write only the TARGET project (was updateMany over every project → corrupted siblings).
-  const persist = dependencies.persist ?? (async (id: string, imageTag: string): Promise<void> => { await prisma.project.update({ where: { id }, data: { baseImageRef: imageTag } }); });
+  const persist = dependencies.persist ?? (async (id: string, imageTag: string): Promise<void> => { await prisma.project.updateMany({ where: { workspaceId, id }, data: { baseImageRef: imageTag } }); });
   await persist(project.id, tag);
   return { ok: true, tag };
 }

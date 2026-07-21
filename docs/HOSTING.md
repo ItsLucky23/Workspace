@@ -112,8 +112,10 @@ per-ticket live previews. If it's absent, previews are simply unavailable; nothi
 
 ## 5. Per-ticket VS Code editor exposure (Caddy on `workspaces-net`)
 
-The per-ticket editor (openvscode-server, ADR 0010) is exposed at
-`vscode-<slug>.<base>`. Caddy reaches the ticket container on `workspaces-net`, but its Admin
+The per-ticket editor (openvscode-server, ADR 0010) is exposed at a workspace-scoped
+`vscode-<workspace+branch-slug>.<base>` host. Route ids and generated preview/environment hosts
+also include the workspace id, so tenant-local ticket or branch names cannot overwrite each other.
+Caddy reaches the ticket container on `workspaces-net`, but its Admin
 listener remains bound exclusively to the separate management network described in §2. The
 backend adds/removes the host → `<container>:3000` route through `caddy-admin`; no ticket
 container joins that control plane. Caddy's `reverse_proxy` forwards openvscode WebSockets
@@ -138,3 +140,18 @@ There is no login-only fallback. The browser must send the session cookie to the
 subdomain, so production must set `WS_COOKIE_DOMAIN` to the wildcard parent (for example
 `.workspace.keetlerop.nl`). The per-session openvscode connection token remains a second gate;
 passing edge-auth alone does not authenticate the workbench connection.
+
+### Worker egress and the proxy network
+
+Production sets `WS_EGRESS=1`. Workers launch on the internal `ws-egress` network and reach only
+the configured Squid allowlist. Because Docker routes through any attached network, `workspaces-net`
+**must also be created with `--internal`** before Caddy and workers join it. `deploy/bootstrap.sh`
+checks this and fails closed when an existing network is externally routed; recreate it with:
+
+```bash
+docker network rm workspaces-net
+docker network create --internal workspaces-net
+```
+
+Add required package registries or application APIs through `WS_EGRESS_ALLOW`; do not make the
+proxy network external to solve a missing allowlist entry.

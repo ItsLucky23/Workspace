@@ -90,8 +90,8 @@ export async function assembleContent(
     //? The SIDECAR files keep the readable per-segment timing; only the burn-in gets the word cadence, so a
     //? downloaded .srt stays usable as a transcript.
     const burnSegments = captionStyleCfg?.wordByWord === true ? buildWordCues(segments) : segments;
-    captionsSrtUrl = persistMediaBytes(Buffer.from(buildTimedSrt(burnSegments), 'utf8'), 'srt', `${cid}-cc`).url;
-    captionsVttUrl = persistMediaBytes(Buffer.from(buildTimedVtt(segments), 'utf8'), 'vtt', cid).url;
+    captionsSrtUrl = persistMediaBytes(Buffer.from(buildTimedSrt(burnSegments), 'utf8'), 'srt', `${cid}-cc`, args.workspaceId).url;
+    captionsVttUrl = persistMediaBytes(Buffer.from(buildTimedVtt(segments), 'utf8'), 'vtt', cid, args.workspaceId).url;
   }
 
   const renderJob = await prisma.renderJob.create({

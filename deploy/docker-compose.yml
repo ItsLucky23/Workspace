@@ -56,6 +56,9 @@ services:
       # The app shells out to Docker to launch ticket containers (socket mounted below).
       WS_DOCKER_BIN: /usr/bin/docker
       WS_NET: workspaces-net
+      # Worker egress is deny-by-default; the proxy network below is internal so attaching Caddy
+      # cannot accidentally restore a direct internet route.
+      WS_EGRESS: "1"
       WS_AUTH_DIR: /app/data/_auth
       # Caddy's Admin API is reachable only on the private management network.
       WS_CADDY_ADMIN: http://caddy-admin:2019
@@ -116,7 +119,7 @@ networks:
   # Shared with the per-ticket containers Caddy proxies to (WS_NET). `external: true` because the
   # app creates/owns this network at runtime — compose must attach to the EXISTING one, not try to
   # manage a duplicate. Create it once with:
-  #   docker network create workspaces-net
+  #   docker network create --internal workspaces-net
   workspaces-net:
     external: true
     name: workspaces-net

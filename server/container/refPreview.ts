@@ -9,6 +9,7 @@ import { getPrismaClient } from '@luckystack/core';
 import { launchTicketContainer, docker, isSafeRef, refSlug } from './runtime';
 import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
 import { workspaceContainerContext } from './composeEngine';
+import { ensureWorkerProxyNetwork } from './egress';
 import { waitForContainerReady } from './health';
 import { getProxyProvider, refPreviewRoute, baseDomain } from '../proxy';
 import { workdirOrRoot } from '../deploy/servicePath';
@@ -37,7 +38,7 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch, ref, image: service?.baseImageRef ?? resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'preview.noContainer' };
 
-  await docker(['network', 'create', NET]);
+  if (!(await ensureWorkerProxyNetwork(NET))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
   await docker(['network', 'connect', NET, container.name]);
 
   //? S3 — the SERVICE's devCommand wins, then the project's, then its stack default.

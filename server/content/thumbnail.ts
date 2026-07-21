@@ -164,7 +164,7 @@ export async function renderThumbnail(
   });
   if (!bytes) return { ok: false, costCents, aiBackground, error: 'thumbnail.renderFailed' };
 
-  const { url } = persistMediaBytes(bytes, 'jpg', randomUUID());
+  const { url } = persistMediaBytes(bytes, 'jpg', randomUUID(), workspaceId);
   return { ok: true, url, costCents, aiBackground };
 }
 

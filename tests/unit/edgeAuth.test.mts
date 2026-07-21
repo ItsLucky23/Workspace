@@ -35,6 +35,9 @@ const refPreview = refPreviewRoute({ workspaceId: 'ws-1', ticketKey: 'DEV-1', br
 eq(editor.forwardAuth, 'auth.internal:8080', 'editor route receives the configured edge-auth backend');
 eq(preview.forwardAuth, 'auth.internal:8080', 'ticket preview receives the configured edge-auth backend');
 eq(refPreview.forwardAuth, 'auth.internal:8080', 'ref preview receives the configured edge-auth backend');
+const otherWorkspace = previewRoute({ workspaceId: 'ws-2', ticketKey: 'DEV-1', branch: 'DEV-1', containerName: 'other-worker' });
+assert(preview.id !== otherWorkspace.id, 'tenant-local ticket keys cannot collide in proxy route ids');
+assert(preview.host !== otherWorkspace.host, 'tenant-local branch names cannot collide in proxy hosts');
 if (previousEdgeAuth === undefined) delete process.env.WS_EDITOR_EDGE_AUTH; else process.env.WS_EDITOR_EDGE_AUTH = previousEdgeAuth;
 if (previousEdgeBackend === undefined) delete process.env.WS_EDITOR_AUTH_BACKEND; else process.env.WS_EDITOR_AUTH_BACKEND = previousEdgeBackend;
 

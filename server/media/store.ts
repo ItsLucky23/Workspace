@@ -11,10 +11,12 @@ import { tryCatchSync } from '@luckystack/core';
 
 export const MEDIA_DIR = path.join(process.cwd(), (process.env.WS_MEDIA_DIR ?? '').trim() || 'data/media');
 export const MEDIA_QUARANTINE_DIR = path.join(MEDIA_DIR, '.quarantine');
+const MEDIA_OWNER_DIR = path.join(MEDIA_DIR, '.owners');
 
 function ensureMediaDirs(): void {
   mkdirSync(MEDIA_DIR, { recursive: true });
   mkdirSync(MEDIA_QUARANTINE_DIR, { recursive: true });
+  mkdirSync(MEDIA_OWNER_DIR, { recursive: true });
 }
 
 //? Uploaded bytes stay under a non-served, same-filesystem quarantine path until validation + scanning
@@ -79,24 +81,39 @@ export function cleanupStaleQuarantinedMedia(options: QuarantineCleanupOptions =
 
 //? Promotion is one atomic same-filesystem rename. The route only calls this after auth, type validation,
 //? and every configured scanner accepted the quarantine file.
-export function promoteQuarantinedMedia(quarantinePath: string, ext: string, id: string): { url: string; path: string } {
+export function promoteQuarantinedMedia(quarantinePath: string, ext: string, id: string, workspaceId?: string): { url: string; path: string } {
   if (!isQuarantinePath(quarantinePath)) throw new Error('invalid media quarantine path');
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(id) || !/^[a-zA-Z0-9]+$/.test(ext)) throw new Error('invalid media file name');
-  mkdirSync(MEDIA_DIR, { recursive: true });
+  ensureMediaDirs();
   const file = `${id}.${ext}`;
   const abs = path.join(MEDIA_DIR, file);
   renameSync(quarantinePath, abs);
+  if (workspaceId) persistMediaWorkspace(file, workspaceId);
   return { url: `/media/${file}`, path: abs };
 }
 
 //? Write bytes under `data/media/<id>.<ext>` and return the served URL path + the absolute disk path.
 //? `id` must be unique per asset (the caller passes a uuid) so writes never collide.
-export function persistMediaBytes(bytes: Buffer, ext: string, id: string): { url: string; path: string } {
-  mkdirSync(MEDIA_DIR, { recursive: true });
+export function persistMediaBytes(bytes: Buffer, ext: string, id: string, workspaceId?: string): { url: string; path: string } {
+  ensureMediaDirs();
   const file = `${id}.${ext}`;
   const abs = path.join(MEDIA_DIR, file);
   writeFileSync(abs, bytes);
+  if (workspaceId) persistMediaWorkspace(file, workspaceId);
   return { url: `/media/${file}`, path: abs };
+}
+
+function persistMediaWorkspace(file: string, workspaceId: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file) || !/^[a-f\d]{24}$/i.test(workspaceId)) throw new Error('invalid media ownership');
+  writeFileSync(path.join(MEDIA_OWNER_DIR, `${file}.owner`), workspaceId, { encoding: 'utf8', mode: 0o600 });
+}
+
+//? Exact tenant ownership for unsigned media reads. Missing/invalid metadata is not widened to
+//? "any workspace member"; the download route may only use its DB fallback for legacy assets.
+export function readMediaWorkspace(file: string): string | null {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file)) return null;
+  const [, workspaceId] = tryCatchSync(() => readFileSync(path.join(MEDIA_OWNER_DIR, `${file}.owner`), 'utf8').trim());
+  return typeof workspaceId === 'string' && /^[a-f\d]{24}$/i.test(workspaceId) ? workspaceId : null;
 }
 
 //? Read a locally-stored `/media/<file>` asset back as bytes (the publish path needs the raw thumbnail to

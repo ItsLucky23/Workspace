@@ -8,7 +8,7 @@
 import { spawn } from 'node:child_process';
 
 import { DOCKER_BIN, docker } from '../container/runtime';
-import { getProxyProvider } from './index';
+import { editorRouteId, getProxyProvider } from './index';
 
 const EDITOR_PORT = Number(process.env.WS_EDITOR_PORT ?? '3000');
 const IDLE_MS = Number(process.env.WS_EDITOR_IDLE_MIN ?? '30') * 60_000;
@@ -50,13 +50,13 @@ function killEditor(container: string): Promise<void> {
 
 //? One reaper sweep: stop editors idle beyond the threshold + prune their routes. Best-effort.
 export async function reapIdleEditors(now: number): Promise<{ reaped: string[] }> {
-  const r = await docker(['ps', '--filter', 'label=org.workspaces.ticket', '--format', '{{.Names}}\t{{.Label "org.workspaces.ticket"}}']);
+  const r = await docker(['ps', '--filter', 'label=org.workspaces.ticket', '--format', '{{.Names}}\t{{.Label "org.workspaces.workspace"}}\t{{.Label "org.workspaces.ticket"}}']);
   const rows = r.out.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
   const live = new Set<string>();
   const reaped: string[] = [];
   for (const row of rows) {
-    const [name, ticketKey] = row.split('\t');
-    if (!name || !ticketKey) continue;
+    const [name, workspaceId, ticketKey] = row.split('\t');
+    if (!name || !workspaceId || !ticketKey) continue;
     live.add(name);
     const { listening, connected } = await editorSockState(name);
     if (!listening || connected) { idleSince.delete(name); continue; } //? no editor, or a client is connected → not idle
@@ -64,7 +64,7 @@ export async function reapIdleEditors(now: number): Promise<{ reaped: string[] }
     idleSince.set(name, since);
     if (now - since >= IDLE_MS) {
       await killEditor(name);
-      await getProxyProvider().removeRoute(`vscode-${ticketKey.toLowerCase()}`);
+      await getProxyProvider().removeRoute(editorRouteId(workspaceId, ticketKey));
       idleSince.delete(name);
       reaped.push(name);
     }

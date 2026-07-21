@@ -35,7 +35,7 @@ const DEFAULT_ALLOW = [
 //? Closing that in one step can break real builds (a private registry, an internal API), which is why the
 //? working agreement is warn-then-enforce:
 //?
-//?   WS_EGRESS unset  → 'report'  : full network, but every worker launch is RECORDED as "would be confined"
+//?   WS_EGRESS unset  → production: 'enforce'; development: 'report'
 //?   WS_EGRESS=1      → 'enforce' : the worker only reaches the allowlist through the proxy
 //?   WS_EGRESS=0      → 'off'     : explicitly opted out, no reporting noise
 //?
@@ -47,7 +47,7 @@ export function egressMode(): EgressMode {
   const raw = (process.env.WS_EGRESS ?? '').trim();
   if (raw === '1') return 'enforce';
   if (raw === '0') return 'off';
-  return 'report';
+  return process.env.NODE_ENV === 'production' ? 'enforce' : 'report';
 }
 
 export function egressEnabled(): boolean {
@@ -76,6 +76,18 @@ export function egressReport(): { mode: EgressMode; unconfinedLaunches: number; 
 }
 
 export function resetEgressReport(): void { unconfined.count = 0; unconfined.lastAt = 0; }
+
+//? Preview/editor routing must not undo confinement by attaching a worker to a second, internet-routed
+//? bridge. In enforce mode the shared proxy network must itself be internal; an existing unsafe network
+//? fails closed instead of silently restoring unrestricted egress.
+export type EgressDockerRunner = (args: string[]) => Promise<{ code: number; out: string; err: string }>;
+
+export async function ensureWorkerProxyNetwork(name: string, run: EgressDockerRunner = docker): Promise<boolean> {
+  const inspected = await run(['network', 'inspect', '-f', '{{.Internal}}', name]);
+  if (inspected.code === 0) return !egressEnabled() || inspected.out.trim() === 'true';
+  const created = await run(['network', 'create', ...(egressEnabled() ? ['--internal'] : []), name]);
+  return created.code === 0;
+}
 
 function allowDomains(): string[] {
   const extra = (process.env.WS_EGRESS_ALLOW ?? '').split(',').map((s) => s.trim()).filter((s) => s.length > 0);

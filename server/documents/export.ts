@@ -336,29 +336,29 @@ export function brandLogoDataUri(brandLogoUrl: string | null): string | undefine
 }
 
 export async function exportDocument(
-  doc: { id: string; title: string; content: string }, format: DocumentExportFormat, brandLogoUrl: string | null,
+  doc: { id: string; title: string; content: string }, format: DocumentExportFormat, brandLogoUrl: string | null, workspaceId?: string,
 ): Promise<ExportResult> {
   const id = `doc-${doc.id.slice(-6)}-${randomUUID().slice(0, 8)}`;
   if (format === 'md') {
-    const { url } = persistMediaBytes(Buffer.from(doc.content, 'utf8'), 'md', id);
+    const { url } = persistMediaBytes(Buffer.from(doc.content, 'utf8'), 'md', id, workspaceId);
     return { ok: true, url };
   }
   if (format === 'html') {
-    const { url } = persistMediaBytes(Buffer.from(standaloneHtml(doc.title, doc.content, brandLogoDataUri(brandLogoUrl)), 'utf8'), 'html', id);
+    const { url } = persistMediaBytes(Buffer.from(standaloneHtml(doc.title, doc.content, brandLogoDataUri(brandLogoUrl)), 'utf8'), 'html', id, workspaceId);
     return { ok: true, url };
   }
   if (format === 'xlsx') {
-    const { url } = persistMediaBytes(xlsxFromMarkdown(doc.title, doc.content), 'xlsx', id);
+    const { url } = persistMediaBytes(xlsxFromMarkdown(doc.title, doc.content), 'xlsx', id, workspaceId);
     return { ok: true, url };
   }
   if (format === 'docx') {
     const bytes = await renderDocx(doc.content);
     if (!bytes) return { ok: false, error: 'export.containerFailed' };
-    const { url } = persistMediaBytes(bytes, 'docx', id);
+    const { url } = persistMediaBytes(bytes, 'docx', id, workspaceId);
     return { ok: true, url };
   }
   const bytes = await renderPdf(doc.title, doc.content, brandLogoDataUri(brandLogoUrl));
   if (!bytes) return { ok: false, error: 'export.containerFailed' };
-  const { url } = persistMediaBytes(bytes, 'pdf', id);
+  const { url } = persistMediaBytes(bytes, 'pdf', id, workspaceId);
   return { ok: true, url };
 }

@@ -35,7 +35,7 @@ const MAX_CAPTURE_DATA_URL_BYTES = 1_000_000;
 //? Remote Chromium cannot be secured by a one-time URL preflight: page subresources, redirects, service
 //? workers and browser DNS would bypass the pinned HTTP policy. Fail remote URLs closed instead of shipping
 //? a false sense of security. The bounded data: seam is offline (`--network none`) and remains for deterministic capture tests.
-export async function captureUrlScreenshot(url: string, viewport: CaptureViewport = 'desktop'): Promise<string | null> {
+export async function captureUrlScreenshot(url: string, viewport: CaptureViewport = 'desktop', workspaceId?: string): Promise<string | null> {
   if (url.slice(0, 5).toLowerCase() !== 'data:' || Buffer.byteLength(url, 'utf8') > MAX_CAPTURE_DATA_URL_BYTES) return null;
   const [urlError, safeUrl] = tryCatchSync(() => encodeURI(url).replaceAll('"', '%22'));
   if (urlError || !safeUrl) return null;
@@ -45,7 +45,7 @@ export async function captureUrlScreenshot(url: string, viewport: CaptureViewpor
     const res = await docker(['run', '--rm', '--network', 'none', '-v', mount, CHROME_IMAGE, '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars', `--window-size=${VIEWPORT_SIZE[viewport]}`, '--screenshot=/data/shot.png', safeUrl]);
     if (res.code !== 0) throw new Error(`capture container exited ${String(res.code)}`);
     const bytes = readFileSync(path.join(dir, 'shot.png'));
-    return persistMediaBytes(bytes, 'png', `inspire-${viewport}-${randomUUID().slice(0, 8)}`).url;
+    return persistMediaBytes(bytes, 'png', `inspire-${viewport}-${randomUUID().slice(0, 8)}`, workspaceId).url;
   });
   tryCatchSync(() => { rmSync(dir, { recursive: true, force: true }); });
   return err ? null : saved;

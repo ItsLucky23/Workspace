@@ -14,7 +14,7 @@ import path from 'node:path';
 import { readSession, getPrismaClient } from '@luckystack/core';
 import { registerCustomRoute, registerOriginExemptPath } from '@luckystack/server';
 
-import { MEDIA_DIR } from './store';
+import { MEDIA_DIR, readMediaWorkspace } from './store';
 import { readSignatureParams, verifyMediaSignature } from './signedUrl';
 
 const PREFIX = '/media/';
@@ -68,9 +68,23 @@ export function registerMediaDownload(): void {
       if (verdict === 'expired' || verdict === 'invalid') return fail(403);
       const session = await readSession(ctx.token);
       if (!session) return fail(401);
-      //? Membership of ANY workspace, not a specific one: media ids carry no workspace, and inventing a
-      //? binding here would be security theatre. This closes drive-by access, which is the actual gap.
-      const member = await getPrismaClient().workspaceMember.findFirst({ where: { userId: session.id }, select: { id: true } });
+      const prisma = getPrismaClient();
+      const mediaUrl = `/media/${name}`;
+      //? New files carry a filesystem ownership sidecar at promotion time. DB lookups retain access to
+      //? pre-migration generated assets without ever widening to "member of any workspace".
+      let workspaceId = readMediaWorkspace(name);
+      if (workspaceId === null) {
+        const [asset, trashed, brand, style, extract] = await Promise.all([
+          prisma.contentAsset.findFirst({ where: { url: mediaUrl }, select: { workspaceId: true } }),
+          prisma.trashedMedia.findFirst({ where: { url: mediaUrl }, select: { workspaceId: true } }),
+          prisma.workspace.findFirst({ where: { brandLogoUrl: mediaUrl }, select: { id: true } }),
+          prisma.stylePreset.findFirst({ where: { previewAssetUrl: mediaUrl, workspaceId: { not: null } }, select: { workspaceId: true } }),
+          prisma.documentExtractJob.findFirst({ where: { url: mediaUrl }, select: { workspaceId: true } }),
+        ]);
+        workspaceId = asset?.workspaceId ?? trashed?.workspaceId ?? brand?.id ?? style?.workspaceId ?? extract?.workspaceId ?? null;
+      }
+      if (workspaceId === null) return fail(403);
+      const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId: session.id }, select: { id: true } });
       if (!member) return fail(403);
     }
 

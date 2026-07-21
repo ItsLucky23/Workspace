@@ -916,6 +916,7 @@ export interface UploadIngestOptions {
   expectedBytes?: number;
   scanner?: UploadScanner;
   scannerTimeoutMs?: number;
+  workspaceId?: string;
 }
 
 export async function ingestMediaUpload(options: UploadIngestOptions): Promise<UploadIngestResult> {
@@ -953,7 +954,7 @@ export async function ingestMediaUpload(options: UploadIngestOptions): Promise<U
     }
   }
 
-  const [promoteError, promoted] = tryCatchSync(() => promoteQuarantinedMedia(quarantinePath, options.declaration.ext, randomUUID()));
+  const [promoteError, promoted] = tryCatchSync(() => promoteQuarantinedMedia(quarantinePath, options.declaration.ext, randomUUID(), options.workspaceId));
   if (promoteError || promoted === null) {
     discardQuarantinedMedia(quarantinePath);
     return { status: 'storage-error' };
@@ -1043,6 +1044,7 @@ export function registerMediaUpload(options: RegisterMediaUploadOptions = {}): v
       ...(contentLength.status === 'valid' ? { expectedBytes: contentLength.bytes } : {}),
       ...(options.scanner === undefined ? {} : { scanner: options.scanner }),
       ...(options.scannerTimeoutMs === undefined ? {} : { scannerTimeoutMs: options.scannerTimeoutMs }),
+      workspaceId,
     });
     switch (ingested.status) {
       case 'accepted': { sendJson(res, 200, { url: ingested.url, kind: ingested.kind }); break; }

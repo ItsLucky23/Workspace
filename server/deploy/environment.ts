@@ -10,12 +10,13 @@ import type { PrismaClient } from '@prisma/client';
 
 import { launchTicketContainer, teardownTicketContainer, docker, dockerAvailable } from '../container/runtime';
 import { waitForContainerReady } from '../container/health';
-import { getProxyProvider, envRoute, baseDomain } from '../proxy';
+import { getProxyProvider, envRoute, baseDomain, environmentRouteId } from '../proxy';
 import { normalizeGitConfig, deriveHostSlug } from '../git/branchStrategy';
 import { branchHead } from '../git/repoStore';
 import { recordDeploy, listDeployHistory, previousLiveCommit } from './deployHistory';
 import { workdirOrRoot } from './servicePath';
 import { resolveDevCommand, resolveProdCommand } from '../container/baseImages';
+import { ensureWorkerProxyNetwork } from '../container/egress';
 
 const ENV_PORT = Number(process.env.WS_PREVIEW_PORT ?? '5173');
 const NET = process.env.WS_NET ?? 'workspaces-net';
@@ -52,11 +53,14 @@ export async function ensureEnvironment(prisma: PrismaClient, workspaceId: strin
   //? D2/D3 — host precedence: a valid customDomain (served with on-demand TLS) → a user-chosen subdomain on the
   //? base domain → the derived `<kind>-<slug>`. A subdomain must be unique across environments (loud fallback:
   //? a clash keeps the derived host rather than hijacking another env's route).
-  const customDomain = sanitizeCustomDomain(opts.customDomain);
+  const requestedCustomDomain = sanitizeCustomDomain(opts.customDomain);
   const wantSub = sanitizeSubdomain(opts.subdomain);
-  const subFree = wantSub.length > 0 ? (await prisma.environment.findFirst({ where: { subdomain: wantSub, NOT: { projectId, kind: asKind(kind), serviceId: serviceId ?? null } }, select: { id: true } })) === null : false;
+  const sameEnvironment = { workspaceId, projectId, kind: asKind(kind), serviceId: serviceId ?? null };
+  const subFree = wantSub.length > 0 ? (await prisma.environment.findFirst({ where: { subdomain: wantSub, NOT: sameEnvironment }, select: { id: true } })) === null : false;
+  const customFree = requestedCustomDomain.length > 0 ? (await prisma.environment.findFirst({ where: { customDomain: requestedCustomDomain, NOT: sameEnvironment }, select: { id: true } })) === null : false;
+  const customDomain = customFree ? requestedCustomDomain : '';
   const subdomain = subFree ? wantSub : '';
-  const derivedHost = `${deriveHostSlug(`${asKind(kind)}-${slug}`)}.${baseDomain()}`;
+  const derivedHost = `${deriveHostSlug(`${workspaceId}-${asKind(kind)}-${slug}`)}.${baseDomain()}`;
   const host = customDomain.length > 0 ? customDomain : (subdomain.length > 0 ? `${subdomain}.${baseDomain()}` : derivedHost);
   //? D3 — a demo env follows main by default (autoRedeploy) unless it is pinned to a fixed commit. A pin
   //? always wins and disables auto-redeploy. Non-demo kinds never auto-redeploy.
@@ -129,7 +133,7 @@ export async function deployEnvironment(prisma: PrismaClient, workspaceId: strin
   const deployedCommit = actualHead.code === 0 && actualHead.out.trim().length > 0 ? actualHead.out.trim() : targetCommit;
 
   //? Put it on the shared proxy net so the proxy can dial it by name (both idempotent).
-  await docker(['network', 'create', NET]);
+  if (!(await ensureWorkerProxyNetwork(NET))) return failEnv(prisma, envId, 'egress.unsafeProxyNetwork');
   await docker(['network', 'connect', NET, container.name]);
   //? Start the serve command detached in /work (HOST/PORT cover CRA/Next; Vite needs flags in the command).
   //? D1 — for prod/demo this builds + serves the production output; for dev/staging it's the dev server.
@@ -197,7 +201,7 @@ export async function teardownEnvironment(prisma: PrismaClient, workspaceId: str
   //? Workspace deletion relies on this result before removing the ownership rows. Fail closed when
   //? the proxy or Docker cannot prove teardown; otherwise a deleted tenant could leave a public app.
   if (environment.status === 'live' || environment.containerName) {
-    const route = await getProxyProvider().removeRoute(`env-${envId}`.toLowerCase());
+    const route = await getProxyProvider().removeRoute(environmentRouteId(workspaceId, envId));
     if (!route.ok) return { ok: false };
   }
   if (environment.containerName) {
@@ -226,8 +230,9 @@ export async function reassertEnvironmentRoutes(): Promise<number> {
     if (!env.containerName) continue;
     const running = await docker(['inspect', '-f', '{{.State.Running}}', env.containerName]);
     if (running.out.trim() !== 'true') continue;
+    if (!(await ensureWorkerProxyNetwork(NET))) continue;
     await docker(['network', 'connect', NET, env.containerName]);
-    await getProxyProvider().upsertRoute({ id: `env-${env.id}`.toLowerCase(), host: env.route, target: `${env.containerName}:${String(ENV_PORT)}`, workspaceId: env.workspaceId });
+    await getProxyProvider().upsertRoute({ id: environmentRouteId(env.workspaceId, env.id), host: env.route, target: `${env.containerName}:${String(ENV_PORT)}`, workspaceId: env.workspaceId });
     reasserted += 1;
   }
   return reasserted;

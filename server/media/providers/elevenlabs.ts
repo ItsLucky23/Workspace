@@ -32,7 +32,7 @@ export function composeElevenInput(req: MediaGenerationRequest): ElevenInput {
 //? The audio transport — produce a served URL for a tts/sfx generation. Injectable so `generate` is
 //? testable with a fixture (no key/network). The real one hits ElevenLabs → bytes → media store.
 export interface AudioTransport {
-  generate: (feature: MediaFeature, input: ElevenInput, apiKey: string) => Promise<{ url: string }>;
+  generate: (feature: MediaFeature, input: ElevenInput, apiKey: string, workspaceId?: string) => Promise<{ url: string }>;
 }
 
 const ELEVEN_BASE = (process.env.ELEVENLABS_BASE ?? '').trim() || 'https://api.elevenlabs.io/v1';
@@ -40,7 +40,7 @@ const ELEVEN_BASE = (process.env.ELEVENLABS_BASE ?? '').trim() || 'https://api.e
 //? The live ElevenLabs transport: tts → /text-to-speech/<voice>, sfx → /sound-generation. Both return
 //? raw mp3 bytes → persisted to the media store → a served `/media/...` url.
 export const realAudioTransport: AudioTransport = {
-  generate: async (feature, input, apiKey) => {
+  generate: async (feature, input, apiKey, workspaceId) => {
     const headers = { 'xi-api-key': apiKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' };
     const url = feature === 'tts'
       ? `${ELEVEN_BASE}/text-to-speech/${encodeURIComponent(input.voiceId)}`
@@ -56,7 +56,7 @@ export const realAudioTransport: AudioTransport = {
       return Buffer.from(await r.arrayBuffer());
     }, { attempts: 3, baseMs: 500 });
     await sleep(0); // yield — keeps the persist off the fetch microtask for large blobs
-    return persistMediaBytes(bytes, 'mp3', randomUUID());
+    return persistMediaBytes(bytes, 'mp3', randomUUID(), workspaceId);
   },
 };
 
@@ -71,7 +71,7 @@ export function createElevenlabsProvider(transport: AudioTransport = realAudioTr
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'elevenlabs', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const input = composeElevenInput(req);
       const key = (req.apiKey ?? process.env.ELEVENLABS_KEY ?? '').trim();
-      const [err, out] = await tryCatch(() => transport.generate(req.feature, input, key));
+      const [err, out] = await tryCatch(() => transport.generate(req.feature, input, key, req.workspaceId));
       if (err || !out) return { ok: false, providerId: 'elevenlabs', costCents: 0, stub: false, error: `media.elevenlabsFailed: ${err?.message ?? 'unknown'}` };
       const asset: MediaAsset = { kind: ASSET_KIND[req.feature] ?? 'voice', url: out.url, metadata: { feature: req.feature, provider: 'elevenlabs', voiceId: input.voiceId } };
       return { ok: true, asset, providerId: 'elevenlabs', costCents: LIVE_COST_CENTS[req.feature] ?? 2, stub: false };
