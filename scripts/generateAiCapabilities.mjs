@@ -393,13 +393,13 @@ const parseRouteMap = (source, typeAliasName) => {
       }
       continue;
     }
-    //? Keys may be bare identifiers OR quoted strings (e.g. `"reset-password"`
-    //? when the page path contains a dash). Capture either form.
-    const pageMatch = line.match(/^  (?:"([^"]+)"|([A-Za-z_$][\w$]*)):\s*\{$/);
+    //? Keys may be bare identifiers or single-/double-quoted strings (e.g. `'reset-password'`
+    //? when the page path contains a dash). The type-map generator has emitted both quote styles.
+    const pageMatch = line.match(/^  (?:["']([^"']+)["']|([A-Za-z_$][\w$]*)):\s*\{$/);
     if (pageMatch) { page = pageMatch[1] ?? pageMatch[2]; continue; }
-    const nameMatch = line.match(/^    (?:"([^"]+)"|([A-Za-z_$][\w$]*)):\s*\{$/);
+    const nameMatch = line.match(/^    (?:["']([^"']+)["']|([A-Za-z_$][\w$]*)):\s*\{$/);
     if (nameMatch) { name = nameMatch[1] ?? nameMatch[2]; continue; }
-    const versionMatch = line.match(/^      (?:"([^"]+)"|([A-Za-z_$][\w$]*)):\s*\{$/);
+    const versionMatch = line.match(/^      (?:["']([^"']+)["']|([A-Za-z_$][\w$]*)):\s*\{$/);
     if (versionMatch) {
       version = versionMatch[1] ?? versionMatch[2];
       inLeaf = true;
@@ -454,7 +454,7 @@ const buildApiRoutesSection = async (source) => {
   lines.push("| Route | Method | Rate limit | Has stream | Tests |");
   lines.push("| --- | --- | --- | --- | --- |");
   for (const row of rows) {
-    const method = (extractField(row.body, "method") ?? "?").replaceAll('"', "");
+    const method = (extractField(row.body, "method") ?? "?").replaceAll('"', "").replaceAll("'", "");
     const rateLimit = extractField(row.body, "rateLimit") ?? "?";
     const hasStream = hasTypedStreamField(row.body, "stream") ? "yes" : "—";
     const tests = (await hasTestFile("api", row.page, row.name, row.version)) ? "✓" : "—";

@@ -4537,3 +4537,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `src/workspaces/_api/openRefPreview_v1.ts`, `src/workspaces/_api/studioGenerate_v1.ts`, `src/workspaces/_api/studioGenerate_v1.tests.ts` en branchlogs. Een experimentele Playwright-fixtureretry is volledig teruggedraaid omdat `apiRequest` over Socket.io loopt, niet over een onderschepbare HTTP-response.
 
 **Verify:** HTTP **433 passed, 0 failed, 118 classified skips** · Playwright run 1 **19/24** + exacte 5/5 rerun · run 2 **22/24** · run 3 na de parallelle development-loopbackconfig **23/24**; alle afzonderlijke cases zijn groen, maar de gedeelde actieve dev-runtime blijft één willekeurige onboardingcreate per volle run missen · unit **107/107 bestanden groen** · typecheck, lint, build en `ai:lint` groen.
+
+## 2026-07-21 21:12 — AI-capabilityindex quote-parser hersteld
+
+**User prompt:** rond de auditremediatie af zonder het parallelle werk te beschadigen en houd alle verplichte AI-contextartefacten correct.
+
+**Wat ik deed:** de pre-commit hook legde een generatorregressie bloot: de actuele typemap gebruikt single-quoted routekeys, terwijl `generateAiCapabilities.mjs` alleen double-quoted/bare keys herkende. Daardoor verdwenen alle API-/sync-routes ten onrechte uit `docs/AI_CAPABILITIES.md`. De parser accepteert nu beide quote-stijlen en normaliseert ook de HTTP-methodquote; de capabilityindex is opnieuw gegenereerd.
+
+**Files touched:** `scripts/generateAiCapabilities.mjs`, `docs/AI_CAPABILITIES.md` en branchlogs.
+
+**Verify:** capabilityindex bevat opnieuw **64 API-routes en 66 sync-routes** (o.a. `workspaces/createWorkspace/v1` en `workspaces/contentPieceDelta/v1`); `node --check`, lint, build en `ai:lint` groen.
