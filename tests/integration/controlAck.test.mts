@@ -217,25 +217,26 @@ const [runError] = await tryCatch(async () => {
   assert(recoveredAfterBoundaryLoss.signalSeq > 0, 'the workspace queue accepts a later action after boundary lease loss');
   eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.name, recoveredName, 'the recovered workspace queue executes the later action');
 
-  // The login-only global chain follows the same rule: a duplicate membership throws,
-  // then a different pending invite still succeeds on the recovered chain.
+  // The login-only global chain preserves the owner-protection semantic failure, then a different
+  // pending invite still succeeds on the same recovered chain.
   const failedInviteToken = requestId('failed-invite-token');
   const validInviteToken = requestId('valid-invite-token');
   await prisma.invite.createMany({ data: [
     { workspaceId: wsId, email: owner.email, roleKey: 'member', invitedById: owner.id, token: failedInviteToken, status: 'pending' },
     { workspaceId: wsId, email: invitee.email, roleKey: 'member', invitedById: owner.id, token: validInviteToken, status: 'pending' },
   ] });
-  const [globalError, globalResult] = await tryCatch(() => enqueueControlAction({
+  const protectedOwner = await enqueueControlAction({
     workspaceId: '', op: 'accept-invite', target: { inviteToken: failedInviteToken }, payload: {},
     userId: owner.id, clientRequestId: requestId('global-failure'),
-  }));
-  assert(globalError !== null && globalResult === null, 'a global-chain execute error rejects enqueueControlAction');
+  });
+  assert(typeof protectedOwner.result === 'object' && protectedOwner.result !== null && 'ok' in protectedOwner.result && protectedOwner.result.ok === false, 'the global chain preserves owner-protection as a semantic failure');
+  eq((await prisma.workspace.findUnique({ where: { id: wsId }, select: { ownerId: true } }))?.ownerId, owner.id, 'an invite cannot demote the workspace owner');
 
   const recoveredGlobal = await enqueueControlAction({
     workspaceId: '', op: 'accept-invite', target: { inviteToken: validInviteToken }, payload: {},
     userId: invitee.id, clientRequestId: requestId('global-recovery'),
   });
-  assert(recoveredGlobal.result === undefined, 'the recovered global queue accepts a successful void action');
+  assert(typeof recoveredGlobal.result === 'object' && recoveredGlobal.result !== null && 'ok' in recoveredGlobal.result && recoveredGlobal.result.ok === true, 'the recovered global queue accepts the successful invite result');
   assert(await prisma.workspaceMember.findFirst({ where: { workspaceId: wsId, userId: invitee.id } }) !== null, 'the global action after the failure was executed');
 });
 

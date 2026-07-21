@@ -2,6 +2,7 @@
 //? PushSubscription for the authenticated user (idempotent on endpoint) and removes it on remove:true, and
 //? that sendWebPush is fail-soft (no subscriptions → resolves without throwing). Real Mongo.
 
+import { tryCatch } from '@luckystack/core';
 import { db, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
@@ -13,7 +14,7 @@ const owner = await prisma.user.create({ data: { email: `push-${String(stamp)}@y
 const endpoint = `https://fcm.example.test/push/${String(stamp)}`;
 
 try {
-  const fns = { db: { prisma } } as never;
+  const fns = { db: { prisma }, tryCatch: { tryCatch } } as never;
   const user = { id: owner.id } as never;
 
   // subscribe

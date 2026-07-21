@@ -1721,6 +1721,16 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (acceptor?.email.trim().toLowerCase() !== inv.email.trim().toLowerCase()) return { ok: false, error: 'invite.emailMismatch' };
       const invitedRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: inv.workspaceId, key: inv.roleKey }, select: { key: true } });
       if (!invitedRole || invitedRole.key === 'owner') return { ok: false, error: 'role.unknown' };
+      const [existingMembership, inviteWorkspace] = await Promise.all([
+        prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId: inv.workspaceId, userId } },
+          select: { roleKey: true },
+        }),
+        prisma.workspace.findUnique({ where: { id: inv.workspaceId }, select: { ownerId: true } }),
+      ]);
+      //? An invite is never an ownership-transfer mechanism. A stale or malicious owner-address invite
+      //? must not demote the current owner and bypass the dedicated transfer CAS/audit path.
+      if (inviteWorkspace?.ownerId === userId || existingMembership?.roleKey === 'owner') return { ok: false, error: 'member.ownerProtected' };
       //? Upsert makes a replay/race safe. A later invite may deliberately change an existing member's role,
       //? but it went through the inviter's capability ceiling above before this token was minted.
       // luckystack-allow tenant-scope: the compound unique key contains the exact invite-owned workspaceId; no cross-tenant row can match.

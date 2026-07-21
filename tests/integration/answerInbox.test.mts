@@ -107,7 +107,7 @@ assert(!remaining.some((t) => t.key === 'DEV-2'), 'specifically the one that was
 
 const shell = read('src/workspaces/_shell/Shell.tsx');
 //? ADR 0280 — the verb groups became module categories; the inbox sits first-class under Develop.
-assert(shell.includes("{ id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop' }"), 'the inbox has a nav entry');
+assert(shell.includes("{ id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop', sub: 'work' }"), 'the inbox has a nav entry');
 assert(shell.includes("group: 'develop'"), 'in Develop — on a phone-first product, "what is waiting on me?" IS the work');
 const context = read('src/workspaces/_shell/WorkspacesContext.tsx');
 assert(context.includes("| 'answers' |"), 'and the view is routable');

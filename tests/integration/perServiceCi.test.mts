@@ -98,7 +98,7 @@ const rootByNull = await prisma.pipeline.findFirst({ where: { workspaceId, proje
 assert(rootByNull !== null, 'the root pipeline is findable by serviceId: null — it was written explicitly');
 
 const runner = read('server/ci/runner.ts');
-assert(runner.includes('serviceId,\n      specHash:'), 'ensurePipeline writes serviceId explicitly, including the null');
+assert(/serviceId,\s+specHash:/.test(runner), 'ensurePipeline writes serviceId explicitly, including the null');
 assert(runner.includes('findFirst({ where: { workspaceId, projectId, serviceId }'), 'and looks a pipeline up per (project, service)');
 const buildExport = read('server/deploy/buildExport.ts');
 assert(buildExport.includes('serviceId: serviceId ?? null,'), 'build artifacts carry an explicit unit');
