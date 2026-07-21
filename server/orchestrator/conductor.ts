@@ -3695,8 +3695,8 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!envId) return { ok: false };
       return teardownEnvironment(prisma, action.workspaceId, envId);
     }
-    //? K1 — attach a third-party SERVICE STACK (docker-compose). The compose is SANITIZED (host-escapes rejected,
-    //? host-ports rewritten) + namespaced per workspace before it runs. Conductor is the only writer (B-23).
+    //? K1 — attach a third-party SERVICE STACK. Production sends unrestricted Compose to the configured
+    //? per-workspace isolated runner; it never runs on the app Docker daemon. Conductor is the only writer.
     case 'service-provision': {
       const name = str(payload, 'name');
       //? K2 — a preset key resolves to its curated compose; else the user's own compose (K1 bring-your-own).
@@ -3704,11 +3704,14 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const compose = presetKey ? (presetCompose(presetKey) ?? '') : str(payload, 'compose');
       if (!name || !compose) return { ok: false, error: 'service.invalidRequest' };
       const result = await provisionServiceStack(prisma, action.workspaceId, name, compose);
-      //? K3 — a preset publishes its connection-string env (KAFKA_BROKERS/DATABASE_URL/…) as visible workspace
-      //? EnvVars so the agent + preview containers reach the service by name. Only on a successful provision;
+      //? K3 — a local preset publishes service-name connection env; an isolated runner publishes explicit
+      //? gateway/overlay env for presets OR custom stacks. Only on a successful provision;
       //? namespaced `SVC_<name>_` so teardown removes exactly this stack's rows without touching user env.
-      if (presetKey && (result as { ok?: boolean }).ok !== false) {
-        const env = presetEnv(presetKey);
+      if (result.ok) {
+        //? Local development presets share the workspace bridge and may use service-name URLs. An isolated
+        //? runner (preset OR arbitrary Compose) is another VM/daemon and MUST return explicit overlay/gateway
+        //? endpoints; never inject fake DNS. Local custom Compose has no inferred connection contract.
+        const env = result.executionMode === 'isolated-v1' ? (result.env ?? {}) : (presetKey ? presetEnv(presetKey) : {});
         for (const [key, v] of Object.entries(env)) {
           const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
           await (existing
@@ -3721,9 +3724,11 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'service-teardown': {
       const name = str(payload, 'name') ?? str(target, 'name');
       if (!name) return { ok: false };
-      //? K3 — remove the connection-string EnvVars this stack published (matched by serviceName).
-      await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, serviceName: name } });
-      return teardownServiceStack(prisma, action.workspaceId, name);
+      const result = await teardownServiceStack(prisma, action.workspaceId, name);
+      //? Remove connection env only AFTER runtime teardown is proven. A failed isolated/local teardown keeps
+      //? both ownership and connection context for retry instead of leaving a still-live orphan unreachable.
+      if (result.ok) await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, serviceName: name } });
+      return result;
     }
     //? U1 — persist a "unfuck the UI" review request (screenshots + ticked problems + notes). Off-taxonomy
     //? problems + non-/media screenshots are dropped (sanitized). B-23: the Conductor is the only writer.

@@ -871,7 +871,9 @@ export interface ChatMessage {
   plan?: ChatPlan;         // O-A — a multi-step intake plan rendered with an Approve-plan button
   copilot?: CopilotDirective; // #109 — an AI-drives-UI directive rendered with an "Apply" button
   pending?: boolean;       // the AI turn is in flight (renders a thinking indicator)
-  accepted?: boolean;      // the proposal/plan has been dispatched (Accept consumed)
+  executing?: boolean;     // accepted by the human; waiting for real API/sync execution receipts
+  accepted?: boolean;      // every emitted operation returned a successful execution receipt
+  executionError?: boolean;// at least one op was rejected/failed; retry remains available
   declined?: boolean;      // J5 — the proposal/plan was rejected (dismissed without dispatch)
 }
 

@@ -444,6 +444,8 @@ export default function AccountSettings() {
     { key: 'rabbitmq', label: 'RabbitMQ' }, { key: 'elasticsearch', label: 'Elasticsearch' }, { key: 'minio', label: 'MinIO (S3)' }, { key: 'mailpit', label: 'Mailpit' },
   ], []);
   const [servicePreset, setServicePreset] = useState('postgres');
+  const [composeName, setComposeName] = useState('');
+  const [composeYaml, setComposeYaml] = useState('');
   //? D1/D3 — the commit to pin the demo host at (blank = follow main + auto-redeploy).
   const [pinnedCommit, setPinnedCommit] = useState('');
   //? D2/D3 — the DNS for the demo host: a chosen subdomain on the base domain, or a fully custom domain.
@@ -869,6 +871,17 @@ export default function AccountSettings() {
               </span>
               <WsButton variant="secondary" onClick={() => { provisionServiceStack({ name: servicePreset, preset: servicePreset }); }}>{translate({ key: 'workspaces.services.provision' })}</WsButton>
             </Row>
+            <details className="rounded-xl border border-container1-border bg-container2/30 p-3">
+              <summary className="cursor-pointer text-sm font-medium text-title">{translate({ key: 'workspaces.services.customCompose' })}</summary>
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="text-xs text-muted">{translate({ key: 'workspaces.services.isolationNote' })}</div>
+                <input value={composeName} onChange={(event) => { setComposeName(event.target.value); }} placeholder={translate({ key: 'workspaces.services.namePlaceholder' })} className={dbInputCls} />
+                <textarea value={composeYaml} onChange={(event) => { setComposeYaml(event.target.value); }} placeholder={translate({ key: 'workspaces.services.composePlaceholder' })} rows={10} className="w-full rounded-lg border border-container1-border bg-container2/50 p-3 font-mono text-xs text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+                <div className="flex justify-end">
+                  <WsButton variant="secondary" disabled={!composeName.trim() || !composeYaml.trim()} onClick={() => { provisionServiceStack({ name: composeName.trim(), compose: composeYaml }); setComposeName(''); setComposeYaml(''); }}>{translate({ key: 'workspaces.services.provisionCompose' })}</WsButton>
+                </div>
+              </div>
+            </details>
             {serviceStacks.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.services.empty' })}</div>}
             {serviceStacks.map((s) => (
               <Row key={s.id}>

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (205)
+## Decisions (206)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -218,6 +218,7 @@
 | 0285 | Every workspace write converges live for every room member via one Conductor-tail `workspaceDirty` broadcast | 🟢 accepted | realtime, sync, conductor, snapshot, preload, multi-instance | — | `docs/decisions/0285-workspace-dirty-realtime-convergence.md` |
 | 0286 | Switching workspace/project is instant via a client stale-while-revalidate snapshot cache + idle prefetch | 🟢 accepted | realtime, sync, cache, preload, client, performance | — | `docs/decisions/0286-client-snapshot-cache-stale-while-revalidate.md` |
 | 0287 | Host administration, workspace governance, and browser terminals are separate fail-closed security planes | 🟢 accepted | security, rbac, tenancy, superadmin, terminal, containers | — | `docs/decisions/0287-host-and-tenant-security-boundaries.md` |
+| 0288 | Unrestricted Docker Compose runs only on an external per-workspace sandbox | 🟢 accepted | docker, compose, security, tenancy, isolation, self-hosting | — | `docs/decisions/0288-unrestricted-compose-requires-per-workspace-external-sandbox.md` |
 
 ## Summaries
 
@@ -1876,6 +1877,14 @@ _(no Decision section found — fill it in)_
 The framework-global `User.admin` field means **host superadmin only**. It is never inferred from `WorkspaceMember.roleKey`. Workspace `owner`/`admin` remains full authority only within that workspace. Root operators can bootstrap/recover the host role with `WS_SUPERADMIN_EMAILS`; all host-plane routes must use the shared `isHostSuperadmin`/`assertHostSuperadmin` guard. A host superadmin does not implicitly become a workspace member either. Browser terminals are **container-only in every environment**. The host-shell backend and its env bypass are deleted. The client sends workspace id + ticket key, not a Docker name. The socket authenticates itself, checks `workTickets`, derives the canonical container and verifies both immutable workspace/ticket labels. Host superadmin status does not bypass this product-terminal boundary. Workspace governance remains in the Conductor. Suggestions require `workTickets`; owner assignment is only possible through compare-and-set ownership transfer by the actual current owner; built-in admin promotion / demotion requires its dedicated capabilities; invite role grants cannot exceed the inviter; invite acceptance is email-bound and upsert-idempotent; suggestion acceptance claims only an open suggestion.
 
 → `docs/decisions/0287-host-and-tenant-security-boundaries.md`
+
+### 0288 — Unrestricted Docker Compose runs only on an external per-workspace sandbox
+
+**0288** · accepted · tags: docker, compose, security, tenancy, isolation, self-hosting · 2026-07-21
+
+Production never runs workspace Compose on the app Docker daemon. It calls a root-configured HTTPS runner URL containing `{workspaceId}`; each resolved endpoint represents a dedicated VM/microVM/physical sandbox. Inside that sandbox Compose is unrestricted. Workspaces preserves the raw YAML instead of pretending a sanitizer is the security boundary. The runner returns explicit gateway/overlay environment values for services needed by app/agent containers; Workspaces never assumes same-daemon DNS. Missing/invalid runner configuration fails closed in production. Restricted local sanitization remains only as a development fallback. Conductor owns desired-state persistence and records which backend must handle teardown.
+
+→ `docs/decisions/0288-unrestricted-compose-requires-per-workspace-external-sandbox.md`
 
 ## Code governed by decisions
 

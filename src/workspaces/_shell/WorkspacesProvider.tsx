@@ -25,7 +25,7 @@ import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
 import { VIEW_CATEGORY } from '../_data/nav';
-import { CHAT_DISPATCH, isChatProposalForProject } from '../_functions/chatDispatch';
+import { executeTrackedChatDispatch, isChatProposalForProject } from '../_functions/chatDispatch';
 import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
@@ -1220,30 +1220,32 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? mark the bubble consumed so its Accept button can't re-fire.
   //? Dispatch a SINGLE proposal to the existing `_sync` verb (never a new verb; Conductor stays the writer).
   //? Shared by acceptChatProposal (one op) and acceptChatPlan (O-A, each step in order).
-  const dispatchProposal = useCallback((p: ChatProposal): boolean => {
+  const dispatchProposal = useCallback(async (p: ChatProposal): Promise<boolean> => {
     const scope = currentProjectScope();
     if (!scope || !isChatProposalForProject(p, scope.projectId)) return false;
     const room = scope.workspaceId;
     if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) {
-      void syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
-      return true;
+      const receipt = await syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
+      return receipt.status === 'success';
     }
     if (p.op === 'assign' && p.ticketKeys && p.assigneeId) {
-      void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
-      return true;
+      const receipt = await syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
+      return receipt.status === 'success';
     }
     if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) {
-      void syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
-      return true;
+      const receipt = await syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
+      return receipt.status === 'success';
     }
     //? O-B — create ops route to the EXISTING verbs (quick-add / content-from-brief), not a new one.
     if (p.op === 'create-ticket' && p.title) {
-      void syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, projectId: p.projectId, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
-      return true;
+      const receipt = await syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, projectId: p.projectId, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room });
+      if (receipt.status === 'success') refetch();
+      return receipt.status === 'success';
     }
     if (p.op === 'create-content' && p.title && p.brief) {
-      void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); });
-      return true;
+      const receipt = await syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room });
+      if (receipt.status === 'success') refetch();
+      return receipt.status === 'success';
     }
     //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
     //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
@@ -1251,33 +1253,37 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? Parity wave — merge sources for the full-payload routes (saveAiInstruction writes all five
       //? fields; saveStageConfig wants the complete cfg) + the provider's own delete-workspace flow.
       const ws = latestSnap.current.workspaces.find((w) => w.id === room);
-      CHAT_DISPATCH[p.op](p, {
+      return executeTrackedChatDispatch(p.op, p, {
         room, activeProjectId: scope.projectId, gitConfig: scope.gitConfig,
         aiSettings: {
           aiInstruction: ws?.aiInstruction ?? '', outputLanguage: ws?.outputLanguage ?? '',
           geminiModel: ws?.geminiModel ?? '', geminiTemperature: ws?.geminiTemperature ?? '', geminiBaseUrl: ws?.geminiBaseUrl ?? '',
         },
         stageConfigs: latestSnap.current.stageConfigs,
-        deleteWorkspace: () => {
+        deleteWorkspace: async () => {
           //? Same flow as the settings UI's deleteWorkspace: fire the `_api`, then leave the dead
           //? workspace (reset the desired snapshot target so the refetch lands on a valid one).
-          afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: room, clientRequestId: nextReqId() } }));
-          desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
-          setWantWorkspaceId(undefined);
-          setWantProjectId(undefined);
-          setLoading(true);
+          const receipt = await apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: room, clientRequestId: nextReqId() } });
+          if (receipt.status === 'success') {
+            desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
+            setWantWorkspaceId(undefined);
+            setWantProjectId(undefined);
+            setLoading(true);
+          }
+          return receipt;
         },
         nextReqId, refetch,
       });
-      return true;
     }
     return false;
-  }, [currentProjectScope, refetch, afterWrite]);
+  }, [currentProjectScope, refetch]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
-    const run = () => {
-      const accepted = dispatchProposal(p);
-      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...(accepted ? { accepted: true } : { declined: true }) } : m)));
+    const run = async (): Promise<void> => {
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: true, executionError: false } : m)));
+      const [executionError, accepted] = await tryCatch(() => dispatchProposal(p));
+      const succeeded = !executionError && accepted === true;
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: false, ...(succeeded ? { accepted: true, executionError: false } : { executionError: true }) } : m)));
     };
     //? X1 — destructive generic ops get an EXPLICIT extra confirm before dispatch (B-23
     //? confirm-on-important; user decision 2026-07-09). The project is rechecked AFTER
@@ -1286,10 +1292,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       void menuHandler.confirm({
         title: translate({ key: 'workspaces.shell.confirmDestructiveTitle' }),
         content: translate({ key: 'workspaces.shell.confirmDestructiveContent', params: [{ key: 'summary', value: p.summary }] }),
-      }).then((ok) => { if (ok) run(); });
+      }).then((ok) => { if (ok) void run(); });
       return;
     }
-    run();
+    void run();
   }, [dispatchProposal, translate]);
 
   //? J5 — REJECT a proposal/plan: dismiss it (mark declined) WITHOUT dispatching anything. The AI proposes,
@@ -1301,11 +1307,20 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? O-A — approve a whole intake plan: dispatch each step in order (single-writer intact; each step is an
   //? existing verb). One approval → the Conductor materializes every ticket/piece the plan proposed.
   const acceptChatPlan = useCallback((messageId: string, plan: ChatPlan) => {
-    const run = () => {
+    const run = async (): Promise<void> => {
       const scope = currentProjectScope();
       const current = scope !== null && plan.steps.length > 0 && plan.steps.every((step) => isChatProposalForProject(step, scope.projectId));
-      if (current) for (const step of plan.steps) dispatchProposal(step);
-      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...(current ? { accepted: true } : { declined: true }) } : m)));
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: current, executionError: !current } : m)));
+      let accepted = current;
+      if (current) {
+        //? Plans execute in order and stop at the first failed receipt, so dependent later steps cannot
+        //? materialize on top of a rejected/failed prerequisite.
+        for (const step of plan.steps) {
+          const [executionError, stepAccepted] = await tryCatch(() => dispatchProposal(step));
+          if (executionError || stepAccepted !== true) { accepted = false; break; }
+        }
+      }
+      setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: false, ...(accepted ? { accepted: true, executionError: false } : { executionError: true }) } : m)));
     };
     //? X1 — a plan containing destructive steps gets ONE explicit confirm listing them (the plan
     //? approval itself covers the rest — B-23 confirm-on-important). Scope is rechecked on resolve.
@@ -1314,10 +1329,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       void menuHandler.confirm({
         title: translate({ key: 'workspaces.shell.confirmDestructiveTitle' }),
         content: translate({ key: 'workspaces.shell.confirmDestructiveContent', params: [{ key: 'summary', value: destructive.map((s) => s.summary).join(' · ') }] }),
-      }).then((ok) => { if (ok) run(); });
+      }).then((ok) => { if (ok) void run(); });
       return;
     }
-    run();
+    void run();
   }, [currentProjectScope, dispatchProposal, translate]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);

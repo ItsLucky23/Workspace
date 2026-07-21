@@ -914,7 +914,12 @@
       "desc": "Starte einen Drittanbieter-Service (Kafka, Postgres, Redis…) zum Entwickeln und Testen. Per Name aus deiner App + der KI erreichbar.",
       "provision": "Service hinzufügen",
       "teardown": "Abbauen",
-      "empty": "Keine Services aktiv. Wähle ein Preset und füge eins hinzu."
+      "empty": "Keine Services aktiv. Wähle ein Preset und füge eins hinzu.",
+      "customCompose": "Eigenes Docker Compose",
+      "isolationNote": "Uneingeschränktes Compose läuft nur in der separaten externen Sandbox deines Workspaces, niemals auf dem App-Host.",
+      "namePlaceholder": "Stack-Name",
+      "composePlaceholder": "services:\n  app:\n    image: …",
+      "provisionCompose": "Compose ausführen"
     },
     "db": {
       "title": "Datenbank",
@@ -1180,7 +1185,9 @@
       "aiAccept": "Übernehmen",
       "aiApply": "Anwenden",
       "aiApprovePlan": "Plan genehmigen",
+      "aiExecuting": "Wird ausgeführt…",
       "aiAccepted": "Erledigt",
+      "aiExecutionFailed": "Ausführung fehlgeschlagen",
       "send": "Senden",
       "allCaughtUp": "Alles erledigt ✨",
       "accept": "Annehmen",

@@ -6,8 +6,8 @@
 //? Params were already server-validated against the workspace context; the local `str/num/…`
 //? readers only re-narrow the JSON types (never invent values, no casts).
 
-import { apiRequest } from 'src/_sockets/apiRequest';
-import { syncRequest } from 'src/_sockets/syncRequest';
+import { apiRequest as rawApiRequest } from 'src/_sockets/apiRequest';
+import { syncRequest as rawSyncRequest } from 'src/_sockets/syncRequest';
 
 import type { ChatEnabledOp } from '../_data/chatOps';
 import type { ChatProposal, GitConfig, PipelineStageCfg } from '../_data/types';
@@ -24,10 +24,23 @@ export interface ChatDispatchExtras {
   stageConfigs: PipelineStageCfg[];
   //? delete-workspace reuses the provider's OWN delete flow (api call + nav/loading reset) — the one
   //? accept whose aftermath lives in client state the dispatcher cannot reach.
-  deleteWorkspace: () => void;
+  deleteWorkspace: () => Promise<{ status: 'success' | 'error' }>;
   nextReqId: () => string;         // idempotency key factory
   refetch: () => void;             // snapshot refresh for slow/rare structural writes
 }
+
+let activeReceiptCollector: ((receipt: Promise<unknown>) => void) | null = null;
+
+const collectReceipt = <T extends Promise<unknown>>(receipt: T): T => {
+  activeReceiptCollector?.(receipt);
+  return receipt;
+};
+
+//? Catalog dispatchers historically fire-and-forgot every request, so the chat painted “Done” before RBAC or
+//? execution replied. These typed wrappers keep all existing dispatcher bodies intact while collecting the
+//? real API/sync receipts for the one synchronous dispatch invocation that is currently being accepted.
+const apiRequest: typeof rawApiRequest = (options) => collectReceipt(rawApiRequest(options));
+const syncRequest: typeof rawSyncRequest = (options) => collectReceipt(rawSyncRequest(options));
 
 const str = (p: ChatProposal, key: string): string | undefined => {
   const v = p.params?.[key];
@@ -506,7 +519,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     void syncRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { memberId, clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   //? The one accept that must also reset client nav/loading state — reuse the provider's own flow.
-  'delete-workspace': (_p, x) => { x.deleteWorkspace(); },
+  'delete-workspace': (_p, x) => { void collectReceipt(x.deleteWorkspace()); },
 
   // -- documents + templates (no fine-grained delta — refetch after, like the documents UI)
   'document-create': (p, x) => {
@@ -846,3 +859,25 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'apply-design-tokens', projectId: x.activeProjectId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
 };
+
+//? Execute one generic accepted proposal and wait for every real route receipt it emitted. A dispatcher that
+//? produced no request (missing/stale params) is a failure, not a fabricated success. Multiple receipts are
+//? supported for composite catalog actions; all must ACK success before the UI may say “Done”.
+export function chatExecutionReceiptsSucceeded(receipts: unknown[]): boolean {
+  return receipts.length > 0 && receipts.every((receipt) => receipt !== null && typeof receipt === 'object' && 'status' in receipt && receipt.status === 'success');
+}
+
+export async function executeTrackedChatDispatch(
+  op: ChatEnabledOp,
+  proposal: ChatProposal,
+  extras: ChatDispatchExtras,
+): Promise<boolean> {
+  const receipts: Promise<unknown>[] = [];
+  activeReceiptCollector = (receipt) => { receipts.push(receipt); };
+  try {
+    CHAT_DISPATCH[op](proposal, extras);
+  } finally {
+    activeReceiptCollector = null;
+  }
+  return chatExecutionReceiptsSucceeded(await Promise.all(receipts));
+}

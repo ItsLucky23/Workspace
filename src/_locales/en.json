@@ -914,7 +914,12 @@
       "desc": "Spin up a third-party service (Kafka, Postgres, Redis…) to develop and test against. Reachable by name from your app + the AI.",
       "provision": "Add service",
       "teardown": "Tear down",
-      "empty": "No services running. Pick a preset and add one."
+      "empty": "No services running. Pick a preset and add one.",
+      "customCompose": "Custom Docker Compose",
+      "isolationNote": "Unrestricted Compose runs only in your workspace’s dedicated external sandbox, never on the app host.",
+      "namePlaceholder": "Stack name",
+      "composePlaceholder": "services:\n  app:\n    image: …",
+      "provisionCompose": "Run Compose"
     },
     "db": {
       "title": "Database",
@@ -1180,7 +1185,9 @@
       "aiAccept": "Accept",
       "aiApply": "Apply",
       "aiApprovePlan": "Approve plan",
+      "aiExecuting": "Executing…",
       "aiAccepted": "Done",
+      "aiExecutionFailed": "Execution failed",
       "send": "Send",
       "allCaughtUp": "All caught up ✨",
       "accept": "Accept",

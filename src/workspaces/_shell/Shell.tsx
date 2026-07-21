@@ -720,6 +720,21 @@ function useTypewriter(text: string, animate: boolean): { shown: string; typing:
   return { shown, typing: shown.length < text.length };
 }
 
+function ChatExecutionActions({ m, onReject, onAccept, acceptLabel, alignEnd = false }: { m: ChatMessage; onReject: () => void; onAccept: () => void; acceptLabel: string; alignEnd?: boolean }) {
+  const translate = useTranslator();
+  const align = alignEnd ? 'self-end' : 'shrink-0';
+  if (m.executing) return <span className={`text-xs text-muted inline-flex items-center gap-1 ${align}`}><Icon name="spinner" className="animate-spin" /> {translate({ key: 'workspaces.shell.aiExecuting' })}</span>;
+  if (m.accepted) return <span className={`text-xs text-correct inline-flex items-center gap-1 ${align}`}><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>;
+  if (m.declined) return <span className={`text-xs text-muted inline-flex items-center gap-1 ${align}`}><Icon name="xmark" /> {translate({ key: 'workspaces.shell.aiDeclined' })}</span>;
+  return (
+    <span className={`flex items-center gap-1.5 ${align}`}>
+      {m.executionError && <span className="text-xs text-wrong">{translate({ key: 'workspaces.shell.aiExecutionFailed' })}</span>}
+      <button type="button" onClick={onReject} className="text-xs font-medium px-2 py-1 rounded-lg text-muted hover:text-title hover:bg-container2-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiReject' })}</button>
+      <button type="button" onClick={onAccept} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{acceptLabel}</button>
+    </span>
+  );
+}
+
 function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m: ChatMessage; onAccept: (id: string, p: ChatProposal) => void; onAcceptPlan: (id: string, plan: ChatPlan) => void; onReject: (id: string) => void; onApplyCopilot: (d: CopilotDirective) => void }) {
   const translate = useTranslator();
   const mine = m.role === 'user';
@@ -743,16 +758,7 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m
         <div className="mt-1.5 ml-8 max-w-[80%] rounded-xl border border-primary-border bg-primary/8 p-2.5 flex items-center gap-2">
           <Icon name="wand-magic-sparkles" className="text-primary shrink-0" />
           <span className="text-xs text-title flex-1 min-w-0">{p.summary}</span>
-          {m.accepted
-            ? <span className="text-xs text-correct inline-flex items-center gap-1 shrink-0"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
-            : (m.declined
-              ? <span className="text-xs text-muted inline-flex items-center gap-1 shrink-0"><Icon name="xmark" /> {translate({ key: 'workspaces.shell.aiDeclined' })}</span>
-              : (
-                <span className="flex items-center gap-1.5 shrink-0">
-                  <button type="button" onClick={() => { onReject(m.id); }} className="text-xs font-medium px-2 py-1 rounded-lg text-muted hover:text-title hover:bg-container2-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiReject' })}</button>
-                  <button type="button" onClick={() => { onAccept(m.id, p); }} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiAccept' })}</button>
-                </span>
-              ))}
+          <ChatExecutionActions m={m} onReject={() => { onReject(m.id); }} onAccept={() => { onAccept(m.id, p); }} acceptLabel={translate({ key: 'workspaces.shell.aiAccept' })} />
         </div>
       )}
       {plan && (
@@ -769,16 +775,7 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m
               </div>
             ))}
           </div>
-          {m.accepted
-            ? <span className="text-xs text-correct inline-flex items-center gap-1 self-end"><Icon name="check" /> {translate({ key: 'workspaces.shell.aiAccepted' })}</span>
-            : (m.declined
-              ? <span className="text-xs text-muted inline-flex items-center gap-1 self-end"><Icon name="xmark" /> {translate({ key: 'workspaces.shell.aiDeclined' })}</span>
-              : (
-                <span className="flex items-center gap-1.5 self-end">
-                  <button type="button" onClick={() => { onReject(m.id); }} className="text-xs font-medium px-2 py-1 rounded-lg text-muted hover:text-title hover:bg-container2-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiReject' })}</button>
-                  <button type="button" onClick={() => { onAcceptPlan(m.id, plan); }} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-primary text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.aiApprovePlan' })}</button>
-                </span>
-              ))}
+          <ChatExecutionActions m={m} onReject={() => { onReject(m.id); }} onAccept={() => { onAcceptPlan(m.id, plan); }} acceptLabel={translate({ key: 'workspaces.shell.aiApprovePlan' })} alignEnd />
         </div>
       )}
       {/* #109 — AI-drives-UI copilot directive: a single "Apply" navigates (+ pre-fills) the target page. */}

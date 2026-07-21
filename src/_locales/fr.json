@@ -914,7 +914,12 @@
       "desc": "Lancez un service tiers (Kafka, Postgres, Redis…) pour développer et tester. Accessible par nom depuis votre app + l’IA.",
       "provision": "Ajouter un service",
       "teardown": "Démonter",
-      "empty": "Aucun service actif. Choisissez un préréglage et ajoutez-en un."
+      "empty": "Aucun service actif. Choisissez un préréglage et ajoutez-en un.",
+      "customCompose": "Docker Compose personnalisé",
+      "isolationNote": "Compose sans restriction s’exécute uniquement dans le bac à sable externe dédié à votre espace, jamais sur l’hôte de l’application.",
+      "namePlaceholder": "Nom de la pile",
+      "composePlaceholder": "services:\n  app:\n    image: …",
+      "provisionCompose": "Exécuter Compose"
     },
     "db": {
       "title": "Base de données",
@@ -1180,7 +1185,9 @@
       "aiAccept": "Accepter",
       "aiApply": "Appliquer",
       "aiApprovePlan": "Approuver le plan",
+      "aiExecuting": "Exécution…",
       "aiAccepted": "Terminé",
+      "aiExecutionFailed": "Échec de l’exécution",
       "send": "Envoyer",
       "allCaughtUp": "Tout est à jour ✨",
       "accept": "Accepter",

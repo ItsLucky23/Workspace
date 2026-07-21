@@ -87,7 +87,11 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
   if (!isContentOp(op)) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op, roomCode, userId: user.id, prisma: functions.db.prisma, clientRequestId,
-    ...(contentProjectId ? { target: { contentProjectId } } : {}), payload,
+    //? The Conductor's content family predates this shared route: some cases resolve the piece from `target`,
+    //? others from `payload`. Preserve it in BOTH canonical envelopes so every whitelisted op has the same
+    //? real dispatch effect instead of returning success after a silent missing-id no-op.
+    ...(contentProjectId ? { target: { contentProjectId } } : {}),
+    payload: { ...payload, ...(contentProjectId ? { contentProjectId } : {}) },
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   //? Nudge the whole room to refetch the content slice (structural changes carry no fine-grained delta;

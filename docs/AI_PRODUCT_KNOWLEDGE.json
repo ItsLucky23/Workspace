@@ -1,6 +1,6 @@
 {
-  "hash": "44e63663a47ec70c",
-  "chunkCount": 222,
+  "hash": "f64972be4dfeb972",
+  "chunkCount": 223,
   "chunks": [
     {
       "id": "cap-001",
@@ -1333,6 +1333,12 @@
       "kind": "decision",
       "title": "Host administration, workspace governance, and browser terminals are separate fail-closed security planes",
       "text": "ADR 0287: Host administration, workspace governance, and browser terminals are separate fail-closed security planes. The application had three authority leaks: 1. Workspace owner/admin terminology was being treated as a possible future host-admin shortcut even though membership is tenant-scoped. A self-host operator needs a separate global role. 2. The browser terminal still had a development fallback that spawned a shell in the application/host process, and its container mode trusted a client-provided Docker name after checking only that it had *some* Workspaces label. The ticket detail panel omitted the name and therefore selected the host fallback. 3. Member governance had coarse checks: accepting a workspace suggestion was marked login-only; a manageMembers role could invite/remove built-in admins; `ownerActions` on a custom role could reach ownership transfer; repeated invite/suggestion actions were not uniformly idempotent. Decision: - The framework-global `User.admin` field means **host superadmin only**. It is never inferred from `WorkspaceMember.roleKey`. Workspace `owner`/`admin` remains full authority only within that workspace. Root operators can bootstrap/recover the host role with `WS_SUPERADMIN_EMAILS`; all host-plane routes must use the shared `isHostSuperadmin`/`assertHostSuperadmin` guard. A host superadmin does not implicitly become a workspace member either. - Browser terminals are **container-only in every environment**. The host-shell backend and its env"
+    },
+    {
+      "id": "adr-0288",
+      "kind": "decision",
+      "title": "Unrestricted Docker Compose runs only on an external per-workspace sandbox",
+      "text": "ADR 0288: Unrestricted Docker Compose runs only on an external per-workspace sandbox. The product must support arbitrary third-party Docker Compose, not only curated presets. The prior YAML sanitizer rejected privileged mode and obvious binds, but missed parts of long syntax and can never make every future Compose/Docker feature safe. Conversely, allowing those directives on the application daemon gives a workspace user root-equivalent access to the Workspaces host. Project-name/network prefixes also do not stop cross-tenant access on one daemon. Decision: - Production never runs workspace Compose on the app Docker daemon. It calls a root-configured HTTPS runner URL containing `{workspaceId}`; each resolved endpoint represents a dedicated VM/microVM/physical sandbox. - Inside that sandbox Compose is unrestricted. Workspaces preserves the raw YAML instead of pretending a sanitizer is the security boundary. - The runner returns explicit gateway/overlay environment values for services needed by app/agent containers; Workspaces never assumes same-daemon DNS. - Missing/invalid runner configuration fails closed in production. Restricted local sanitization remains only as a development fallback. - Conductor owns desired-state persistence and records which backend must handle teardown."
     }
   ]
 }

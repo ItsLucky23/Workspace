@@ -14,8 +14,13 @@ import { docker, dockerAvailable } from './runtime';
 import { workspaceDataDir } from '../git/repoStore';
 import { sanitizeCompose } from './composeSanitize';
 import { resolveWorkspaceEnv } from './serviceEnv';
+import { createIsolatedComposeRunner, isolatedComposeRunnerConfig, type IsolatedComposeRunner } from './isolatedComposeRunner';
 
 const safe = (s: string): string => s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '');
+const ISOLATED_MARKER = '# x-workspaces-execution: isolated-v1';
+const LOCAL_MARKER = '# x-workspaces-execution: local-sanitized-v1';
+const markCompose = (body: string, isolated: boolean): string => `${isolated ? ISOLATED_MARKER : LOCAL_MARKER}\n${body}`;
+export const isIsolatedCompose = (body: string): boolean => body.startsWith(`${ISOLATED_MARKER}\n`);
 
 //? The compose project name (namespaces every container/network/volume) + the per-workspace service network.
 export function stackProject(workspaceId: string, name: string): string { return `ws-${safe(workspaceId)}-${safe(name)}`; }
@@ -33,8 +38,10 @@ export function withWorkspaceNetwork(sanitized: string, network: string): string
 //? Threaded into `launchTicketContainer` by the stage/preview/ref-preview callers.
 export async function workspaceContainerContext(prisma: PrismaClient, workspaceId: string): Promise<{ env: Record<string, string>; serviceNetwork?: string }> {
   const env = await resolveWorkspaceEnv(prisma, workspaceId);
-  const running = await prisma.serviceStack.count({ where: { workspaceId, status: 'running' } });
-  return running > 0 ? { env, serviceNetwork: stackNetwork(workspaceId) } : { env };
+  const running = await prisma.serviceStack.findMany({ where: { workspaceId, status: 'running' }, select: { compose: true } });
+  //? An isolated runner is a different daemon/VM; attaching an app-host container to a same-named local
+  //? bridge would create a false connection. The runner exposes explicit endpoint env instead.
+  return running.some((stack) => !isIsolatedCompose(stack.compose)) ? { env, serviceNetwork: stackNetwork(workspaceId) } : { env };
 }
 
 export function composeUpArgs(project: string, file: string): string[] { return ['compose', '-p', project, '-f', file, 'up', '-d', '--remove-orphans']; }
@@ -47,7 +54,12 @@ function stackFile(workspaceId: string, name: string): string { return path.join
 export type DockerRun = (args: string[]) => Promise<{ code: number; out: string; err: string }>;
 const realRun: DockerRun = (args) => docker(args);
 
-export interface ProvisionResult { ok: boolean; services?: string[]; violations?: string[]; error?: string }
+export interface ProvisionResult { ok: boolean; services?: string[]; violations?: string[]; error?: string; env?: Record<string, string>; executionMode?: 'isolated-v1' | 'local-sanitized' }
+
+function configuredIsolatedRunner(): IsolatedComposeRunner | null {
+  const config = isolatedComposeRunnerConfig();
+  return config ? createIsolatedComposeRunner(config) : null;
+}
 
 //? Provision (or update) a service stack: sanitize the compose (reject host-escapes, rewrite host-ports) →
 //? persist the SANITIZED compose as the ServiceStack (Conductor is the only writer) → ensure the per-workspace
@@ -55,16 +67,35 @@ export interface ProvisionResult { ok: boolean; services?: string[]; violations?
 //? stack 'error' but keep the row. A sanitizer rejection never touches Docker.
 export async function provisionServiceStack(
   prisma: PrismaClient, workspaceId: string, name: string, composeYaml: string,
-  opts: { run?: DockerRun } = {},
+  opts: { run?: DockerRun; isolatedRunner?: IsolatedComposeRunner | null } = {},
 ): Promise<ProvisionResult> {
+  const isolatedRunner = opts.isolatedRunner === undefined ? configuredIsolatedRunner() : opts.isolatedRunner;
+  if (isolatedRunner) {
+    const project = stackProject(workspaceId, name);
+    await prisma.serviceStack.upsert({
+      where: { workspaceId_name: { workspaceId, name } },
+      create: { workspaceId, name, compose: markCompose(composeYaml, true), services: [], status: 'provisioning' },
+      update: { compose: markCompose(composeYaml, true), services: [], status: 'provisioning' },
+    });
+    const result = await isolatedRunner.up({ workspaceId, project, compose: composeYaml });
+    await prisma.serviceStack.updateMany({
+      where: { workspaceId, name },
+      data: { status: result.ok ? 'running' : 'error', services: { set: result.services } },
+    });
+    return { ok: result.ok, services: result.services, env: result.env, executionMode: 'isolated-v1', ...(result.error ? { error: result.error } : {}) };
+  }
+  //? Unrestricted Compose on the app's host daemon is not isolatable. Production fails closed until the
+  //? operator provisions WS_COMPOSE_RUNNER_URL_TEMPLATE; development may use the legacy restricted fallback.
+  if (process.env.NODE_ENV === 'production') return { ok: false, error: 'service.isolatedRunnerRequired' };
+
   const clean = sanitizeCompose(composeYaml);
   if (!clean.ok) return { ok: false, violations: clean.violations };
   const network = stackNetwork(workspaceId);
   const composed = withWorkspaceNetwork(clean.sanitized, network);
   await prisma.serviceStack.upsert({
     where: { workspaceId_name: { workspaceId, name } },
-    create: { workspaceId, name, compose: composed, services: clean.services, status: 'stopped' },
-    update: { compose: composed, services: clean.services, status: 'stopped' },
+    create: { workspaceId, name, compose: markCompose(composed, false), services: clean.services, status: 'stopped' },
+    update: { compose: markCompose(composed, false), services: clean.services, status: 'stopped' },
   });
 
   const run = opts.run ?? realRun;
@@ -75,7 +106,9 @@ export async function provisionServiceStack(
   const up = await run(composeUpArgs(stackProject(workspaceId, name), file));
   const status = up.code === 0 ? 'running' : 'error';
   await prisma.serviceStack.updateMany({ where: { workspaceId, name }, data: { status } });
-  return status === 'running' ? { ok: true, services: clean.services } : { ok: false, services: clean.services, error: up.err.slice(0, 200) };
+  return status === 'running'
+    ? { ok: true, services: clean.services, executionMode: 'local-sanitized' }
+    : { ok: false, services: clean.services, executionMode: 'local-sanitized', error: up.err.slice(0, 200) };
 }
 
 //? Tear down a stack: `docker compose down -v` + drop the row + the on-disk file. Injectable runner.
@@ -98,11 +131,19 @@ export async function teardownWorkspaceServiceNetwork(workspaceId: string, opts:
   return remaining !== null && remaining.length === 0;
 }
 
-export async function teardownServiceStack(prisma: PrismaClient, workspaceId: string, name: string, opts: { run?: DockerRun } = {}): Promise<{ ok: boolean }> {
+export async function teardownServiceStack(prisma: PrismaClient, workspaceId: string, name: string, opts: { run?: DockerRun; isolatedRunner?: IsolatedComposeRunner | null } = {}): Promise<{ ok: boolean }> {
   const run = opts.run ?? realRun;
   const file = stackFile(workspaceId, name);
-  const stack = await prisma.serviceStack.findFirst({ where: { workspaceId, name }, select: { status: true } });
+  const stack = await prisma.serviceStack.findFirst({ where: { workspaceId, name }, select: { status: true, compose: true } });
   if (!stack) return { ok: true };
+  if (isIsolatedCompose(stack.compose)) {
+    const isolatedRunner = opts.isolatedRunner === undefined ? configuredIsolatedRunner() : opts.isolatedRunner;
+    if (!isolatedRunner) return { ok: false };
+    const stopped = await isolatedRunner.down({ workspaceId, project: stackProject(workspaceId, name) });
+    if (!stopped.ok) return { ok: false };
+    const removed = await prisma.serviceStack.deleteMany({ where: { workspaceId, name, compose: stack.compose } });
+    return { ok: removed.count === 1 };
+  }
   if (existsSync(file)) {
     const down = await run(composeDownArgs(stackProject(workspaceId, name), file));
     if (down.code !== 0) return { ok: false };

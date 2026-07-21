@@ -28,18 +28,9 @@ import { saveConnection } from '../../../server/content/publishOAuth';
 //?      (`buildReplyRequest` returns null deterministically, no network call), so this proves
 //?      the op reaches `postReply` and the `SocialComment.read` post-condition stays untouched
 //?      on failure. A genuine SUCCESS post-condition needs a live YouTube OAuth connection.
-//?
-//? `content-edit-image` and `content-gen-thumbnail` were investigated (not added here): both
-//? are a REAL, currently-broken production bug, not a test-coverage gap. This route's `main()`
-//? always routes a client's `contentProjectId` into the Conductor's `target`, never `payload`
-//? (`const { op, clientRequestId, contentProjectId, ...payload } = clientInput`), but the
-//? Conductor's `content-edit-image`/`content-gen-thumbnail` cases read ONLY
-//? `str(payload, 'contentProjectId')` (conductor.ts ~2429/~2617) — `content-trim-audio`, right
-//? next to them, correctly checks `str(target, ...) ?? str(payload, ...)`. `chatDispatch.ts`'s
-//? real callers send `contentProjectId` the same top-level way this test did, so BOTH ops are a
-//? silent no-op (`status:'success'`, no ContentAsset/MediaJob ever created) via their only real
-//? dispatch path today. Fixing this needs a `conductor.ts` change, out of this test-only pass's
-//? scope — flagged to the user/orchestrator rather than papered over with a workaround here.
+//?  [7] regression for the former target/payload split: scene-save + audio-mix cases read the piece id
+//?      from payload while this gateway also uses target for mixed legacy cases. Both now receive the same
+//?      top-level `contentProjectId` and prove real Prisma post-conditions (never success-without-effect).
 
 //? A valid-shape (24-hex) Mongo ObjectId string that doesn't need to reference a real row.
 const fakeObjectId = (): string => randomBytes(12).toString('hex');
@@ -49,6 +40,8 @@ interface ContentControlInput {
   projectId?: string; title?: string; slug?: string; artifactId?: string;
   contentProjectId?: string; assetId?: string; prompt?: string; referenceUrl?: string;
   headline?: string; startMs?: number; endMs?: number; gain?: number;
+  scenes?: { id?: string; durationMs?: number; prompt?: string }[];
+  voiceVolume?: number; musicVolume?: number;
   commentId?: string; replyText?: string;
 }
 interface ContentControlOk { status: 'success' }
@@ -213,6 +206,43 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.ok((trimmed?.url ?? '').includes('-trim-'), 'the trimmed asset url carries the ffmpeg trim suffix (a real new file, not the source reused)');
       } finally {
         await ctx.prisma.contentAsset.deleteMany({ where: { workspaceId } });
+        await ctx.prisma.contentProject.deleteMany({ where: { workspaceId } });
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'top-level contentProjectId reaches payload-only content cases (no silent success)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'contentcontrol_c9');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
+        ctx.expect.ok(project !== null, 'the seeded demo workspace ships at least one Project');
+        if (!project) return;
+        const piece = await ctx.prisma.contentProject.create({ data: { workspaceId, projectId: project.id, title: 'Payload regression', brief: 'x' } });
+
+        const sceneRes = await ctx.callSync<ContentControlInput, ContentControlResponse>(
+          { op: 'content-save-scenes', clientRequestId: `cc-c9-scenes-${String(Date.now())}`, contentProjectId: piece.id, scenes: [{ durationMs: 2345, prompt: 'real scene' }] },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(sceneRes.status, 'success', 'content-save-scenes returns success');
+        const scene = await poll(() => ctx.prisma.videoScene.findFirst({ where: { workspaceId, contentProjectId: piece.id } }));
+        ctx.expect.ok(scene !== null, 'content-save-scenes persisted a VideoScene instead of silently no-oping');
+        ctx.expect.eq(scene?.durationMs, 2345, 'the scene payload reached the Conductor');
+
+        const mixRes = await ctx.callSync<ContentControlInput, ContentControlResponse>(
+          { op: 'content-save-audio-mix', clientRequestId: `cc-c9-mix-${String(Date.now())}`, contentProjectId: piece.id, voiceVolume: 1.4, musicVolume: 0.3 },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(mixRes.status, 'success', 'content-save-audio-mix returns success');
+        const mixed = await poll(async () => {
+          const row = await ctx.prisma.contentProject.findFirst({ where: { workspaceId, id: piece.id } });
+          return row?.voiceVolume === 1.4 && row.musicVolume === 0.3 ? row : null;
+        });
+        ctx.expect.ok(mixed !== null, 'audio gains persisted instead of silently no-oping');
+      } finally {
+        await ctx.prisma.videoScene.deleteMany({ where: { workspaceId } });
         await ctx.prisma.contentProject.deleteMany({ where: { workspaceId } });
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }

@@ -35,8 +35,9 @@ try {
   assert(!(row?.compose ?? '').includes('5432:5432'), 'the persisted compose has the host port stripped (sanitized)');
   assert((row?.compose ?? '').includes('ws-') && (row?.compose ?? '').includes('external: true'), 'the per-workspace network is baked into the stored compose');
   assert(upArgs.join(' ').includes(`-p ws-`), 'docker compose up ran under the namespaced project');
+  assert((row?.compose ?? '').startsWith('# x-workspaces-execution: local-sanitized-v1'), 'development fallback is explicitly marked local-sanitized');
 
-  // 2) a DANGEROUS compose → rejected, NO docker, NO row.
+  // 2) a DANGEROUS compose → rejected, NO docker, NO row in the LOCAL development fallback.
   let dockerCalled = false;
   const bad = await provisionServiceStack(prisma, wsId, 'evil', 'services:\n  x:\n    image: a\n    privileged: true\n', {
     run: async () => { dockerCalled = true; return { code: 0, out: '', err: '' }; },
@@ -45,7 +46,29 @@ try {
   assert(!dockerCalled, 'a rejected compose NEVER touches Docker');
   eq(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'evil' } }), null, 'a rejected compose persists no row');
 
-  // 3) teardown → Docker failure preserves ownership for retry; proven down removes the row.
+  // 3) The dedicated workspace runner is the REAL unrestricted boundary: preserve privileged/binds unchanged,
+  // persist its mode, and consume only the explicit gateway env it returns. No local Docker runner is called.
+  const unrestrictedCompose = 'services:\n  x:\n    image: third-party:latest\n    privileged: true\n    volumes:\n      - /:/host\n';
+  let isolatedBody = '';
+  let isolatedDown = false;
+  const isolatedRunner = {
+    up: async (input: { compose: string }) => {
+      isolatedBody = input.compose;
+      return { ok: true, services: ['x'], env: { THIRD_PARTY_URL: 'https://workspace-gateway.example/x' } };
+    },
+    down: async () => { isolatedDown = true; return { ok: true, services: [], env: {} }; },
+  };
+  const free = await provisionServiceStack(prisma, wsId, 'free', unrestrictedCompose, { isolatedRunner });
+  assert(free.ok, 'unrestricted Compose provisions in the dedicated workspace sandbox');
+  eq(isolatedBody, unrestrictedCompose, 'isolated Compose is preserved byte-for-byte');
+  eq(free.env?.THIRD_PARTY_URL, 'https://workspace-gateway.example/x', 'the runner publishes an explicit cross-daemon endpoint');
+  const freeRow = await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'free' } });
+  assert((freeRow?.compose ?? '').startsWith('# x-workspaces-execution: isolated-v1'), 'the persisted row records the isolated backend');
+  assert((freeRow?.compose ?? '').endsWith(unrestrictedCompose), 'the persisted isolated Compose remains unrestricted after its system marker');
+  const isolatedRemoved = await teardownServiceStack(prisma, wsId, 'free', { isolatedRunner });
+  assert(isolatedRemoved.ok && isolatedDown, 'isolated teardown calls the same workspace runner and removes the row');
+
+  // 4) teardown → Docker failure preserves ownership for retry; proven down removes the row.
   const failedDown = await teardownServiceStack(prisma, wsId, 'data', { run: async () => ({ code: 1, out: '', err: 'daemon failed' }) });
   assert(!failedDown.ok, 'a failed compose down is not reported as successful teardown');
   assert(await prisma.serviceStack.findFirst({ where: { workspaceId: wsId, name: 'data' } }) !== null, 'failed teardown preserves the stack row for retry');

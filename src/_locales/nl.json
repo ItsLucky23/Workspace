@@ -914,7 +914,12 @@
       "desc": "Start een externe service (Kafka, Postgres, Redis…) om tegen te ontwikkelen en testen. Bereikbaar op naam vanuit je app + de AI.",
       "provision": "Service toevoegen",
       "teardown": "Afbreken",
-      "empty": "Geen services actief. Kies een preset en voeg er een toe."
+      "empty": "Geen services actief. Kies een preset en voeg er een toe.",
+      "customCompose": "Eigen Docker Compose",
+      "isolationNote": "Vrije Compose draait uitsluitend in de aparte externe sandbox van je workspace, nooit op de app-host.",
+      "namePlaceholder": "Stacknaam",
+      "composePlaceholder": "services:\n  app:\n    image: …",
+      "provisionCompose": "Compose uitvoeren"
     },
     "db": {
       "title": "Database",
@@ -1180,7 +1185,9 @@
       "aiAccept": "Accepteren",
       "aiApply": "Toepassen",
       "aiApprovePlan": "Plan goedkeuren",
+      "aiExecuting": "Wordt uitgevoerd…",
       "aiAccepted": "Gedaan",
+      "aiExecutionFailed": "Uitvoering mislukt",
       "send": "Versturen",
       "allCaughtUp": "Helemaal bij ✨",
       "accept": "Accepteren",
