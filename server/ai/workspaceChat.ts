@@ -195,6 +195,14 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
   const framework = FRAMEWORK_DEPS.find(([dep]) => depNames.has(dep))?.[1] ?? '';
   //? WorkspaceMember stores only userId (no User relation) — resolve names separately.
   const users = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } }, select: { id: true, name: true } });
+  //? Authorization must never depend on the display-list cap above: a valid member beyond the first 40
+  //? still gets their exact role, while an absent membership receives no proposal capabilities.
+  const actorMembership = userId
+    ? await prisma.workspaceMember.findFirst({ where: { workspaceId, userId }, select: { roleKey: true } })
+    : null;
+  const actorRole = actorMembership
+    ? await prisma.workspaceRole.findFirst({ where: { workspaceId, key: actorMembership.roleKey }, select: { perms: true } })
+    : null;
   //? #54 — resolve each open MR's ticket KEY (the chat + mrAction reference the DEV-#### key, not the id).
   const mrTicketKeys = await prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, id: { in: mrRows.map((m) => m.ticketId) } }, select: { id: true, key: true } });
   const keyByTicketId = new Map(mrTicketKeys.map((t) => [t.id, t.key]));
@@ -238,7 +246,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     },
     enabledSections: wsRow?.enabledSections ?? [],
     ...(userId ? {
-      permissions: roleRows.find((role) => role.key === memberRows.find((member) => member.userId === userId)?.roleKey)?.perms ?? [],
+      permissions: actorRole?.perms ?? [],
     } : {}),
   };
 }
