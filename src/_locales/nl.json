@@ -490,7 +490,44 @@
       "budgetBody": "Een maandlimiet zodat generaties je nooit verrassen. De engine blokkeert nieuwe uitgaven bij de limiet.",
       "back": "Terug",
       "next": "Volgende",
-      "finish": "Klaar"
+      "finish": "Klaar",
+      "askCapability": "Vraag de workspace-eigenaar of iemand met de rechten “{{cap}}” om dit in te stellen.",
+      "cap": {
+        "workTickets": "aan tickets werken",
+        "editPipeline": "de pipeline bewerken",
+        "workspaceSettings": "workspace-instellingen",
+        "manageMembers": "leden beheren",
+        "manageSprints": "sprints beheren",
+        "promoteAdmin": "admins promoveren",
+        "demoteAdmin": "admins beheren",
+        "ownerActions": "eigenaar"
+      },
+      "repo": {
+        "title": "Geen repository gekoppeld",
+        "why": "De Develop-module werkt op een gekoppelde git-repo — codeweergave, containers, terminals en de AI-codeeragent klonen die allemaal. Koppel er een om het aan te zetten.",
+        "cta": "Repository koppelen"
+      },
+      "docker": {
+        "title": "Docker draait niet",
+        "why": "Containers, terminals, previews, CI en deploys hebben allemaal een Docker-daemon op de host nodig — niets kan starten tot die bereikbaar is.",
+        "hint": "Dit is een host-instelling — start Docker op de server (of zet WS_DOCKER_BIN). Vraag je beheerder als je de host niet beheert."
+      },
+      "media": {
+        "title": "Media-generatie is niet ingesteld",
+        "why": "Zonder een media-provider-sleutel “slaagt” generatie wel, maar levert het placeholder-assets op in plaats van echte. Voeg een sleutel toe voor echte output.",
+        "cta": "Media-sleutel toevoegen"
+      },
+      "ai": {
+        "title": "Geen AI-provider ingesteld",
+        "why": "AI-functies hebben een provider nodig. Voeg een Gemini API-sleutel toe om ze aan te zetten.",
+        "cta": "AI-sleutel toevoegen",
+        "hint": "Of installeer de Claude CLI op de host — vraag je beheerder als je de server niet beheert."
+      },
+      "publishing": {
+        "title": "Geen account verbonden",
+        "why": "Om te publiceren verbind je eerst een social-account. Tot die tijd blijft de publiceer-knop verborgen.",
+        "cta": "Account verbinden"
+      }
     },
     "onboarding": {
       "welcome": "Welkom bij Workspaces",
@@ -568,8 +605,8 @@
       "incomingVariablesHint": "Wat de vorige stage je doorgeeft — klik om in de template in te voegen.",
       "promptTemplate": "Prompt-template",
       "promptTemplateHint": "Wordt bij de start van de stage met de inkomende waarden gerenderd (Claude's -p flag + carry-over-bestand).",
-      "outgoingEmit": "Uitgaand — deze stage moet uitgeven",
       "outgoingEmitHint": "Wordt afgedwongen via --json-schema zodat de volgende stage het kan lezen. Zo koppelt data tussen stages.",
+      "automationsMoved": "Automatiseringen hebben nu een eigen pagina",
       "turns": "beurten",
       "modelHaiku": "Haiku",
       "modelSonnet": "Sonnet",
@@ -1033,6 +1070,8 @@
       "needOne": "Houd minstens één sectie aan.",
       "board": "Board",
       "code": "Code",
+      "automations": "Automatiseringen",
+      "components": "Componenten",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Activiteit",
@@ -1635,11 +1674,14 @@
       "tabTerminal": "Terminal",
       "tabFiles": "Bestanden & refs",
       "tabCode": "Code",
-      "noCode": "Nog geen gewijzigde bestanden om te tonen.",
       "loadingEditor": "Editor laden…",
       "codeChanges": "Wijzigingen (Monaco)",
       "openLiveEditor": "Open live VS Code",
       "editorLaunching": "Editor starten…",
+      "openFullPage": "Openen op volledige pagina",
+      "backToTicket": "Terug naar ticket",
+      "editorFullTitle": "Live-editor · {{id}}",
+      "editorRetry": "Opnieuw proberen",
       "editorLaunchHint": "Start de echte VS Code die in de container van dit ticket draait.",
       "editorNotActivated": "Activeer eerst het ticket — er is een draaiende container nodig.",
       "editorLaunchFailed": "Kon de editor niet starten. Probeer opnieuw.",
@@ -1703,7 +1745,6 @@
       "noLinkedArtifacts": "Geen design of spec gekoppeld. Koppel er een zodat de AI ernaar bouwt.",
       "linkArtifactPlaceholder": "Koppel een design of Studio-spec…",
       "noTerminal": "Geen terminal actief",
-      "noTerminalSub": "Dit ticket heeft geen actieve container. Heractiveer het om een terminal te koppelen.",
       "openInTerminals": "Openen in Terminals",
       "noFileChanges": "Nog geen bestandswijzigingen",
       "noFileChangesSub": "Gewijzigde bestanden verschijnen hier terwijl de agent de worktree bewerkt.",
@@ -1745,7 +1786,6 @@
       "layoutGrid": "Raster",
       "layoutTabs": "Tabbladen",
       "emptyTitle": "Geen terminals actief",
-      "emptySub": "Activeer een ticket om een live terminal te koppelen.",
       "maximizeTitle": "Maximaliseren",
       "restoreTitle": "Terug naar rooster",
       "resizeTitle": "Sleep om de hoogte aan te passen"
@@ -2025,11 +2065,8 @@
       "themes": "Thema's",
       "themesSub": "Kies er een om te previewen — of maak je eigen.",
       "newTheme": "Nieuw thema",
-      "generateAi": "Genereer met AI",
       "aiSoon": "AI-themagenerator — komt in de volgende update",
       "soon": "Binnenkort",
-      "aiPlaceholder": "Beschrijf de look — bv. 'een warm, premium fintech-thema' of 'speels mint & koraal'",
-      "aiGenerate": "Genereer thema",
       "aiGenerating": "Bezig…",
       "aiError": "Kon geen thema genereren. Probeer opnieuw.",
       "aiBar": {
@@ -2336,6 +2373,14 @@
       "deleteConfirmTitle": "Automatisering verwijderen?",
       "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt."
     },
+    "automations": {
+      "title": "Automatiseringen",
+      "subtitle": "Triggers die reageren op je pipeline- en workspace-gebeurtenissen."
+    },
+    "components": {
+      "title": "Componenten",
+      "tagline": "Elk UI-component dat we leveren, live onder jouw designthema."
+    },
     "code": {
       "title": "Code",
       "subtitle": "Blader door de volledige codebase van de gekoppelde repository (alleen-lezen).",
@@ -2388,7 +2433,6 @@
       "mobileEmptyTitle": "Niets in {{stage}}",
       "mobileEmptySub": "Haal tickets uit GitLab om te beginnen.",
       "emptyStagesTitle": "Je board wordt opgezet…",
-      "emptyStagesSub": "Je pipeline-stages worden geladen.",
       "newTicketTitle": "Nieuw ticket",
       "startWithAi": "Meteen met AI starten",
       "newTicketTitlePlaceholder": "Ticket titel…",
@@ -2437,7 +2481,6 @@
       "title": "Backlog",
       "countOfTotal": "{{count}} van {{total}}",
       "done": "Klaar",
-      "select": "Selecteren",
       "newSprint": "Nieuwe sprint",
       "editSprint": "Sprint bewerken",
       "sprintStart": "Startdatum",
@@ -2665,7 +2708,10 @@
     "nav": {
       "develop": "Ontwikkelen",
       "content": "Content",
-      "insights": "Inzichten"
+      "insights": "Inzichten",
+      "subWork": "Werk",
+      "subMachine": "Machine",
+      "subTools": "Gereedschap"
     },
     "storage": {
       "title": "Opslag & prullenbak",

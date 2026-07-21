@@ -23,7 +23,9 @@ export async function importWorkspaceBundle(prisma: PrismaClient, ownerId: strin
   const name = str(meta.name);
   if (!name || !Array.isArray(b.tickets)) return { ok: false, tickets: 0, pieces: 0, sources: 0, error: 'import.invalidBundle' };
 
-  const created = await createBlankWorkspace(prisma, ownerId, `${name} (import)`);
+  //? skipStarterSeed=true — an import already carries the bundle's own tickets; the default
+  //? "welcome" starter tickets would otherwise land as phantoms alongside them.
+  const created = await createBlankWorkspace(prisma, ownerId, `${name} (import)`, undefined, 'professional', undefined, true);
   const workspaceId = created.workspaceId;
   const project = await prisma.project.create({ data: { workspaceId, name: `${name} (import)`, gitlabPath: '' } });
 

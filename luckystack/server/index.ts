@@ -30,10 +30,9 @@ registerTenantKeyFormatter();
 //? opens onto populated screens. Idempotent (guarded by the membership count).
 registerFirstLoginBootstrap();
 
-//? Wires the Workspaces dev terminal PTY bridge (Socket.io ⇄ node-pty). It
-//? HARD-gates itself to non-production (a browser→host-shell channel is an RCE
-//? surface); the real product replaces it with the per-container pty-agent.
-//? Only needed so the prototype Terminals screen works locally during the build.
+//? Wires the Workspaces container terminal relay. It authenticates + workspace-authorizes the socket,
+//? derives the ticket container server-side and relays its pty-agent / docker-exec shell. There is no
+//? browser→app/host-shell mode in development or production.
 registerWorkspacesTerminalHooks();
 
 //? Example dev-only logger — delete or replace with your own audit hook.

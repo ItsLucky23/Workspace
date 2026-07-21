@@ -171,6 +171,10 @@ import { startLeaderElection } from './orchestrator/cluster';
   //? Cross-instance realtime fan-out — only a real N-instance deploy needs it (adds Redis pub/sub),
   //? so it is opt-in. With WS_MULTI_INSTANCE=1 a broadcast on one instance reaches sockets on the
   //? others via the socket.io Redis adapter.
+  //? N-instance SAFETY: without the adapter, room broadcasts (incl. broadcastWorkspaceDirty) reach only the
+  //? emitting instance's sockets, so other replicas' users silently miss live updates. There is no reliable
+  //? boot-time signal for "this is a multi-instance deploy" (Redis is a core dep, set single-instance too),
+  //? so the guidance lives in `.env_template` rather than a warning that would cry wolf on every solo boot.
   if ((process.env.WS_MULTI_INSTANCE ?? '') === '1') {
     const io = getIoInstance();
     if (io) {

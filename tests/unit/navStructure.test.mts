@@ -41,11 +41,12 @@ eq(GROUP_LABELS.content, 'Content', 'the content lane is called Content');
 eq(GROUP_LABELS.insights, 'Insights', 'what came of it is called Insights');
 
 //? The exact category membership the owner decided (ADR 0280): folders, URLs and nav tell ONE story.
-//? Develop deliberately holds ten pages — the owner chose module-cohesion over a size cap (the KISS
-//? wave may sub-group it later, but the category SET is pinned here). 'code' (the whole-codebase browser)
-//? was added after 'terminals' by owner decision 2026-07-20.
+//? Develop deliberately holds twelve pages — the owner chose module-cohesion over a size cap. The KISS
+//? wave sub-grouped it (work / machine / tools bands, pinned by the item order here) and gave Automations
+//? + Components their own destinations, but the category SET stays one story. 'code' (the whole-codebase
+//? browser) was added by owner decision 2026-07-20. The order below IS the sub-band order.
 const EXPECTED: Record<string, string[]> = {
-  develop: ['board', 'answers', 'backlog', 'pipeline', 'terminals', 'code', 'designer', 'interviewer', 'sources', 'scheduled'],
+  develop: ['board', 'answers', 'backlog', 'pipeline', 'automations', 'scheduled', 'code', 'terminals', 'designer', 'components', 'interviewer', 'sources'],
   content: ['content', 'documents', 'marketing', 'scheduled-posts', 'studio'],
   insights: ['activity', 'usage', 'knowledge'],
 };

@@ -37,6 +37,8 @@
     "caddy:launch": "tsx --tsconfig tsconfig.server.json scripts/dev/launchCaddy.mts",
     "test:e2e": "playwright test",
     "test:ws": "node scripts/runWsTests.mjs",
+    "test:unit": "node scripts/runWsTests.mjs unit",
+    "test:all": "npm run test:ws && npm run test && npm run test:e2e -- --workers=1",
     "prisma:generate": "tsx --tsconfig tsconfig.server.json scripts/prismaWithSecrets.ts generate",
     "prisma:db:push": "tsx --tsconfig tsconfig.server.json scripts/prismaWithSecrets.ts db push",
     "db:restore": "tsx --tsconfig tsconfig.server.json scripts/restoreBackup.ts",

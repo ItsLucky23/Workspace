@@ -32,7 +32,7 @@
 | `api/workspaces/closePreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [close-preview] stop exposing a ticket's preview (remove its proxy route). Direct |
 | `api/workspaces/commentReplyDraft/v1` | POST | login | 20 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `api/workspaces/containerTerminals/v1` | POST | login | 30 | — | yes | — | Workspaces — [container-terminals] list the workspace's RUNNING ticket containers so |
-| `api/workspaces/createWorkspace/v1` | POST | login | 10 | — | yes | — | Workspaces — [create-workspace] login-only control-API route. The new tenant has |
+| `api/workspaces/createWorkspace/v1` | POST | login | 30 | — | yes | — | Workspaces — [create-workspace] login-only control-API route. The new tenant has |
 | `api/workspaces/deleteWorkspace/v1` | POST | login | 30 | — | yes | — | Workspaces — [delete-workspace] typed per-action write route (Fase-0 split). |
 | `api/workspaces/designerGenerateAsset/v1` | POST | login | 20 | — | yes | — | Workspaces Designer — AI generation of a STYLE or an ANIMATION from a plain-language brief (the |
 | `api/workspaces/designerGenerateTheme/v1` | POST | login | 20 | — | yes | — | Workspaces Designer — AI theme generation. Takes a plain-language brief and returns a full |
@@ -76,7 +76,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (64)
+## Sync routes (65)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -144,6 +144,7 @@
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | yes | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
 | `sync/workspaces/uiReviewAction/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [ui-review-to-ticket / ui-review-dismiss] (U2 gap-fix) act on an open "unfuck the UI" |
 | `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | yes | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
+| `sync/workspaces/workspaceDirty/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 
 ## Ownership & coverage
 
@@ -151,12 +152,16 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 22 |
+| `ItsLucky23` | 23 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 128/128 routes have a per-route `.tests.ts`.
+**Test coverage**: 128/129 routes have a per-route `.tests.ts`.
 
-## Pages (35)
+_Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
+
+- `sync/workspaces/workspaceDirty/v1`
+
+## Pages (38)
 
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
@@ -180,10 +185,13 @@
 | `/workspaces/content/settings` | workspaces | — | `workspaces/content/settings/page.tsx` | intent: the Content module's setup & settings home, KISS-shaped — teach the AI your brand first (the |
 | `/workspaces/content/studio` | workspaces | — | `workspaces/content/studio/page.tsx` | intent: Studio — describe your product once in a short BRIEF and let the AI designer + marketer |
 | `/workspaces/develop/answers` | workspaces | — | `workspaces/develop/answers/page.tsx` | intent: The cross-ticket answer inbox — every AI question waiting on you, highest-priority and longest-waiting first, answered directly on its card (approve / pick an option / type); stage metadata and the optional approve-note sit behind small per-card disclosures. |
+| `/workspaces/develop/automations` | workspaces | — | `workspaces/develop/automations/page.tsx` | intent: Automations — the WorkspaceTriggers that react to pipeline + workspace events (a ticket is |
 | `/workspaces/develop/backlog` | workspaces | — | `workspaces/develop/backlog/page.tsx` | intent: The Backlog — every ticket in the workspace in one grouped list (collapsible |
 | `/workspaces/develop/board` | workspaces | — | `workspaces/develop/board/page.tsx` | intent: The scrum board of a Develop workspace — a kanban of tickets per pipeline |
 | `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | intent: Follow ONE AI-driven ticket and steer it: answer the agent's question when |
+| `/workspaces/develop/board/[ticketId]/editor` | workspaces | — | `workspaces/develop/board/[ticketId]/editor/page.tsx` | intent: The ticket's live editor, full-page — the real openvscode-server (browser VS Code) running |
 | `/workspaces/develop/code` | workspaces | — | `workspaces/develop/code/page.tsx` | intent: Code — a read-only browser for the WHOLE codebase of the workspace's linked project repo, |
+| `/workspaces/develop/components` | workspaces | — | `workspaces/develop/components/page.tsx` | intent: Components — the live reference gallery of every UI component the product ships, rendered under |
 | `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — shape the product's whole visual language and make it the design system the |
 | `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — a repo-aware AI chat: ask how this codebase works, what's worth improving, |
 | `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | intent: the project's AI pipeline — the ordered stages every ticket flows through, each stage run |

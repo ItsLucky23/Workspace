@@ -258,7 +258,11 @@ After creating any new API or sync route, run `npm run scaffold:test <route>` au
 
 **Prioritize tests after new work, and flag untested existing code.** Tests for what you just built come before declaring done (a bug fix needs a regression test). Separately: when you touch or read a route that has NO per-route test (no sibling `_v<N>.tests.ts`), don't silently leave it — raise it with the user ("this route has no business-logic test; want me to add one?") and offer to write it. The `docs/AI_PROJECT_INDEX.md` "tested" indicator per route is your map of where coverage is missing. Don't bulk-add tests unasked; surface the gap and let the user choose.
 
-Full spec: `docs/ARCHITECTURE_TESTING.md`.
+**Push ritual (owner decision 2026-07-21).** When the user asks the AI to `git push`, the AI FIRST runs the complete set — `npm run test:all` (standalone suites + full sweep + per-route custom layer + Playwright; dev runtimes must be up, sweep runs SOLO) — and only pushes when everything is green. A literal `git push` is gated automatically by `.githooks/pre-push` (lint + ai:lint + `npm run test:unit`); never bypass it with `--no-verify`.
+
+**New assistant-op → classify it.** Every new op in the propose catalog must get a row in `tests/effectMatrix.mts` (`covered` with a test ref, or an `excluded:*` reason) — the `opEffectCoverage` guard turns an unclassified op red by design.
+
+Full spec: `docs/ARCHITECTURE_TESTING.md`. **Project practice (commands, recipes for new `_api`/`_sync`/op/Playwright tests, hook behavior, discipline): `docs/TESTING_PLAYBOOK.md` — read it before writing or running tests in this repo.**
 
 ---
 
@@ -333,6 +337,7 @@ When verifying the frontend in a browser, follow the cheapest-first ladder + sug
 
 | Doc | Purpose |
 |---|---|
+| `docs/TESTING_PLAYBOOK.md` | Project testing practice: layers, commands, new-test recipes, effect-matrix taxonomy, hooks + push ritual |
 | `docs/ARCHITECTURE_ROUTING.md` | File-based routing (pages, APIs, syncs) |
 | `docs/ARCHITECTURE_API.md` | API request system |
 | `docs/ARCHITECTURE_HTTP.md` | HTTP pipeline, custom-route phases, webhook + streaming-upload seam (origin-exempt paths) |

@@ -34,6 +34,7 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
+  WorkspaceReadiness, PatSummary,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 import { shouldApplySnapshotResponse, snapshotTargetsMatch, type SnapshotTarget } from './snapshotRequest';
@@ -106,6 +107,13 @@ interface Snap {
   chat: ChatMessage[];
   //? #76 — the user's persisted SSH keys (account-global).
   sshKeys: SshKeyEntry[];
+  //? Setup readiness + the caller's resolved capabilities (new-user UX): drives the "what's missing / who can
+  //? fix it" notices. `myPerms` is positional over CAP; `myRoleKey` is the raw (non-flattened) role key.
+  readiness: WorkspaceReadiness;
+  myPerms: boolean[];
+  myRoleKey: string;
+  //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only).
+  pats: PatSummary[];
 }
 //? The `gitConfig` here is just the pre-load placeholder (the server always sends the real
 //? one in the snapshot); the canonical default lives in server/git/branchStrategy.ts.
@@ -133,6 +141,9 @@ const EMPTY_SNAP: Snap = {
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
+  myPerms: [], myRoleKey: 'member',
+  pats: [],
 };
 
 //? URLs mirror the category folder structure (/workspaces/<category>/<view>, see ../_data/nav.ts).
@@ -167,7 +178,7 @@ function viewFromPath(pathname: string): WsView {
 }
 const VIEW_LABELS: Record<string, string> = {
   board: 'Board', backlog: 'Backlog', terminals: 'Terminals', code: 'Code', activity: 'Activity',
-  sources: 'Sources', pipeline: 'Pipeline', usage: 'Usage', studio: 'Studio',
+  sources: 'Sources', pipeline: 'Pipeline', automations: 'Automations', components: 'Components', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
   knowledge: 'Knowledge', content: 'Content', 'scheduled-posts': 'Scheduled posts', settings: 'Account', workspace: 'Workspace',
   documents: 'Documents',
@@ -206,6 +217,10 @@ const shortHash = (value: string): string => {
 
 const answerKey = (ticketId: string, advisoryIndex?: number): string => `${ticketId}:${typeof advisoryIndex === 'number' ? String(advisoryIndex) : 'main'}`;
 
+//? The snapshot cache key: a workspace's data is scoped to ONE active project, so an entry is keyed by both
+//? (an empty project segment = the workspace's default / no-project state).
+const snapKey = (workspaceId: string | null | undefined, projectId: string | null | undefined): string => `${workspaceId ?? ''}::${projectId ?? ''}`;
+
 export function WorkspacesProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const { session } = useSession<SessionLayout>();
@@ -229,6 +244,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   desiredSnapshotTarget.current = { workspaceId: wantWorkspaceId, projectId: wantProjectId };
   const latestSnap = useRef(snap);
   latestSnap.current = snap;
+  //? Client snapshot cache (stale-while-revalidate): every workspace/project we've loaded is kept in memory
+  //? keyed by `${workspaceId}::${projectId}`, so switching BACK renders instantly from cache while a
+  //? background refetch reconciles. Only the ACTIVE workspace has live delta hooks — a cached non-active one
+  //? goes stale until re-selected, then the switch's background refetch freshens it. `lastProjectByWs` lets a
+  //? bare workspace switch return to the project you were last on (no flip to the default).
+  const snapCacheRef = useRef<Map<string, Snap>>(new Map());
+  const lastProjectByWsRef = useRef<Map<string, string>>(new Map());
+  const cacheEntry = useCallback((entry: Snap) => {
+    if (!entry.activeWorkspaceId) return;
+    snapCacheRef.current.set(snapKey(entry.activeWorkspaceId, entry.activeProjectId), entry);
+    lastProjectByWsRef.current.set(entry.activeWorkspaceId, entry.activeProjectId ?? '');
+  }, []);
   //? Writes must target the snapshot the user still wants. During a switch the old
   //? snapshot remains rendered briefly, but it is no longer a valid write scope.
   const currentProjectScope = useCallback(() => {
@@ -241,9 +268,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     if (desired.projectId !== undefined && desired.projectId !== projectId) return null;
     return { workspaceId, projectId, gitConfig: current.gitConfig };
   }, []);
-  //? Realtime side-channels not part of the snapshot: the RAG code-index status
-  //? (07 §D) and the built-in MR review views keyed by their source branch
-  //? (BUILTIN_MR_REVIEW). Both are hydrated by their `_sync` delta callbacks below.
+  //? RAG code-index status — hydrated live by the `scanIndex` delta (kept lazy/on-demand: a status read runs
+  //? a distinct-file query over the index, too heavy to recompute on every snapshot build). `mrByBranch`
+  //? (built-in MR review) is likewise a pure realtime side-channel, hydrated only by its `_sync` delta below.
   const [ragIndex, setRagIndex] = useState<RagIndexStatus | null>(null);
   const [mrByBranch, setMrByBranch] = useState<Record<string, MrView>>({});
   //? Realtime presence (#17): userId → who they're viewing + when last seen. Fed by the
@@ -258,6 +285,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? #109 — the pending copilot form pre-fill (field→value) the AI-drives-UI directive dropped; the target
   //? page reads + consumes it. null between directives.
   const [copilotPrefill, setCopilotPrefill] = useState<Record<string, string> | null>(null);
+  //? Setup deep-link: a blocked feature's "fix it" button sets which settings TAB to open (navigate alone lands
+  //? on the page default). The target settings page reads + clears this on mount. null when no fix is pending.
+  const [settingsFocus, setSettingsFocus] = useState<{ view: WsView; tab: string } | null>(null);
 
   const refetch = useCallback(() => {
     const target = { workspaceId: wantWorkspaceId, projectId: wantProjectId };
@@ -278,6 +308,29 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     })();
   }, [wantWorkspaceId, wantProjectId]);
   useEffect(() => { refetch(); }, [refetch]);
+
+  //? Mirror the live (delta-updated) active snapshot into the cache on every change, so switching away and
+  //? back returns the LATEST state, not the load-time snapshot.
+  useEffect(() => { cacheEntry(snap); }, [snap, cacheEntry]);
+
+  //? Background prefetch (idle): once the active workspace has loaded, fill the cache with every OTHER
+  //? workspace's default-project snapshot — sequentially + throttled so login stays fast and the server
+  //? isn't hammered — so even the FIRST switch to any workspace is instant. Runs once per session; skips
+  //? workspaces already cached (incl. the active one). New workspaces created later just lazy-cache on visit.
+  const prefetchedRef = useRef(false);
+  useEffect(() => {
+    if (prefetchedRef.current || !snap.activeWorkspaceId || snap.workspaces.length <= 1) return;
+    prefetchedRef.current = true;
+    const others = snap.workspaces.filter((w) => w.id !== snap.activeWorkspaceId).map((w) => w.id);
+    void (async () => {
+      for (const wsId of others) {
+        if (lastProjectByWsRef.current.has(wsId)) continue;
+        const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wsId } });
+        if (res.status === 'success') cacheEntry(res.result);
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    })();
+  }, [snap.activeWorkspaceId, snap.workspaces, cacheEntry]);
 
   //? #121 — deep-link from an OS push / shortcut: `/?ticket=DEV-####` opens that ticket once the
   //? snapshot has loaded it, then strips the param so a reload/back doesn't re-trigger.
@@ -580,6 +633,32 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }), [upsertSyncEventCallback, refetch]);
   //? Clear the debounce timer on unmount.
   useEffect(() => () => { if (dirtyTimer.current) clearTimeout(dirtyTimer.current); }, []);
+
+  //? workspace-dirty nudge → the GENERAL convergence signal: any cold settings/infra write (projects,
+  //? services, environments, DBs, budget, gitlab, documents, skills, triggers, sprints, stages, …) now
+  //? reaches EVERY member here, not just the initiator that refetched. Reuses the SAME debounce timer as
+  //? contentDirty, so a burst of mixed writes coalesces into ONE refetch. A `gone` payload is the
+  //? workspace-DELETED lifecycle signal: if it's OUR active workspace, drop the target so the refetch falls
+  //? back to the picker / another workspace instead of operating on a dead tenant (mirrors the initiator's
+  //? own eviction in deleteWorkspace).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/workspaceDirty', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      if (serverOutput.gone) {
+        if (serverOutput.workspaceId.length > 0 && latestSnap.current.activeWorkspaceId === serverOutput.workspaceId) {
+          desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
+          setWantWorkspaceId(undefined);
+          setWantProjectId(undefined);
+          setLoading(true);
+          refetch();
+        }
+        return;
+      }
+      if (dirtyTimer.current) clearTimeout(dirtyTimer.current);
+      dirtyTimer.current = setTimeout(() => { refetch(); }, 400);
+    },
+  }), [upsertSyncEventCallback, refetch]);
 
   //? env-var deltas → upsert / drop by id (settings realtime; no refetch).
   useEffect(() => upsertSyncEventCallback({
@@ -1064,6 +1143,24 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     setChat(persisted.length > 0 ? persisted : INITIAL_CHAT);
   }, [snap.activeWorkspaceId]);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
+  //? P4 — the optimistic AI-move override (moveTicket) is TRANSIENT: once the authoritative ticket delta
+  //? lands with the server's `stageId`, drop any override that now matches it so the server stage wins. A
+  //? full refetch replaces `snap.tickets` but leaves this separate map untouched, so without this an
+  //? AI-move override could keep masking another user's real move — the two boards would diverge on the same
+  //? ticket's column. Match-based drop avoids flicker (the override holds until the move is confirmed).
+  useEffect(() => {
+    setStageOverrides((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next: Record<string, string> = {};
+      for (const [id, stage] of Object.entries(prev)) {
+        const ticket = snap.tickets.find((t) => t.id === id);
+        if (ticket?.stageId === stage) { changed = true; continue; }
+        next[id] = stage;
+      }
+      return changed ? next : prev;
+    });
+  }, [snap.tickets]);
   const [localSuggestionsDismissed, setLocalSuggestionsDismissed] = useState<string[]>([]);
 
   //? #76 — persist to the account via the ssh-key routes, then refetch. The key authenticates as the
@@ -1308,16 +1405,31 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       applyCopilot: (d) => { setCopilotPrefill(d.prefill ?? null); void navigate(pathForView(d.navigate)); },
       copilotPrefill,
       consumeCopilotPrefill: () => { setCopilotPrefill(null); },
+      //? Setup readiness + permission-aware fix routing (new-user UX).
+      readiness: snap.readiness,
+      myPerms: snap.myPerms,
+      can: (cap) => snap.myPerms[cap] === true,
+      focusSetup: (target) => { setSettingsFocus({ view: target.view, tab: target.tab ?? '' }); void navigate(pathForView(target.view)); },
+      settingsFocus,
+      consumeSettingsFocus: () => { setSettingsFocus(null); },
       acceptChatProposal,
       acceptChatPlan,
       rejectChatProposal,
       workspaces: snap.workspaces,
       activeWorkspace,
       setActiveWorkspace: (id) => {
-        desiredSnapshotTarget.current = { workspaceId: id, projectId: undefined };
+        //? Return to the project we were last on in this workspace (no flip to the default), and — if that
+        //? entry is cached — render it INSTANTLY while the refetch effect (fired by the want* change) freshens
+        //? it in the background. Uncached → the normal loading path.
+        const projId = lastProjectByWsRef.current.get(id);
+        //? An empty stored project (a no-project workspace) targets undefined so the server picks; a real id
+        //? returns us to that exact project.
+        const targetProject = projId === undefined || projId.length === 0 ? undefined : projId;
+        desiredSnapshotTarget.current = { workspaceId: id, projectId: targetProject };
         setWantWorkspaceId(id);
-        setWantProjectId(undefined);
-        setLoading(true);
+        setWantProjectId(targetProject);
+        const cached = projId === undefined ? undefined : snapCacheRef.current.get(snapKey(id, projId));
+        if (cached) { setSnap(cached); setLoading(false); } else { setLoading(true); }
       },
       //? GAP_SCAN F5 — post the reply the user approved (the AI only ever drafted it). Conductor writes.
       replyToComment: (commentId, replyText) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-reply-comment', commentId, replyText, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1334,9 +1446,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activeProject: snap.projects.find((project) => project.id === snap.activeProjectId) ?? null,
       activeProjectId: snap.activeProjectId,
       setActiveProject: (id) => {
+        //? Same instant-cache path as workspace switch: render a cached project immediately, refetch to freshen.
         desiredSnapshotTarget.current = { workspaceId: wantWorkspaceId, projectId: id };
         setWantProjectId(id);
-        setLoading(true);
+        const wsId = latestSnap.current.activeWorkspaceId;
+        const cached = wsId ? snapCacheRef.current.get(snapKey(wsId, id)) : undefined;
+        if (cached) { setSnap(cached); setLoading(false); } else { setLoading(true); }
       },
       services: snap.services,
       templates: snap.templates,
@@ -1642,6 +1757,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,
       customTasks: snap.customTasks,
+      //? Preload gap-fix (X3) — the caller's own PATs for the settings API-tokens panel (metadata only).
+      pats: snap.pats,
       saveAiProvider: (feature, providerId) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room });
@@ -1737,7 +1854,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, settingsFocus, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

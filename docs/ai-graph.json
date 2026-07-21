@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 419,
-    "edges": 534,
-    "symbols": 800,
-    "callEdges": 258
+    "nodes": 424,
+    "edges": 546,
+    "symbols": 804,
+    "callEdges": 260
   },
   "nodes": [
     {
@@ -1754,6 +1754,11 @@
       "route": "sync/workspaces/uiReviewCreate/v1"
     },
     {
+      "id": "workspaces/_sync/workspaceDirty_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/workspaceDirty/v1"
+    },
+    {
       "id": "workspaces/content/[pieceId]/AssetCard.tsx",
       "kind": "other",
       "route": null
@@ -1884,6 +1889,11 @@
       "route": null
     },
     {
+      "id": "workspaces/develop/automations/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/backlog/BulkBar.tsx",
       "kind": "other",
       "route": null
@@ -1914,7 +1924,17 @@
       "route": null
     },
     {
+      "id": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/liveEditor.tsx",
       "kind": "other",
       "route": null
     },
@@ -1960,6 +1980,11 @@
     },
     {
       "id": "workspaces/develop/code/page.tsx",
+      "kind": "page",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/components/page.tsx",
       "kind": "page",
       "route": null
     },
@@ -3298,6 +3323,18 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/develop/automations/page.tsx",
+      "to": "workspaces/_components/AutomationPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/automations/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/automations/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/develop/backlog/BulkBar.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -3391,10 +3428,6 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "to": "_components/editor/VsCodeEmbed.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/_components/primitives.tsx"
     },
     {
@@ -3406,8 +3439,32 @@
       "to": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx"
     },
     {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/develop/board/[ticketId]/liveEditor.tsx"
+    },
+    {
       "from": "workspaces/develop/board/[ticketId]/DiffView.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "to": "_components/editor/editorThemes.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "to": "workspaces/develop/board/[ticketId]/liveEditor.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
@@ -3420,6 +3477,10 @@
     {
       "from": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
       "to": "workspaces/develop/board/[ticketId]/DiffView.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/liveEditor.tsx",
+      "to": "_components/editor/VsCodeEmbed.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
@@ -3650,6 +3711,30 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "workspaces/develop/designer/sections/Components.tsx"
+    },
+    {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "workspaces/develop/designer/state.tsx"
+    },
+    {
+      "from": "workspaces/develop/components/page.tsx",
+      "to": "workspaces/develop/designer/themes.ts"
+    },
+    {
       "from": "workspaces/develop/designer/animations.ts",
       "to": "workspaces/develop/designer/styles.ts"
     },
@@ -3675,10 +3760,6 @@
     },
     {
       "from": "workspaces/develop/designer/page.tsx",
-      "to": "workspaces/_data/modules.ts"
-    },
-    {
-      "from": "workspaces/develop/designer/page.tsx",
       "to": "workspaces/_data/uiReviewTaxonomy.ts"
     },
     {
@@ -3688,10 +3769,6 @@
     {
       "from": "workspaces/develop/designer/page.tsx",
       "to": "workspaces/develop/designer/sections/Animations.tsx"
-    },
-    {
-      "from": "workspaces/develop/designer/page.tsx",
-      "to": "workspaces/develop/designer/sections/Components.tsx"
     },
     {
       "from": "workspaces/develop/designer/page.tsx",
@@ -3960,10 +4037,6 @@
     {
       "from": "workspaces/develop/pipeline/page.tsx",
       "to": "_functions/menuHandler.ts"
-    },
-    {
-      "from": "workspaces/develop/pipeline/page.tsx",
-      "to": "workspaces/_components/AutomationPanel.tsx"
     },
     {
       "from": "workspaces/develop/pipeline/page.tsx",
@@ -4281,6 +4354,7 @@
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -4291,9 +4365,11 @@
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -4340,6 +4416,7 @@
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
@@ -4347,6 +4424,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
@@ -4372,6 +4450,7 @@
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
@@ -4379,6 +4458,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4409,6 +4489,7 @@
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
@@ -4416,6 +4497,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4431,7 +4513,7 @@
       "workspaces/workspace/page.tsx"
     ],
     "_components/dropdown/MultiSelectDropdown.tsx": [
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
       "workspaces/develop/scheduled/page.tsx"
     ],
@@ -4447,6 +4529,8 @@
       "_components/editor/VsCodeEmbed.tsx",
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "workspaces/develop/board/[ticketId]/liveEditor.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
@@ -4498,41 +4582,43 @@
     "_components/editor/VsCodeEmbed.tsx": [
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "workspaces/develop/board/[ticketId]/liveEditor.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "_components/ErrorPage.tsx": [
       "main.tsx"
     ],
     "_components/inputs/Checkbox.tsx": [
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/DatePicker.tsx": [
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/fieldShell.tsx": [
       "_components/inputs/Checkbox.tsx",
       "_components/inputs/Toggle.tsx",
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/floatingLayer.tsx": [
       "_components/inputs/DatePicker.tsx",
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/Popover.tsx": [
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/TextField.tsx": [
       "_components/inputs/DatePicker.tsx",
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/inputs/Toggle.tsx": [
-      "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx"
     ],
     "_components/LoginForm.tsx": [
@@ -4580,6 +4666,7 @@
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
@@ -4587,6 +4674,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
@@ -4657,7 +4745,7 @@
       "workspaces/content/documents/[docId]/page.tsx"
     ],
     "workspaces/_components/AutomationPanel.tsx": [
-      "workspaces/develop/pipeline/page.tsx"
+      "workspaces/develop/automations/page.tsx"
     ],
     "workspaces/_components/Glossary.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -4710,6 +4798,7 @@
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -4721,9 +4810,11 @@
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -4809,6 +4900,7 @@
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -4819,9 +4911,11 @@
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -4881,6 +4975,7 @@
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -4891,9 +4986,11 @@
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Gallery.tsx",
@@ -4979,7 +5076,6 @@
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
-      "workspaces/develop/designer/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5058,6 +5154,7 @@
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -5070,10 +5167,12 @@
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -5160,6 +5259,7 @@
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
@@ -5172,10 +5272,12 @@
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -5302,15 +5404,18 @@
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
+      "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/page.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -5427,6 +5532,11 @@
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
+    "workspaces/develop/board/[ticketId]/liveEditor.tsx": [
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/editor/page.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
     "workspaces/develop/board/[ticketId]/TerminalPanel.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
@@ -5447,6 +5557,7 @@
       "workspaces/develop/board/page.tsx"
     ],
     "workspaces/develop/designer/animations.ts": [
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/persisted.ts",
       "workspaces/develop/designer/sections/Animations.tsx",
@@ -5468,6 +5579,7 @@
       "workspaces/develop/designer/ui.tsx"
     ],
     "workspaces/develop/designer/persisted.ts": [
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -5485,7 +5597,7 @@
       "workspaces/develop/designer/page.tsx"
     ],
     "workspaces/develop/designer/sections/Components.tsx": [
-      "workspaces/develop/designer/page.tsx"
+      "workspaces/develop/components/page.tsx"
     ],
     "workspaces/develop/designer/sections/Gallery.tsx": [
       "workspaces/develop/designer/page.tsx"
@@ -5500,6 +5612,7 @@
       "workspaces/develop/designer/page.tsx"
     ],
     "workspaces/develop/designer/state.tsx": [
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/sections/Animations.tsx",
       "workspaces/develop/designer/sections/Components.tsx",
@@ -5509,6 +5622,7 @@
       "workspaces/develop/designer/sections/Typography.tsx"
     ],
     "workspaces/develop/designer/styles.ts": [
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/animations.ts",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/persisted.ts",
@@ -5522,6 +5636,7 @@
       "workspaces/develop/designer/state.tsx"
     ],
     "workspaces/develop/designer/themes.ts": [
+      "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
       "workspaces/develop/designer/persisted.ts",
       "workspaces/develop/designer/premades.ts",
@@ -5551,68 +5666,68 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 91,
+      "dependents": 94,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 83,
+      "dependents": 86,
       "directDependents": 47
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 76,
-      "directDependents": 66
+      "dependents": 79,
+      "directDependents": 69
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 69,
+      "dependents": 72,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 68,
+      "dependents": 71,
       "directDependents": 10
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 67,
-      "directDependents": 62
+      "dependents": 70,
+      "directDependents": 64
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 60,
-      "directDependents": 52
+      "dependents": 63,
+      "directDependents": 54
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 42,
+      "dependents": 44,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 42,
+      "dependents": 44,
       "directDependents": 33
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 35,
+      "dependents": 37,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 33,
-      "directDependents": 26
+      "dependents": 35,
+      "directDependents": 27
     },
     {
       "id": "workspaces/_functions/uploadMedia.ts",
@@ -5623,14 +5738,26 @@
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
-      "dependents": 15,
-      "directDependents": 12
+      "dependents": 14,
+      "directDependents": 11
     },
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
       "dependents": 12,
       "directDependents": 1
+    },
+    {
+      "id": "workspaces/develop/designer/styles.ts",
+      "kind": "other",
+      "dependents": 12,
+      "directDependents": 6
+    },
+    {
+      "id": "_components/editor/editorThemes.ts",
+      "kind": "component",
+      "dependents": 11,
+      "directDependents": 9
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -5645,28 +5772,22 @@
       "directDependents": 6
     },
     {
-      "id": "workspaces/develop/designer/styles.ts",
-      "kind": "other",
-      "dependents": 11,
-      "directDependents": 6
-    },
-    {
       "id": "workspaces/develop/designer/themes.ts",
       "kind": "other",
-      "dependents": 10,
-      "directDependents": 7
-    },
-    {
-      "id": "_components/editor/editorThemes.ts",
-      "kind": "component",
-      "dependents": 9,
+      "dependents": 11,
       "directDependents": 8
     },
     {
       "id": "workspaces/develop/designer/animations.ts",
       "kind": "other",
-      "dependents": 9,
+      "dependents": 10,
       "directDependents": 4
+    },
+    {
+      "id": "workspaces/develop/designer/persisted.ts",
+      "kind": "other",
+      "dependents": 9,
+      "directDependents": 2
     },
     {
       "id": "_sockets/syncRequest.ts",
@@ -5681,22 +5802,16 @@
       "directDependents": 2
     },
     {
-      "id": "workspaces/develop/designer/persisted.ts",
+      "id": "workspaces/develop/designer/state.tsx",
       "kind": "other",
       "dependents": 8,
-      "directDependents": 2
+      "directDependents": 8
     },
     {
       "id": "_components/editor/fileTree.ts",
       "kind": "component",
       "dependents": 7,
       "directDependents": 5
-    },
-    {
-      "id": "_components/editor/monacoSetup.ts",
-      "kind": "component",
-      "dependents": 7,
-      "directDependents": 1
     }
   ],
   "symbols": [
@@ -10499,6 +10614,30 @@
       "file": "workspaces/_sync/uiReviewCreate_server_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/workspaceDirty_server_v1.ts::<module>",
+      "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag",
+      "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
+      "name": "goneFlag",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/workspaceDirty_server_v1.ts::goneWorkspaceId",
+      "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
+      "name": "goneWorkspaceId",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/workspaceDirty_server_v1.ts::main",
+      "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
+      "name": "main",
+      "kind": "function"
     }
   ],
   "callEdges": [
@@ -11533,6 +11672,14 @@
     {
       "from": "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::run",
       "to": "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/workspaceDirty_server_v1.ts::main",
+      "to": "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag"
+    },
+    {
+      "from": "workspaces/_sync/workspaceDirty_server_v1.ts::main",
+      "to": "workspaces/_sync/workspaceDirty_server_v1.ts::goneWorkspaceId"
     }
   ],
   "symbolBlastRadius": {
@@ -12453,6 +12600,12 @@
     "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::wait": [
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll",
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag": [
+      "workspaces/_sync/workspaceDirty_server_v1.ts::main"
+    ],
+    "workspaces/_sync/workspaceDirty_server_v1.ts::goneWorkspaceId": [
+      "workspaces/_sync/workspaceDirty_server_v1.ts::main"
     ]
   }
 }

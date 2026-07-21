@@ -76,7 +76,7 @@ export interface ClaudeCliTurnDependencies {
 //? bin was the bare name 'claude' — so a host without the CLI installed reported "available" and then failed at
 //? turn time. A path → existsSync; a bare name → an actual `--version` probe (PATH-resolved). Cached per process.
 let claudeAvail: boolean | null = null;
-function claudeCliAvailable(): boolean {
+export function claudeCliAvailable(): boolean {
   if (claudeAvail !== null) return claudeAvail;
   if (/[\\/]/.test(CLAUDE_BIN)) { claudeAvail = existsSync(CLAUDE_BIN); return claudeAvail; }
   const res = spawnSync(CLAUDE_BIN, ['--version'], { timeout: 5000, stdio: 'ignore', env: buildClaudeCliEnv() });

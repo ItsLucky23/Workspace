@@ -7,15 +7,15 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //? Uses a plain suggestion type ('link-tickets') so the assertion targets the shared
 //? accept-path (status flip) rather than a type-specific side-effect (automation/mr-review/
 //? rollback/publish each fire additional writes covered by their own routes). The route's
-//? own doc-comment marks it "Login-only own-resource op" — `OP_CAPABILITY['accept-suggestion']`
-//? is `null` (`server/control/rbac.ts`), so there is no WorkspaceMember/RBAC gate to test here;
-//? the transport-level room-membership gate is the only boundary this route actually enforces.
+//? suggestions are workspace-owned authoritative proposals (some execute automation/publish effects),
+//? so acceptance requires `workTickets` in addition to the transport's room-membership gate.
 //?  [1] happy path — a room member accepts an open suggestion; asserted via the REAL Prisma
 //?      post-condition (WorkspaceSuggestion.status), not just the ack (the sync harness wraps
 //?      a successful ack's business payload under `result`, matching the framework's own
 //?      contract — see `node_modules/@luckystack/test-runner`'s `parseResponse`).
 //?  [2] the transport-level room-membership gate still applies to this route (like every sync
 //?      route): calling WITHOUT `joinRoom` is rejected with `sync.notRoomMember`.
+//?  [3] a room member whose custom role lacks workTickets gets auth.forbidden and no status flip.
 
 interface AcceptSuggestionInput { suggestionId: string; clientRequestId: string }
 interface AcceptSuggestionOk { status: 'success'; result: { status: 'success'; acceptedSuggestionId: string } }
@@ -72,8 +72,7 @@ export const customTests: CustomTestCase[] = [
 
         await ctx.session.logout();
         await ctx.session.login({ id: outsider.id, email: outsider.email, name: outsider.name });
-        //? Deliberately skip joinRoom — this route's only real boundary (login-only, cap:null)
-        //? is the base sync-transport membership gate, so prove that instead of a fake RBAC case.
+        //? Deliberately skip joinRoom so the base transport boundary is exercised separately from RBAC.
         const res = await ctx.callSync<AcceptSuggestionInput, AcceptSuggestionResponse>(
           { suggestionId: suggestion.id, clientRequestId: `as-c2-${String(Date.now())}` },
           { receiver: workspaceId },
@@ -87,6 +86,35 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.eq(unchanged?.status, 'open', 'the suggestion was left untouched by the rejected call');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'a room member without workTickets cannot accept a workspace suggestion',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'acceptsuggestion_c3');
+      const restricted = await createRealUser(ctx.prisma, 'acceptsuggestion_c3_restricted');
+      try {
+        await ctx.prisma.workspaceRole.create({ data: { workspaceId, key: 'no-work', label: 'No work', perms: [false, false, false, false, false, false, false, false], builtIn: false } });
+        await ctx.prisma.workspaceMember.create({ data: { workspaceId, userId: restricted.id, roleKey: 'no-work' } });
+        const suggestion = await ctx.prisma.workspaceSuggestion.create({
+          data: { workspaceId, type: 'link-tickets', title: `Restricted suggestion ${String(Date.now())}`, body: 'must stay open', ticketIds: [], status: 'open' },
+        });
+
+        await ctx.session.logout();
+        await ctx.session.login({ id: restricted.id, email: restricted.email, name: restricted.name });
+        await joinRoom(ctx, workspaceId);
+        const res = await ctx.callSync<AcceptSuggestionInput, AcceptSuggestionResponse>(
+          { suggestionId: suggestion.id, clientRequestId: `as-c3-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'error', 'a restricted workspace member is rejected');
+        if (res.status === 'error') ctx.expect.eq(res.errorCode, 'auth.forbidden', 'workTickets is enforced');
+
+        const unchanged = await ctx.prisma.workspaceSuggestion.findFirst({ where: { workspaceId, id: suggestion.id } });
+        ctx.expect.eq(unchanged?.status, 'open', 'the forbidden acceptance produced no write');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId, restricted.id]);
       }
     },
   },

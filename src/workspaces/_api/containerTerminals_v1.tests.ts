@@ -3,10 +3,10 @@ import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 import { createRealUser, loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
 
 //? Per-route tests for `workspaces/containerTerminals/v1` — enumerates the workspace's
-//? running ticket containers for the Terminals page. Read-only, membership-gated (no
-//? capability beyond plain membership). The auto-sweep already covers contract/auth/
+//? running ticket containers for the Terminals page. Read-only and workTickets-gated; the socket
+//? relay independently repeats that capability check before opening a shell. The auto-sweep covers contract/auth/
 //? rate-limit/fuzz; these cases assert:
-//?  [1] a plain member gets a success envelope with `result.containers` as an array
+//?  [1] a member with workTickets gets a success envelope with `result.containers` as an array
 //?      (`listWorkspaceContainers` degrades to `[]` when Docker is unavailable — the
 //?      page's documented empty-state — so this is deterministic in any environment).
 //?  [2] a user with no membership on the workspace is refused with `auth.forbidden`.

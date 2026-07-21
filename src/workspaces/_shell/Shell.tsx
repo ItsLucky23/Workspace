@@ -3,7 +3,7 @@
 //? stack (Tailwind tokens, reused Avatar/Dropdown, ctx-driven navigation).
 
 /* eslint-disable react-refresh/only-export-components -- shell module: the NAV_ITEMS/NAV_BOTTOM data is intentionally co-located with the shell chrome components (dev-only fast-refresh rule) */
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -19,6 +19,7 @@ import { ModulePicker } from '../_components/ModulePicker';
 import { Glossary } from '../_components/Glossary';
 import { Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
+import { SetupNotice } from '../_components/SetupNotice';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { NAV_CATEGORIES, type NavCategory } from '../_data/nav';
 import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
@@ -68,8 +69,19 @@ const PANEL_TRANSITION = { type: 'spring', duration: 0.42, bounce: 0 } as const;
 //? planning chat), so they live under Develop, not the content lane. Category definitions come from
 //? ../_data/nav.ts (shared with the provider's URL mapping). Group headers render when the rail is
 //? expanded; collapsed shows a thin divider between groups. Groups render in GROUP_ORDER.
+//?
+//? Develop carries the most pages, so its items also carry an optional `sub` band (work / machine /
+//? tools). In the EXPANDED rail an open group renders a thin sub-header before the first item of each
+//? band; the collapsed rail is unchanged (category icons only). Only Develop uses sub-bands today.
 type NavGroup = NavCategory;
-interface NavDef { id: WsView; icon: IconName; label: string; group?: NavGroup }
+interface NavDef { id: WsView; icon: IconName; label: string; group?: NavGroup; sub?: string }
+
+//? Sub-band → its i18n key (Develop only). A band with no mapping renders no header.
+const SUB_LABEL_KEY: Record<string, string> = {
+  work: 'workspaces.nav.subWork',
+  machine: 'workspaces.nav.subMachine',
+  tools: 'workspaces.nav.subTools',
+};
 
 export const GROUP_ORDER: NavGroup[] = NAV_CATEGORIES;
 export const GROUP_LABELS: Record<NavGroup, string> = { develop: 'Develop', content: 'Content', insights: 'Insights' };
@@ -78,23 +90,26 @@ export const GROUP_LABELS: Record<NavGroup, string> = { develop: 'Develop', cont
 //? broken.
 export const GROUP_ICONS: Record<NavGroup, IconName> = { develop: 'code-branch', content: 'wand-magic-sparkles', insights: 'chart-column' };
 export const NAV_ITEMS: NavDef[] = [
-  //? Develop — the live state of the work…
-  { id: 'board', icon: 'table-columns', label: 'Board', group: 'develop' },
+  //? Develop › work — the live state of the work…
+  { id: 'board', icon: 'table-columns', label: 'Board', group: 'develop', sub: 'work' },
   //? The cross-ticket answer inbox. It sits first-class in the rail rather than under a bell, because on
   //? a phone-first product where the human's whole job is answering, "what is waiting on me?" IS the work.
-  { id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop' },
-  { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'develop' },
-  //? …the machine that moves it (the pipeline lives with the board it drives)…
-  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'develop' },
-  { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'develop' },
+  { id: 'answers', icon: 'circle-question', label: 'Answers', group: 'develop', sub: 'work' },
+  { id: 'backlog', icon: 'list-check', label: 'Backlog', group: 'develop', sub: 'work' },
+  //? Develop › machine — the pipeline that moves the work, the automations that react to it, the schedules.
+  { id: 'pipeline', icon: 'diagram-project', label: 'Pipeline', group: 'develop', sub: 'machine' },
+  { id: 'automations', icon: 'bolt', label: 'Automations', group: 'develop', sub: 'machine' },
+  { id: 'scheduled', icon: 'clock', label: 'Schedules', group: 'develop', sub: 'machine' },
+  //? Develop › tools — the repo-bound browsers + editors.
   //? The whole-codebase browser (owner decision 2026-07-20): the linked repo's baseline tree, read-only,
   //? as a first-class destination — previously the code was only reachable inside a ticket's live editor.
-  { id: 'code', icon: 'code', label: 'Code', group: 'develop' },
-  //? …and the repo-bound tools.
-  { id: 'designer', icon: 'palette', label: 'Designer', group: 'develop' },
-  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'develop' },
-  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'develop' },
-  { id: 'scheduled', icon: 'clock', label: 'Schedules', group: 'develop' },
+  { id: 'code', icon: 'code', label: 'Code', group: 'develop', sub: 'tools' },
+  { id: 'terminals', icon: 'terminal', label: 'Terminals', group: 'develop', sub: 'tools' },
+  { id: 'designer', icon: 'palette', label: 'Designer', group: 'develop', sub: 'tools' },
+  //? The live component-library reference (moved out of the Designer into its own destination).
+  { id: 'components', icon: 'table-cells-large', label: 'Components', group: 'develop', sub: 'tools' },
+  { id: 'interviewer', icon: 'comments', label: 'Interviewer', group: 'develop', sub: 'tools' },
+  { id: 'sources', icon: 'book-open', label: 'Sources', group: 'develop', sub: 'tools' },
   //? Content — the content lane: what you make and where it goes out.
   { id: 'content', icon: 'wand-magic-sparkles', label: 'Content', group: 'content' },
   { id: 'documents', icon: 'file-lines', label: 'Documents', group: 'content' },
@@ -201,10 +216,21 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
               </button>
               {/* Sub-navigation, EXPANDED RAIL ONLY. A first attempt also rendered the sub-items while
                   collapsed, which produced 19 icons where there used to be 15 — the opposite of the point.
-                  Collapsed, the five group icons ARE the navigation; clicking one opens its first page. */}
+                  Collapsed, the group icons ARE the navigation; clicking one opens its first page. Develop's
+                  items carry a `sub` band, so a thin sub-header renders before the first item of each band. */}
               {expanded && open && (
                 <div className="flex flex-col gap-1 pl-3 border-l border-divider ml-3">
-                  {items.map((it) => renderItem(it))}
+                  {items.map((it, i) => {
+                    const subKey = it.sub !== undefined && it.sub !== items[i - 1]?.sub ? SUB_LABEL_KEY[it.sub] : undefined;
+                    return (
+                      <Fragment key={it.id}>
+                        {subKey !== undefined && (
+                          <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled select-none">{translate({ key: subKey })}</div>
+                        )}
+                        {renderItem(it)}
+                      </Fragment>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -828,7 +854,7 @@ function VoiceMicButton({ onTranscript }: { onTranscript: (text: string) => void
 }
 
 export function AIPanel({ onClose }: { onClose: () => void }) {
-  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, applyCopilot, aiRuns, isMobile, activeWorkspace } = useWorkspaces();
+  const { suggestions, dismissSuggestion, acceptSuggestion, openTicket, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, applyCopilot, aiRuns, isMobile, activeWorkspace, readiness } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<'chat' | 'suggestions' | 'activity'>('chat');
   const [draft, setDraft] = useState('');
@@ -908,6 +934,18 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         {tab === 'chat' ? (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+              {/* No usable AI provider (no Claude CLI on the host AND no Gemini key) → every AI feature fails
+                  or returns nothing. Say so where the user is about to ask, with the in-app fix + host hint. */}
+              {!readiness.aiText && (
+                <SetupNotice
+                  variant="card"
+                  icon="robot"
+                  title={translate({ key: 'workspaces.setup.ai.title' })}
+                  body={translate({ key: 'workspaces.setup.ai.why' })}
+                  fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
+                  hint={translate({ key: 'workspaces.setup.ai.hint' })}
+                />
+              )}
               {chat.map((m) => <ChatBubble key={m.id} m={m} onAccept={acceptChatProposal} onAcceptPlan={acceptChatPlan} onReject={rejectChatProposal} onApplyCopilot={applyCopilot} />)}
               {/* Q4 — capability starter-questions: surface what the product can do, tappable to ask. Shown
                   while the conversation is empty (just the greeting). The AI answers from the product-knowledge. */}

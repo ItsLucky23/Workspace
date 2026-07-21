@@ -24,8 +24,8 @@ assert(stackNetwork('a') !== stackNetwork('b'), "two workspaces' service network
 
 // Deploy proxy isolation: static assertions keep this test dependency-free and lock the Caddy/Admin boundary.
 {
-  const compose = readFileSync(new URL('../../deploy/docker-compose.yml', import.meta.url), 'utf8');
-  const caddyfile = readFileSync(new URL('../../deploy/Caddyfile', import.meta.url), 'utf8');
+  const compose = readFileSync(new URL('../../deploy/docker-compose.yml', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+  const caddyfile = readFileSync(new URL('../../deploy/Caddyfile', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
   const appBlock = compose.match(/  app:[\s\S]*?\n  caddy:/)?.[0] ?? '';
   const caddyBlock = compose.match(/  caddy:[\s\S]*?\nvolumes:/)?.[0] ?? '';
   const managementBlock = compose.match(/\n  management:\n[\s\S]*?(?=\n  workspaces-net:)/)?.[0] ?? '';

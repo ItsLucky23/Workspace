@@ -17,8 +17,10 @@ export function lineDiff(oldText: string, newText: string): DiffLine[] {
   //? LCS length table (n+1 × m+1). Bounded by MAX_LINES so this stays a few MB worst-case.
   const lcs: number[][] = Array.from({ length: n + 1 }, () => Array.from<number>({ length: m + 1 }).fill(0));
   for (let i = n - 1; i >= 0; i--) {
+    const row = lcs[i] ?? [];
+    const next = lcs[i + 1] ?? [];
     for (let j = m - 1; j >= 0; j--) {
-      lcs[i]![j] = a[i] === b[j] ? (lcs[i + 1]![j + 1]! + 1) : Math.max(lcs[i + 1]![j]!, lcs[i]![j + 1]!);
+      row[j] = a[i] === b[j] ? (next[j + 1] ?? 0) + 1 : Math.max(next[j] ?? 0, row[j + 1] ?? 0);
     }
   }
   const out: DiffLine[] = [];
@@ -26,7 +28,7 @@ export function lineDiff(oldText: string, newText: string): DiffLine[] {
   let j = 0;
   while (i < n && j < m) {
     if (a[i] === b[j]) { out.push({ kind: 'ctx', oldNo: i + 1, newNo: j + 1, text: a[i] ?? '' }); i++; j++; }
-    else if (lcs[i + 1]![j]! >= lcs[i]![j + 1]!) { out.push({ kind: 'del', oldNo: i + 1, text: a[i] ?? '' }); i++; }
+    else if ((lcs[i + 1]?.[j] ?? 0) >= (lcs[i]?.[j + 1] ?? 0)) { out.push({ kind: 'del', oldNo: i + 1, text: a[i] ?? '' }); i++; }
     else { out.push({ kind: 'add', newNo: j + 1, text: b[j] ?? '' }); j++; }
   }
   while (i < n) { out.push({ kind: 'del', oldNo: i + 1, text: a[i] ?? '' }); i++; }

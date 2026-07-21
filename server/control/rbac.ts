@@ -242,5 +242,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   //? #17/#113 — preview launch/stop (same gate as the openPreview/closePreview _api routes: workTickets).
   'preview-up': CAP.workTickets,
   'preview-down': CAP.workTickets,
-  'accept-suggestion': null,
+  //? Suggestions are workspace-authoritative proposals, not caller-owned resources. Even a plain
+  //? acceptance can execute an automation/publish payload, so anonymous membership is insufficient.
+  'accept-suggestion': CAP.workTickets,
 };

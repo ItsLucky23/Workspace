@@ -490,7 +490,44 @@
       "budgetBody": "Un plafond mensuel pour que les generations ne surprennent jamais. Le moteur bloque les dépenses au plafond.",
       "back": "Retour",
       "next": "Suivant",
-      "finish": "Terminer"
+      "finish": "Terminer",
+      "askCapability": "Demandez au propriétaire du workspace ou à une personne ayant l’autorisation « {{cap}} » de configurer ceci.",
+      "cap": {
+        "workTickets": "travailler sur les tickets",
+        "editPipeline": "modifier le pipeline",
+        "workspaceSettings": "paramètres du workspace",
+        "manageMembers": "gérer les membres",
+        "manageSprints": "gérer les sprints",
+        "promoteAdmin": "promouvoir des admins",
+        "demoteAdmin": "gérer les admins",
+        "ownerActions": "propriétaire"
+      },
+      "repo": {
+        "title": "Aucun dépôt lié",
+        "why": "Le module Develop fonctionne sur un dépôt git lié — l’explorateur de code, les conteneurs, les terminaux et l’agent de code IA le clonent tous. Liez-en un pour l’activer.",
+        "cta": "Lier un dépôt"
+      },
+      "docker": {
+        "title": "Docker n’est pas démarré",
+        "why": "Les conteneurs, terminaux, aperçus, la CI et les déploiements ont tous besoin d’un démon Docker sur l’hôte — rien ne peut démarrer tant qu’il n’est pas joignable.",
+        "hint": "C’est un réglage hôte — démarrez Docker sur le serveur (ou définissez WS_DOCKER_BIN). Demandez à votre administrateur si vous ne gérez pas l’hôte."
+      },
+      "media": {
+        "title": "La génération média n’est pas configurée",
+        "why": "Sans clé de fournisseur média, la génération « réussit » mais renvoie des ressources fictives au lieu de vraies. Ajoutez une clé pour obtenir de vrais résultats.",
+        "cta": "Ajouter une clé média"
+      },
+      "ai": {
+        "title": "Aucun fournisseur IA configuré",
+        "why": "Les fonctions IA ont besoin d’un fournisseur. Ajoutez une clé d’API Gemini pour les activer.",
+        "cta": "Ajouter une clé IA",
+        "hint": "Vous pouvez aussi installer la CLI Claude sur l’hôte — demandez à votre administrateur si vous ne gérez pas le serveur."
+      },
+      "publishing": {
+        "title": "Aucun compte connecté",
+        "why": "Pour publier, connectez d’abord un compte social. En attendant, l’action de publication reste masquée.",
+        "cta": "Connecter un compte"
+      }
     },
     "onboarding": {
       "welcome": "Bienvenue sur Workspaces",
@@ -568,8 +605,8 @@
       "incomingVariablesHint": "Ce que l’étape précédente vous transmet — cliquez pour insérer dans le modèle.",
       "promptTemplate": "Modèle de prompt",
       "promptTemplateHint": "Rendu avec les valeurs entrantes au début de l’étape (le flag -p de Claude + fichier de transfert).",
-      "outgoingEmit": "Sortant — cette étape doit émettre",
       "outgoingEmitHint": "Appliqué via --json-schema pour que l’étape suivante puisse le lire. C’est ainsi que les données s’enchaînent entre les étapes.",
+      "automationsMoved": "Les automatisations ont désormais leur propre page",
       "turns": "tours",
       "modelHaiku": "Haiku",
       "modelSonnet": "Sonnet",
@@ -1033,6 +1070,8 @@
       "needOne": "Gardez au moins une section activée.",
       "board": "Tableau",
       "code": "Code",
+      "automations": "Automatisations",
+      "components": "Composants",
       "backlog": "Backlog",
       "terminals": "Terminaux",
       "activity": "Activité",
@@ -1635,11 +1674,14 @@
       "tabTerminal": "Terminal",
       "tabFiles": "Fichiers et réfs",
       "tabCode": "Code",
-      "noCode": "Aucun fichier modifié à afficher pour l'instant.",
       "loadingEditor": "Chargement de l'éditeur…",
       "codeChanges": "Modifications (Monaco)",
       "openLiveEditor": "Ouvrir VS Code en direct",
       "editorLaunching": "Lancement de l'éditeur…",
+      "openFullPage": "Ouvrir en pleine page",
+      "backToTicket": "Retour au ticket",
+      "editorFullTitle": "Éditeur en direct · {{id}}",
+      "editorRetry": "Réessayer",
       "editorLaunchHint": "Lancez le vrai VS Code qui tourne dans le conteneur de ce ticket.",
       "editorNotActivated": "Activez d'abord le ticket — un conteneur en cours d'exécution est requis.",
       "editorLaunchFailed": "Impossible de lancer l'éditeur. Réessayez.",
@@ -1703,7 +1745,6 @@
       "noLinkedArtifacts": "Aucun design ou spec lié. Liez-en un pour que l'IA s'y conforme.",
       "linkArtifactPlaceholder": "Lier un design ou une spec Studio…",
       "noTerminal": "Aucun terminal en cours d’exécution",
-      "noTerminalSub": "Ce ticket n’a aucun conteneur actif. Réactivez-le pour attacher un terminal.",
       "openInTerminals": "Ouvrir dans Terminaux",
       "noFileChanges": "Aucune modification de fichier pour l’instant",
       "noFileChangesSub": "Les fichiers modifiés apparaissent ici au fur et à mesure que l’agent édite le worktree.",
@@ -1745,7 +1786,6 @@
       "layoutGrid": "Grille",
       "layoutTabs": "Onglets",
       "emptyTitle": "Aucun terminal en cours d’exécution",
-      "emptySub": "Activez un ticket pour attacher un terminal en direct.",
       "maximizeTitle": "Agrandir",
       "restoreTitle": "Retour à la grille",
       "resizeTitle": "Glisser pour ajuster la hauteur"
@@ -2025,11 +2065,8 @@
       "themes": "Thèmes",
       "themesSub": "Choisissez-en un à prévisualiser — ou créez le vôtre.",
       "newTheme": "Nouveau thème",
-      "generateAi": "Générer avec l'IA",
       "aiSoon": "Génération de thème par IA — bientôt disponible",
       "soon": "Bientôt",
-      "aiPlaceholder": "Décrivez le style — p. ex. « un thème fintech chaleureux et premium » ou « menthe et corail ludiques »",
-      "aiGenerate": "Générer le thème",
       "aiGenerating": "Génération…",
       "aiError": "Impossible de générer un thème. Réessayez.",
       "aiBar": {
@@ -2336,6 +2373,14 @@
       "deleteConfirmTitle": "Supprimer l'automatisation ?",
       "deleteConfirmBody": "Supprimer « {{name}} » ? Cette action est irréversible."
     },
+    "automations": {
+      "title": "Automatisations",
+      "subtitle": "Des déclencheurs qui réagissent aux événements de votre pipeline et de votre espace de travail."
+    },
+    "components": {
+      "title": "Composants",
+      "tagline": "Chaque composant d'interface que nous fournissons, en direct sous votre thème de design."
+    },
     "code": {
       "title": "Code",
       "subtitle": "Parcourez toute la base de code du dépôt lié (lecture seule).",
@@ -2389,7 +2434,6 @@
       "mobileEmptyTitle": "Rien dans {{stage}}",
       "mobileEmptySub": "Récupérez des tickets depuis GitLab pour commencer.",
       "emptyStagesTitle": "Configuration de votre tableau…",
-      "emptyStagesSub": "Chargement de vos étapes de pipeline.",
       "newTicketTitle": "Nouveau ticket",
       "newTicketTitlePlaceholder": "Titre du ticket…",
       "newTicketStage": "Étape",
@@ -2437,7 +2481,6 @@
       "title": "Backlog",
       "countOfTotal": "{{count}} sur {{total}}",
       "done": "Terminé",
-      "select": "Sélectionner",
       "newSprint": "Nouveau sprint",
       "editSprint": "Modifier le sprint",
       "sprintStart": "Date de début",
@@ -2665,7 +2708,10 @@
     "nav": {
       "develop": "Développer",
       "content": "Contenu",
-      "insights": "Analyses"
+      "insights": "Analyses",
+      "subWork": "Travail",
+      "subMachine": "Machine",
+      "subTools": "Outils"
     },
     "storage": {
       "title": "Stockage et corbeille",

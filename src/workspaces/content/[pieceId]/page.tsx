@@ -14,6 +14,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { Disclosure, EmptyState, PopMenu, SectionCard, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -144,7 +145,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
-  const { content, runContentOp, navigate, activeWorkspace, outputTemplates } = useWorkspaces();
+  const { content, runContentOp, navigate, activeWorkspace, outputTemplates, readiness } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [durationKey, setDurationKey] = useState('auto');
@@ -410,6 +411,32 @@ export default function ContentPiece({ params }: { params: Record<string, string
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
+        {/* The most confusing silent gate: with no fal key, media generation SUCCEEDS but yields placeholder
+            `stub://` assets — it looks like it worked. Say so up front, at the place generation happens. */}
+        {!readiness.media.fal && (
+          <div className="mb-4">
+            <SetupNotice
+              variant="card"
+              icon="wand-magic-sparkles"
+              title={translate({ key: 'workspaces.setup.media.title' })}
+              body={translate({ key: 'workspaces.setup.media.why' })}
+              fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.media.cta' }) }}
+            />
+          </div>
+        )}
+        {/* Something is ready to ship but there is no connected account → the publish control just wasn't there.
+            Only shown once an asset exists, so it's contextual, not nagging. */}
+        {!readiness.publishing && piece.assets.length > 0 && (
+          <div className="mb-4">
+            <SetupNotice
+              variant="card"
+              icon="paper-plane"
+              title={translate({ key: 'workspaces.setup.publishing.title' })}
+              body={translate({ key: 'workspaces.setup.publishing.why' })}
+              fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'channels', cta: translate({ key: 'workspaces.setup.publishing.cta' }) }}
+            />
+          </div>
+        )}
         <div className={`max-w-3xl mx-auto w-full flex flex-col gap-4`}>
           {/* THE primary action — the one-shot whole-video pipeline, dominant above everything else. */}
           <section className={`rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3`}>

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (202)
+## Decisions (205)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -215,6 +215,9 @@
 | 0282 | Assistant parity by default — the 72-op tranche, copilot reach for propose-less surfaces, and project-facts Q&A | 🟢 accepted | workspace-ai, chat, op-catalog, parity, copilot, rag, b-23 | — | `docs/decisions/0282-assistant-parity-tranche.md` |
 | 0283 | ai-skill-delete is chat-proposable — the owner overrules the UI-only pin | 🟢 accepted | workspace-ai, chat, op-catalog, skills, b-23 | — | `docs/decisions/0283-skill-delete-chat-proposable.md` |
 | 0284 | Blocked features explain themselves — a snapshot `readiness` block + resolved `myPerms` drive a permission-aware "what's missing / how to fix it" notice | 🟢 accepted | ux, onboarding, snapshot, rbac, readiness | — | `docs/decisions/0284-setup-readiness-and-permission-aware-fix-routing.md` |
+| 0285 | Every workspace write converges live for every room member via one Conductor-tail `workspaceDirty` broadcast | 🟢 accepted | realtime, sync, conductor, snapshot, preload, multi-instance | — | `docs/decisions/0285-workspace-dirty-realtime-convergence.md` |
+| 0286 | Switching workspace/project is instant via a client stale-while-revalidate snapshot cache + idle prefetch | 🟢 accepted | realtime, sync, cache, preload, client, performance | — | `docs/decisions/0286-client-snapshot-cache-stale-while-revalidate.md` |
+| 0287 | Host administration, workspace governance, and browser terminals are separate fail-closed security planes | 🟢 accepted | security, rbac, tenancy, superadmin, terminal, containers | — | `docs/decisions/0287-host-and-tenant-security-boundaries.md` |
 
 ## Summaries
 
@@ -1849,6 +1852,30 @@ _(no Decision section found — fill it in)_
 *1. The snapshot ships a `readiness` block + the caller's resolved `myPerms` + raw `myRoleKey`.** `readiness` is the set of "is this actually set up?" booleans (repo linked, AI text, per-media-provider key, publishing connected, docker, push, secret-manager). Host-level probes (Docker via `docker info`, the Claude CLI probe) are **cached with a 30s TTL** so the per-snapshot hot-path never shells out; config-presence checks (stored `__provider_key_<id>` EnvVar KEYS — presence only, never decrypted — plus env fallbacks and VAPID/enc-key env) are trivial. `myPerms` resolves the caller's **raw** role key against `WorkspaceRole.perms` (mirroring the server `hasCapability`), so a custom role resolves correctly — the flattened `Workspace.role` collapses those to `member`.
 
 → `docs/decisions/0284-setup-readiness-and-permission-aware-fix-routing.md`
+
+### 0285 — Every workspace write converges live for every room member via one Conductor-tail `workspaceDirty` broadcast
+
+**0285** · accepted · tags: realtime, sync, conductor, snapshot, preload, multi-instance · 2026-07-21
+
+*1. One coarse `broadcastWorkspaceDirty(workspaceId, { gone? })` at the single PUBLIC-writer choke-point.** The Conductor's `enqueueWriterAction` fires it once, after a successful drain, gated on `writerKind === 'public'` — so it never fires for internal engine ops (stage/automation/forge, which enqueue as `'internal'` and already push their own ticket deltas). The client listens once (`upsertSyncEventCallback('workspaces/workspaceDirty')`) and debounce-refetches, **reusing the same 400 ms `dirtyTimer` as `contentDirty`** so a burst of mixed writes coalesces into ONE refetch. This makes every cold op — and every FUTURE op — live-for-all by construction.
+
+→ `docs/decisions/0285-workspace-dirty-realtime-convergence.md`
+
+### 0286 — Switching workspace/project is instant via a client stale-while-revalidate snapshot cache + idle prefetch
+
+**0286** · accepted · tags: realtime, sync, cache, preload, client, performance · 2026-07-21
+
+*A client-side stale-while-revalidate cache, entirely in `WorkspacesProvider.tsx` — no server change.**
+
+→ `docs/decisions/0286-client-snapshot-cache-stale-while-revalidate.md`
+
+### 0287 — Host administration, workspace governance, and browser terminals are separate fail-closed security planes
+
+**0287** · accepted · tags: security, rbac, tenancy, superadmin, terminal, containers · 2026-07-21
+
+The framework-global `User.admin` field means **host superadmin only**. It is never inferred from `WorkspaceMember.roleKey`. Workspace `owner`/`admin` remains full authority only within that workspace. Root operators can bootstrap/recover the host role with `WS_SUPERADMIN_EMAILS`; all host-plane routes must use the shared `isHostSuperadmin`/`assertHostSuperadmin` guard. A host superadmin does not implicitly become a workspace member either. Browser terminals are **container-only in every environment**. The host-shell backend and its env bypass are deleted. The client sends workspace id + ticket key, not a Docker name. The socket authenticates itself, checks `workTickets`, derives the canonical container and verifies both immutable workspace/ticket labels. Host superadmin status does not bypass this product-terminal boundary. Workspace governance remains in the Conductor. Suggestions require `workTickets`; owner assignment is only possible through compare-and-set ownership transfer by the actual current owner; built-in admin promotion / demotion requires its dedicated capabilities; invite role grants cannot exceed the inviter; invite acceptance is email-bound and upsert-idempotent; suggestion acceptance claims only an open suggestion.
+
+→ `docs/decisions/0287-host-and-tenant-security-boundaries.md`
 
 ## Code governed by decisions
 

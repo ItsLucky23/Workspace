@@ -141,7 +141,9 @@ export function buildToc(markdown: string): string {
     if (/^```+/.test(line.trim())) { inFence = !inFence; continue; }
     if (inFence) continue;
     const m = /^(#{2,3})\s+(.*)$/.exec(line.trim());
-    if (m) entries.push({ level: m[1]!.length, text: m[2]!.trim() });
+    const hashes = m?.[1];
+    const heading = m?.[2];
+    if (hashes !== undefined && heading !== undefined) entries.push({ level: hashes.length, text: heading.trim() });
   }
   if (entries.length < 3) return '';
   const items = entries.map((e) => `<li class="toc-l${String(e.level)}"><a href="#${slug(e.text)}">${inline(e.text)}</a></li>`).join('');

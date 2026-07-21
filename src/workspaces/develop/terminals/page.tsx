@@ -10,6 +10,7 @@ import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { EmptyState, Segmented, statusColorVar, WsButton } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TerminalPanel from './TerminalPanel';
 import type { Terminal, TicketStatus } from '../../_data/types';
@@ -43,7 +44,7 @@ export const template = 'workspaces';
 
 export default function Terminals() {
   const translate = useTranslator();
-  const { sshUserId, navigate, membersById, activeWorkspace } = useWorkspaces();
+  const { sshUserId, navigate, membersById, activeWorkspace, readiness } = useWorkspaces();
   //? Tabs (one fill-height terminal at a time) is the phone-friendly DEFAULT; grid is the
   //? demoted desktop preference behind the Segmented (hidden at phone width — a view
   //? preference, not an action).
@@ -64,7 +65,7 @@ export default function Terminals() {
       const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/containerTerminals', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
       if (cancelled || error || res?.status !== 'success') return;
       setTerminals(res.result.containers.map((c) => ({
-        ticketId: c.ticketKey, stage: 'container', container: c.container,
+        ticketId: c.ticketKey, stage: 'container',
         processes: [{ name: 'shell', status: 'idle' as const, cwd: '/work', exit: '', lines: [] }],
       })));
     };
@@ -101,7 +102,25 @@ export default function Terminals() {
 
       {!unlocked && terminals.length === 0 && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
 
-      {unlocked && terminals.length === 0 && (
+      {/* A container shell only exists once a ticket provisions one — which silently can't happen when Docker
+          is down (host) or no repo is linked (nothing to clone). Name the real reason instead of "no tickets". */}
+      {unlocked && terminals.length === 0 && !readiness.docker && (
+        <SetupNotice
+          icon="server"
+          title={translate({ key: 'workspaces.setup.docker.title' })}
+          body={translate({ key: 'workspaces.setup.docker.why' })}
+          hint={translate({ key: 'workspaces.setup.docker.hint' })}
+        />
+      )}
+      {unlocked && terminals.length === 0 && readiness.docker && !readiness.repoLinked && (
+        <SetupNotice
+          icon="terminal"
+          title={translate({ key: 'workspaces.setup.repo.title' })}
+          body={translate({ key: 'workspaces.setup.repo.why' })}
+          fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'repository', cta: translate({ key: 'workspaces.setup.repo.cta' }) }}
+        />
+      )}
+      {unlocked && terminals.length === 0 && readiness.docker && readiness.repoLinked && (
         <EmptyState
           icon="terminal"
           title={translate({ key: 'workspaces.terminals.emptyTitle' })}
@@ -125,14 +144,14 @@ export default function Terminals() {
               </button>
             ))}
           </div>
-          {terminals.filter((t) => t.ticketId === shownTab).map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill />)}
+          {terminals.filter((t) => t.ticketId === shownTab).map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} fill />)}
         </div>
       )}
 
       {terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
         <div className={`flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6`}>
           {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
-            <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
+            <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
           ))}
         </div>
       )}
@@ -140,7 +159,7 @@ export default function Terminals() {
       {terminals.length > 0 && layout === 'grid' && maximizedId === null && (
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6`}>
           <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3`}>
-            {terminals.map((t) => <TerminalPanel key={t.ticketId} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
+            {terminals.map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
           </div>
         </div>
       )}

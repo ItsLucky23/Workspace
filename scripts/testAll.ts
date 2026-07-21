@@ -3,7 +3,8 @@
 //? up already; this script does NOT boot it. Run `npm run server` first.
 //?
 //? Config via env:
-//?   TEST_BASE_URL          — defaults to http://localhost:80
+//?   TEST_BASE_URL          — defaults to the ACTUAL bound dev-server port (dev-server.json,
+//?                            falling back to config.ports.backend); 127.0.0.1, not localhost
 //?   TEST_SKIP              — comma-separated `<page>/<name>` to skip
 //?   TEST_AUTH_TOKEN        — applied as session cookie to sweep layers
 //?   TEST_FILTER            — substring match against `<page>/<name>/<version>`
@@ -13,11 +14,27 @@
 //?   TEST_ONLY_CUSTOM=1     — alias for TEST_NO_SWEEP
 //?   TEST_NO_CUSTOM=1       — skip per-route custom tests
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { logRunAllSummary, runAllTests } from '@luckystack/test-runner';
 import { apiInputSchemas } from '../src/_sockets/apiInputSchemas.generated';
 import { apiMetaMap, apiMethodMap } from '../src/_sockets/apiTypes.generated';
+import { ports } from '../config.ports';
 
-const baseUrl = process.env.TEST_BASE_URL ?? 'http://localhost:80';
+//? Default target: the ACTUAL bound backend port — the dev server hops off a busy port and records
+//? the real one in dev-server.json (lesson 0015; same pattern as vite.config.ts). 127.0.0.1 instead
+//? of localhost: the latter intermittently fails DNS resolution on this platform.
+const readBackendPort = (fallback: string): string => {
+  try {
+    const raw = readFileSync(path.join(process.cwd(), 'node_modules', '.luckystack', 'dev-server.json'), 'utf8');
+    const info = JSON.parse(raw) as { port?: number };
+    return info.port ? String(info.port) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+const baseUrl = process.env.TEST_BASE_URL ?? `http://127.0.0.1:${readBackendPort(String(ports.backend))}`;
 const skip = (process.env.TEST_SKIP ?? '').split(',').map(s => s.trim()).filter(Boolean);
 const authToken = process.env.TEST_AUTH_TOKEN || undefined;
 const filter = process.env.TEST_FILTER || undefined;

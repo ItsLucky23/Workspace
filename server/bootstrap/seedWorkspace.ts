@@ -42,7 +42,7 @@ function slugify(name: string): string {
 //? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
 //? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
 //? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
-export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional', packId?: string): Promise<{ workspaceId: string }> {
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional', packId?: string, skipStarterSeed?: boolean): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   //? Module gating (workspaces/_data/modules.ts): the caller passes the RESOLVED
   //? section-id list from the chosen module presets. Absent/empty ⇒ legacy all-on.
@@ -81,8 +81,11 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   //? open. This deliberately replaces the old heavy demo (20 tickets / 6 fake
   //? members) — that lives in `seedDemoWorkspace` and is dev/test-only. Only seeded
   //? when the Development module is on: a content/design-only workspace has no board,
-  //? so it must NOT be greeted with a "Connect your GitLab project" ticket.
-  if (devEnabled) {
+  //? so it must NOT be greeted with a "Connect your GitLab project" ticket. `skipStarterSeed`
+  //? (default false — every existing caller keeps this seed) opts out for callers whose new
+  //? workspace already carries its own real content (e.g. an import), where these two
+  //? examples would land as phantom tickets alongside the real ones.
+  if (devEnabled && !skipStarterSeed) {
     const sprint = await prisma.sprint.create({ data: { workspaceId, projectId: project.id, name: 'Sprint 1', active: true } });
     const starterTickets = [
       { title: 'Welcome to your workspace 👋', description: 'This is an example ticket. Drag it across the pipeline, assign it, or archive it — your call.' },

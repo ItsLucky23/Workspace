@@ -16,6 +16,9 @@ export const template = 'workspaces';
 type InsightsTab = 'performance' | 'links' | 'brand';
 
 const euros = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
+//? URL-path prefix rendered verbatim (shortlinks) — a code-value, not prose; const keeps it
+//? out of jsx-no-literals territory without a fake translation.
+const SHORTLINK_PREFIX = '/l/';
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -165,7 +168,7 @@ export default function ContentInsights() {
                     //? Phone: the row wraps to two lines (slug/badges/clicks on top, URL below). sm+: one line
                     //? where the URL is the ONLY truncating flex-1 element, so nothing forces horizontal scroll.
                     <div key={l.id} className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-0.5 text-sm border-b border-divider last:border-0 py-1.5 ${l.id === winnerId && l.clicks > 0 ? 'text-title' : 'text-common'}`}>
-                      <span className={`font-mono text-xs text-primary shrink-0`}>/l/{l.slug}</span>
+                      <span className={`font-mono text-xs text-primary shrink-0`}>{SHORTLINK_PREFIX}{l.slug}</span>
                       {l.variant && <span className={`rounded-md bg-container2 px-1.5 py-0.5 text-[10px] font-semibold text-muted shrink-0`}>{l.variant}</span>}
                       {l.id === winnerId && l.clicks > 0 && <span className={`rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[10px] font-semibold shrink-0`}><Icon name="trophy" /> {translate({ key: 'workspaces.content.linksWinner' })}</span>}
                       <span className={`order-last sm:order-none basis-full sm:basis-0 sm:flex-1 min-w-0 truncate text-muted`}>{l.targetUrl}</span>

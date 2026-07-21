@@ -19,6 +19,10 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Production is explicit, not inferred. Security gates must never treat an unset NODE_ENV as development
+# in the self-host image (the historical terminal bridge did, exposing an app-container shell).
+ENV NODE_ENV=production
+
 # Install deps first (layer-cached on unchanged lockfile). Prefer the reproducible `npm ci`, but fall
 # back to `npm install` when the lockfile is out of sync with the target platform — a package-lock.json
 # generated on a different OS (e.g. a Windows dev box) can omit linux-only optional native deps

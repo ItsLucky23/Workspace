@@ -12,6 +12,11 @@ import { indexDesignArtifact, removeDesignArtifactIndex } from './designLibraryR
 //? Bridge a genuinely-JSON value to Prisma's Json WRITE type (mirrors server/studio/generate.ts).
 const asJson = (v: unknown): Prisma.InputJsonValue => v ?? {};
 
+//? A Mongo ObjectId is exactly 24 hex chars — guard the shape BEFORE querying so a malformed id
+//? (mirrors server/orchestrator/projectResolve.ts) resolves to "not found" instead of throwing
+//? Prisma's "Malformed ObjectID".
+const isObjectId = (s: string): boolean => /^[0-9a-fA-F]{24}$/.test(s);
+
 export interface DesignArtifactInput { id?: string; kind: string; name: string; description?: string; content: unknown; source?: string }
 
 //? Upsert a design-library entry; returns its id ('' if an update hit nothing).
@@ -41,6 +46,7 @@ export async function saveDesignArtifact(prisma: PrismaClient, workspaceId: stri
 
 //? Mark the one active theme/style for its kind, then rebuild the design-system doc. false if unknown.
 export async function setActiveDesignArtifact(prisma: PrismaClient, workspaceId: string, id: string): Promise<boolean> {
+  if (!isObjectId(id)) return false;
   const target = await prisma.designArtifact.findFirst({ where: { workspaceId, id }, select: { kind: true } });
   if (!target) return false;
   await prisma.designArtifact.updateMany({ where: { workspaceId, kind: target.kind }, data: { active: false } });

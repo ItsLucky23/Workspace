@@ -1,5 +1,43 @@
 # Branch log — `main`
 
+## 2026-07-21 — Instant workspace/project-switch via client-cache (ADR 0286)
+
+**User prompt:** per workspace/project wisselen moet ook uit de cache werken — alle workspaces cachen. (+ nieuwsgierigheids-vraag over welke data gecached wordt + sync; beantwoord: laag-1 snapshot = cached + live hooks, laag-2 zwaar/gestreamd/immutable = lazy; video-collaboratieve-staat synct wél, alleen de bytes streamen.) Keuze via AskUserQuestion: **lazy + achtergrond-prefetch**.
+
+**Gebouwd (puur client, alleen `WorkspacesProvider.tsx` — geen server/schema-wijziging, de snapshot-route serveert al per-workspace/project):** stale-while-revalidate cache.
+- `snapCacheRef: Map<"wsId::projId", Snap>` + `lastProjectByWsRef` (terug naar je laatste project, geen flip). `snapKey`-helper + `cacheEntry`.
+- **Mirror-effect** `useEffect(() => cacheEntry(snap), [snap])` → de deltas die de actieve workspace live houden, houden ook z'n cache-entry vers.
+- **Switch** (`setActiveWorkspace`/`setActiveProject`): cache-hit → `setSnap(cached)` + `setLoading(false)` INSTANT (geen spinner), daarna vuurt de bestaande want*-refetch op de achtergrond en reconcilieert via de `shouldApplySnapshotResponse`-sequence/target-guard.
+- **Achtergrond-prefetch** (idle, 1×/sessie, ~350ms sequentieel, skipt gecachte): na de actieve load álle andere workspaces' default-project-snapshot in de cache → ook de 1e switch instant, zonder login te blokkeren.
+- Alleen de ACTIEVE workspace joint z'n room + heeft live-hooks; een gecachte niet-actieve gaat stale tot re-select (dan verse background-refetch). Cache = alleen `Snap`-metadata; big data (codebase/PTY/media-bytes) nooit gecached.
+
+**Verify (opus, focused op de state-machine):** 8/8 PASS, geen bugs — race A→B→A dubbel-guarded (sequence + desiredTarget), `''`-no-project-edge correct, geen cross-workspace-delta-bleed (mergeTickets scoped op projectId), geen mirror-render-loop (cacheEntry = ref-write), prefetch-gate/geheugen(begrensd door #workspaces)/loading/room-rejoin allemaal correct. 2 by-design SWR-observaties (workspaces-lijst even stale, verwijderd-laatste-project flipt na revalidatie).
+
+**Files touched:** `src/workspaces/_shell/WorkspacesProvider.tsx`, `tests/integration/workspaceCache.test.mts (new)`, `docs/decisions/0286-*.md (new)`. (+ opruiming: achtergebleven contradictoire ragIndex-comment van de vorige revert weggehaald.)
+
+**Verify:** typecheck 0, eslint 0-errors, ai:lint schoon (op onze files), vite build ✓, workspaceCache 15/15, realtimeConvergence 22/22, snapshot 38/38, settings 27/27. **Developer-acties:** client herstarten. **Te testen:** wissel tussen 2 workspaces/projecten → 2e+ keer instant (geen spinner), data ververst stil op de achtergrond; na login even wachten → ook 1e switch naar een niet-bezochte workspace instant.
+
+## 2026-07-21 — Realtime convergence: elke workspace-write live voor álle room-leden (ADR 0285)
+
+**User prompt:** check hoe we data syncen — alles moet altijd live updaten voor users in dezelfde workspace (echte realtime); alle SMALLE data cachen (tickets ooit geladen = in memory, geen re-GET bij navigeren, upserts via room-event); grote data (hele codebase) NIET in memory; op workspace-load alles preloaden zodat zelfs de 1e board-visit meteen tickets heeft. Findings met opus-agents → patchen met sonnet → verifiëren met opus → afwerken (ultracode, niet te gek met tokens).
+
+**Pijplijn:** findings-workflow (4 opus + synthese) → kern zelf gebouwd (delicaat, hete files) → sonnet-agents voor geïsoleerde patches (P3/P6) → 2 opus-verifiers over de volledige diff → finish. Verdict findings: architectuur was **~85% goed** (één room/workspace, altijd joined, geen per-view GET, brede preload, big-data lazy, cross-instance oké). Kern-gap: realtime was per-entiteit opt-in → ~25 KOUDE settings/infra-ops gingen via `refetch()` (alleen initiator); een paar (editSprint/reorderStages/saveGitlab/copyWorkspaceAssets) zelfs onzichtbaar voor de initiator.
+
+**Gebouwd:**
+- **P1** `broadcastWorkspaceDirty(id, {gone?})` (`server/read/broadcast.ts`, generaliseert het bewezen `broadcastContentDirty`) — vuurt ÉÉN keer bij de public-writer-drain-tail (`conductor.ts` `enqueueWriterAction`, alleen `writerKind==='public'` + success), nieuwe carrier `_sync/workspaceDirty_server_v1.ts`, client-callback hergebruikt de `dirtyTimer`-debounce (coalesce met contentDirty). `WORKSPACE_DIRTY_SKIP` = hoge-churn ticket-ops (eigen targeted delta) + delete-workspace → geen refetch-storm bij board-dragging. Default = vuren, dus elke NIEUWE op is live-voor-allen by construction.
+- **P2** delete-workspace vuurt `{gone:true}` → andere leden droppen de dode tenant + vallen terug op de picker (in-room refetch kan een verdwenen workspace niet convergeren).
+- **P4** `stageOverrides` gereconcilieerd tegen de autoritatieve ticket-delta (drop zodra `ticket.stageId` matcht) → geen divergerende kolommen tussen users.
+- **P6** PAT-metadata gepreload (id/name/prefix/scopes/dates — NOOIT de token; secret-safe) → geen re-GET op de settings API-tokens-panel.
+- **P3** (docs) `.env_template` `WS_MULTI_INSTANCE`-comment verduidelijkt.
+
+**Verify-fixes (opus-verifiers vonden):** (1) test-guard was vacuous (mijn lint-fix veranderde de skip-set-declaratie, de test zocht de oude string) → gefixt + non-empty-assert. (2) ragIndex-preload deed een `distinct`-findMany over alle filePaths per snapshot (versterkt door refetches) → **teruggedraaid naar lazy** (blijft via scanIndex-delta). (3) multi-instance boot-warning keyde op `REDIS_HOST` (kern-dependency, default) → vuurde op élke single-instance-boot → **warning gedropt**, guidance blijft in `.env_template`. Ook `promptExperiments`-preload teruggedraaid (Rule 3b: de route documenteert bewust waarom scoring on-demand is; compoundde met refetches).
+
+**Bewust NIET gedaan (aan user gemeld):** P5 multi-project preload/cache (project-*wisselen* re-fetcht nog; L-effort, buiten expliciete ask — de 1e board-visit is al instant) · P7 content-nudge → granulaire deltas (optimalisatie).
+
+**Files touched:** `server/read/broadcast.ts`, `server/orchestrator/conductor.ts`, `server/read/workspaceSnapshot.ts`, `server/server.ts`, `src/workspaces/_sync/workspaceDirty_server_v1.ts (new)`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`, `src/workspaces/settings/page.tsx`, `src/workspaces/_data/types.ts`, `.env_template`, `tests/integration/realtimeConvergence.test.mts (new)`, `docs/decisions/0285-*.md (new)`.
+
+**Verify:** typecheck 0, eslint 0-errors, ai:lint schoon (op onze files), vite build ✓, generateArtifacts ✓, realtimeConvergence 22/22, snapshot 38/38, settings 27/27. **Developer-acties:** server + client herstarten (nieuwe snapshot-veld `pats` + de nieuwe realtime-route; geen db-push — alles afgeleid). **Te testen (2 browsers, zelfde workspace):** user A maakt een project / provisiont een service / edit budget / verbindt GitLab → user B's panel update binnen ~400ms zonder reload; owner verwijdert de workspace → user B wordt naar de picker gebounced.
+
 ## 2026-07-20 — Setup-readiness: geblokkeerde features leggen zichzelf uit (nieuwe-user UX, ADR 0284)
 
 **User prompt:** ga over de codebase — verbeter de UX voor nieuwe users. Nu werkt veel niet als X niet gedaan is (geen git-repo → hele Develop-module dood, missende keys → whatever) zonder dat het duidelijk is. Wil over ALLE modules fatsoenlijke UI-feedback: WAT/WAAROM iets niet werkt + HOE te fixen, met slimme knoppen (bv. naar workspace-management om een repo te koppelen), én permissie-bewust (geen toegang → "vraag de owner / iemand met permissie X"). Andere AI is met tests bezig.
@@ -4379,4 +4417,30 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 
 **Verification**: Playwright **24/24** (volledige suite, serieel; specs individueel 2-3× groen gedraaid door de schrijvers) · custom-laag **290/290** (schone solo-run — er bleken 7 sweep-processen van agents parallel te draaien die elkaar via route-rate-limits vals rood duwden; opgeruimd, dát waren de eerdere "transients") · `opEffectCoverage` 452/452 · lint 0 errors (fill-golf-errors gefixt) · tsc client+server 0.
 
-**Notes**: totale route-dekking nu 130/130 routes (66 `_api` + 64 `_sync`) met eigen businesslogica-tests + de effect-matrix erbovenop + 24 deterministische browser-specs — geen LLM in de vaste testloop. **Let op**: enkele testid-regels leven in paginabestanden die de parallelle setup-readiness-sessie óók bewerkt (backlog, ticket, workspace, terminals) — die rijden mee met díe commit; de specs draaien er al groen op. Sweep-run-recept + de zelf-match-valkuil van procesqueries (een zoekopdracht naar 'x' matcht zijn eigen commandline) staan in deze log als naslaag.
+**Notes**: totale route-dekking nu 130/130 routes (66 `_api` + 64 `_sync`) met eigen businesslogica-tests + de effect-matrix erbovenop + 24 deterministische browser-specs — geen LLM in de vaste testloop.
+
+## 2026-07-21 00:20 — push-borging + testing-playbook + de laatste UI-restjes (NOG NIET GECOMMIT — zie noot)
+
+**User prompt (samenvatting)**: (1) AI-push-regel: vraagt de user de AI om te pushen → eerst de complete testset groen; letterlijke `git push` → automatische tests + linting. (2) Testing-playbook + verwijzing in CLAUDE.md. (3) Alle UI-restjes nu.
+
+**Wat er staat (functioneel af, alles behalve de gedeelde-bestanden-kwestie hieronder):**
+- **`.githooks/pre-push`** (nieuw): lint (0 errors) + `ai:lint` + `npm run test:unit` op elke push; `--no-verify` verboden per CLAUDE.md. Nieuwe scripts `test:unit` en `test:all`; **wortelfix**: `scripts/testAll.ts` default nu naar de écht gebonden backend-poort via dev-server.json (127.0.0.1) — `TEST_BASE_URL` niet meer nodig.
+- **`docs/TESTING_PLAYBOOK.md`** (nieuw) + CLAUDE.md: push-ritueel-regel, op-classificatie-plicht, playbook-verwijzing in de Testing-sectie én de docs-tabel.
+- **UI-restjes** (agent, alles groen bij oplevering): `develop/automations` (AutomationPanel uit de pipeline-pagina, eigen bestemming + sectie), `develop/components` (component-bibliotheek uit de Designer), ticket-editor-subroute `board/[ticketId]/editor` (volledige-pagina live editor, gedeelde `liveEditor.tsx`-plumbing, "Open full-page" vanuit CodePanel), en **sub-groepen in de Develop-nav** (Werk · Machine · Gereedschap over 12 items). navStructure 74/74 · surfaceReachability 104/104 · workspaceModules 16/16.
+- **Wees-keys**: 9 verweesde vertaal-keys geverifieerd (incl. dynamische-constructie-check) en symmetrisch verwijderd (2517 keys per taal); `designer.aiGenerating`/`aiError` bleken wél in gebruik en blijven. 14 nieuwe keys van de UI-golf in 4 talen gemergd.
+
+**Verification**: locales parse OK · scoped lint op alle golf-bestanden 0 errors · build groen (1m35) · structurele bewakers groen · Playwright 23/24.
+
+**NOOT — commit geblokkeerd op gedeelde bestanden**: de golf-wijzigingen in `Shell.tsx`/`WorkspacesProvider.tsx` zijn verweven met de ACTIEF-lopende, niet-gecommitte setup-readiness-WIP van een parallelle sessie (ADR 0284). Die WIP bevat op dit moment 2 lint-errors (`conductor.ts:1113`, `WorkspacesProvider.tsx:1116`) en een runtime-regressie (provider levert `ragIndex: undefined` waar pagina's op `null` guard'en → sources-pagina crasht, vandaar de 24e Playwright-spec rood). Dat is hún vers-getypte werk, niet deze golf (de golf-oplevering draaide 7/7 groen vóór die drift). Committen kan schoon zodra die sessie landt; de ongemengde bestanden kunnen desgewenst eerder. **Let op**: enkele testid-regels leven in paginabestanden die de parallelle setup-readiness-sessie óók bewerkt (backlog, ticket, workspace, terminals) — die rijden mee met díe commit; de specs draaien er al groen op. Sweep-run-recept + de zelf-match-valkuil van procesqueries (een zoekopdracht naar 'x' matcht zijn eigen commandline) staan in deze log als naslaag.
+
+## 2026-07-21 08:34 — Securityfase: host/tenantrollen, container-only terminals en governance-RBAC
+
+**User prompt:** voer alle audit-fases doorlopend uit; eerst een aparte globale superadmin (workspace owner/admin blijft tenant-only), terminals uitsluitend in de gekoppelde repo-container, vrije Compose alleen echt geïsoleerd, writes via Conductor en een kleinere betrouwbare AI-toolset; commit per groene fase en eindig met volledige E2E.
+
+**Wat ik deed:** (1) de globale framework-`User.admin` expliciet vastgelegd als host-superadmin, plus `WS_SUPERADMIN_EMAILS` bootstrap/break-glass en een gedeelde fail-closed guard; workspace owner/admin wordt nergens als hostrol gelezen. (2) De browser→host-shell volledig verwijderd, ook in development. `ws-term:start` stuurt workspace+ticket in plaats van een containernaam; de server authenticeert de socket, controleert `workTickets`, deriveert de canonieke container en verifieert exacte workspace/ticketlabels. Beide terminalpagina's zijn workspace-scoped. (3) Governance gehard: accept-suggestion is niet langer login-only en claimt alleen open suggesties; invite-rolegrants hebben een capability ceiling en kunnen geen owner minten; admin-promotie/demotie/removal vereist de dedicated caps; ownership-transfer vereist de echte huidige owner en gebruikt een replaybare CAS-volgorde; invite-accept is emailgebonden en upsert-idempotent. (4) Production mode wordt expliciet gepind; de Windows-CRLF-gevoelige Compose-test is platformneutraal. (5) De bestaande Vite-waarschuwingen verwijderd: geen dubbele static/dynamic sync-import meer; waarschuwingdrempel afgestemd op reeds lazy Monaco/Mermaid vendorchunks. ADR 0287 legt de grenzen vast.
+
+**Parallel geïntegreerd:** de reeds lopende setup-readiness/UX-, realtime-convergence- en snapshot-cachegolven (ADRs 0284–0286) bleven intact en zijn door dezelfde globale gates gegaan.
+
+**Verify:** typecheck 0 · lint 0 warnings/errors · build groen zonder warnings · ai:lint schoon · unit **103/103 files groen** · terminal-auth 7/7 · host-superadmin 7/7 · RBAC 121/121 · Compose 21/21 · memberRoles integration 15/15 · inviteToken 11/11. Echte browser/Docker-terminal-E2E blijft voor de afgesproken eindronde met draaiende runtimes.
+
+**Files (kern):** `server/hooks/workspacesTerminal.ts`, `server/container/runtime.ts`, `server/control/rbac.ts`, `server/orchestrator/conductor.ts`, `server/security/hostSuperadmin.ts`, terminalclient/-pagina's, Prisma/env/deployconfig, tests en `docs/decisions/0287-*.md`.

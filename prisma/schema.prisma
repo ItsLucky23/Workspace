@@ -82,6 +82,8 @@ model User {
   name            String?
   avatar          String    @default("")
   avatarFallback  String    @default("")
+  //? Framework-global HOST superadmin role. Never derived from WorkspaceMember.roleKey: tenant
+  //? owner/admin grants full authority only inside that workspace and zero host-control-plane access.
   admin           Boolean   @default(false)
 
   language        LANGUAGE  @default(en)
@@ -207,8 +209,8 @@ model WorkspaceMember {
 }
 
 //? Custom RBAC role (04b §11e, D76). `perms` is one boolean per RBAC_CAPABILITIES
-//? entry (B-28 matrix, positional). Built-ins seeded per workspace (editable,
-//? not deletable). Single-Owner invariant (D77) enforced in the membership
+//? entry (B-28 matrix, positional). Built-ins are immutable security baselines;
+//? custom roles are editable. Single-Owner invariant (D77) enforced in the membership
 //? `preApiExecute` check, NOT by locking rows. Prototype mirror: `PermRole`
 //? (types.ts:236).
 model WorkspaceRole {

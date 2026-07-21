@@ -1,5 +1,4 @@
 import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
-import type { PrismaClient } from '@prisma/client';
 
 import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../../../tests/_helpers.mjs';
 
@@ -40,7 +39,7 @@ async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 5
 
 //? Same minimal shape the Conductor's own `stage-create` op builds — see
 //? `server/orchestrator/conductor.ts` case 'stage-create'.
-async function seedStage(prisma: PrismaClient, workspaceId: string, projectId: string, key: string, order: number): Promise<{ id: string }> {
+async function seedStage(prisma: TestContext['prisma'], workspaceId: string, projectId: string, key: string, order: number): Promise<{ id: string }> {
   return prisma.pipelineStage.create({
     data: {
       workspaceId, projectId, key, kind: 'code', name: `Stage ${key}`, order, aiEnabled: true, wipLimit: null,

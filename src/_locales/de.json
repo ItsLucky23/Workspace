@@ -490,7 +490,44 @@
       "budgetBody": "Ein Monatslimit, damit Generierungen nie überraschen. Die Engine blockiert neue Ausgaben am Limit.",
       "back": "Zurück",
       "next": "Weiter",
-      "finish": "Fertig"
+      "finish": "Fertig",
+      "askCapability": "Bitte den Workspace-Eigentümer oder jemanden mit der Berechtigung „{{cap}}“, dies einzurichten.",
+      "cap": {
+        "workTickets": "an Tickets arbeiten",
+        "editPipeline": "die Pipeline bearbeiten",
+        "workspaceSettings": "Workspace-Einstellungen",
+        "manageMembers": "Mitglieder verwalten",
+        "manageSprints": "Sprints verwalten",
+        "promoteAdmin": "Admins befördern",
+        "demoteAdmin": "Admins verwalten",
+        "ownerActions": "Eigentümer"
+      },
+      "repo": {
+        "title": "Kein Repository verknüpft",
+        "why": "Das Develop-Modul arbeitet mit einem verknüpften Git-Repo — Code-Ansicht, Container, Terminals und der KI-Coding-Agent klonen es alle. Verknüpfe eines, um es zu aktivieren.",
+        "cta": "Repository verknüpfen"
+      },
+      "docker": {
+        "title": "Docker läuft nicht",
+        "why": "Container, Terminals, Vorschauen, CI und Deploys brauchen alle einen Docker-Daemon auf dem Host — nichts kann starten, solange er nicht erreichbar ist.",
+        "hint": "Das ist eine Host-Einstellung — starte Docker auf dem Server (oder setze WS_DOCKER_BIN). Frag deinen Administrator, wenn du den Host nicht verwaltest."
+      },
+      "media": {
+        "title": "Medienerzeugung ist nicht eingerichtet",
+        "why": "Ohne Medien-Provider-Schlüssel „gelingt“ die Erzeugung zwar, liefert aber Platzhalter-Assets statt echter. Füge einen Schlüssel hinzu, um echte Ergebnisse zu erhalten.",
+        "cta": "Medien-Schlüssel hinzufügen"
+      },
+      "ai": {
+        "title": "Kein KI-Provider eingerichtet",
+        "why": "KI-Funktionen brauchen einen Provider. Füge einen Gemini-API-Schlüssel hinzu, um sie zu aktivieren.",
+        "cta": "KI-Schlüssel hinzufügen",
+        "hint": "Alternativ installiere die Claude-CLI auf dem Host — frag deinen Administrator, wenn du den Server nicht verwaltest."
+      },
+      "publishing": {
+        "title": "Kein Konto verbunden",
+        "why": "Zum Veröffentlichen verbindest du zuerst ein Social-Konto. Bis dahin bleibt die Veröffentlichen-Aktion ausgeblendet.",
+        "cta": "Konto verbinden"
+      }
     },
     "onboarding": {
       "welcome": "Willkommen bei Workspaces",
@@ -568,8 +605,8 @@
       "incomingVariablesHint": "Was die vorherige Stage dir übergibt — klicke, um es ins Template einzufügen.",
       "promptTemplate": "Prompt-Template",
       "promptTemplateHint": "Wird mit den eingehenden Werten beim Stage-Start gerendert (Claudes -p-Flag + Carry-over-Datei).",
-      "outgoingEmit": "Ausgehend — diese Stage muss ausgeben",
       "outgoingEmitHint": "Wird per --json-schema erzwungen, damit die nächste Stage es lesen kann. So werden Daten zwischen Stages verkettet.",
+      "automationsMoved": "Automatisierungen haben jetzt eine eigene Seite",
       "turns": "Turns",
       "modelHaiku": "Haiku",
       "modelSonnet": "Sonnet",
@@ -1033,6 +1070,8 @@
       "needOne": "Mindestens einen Bereich aktiviert lassen.",
       "board": "Board",
       "code": "Code",
+      "automations": "Automatisierungen",
+      "components": "Komponenten",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Aktivität",
@@ -1635,11 +1674,14 @@
       "tabTerminal": "Terminal",
       "tabFiles": "Dateien & Refs",
       "tabCode": "Code",
-      "noCode": "Noch keine geänderten Dateien vorhanden.",
       "loadingEditor": "Editor wird geladen…",
       "codeChanges": "Änderungen (Monaco)",
       "openLiveEditor": "Live-VS-Code öffnen",
       "editorLaunching": "Editor wird gestartet…",
+      "openFullPage": "Vollbild öffnen",
+      "backToTicket": "Zurück zum Ticket",
+      "editorFullTitle": "Live-Editor · {{id}}",
+      "editorRetry": "Erneut versuchen",
       "editorLaunchHint": "Starte das echte VS Code, das im Container dieses Tickets läuft.",
       "editorNotActivated": "Aktiviere zuerst das Ticket — ein laufender Container ist nötig.",
       "editorLaunchFailed": "Editor konnte nicht gestartet werden. Versuche es erneut.",
@@ -1703,7 +1745,6 @@
       "noLinkedArtifacts": "Kein Design/Spec verknüpft. Verknüpfe eines, damit die KI danach baut.",
       "linkArtifactPlaceholder": "Ein Design oder eine Studio-Spec verknüpfen…",
       "noTerminal": "Kein Terminal aktiv",
-      "noTerminalSub": "Dieses Ticket hat keinen aktiven Container. Reaktiviere es, um ein Terminal anzuhängen.",
       "openInTerminals": "In Terminals öffnen",
       "noFileChanges": "Noch keine Dateiänderungen",
       "noFileChangesSub": "Geänderte Dateien erscheinen hier, während der Agent den Worktree bearbeitet.",
@@ -1745,7 +1786,6 @@
       "layoutGrid": "Raster",
       "layoutTabs": "Reiter",
       "emptyTitle": "Keine Terminals aktiv",
-      "emptySub": "Aktiviere ein Ticket, um ein Live-Terminal anzuhängen.",
       "maximizeTitle": "Maximieren",
       "restoreTitle": "Zurück zum Raster",
       "resizeTitle": "Ziehen, um die Höhe anzupassen"
@@ -2025,11 +2065,8 @@
       "themes": "Themes",
       "themesSub": "Wähle eins zur Vorschau — oder erstelle dein eigenes.",
       "newTheme": "Neues Theme",
-      "generateAi": "Mit KI generieren",
       "aiSoon": "KI-Theme-Generierung — kommt im nächsten Update",
       "soon": "Bald",
-      "aiPlaceholder": "Beschreibe den Look — z. B. 'ein warmes, edles Fintech-Theme' oder 'verspielt Mint & Koralle'",
-      "aiGenerate": "Theme generieren",
       "aiGenerating": "Wird generiert…",
       "aiError": "Theme konnte nicht generiert werden. Versuch es erneut.",
       "aiBar": {
@@ -2336,6 +2373,14 @@
       "deleteConfirmTitle": "Automatisierung löschen?",
       "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden."
     },
+    "automations": {
+      "title": "Automatisierungen",
+      "subtitle": "Trigger, die auf Pipeline- und Workspace-Ereignisse reagieren."
+    },
+    "components": {
+      "title": "Komponenten",
+      "tagline": "Jede UI-Komponente, die wir ausliefern — live unter deinem Design-Theme."
+    },
     "code": {
       "title": "Code",
       "subtitle": "Durchsuche die gesamte Codebasis des verknüpften Repositorys (schreibgeschützt).",
@@ -2389,7 +2434,6 @@
       "mobileEmptyTitle": "Nichts in {{stage}}",
       "mobileEmptySub": "Hol dir Tickets aus GitLab, um loszulegen.",
       "emptyStagesTitle": "Dein Board wird eingerichtet…",
-      "emptyStagesSub": "Deine Pipeline-Phasen werden geladen.",
       "newTicketTitle": "Neues Ticket",
       "newTicketTitlePlaceholder": "Ticket-Titel…",
       "newTicketStage": "Phase",
@@ -2437,7 +2481,6 @@
       "title": "Backlog",
       "countOfTotal": "{{count}} von {{total}}",
       "done": "Fertig",
-      "select": "Auswählen",
       "newSprint": "Neuer Sprint",
       "editSprint": "Sprint bearbeiten",
       "sprintStart": "Startdatum",
@@ -2665,7 +2708,10 @@
     "nav": {
       "develop": "Entwickeln",
       "content": "Content",
-      "insights": "Einblicke"
+      "insights": "Einblicke",
+      "subWork": "Arbeit",
+      "subMachine": "Maschine",
+      "subTools": "Werkzeuge"
     },
     "storage": {
       "title": "Speicher & Papierkorb",

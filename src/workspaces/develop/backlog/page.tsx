@@ -296,7 +296,10 @@ function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
     ? <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.backlog.noAi' })}</span>
     : <StatusPill status={ticket.status} />;
   return (
-    <div onClick={onOpen} className={`flex items-start sm:items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
+    // e2e: the row is a bare onClick div (no role/label) nested inside ancestor rows that also carry a
+    // font-mono id span, so a structural has() locator like the board's card query would over-match —
+    // a data-testid gives specs an unambiguous per-row hook.
+    <div data-testid="ws-backlog-row" onClick={onOpen} className={`flex items-start sm:items-center gap-3 px-4 py-2.5 border-b border-divider last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'hover:bg-container2/40'}`}>
       {selectMode && (
         <span onClick={(e) => { e.stopPropagation(); }} className={`flex items-center pt-1 sm:pt-0`}>
           <input type="checkbox" checked={selected} onChange={onToggle} className={`accent-primary cursor-pointer`} />

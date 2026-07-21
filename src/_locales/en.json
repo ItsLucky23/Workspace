@@ -490,7 +490,44 @@
       "budgetBody": "A monthly cap so generations never surprise you. The engine blocks new spend at the cap.",
       "back": "Back",
       "next": "Next",
-      "finish": "Finish"
+      "finish": "Finish",
+      "askCapability": "Ask the workspace owner or someone with the “{{cap}}” permission to set this up.",
+      "cap": {
+        "workTickets": "work on tickets",
+        "editPipeline": "edit the pipeline",
+        "workspaceSettings": "workspace settings",
+        "manageMembers": "manage members",
+        "manageSprints": "manage sprints",
+        "promoteAdmin": "promote admins",
+        "demoteAdmin": "manage admins",
+        "ownerActions": "owner"
+      },
+      "repo": {
+        "title": "No repository linked",
+        "why": "The Develop module works on a linked git repo — code browsing, containers, terminals and the AI coding agent all clone it. Link one to switch it on.",
+        "cta": "Link a repository"
+      },
+      "docker": {
+        "title": "Docker isn’t running",
+        "why": "Containers, terminals, previews, CI and deploys all need a Docker daemon on the host — none can start until it’s reachable.",
+        "hint": "This is a host setting — start Docker on the server (or set WS_DOCKER_BIN). Ask your administrator if you don’t manage the host."
+      },
+      "media": {
+        "title": "Media generation isn’t configured",
+        "why": "Without a media provider key, generation still “succeeds” but returns placeholder assets instead of real ones. Add a key to get real output.",
+        "cta": "Add a media key"
+      },
+      "ai": {
+        "title": "No AI provider configured",
+        "why": "AI features need a provider. Add a Gemini API key to switch them on.",
+        "cta": "Add an AI key",
+        "hint": "Alternatively, install the Claude CLI on the host — ask your administrator if you don’t manage the server."
+      },
+      "publishing": {
+        "title": "No account connected",
+        "why": "To publish you first connect a social account. Until then the publish action stays hidden.",
+        "cta": "Connect an account"
+      }
     },
     "onboarding": {
       "welcome": "Welcome to Workspaces",
@@ -568,8 +605,8 @@
       "incomingVariablesHint": "What the previous stage hands you — click to insert into the template.",
       "promptTemplate": "Prompt template",
       "promptTemplateHint": "Rendered with the incoming values at stage start (Claude's -p flag + carry-over file).",
-      "outgoingEmit": "Outgoing — this stage must emit",
       "outgoingEmitHint": "Enforced via --json-schema so the next stage can read it. This is how data chains between stages.",
+      "automationsMoved": "Automations moved to their own page",
       "turns": "turns",
       "modelHaiku": "Haiku",
       "modelSonnet": "Sonnet",
@@ -1033,6 +1070,8 @@
       "needOne": "Keep at least one section enabled.",
       "board": "Board",
       "code": "Code",
+      "automations": "Automations",
+      "components": "Components",
       "backlog": "Backlog",
       "terminals": "Terminals",
       "activity": "Activity",
@@ -1635,11 +1674,14 @@
       "tabTerminal": "Terminal",
       "tabFiles": "Files & refs",
       "tabCode": "Code",
-      "noCode": "No changed files to show yet.",
       "loadingEditor": "Loading editor…",
       "codeChanges": "Changes (Monaco)",
       "openLiveEditor": "Open live VS Code",
       "editorLaunching": "Launching editor…",
+      "openFullPage": "Open full-page",
+      "backToTicket": "Back to ticket",
+      "editorFullTitle": "Live editor · {{id}}",
+      "editorRetry": "Try again",
       "editorLaunchHint": "Launch the real VS Code running inside this ticket's container.",
       "editorNotActivated": "Activate the ticket first — it needs a running container.",
       "editorLaunchFailed": "Could not launch the editor. Try again.",
@@ -1703,7 +1745,6 @@
       "noLinkedArtifacts": "No design or spec linked. Link one so the AI builds to it.",
       "linkArtifactPlaceholder": "Link a design or Studio spec…",
       "noTerminal": "No terminal running",
-      "noTerminalSub": "This ticket has no active container. Reactivate it to attach a terminal.",
       "openInTerminals": "Open in Terminals",
       "noFileChanges": "No file changes yet",
       "noFileChangesSub": "Changed files appear here as the agent edits the worktree.",
@@ -1745,7 +1786,6 @@
       "layoutGrid": "Grid",
       "layoutTabs": "Tabs",
       "emptyTitle": "No terminals running",
-      "emptySub": "Activate a ticket to attach a live terminal.",
       "maximizeTitle": "Maximize",
       "restoreTitle": "Back to grid",
       "resizeTitle": "Drag to resize height"
@@ -2025,11 +2065,8 @@
       "themes": "Themes",
       "themesSub": "Pick one to preview — or make your own.",
       "newTheme": "New theme",
-      "generateAi": "Generate with AI",
       "aiSoon": "AI theme generation — coming in the next update",
       "soon": "Soon",
-      "aiPlaceholder": "Describe the look — e.g. 'a warm, premium fintech theme' or 'playful mint & coral'",
-      "aiGenerate": "Generate theme",
       "aiGenerating": "Generating…",
       "aiError": "Couldn't generate a theme. Try again.",
       "aiBar": {
@@ -2336,6 +2373,14 @@
       "deleteConfirmTitle": "Delete automation?",
       "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone."
     },
+    "automations": {
+      "title": "Automations",
+      "subtitle": "Triggers that react to your pipeline and workspace events."
+    },
+    "components": {
+      "title": "Components",
+      "tagline": "Every UI component we ship, live under your design theme."
+    },
     "code": {
       "title": "Code",
       "subtitle": "Browse the whole codebase of the linked repository (read-only).",
@@ -2388,7 +2433,6 @@
       "mobileEmptyTitle": "Nothing in {{stage}}",
       "mobileEmptySub": "Pull tickets from GitLab to get started.",
       "emptyStagesTitle": "Setting up your board…",
-      "emptyStagesSub": "Loading your pipeline stages.",
       "newTicketTitle": "New ticket",
       "startWithAi": "Start with AI right away",
       "newTicketTitlePlaceholder": "Ticket title…",
@@ -2437,7 +2481,6 @@
       "title": "Backlog",
       "countOfTotal": "{{count}} of {{total}}",
       "done": "Done",
-      "select": "Select",
       "newSprint": "New sprint",
       "editSprint": "Edit sprint",
       "sprintStart": "Start date",
@@ -2665,7 +2708,10 @@
     "nav": {
       "develop": "Develop",
       "content": "Content",
-      "insights": "Insights"
+      "insights": "Insights",
+      "subWork": "Work",
+      "subMachine": "Machine",
+      "subTools": "Tools"
     },
     "storage": {
       "title": "Storage & trash",

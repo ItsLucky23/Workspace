@@ -15,7 +15,6 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
-import AutomationPanel from '../../_components/AutomationPanel';
 import { HOOK_CATALOG } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, NetworkTab, ProcessTab, VisibilityTab } from './stageTabs';
@@ -42,10 +41,9 @@ export const template = 'workspaces';
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProjectId, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages, triggers } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   const [selectedId, setSelectedId] = useState<string>(stageConfigs[0]?.id ?? '');
-  const [view, setView] = useState('stages');
   const [tab, setTab] = useState('general');
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
@@ -144,11 +142,6 @@ export default function Pipeline() {
   const activeAdvanced = showAdvanced ? advancedTabs.find((t) => t.id === tab) : undefined;
   const visibleTabs = activeAdvanced ? [...basicTabs, activeAdvanced] : basicTabs;
 
-  const viewTabs: TabDef[] = [
-    { id: 'stages', label: translate({ key: 'workspaces.pipeline.tabStages' }), icon: 'diagram-project' },
-    { id: 'automations', label: translate({ key: 'workspaces.pipeline.tabAutomations' }), icon: 'wave-square', ...(triggers.length > 0 ? { count: triggers.length } : {}) },
-  ];
-
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* header — ONE primary action (Add stage); Validate is a secondary, non-primary action */}
@@ -157,37 +150,28 @@ export default function Pipeline() {
           <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.pipeline.pipelineTitle' })}</h1>
           <span className="text-sm text-muted">{translate({ key: 'workspaces.pipeline.headerSummary', params: [{ key: 'name', value: activeWorkspace.name }, { key: 'count', value: String(stages.length) }] })}</span>
         </div>
-        {view === 'stages' && (
-          <div className="flex items-center gap-2 shrink-0">
-            {/* collapses to its icon on phones; label returns from sm: up */}
-            <WsButton variant="ghost" icon="wand-magic-sparkles" onClick={validate} title={translate({ key: 'workspaces.pipeline.validateWithAi' })}>
-              <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.validateWithAi' })}</span>
-            </WsButton>
-            <WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>
-          </div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* collapses to its icon on phones; label returns from sm: up */}
+          <WsButton variant="ghost" icon="wand-magic-sparkles" onClick={validate} title={translate({ key: 'workspaces.pipeline.validateWithAi' })}>
+            <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.validateWithAi' })}</span>
+          </WsButton>
+          <WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>
+        </div>
       </div>
 
-      {/* the two in-page destinations: the pipeline itself, and the triggers that react to it */}
+      {/* Automations moved to their own destination (develop/automations). A one-tap cross-link sits
+          where the in-page Automations tab used to be, so the pipeline stays stage-editor focused. */}
       <div className="px-4 md:px-6 shrink-0">
-        <Tabs tabs={viewTabs} active={view} onChange={setView} />
+        <button
+          type="button" onClick={() => { navigate('automations'); }}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:text-common hover:bg-container2 cursor-pointer transition-colors"
+        >
+          <Icon name="bolt" className="text-primary" /> {translate({ key: 'workspaces.pipeline.automationsMoved' })} <Icon name="arrow-right-long" className="text-xs" />
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8 pt-4 flex flex-col gap-4">
-        {view === 'automations' && (
-          <>
-            {/* teaching intro — only while there is nothing yet (the panel's own list takes over after) */}
-            {triggers.length === 0 && (
-              <div className="flex items-start gap-3 rounded-2xl border border-container1-border bg-container1 px-4 py-3.5">
-                <Icon name="wave-square" className="text-primary mt-0.5 shrink-0" />
-                <span className="text-sm text-muted">{translate({ key: 'workspaces.pipeline.automationsIntro' })}</span>
-              </div>
-            )}
-            <AutomationPanel />
-          </>
-        )}
-
-        {view === 'stages' && (stages.length === 0 || !s) && (
+        {(stages.length === 0 || !s) && (
           //? Teaching empty state — explains what the pipeline IS and offers the first action.
           <div className="rounded-2xl border border-container1-border bg-container1">
             <EmptyState
@@ -199,7 +183,7 @@ export default function Pipeline() {
           </div>
         )}
 
-        {view === 'stages' && s && (
+        {s && (
           <>
             {/* flow strip — the pipeline itself; tap a stage to edit it */}
             <div className="flex items-center gap-1 overflow-x-auto ws-no-scrollbar pb-1 shrink-0">

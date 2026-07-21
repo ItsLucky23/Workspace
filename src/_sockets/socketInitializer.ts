@@ -23,12 +23,11 @@ import {
 } from "@luckystack/core/client";
 import { useSocketStatus } from "../_providers/socketStatusProvider";
 import { useEffect, useRef } from "react";
-import { initSyncRequest } from "./syncRequest";
+import { attachSyncReceiver, initSyncRequest } from "./syncRequest";
 import { flushApiQueue, flushSyncQueue, isOnline } from "./offlineQueue";
 
-//? The incoming `sync` socket listener + its route-key helpers now live in
-//? `@luckystack/sync/client` (`attachSyncReceiver`), dynamic-imported below so a
-//? base install without `@luckystack/sync` still builds + runs.
+//? The incoming `sync` socket listener + route-key helpers live in the installed
+//? `@luckystack/sync/client` package and are re-exported by `./syncRequest`.
 
 const setDisconnectedStatus = (setSocketStatus: ReturnType<typeof useSocketStatus>["setSocketStatus"]) => {
   setSocketStatus(prev => ({
@@ -214,22 +213,10 @@ export function useSocket(session: SessionLayout | null) {
       }
     });
 
-    //? Sync receive bridge. The incoming `sync` listener lives in
-    //? `@luckystack/sync/client` (`attachSyncReceiver`) so the consumer doesn't
-    //? carry a copy of the dispatch logic. Dynamic-imported + tryCatch so a base
-    //? install WITHOUT `@luckystack/sync` simply runs without sync receive (no
-    //? crash). Decoupled from the presence/activity flag — sync attaches whenever
-    //? the package is present, independent of `socketActivityBroadcaster`.
-    void (async () => {
-      const [syncImportError, syncClient] = await tryCatch(() => import("@luckystack/sync/client"));
-      if (syncImportError || !syncClient) {
-        if (shouldLogDev) {
-          console.log("[sync] @luckystack/sync/client not installed — sync receive disabled.");
-        }
-        return;
-      }
-      syncClient.attachSyncReceiver(socketConnection);
-    })();
+    //? Sync receive bridge. `syncRequest` is already a required static dependency in this generated
+    //? consumer, so a second optional dynamic import only duplicated the package chunk and emitted a
+    //? production-build warning. Presence/activity remains independent from sync transport.
+    attachSyncReceiver(socketConnection);
 
 
     const handleOnline = () => {

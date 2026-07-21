@@ -28,15 +28,15 @@ export interface WorkspaceModule {
 export const WORKSPACE_MODULES: WorkspaceModule[] = [
   //? Gap-fix: 'interviewer' also unlocks for Development — the CODE-focused review tool previously only
   //? unlocked via Design (which has no Sources/code-index), leaving dev workspaces without it.
-  { id: 'development', labelKey: 'workspaces.modules.developmentLabel', descKey: 'workspaces.modules.developmentDesc', icon: 'code-branch', sections: ['board', 'backlog', 'terminals', 'code', 'activity', 'sources', 'pipeline', 'scheduled', 'interviewer'] },
+  { id: 'development', labelKey: 'workspaces.modules.developmentLabel', descKey: 'workspaces.modules.developmentDesc', icon: 'code-branch', sections: ['board', 'backlog', 'terminals', 'code', 'activity', 'sources', 'pipeline', 'automations', 'scheduled', 'interviewer', 'components'] },
   //? #87 — Content/Design also unlock 'scheduled' (automation/triggers) so those lanes can reach
   //? scheduled posts + event automation, not just the Development lane. #165 — Design also unlocks
   //? 'marketing' (the Studio brand/landing generator) so a Design-only workspace can do visual/brand
   //? generation. (OPEN VRAAG: defaults per Rule 3a — user away; revisit if the nav feels too broad.)
   //? Category restructure — 'studio' (brief → landing page + brand kit) is a visible nav section
   //? again, unlocked by the same lanes as 'marketing' (it is the brand/landing generator behind it).
-  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'scheduled-posts', 'studio'] },
-  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'interviewer', 'marketing', 'scheduled', 'studio'] },
+  { id: 'content', labelKey: 'workspaces.modules.contentLabel', descKey: 'workspaces.modules.contentDesc', icon: 'wand-magic-sparkles', sections: ['content', 'marketing', 'scheduled', 'automations', 'scheduled-posts', 'studio'] },
+  { id: 'design', labelKey: 'workspaces.modules.designLabel', descKey: 'workspaces.modules.designDesc', icon: 'display', sections: ['designer', 'components', 'interviewer', 'marketing', 'scheduled', 'automations', 'studio'] },
   //? DOC1 (DOCUMENTS_AND_SKILLS) — the Documents module: AI-drafted workspace documents (specs,
   //? designs, plans) with export targets. Own module so any workspace type can add just this.
   { id: 'documents', labelKey: 'workspaces.modules.documentsLabel', descKey: 'workspaces.modules.documentsDesc', icon: 'file-lines', sections: ['documents'] },

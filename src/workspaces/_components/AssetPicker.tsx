@@ -21,7 +21,7 @@ export interface PickableAsset {
 
 //? `/media/*` is served by the BACKEND; rendering it against the frontend origin is the bug this helper
 //? exists to prevent (the old documents picker had exactly that).
-export function assetHref(url: string): string {
+function assetHref(url: string): string {
   return url.startsWith('/media/') ? `${backendUrl}${url}` : url;
 }
 

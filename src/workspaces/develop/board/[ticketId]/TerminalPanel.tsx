@@ -67,7 +67,7 @@ export default function TerminalPanel({ ticketId, stageId }: { ticketId: string;
         </button>
       </div>
       <div style={{ height }}>
-        <XtermTerminal key={`${ticketId}:${proc.name}`} sessionId={`${ticketId}:${proc.name}`} className="h-full" />
+        <XtermTerminal key={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} sessionId={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} workspaceId={ctx.activeWorkspace.id} ticketKey={ticketId} className="h-full" />
       </div>
       <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
         title={translate({ key: 'workspaces.terminals.resizeTitle' })}

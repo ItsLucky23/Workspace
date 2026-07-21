@@ -13,14 +13,13 @@ import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdo
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { Disclosure, EmptyState, PopMenu, Segmented, WsButton } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-import { isModuleEnabled } from '../../_data/modules';
 import { UI_PROBLEMS, uiProblemI18nKey } from '../../_data/uiReviewTaxonomy';
 import { DesignerProvider, useDesigner } from './state';
 import type { ThemeMode } from './themes';
 import { SectionHead } from './ui';
-import Components from './sections/Components';
 import Styles from './sections/Styles';
 import Animations from './sections/Animations';
 import Themes from './sections/Themes';
@@ -29,12 +28,12 @@ import Gallery from './sections/Gallery';
 
 export const template = 'workspaces';
 
-type SectionId = 'gallery' | 'components' | 'styles' | 'animations' | 'themes' | 'typography';
-//? The tab strip = the six design sections + the secondary Feedback tab (UI-review form + inbox).
+type SectionId = 'gallery' | 'styles' | 'animations' | 'themes' | 'typography';
+//? The tab strip = the five design sections + the secondary Feedback tab (UI-review form + inbox).
+//? (Components — the dev component-library reference — moved to its own destination, develop/components.)
 type TabId = SectionId | 'feedback';
 const SECTIONS: { id: SectionId; icon: IconName }[] = [
   { id: 'gallery', icon: 'table-cells-large' },
-  { id: 'components', icon: 'grip' },
   { id: 'styles', icon: 'wand-magic-sparkles' },
   { id: 'animations', icon: 'wave-square' },
   { id: 'themes', icon: 'palette' },
@@ -225,13 +224,9 @@ function FeedbackSection() {
 function DesignerShell() {
   const translate = useTranslator();
   const d = useDesigner();
-  const { activeWorkspace, activeProjectId, uiReviews, applyDesignTokens, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
+  const { activeProjectId, uiReviews, applyDesignTokens, copilotPrefill, consumeCopilotPrefill, readiness } = useWorkspaces();
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyResult, setApplyResult] = useState<'ok' | 'error' | null>(null);
-  //? Components is a DEV component-library reference, not a design-authoring surface → only show it when the
-  //? development module is on, so a design-focused workspace gets a cleaner section strip (the visual-authoring
-  //? sections only). The other five sections are always available.
-  const sections = SECTIONS.filter((s) => s.id !== 'components' || isModuleEnabled(activeWorkspace.enabledSections, 'development'));
   const [section, setSection] = useState<TabId>('gallery');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
@@ -297,7 +292,7 @@ function DesignerShell() {
   //? The tab strip: design sections + the secondary Feedback tab (unread-count badge keeps open requests
   //? discoverable without a permanently-expanded inbox).
   const tabs: { id: TabId; icon: IconName; count?: number }[] = [
-    ...sections,
+    ...SECTIONS,
     { id: 'feedback', icon: 'comment', ...(uiReviews.length > 0 ? { count: uiReviews.length } : {}) },
   ];
 
@@ -338,6 +333,20 @@ function DesignerShell() {
           <Segmented<ThemeMode> options={[{ id: 'light', label: <Icon name="sun" /> }, { id: 'dark', label: <Icon name="moon" /> }]} value={d.mode} onChange={d.setMode} />
         </div>
       </div>
+
+      {/* Designer renders reference imagery via the media provider (fal) — with no key, generation silently
+          returns placeholder assets. Flag it once at the top so a designer isn't fooled by stub previews. */}
+      {!readiness.media.fal && (
+        <div className={`px-4 md:px-6 pt-3 shrink-0`}>
+          <SetupNotice
+            variant="card"
+            icon="wand-magic-sparkles"
+            title={translate({ key: 'workspaces.setup.media.title' })}
+            body={translate({ key: 'workspaces.setup.media.why' })}
+            fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.media.cta' }) }}
+          />
+        </div>
+      )}
 
       {/* section tabs (+ the secondary Feedback tab with its unread badge) */}
       <div className={`px-3 md:px-4 shrink-0 border-b border-divider flex items-center gap-1 overflow-x-auto ws-no-scrollbar`}>
@@ -392,7 +401,6 @@ function DesignerShell() {
       {/* active section */}
       <div className={`flex-1 min-h-0`}>
         {section === 'gallery' && <Gallery inspiration={<InspirationForm />} />}
-        {section === 'components' && <Components />}
         {section === 'styles' && <Styles />}
         {section === 'animations' && <Animations />}
         {section === 'themes' && <Themes />}

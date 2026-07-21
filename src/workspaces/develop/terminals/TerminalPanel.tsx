@@ -25,7 +25,7 @@ let rememberedGridHeight = 460;
 const MIN_PANEL_HEIGHT = 220;
 const MAX_PANEL_HEIGHT = 900;
 
-export default function TerminalPanel({ terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
+export default function TerminalPanel({ workspaceId, terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { workspaceId: string; terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
   const [active, setActive] = useState(0);
   const [height, setHeight] = useState(rememberedGridHeight);
@@ -33,7 +33,7 @@ export default function TerminalPanel({ terminal, sshUser, fill = false, isMaxim
   const dragRef = useRef<{ startY: number; startH: number } | null>(null);
   const proc = terminal.processes[active] ?? terminal.processes[0];
   if (!proc) return null;
-  const sessionId = `${terminal.ticketId}:${proc.name}`;
+  const sessionId = `${workspaceId}:${terminal.ticketId}:${proc.name}`;
 
   //? Drag the bottom strip to resize the panel height. Clamp to a sane range and
   //? remember the last height at module level. Pointer-capture keeps the drag
@@ -94,7 +94,7 @@ export default function TerminalPanel({ terminal, sshUser, fill = false, isMaxim
           <PopMenu items={menuItems} triggerClass={`w-7 h-7 flex items-center justify-center rounded-lg text-terminal-muted hover:bg-white/10 hover:text-terminal-text cursor-pointer`} />
         </div>
       </div>
-      <XtermTerminal key={sessionId} sessionId={sessionId} className={`flex-1 min-h-0`} container={terminal.container} />
+      <XtermTerminal key={sessionId} sessionId={sessionId} workspaceId={workspaceId} ticketKey={terminal.ticketId} className={`flex-1 min-h-0`} />
       <div className={`flex items-center justify-between gap-2 bg-terminal-surface border-t border-white/5 px-3 h-7 shrink-0 text-[11px] font-mono text-terminal-muted`}>
         <span className={`hidden sm:block min-w-0 truncate`}>{sshUser}@{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
         <span className={`inline-flex items-center gap-1 shrink-0 ml-auto`}><span className={`w-1.5 h-1.5 rounded-full bg-terminal-green`} /> {translate({ key: 'workspaces.terminals.live' })}</span>

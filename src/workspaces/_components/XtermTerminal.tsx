@@ -1,6 +1,6 @@
-//? Workspaces — a REAL terminal. xterm.js in the browser ⇄ a node-pty shell on
-//? the backend, over the framework's authenticated Socket.io connection (see
-//? server/hooks/workspacesTerminal.ts). Dev-only on the server side.
+//? Workspaces — a REAL terminal. xterm.js in the browser ⇄ a shell inside the exact workspace ticket
+//? container, over the framework's Socket.io connection (see server/hooks/workspacesTerminal.ts). The
+//? server authenticates + authorizes every start; a browser terminal never reaches the app/host shell.
 //?
 //? Sessions PERSIST across mounts: the xterm instance + its DOM element live in
 //? a module-level registry keyed by `sessionId`, and we do NOT kill the PTY on
@@ -34,7 +34,7 @@ const THEME = {
   brightBlack: '#6B7688', brightRed: '#F85149', brightGreen: '#3FB950', brightYellow: '#D29922', brightBlue: '#58A6FF', brightMagenta: '#BC8CFF', brightCyan: '#39C5CF', brightWhite: '#FFFFFF',
 };
 
-interface Session { term: Terminal; fit: FitAddon; el: HTMLDivElement; started: boolean; container?: string }
+interface Session { term: Terminal; fit: FitAddon; el: HTMLDivElement; started: boolean; workspaceId: string; ticketKey: string }
 const sessions = new Map<string, Session>();
 
 //? #14 — panel-menu actions operate on the live session registry. clear/copyBuffer are client-side
@@ -55,7 +55,7 @@ export function restartSession(sessionId: string): void {
   void getSocket().then((s) => {
     if (!s) return;
     s.emit('ws-term:kill', { id: sessionId });
-    s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, ...(e.container ? { container: e.container } : {}) });
+    s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId: e.workspaceId, ticketKey: e.ticketKey });
   });
 }
 
@@ -81,9 +81,9 @@ const ensureRouting = (): void => {
   });
 };
 
-//? `container` (a ticket's L3 container name) routes ws-term:start to a `docker exec`
-//? shell INSIDE that container (server validates it's ours); absent = the dev host shell.
-export default function XtermTerminal({ sessionId, className, container }: { sessionId: string; className?: string; container?: string }) {
+//? The browser sends workspace+ticket identity, never a Docker object name. The server derives and verifies
+//? the canonical labelled container before opening the shell; there is no host-shell fallback.
+export default function XtermTerminal({ sessionId, workspaceId, ticketKey, className }: { sessionId: string; workspaceId: string; ticketKey: string; className?: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function XtermTerminal({ sessionId, className, container }: { ses
       term.loadAddon(fit);
       term.open(el);
       term.onData((d) => { void getSocket().then((s) => s?.emit('ws-term:input', { id: sessionId, data: d })); });
-      entry = { term, fit, el, started: false, ...(container ? { container } : {}) };
+      entry = { term, fit, el, started: false, workspaceId, ticketKey };
       sessions.set(sessionId, entry);
     }
     const e = entry;
@@ -120,7 +120,7 @@ export default function XtermTerminal({ sessionId, className, container }: { ses
       e.started = true;
       void getSocket().then((s) => {
         if (!s) { e.term.write(`${ESC}[33mNot connected to the backend socket — start the server and sign in.${ESC}[0m\r\n`); return; }
-        s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, ...(container ? { container } : {}) });
+        s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId, ticketKey });
       });
     }
 
@@ -132,7 +132,7 @@ export default function XtermTerminal({ sessionId, className, container }: { ses
       ro.disconnect();
       if (e.el.parentNode === host) e.el.remove();
     };
-  }, [sessionId, container]);
+  }, [sessionId, workspaceId, ticketKey]);
 
   return <div ref={mountRef} className={`bg-terminal-bg ${className ?? ''}`} />;
 }

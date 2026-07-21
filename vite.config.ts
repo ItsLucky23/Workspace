@@ -87,6 +87,12 @@ export default defineConfig(({ mode }) => {
         { find: /^@luckystack\/core$/, replacement: '@luckystack/core/client' },
       ],
     },
+    build: {
+      //? Monaco's TypeScript worker/editor and Mermaid are already route-level lazy chunks; splitting their
+      //? internally coupled bundles further is unsafe and does not reduce bytes loaded by those routes. Keep
+      //? the warning threshold just above the largest known lazy vendor chunk so NEW growth still warns.
+      chunkSizeWarningLimit: 4_000,
+    },
     server: {
       port: ports.frontend,
       host: true,

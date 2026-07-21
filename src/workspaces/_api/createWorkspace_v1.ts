@@ -5,7 +5,10 @@ import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { enqueueControlAction, isControlActionFailure } from '../../../server/orchestrator/conductor';
 
-export const rateLimit: number | false = 10;
+//? 10 → 30/min (owner decision 2026-07-21): the deterministic Playwright suite creates ~16
+//? workspaces per full run, so back-to-back runs tripped the old limit and read as flaky specs.
+//? 30 keeps abuse-protection while letting two consecutive full suites pass cleanly.
+export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };

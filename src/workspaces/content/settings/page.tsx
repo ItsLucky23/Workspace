@@ -3,7 +3,7 @@
 //? tabs: Brand & styles / Channels & publishing / Admin (provider keys, media €-budget, app credentials —
 //? role-gated, fail-open). Keys stay write-only; every save is a control-op (the Conductor writes, B-23).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -18,10 +18,14 @@ export const template = 'workspaces';
 
 export default function ContentSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, navigate } = useWorkspaces();
+  const { activeWorkspace, navigate, settingsFocus, consumeSettingsFocus } = useWorkspaces();
   //? Role gate — deliberately fail-open: only an explicit 'member' hides the Admin tab (an unresolved role keeps it).
   const showAdmin = activeWorkspace.role !== 'member';
   const [tab, setTab] = useState('brand');
+  //? Deep-link from a "fix it" button (e.g. add a media/AI key → Admin tab, connect a channel → Channels tab).
+  useEffect(() => {
+    if (settingsFocus?.view === 'content/settings' && settingsFocus.tab.length > 0) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
+  }, [settingsFocus, consumeSettingsFocus]);
   const active = tab === 'admin' && !showAdmin ? 'brand' : tab;
   //? First-run banner: the full guided card until the brand context (the page's primary action) is saved,
   //? then collapsed to a one-line disclosure so the guide + cost warning stay one tap away.

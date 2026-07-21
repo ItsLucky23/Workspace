@@ -13,11 +13,12 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
+  WorkspaceReadiness, PatSummary,
 } from '../_data/types';
 
 export type WsView =
   | 'board' | 'backlog' | 'answers' | 'terminals' | 'code' | 'activity' | 'sources'
-  | 'pipeline' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'scheduled-posts' | 'knowledge' | 'documents'
+  | 'pipeline' | 'automations' | 'components' | 'usage' | 'studio' | 'designer' | 'interviewer' | 'marketing' | 'scheduled' | 'scheduled-posts' | 'knowledge' | 'documents'
   | 'ai' | 'settings' | 'workspace'
   | (string & {}); // ticket views use the DEV-#### id
 
@@ -70,6 +71,19 @@ export interface WorkspacesCtx {
   applyCopilot: (directive: CopilotDirective) => void;
   copilotPrefill: Record<string, string> | null;
   consumeCopilotPrefill: () => void;
+  //? ----- setup readiness + permission-aware fix routing (new-user UX) -----
+  //? The active workspace's readiness booleans (repo linked / AI + media keys / publishing / docker / …).
+  //? A blocked feature reads these to explain WHAT is missing and WHY, instead of a silent empty state.
+  readiness: WorkspaceReadiness;
+  //? The caller's RESOLVED per-capability booleans in the active workspace (positional over CAP). `can(cap)`
+  //? is the sugar a blocked-feature notice uses to decide "fix it" button vs "ask someone with <capability>".
+  myPerms: boolean[];
+  can: (cap: number) => boolean;
+  //? Deep-link to a setup destination: navigate to a settings view AND pre-select the tab that holds the fix
+  //? (`navigate` alone lands on the page's default tab). The target settings page consumes `settingsFocus`.
+  focusSetup: (target: { view: WsView; tab?: string }) => void;
+  settingsFocus: { view: WsView; tab: string } | null;
+  consumeSettingsFocus: () => void;
   //? Proposal/plan acceptance is project-bound: a switch makes the old offer stale
   //? and the provider rejects it instead of retargeting it to the new active project.
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;
@@ -289,6 +303,8 @@ export interface WorkspacesCtx {
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).
   aiOverrides: { feature: string; providerId: string }[];
   saveAiProvider: (feature: string, providerId: string) => void;
+  //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only; never the raw token).
+  pats: PatSummary[];
   //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.
   pauseTicket: (ticketKey: string) => void;
   resumeTicket: (ticketKey: string) => void;

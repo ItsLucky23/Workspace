@@ -16,11 +16,21 @@ import { apiRequest } from 'src/_sockets/apiRequest';
 import Icon from '../_components/Icon';
 import { AvatarBubble, Disclosure, Segmented, Tabs, Toggle, WsButton } from '../_components/primitives';
 import { isModuleEnabled } from '../_data/modules';
-import type { EnvironmentSummary } from '../_data/types';
+import type { EnvironmentSummary, PromptExperimentSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
 import { canInstall, isIosSafari, isStandalone, promptInstall, subscribeInstall } from '../_functions/installPrompt';
 import type { SessionLayout } from '../../../config';
+
+//? Technical code-values rendered verbatim in JSX — deliberately NOT translated (PAT scope ids,
+//? the A/B stat labels, a token-prefix ellipsis, the demo-account row label). Const references
+//? keep them out of jsx-no-literals territory without pretending they are prose.
+const PAT_SCOPE_TICKETS = ' tickets:write';
+const PAT_SCOPE_CONTENT = ' content:write';
+const STAT_LABEL_A = 'A ';
+const STAT_LABEL_B = '   B ';
+const ELLIPSIS = '…';
+const DEMO_ACCOUNT_LABEL = 'demo';
 
 //? Real session shape from `settings/listSessions` (framework auth session, not
 //? [control-API] tenant data) — handle/expiry only, no device/location metadata.
@@ -148,16 +158,17 @@ function ProfileEditForm({ currentName }: { currentName: string }) {
 }
 
 //? X3 — API tokens (Personal Access Tokens) panel: issue (raw token shown ONCE), list (prefix + scopes), revoke.
-//? Talks to the issuePat/listPats/revokePat `_api` routes directly (not a [control-API] op — it's account state).
-interface PatRow { id: string; name: string; prefix: string; scopes: string[] }
+//? Issue/revoke talk to the issuePat/revokePat `_api` routes directly (not a [control-API] op — it's
+//? account state); the list itself now PRELOADS from the workspace snapshot (`pats`, PatSummary) instead
+//? of a mount-time GET, so a write just calls the shared `refetch()` to pull the fresh list back in.
+//?
 //? GAP_SCAN G7 — prompt A/B. A workspace's prompts are its most-edited surface and were the least-measured
 //? one: a rewrite either "felt better" or nobody knew. This starts a two-variant experiment per AI feature
 //? and shows the verdict — including, most of the time, "not enough data yet", which is the honest answer
-//? and the reason the panel is worth having at all.
-interface ExperimentRow {
-  id: string; feature: string; name: string; status: string; variantA: string; variantB: string;
-  trialsA: number; trialsB: number; meanA: number; meanB: number; lift: number; winner: string; verdict: string;
-}
+//? and the reason the panel is worth having at all. This stays an ON-DEMAND read (not preloaded into the
+//? snapshot): scoring runs a count query per experiment, so folding it into every snapshot build / realtime
+//? refetch would re-score all experiments on every workspace write — the tradeoff `promptExperiments_v1`'s
+//? own header deliberately avoided. It re-reads after a save/stop instead.
 
 //? The features whose prompt is worth A/B-ing (the ones whose output has a measurable outcome).
 const EXPERIMENT_FEATURES = ['script', 'interviewer', 'mr-review', 'workspace-chat'];
@@ -267,15 +278,17 @@ function StoragePanel() {
 function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
   const { savePromptExperiment, stopPromptExperiment } = useWorkspaces();
-  const [rows, setRows] = useState<ExperimentRow[]>([]);
+  const [promptExperiments, setPromptExperiments] = useState<PromptExperimentSummary[]>([]);
   const [feature, setFeature] = useState(EXPERIMENT_FEATURES[0] ?? 'script');
   const [name, setName] = useState('');
   const [variantA, setVariantA] = useState('');
   const [variantB, setVariantB] = useState('');
 
-  const refresh = useCallback(() => {
-    void tryCatch(() => apiRequest({ name: 'workspaces/promptExperiments', version: 'v1', data: { workspaceId } })).then(([err, res]) => {
-      if (!err && res?.status === 'success') setRows(res.result.experiments);
+  //? On-demand read (see the header note): fetch on mount + after a write. Scoring is a count-per-experiment,
+  //? so this deliberately stays out of the preloaded snapshot.
+  const refresh = useCallback((): void => {
+    void apiRequest({ name: 'workspaces/promptExperiments', version: 'v1', data: { workspaceId } }).then((res) => {
+      if (res.status === 'success') setPromptExperiments(res.result.experiments);
     });
   }, [workspaceId]);
   useEffect(() => { refresh(); }, [refresh]);
@@ -284,9 +297,9 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
     if (variantA.trim().length === 0 || variantB.trim().length === 0) return;
     savePromptExperiment({ feature, name: name.trim() || feature, variantA: variantA.trim(), variantB: variantB.trim() });
     setName(''); setVariantA(''); setVariantB('');
-    //? The write goes through the Conductor, so re-read shortly after rather than optimistically.
     setTimeout(refresh, 600);
   };
+  const stop = (id: string): void => { stopPromptExperiment(id); setTimeout(refresh, 600); };
 
   const featureItems: DropdownItem[] = EXPERIMENT_FEATURES.map((f) => ({ id: f, value: f, item: f }));
   const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
@@ -301,7 +314,7 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
         <WsButton icon="flask" disabled={variantA.trim().length === 0 || variantB.trim().length === 0} onClick={start}>{translate({ key: 'workspaces.experiments.start' })}</WsButton>
       </div>
       <div className="flex flex-col">
-        {rows.map((row) => (
+        {promptExperiments.map((row) => (
           <Row key={row.id}>
             <div className="min-w-0">
               <div className="text-sm font-medium text-title truncate">{row.name}</div>
@@ -309,17 +322,17 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
               {/* The verdict is the product here — "not enough data" is a real answer, not a placeholder. */}
               <div className={`text-xs mt-0.5 ${row.winner ? 'text-correct' : 'text-muted'}`}>{row.verdict}</div>
               <div className="text-[11px] text-disabled tabular-nums mt-0.5">
-                A {String(row.trialsA)}{' · '}{String(row.meanA)}{'   B '}{String(row.trialsB)}{' · '}{String(row.meanB)}
+                {STAT_LABEL_A}{String(row.trialsA)}{' · '}{String(row.meanA)}{STAT_LABEL_B}{String(row.trialsB)}{' · '}{String(row.meanB)}
               </div>
             </div>
             {row.status === 'running' && (
-              <button type="button" onClick={() => { stopPromptExperiment(row.id); setTimeout(refresh, 600); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">
+              <button type="button" onClick={() => { stop(row.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">
                 {translate({ key: 'workspaces.experiments.stop' })}
               </button>
             )}
           </Row>
         ))}
-        {rows.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.experiments.empty' })}</div>}
+        {promptExperiments.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.experiments.empty' })}</div>}
       </div>
     </Card>
   );
@@ -327,23 +340,19 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
 
 function PatPanel({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
-  const [rows, setRows] = useState<PatRow[]>([]);
+  const { pats, refetch } = useWorkspaces();
   const [name, setName] = useState('');
   const [scopeTickets, setScopeTickets] = useState(true);
   const [scopeContent, setScopeContent] = useState(false);
   const [rawOnce, setRawOnce] = useState<string | null>(null);
-  const load = useCallback(() => {
-    void apiRequest({ name: 'workspaces/listPats', version: 'v1', data: { workspaceId } }).then((r) => { if (r.status === 'success') setRows(r.result.tokens); });
-  }, [workspaceId]);
-  useEffect(() => { load(); }, [load]);
   const issue = () => {
     const scopes = [...(scopeTickets ? ['tickets:write'] : []), ...(scopeContent ? ['content:write'] : [])];
     if (scopes.length === 0) return;
     void apiRequest({ name: 'workspaces/issuePat', version: 'v1', data: { workspaceId, name: name.trim() || 'API token', scopes } }).then((r) => {
-      if (r.status === 'success') { setRawOnce(r.result.token); setName(''); load(); }
+      if (r.status === 'success') { setRawOnce(r.result.token); setName(''); refetch(); }
     });
   };
-  const revoke = (patId: string) => { void apiRequest({ name: 'workspaces/revokePat', version: 'v1', data: { patId } }).then(() => { load(); }); };
+  const revoke = (patId: string) => { void apiRequest({ name: 'workspaces/revokePat', version: 'v1', data: { patId } }).then(() => { refetch(); }); };
   return (
     <Card title={translate({ key: 'workspaces.pat.title' })} desc={translate({ key: 'workspaces.pat.desc' })}>
       {rawOnce !== null && (
@@ -355,14 +364,14 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
       )}
       <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-divider">
         <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.pat.namePh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary flex-1 min-w-32" />
-        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeTickets} onChange={(e) => { setScopeTickets(e.target.checked); }} /> tickets:write</label>
-        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeContent} onChange={(e) => { setScopeContent(e.target.checked); }} /> content:write</label>
+        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeTickets} onChange={(e) => { setScopeTickets(e.target.checked); }} />{PAT_SCOPE_TICKETS}</label>
+        <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeContent} onChange={(e) => { setScopeContent(e.target.checked); }} />{PAT_SCOPE_CONTENT}</label>
         <WsButton variant="secondary" onClick={issue}>{translate({ key: 'workspaces.pat.issue' })}</WsButton>
       </div>
-      {rows.length === 0 && <div className="text-xs text-muted pt-2">{translate({ key: 'workspaces.pat.empty' })}</div>}
-      {rows.map((t) => (
+      {pats.length === 0 && <div className="text-xs text-muted pt-2">{translate({ key: 'workspaces.pat.empty' })}</div>}
+      {pats.map((t) => (
         <Row key={t.id}>
-          <span className="flex items-center gap-2 min-w-0"><span className="text-sm text-title">{t.name}</span><code className="text-xs text-muted font-mono">{t.prefix}…</code><span className="text-xs text-muted truncate">{t.scopes.join(', ')}</span></span>
+          <span className="flex items-center gap-2 min-w-0"><span className="text-sm text-title">{t.name}</span><code className="text-xs text-muted font-mono">{t.prefix}{ELLIPSIS}</code><span className="text-xs text-muted truncate">{t.scopes.join(', ')}</span></span>
           <button type="button" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.pat.revoke' }), content: t.name }).then((ok) => { if (ok) revoke(t.id); }); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.pat.revoke' })}</button>
         </Row>
       ))}
@@ -497,6 +506,11 @@ export default function AccountSettings() {
   //? Collapsed by default so even an admin's first paint stays light (progressive disclosure).
   const showDevOps = isModuleEnabled(activeWorkspace.enabledSections, 'development') && activeWorkspace.role !== 'member';
   const [tab, setTab] = useState<SettingsTab>('account');
+  //? Deep-link from a "fix it" button (e.g. connect a forge → developer tab); clear the request after applying.
+  const { settingsFocus, consumeSettingsFocus } = useWorkspaces();
+  useEffect(() => {
+    if (settingsFocus?.view === 'settings' && (settingsFocus.tab === 'account' || settingsFocus.tab === 'workspace' || settingsFocus.tab === 'developer')) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
+  }, [settingsFocus, consumeSettingsFocus]);
 
   //? Theme + language autosave: apply the change instantly (DOM class / active
   //? locale) and persist it to the account via the framework's `settings/updateUser`
@@ -778,7 +792,7 @@ export default function AccountSettings() {
               return (
                 <Row>
                   <span className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-title uppercase w-16">demo</span>
+                    <span className="text-sm font-medium text-title uppercase w-16">{DEMO_ACCOUNT_LABEL}</span>
                     {demo
                       ? <span className={`inline-flex items-center gap-1 text-xs ${demo.status === 'live' ? 'text-correct' : (demo.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${demo.status === 'live' ? 'bg-correct' : (demo.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} />{demo.status}{demo.status === 'live' && demo.url ? <a href={demo.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-1 truncate">{demo.route}</a> : null}</span>
                       : <input value={pinnedCommit} onChange={(e) => { setPinnedCommit(e.target.value); }} placeholder={translate({ key: 'workspaces.account.pinCommitPh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary w-40" />}

@@ -1,106 +1,202 @@
-//? Dev-only browser terminal: a Socket.io ⇄ node-pty bridge so the Workspaces
-//? UI can run a real shell on THIS backend machine. A browser→shell channel is
-//? an RCE surface, so it is HARD-gated to non-production. It wedges a socket
-//? middleware (the framework's auth middleware authenticates the connection
-//? itself) and attaches per-connection terminal listeners. One PTY per session
-//? id; cleaned up on kill/disconnect.
+//? Workspaces browser terminal: Socket.io ⇄ the pty-agent / `docker exec` shell INSIDE the exact
+//? workspace ticket container. There is deliberately NO host-shell mode — not for members, workspace
+//? owners, host superadmins, development, or production. The product terminal is a repo-container tool;
+//? host administration belongs outside the application control plane.
 //?
-//? Wiring: `registerWorkspacesTerminalHooks()` is called once in
-//? `server/server.ts`. Client side: `src/workspaces/_components/XtermTerminal.tsx`.
+//? Security boundary: the browser sends workspaceId + ticketKey, never a Docker object name. The server
+//? authenticates the socket itself, checks workTickets in that workspace, derives the canonical container
+//? name, and verifies its immutable workspace/ticket labels before opening a PTY.
 
-import { getLogger, registerSocketMiddleware } from '@luckystack/core';
+import {
+  extractTokenFromSocket,
+  getLogger,
+  getPrismaClient,
+  readSession,
+  registerSocketMiddleware,
+  tryCatch,
+  tryCatchSync,
+} from '@luckystack/core';
 import * as pty from 'node-pty';
-import { DOCKER_BIN, PTY_AGENT_PORT, docker, isWorkspacesContainer } from '../container/runtime';
+
+import { CAP, hasCapability } from '../control/rbac';
+import {
+  DOCKER_BIN,
+  PTY_AGENT_PORT,
+  containerName,
+  docker,
+  isWorkspaceTicketContainer,
+} from '../container/runtime';
 import { connectPtyAgent, resolvePtyAgentPort } from '../container/ptyAgentClient';
 
-//? `container` targets a ticket's L3 container → the bridge relays the ticket's in-container
-//? pty-agent (07b §9, durable scrollback + crash-resume) when one is published, else falls back
-//? to a host `docker exec` PTY. Absent = the local dev host-shell.
-interface TermMsg { id: string; cols?: number; rows?: number; data?: string; container?: string }
+interface TermMsg {
+  id: string;
+  cols?: number;
+  rows?: number;
+  data?: string;
+  workspaceId?: string;
+  ticketKey?: string;
+}
 
-//? A uniform terminal handle so a node-pty (host shell / docker exec) and the pty-agent relay wire
-//? to the ws-term:* socket identically.
-interface TermHandle { write: (data: string) => void; resize: (cols: number, rows: number) => void; kill: () => void }
-const fromPty = (term: pty.IPty): TermHandle => ({ write: (d) => { term.write(d); }, resize: (c, r) => { term.resize(c, r); }, kill: () => { term.kill(); } });
+interface TermHandle {
+  write: (data: string) => void;
+  resize: (cols: number, rows: number) => void;
+  kill: () => void;
+}
+
+const fromPty = (term: pty.IPty): TermHandle => ({
+  write: (data) => { term.write(data); },
+  resize: (cols, rows) => { term.resize(cols, rows); },
+  kill: () => { term.kill(); },
+});
+
+const WORKSPACE_ID = /^[a-fA-F0-9]{24}$/;
+const TICKET_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const SESSION_ID = /^[A-Za-z0-9:._-]{1,240}$/;
+
+function readTermMsg(value: unknown): TermMsg | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== 'string' || !SESSION_ID.test(row.id)) return null;
+  return {
+    id: row.id,
+    ...(typeof row.cols === 'number' && Number.isFinite(row.cols) ? { cols: row.cols } : {}),
+    ...(typeof row.rows === 'number' && Number.isFinite(row.rows) ? { rows: row.rows } : {}),
+    ...(typeof row.data === 'string' ? { data: row.data } : {}),
+    ...(typeof row.workspaceId === 'string' ? { workspaceId: row.workspaceId } : {}),
+    ...(typeof row.ticketKey === 'string' ? { ticketKey: row.ticketKey } : {}),
+  };
+}
+
+export interface TerminalAuthorizationDependencies {
+  hasWorkTickets: (workspaceId: string, userId: string) => Promise<boolean>;
+  matchesContainer: (name: string, workspaceId: string, ticketKey: string) => Promise<boolean>;
+}
+
+const terminalAuthorizationDependencies: TerminalAuthorizationDependencies = {
+  hasWorkTickets: (workspaceId, userId) => hasCapability(getPrismaClient(), workspaceId, userId, CAP.workTickets),
+  matchesContainer: isWorkspaceTicketContainer,
+};
+
+//? Resolve the ONLY container a terminal request may enter. Exported with injected dependencies so the
+//? cross-tenant/capability policy is unit-testable without Docker, Redis, or a live socket.
+export async function authorizeTerminalTarget(
+  input: { workspaceId?: string; ticketKey?: string; userId: string },
+  dependencies: TerminalAuthorizationDependencies = terminalAuthorizationDependencies,
+): Promise<string | null> {
+  const workspaceId = input.workspaceId ?? '';
+  const ticketKey = input.ticketKey ?? '';
+  if (!WORKSPACE_ID.test(workspaceId) || !TICKET_KEY.test(ticketKey) || input.userId.length === 0) return null;
+  if (!(await dependencies.hasWorkTickets(workspaceId, input.userId))) return null;
+  const name = containerName(workspaceId, ticketKey);
+  return await dependencies.matchesContainer(name, workspaceId, ticketKey) ? name : null;
+}
 
 let registered = false;
 
 export const registerWorkspacesTerminalHooks = (): void => {
   if (registered) return;
   registered = true;
-  //? #15 — SPLIT the relay: the per-ticket *container* terminal (isolated, `isWorkspacesContainer`-guarded
-  //? docker exec / pty-agent) is ALWAYS registered so a self-hosted PROD deploy can attach panels. Only the
-  //? HOST-shell bridge (a browser→host-shell RCE surface) stays dev-gated (or WORKSPACES_TERMINAL_ENABLED=1).
-  const hostShellEnabled = process.env.NODE_ENV !== 'production' || process.env.WORKSPACES_TERMINAL_ENABLED === '1';
 
-  const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL ?? 'bash');
-  const baseEnv = Object.fromEntries(
+  const dockerEnv = Object.fromEntries(
     Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
 
   registerSocketMiddleware((socket, next) => {
-    const sessions = new Map<string, TermHandle>();
-
-    //? Wire a node-pty (host shell / docker exec) to this socket's ws-term relay (out/exit).
-    const attachPty = (id: string, term: pty.IPty): void => {
-      sessions.set(id, fromPty(term));
-      term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
-      term.onExit(({ exitCode }) => { socket.emit('ws-term:exit', { id, exitCode }); sessions.delete(id); });
-    };
-
-    socket.on('ws-term:start', (payload: TermMsg) => {
-      const { id } = payload;
-      if (!id || sessions.has(id)) return;
-      const opts = { name: 'xterm-256color', cols: payload.cols ?? 80, rows: payload.rows ?? 24, cwd: process.cwd(), env: { ...baseEnv, TERM: 'xterm-256color' } };
-      const target = payload.container?.trim();
-      if (target) {
-        //? Container terminal: ONLY after confirming it's one of ours (never touch an arbitrary
-        //? host container). Prefer the durable in-container pty-agent (07b §9) — its scrollback
-        //? survives an orchestrator restart + reseeds on reconnect; fall back to a `docker exec`
-        //? PTY when no agent port is published (a container that predates the agent).
-        void (async () => {
-          if (sessions.has(id) || !(await isWorkspacesContainer(target))) return;
-          const agentPort = await resolvePtyAgentPort(docker, target, PTY_AGENT_PORT);
-          if (agentPort !== null) {
-            const conn = connectPtyAgent('127.0.0.1', agentPort, {
-              onData: (data) => { socket.emit('ws-term:out', { id, data }); },
-              onExit: (exitCode) => { socket.emit('ws-term:exit', { id, exitCode }); sessions.delete(id); },
-              onError: () => { if (!sessions.has(id)) attachPty(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts)); },
-            });
-            if (!sessions.has(id)) { sessions.set(id, { write: conn.write, resize: conn.resize, kill: conn.close }); conn.resize(opts.cols, opts.rows); }
-            return;
-          }
-          attachPty(id, pty.spawn(DOCKER_BIN, ['exec', '-it', target, 'bash'], opts));
-        })();
+    void (async () => {
+      const token = extractTokenFromSocket(socket);
+      const [sessionError, session] = token ? await tryCatch(() => readSession(token)) : [null, null];
+      if (sessionError || !session) {
+        next(new Error('terminal authentication required'));
         return;
       }
-      //? #15 — the host-shell path is the RCE surface: refuse it in prod (a clean exit) while the
-      //? container path above stays available. The client shows the exit line.
-      if (!hostShellEnabled) { socket.emit('ws-term:exit', { id, exitCode: 1 }); return; }
-      attachPty(id, pty.spawn(shell, [], opts));
-    });
 
-    socket.on('ws-term:input', (payload: TermMsg) => {
-      sessions.get(payload.id)?.write(payload.data ?? '');
-    });
+      const sessions = new Map<string, TermHandle>();
+      const starting = new Set<string>();
+      const emitExit = (id: string, exitCode: number): void => { socket.emit('ws-term:exit', { id, exitCode }); };
 
-    socket.on('ws-term:resize', (payload: TermMsg) => {
-      const term = sessions.get(payload.id);
-      if (term && payload.cols && payload.rows && payload.cols > 0 && payload.rows > 0) term.resize(payload.cols, payload.rows);
-    });
+      const attachPty = (id: string, term: pty.IPty): void => {
+        sessions.set(id, fromPty(term));
+        term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
+        term.onExit(({ exitCode }) => { emitExit(id, exitCode); sessions.delete(id); });
+      };
 
-    socket.on('ws-term:kill', (payload: TermMsg) => {
-      sessions.get(payload.id)?.kill();
-      sessions.delete(payload.id);
-    });
+      const attachDockerPty = (id: string, target: string, cols: number, rows: number): void => {
+        const [spawnError, term] = tryCatchSync(() => pty.spawn(
+          DOCKER_BIN,
+          ['exec', '-it', '-w', '/work', target, 'bash'],
+          { name: 'xterm-256color', cols, rows, cwd: process.cwd(), env: { ...dockerEnv, TERM: 'xterm-256color' } },
+        ));
+        if (spawnError || !term) { emitExit(id, 1); return; }
+        attachPty(id, term);
+      };
 
-    socket.on('disconnect', () => {
-      for (const term of sessions.values()) term.kill();
-      sessions.clear();
-    });
+      socket.on('ws-term:start', (raw: unknown) => {
+        const payload = readTermMsg(raw);
+        if (!payload || sessions.has(payload.id) || starting.has(payload.id)) return;
+        starting.add(payload.id);
+        void (async () => {
+          const target = await authorizeTerminalTarget({
+            workspaceId: payload.workspaceId,
+            ticketKey: payload.ticketKey,
+            userId: session.id,
+          });
+          if (!target) { emitExit(payload.id, 126); return; }
 
-    next();
+          const cols = Math.max(20, Math.min(400, Math.round(payload.cols ?? 80)));
+          const rows = Math.max(5, Math.min(200, Math.round(payload.rows ?? 24)));
+          const agentPort = await resolvePtyAgentPort(docker, target, PTY_AGENT_PORT);
+          if (agentPort === null) { attachDockerPty(payload.id, target, cols, rows); return; }
+
+          const connection = connectPtyAgent('127.0.0.1', agentPort, {
+            onData: (data) => { socket.emit('ws-term:out', { id: payload.id, data }); },
+            onExit: (exitCode) => { emitExit(payload.id, exitCode); sessions.delete(payload.id); },
+            onError: () => {
+              sessions.get(payload.id)?.kill();
+              sessions.delete(payload.id);
+              attachDockerPty(payload.id, target, cols, rows);
+            },
+          });
+          sessions.set(payload.id, {
+            write: connection.write,
+            resize: connection.resize,
+            kill: connection.close,
+          });
+          connection.resize(cols, rows);
+        })().finally(() => { starting.delete(payload.id); });
+      });
+
+      socket.on('ws-term:input', (raw: unknown) => {
+        const payload = readTermMsg(raw);
+        if (!payload) return;
+        sessions.get(payload.id)?.write((payload.data ?? '').slice(0, 64 * 1024));
+      });
+
+      socket.on('ws-term:resize', (raw: unknown) => {
+        const payload = readTermMsg(raw);
+        if (!payload) return;
+        const term = sessions.get(payload.id);
+        if (!term || payload.cols === undefined || payload.rows === undefined) return;
+        const cols = Math.max(20, Math.min(400, Math.round(payload.cols)));
+        const rows = Math.max(5, Math.min(200, Math.round(payload.rows)));
+        term.resize(cols, rows);
+      });
+
+      socket.on('ws-term:kill', (raw: unknown) => {
+        const payload = readTermMsg(raw);
+        if (!payload) return;
+        sessions.get(payload.id)?.kill();
+        sessions.delete(payload.id);
+      });
+
+      socket.on('disconnect', () => {
+        for (const term of sessions.values()) term.kill();
+        sessions.clear();
+        starting.clear();
+      });
+
+      next();
+    })();
   });
 
-  getLogger().info('[workspaces] dev terminal PTY bridge registered (non-production only)');
+  getLogger().info('[workspaces] workspace-scoped container terminal relay registered (host shell disabled)');
 };

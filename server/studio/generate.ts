@@ -184,6 +184,12 @@ export function applyRefine(prompt: string, tweak?: string): string {
 export interface GenerateInput { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }
 export interface BeginArtifactDependencies { afterBriefCheck?: () => Promise<void> }
 
+//? A Mongo ObjectId is exactly 24 hex chars — guard the shape BEFORE the lock/lookup (mirrors
+//? server/orchestrator/projectResolve.ts) so a malformed briefId resolves to "not found" instead of
+//? throwing Prisma's "Malformed ObjectID" from inside `withStudioBriefLock`, where it would otherwise
+//? be conflated with a genuine lock-acquisition timeout.
+const isObjectId = (s: string): boolean => /^[0-9a-fA-F]{24}$/.test(s);
+
 //? Complete only the placeholder created for this workspace/brief while it is still generating. This
 //? compare-and-set makes a deleted artifact and a duplicate/stale detached completion harmless.
 export async function completeArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, data: Prisma.StudioArtifactUpdateManyMutationInput): Promise<boolean> {
@@ -202,6 +208,7 @@ export async function beginArtifact(
   input: GenerateInput,
   dependencies: BeginArtifactDependencies = {},
 ): Promise<GenerateResult> {
+  if (!isObjectId(input.briefId)) return { ok: false, error: 'studio.briefNotFound' };
   const [lockError, result] = await tryCatch(() => withStudioBriefLock(input.workspaceId, input.briefId, async () => {
     const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId }, select: { id: true } });
     if (!brief) return { ok: false, error: 'studio.briefNotFound' };

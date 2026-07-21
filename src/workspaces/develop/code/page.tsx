@@ -14,7 +14,7 @@ import { languageForPath } from 'src/_components/editor/languages';
 import { getPalette, loadThemeId } from 'src/_components/editor/editorThemes';
 
 import Icon from '../../_components/Icon';
-import { EmptyState, WsButton } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
 //? Lazy so Monaco (multi-MB) only loads once a file is actually opened.
@@ -49,7 +49,7 @@ function CodeHeader({ branch, onToggleFiles }: { branch: string | null; onToggle
 
 export default function CodeBrowser() {
   const translate = useTranslator();
-  const { repo, activeWorkspace, activeProjectId, navigate } = useWorkspaces();
+  const { repo, activeWorkspace, activeProjectId } = useWorkspaces();
   const themeId = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   const palette = getPalette(themeId);
 
@@ -122,11 +122,11 @@ export default function CodeBrowser() {
     return (
       <div className={`flex flex-col h-full min-h-0`}>
         <CodeHeader branch={null} onToggleFiles={null} />
-        <EmptyState
+        <SetupNotice
           icon="code"
           title={translate({ key: 'workspaces.code.emptyTitle' })}
-          sub={translate({ key: 'workspaces.board.agentNeedsRepo' })}
-          action={<WsButton icon="gear" onClick={() => { navigate('settings'); }}>{translate({ key: 'workspaces.code.openSettings' })}</WsButton>}
+          body={translate({ key: 'workspaces.setup.repo.why' })}
+          fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'repository', cta: translate({ key: 'workspaces.setup.repo.cta' }) }}
         />
       </div>
     );

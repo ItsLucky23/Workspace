@@ -44,6 +44,20 @@ export interface RepoInfo {
   error?: string;
 }
 
+//? Setup-readiness signals for the ACTIVE workspace — the "is this actually set up?" booleans the UI reads
+//? to explain WHY a feature is blocked and HOW to fix it, instead of a silent empty state. Server-computed
+//? in the snapshot (host-level probes cached, config presence cheap). `media` is per media-provider so the
+//? notice can name the exact missing key (fal for image/video, elevenlabs for voice, suno for music).
+export interface WorkspaceReadiness {
+  repoLinked: boolean;                                   // a git repo is linked to the active project (unlocks Develop)
+  aiText: boolean;                                       // any usable text provider (Claude CLI on the host OR a Gemini key)
+  media: { fal: boolean; elevenlabs: boolean; suno: boolean }; // per-provider media key present (else generation silently stubs)
+  publishing: boolean;                                   // ≥1 connected social account (else publishing is impossible)
+  docker: boolean;                                       // the host Docker daemon is reachable (containers/CI/preview/deploy)
+  push: boolean;                                         // server VAPID keys are set (web-push subscribe)
+  secretManager: boolean;                                // the encryption key is configured (stored secrets are readable)
+}
+
 //? ---------------------------------------------------------------- git workflow config
 //? Per-workspace git strategy + push policy (hosting-proxy plan). CODE acts on every field
 //? here (branch name + preview-host derivation, push behaviour) — the STRUCTURED half of git
@@ -453,8 +467,20 @@ export interface WorkspaceAnalytics {
   totalTokens: number;
 }
 
-//? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result.
+//? RAG code-index status (07 §D) — the `workspaces/scanIndex` sync result AND the preloaded snapshot's
+//? read of the latest indexed commit (server/read/workspaceSnapshot.ts).
 export interface RagIndexStatus { ok: boolean; files: number; chunks: number; commitHash: string; embedder: string }
+
+//? X3 — a Personal Access Token's SAFE metadata for the settings API-tokens panel. NEVER the raw token
+//? or its hash — `prefix` is the display-only leading chars set at issue time (PersonalAccessToken.tokenPrefix).
+export interface PatSummary { id: string; name: string; prefix: string; scopes: string[]; createdAt: number; lastUsedAt: number | null }
+
+//? GAP_SCAN G7 — a prompt A/B experiment + its current verdict, as surfaced by the `workspaces/promptExperiments`
+//? read and preloaded into the snapshot for the settings Experiments panel.
+export interface PromptExperimentSummary {
+  id: string; feature: string; name: string; status: string; variantA: string; variantB: string; createdAt: number;
+  trialsA: number; trialsB: number; meanA: number; meanB: number; lift: number; winner: string; verdict: string;
+}
 
 export interface TicketLink {
   id: string;            // related ticket id

@@ -72,11 +72,11 @@ eq(OP_CAPABILITY['quick-add'], CAP.workTickets, "'quick-add' requires workTicket
 eq(OP_CAPABILITY['sprint-create'], CAP.manageSprints, "'sprint-create' requires manageSprints");
 eq(OP_CAPABILITY['role-create'], CAP.editPipeline, "'role-create' requires editPipeline");
 
-//? The login-only ops carry NO capability requirement (null).
+//? Only genuine login-/caller-owned ops carry NO capability requirement (null).
 eq(OP_CAPABILITY['create-workspace'], null, "'create-workspace' is login-only (null)");
 eq(OP_CAPABILITY['accept-invite'], null, "'accept-invite' is login-only (null)");
 eq(OP_CAPABILITY['mark-read'], null, "'mark-read' is login-only (null)");
-eq(OP_CAPABILITY['accept-suggestion'], null, "'accept-suggestion' is login-only (null)");
+eq(OP_CAPABILITY['accept-suggestion'], CAP.workTickets, "'accept-suggestion' requires workTickets because suggestions are workspace-owned");
 
 // --- 4. CONFIRM_REQUIRED gates the destructive ops (and only those) ----------
 const mustConfirm: ControlOp[] = ['delete-workspace', 'transfer-ownership', 'remove-member', 'kill', 'pause-all', 'env-teardown', 'env-rollback'];

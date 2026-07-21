@@ -1,6 +1,6 @@
 //? Workspaces — [accept-suggestion] REALTIME write via `_sync`. Accepts an AI
 //? suggestion (status → accepted), then broadcasts its id to the room; every client
-//? drops it from the open-suggestion list (no refetch). Login-only own-resource op.
+//? drops it from the open-suggestion list (no refetch). Workspace-owned effect: requires workTickets.
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';

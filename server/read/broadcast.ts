@@ -97,3 +97,28 @@ export function broadcastContentDirty(workspaceId: string): void {
     status: 'success',
   });
 }
+
+//? The GENERAL workspace-dirty route: a coarse "some workspace slice changed" nudge that generalizes
+//? `broadcastContentDirty` from the content slice to the WHOLE workspace. Fired once at the tail of every
+//? successfully-drained PUBLIC control action (conductor.ts enqueueWriterAction), so every member's client
+//? converges via a debounced refetch — this is what makes the ~25 cold settings/infra ops (projects,
+//? services, environments, DBs, budget, gitlab, documents, skills, triggers, …) live-for-ALL, not just the
+//? initiator, and lets every FUTURE op inherit realtime for free. Hot ticket paths carry their own targeted
+//? deltas and are skipped at the choke-point (no redundant refetch during board dragging).
+//? `gone` is the workspace-DELETED lifecycle signal (an in-room refetch cannot converge a workspace that
+//? just vanished): other members drop the dead tenant + fall back to their picker. Type carrier:
+//? `_sync/workspaceDirty_server_v1.ts`; client `upsertSyncEventCallback('workspaces/workspaceDirty')`.
+const WORKSPACE_DIRTY_ROUTE = 'sync/workspaces/workspaceDirty/v1';
+export function broadcastWorkspaceDirty(workspaceId: string, opts: { gone?: boolean } = {}): void {
+  const io = getIoInstance();
+  if (!io) return;
+  const room = formatRoomName(workspaceId, { purpose: 'broadcast', userId: null });
+  io.to(room).emit(socketEventNames.sync, {
+    cb: WORKSPACE_DIRTY_ROUTE,
+    fullName: WORKSPACE_DIRTY_ROUTE,
+    serverOutput: { status: 'success', gone: opts.gone === true, workspaceId: opts.gone === true ? workspaceId : '' },
+    clientOutput: {},
+    message: `${WORKSPACE_DIRTY_ROUTE} sync success`,
+    status: 'success',
+  });
+}

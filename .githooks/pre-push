@@ -1,0 +1,23 @@
+#!/bin/sh
+#? Push gate (owner decision 2026-07-21): every literal `git push` runs the FAST verification
+#? layer — lint (zero errors), the CLAUDE.md invariant linter, and the standalone unit suites
+#? (the structural guards: navStructure, surfaceReachability, opCatalogParity, opEffectCoverage,
+#? couplingBridges, promptContextBoundaries, ...). The FULL set (integration + per-route custom
+#? layer + Playwright) is the AI-assisted push ritual — see docs/TESTING_PLAYBOOK.md — because it
+#? needs the dev runtimes and ~30 minutes.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[pre-push] npm not on PATH — skipping push gate."
+  exit 0
+fi
+if [ ! -d node_modules ]; then
+  echo "[pre-push] node_modules not found — skipping push gate (run npm install first)."
+  exit 0
+fi
+set -e
+echo "[pre-push] lint (zero errors required)..."
+npm run lint
+echo "[pre-push] invariant linter..."
+npm run ai:lint
+echo "[pre-push] standalone unit suites..."
+node scripts/runWsTests.mjs unit
+echo "[pre-push] gate green — pushing."

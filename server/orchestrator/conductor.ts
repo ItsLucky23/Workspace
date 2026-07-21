@@ -18,17 +18,16 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { currentWorkspaceId, hasTenantScope, runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
-import { credentialKey } from '../content/publishOAuth';
+import { credentialKey, getValidConnection } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
-import { isPipelinePreset } from '../bootstrap/defaultPipeline';
+import { isPipelinePreset, createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
 import { setAssetStarred } from '../content/assetLibrary';
 import { trashMedia, restoreFromTrash, purgeTrashItem } from '../media/trash';
 import { sanitizeSections } from '../../src/workspaces/_data/modules';
-import { createDefaultPipeline } from '../bootstrap/defaultPipeline';
 import { createStarterLibrary } from '../bootstrap/starterLibrary';
 import { getTemplate } from '../scaffold/templates';
 import { nextContentStage, isContentStage } from '../content/pipeline';
@@ -49,7 +48,6 @@ import { parseCaptionStyle } from '../content/captionStyle';
 import { enqueueExtractJob, claimExtractJob, completeExtractJob, reclaimStaleExtractJobs } from '../documents/extractJob';
 import { withTenant } from '../tenant/tenantGuard';
 import { postReply } from '../content/commentActions';
-import { getValidConnection } from '../content/publishOAuth';
 import { generateShortForm } from '../content/shortForm';
 import { analyzeReferenceVideo } from '../content/referenceVideo';
 import { generateMediaAsset } from '../content/mediaAsset';
@@ -97,7 +95,7 @@ import { isEditorRunning } from './editGuard';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferredUntil, inFlightByWorkspace, recoveryReservation, withReservationRenewal } from './capacity';
 import { ciPublicIntentId, ciPublicIntentSignalId, stageForgeIntentId } from './actionIds';
 import { runAgentRecovery } from './agentControl';
-import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty } from '../read/broadcast';
+import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastWorkspaceDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
@@ -1093,8 +1091,28 @@ async function enqueueWriterAction(
     signalSeq: enqueued.signalSeq,
     ...(resultKeys.length > 0 ? { resultKeys } : {}),
   });
+  //? Realtime convergence: a coarse "workspace changed" nudge to the whole room after every successfully
+  //? drained PUBLIC control write, so EVERY member converges — not just the initiator (which closes the
+  //? ~25 cold settings/infra ops that were initiator-only). Hot ticket paths carry their own targeted
+  //? deltas and are skipped (WORKSPACE_DIRTY_SKIP) so board dragging never triggers a redundant full
+  //? refetch. Default = fire, so a forgotten/new op is live-for-all by construction; the skip set is a pure
+  //? optimization. Best-effort + synchronous (no-op without an io); delete-workspace emits its own `gone`
+  //? eviction signal from its case, so it is skipped here.
+  if (writerKind === 'public' && action.workspaceId && !WORKSPACE_DIRTY_SKIP.has(action.op)) {
+    broadcastWorkspaceDirty(action.workspaceId);
+  }
   return enqueued;
 }
+
+//? Ops that already push their own fine-grained realtime delta (the ticket hot paths merge the `_sync`
+//? serverOutput by id via a client callback) — firing the coarse workspaceDirty for them too would add a
+//? redundant full refetch during high-churn board interaction. delete-workspace is here because its case
+//? fires the explicit `gone` eviction broadcast instead. Everything NOT listed converges via workspaceDirty.
+const WORKSPACE_DIRTY_SKIP = new Set<string>([
+  'quick-add', 'ticket-edit', 'add-comment', 'archive',
+  'bulk-move', 'bulk-status', 'bulk-assign', 'bulk-sprint', 'bulk-archive',
+  'answer-input', 'delete-workspace',
+]);
 
 //? Public control entry point: compile-time restricted to client-visible ControlOp.
 export function enqueueControlAction(
@@ -1217,10 +1235,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!acting) return { ok: false, error: 'rbac' };
       const newRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: roleKey }, select: { perms: true } });
       if (!newRole) return { ok: false, error: 'role.unknown' };
-      if (isAdminTierPerms(newRole.perms) && acting[CAP_PROMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      //? `owner` is never assignable as a role: ownership has its own CAS-protected transfer path.
+      if (roleKey === 'owner') return { ok: false, error: 'member.ownerTransferRequired' };
+      //? Built-in admin has no promote/demote bits itself, so checking only its permission vector missed it.
+      if ((roleKey === 'admin' || isAdminTierPerms(newRole.perms)) && acting[CAP_PROMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      if (newRole.perms.some((granted, index) => granted && acting[index] !== true)) return { ok: false, error: 'rbac' };
       const targetMember = await prisma.workspaceMember.findFirst({ where: { workspaceId: action.workspaceId, userId: memberId }, select: { roleKey: true } });
-      const currentRole = targetMember ? await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: targetMember.roleKey }, select: { perms: true } }) : null;
-      if (currentRole && isAdminTierPerms(currentRole.perms) && acting[CAP_DEMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      if (!targetMember) return { ok: false, error: 'member.notFound' };
+      const currentRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: targetMember.roleKey }, select: { perms: true } });
+      if ((targetMember.roleKey === 'admin' || targetMember.roleKey === 'owner' || (currentRole && isAdminTierPerms(currentRole.perms))) && acting[CAP_DEMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey } });
       await recordAudit(prisma, action.workspaceId, userId, 'change-role', memberId, { roleKey });
       return;
@@ -1442,21 +1465,42 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     // ---- members / RBAC / workspace lifecycle ----
     case 'remove-member': {
       const memberId = str(target, 'memberId');
-      if (memberId) {
-        //? SEC3 — owner-protection: removing the owner's membership would leave a dangling
-        //? `ownerId` (a crafted sync-request could do it; the UI never offered it).
-        const wsRow = await prisma.workspace.findFirst({ where: { id: action.workspaceId }, select: { ownerId: true } });
-        if (wsRow?.ownerId === memberId) return { ok: false, error: 'member.ownerProtected' };
-        await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
-        await recordAudit(prisma, action.workspaceId, userId, 'remove-member', memberId);
-      }
+      if (!memberId) return { ok: false, error: 'member.invalidRequest' };
+      //? SEC3 — owner-protection: removing the owner's membership would leave a dangling
+      //? `ownerId` (a crafted sync-request could do it; the UI never offered it).
+      const wsRow = await prisma.workspace.findFirst({ where: { id: action.workspaceId }, select: { ownerId: true } });
+      if (wsRow?.ownerId === memberId) return { ok: false, error: 'member.ownerProtected' };
+      const acting = await actorPerms(action.workspaceId, userId);
+      const targetMember = await prisma.workspaceMember.findFirst({ where: { workspaceId: action.workspaceId, userId: memberId }, select: { roleKey: true } });
+      if (!acting || !targetMember) return { ok: false, error: 'member.notFound' };
+      const currentRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: targetMember.roleKey }, select: { perms: true } });
+      if ((targetMember.roleKey === 'admin' || (currentRole && isAdminTierPerms(currentRole.perms))) && acting[CAP_DEMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      const removed = await prisma.workspaceMember.deleteMany({ where: { workspaceId: action.workspaceId, userId: memberId } });
+      if (removed.count !== 1) return { ok: false, error: 'member.notFound' };
+      await recordAudit(prisma, action.workspaceId, userId, 'remove-member', memberId);
       return;
     }
     case 'transfer-ownership': {
       const memberId = str(target, 'memberId');
-      if (!memberId) return;
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ownerId: memberId } });
-      await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
+      if (!memberId || memberId === userId) return { ok: false, error: 'member.invalidRequest' };
+      const wsRow = await prisma.workspace.findFirst({ where: { id: action.workspaceId }, select: { ownerId: true } });
+      const targetMember = await prisma.workspaceMember.findFirst({ where: { workspaceId: action.workspaceId, userId: memberId }, select: { id: true, roleKey: true } });
+      if (!wsRow || !targetMember) return { ok: false, error: 'member.notFound' };
+      //? Only the actual current owner may transfer ownership. A custom role carrying ownerActions is
+      //? intentionally insufficient; workspace RBAC can never mint host- or ownership identity.
+      if (wsRow.ownerId !== userId && wsRow.ownerId !== memberId) return { ok: false, error: 'rbac' };
+      if (wsRow.ownerId === userId) {
+        //? Make the successor membership replayable BEFORE changing the authoritative ownerId. The current
+        //? owner keeps owner capability until the final step, so a crash at either boundary can be retried.
+        await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
+        const claimed = await prisma.workspace.updateMany({ where: { id: action.workspaceId, ownerId: userId }, data: { ownerId: memberId } });
+        if (claimed.count !== 1) {
+          await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: targetMember.roleKey } });
+          return { ok: false, error: 'workspace.ownerChanged' };
+        }
+      } else {
+        await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId: memberId }, data: { roleKey: 'owner' } });
+      }
       await prisma.workspaceMember.updateMany({ where: { workspaceId: action.workspaceId, userId }, data: { roleKey: 'admin' } });
       await recordAudit(prisma, action.workspaceId, userId, 'transfer-ownership', memberId, { from: userId });
       return;
@@ -1489,6 +1533,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       }
       await recordAudit(prisma, action.workspaceId, userId, 'delete-workspace', action.workspaceId);
       await cascadeDeleteWorkspace(action.workspaceId);
+      //? P2 — evict the OTHER members still sitting in this now-deleted workspace: an in-room refetch can't
+      //? converge a workspace that no longer exists, so broadcast the `gone` lifecycle signal. Their clients
+      //? drop the dead tenant + fall back to their workspace picker (the initiator already reset locally).
+      broadcastWorkspaceDirty(action.workspaceId, { gone: true });
       return;
     }
     case 'role-create': {
@@ -1511,8 +1559,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!key) return;
       //? SEC2 — built-in roles are immutable server-side (the client `locked` flag was the only
       //? guard) + the same capability-ceiling as role-create for perm changes.
-      const existingRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { builtIn: true } });
-      if (existingRole?.builtIn === true) return { ok: false, error: 'role.builtInImmutable' };
+      const existingRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { builtIn: true, perms: true } });
+      if (!existingRole) return { ok: false, error: 'role.unknown' };
+      if (existingRole.builtIn) return { ok: false, error: 'role.builtInImmutable' };
       const label = str(payload, 'label');
       const data: { label?: string; perms?: boolean[] } = {};
       if (label) data.label = label;
@@ -1521,6 +1570,8 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         if (!updaterPerms) return { ok: false, error: 'rbac' };
         const nextPerms = boolArr(payload, 'perms');
         if (nextPerms.some((granted, i) => granted && updaterPerms[i] !== true)) return { ok: false, error: 'rbac' };
+        //? Editing an already elevated custom role downward is a demotion of every member holding it.
+        if (isAdminTierPerms(existingRole.perms) && updaterPerms[CAP_DEMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
         data.perms = nextPerms;
       }
       await prisma.workspaceRole.updateMany({ where: { workspaceId: action.workspaceId, key }, data });
@@ -1559,8 +1610,17 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return { workspaceId: cloned.workspaceId, copied: cloned.copied };
     }
     case 'invite': {
-      const email = str(payload, 'email');
-      if (!email) return;
+      const email = str(payload, 'email')?.trim().toLowerCase();
+      const roleKey = str(payload, 'roleKey') ?? 'member';
+      if (!email?.includes('@')) return { ok: false, error: 'invite.invalidEmail' };
+      if (roleKey === 'owner') return { ok: false, error: 'member.ownerTransferRequired' };
+      const acting = await actorPerms(action.workspaceId, userId);
+      const invitedRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: action.workspaceId, key: roleKey }, select: { perms: true } });
+      if (!acting || !invitedRole) return { ok: false, error: 'role.unknown' };
+      //? manageMembers alone may invite members, but promoting to built-in admin/elevated custom roles
+      //? requires promoteAdmin and nobody may grant a capability they do not personally hold.
+      if ((roleKey === 'admin' || isAdminTierPerms(invitedRole.perms)) && acting[CAP_PROMOTE_ADMIN] !== true) return { ok: false, error: 'rbac' };
+      if (invitedRole.perms.some((granted, index) => granted && acting[index] !== true)) return { ok: false, error: 'rbac' };
       //? F3 — a CRYPTO-RANDOM, unguessable token (was `inv-${clientRequestId}`: derived from a client-supplied
       //? id → forgeable/replayable) + a 7-day expiry. The token reaches only the matched-email invitee via the
       //? email-scoped `myInvites` snapshot; accept-invite additionally binds it to that email + rejects expiry.
@@ -1568,10 +1628,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const invite = await prisma.invite.upsert({
         where: { workspaceId_email: { workspaceId: action.workspaceId, email } },
-        create: { workspaceId: action.workspaceId, email, roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt },
-        update: { roleKey: str(payload, 'roleKey') ?? 'member', invitedById: userId, token, status: 'pending', expiresAt, acceptedAt: null },
+        create: { workspaceId: action.workspaceId, email, roleKey, invitedById: userId, token, status: 'pending', expiresAt },
+        update: { roleKey, invitedById: userId, token, status: 'pending', expiresAt, acceptedAt: null },
       });
-      await recordAudit(prisma, action.workspaceId, userId, 'invite', email, { roleKey: str(payload, 'roleKey') ?? 'member' });
+      await recordAudit(prisma, action.workspaceId, userId, 'invite', email, { roleKey });
       //? Fire-and-forget the invite email (Resend/SMTP auto-selected; no-op if
       //? unconfigured) — never block or fail the authoritative write on delivery.
       const ws = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { name: true } });
@@ -1588,19 +1648,28 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const token = str(target, 'inviteToken');
       if (!token) return;
       const inv = await prisma.invite.findFirst({ where: { token, status: 'pending' } });
-      if (!inv) return;
+      if (!inv) return { ok: false, error: 'invite.invalid' };
       //? F3 — an expired invite cannot be accepted; mark it so it stops surfacing (light sweep-on-touch).
       if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) {
         await prisma.invite.update({ where: { id: inv.id }, data: { status: 'expired' } });
-        return;
+        return { ok: false, error: 'invite.expired' };
       }
       //? F3 — bind the invite to its target email: only the account whose email matches the invite may accept it
       //? (defense-in-depth beyond the now-unguessable token). Case-insensitive.
       const acceptor = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-      if (acceptor?.email.trim().toLowerCase() !== inv.email.trim().toLowerCase()) return;
-      await prisma.workspaceMember.create({ data: { workspaceId: inv.workspaceId, userId, roleKey: inv.roleKey } });
-      await prisma.invite.update({ where: { id: inv.id }, data: { status: 'accepted', acceptedAt: new Date() } });
-      return;
+      if (acceptor?.email.trim().toLowerCase() !== inv.email.trim().toLowerCase()) return { ok: false, error: 'invite.emailMismatch' };
+      const invitedRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: inv.workspaceId, key: inv.roleKey }, select: { key: true } });
+      if (!invitedRole || invitedRole.key === 'owner') return { ok: false, error: 'role.unknown' };
+      //? Upsert makes a replay/race safe. A later invite may deliberately change an existing member's role,
+      //? but it went through the inviter's capability ceiling above before this token was minted.
+      // luckystack-allow tenant-scope: the compound unique key contains the exact invite-owned workspaceId; no cross-tenant row can match.
+      await prisma.workspaceMember.upsert({
+        where: { workspaceId_userId: { workspaceId: inv.workspaceId, userId } },
+        create: { workspaceId: inv.workspaceId, userId, roleKey: inv.roleKey },
+        update: { roleKey: inv.roleKey },
+      });
+      await prisma.invite.updateMany({ where: { workspaceId: inv.workspaceId, id: inv.id, status: 'pending' }, data: { status: 'accepted', acceptedAt: new Date() } });
+      return { ok: true, workspaceId: inv.workspaceId };
     }
     // ---- settings ----
     case 'save-integration': {
@@ -3386,11 +3455,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'accept-suggestion': {
       const suggestionId = str(target, 'suggestionId');
       if (!suggestionId) return;
-      const suggestion = await prisma.workspaceSuggestion.findFirst({ where: { workspaceId: action.workspaceId, id: suggestionId }, select: { type: true, patch: true } });
-      await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId }, data: { status: 'accepted' } });
+      const suggestion = await prisma.workspaceSuggestion.findFirst({ where: { workspaceId: action.workspaceId, id: suggestionId, status: 'open' }, select: { type: true, patch: true } });
+      if (!suggestion) return { ok: false, error: 'suggestion.notOpen' };
+      const claimed = await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId, status: 'open' }, data: { status: 'accepted' } });
+      if (claimed.count !== 1) return { ok: false, error: 'suggestion.notOpen' };
       //? Automation (#2): accepting an 'automation' suggestion EXECUTES the gated action it carries
       //? (the human consent the ActionExecutor's approval gate deferred to — B-23 single-writer).
-      if (suggestion?.type === 'automation') {
+      if (suggestion.type === 'automation') {
         await executeGatedAction(prisma, action.workspaceId, suggestion.patch);
         //? #83 — emit `stage.on_approval` when a gated automation action is approved+executed. Cycle-free:
         //? this runs in the Conductor's accept path, NOT the self-contained executor (which can't import
@@ -3402,13 +3473,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       }
       //? AI MR-review (ADR 0041): accepting posts each proposed finding as a ReviewComment(authorKind:'ai').
       //? The AI never wrote it — the Conductor does, on human consent (B-23).
-      if (suggestion?.type === 'mr-review') await postAiReviewFindings(prisma, action.workspaceId, suggestion.patch);
+      if (suggestion.type === 'mr-review') await postAiReviewFindings(prisma, action.workspaceId, suggestion.patch);
       //? AI rollback (ADR 0042): accepting reverts the ranked culprit MR (forward `git revert -m 1`, #7) +
       //? drafts a tracking ticket. The AI never reverted — the Conductor does, on human consent (B-23).
-      if (suggestion?.type === 'rollback') return acceptRollback(action.workspaceId, userId, suggestion.patch);
+      if (suggestion.type === 'rollback') return acceptRollback(action.workspaceId, userId, suggestion.patch);
       //? Publish (F3.1, ADR 0065): accepting posts the asset to the platform (dummy, no key). The AI never
       //? published — the Conductor does, on explicit human consent (B-23; publishing is irreversible).
-      if (suggestion?.type === 'publish') {
+      if (suggestion.type === 'publish') {
         const p = asRec(suggestion.patch);
         const contentProjectId = typeof p.contentProjectId === 'string' ? p.contentProjectId : '';
         const assetId = typeof p.assetId === 'string' ? p.assetId : '';

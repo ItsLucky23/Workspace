@@ -91,7 +91,10 @@ export default function TicketPage({ params }: { params: Record<string, string |
 
       <TicketControls ticket={ticket} primary={standingPrimary} />
 
-      <div className="px-4 md:px-6">
+      {/* e2e: "Activity"/"Code" etc. collide with the AI panel's own nav (a `role="complementary"`
+          aside elsewhere on the page carries a same-named "Activity" button) — scope tab clicks to
+          this wrapper instead of a bare accessible-name query. */}
+      <div className="px-4 md:px-6" data-testid="ws-ticket-tabs">
         <Tabs tabs={TABS} active={tab} onChange={(id) => { if (id === 'code') setCodePreview(null); setTab(id); }} />
       </div>
 

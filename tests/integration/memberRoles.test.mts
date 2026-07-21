@@ -6,7 +6,7 @@
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
-const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
+const { enqueueControlAction, isControlActionFailure } = await import('../../server/orchestrator/conductor');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,6 +23,7 @@ async function poll<T>(fn: () => Promise<T>, timeoutMs = 4000, stepMs = 50): Pro
 const stamp = Date.now();
 const owner = await prisma.user.create({ data: { email: `roles-${String(stamp)}@youcomm.nl`, name: 'Roles Owner' } });
 const second = await prisma.user.create({ data: { email: `roles2-${String(stamp)}@youcomm.nl`, name: 'Second Member' } });
+const manager = await prisma.user.create({ data: { email: `roles3-${String(stamp)}@youcomm.nl`, name: 'Scoped Manager' } });
 let workspaceId: string | null = null;
 
 try {
@@ -47,6 +48,28 @@ try {
   });
   assert(changed !== null, 'change-role flipped the second member roleKey to admin');
 
+  //? A manageMembers-only custom role may manage ordinary members, but may not promote/invite/remove
+  //? built-in admins. A custom role carrying ownerActions still cannot transfer the actual ownership.
+  await enqueueControlAction({ workspaceId: wsId, op: 'role-create', target: {}, payload: { key: 'manager', label: 'Manager', perms: [true, false, false, true, false, false, false, false] }, userId: owner.id, clientRequestId: `role-manager-${String(stamp)}` });
+  await enqueueControlAction({ workspaceId: wsId, op: 'role-create', target: {}, payload: { key: 'fake-owner', label: 'Fake owner', perms: [true, true, true, true, true, true, true, true] }, userId: owner.id, clientRequestId: `role-fake-owner-${String(stamp)}` });
+  await prisma.workspaceMember.create({ data: { workspaceId: wsId, userId: manager.id, roleKey: 'manager' } });
+
+  const forbiddenAdminInvite = await enqueueControlAction({ workspaceId: wsId, op: 'invite', target: {}, payload: { email: `admin-target-${String(stamp)}@youcomm.nl`, roleKey: 'admin' }, userId: manager.id, clientRequestId: `invite-admin-${String(stamp)}` });
+  assert(isControlActionFailure(forbiddenAdminInvite.result), 'manageMembers alone cannot invite a built-in admin');
+  eq(await prisma.invite.count({ where: { workspaceId: wsId, email: `admin-target-${String(stamp)}@youcomm.nl` } }), 0, 'a forbidden admin invite creates no row');
+
+  const forbiddenAdminRemoval = await enqueueControlAction({ workspaceId: wsId, op: 'remove-member', target: { memberId: second.id }, payload: {}, userId: manager.id, clientRequestId: `remove-admin-${String(stamp)}` });
+  assert(isControlActionFailure(forbiddenAdminRemoval.result), 'manageMembers alone cannot remove a built-in admin');
+  assert(await prisma.workspaceMember.findFirst({ where: { workspaceId: wsId, userId: second.id } }) !== null, 'the protected admin membership remains');
+
+  await prisma.workspaceMember.update({ where: { workspaceId_userId: { workspaceId: wsId, userId: manager.id } }, data: { roleKey: 'fake-owner' } });
+  const forbiddenTransfer = await enqueueControlAction({ workspaceId: wsId, op: 'transfer-ownership', target: { memberId: second.id }, payload: {}, userId: manager.id, clientRequestId: `fake-owner-transfer-${String(stamp)}` });
+  assert(isControlActionFailure(forbiddenTransfer.result), 'a custom role with ownerActions is still not the actual owner');
+  eq((await prisma.workspace.findUnique({ where: { id: wsId } }))?.ownerId, owner.id, 'a forged owner-capability role cannot change workspace ownership');
+
+  const forbiddenOwnerInvite = await enqueueControlAction({ workspaceId: wsId, op: 'invite', target: {}, payload: { email: `owner-target-${String(stamp)}@youcomm.nl`, roleKey: 'owner' }, userId: owner.id, clientRequestId: `invite-owner-${String(stamp)}` });
+  assert(isControlActionFailure(forbiddenOwnerInvite.result), 'even the owner must use transfer-ownership rather than invite an owner');
+
   //? invite → payload { email, roleKey }. Assert a pending Invite row. The token is a crypto-random secret
   //? (F3 hardening — no longer the guessable `inv-<clientRequestId>`), so find the invite by its unique email.
   const inviteReqId = `invite-${String(stamp)}`;
@@ -68,8 +91,8 @@ try {
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {
-  if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id, second.id]).catch(() => undefined);
-  else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
+  if (workspaceId) await cleanupWorkspace(prisma, workspaceId, [owner.id, second.id, manager.id]).catch(() => undefined);
+  else await prisma.user.deleteMany({ where: { id: { in: [owner.id, second.id, manager.id] } } }).catch(() => undefined);
 }
 
 report('tests/integration/memberRoles.test.mts');

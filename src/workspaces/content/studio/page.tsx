@@ -11,6 +11,7 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
 import { Disclosure, EmptyState, PopMenu, Segmented, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
@@ -62,7 +63,7 @@ function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | nu
 //? page over one shared Studio. `/marketing` re-uses this with variant="marketing" (marketer kinds, no Brand tab).
 export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
@@ -138,6 +139,20 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
 
   return (
     <div className={`flex flex-col h-full min-h-0`}>
+      {/* Studio artifacts are AI-generated (copy/strategy via text, thumbnails via media) — with no provider
+          every "Generate" fails or returns nothing. Surface it once at the top instead of a silent failure. */}
+      {!readiness.aiText && (
+        <div className={`px-4 md:px-6 pt-4 shrink-0`}>
+          <SetupNotice
+            variant="card"
+            icon="robot"
+            title={translate({ key: 'workspaces.setup.ai.title' })}
+            body={translate({ key: 'workspaces.setup.ai.why' })}
+            fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
+            hint={translate({ key: 'workspaces.setup.ai.hint' })}
+          />
+        </div>
+      )}
       {/* ---- Assets | Brand — the brand library is a secondary tab, only on the studio variant ---- */}
       {variant === 'studio' && (
         <div className={`px-4 md:px-6 pt-4 shrink-0`}>

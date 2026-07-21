@@ -294,11 +294,24 @@ export async function workerContainerRunning(containerId: string): Promise<boole
   return result.out === 'true' ? true : (result.out === 'false' ? false : null);
 }
 
-//? Is `name` one of OUR containers (carries the workspace label)? The terminal bridge
-//? MUST gate `docker exec` on this — it must never exec into an arbitrary host container.
+//? Is `name` one of OUR containers (carries the workspace label)? Generic host-side recovery code may
+//? use this broad check, but user-facing terminal/file routes MUST use the exact workspace+ticket check below.
 export async function isWorkspacesContainer(name: string): Promise<boolean> {
   const r = await docker(['inspect', '-f', '{{index .Config.Labels "org.workspaces.workspace"}}', name]);
   return r.code === 0 && r.out.length > 0;
+}
+
+//? A browser terminal may only enter the canonical container for the exact workspace+ticket it requested.
+//? Checking both immutable labels and the derived name prevents a caller from naming another tenant's
+//? Workspaces container (the old `isWorkspacesContainer`-only gate accepted any labelled container).
+export async function isWorkspaceTicketContainer(name: string, workspaceId: string, ticketKey: string): Promise<boolean> {
+  if (name !== containerName(workspaceId, ticketKey)) return false;
+  const result = await docker([
+    'inspect', '-f',
+    '{{index .Config.Labels "org.workspaces.workspace"}}\t{{index .Config.Labels "org.workspaces.ticket"}}',
+    name,
+  ]);
+  return result.code === 0 && result.out === `${workspaceId}\t${ticketKey}`;
 }
 
 //? Remove the ticket's container + its worktree volume (ticket teardown, §4/§7).

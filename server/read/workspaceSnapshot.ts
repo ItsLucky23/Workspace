@@ -36,14 +36,15 @@ import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
   AiSkillEntry, DocumentEntry, DocumentTemplateEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
-  RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget,
+  RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget, WorkspaceReadiness,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
-  ChatMessage,
+  ChatMessage, PatSummary,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
+import { buildReadiness } from './readiness';
 
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -192,6 +193,15 @@ export interface WorkspaceSnapshot {
   events: ActivityEvent[];
   notifications: NotificationItem[];
   notes: TicketNote[];
+  //? Setup readiness (UX): the "is this actually set up?" booleans the screens read to explain WHY a feature
+  //? is blocked and HOW to fix it (link a repo / add a key / connect an account) instead of a silent empty state.
+  readiness: WorkspaceReadiness;
+  //? The caller's RESOLVED per-capability booleans in the active workspace (positional over RBAC_CAPABILITIES,
+  //? incl. custom roles — the flattened `Workspace.role` collapses those). Lets the UI show a "fix it" button
+  //? only when the user actually MAY, and otherwise "ask someone with <capability>" — never a dead button.
+  myPerms: boolean[];
+  //? The caller's RAW role key in the active workspace (not `asRole`-flattened) — the source of `myPerms`.
+  myRoleKey: string;
   //? Register-flow step A: the active workspace's linked-repo status (on-disk bare clone).
   repo: RepoInfo;
   //? The active workspace's git strategy + push policy (normalized; DEFAULT when unset).
@@ -235,12 +245,18 @@ export interface WorkspaceSnapshot {
   //? Cross-workspace: invitations addressed to THIS user's email (onboarding). Always
   //? present — even for a user with zero workspaces (the no-workspace early return).
   myInvites: MyInvite[];
+  //? Preload gap-fix (X3) — the CALLER's own Personal Access Tokens for the active workspace (metadata
+  //? only; see `PatSummary`). Was a mount-time GET (`workspaces/listPats`) on every settings visit.
+  pats: PatSummary[];
 }
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [], repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
+  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
+  myPerms: [], myRoleKey: 'member',
+  repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
@@ -257,6 +273,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
+  pats: [],
 };
 
 export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWorkspaceId?: string, wantProjectId?: string): Promise<WorkspaceSnapshot> {
@@ -358,6 +375,15 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const userRows = await prisma.user.findMany({ where: { id: { in: memberRows.map((m) => m.userId) } } });
     //? #76 — the caller's account-global SSH keys (NOT tenant-scoped → plain prisma, no workspaceId).
     const sshKeyRows = await prisma.sshKey.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+    //? Preload gap-fix (X3) — the CALLER's own Personal Access Tokens for this workspace (metadata only;
+    //? the raw token/hash never re-enters any read). PersonalAccessToken is NOT in TENANT_MODELS (feature-model
+    //? pattern, ADR 0050) and is further scoped to `userId` — mirrors listPats_v1's exact where + select.
+    const patRows = await prisma.personalAccessToken.findMany({
+      where: { workspaceId: activeWorkspaceId, userId, revoked: false },
+      select: { id: true, name: true, tokenPrefix: true, scopes: true, createdAt: true, lastUsedAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const pats: PatSummary[] = patRows.map((r) => ({ id: r.id, name: r.name, prefix: r.tokenPrefix, scopes: r.scopes, createdAt: r.createdAt.getTime(), lastUsedAt: r.lastUsedAt ? r.lastUsedAt.getTime() : null }));
     //? E5 — the workspace's user-defined AI tasks (name + template + last output). SECURITY fix (SK-ronde):
     //? CustomAiTask/OutputTemplate are NOT in TENANT_MODELS, so the old no-where `tenantDb` reads passed
     //? through UNSCOPED — every snapshot leaked every workspace's rows. Feature-model pattern (ADR 0050):
@@ -573,6 +599,20 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const activeWs = workspaceRows.find((w) => w.id === activeWorkspaceId);
     const gitConfig = normalizeGitConfig(activeWs?.gitConfig ?? null);
     const workspacePaused = activeWs?.paused === true;
+    //? Setup readiness (UX) — the "is this actually set up?" booleans, from signals already loaded above:
+    //? repo status, connected publish accounts, and the stored provider-key EnvVar KEYS (presence only, never
+    //? decrypted). Host-level probes (docker/CLI) are folded in cached inside buildReadiness.
+    const providerKeys = new Set(envRows.filter((e) => e.key.startsWith('__provider_key_')).map((e) => e.key));
+    const readiness = await buildReadiness(Date.now(), {
+      repoLinked: repo.linked,
+      publishingConnected: publishTargets.some((t) => t.connected),
+      providerKeys,
+    });
+    //? The caller's RESOLVED capabilities in this workspace — the raw role key (not `asRole`-flattened, so a
+    //? custom role resolves to its own perms) mapped to its `WorkspaceRole.perms`. Mirrors the server's
+    //? `hasCapability` (perms[cap] === true) so a "fix it" button only shows when the user actually may.
+    const myRoleKey = roleByWs.get(activeWorkspaceId) ?? 'member';
+    const myPerms = roleRows.find((r) => r.key === myRoleKey)?.perms ?? [];
 
     return {
       workspaces, activeWorkspaceId,
@@ -704,6 +744,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: n.id, ticketId: n.ticketId ? (ticketKeyById.get(n.ticketId) ?? n.ticketId) : '',
         author: n.authorId ?? '', body: n.body, time: formatTime(n.createdAt),
       })),
+      readiness,
+      myPerms,
+      myRoleKey,
       repo,
       gitConfig,
       workspacePaused,
@@ -712,6 +755,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? #76 — the caller's persisted SSH keys (account-global).
       sshKeys: sshKeyRows.map((k): SshKeyEntry => ({ id: k.id, name: k.name, type: k.type, fingerprint: k.fingerprint, added: formatTime(k.createdAt), lastUsed: k.lastUsedAt ? formatTime(k.lastUsedAt) : '—', userId: k.userId })),
       myInvites,
+      pats,
     };
   });
 }

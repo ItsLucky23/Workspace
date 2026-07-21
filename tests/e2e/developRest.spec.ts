@@ -16,7 +16,7 @@ test.describe('pipeline', () => {
     // Actual default: a fresh Agency workspace's project ships the 7-stage professional pipeline
     // (Unrefined → Refined → Plan → Implementation → Test → Review → Final). The strip's own
     // buttons carry a "<order> <name>" accessible name (e.g. "1 Unrefined") — distinct from the
-    // Stages/Automations view-tabs strip, which shares the same ws-no-scrollbar utility classes.
+    // stage-editor tab strip (General / Context / Model), which shares the same ws-no-scrollbar classes.
     const flowStrip = page.locator('div.flex.items-center.gap-1.overflow-x-auto.ws-no-scrollbar.pb-1.shrink-0');
     await expect(flowStrip).toBeVisible();
     const stageButtons = page.getByRole('button', { name: /^\d+\s/ });

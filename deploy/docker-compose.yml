@@ -51,6 +51,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       SERVER_PORT: "80"
+      # Fail closed on every production-only boundary; never rely on an optional env-file value.
+      NODE_ENV: production
       # The app shells out to Docker to launch ticket containers (socket mounted below).
       WS_DOCKER_BIN: /usr/bin/docker
       WS_NET: workspaces-net

@@ -10,6 +10,8 @@
 
 import { Suspense, lazy, useState } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { loadThemeId } from 'src/_components/editor/editorThemes';
@@ -17,13 +19,12 @@ import type { EditorChange } from 'src/_components/editor/CodeEditorPanel';
 import type { EditorFile } from 'src/_components/editor/fileTree';
 
 import FileDiffViewer from './FileDiffViewer';
+import { LazyVsCodeEmbed, useLiveEditor } from './liveEditor';
 import { EmptyState, WsButton } from '../../../_components/primitives';
 import type { TicketFile } from '../../../_data/types';
 
 //? Lazy so Monaco (multi-MB) only loads when the editor mode is opened.
 const LazyCodeEditorPanel = lazy(() => import('src/_components/editor/CodeEditorPanel').then((m) => ({ default: m.CodeEditorPanel })));
-//? Lazy so the iframe host only loads when the user opens the live (container) editor.
-const LazyVsCodeEmbed = lazy(() => import('src/_components/editor/VsCodeEmbed').then((m) => ({ default: m.VsCodeEmbed })));
 
 //? Reconstruct editable file content + original/modified pairs from the ticket's changed
 //? files (the diff lines carry the new/old text). Feeds the in-ticket Monaco mode —
@@ -54,9 +55,9 @@ export default function CodePanel({ files, workspaceId, ticketKey, initialMode, 
     : files;
   const { editorFiles, changes } = ticketFilesToEditor(editorInput);
   const [mode, setMode] = useState<'diff' | 'changes' | 'live'>(initialMode ?? 'diff');
-  const [liveUrl, setLiveUrl] = useState<string | null>(null);
-  const [launching, setLaunching] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const navigate = useNavigate();
+  //? Live-editor launch state is shared with the full-page editor route (../liveEditor).
+  const { liveUrl, launching, err, launch } = useLiveEditor(workspaceId, ticketKey);
 
   //? #35 — save an edited file back to the ticket worktree (stage-locked server-side). Returns {ok,error?}.
   const saveWorktreeFile = async (path: string, content: string): Promise<{ ok: boolean; error?: string }> => {
@@ -65,26 +66,18 @@ export default function CodePanel({ files, workspaceId, ticketKey, initialMode, 
     return res.result;
   };
 
-  const launch = async (): Promise<void> => {
-    setLaunching(true); setErr(null); setMode('live');
-    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/openEditor', version: 'v1', data: { workspaceId, ticketKey } }));
-    setLaunching(false);
-    if (error || res?.status !== 'success' || !res.result.ok || !res.result.url) {
-      const code = res?.status === 'error' ? res.errorCode : (res?.status === 'success' ? res.result.error : undefined);
-      setErr(code ?? 'editor.launchFailed');
-      return;
-    }
-    setLiveUrl(res.result.url);
-  };
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <WsButton variant={mode === 'diff' ? 'primary' : 'ghost'} icon="code-branch" onClick={() => { setMode('diff'); }}>{translate({ key: 'workspaces.ticket.codeDiffMode' })}</WsButton>
         <WsButton variant={mode === 'changes' ? 'primary' : 'ghost'} onClick={() => { setMode('changes'); }}>{translate({ key: 'workspaces.ticket.codeChanges' })}</WsButton>
-        <WsButton variant={mode === 'live' ? 'primary' : 'ghost'} icon="display" disabled={launching} onClick={() => { if (liveUrl) setMode('live'); else void launch(); }}>
+        <WsButton variant={mode === 'live' ? 'primary' : 'ghost'} icon="display" disabled={launching} onClick={() => { setMode('live'); if (!liveUrl) void launch(); }}>
           {translate({ key: launching ? 'workspaces.ticket.editorLaunching' : 'workspaces.ticket.openLiveEditor' })}
         </WsButton>
+        {/* In live mode, offer the same editor with the whole screen (its own route). */}
+        {mode === 'live' && (
+          <WsButton variant="ghost" icon="up-right-from-square" onClick={() => { void navigate(`/workspaces/develop/board/${ticketKey}/editor`); }}>{translate({ key: 'workspaces.ticket.openFullPage' })}</WsButton>
+        )}
         {err !== null && <span className="text-xs text-wrong">{translate({ key: err === 'editor.notActivated' ? 'workspaces.ticket.editorNotActivated' : 'workspaces.ticket.editorLaunchFailed' })}</span>}
       </div>
 

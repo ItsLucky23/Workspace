@@ -817,7 +817,11 @@ function SectionsTab() {
           </div>
           <div className="flex flex-col gap-2.5">
             {WORKSPACE_SECTIONS.filter((s) => s.moduleId === m.id).map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-3">
+              // ws-<page>-<element>: the shared `Toggle` primitive renders a bare icon-only
+              // button with no accessible name, and section labels ("Content"/"Documents") can
+              // collide with the module-header text above — a testid on the row disambiguates
+              // it for tests without touching the primitive itself.
+              <div key={s.id} data-testid={`ws-workspace-section-${s.id}`} className="flex items-center justify-between gap-3">
                 <span className="text-sm text-common">{translate({ key: s.labelKey })}</span>
                 <Toggle on={enabled.has(s.id)} onChange={() => { toggle(s.id); }} />
               </div>
@@ -1137,8 +1141,13 @@ export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, renameWorkspace } = useWorkspaces();
+  const { activeWorkspace, renameWorkspace, settingsFocus, consumeSettingsFocus } = useWorkspaces();
   const [tab, setTab] = useState('members');
+  //? Deep-link from a "fix it" button elsewhere: pre-select the tab that holds the fix (repository/env/…),
+  //? then clear the request so a later manual tab change isn't overridden.
+  useEffect(() => {
+    if (settingsFocus?.view === 'workspace' && settingsFocus.tab.length > 0) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
+  }, [settingsFocus, consumeSettingsFocus]);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
   const [showWizard, setShowWizard] = useState(false);

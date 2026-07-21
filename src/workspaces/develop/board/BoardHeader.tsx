@@ -195,7 +195,12 @@ export function BoardHeader({ isMobile, filters, onFiltersChange }: { isMobile: 
             }]}
           />
         )}
-        <WsButton icon="plus" onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
+        {/* e2e: the header's primary "+ Ticket" action has the same accessible name ("Ticket") as the
+            Unrefined column's inline quick-add button, so a role/name query alone is ambiguous — a
+            `contents` wrapper (no layout effect) gives Playwright a stable, unambiguous hook. */}
+        <span data-testid="ws-board-new-ticket" className="contents">
+          <WsButton icon="plus" onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
+        </span>
       </div>
     </div>
   );
