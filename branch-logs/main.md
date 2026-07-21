@@ -4557,3 +4557,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `config.ts`, `tests/e2e/{boardTicket,settingsShell}.spec.ts`, `tests/integration/dockerMediaE2E.test.mts`, `tests/live/_liveSvcProof.mts` en branchlogs. Parallelle `.tmp-*`-logs bleven onaangeraakt.
 
 **Verify:** HTTP **433/433** · Playwright Chromium **24/24 in één seriële run** · unitlaag **107/107 bestanden** · Docker-media **18/18** · echte Mailpit Compose/env/teardown **5/5** · geharde toolcontainer live: network `none`, read-only root, uid/gid 65534, cap-drop ALL, no-new-privileges en resourcecaps · twee appinstances 30s gelijktijdig ready op gedeelde Mongo/Redis; één leader, follower nam binnen 11s over · typecheck/lint/`ai:lint`/build warningvrij. Extern geblokkeerd: VM/microVM Compose-runner, wildcard-DNS en GitHub/GitLab OAuth ontbreken in env; de open SSH-tunnel heeft geen afzonderlijk geconfigureerd testtarget.
+
+## 2026-07-21 23:19 — Database-upgrade en socket-E2E limiterfix
+
+**User prompt:** voer de Prisma-wijzigingen tegen de huidige database uit, restart alle runtimes, test volledig E2E, verwijder tijdelijke logs, probeer multi-instance en verduidelijk runner/providerconfiguratie; OAuth blijft buiten scope.
+
+**Wat ik deed:** (1) de bestaande operatorbackup als gate gebruikt; `prisma:db:push` bevestigde dat Mongo al schema-synchroon was. Na het stoppen van alle Workspace-nodeprocessen is Prisma Client schoon geregenereerd en `db:upgrade` heeft schema v6 met `verified:true` bevestigd (0 legacy InfoSource-skills; 8 capability- en 4.637 instruction-skills). (2) Backend/frontend vers gestart en alle root-`.tmp-*`-logs verwijderd. (3) De complete gate onthulde dat `@luckystack/api` 0.7 `skipLoopbackInDev` alleen op HTTP toepast; socket-`apiRequest` raakte daardoor bij browserflow 18 steeds de globale loopback-IP-cap. Development schakelt nu uitsluitend die cross-route IP-bucket uit; per-route-limieten blijven actief en productie behoudt 100/min. Een unit-contract bewaakt dit. (4) Providerconfig via de echte secret-manager/workspace-resolver gecontroleerd: Gemini/Fal/ElevenLabs/Suno zijn alle vier geldige envfallbacks; geen workspace heeft momenteel een eigen provider-keyrow. De eerdere ElevenLabs/Suno-melding gebruikte foutief de niet-geconsumeerde `*_API_KEY`-namen.
+
+**Files touched:** `config.ts`, `tests/unit/devRateLimitConfig.test.mts` en branchlogs.
+
+**Verify:** schema in sync · Prisma generate groen · data-upgrade verified · runtimes health/ready 200 · standalone **108/108 testbestanden** · HTTP **433/433** · Playwright Chromium **24/24** in één seriële run · lint/build/typecheck/`ai:lint` groen · providerfallbacks 4/4 aanwezig zonder secretwaarden te loggen.

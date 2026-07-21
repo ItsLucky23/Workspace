@@ -85,10 +85,11 @@ const config = {
     store: 'redis' as 'memory' | 'redis',
     redisKeyPrefix: 'rate-limit',
     defaultApiLimit: 60 as number | false,
-    defaultIpLimit: 100 as number | false,
+    //? @luckystack/api 0.7 applies skipLoopbackInDev only to HTTP, not socket apiRequest. Disable
+    //? solely the cross-route IP bucket in development; per-route limits stay active on both transports.
+    //? Production retains the 100/min global abuse boundary.
+    defaultIpLimit: (dev ? false : 100) as number | false,
     windowMs: 60_000,
-    //? Local browser/test traffic shares the Vite proxy's loopback IP; keep per-route limits active
-    //? while avoiding a false global-IP denial. Production never skips this boundary.
     skipLoopbackInDev: true,
   },
   //? Optional @luckystack/secret-manager (opt-in). Uncomment + set
