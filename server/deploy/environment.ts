@@ -56,7 +56,9 @@ export async function ensureEnvironment(prisma: PrismaClient, workspaceId: strin
   const requestedCustomDomain = sanitizeCustomDomain(opts.customDomain);
   const wantSub = sanitizeSubdomain(opts.subdomain);
   const sameEnvironment = { workspaceId, projectId, kind: asKind(kind), serviceId: serviceId ?? null };
+  // luckystack-allow tenant-scope: public subdomains are host-global; cross-tenant collision detection prevents route takeover.
   const subFree = wantSub.length > 0 ? (await prisma.environment.findFirst({ where: { subdomain: wantSub, NOT: sameEnvironment }, select: { id: true } })) === null : false;
+  // luckystack-allow tenant-scope: custom domains are host-global; cross-tenant collision detection prevents route takeover.
   const customFree = requestedCustomDomain.length > 0 ? (await prisma.environment.findFirst({ where: { customDomain: requestedCustomDomain, NOT: sameEnvironment }, select: { id: true } })) === null : false;
   const customDomain = customFree ? requestedCustomDomain : '';
   const subdomain = subFree ? wantSub : '';
