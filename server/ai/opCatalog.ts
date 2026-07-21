@@ -15,6 +15,7 @@ import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import type { ChatProposal } from '../../src/workspaces/_data/types';
 import { listServicePresets } from '../container/servicePresets';
 import { isSectionEnabled, type WorkspaceModuleId } from '../../src/workspaces/_data/modules';
+import { OP_CAPABILITY } from '../control/rbac';
 
 //? The context slice generic validation checks references against (structural subset of
 //? workspaceChat's Ctx — no import to avoid a runtime cycle).
@@ -47,6 +48,7 @@ export interface CatalogCtx {
   projectServices: { id: string }[];
   //? GAP_SCAN C4 — the workspace's enabled modules. An empty list is the legacy "everything on" state.
   enabledSections?: string[];
+  permissions?: boolean[];
 }
 
 type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'ticketKeys' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'sprintId' | 'memberId' | 'roleKey' | 'inviteId' | 'documentId' | 'findingId' | 'referenceId' | 'outputTemplateId' | 'styleKey' | 'sourceId' | 'projectServiceId' | 'enum';
@@ -905,24 +907,69 @@ const MODULE_SECTION: Record<WorkspaceModuleId, string> = { development: 'board'
 
 //? Is this op available in a workspace with these sections on? An op with no module is always available;
 //? an empty `enabledSections` is the legacy all-on state (see `isSectionEnabled`).
-export function opAvailable(op: ControlOp, enabledSections?: string[]): boolean {
+export function opAvailable(op: ControlOp, enabledSections?: string[], permissions?: boolean[]): boolean {
   const mod = OP_MODULE[op];
-  return mod === undefined || isSectionEnabled(enabledSections ?? [], MODULE_SECTION[mod]);
+  if (mod !== undefined && !isSectionEnabled(enabledSections ?? [], MODULE_SECTION[mod])) return false;
+  const capability = OP_CAPABILITY[op];
+  return permissions === undefined || capability === null || permissions[capability] === true;
 }
 
 export const ENABLED_OPS: ControlOp[] = (Object.keys(PROPOSE_CATALOG) as ControlOp[]).filter((op) => PROPOSE_CATALOG[op].mode === 'enabled');
 
 //? Compact prompt lines for the systemPrompt — one line per enabled op (+ the preset keys the
 //? service-provision hint refers to). Grouped output keeps the prompt small (~30 lines).
-export function catalogPromptLines(enabledSections?: string[]): string[] {
-  //? C4 — only list ops this workspace can actually run.
-  const lines = ENABLED_OPS.filter((op) => opAvailable(op, enabledSections)).map((op) => {
+export function catalogPromptLines(enabledSections?: string[], permissions?: boolean[], ctx?: CatalogCtx, message = ''): string[] {
+  //? C4/RBAC/context budget — only list ops this caller can actually run in an enabled module. When a real
+  //? request is present, rank by its words and cap the tool slice instead of injecting all ~150 actions into
+  //? every turn. Calling with no message preserves the exhaustive corpus used by parity tooling/tests.
+  const available = ENABLED_OPS.filter((op) => opAvailable(op, enabledSections, permissions)).filter((op) => {
+    if (!ctx) return true;
+    return Object.values(PROPOSE_CATALOG[op].params ?? {}).every((param) => !param.required || requiredParamContextExists(param.kind, ctx));
+  });
+  const requestWords = new Set(message.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 3));
+  const ranked = message.trim().length === 0 ? available : available
+    .map((op, index) => {
+      const text = `${op} ${PROPOSE_CATALOG[op].hint ?? ''}`.toLowerCase();
+      let score = 0;
+      for (const word of requestWords) if (text.includes(word)) score += 1;
+      if (text.includes(message.toLowerCase().trim())) score += 8;
+      return { op, score, index };
+    })
+    .toSorted((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, 36)
+    .map((row) => row.op);
+  const lines = ranked.map((op) => {
     const spec = PROPOSE_CATALOG[op];
     return `- ${op}${spec.destructive ? ' [destructive]' : ''}: ${spec.hint ?? ''}`;
   });
   const presets = listServicePresets().map((p) => p.key).join('|');
   lines.push(`Service preset keys: ${presets}`);
   return lines;
+}
+
+function requiredParamContextExists(kind: ParamKind, ctx: CatalogCtx): boolean {
+  if (kind === 'ticketKey' || kind === 'ticketKeys') return ctx.tickets.length > 0;
+  if (kind === 'stageId' || kind === 'stageKeys') return ctx.stages.length > 0;
+  if (kind === 'pieceId') return ctx.pieces.length > 0;
+  if (kind === 'envId') return ctx.environments.length > 0;
+  if (kind === 'serviceName') return ctx.services.length > 0;
+  if (kind === 'taskId') return ctx.customTasks.length > 0;
+  if (kind === 'triggerId') return ctx.triggers.length > 0;
+  if (kind === 'mrId') return ctx.mrs.length > 0;
+  if (kind === 'channelId') return ctx.channels.length > 0;
+  if (kind === 'skillId') return ctx.skills.length > 0;
+  if (kind === 'sprintId') return ctx.sprints.length > 0;
+  if (kind === 'memberId') return ctx.members.length > 0;
+  if (kind === 'roleKey') return ctx.roles.length > 0;
+  if (kind === 'inviteId') return ctx.invites.length > 0;
+  if (kind === 'documentId') return ctx.documents.length > 0;
+  if (kind === 'findingId') return ctx.findings.length > 0;
+  if (kind === 'referenceId') return ctx.references.length > 0;
+  if (kind === 'outputTemplateId') return ctx.outputTemplates.length > 0;
+  if (kind === 'styleKey') return ctx.styles.length > 0;
+  if (kind === 'sourceId') return ctx.infoSources.length > 0;
+  if (kind === 'projectServiceId') return ctx.projectServices.length > 0;
+  return true;
 }
 
 function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: CatalogCtx): unknown {
@@ -980,7 +1027,7 @@ export function validateGenericAction(raw: unknown, ctx: CatalogCtx): ChatPropos
   const spec = PROPOSE_CATALOG[typedOp];
   if (spec.mode !== 'enabled') return null;
   //? C4 — a module the workspace turned off is not proposable, even if the model names the op anyway.
-  if (!opAvailable(typedOp, ctx.enabledSections)) return null;
+  if (!opAvailable(typedOp, ctx.enabledSections, ctx.permissions)) return null;
   const params: Record<string, unknown> = {};
   for (const [field, pSpec] of Object.entries(spec.params ?? {})) {
     const value = checkParam(pSpec.kind, a[field], pSpec, ctx);

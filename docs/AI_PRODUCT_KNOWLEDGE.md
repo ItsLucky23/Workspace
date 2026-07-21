@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `3836b01c2c18b733` · 17 capabilities · 207 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `c089a907e6c846bd` · 17 capabilities · 209 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -233,3 +233,5 @@
 - `adr-0287` Host administration, workspace governance, and browser terminals are separate fail-closed security planes
 - `adr-0288` Unrestricted Docker Compose runs only on an external per-workspace sandbox
 - `adr-0289` Conductor route-write migration seam
+- `adr-0290` Tenant-scoped proxy, media and egress boundaries
+- `adr-0291` Budgeted capability-aware Workspace-AI tools

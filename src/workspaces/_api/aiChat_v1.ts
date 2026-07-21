@@ -32,7 +32,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? R3-b — thread the caller's active project so the code-RAG grounds on the right repo (resolver validates it).
   //? #112 — pass the client's recent conversation history so follow-ups keep context.
   const history = Array.isArray(data.history) ? data.history : undefined;
-  const result = await interpretChat(functions.db.prisma, workspaceId, message, data.projectId, history);
+  const result = await interpretChat(functions.db.prisma, workspaceId, message, data.projectId, history, user.id);
   //? #111 — persist the turn (user message + AI reply text) so the chat survives reload / is
   //? cross-device. Proposals/plans are transient offers → not persisted (see the model doc).
   //? The expensive provider call completed OUTSIDE the workspace lease. Only its short deterministic

@@ -104,6 +104,9 @@ export interface Ctx {
   projectFacts: ProjectFacts;
   //? C4 — which modules this workspace runs; ops of a disabled module are neither listed nor validated.
   enabledSections: string[];
+  //? Effective positional WorkspaceRole permissions for the caller. Undefined is retained only for
+  //? internal/live compatibility; the production chat route always supplies userId.
+  permissions?: boolean[];
 }
 
 export interface ProjectFacts {
@@ -131,7 +134,7 @@ function depEntries(v: unknown): [string, string][] {
   return Object.entries(v as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string');
 }
 
-export async function loadCtx(prisma: PrismaClient, workspaceId: string, projectId: string): Promise<Ctx | null> {
+export async function loadCtx(prisma: PrismaClient, workspaceId: string, projectId: string, userId?: string): Promise<Ctx | null> {
   //? An explicit active project is mandatory. resolveProjectId validates both ObjectId
   //? shape and workspace ownership and never falls through when the supplied id is stale.
   const activeProjectId = await resolveProjectId(prisma, workspaceId, projectId);
@@ -144,7 +147,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     //? letting the added reference lists push the tail of the text past the budget.
     prisma.ticket.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { key: true, title: true, stageId: true }, take: 40, orderBy: { lastActivityAt: 'desc' } }),
     prisma.pipelineStage.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { key: true, name: true }, orderBy: { order: 'asc' } }),
-    prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true }, take: 40 }),
+    prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true, roleKey: true }, take: 40 }),
     prisma.contentProject.findMany({ where: { workspaceId, projectId: activeProjectId, archived: false }, select: { id: true, title: true, stageId: true }, take: 30, orderBy: { updatedAt: 'desc' } }),
     prisma.environment.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, kind: true, status: true, route: true }, take: 12 }),
     prisma.serviceStack.findMany({ where: { workspaceId }, select: { name: true, status: true }, take: 12 }),
@@ -177,7 +180,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     prisma.pipeline.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { stages: true, enabled: true }, take: 5 }),
     //? Parity wave — roles (roleKey refs), workflow-snippet skills (skill-toggle) and the project's
     //? monorepo Service rows (service-delete) — same tenant-scoped/capped pattern.
-    prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true }, take: 12 }),
+    prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true, perms: true }, take: 12 }),
     prisma.infoSource.findMany({ where: { workspaceId, mode: 'skill' }, select: { id: true, name: true, enabled: true }, take: 20 }),
     prisma.service.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 12 }),
   ]);
@@ -234,6 +237,9 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
       ciPipelines: pipelines.map((p) => ({ stages: p.stages, enabled: p.enabled })),
     },
     enabledSections: wsRow?.enabledSections ?? [],
+    ...(userId ? {
+      permissions: roleRows.find((role) => role.key === memberRows.find((member) => member.userId === userId)?.roleKey)?.perms ?? [],
+    } : {}),
   };
 }
 
@@ -281,7 +287,7 @@ function workspaceStateText(ctx: Ctx): string {
   ].join('\n');
 }
 
-export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '', memoryContext = ''): string {
+export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '', memoryContext = '', message = ''): string {
   return [
     'You are the Workspace-AI for an AI dev + content orchestration app. Given the user message and the workspace state, either answer conversationally (you CAN explain the codebase — use the repo excerpts below — AND explain what THIS PRODUCT can do — use the product-capabilities below) OR propose EXACTLY ONE action for the user to confirm. You never execute anything yourself — the user taps Accept and the Conductor performs it.',
     'Respond with STRICT JSON only, no prose, no markdown fences. Shape:',
@@ -296,7 +302,7 @@ export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '',
     //? X1 — the generic catalog: any enabled control-op is proposable. The action object carries the
     //? op + its listed params as TOP-LEVEL fields (same JSON shape as the core actions above).
     'BEYOND the core actions, you may also propose ANY of these workspace ops (set "op" to the op name and add its listed params as top-level fields in the action object). Ids/keys MUST come from the lists below — never invent them. Ops marked [destructive] make the app ask the user for an extra confirmation — still propose them when that is what the user asks; mention the impact in `reply`. Ops that cost money (media generation/pipeline) also get a cost-confirm — say so in `reply`.',
-    ...catalogPromptLines(ctx.enabledSections),
+    ...catalogPromptLines(ctx.enabledSections, ctx.permissions, ctx, message),
     'If the user asks WHETHER or HOW they can do something in this product ("can we edit videos?", "how do I publish to TikTok?"), answer from the "What THIS product can do" section below: name the module + the concrete steps, and where a first step maps to an op (e.g. create-content for "make a video"), propose that action. NEVER confuse product-capabilities (what the app offers) with the user\'s own repository code.',
     'TIME-TRAVEL PREVIEW: if the user asks to run/preview an OLDER or MODIFIED version ("start main without commit X", "show yesterday\'s version", "preview commit abc123"), explain in `reply` that they can open a time-travel preview from the ticket — the app supports previewing a raw commit, "main minus a commit" (a synthetic revert), or "as of a timestamp". Set action=null (this preview runs via the ticket\'s preview control, not a board op) and describe which of the three fits their ask.',
     //? #109 — AI-drives-UI: when the best help is to TAKE the user somewhere (not run an op), emit a copilot directive.
@@ -397,9 +403,9 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
 }
 
 //? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
-export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[]): Promise<ChatResult> {
+export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[], userId?: string): Promise<ChatResult> {
   if (!projectId) return { reply: '', proposal: null, error: 'project.notFound' };
-  const ctx = await loadCtx(prisma, workspaceId, projectId);
+  const ctx = await loadCtx(prisma, workspaceId, projectId, userId);
   if (!ctx) return { reply: '', proposal: null, error: 'project.notFound' };
   //? Ground the chat in the actual codebase (the same shared RAG index the coding agent + Sources use),
   //? so "how does X work?" answers from real code instead of flying blind. Best-effort — empty when
@@ -419,7 +425,7 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   const [, mem] = await tryCatch(() => retrieveMemory(prisma, workspaceId, message, 4));
   const memoryContext = (mem ?? []).map((m) => `- ${m.content}`).join('\n').slice(0, 3000);
   const fullPrompt = buildChatPrompt(message, history ?? []);
-  const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext, memoryContext), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
+  const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext, memoryContext, message), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);
   const [, parsed] = slice ? await tryCatch(() => Promise.resolve(JSON.parse(slice) as unknown)) : [null, null];

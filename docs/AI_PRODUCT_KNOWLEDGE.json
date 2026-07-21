@@ -1,6 +1,6 @@
 {
-  "hash": "3836b01c2c18b733",
-  "chunkCount": 224,
+  "hash": "c089a907e6c846bd",
+  "chunkCount": 226,
   "chunks": [
     {
       "id": "cap-001",
@@ -1345,6 +1345,18 @@
       "kind": "decision",
       "title": "Conductor route-write migration seam",
       "text": "ADR 0289: Conductor route-write migration seam. Several authenticated `_api` routes predated the control-API split and still mutated Prisma or repository files directly. Moving account, PAT, Studio, AI-chat and file writes into new public control verbs would expand the frozen structured surface and expose route-internal operations to the Assistant. Holding the workspace lease around Studio generation, documentation generation or Docker image builds would block unrelated writes for seconds or minutes. Decision: Legacy route-internal writes use `enqueueWorkspaceRouteWrite` or `enqueueGlobalRouteWrite`. Workspace writes execute under the cross-instance workspace lease, writer context and `runInTenant`; global account writes execute on the global writer chain. Slow AI/provider/image-build work runs before the lease, followed by a short completion write through the seam. Worktree writes re-check the stage edit lock inside that lease. This is explicitly a migration seam, not the target for new domain operations. It appends an audit signal, but arbitrary callbacks are not reconstructable after a process crash. New durable domain work continues to use typed `ControlOp`/`InternalOp`; remaining callback users must migrate to typed replayable jobs before the seam can claim crash durability."
+    },
+    {
+      "id": "adr-0290",
+      "kind": "decision",
+      "title": "Tenant-scoped proxy, media and egress boundaries",
+      "text": "ADR 0290: Tenant-scoped proxy, media and egress boundaries. Ticket keys, branch names and service names are unique only inside a workspace. Using those values as global proxy ids/hosts allowed one tenant's upsert to replace another tenant's route. Unsigned media reads required membership in any workspace rather than ownership of the file's workspace. Worker egress confinement was opt-in and could be bypassed by later attaching the worker to a normal proxy network. Decision: Generated preview, ref-preview, editor and environment route ids/hosts include the workspace id. Custom domains and subdomains are globally collision-checked. Edge auth continues to resolve host ownership through Redis and requires the route workspace's capability. New local media files receive a filesystem ownership sidecar when promoted or generated. Unsigned downloads require membership in that exact workspace; legacy generated files may resolve ownership only through tenant-bearing database rows. Valid short-lived HMAC links remain the deliberate cookie-less path for publishing platforms and public pages. Production defaults `WS_EGRESS` to enforcement. Any secondary network attached to a confined worker must be Docker-internal; an existing externally routed proxy network fails closed. The production bootstrap creates `workspaces-net` as internal."
+    },
+    {
+      "id": "adr-0291",
+      "kind": "decision",
+      "title": "Budgeted capability-aware Workspace-AI tools",
+      "text": "ADR 0291: Budgeted capability-aware Workspace-AI tools. The Workspace-AI catalog had 148 nominally enabled actions and injected all enabled-module hints into every turn. This consumed context, advertised actions the caller could not authorize, and encouraged semantically weak tool selection. Workspace instructions and enabled skills had no aggregate hard ceiling, so user-managed context could crowd out the feature contract and current request. Decision: The catalog remains exhaustive for validation and client dispatch; no verb is added or removed from the frozen surface. For a real chat request, the server filters actions by enabled module, the caller's effective capability vector and availability of every required entity reference. It then ranks the remaining hints against the request and exposes at most 36. Every one-shot AI feature passes through a provider-independent 64,000-character central budget at `runAiCompletion`: 20,000 current-prompt characters, 32,000 feature-system characters, 4,000 workspace instruction characters, 6,000 skill characters and 2,000 product-capability characters. Truncation is explicit and preserves both the beginning and end of a section."
     }
   ]
 }

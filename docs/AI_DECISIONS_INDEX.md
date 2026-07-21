@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (207)
+## Decisions (209)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -220,6 +220,8 @@
 | 0287 | Host administration, workspace governance, and browser terminals are separate fail-closed security planes | 🟢 accepted | security, rbac, tenancy, superadmin, terminal, containers | — | `docs/decisions/0287-host-and-tenant-security-boundaries.md` |
 | 0288 | Unrestricted Docker Compose runs only on an external per-workspace sandbox | 🟢 accepted | docker, compose, security, tenancy, isolation, self-hosting | — | `docs/decisions/0288-unrestricted-compose-requires-per-workspace-external-sandbox.md` |
 | 0289 | Conductor route-write migration seam | 🟢 accepted | conductor, single-writer, tenancy, migration | — | `docs/decisions/0289-conductor-route-write-migration-seam.md` |
+| 0290 | Tenant-scoped proxy, media and egress boundaries | 🟢 accepted | security, tenancy, proxy, media, egress | — | `docs/decisions/0290-tenant-scoped-proxy-media-and-egress-boundaries.md` |
+| 0291 | Budgeted capability-aware Workspace-AI tools | 🟢 accepted | ai, context, rbac, reliability | — | `docs/decisions/0291-budgeted-capability-aware-workspace-ai-tools.md` |
 
 ## Summaries
 
@@ -1894,6 +1896,22 @@ Production never runs workspace Compose on the app Docker daemon. It calls a roo
 Legacy route-internal writes use `enqueueWorkspaceRouteWrite` or `enqueueGlobalRouteWrite`. Workspace writes execute under the cross-instance workspace lease, writer context and `runInTenant`; global account writes execute on the global writer chain. Slow AI/provider/image-build work runs before the lease, followed by a short completion write through the seam. Worktree writes re-check the stage edit lock inside that lease.
 
 → `docs/decisions/0289-conductor-route-write-migration-seam.md`
+
+### 0290 — Tenant-scoped proxy, media and egress boundaries
+
+**0290** · accepted · tags: security, tenancy, proxy, media, egress · 2026-07-21
+
+Generated preview, ref-preview, editor and environment route ids/hosts include the workspace id. Custom domains and subdomains are globally collision-checked. Edge auth continues to resolve host ownership through Redis and requires the route workspace's capability.
+
+→ `docs/decisions/0290-tenant-scoped-proxy-media-and-egress-boundaries.md`
+
+### 0291 — Budgeted capability-aware Workspace-AI tools
+
+**0291** · accepted · tags: ai, context, rbac, reliability · 2026-07-21
+
+The catalog remains exhaustive for validation and client dispatch; no verb is added or removed from the frozen surface. For a real chat request, the server filters actions by enabled module, the caller's effective capability vector and availability of every required entity reference. It then ranks the remaining hints against the request and exposes at most 36.
+
+→ `docs/decisions/0291-budgeted-capability-aware-workspace-ai-tools.md`
 
 ## Code governed by decisions
 

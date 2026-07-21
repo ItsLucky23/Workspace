@@ -18,6 +18,7 @@ import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
 import { runQueued } from './jobQueue';
+import { applyAiPromptBudget } from './promptBudget';
 
 //? Q4 + K4 — the workspace-wide AI steering prepended to EVERY feature's system prompt at this single
 //? choke-point: the "how the AI should work here" instruction (Workspace.aiInstruction) + a strong output-
@@ -81,8 +82,12 @@ export async function runAiCompletion(
   //? SK2 — the workspace's ENABLED skills whose apply-points match this feature's group, injected at the
   //? same single choke-point (best-effort: a failed read means no block, never a failed turn).
   const skillsBlock = await skillPromptBlock(req.workspaceId, applyPointForFeature(feature));
-  const systemParts = [capIdx, prefix, skillsBlock, req.system ?? ''].map((s) => s.trim()).filter((s) => s.length > 0);
-  const groundedReq = systemParts.length > 1 || (systemParts.length === 1 && systemParts[0] !== (req.system ?? '').trim()) ? { ...req, system: systemParts.join('\n\n') } : req;
+  const groundedReq = applyAiPromptBudget({
+    request: req,
+    workspaceInstruction: prefix,
+    skills: skillsBlock,
+    productCapabilities: capIdx,
+  });
   //? Gap-fix: bounded retry with backoff around the SINGLE provider call-site (there was none anywhere
   //? in the AI layer — one transient blip failed the whole feature turn). Only failed results retry;
   //? 'ai.providerUnavailable' is permanent-for-now and never retried. WS_AI_RETRY_ATTEMPTS tunes (min 1).
@@ -112,7 +117,7 @@ export async function runAiCompletion(
   if (wsId && result.ok) {
     await tryCatch(() => recordTurnSpend(getPrismaClient(), {
       workspaceId: wsId, sessionKey: `oneshot:${feature}`, model: result.model ?? result.providerId,
-      providerId: result.providerId, feature, inputChars: (req.system?.length ?? 0) + req.prompt.length, outputChars: result.text.length,
+      providerId: result.providerId, feature, inputChars: (groundedReq.system?.length ?? 0) + groundedReq.prompt.length, outputChars: result.text.length,
       ...(typeof result.tokensIn === 'number' ? { tokensIn: result.tokensIn } : {}),
       ...(typeof result.tokensOut === 'number' ? { tokensOut: result.tokensOut } : {}),
     }));
