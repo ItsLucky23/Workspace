@@ -1,12 +1,13 @@
 //? Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR
 //? 0034). Ops: `save` (upsert a DesignArtifact), `setActive` (mark the active theme/style for its
 //? kind → rebuilds the injected `design-system` context-doc the coding agent reads), `delete`.
-//? Membership-gated; feature content (B-23: not board/git — those stay Conductor-only). The DB writes
-//? live in `server/designer/library.ts` so this consumer route never imports Prisma directly.
+//? workspaceSettings-gated; every authoritative library mutation executes through the Conductor.
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { saveDesignArtifact, setActiveDesignArtifact, deleteDesignArtifact } from '../../../server/designer/library';
+import { CAP, hasCapability } from '../../../server/control/rbac';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 40;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -27,20 +28,19 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const { workspaceId, op } = data;
   if (!workspaceId || typeof op !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
   const prisma = functions.db.prisma;
-  const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
-  if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
+  if (!(await hasCapability(prisma, workspaceId, user.id, CAP.workspaceSettings))) return { status: 'error', errorCode: 'auth.forbidden' };
 
   if (op === 'save') {
     const a = data.artifact;
     if (!a || !KINDS.has(a.kind) || typeof a.name !== 'string' || a.name.trim().length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const id = await saveDesignArtifact(prisma, workspaceId, a);
+    const id = await enqueueWorkspaceRouteWrite(workspaceId, { kind: 'designer.save', userId: user.id }, () => saveDesignArtifact(prisma, workspaceId, a));
     return { status: 'success', result: { id } };
   }
 
   if (op === 'setActive') {
     const id = data.artifactId;
     if (!id) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const ok = await setActiveDesignArtifact(prisma, workspaceId, id);
+    const ok = await enqueueWorkspaceRouteWrite(workspaceId, { kind: 'designer.activate', userId: user.id }, () => setActiveDesignArtifact(prisma, workspaceId, id));
     if (!ok) return { status: 'error', errorCode: 'api.notFound' };
     return { status: 'success', result: { id } };
   }
@@ -48,7 +48,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (op === 'delete') {
     const id = data.artifactId;
     if (!id) return { status: 'error', errorCode: 'api.invalidRequest' };
-    await deleteDesignArtifact(prisma, workspaceId, id);
+    await enqueueWorkspaceRouteWrite(workspaceId, { kind: 'designer.delete', userId: user.id }, async () => { await deleteDesignArtifact(prisma, workspaceId, id); return true; });
     return { status: 'success', result: { id } };
   }
 

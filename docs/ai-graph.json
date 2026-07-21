@@ -4,7 +4,7 @@
   "counts": {
     "nodes": 424,
     "edges": 546,
-    "symbols": 804,
+    "symbols": 807,
     "callEdges": 260
   },
   "nodes": [
@@ -6464,6 +6464,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/buildProjectImage_v1.ts::persist",
+      "file": "workspaces/_api/buildProjectImage_v1.ts",
+      "name": "persist",
+      "kind": "method"
+    },
+    {
       "id": "workspaces/_api/closePreview_v1.tests.ts::<module>",
       "file": "workspaces/_api/closePreview_v1.tests.ts",
       "name": "<module>",
@@ -6792,6 +6798,12 @@
       "file": "workspaces/_api/generateDocs_v1.ts",
       "name": "main",
       "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/generateDocs_v1.ts::persist",
+      "file": "workspaces/_api/generateDocs_v1.ts",
+      "name": "persist",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/getDockerfile_v1.tests.ts::<module>",
@@ -7464,6 +7476,12 @@
       "file": "workspaces/_api/studioGenerate_v1.ts",
       "name": "<module>",
       "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/studioGenerate_v1.ts::complete",
+      "file": "workspaces/_api/studioGenerate_v1.ts",
+      "name": "complete",
+      "kind": "method"
     },
     {
       "id": "workspaces/_api/studioGenerate_v1.ts::main",

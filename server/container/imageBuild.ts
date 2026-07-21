@@ -21,12 +21,13 @@ import { extendsAllowedBase } from './baseImages';
 const LOCKFILES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']);
 
 export interface ImageBuildResult { ok: boolean; tag?: string; error?: string }
+export interface ImageBuildDependencies { persist?: (projectId: string, tag: string) => Promise<void> }
 
 //? Defense in depth: re-validate the on-disk draft's first FROM (must be a `workspaces/base*` family image —
 //? S1 relaxed via the shared guard) before building — the file is Admin-editable between generate and build.
 const extendsBase = extendsAllowedBase;
 
-export async function buildProjectImage(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<ImageBuildResult> {
+export async function buildProjectImage(prisma: PrismaClient, workspaceId: string, projectId?: string, dependencies: ImageBuildDependencies = {}): Promise<ImageBuildResult> {
   if (!(await dockerAvailable())) return { ok: false, error: 'docker.unavailable' };
   //? R3-b — build the ACTIVE/target project (resolveProjectId), not always the first one.
   const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
@@ -63,6 +64,7 @@ export async function buildProjectImage(prisma: PrismaClient, workspaceId: strin
   }
   //? buildProjectImage is the SOLE writer of baseImageRef (dockerfileGen sets only the draft).
   //? ADR 0035: write only the TARGET project (was updateMany over every project → corrupted siblings).
-  await prisma.project.update({ where: { id: project.id }, data: { baseImageRef: tag } });
+  const persist = dependencies.persist ?? (async (id: string, imageTag: string): Promise<void> => { await prisma.project.update({ where: { id }, data: { baseImageRef: imageTag } }); });
+  await persist(project.id, tag);
   return { ok: true, tag };
 }

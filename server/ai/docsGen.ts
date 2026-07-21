@@ -11,10 +11,18 @@ import { resolveProjectId } from '../orchestrator/projectResolve';
 import type { PrismaClient } from '@prisma/client';
 
 export interface DocsGenResult { ok: boolean; name: string; content: string; error?: string }
+export interface DocsGenDependencies { persist?: (input: { workspaceId: string; content: string; summary: string }) => Promise<void> }
 
 const DOC_NAME = 'project-summary';
 
-export async function generateProjectDoc(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<DocsGenResult> {
+export async function persistProjectDoc(prisma: PrismaClient, input: { workspaceId: string; content: string; summary: string }): Promise<void> {
+  const existing = await prisma.infoSource.findFirst({ where: { workspaceId: input.workspaceId, mode: 'context-doc', name: DOC_NAME } });
+  await (existing
+    ? prisma.infoSource.update({ where: { id: existing.id }, data: { content: input.content, summary: input.summary, note: 'generated', source: 'generated' } })
+    : prisma.infoSource.create({ data: { workspaceId: input.workspaceId, mode: 'context-doc', source: 'generated', name: DOC_NAME, content: input.content, summary: input.summary, note: 'generated', enabled: true, usedByStages: [] } }));
+}
+
+export async function generateProjectDoc(prisma: PrismaClient, workspaceId: string, projectId?: string, dependencies: DocsGenDependencies = {}): Promise<DocsGenResult> {
   const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
   if (!resolvedId) return { ok: false, name: '', content: '', error: 'repo.notLinked' };
   const ctx = await repoManifests(workspaceId, resolvedId);
@@ -32,9 +40,6 @@ export async function generateProjectDoc(prisma: PrismaClient, workspaceId: stri
   const content = res.text.trim();
   if (content.length === 0) return { ok: false, name: '', content: '', error: 'docs.empty' };
   const summary = content.split('\n').map((l) => l.trim()).find((l) => l.length > 0)?.slice(0, 140) ?? '';
-  const existing = await prisma.infoSource.findFirst({ where: { workspaceId, mode: 'context-doc', name: DOC_NAME } });
-  await (existing
-    ? prisma.infoSource.update({ where: { id: existing.id }, data: { content, summary, note: 'generated', source: 'generated' } })
-    : prisma.infoSource.create({ data: { workspaceId, mode: 'context-doc', source: 'generated', name: DOC_NAME, content, summary, note: 'generated', enabled: true, usedByStages: [] } }));
+  await (dependencies.persist ?? ((input) => persistProjectDoc(prisma, input)))({ workspaceId, content, summary });
   return { ok: true, name: DOC_NAME, content };
 }

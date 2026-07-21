@@ -1,6 +1,6 @@
 {
-  "hash": "f64972be4dfeb972",
-  "chunkCount": 223,
+  "hash": "3836b01c2c18b733",
+  "chunkCount": 224,
   "chunks": [
     {
       "id": "cap-001",
@@ -1339,6 +1339,12 @@
       "kind": "decision",
       "title": "Unrestricted Docker Compose runs only on an external per-workspace sandbox",
       "text": "ADR 0288: Unrestricted Docker Compose runs only on an external per-workspace sandbox. The product must support arbitrary third-party Docker Compose, not only curated presets. The prior YAML sanitizer rejected privileged mode and obvious binds, but missed parts of long syntax and can never make every future Compose/Docker feature safe. Conversely, allowing those directives on the application daemon gives a workspace user root-equivalent access to the Workspaces host. Project-name/network prefixes also do not stop cross-tenant access on one daemon. Decision: - Production never runs workspace Compose on the app Docker daemon. It calls a root-configured HTTPS runner URL containing `{workspaceId}`; each resolved endpoint represents a dedicated VM/microVM/physical sandbox. - Inside that sandbox Compose is unrestricted. Workspaces preserves the raw YAML instead of pretending a sanitizer is the security boundary. - The runner returns explicit gateway/overlay environment values for services needed by app/agent containers; Workspaces never assumes same-daemon DNS. - Missing/invalid runner configuration fails closed in production. Restricted local sanitization remains only as a development fallback. - Conductor owns desired-state persistence and records which backend must handle teardown."
+    },
+    {
+      "id": "adr-0289",
+      "kind": "decision",
+      "title": "Conductor route-write migration seam",
+      "text": "ADR 0289: Conductor route-write migration seam. Several authenticated `_api` routes predated the control-API split and still mutated Prisma or repository files directly. Moving account, PAT, Studio, AI-chat and file writes into new public control verbs would expand the frozen structured surface and expose route-internal operations to the Assistant. Holding the workspace lease around Studio generation, documentation generation or Docker image builds would block unrelated writes for seconds or minutes. Decision: Legacy route-internal writes use `enqueueWorkspaceRouteWrite` or `enqueueGlobalRouteWrite`. Workspace writes execute under the cross-instance workspace lease, writer context and `runInTenant`; global account writes execute on the global writer chain. Slow AI/provider/image-build work runs before the lease, followed by a short completion write through the seam. Worktree writes re-check the stage edit lock inside that lease. This is explicitly a migration seam, not the target for new domain operations. It appends an audit signal, but arbitrary callbacks are not reconstructable after a process crash. New durable domain work continues to use typed `ControlOp`/`InternalOp`; remaining callback users must migrate to typed replayable jobs before the seam can claim crash durability."
     }
   ]
 }

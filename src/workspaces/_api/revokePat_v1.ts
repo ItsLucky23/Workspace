@@ -3,6 +3,7 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
+import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 20;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -19,6 +20,12 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const { patId } = data;
   if (!patId) return { status: 'error', errorCode: 'api.invalidRequest' };
   //? Only the token's OWNER may revoke it (userId-scoped update).
-  const res = await functions.db.prisma.personalAccessToken.updateMany({ where: { id: patId, userId: user.id }, data: { revoked: true } });
+  //? The caller may revoke an own PAT even after leaving its workspace, so this is serialized on the
+  //? account/global Conductor chain rather than requiring current tenant membership.
+  const res = await enqueueGlobalRouteWrite(
+    { kind: 'pat.revoke', userId: user.id },
+    // luckystack-allow tenant-scope: account owner revokes by PAT id after membership may be gone; userId prevents cross-account mutation.
+    () => functions.db.prisma.personalAccessToken.updateMany({ where: { id: patId, userId: user.id }, data: { revoked: true } }),
+  );
   return res.count > 0 ? { status: 'success', result: { revoked: true } } : { status: 'error', errorCode: 'pat.notFound' };
 };

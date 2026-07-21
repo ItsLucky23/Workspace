@@ -854,6 +854,66 @@ export async function drainCapacityQueue(dependencies: CapacityDrainDependencies
 let globalChain: Promise<unknown> = Promise.resolve();
 const wsChains = new Map<string, Promise<unknown>>();
 
+export interface ConductorRouteWrite {
+  kind: string;
+  userId: string;
+  clientRequestId?: string;
+}
+
+//? Migration seam for legacy typed routes whose writes predate the control-op split. The route still owns
+//? validation/RBAC, but the callback executes only inside the Conductor's serial writer context. Workspace
+//? writes additionally hold the cross-instance lease, runInTenant and append/complete a durable signal.
+//? New domain writes should prefer a typed ControlOp/InternalOp; this seam exists to eliminate direct writers
+//? without inventing public AI verbs for account/PAT/Studio route internals.
+export async function enqueueWorkspaceRouteWrite<T>(
+  workspaceId: string,
+  request: ConductorRouteWrite,
+  write: () => Promise<T>,
+): Promise<T> {
+  if (!workspaceId || !/^[a-z0-9][a-z0-9.-]{0,79}$/.test(request.kind)) throw new Error('[conductor] invalid route-write identity');
+  const activeScope = currentWriterScope();
+  if (activeScope !== null) {
+    assertWriterContext(workspaceId);
+    return write();
+  }
+  let result: T | undefined;
+  const previous = wsChains.get(workspaceId) ?? Promise.resolve();
+  const actionPromise = previous.then(() => withWorkspaceLease(workspaceId, async (lease) => {
+    await runInTenant(workspaceId, async () => {
+      await runInWriterContext(workspaceId, async () => {
+        lease.assertHeld();
+        const signal = await prisma.workspaceSignal.create({
+          data: {
+            workspaceId,
+            seq: await nextSignalSeq(workspaceId),
+            kind: `route.${request.kind}`,
+            payload: jsonInput({ userId: request.userId, clientRequestId: request.clientRequestId ?? randomUUID() }),
+          },
+          select: { id: true },
+        });
+        lease.assertHeld();
+        result = await write();
+        lease.assertHeld();
+        await markWorkspaceSignalProcessed(workspaceId, signal.id);
+      }, lease, `route:${request.kind}:${request.clientRequestId ?? randomUUID()}`);
+    });
+  }));
+  wsChains.set(workspaceId, actionPromise.catch((error: unknown) => { console.error(`[conductor] route write ${request.kind} failed:`, error); }));
+  await actionPromise;
+  if (result === undefined) throw new Error('[conductor] route write completed without a result');
+  return result;
+}
+
+export async function enqueueGlobalRouteWrite<T>(request: ConductorRouteWrite, write: () => Promise<T>): Promise<T> {
+  if (!/^[a-z0-9][a-z0-9.-]{0,79}$/.test(request.kind)) throw new Error('[conductor] invalid global route-write identity');
+  let result: T | undefined;
+  const actionPromise = globalChain.then(() => runInWriterContext(GLOBAL_WRITER_SCOPE, async () => { result = await write(); }, undefined, `route:${request.kind}:${request.clientRequestId ?? randomUUID()}`));
+  globalChain = actionPromise.catch((error: unknown) => { console.error(`[conductor] global route write ${request.kind} failed:`, error); });
+  await actionPromise;
+  if (result === undefined) throw new Error('[conductor] global route write completed without a result');
+  return result;
+}
+
 //? A handled action may reject without throwing (for example a failed provider operation).
 //? Transport callers treat that as a failed ACK while successful `void` results remain valid.
 export function isControlActionFailure(result: unknown): boolean {

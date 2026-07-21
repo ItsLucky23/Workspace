@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import path from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
 import { getProjectConfig, getUploadsDir, processUpload } from '@luckystack/core';
+import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
 
 //? Themes the framework recognises (mirrors `defaultTheme` in @luckystack/core).
 const ALLOWED_THEMES = new Set<string>(['light', 'dark']);
@@ -116,12 +117,14 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 
   if (!user.token) return { status: 'error', errorCode: 'session.invalid' }
 
-  await functions.db.prisma.user.update({
-    where: { id: user.id },
-    data: newData
-  })
-
-  await functions.session.saveSession(user.token, { ...user, ...newData });
+  await enqueueGlobalRouteWrite(
+    { kind: 'account.update', userId: user.id },
+    async () => {
+      await functions.db.prisma.user.update({ where: { id: user.id }, data: newData });
+      await functions.session.saveSession(user.token, { ...user, ...newData });
+      return true;
+    },
+  );
 
   return { status: 'success', result: {} }
 };

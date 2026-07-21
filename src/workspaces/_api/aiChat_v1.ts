@@ -9,6 +9,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { interpretChat } from '../../../server/ai/workspaceChat';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 20;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -34,9 +35,15 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const result = await interpretChat(functions.db.prisma, workspaceId, message, data.projectId, history);
   //? #111 — persist the turn (user message + AI reply text) so the chat survives reload / is
   //? cross-device. Proposals/plans are transient offers → not persisted (see the model doc).
-  await functions.db.prisma.workspaceChatMessage.createMany({ data: [
-    { workspaceId, userId: user.id, role: 'user', text: message },
-    { workspaceId, userId: user.id, role: 'ai', text: result.reply },
-  ] });
+  //? The expensive provider call completed OUTSIDE the workspace lease. Only its short deterministic
+  //? completion write enters the Conductor, so AI latency cannot block unrelated authoritative actions.
+  await enqueueWorkspaceRouteWrite(
+    workspaceId,
+    { kind: 'ai-chat.record', userId: user.id },
+    () => functions.db.prisma.workspaceChatMessage.createMany({ data: [
+      { workspaceId, userId: user.id, role: 'user', text: message },
+      { workspaceId, userId: user.id, role: 'ai', text: result.reply },
+    ] }),
+  );
   return { status: 'success', result };
 };

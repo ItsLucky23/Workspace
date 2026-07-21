@@ -4,6 +4,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { generateToken } from '../../../server/auth/pat';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -26,9 +27,14 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const scopes = (Array.isArray(data.scopes) ? data.scopes : []).filter((s): s is string => typeof s === 'string' && ALLOWED_SCOPES.has(s));
   if (scopes.length === 0) return { status: 'error', errorCode: 'pat.noScopes' };
   const token = generateToken();
-  const created = await functions.db.prisma.personalAccessToken.create({
-    data: { userId: user.id, workspaceId, name: (data.name ?? 'API token').trim() || 'API token', tokenHash: token.hash, tokenPrefix: token.prefix, scopes },
-  }).catch(() => null);
+  const [writeError, created] = await functions.tryCatch.tryCatch(() => enqueueWorkspaceRouteWrite(
+    workspaceId,
+    { kind: 'pat.issue', userId: user.id },
+    () => functions.db.prisma.personalAccessToken.create({
+      data: { userId: user.id, workspaceId, name: (data.name ?? 'API token').trim() || 'API token', tokenHash: token.hash, tokenPrefix: token.prefix, scopes },
+    }),
+  ));
+  if (writeError) return { status: 'error', errorCode: 'common.500' };
   if (!created) return { status: 'error', errorCode: 'common.500' };
   //? The RAW token is shown ONCE — the client must store it now; the server keeps only the hash.
   return { status: 'success', result: { id: created.id, token: token.raw, prefix: token.prefix, scopes } };

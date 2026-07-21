@@ -7,6 +7,7 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { importWorkspaceBundle } from '../../../server/export/workspaceImport';
+import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 3;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -20,7 +21,11 @@ export interface ApiParams {
 }
 
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  const res = await importWorkspaceBundle(functions.db.prisma, user.id, data.bundle);
+  //? No tenant exists yet; serialize the complete validated import on the global Conductor chain.
+  const res = await enqueueGlobalRouteWrite(
+    { kind: 'workspace.import', userId: user.id },
+    () => importWorkspaceBundle(functions.db.prisma, user.id, data.bundle),
+  );
   if (!res.ok) return { status: 'error', errorCode: res.error ?? 'import.failed' };
   return { status: 'success', result: res };
 };

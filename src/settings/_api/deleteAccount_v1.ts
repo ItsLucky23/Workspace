@@ -4,6 +4,7 @@ import { dispatchHook, getUploadsDir } from '@luckystack/core';
 import { revokeUserSessions, verifyPassword, getUserAdapter } from '@luckystack/login';
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
+import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 3;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -58,17 +59,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     return { status: 'error', errorCode: 'api.internalServerError' };
   }
 
-  //? Wipe every session through the adapter. `revokeUserSessions` calls
-  //? `adapter.untrackActive` for each token, so a raw `redis.del(activeUsersKeyFor(…))`
-  //? bypass is not needed — it would skip custom adapters and leave the active-set
-  //? intact for any token `revokeUserSessions` couldn't delete.
-  await revokeUserSessions(user.id);
-
-  await adapter.delete(user.id);
-
-  //? Remove the avatar the user uploaded (updateUser writes `${id}.webp` under
-  //? the uploads dir) so no PII file survives the account (GDPR residue).
-  await functions.tryCatch.tryCatch(() => unlink(path.join(getUploadsDir(), `${user.id}.webp`)));
+  await enqueueGlobalRouteWrite(
+    { kind: 'account.delete', userId: user.id },
+    async () => {
+      //? Wipe every session through the adapter. `revokeUserSessions` calls `adapter.untrackActive` for each
+      //? token, so raw Redis deletion is unnecessary and would bypass custom adapters.
+      await revokeUserSessions(user.id);
+      await adapter.delete?.(user.id);
+      //? Remove the uploaded avatar so no PII file survives the account. Missing files are harmless.
+      await functions.tryCatch.tryCatch(() => unlink(path.join(getUploadsDir(), `${user.id}.webp`)));
+      return true;
+    },
+  );
 
   //? Observational post-hook — cascade-clean external state (Stripe / S3),
   //? audit, goodbye email.

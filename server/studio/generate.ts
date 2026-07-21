@@ -225,10 +225,15 @@ export async function beginArtifact(
 //? #168 — run the (slow) AI completion for an already-created 'generating' row and flip it to
 //? ready/error, then broadcast so every client refetches the snapshot. Call DETACHED (fire-and-forget)
 //? from the route for an async return, or awaited via `generateArtifact` for the synchronous callers.
-export async function finishArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput): Promise<GenerateResult> {
+export interface FinishArtifactDependencies {
+  complete?: (artifactId: string, input: GenerateInput, data: Prisma.StudioArtifactUpdateManyMutationInput) => Promise<boolean>;
+}
+
+export async function finishArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, dependencies: FinishArtifactDependencies = {}): Promise<GenerateResult> {
+  const complete = dependencies.complete ?? ((id, generateInput, data) => completeArtifact(prisma, id, generateInput, data));
   const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: input.workspaceId, id: input.briefId } });
   if (!brief) {
-    const completed = await completeArtifact(prisma, artifactId, input, { status: 'error', error: 'studio.briefNotFound' });
+    const completed = await complete(artifactId, input, { status: 'error', error: 'studio.briefNotFound' });
     if (completed) broadcastContentDirty(input.workspaceId);
     return { ok: false, artifactId, error: completed ? 'studio.briefNotFound' : 'studio.artifactGone' };
   }
@@ -252,13 +257,13 @@ export async function finishArtifact(prisma: PrismaClient, artifactId: string, i
   //? A workspace can assign the studio-* features to a faster API provider (gemini) via the AI-layer.
   const completion = await runAiCompletion(meta.feature, { prompt, system, timeoutMs: 240_000, workspaceId: input.workspaceId, label: `${meta.title} · ${brief.productName}` });
   if (!completion.ok || completion.text.trim().length === 0) {
-    const completed = await completeArtifact(prisma, artifactId, input, { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' });
+    const completed = await complete(artifactId, input, { providerId: completion.providerId, status: 'error', error: completion.error ?? 'studio.emptyResponse' });
     if (completed) broadcastContentDirty(input.workspaceId);
     return { ok: false, artifactId, error: completed ? completion.error ?? 'studio.emptyResponse' : 'studio.artifactGone' };
   }
 
   const { content, title } = parseArtifact(input.kind, completion.text);
-  const completed = await completeArtifact(prisma, artifactId, input, {
+  const completed = await complete(artifactId, input, {
     title: `${title} — ${brief.productName}`, content: asJson(content), providerId: completion.providerId, status: 'ready', error: null,
   });
   if (!completed) return { ok: false, artifactId, error: 'studio.artifactGone' };

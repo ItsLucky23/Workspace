@@ -1,9 +1,11 @@
 //? Workspaces Studio — create or update a product/marketing BRIEF. Membership-gated; the brief is
-//? plain content (no orchestration state), so it writes via `_api` like the chat/preferences routes.
+//? authoritative workspace content, so the typed `_api` validates and the Conductor performs the write.
 //? `relaxed` validation: the handler validates every field explicitly below.
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
+import { CAP, hasCapability } from '../../../server/control/rbac';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -21,8 +23,7 @@ export interface ApiParams {
 export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
   const { workspaceId } = data;
   if (!workspaceId) return { status: 'error', errorCode: 'api.invalidRequest' };
-  const member = await functions.db.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
-  if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
+  if (!(await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets))) return { status: 'error', errorCode: 'auth.forbidden' };
 
   const name = (data.name ?? '').trim();
   const productName = (data.productName ?? '').trim();
@@ -43,11 +44,17 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   };
 
   const id = data.id;
-  if (id) {
-    const updated = await functions.db.prisma.studioBrief.updateMany({ where: { workspaceId, id }, data: fields });
-    if (updated.count !== 1) return { status: 'error', errorCode: 'api.invalidRequest' };
-    return { status: 'success', result: { id } };
-  }
-  const brief = await functions.db.prisma.studioBrief.create({ data: { workspaceId, ...fields } });
-  return { status: 'success', result: { id: brief.id } };
+  const savedId = await enqueueWorkspaceRouteWrite(
+    workspaceId,
+    { kind: 'studio-brief.save', userId: user.id },
+    async () => {
+      if (id) {
+        const updated = await functions.db.prisma.studioBrief.updateMany({ where: { workspaceId, id }, data: fields });
+        return updated.count === 1 ? id : null;
+      }
+      const brief = await functions.db.prisma.studioBrief.create({ data: { workspaceId, ...fields } });
+      return brief.id;
+    },
+  );
+  return savedId ? { status: 'success', result: { id: savedId } } : { status: 'error', errorCode: 'api.invalidRequest' };
 };

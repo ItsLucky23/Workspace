@@ -1,7 +1,7 @@
 //? Workspaces — [save-dockerfile] register-flow C: persist the user's edited draft
 //? `.workspaces/Dockerfile` back to the file `buildProjectImage` reads from disk (07b §1.2:
-//? "the file is Admin-editable between generate and build"). A direct `_api` write (like
-//? generate/build, NOT a Conductor control-op). workspaceSettings-gated. Re-validates the
+//? "the file is Admin-editable between generate and build"). The typed route validates/RBAC-gates;
+//? the Conductor serializes the filesystem write. Re-validates the
 //? first `FROM` extends the L1 base before writing, so an edited draft cannot smuggle an
 //? arbitrary base. Committing the draft into the linked repo is a later slice.
 
@@ -10,6 +10,7 @@ import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated
 import { saveDockerfileDraft } from '../../../server/container/dockerfileDraft';
 import { resolveProjectId } from '../../../server/orchestrator/projectResolve';
 import { hasCapability, CAP } from '../../../server/control/rbac';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -30,6 +31,10 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? R3-b — write to the active/target project's own draft slot.
   const projectId = await resolveProjectId(functions.db.prisma, workspaceId, data.projectId);
   if (!projectId) return { status: 'error', errorCode: 'api.invalidRequest' };
-  const result = saveDockerfileDraft(workspaceId, projectId, data.dockerfile);
+  const result = await enqueueWorkspaceRouteWrite(
+    workspaceId,
+    { kind: 'dockerfile.save', userId: user.id },
+    () => Promise.resolve(saveDockerfileDraft(workspaceId, projectId, data.dockerfile)),
+  );
   return { status: 'success', result };
 };

@@ -11,6 +11,7 @@ import { dispatchControlSync } from '../../../server/control/dispatchSync';
 import { CAP, hasCapability } from '../../../server/control/rbac';
 import { captureUrlScreenshot, extractThemeFromScreenshot, extractStyleFromScreenshot, saveThemeProposal, saveStyleProposal, compareDesigns, type CaptureViewport } from '../../../server/designer/inspiration';
 import { discoverReferenceSites } from '../../../server/designer/webDiscovery';
+import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -71,14 +72,16 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || typeof op !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
   const prisma = functions.db.prisma;
 
-  //? Discovering and importing inspiration only expose a member's own library; comparing creates
-  //? a review ticket candidate and therefore alone needs the workTickets capability.
+  //? Discovery is read-only. Inspiration imports mutate the workspace design library and therefore require
+  //? workspaceSettings; comparing creates a review candidate and uses workTickets.
   if (op === 'compare') {
     const allowed = await hasCapability(prisma, workspaceId, user.id, CAP.workTickets);
     if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  } else {
+  } else if (op === 'discover') {
     const member = await prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
     if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
+  } else if (!(await hasCapability(prisma, workspaceId, user.id, CAP.workspaceSettings))) {
+    return { status: 'error', errorCode: 'auth.forbidden' };
   }
 
   if (op === 'discover') {
@@ -97,11 +100,15 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     const theme = await extractThemeFromScreenshot(workspaceId, shot, str(data.hint));
     if (!theme) return { status: 'error', errorCode: 'inspire.extractFailed' };
     const origin = new URL(url).hostname;
-    const id = await saveThemeProposal(prisma, workspaceId, theme, origin);
-    //? 3.1 — also extract the full STYLE (radius/shadow/font/motion) so the imported look resembles the
-    //? reference once applied, not just its colours. Best-effort — a style-extract miss doesn't fail the import.
+    //? Both slow vision calls finish before the lease. The two related library writes then land together on
+    //? one short Conductor turn.
     const style = await extractStyleFromScreenshot(workspaceId, shot);
-    const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, origin) : null;
+    const saved = await enqueueWorkspaceRouteWrite(workspaceId, { kind: 'designer.inspire', userId: user.id }, async () => {
+      const id = await saveThemeProposal(prisma, workspaceId, theme, origin);
+      const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, origin) : null;
+      return { id, styleId };
+    });
+    const { id, styleId } = saved;
     return { status: 'success', result: { id, name: theme.name, screenshotUrl: shot, ...(styleId ? { styleId } : {}) } };
   }
 
@@ -110,9 +117,13 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     if (!imageUrl.startsWith('/media/')) return { status: 'error', errorCode: 'api.invalidRequest' };
     const theme = await extractThemeFromScreenshot(workspaceId, imageUrl, str(data.hint));
     if (!theme) return { status: 'error', errorCode: 'inspire.extractFailed' };
-    const id = await saveThemeProposal(prisma, workspaceId, theme, 'upload');
     const style = await extractStyleFromScreenshot(workspaceId, imageUrl);
-    const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, 'upload') : null;
+    const saved = await enqueueWorkspaceRouteWrite(workspaceId, { kind: 'designer.inspire', userId: user.id }, async () => {
+      const id = await saveThemeProposal(prisma, workspaceId, theme, 'upload');
+      const styleId = style ? await saveStyleProposal(prisma, workspaceId, style, 'upload') : null;
+      return { id, styleId };
+    });
+    const { id, styleId } = saved;
     return { status: 'success', result: { id, name: theme.name, screenshotUrl: imageUrl, ...(styleId ? { styleId } : {}) } };
   }
 

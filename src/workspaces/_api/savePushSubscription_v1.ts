@@ -5,6 +5,7 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
+import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -23,19 +24,29 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const prisma = functions.db.prisma;
 
   if (data.remove === true) {
-    await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: user.id } }).catch(() => null);
-    return { status: 'success', result: { removed: true } };
+    const [writeError] = await functions.tryCatch.tryCatch(() => enqueueGlobalRouteWrite(
+      { kind: 'push.remove', userId: user.id },
+      () => prisma.pushSubscription.deleteMany({ where: { endpoint, userId: user.id } }),
+    ));
+    return writeError ? { status: 'error', errorCode: 'common.500' } : { status: 'success', result: { removed: true } };
   }
 
   const keys = data.keys;
   if (!keys || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string') return { status: 'error', errorCode: 'api.invalidRequest' };
   const fullBodyOptIn = data.fullBodyOptIn === true;
-  const saved = await prisma.pushSubscription.upsert({
-    where: { endpoint },
-    create: { userId: user.id, endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth }, fullBodyOptIn },
-    update: { userId: user.id, keys: { p256dh: keys.p256dh, auth: keys.auth }, fullBodyOptIn, lastUsedAt: new Date() },
-  }).catch(() => null);
+  const [writeError, saved] = await functions.tryCatch.tryCatch(() => enqueueGlobalRouteWrite(
+    { kind: 'push.save', userId: user.id },
+    async () => {
+      const existing = await prisma.pushSubscription.findUnique({ where: { endpoint }, select: { userId: true } });
+      if (existing && existing.userId !== user.id) return null;
+      return prisma.pushSubscription.upsert({
+        where: { endpoint },
+        create: { userId: user.id, endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth }, fullBodyOptIn },
+        update: { keys: { p256dh: keys.p256dh, auth: keys.auth }, fullBodyOptIn, lastUsedAt: new Date() },
+      });
+    },
+  ));
 
-  if (!saved) return { status: 'error', errorCode: 'common.500' };
+  if (writeError || !saved) return { status: 'error', errorCode: 'common.500' };
   return { status: 'success', result: { subscribed: true } };
 };
