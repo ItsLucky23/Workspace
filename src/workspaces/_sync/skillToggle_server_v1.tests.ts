@@ -2,10 +2,10 @@ import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 
 import { loginSeededUser, cleanupWorkspace, joinRoom } from '../../../tests/_helpers.mjs';
 
-//? Per-route tests for `workspaces/skillToggle/v1` — enable/disable an InfoSource-backed skill.
+//? Per-route tests for `workspaces/skillToggle/v1` — enable/disable a canonical capability Skill.
 //? Covers:
-//?  [1] happy path — toggling a seeded skill `InfoSource` off; asserted via the real Prisma
-//?      post-condition (`InfoSource.enabled`), not just the ack.
+//?  [1] happy path — toggling a seeded capability off; asserted via the real Prisma
+//?      post-condition (`Skill.enabled`), not just the ack.
 //?  [2] the route's own input validation — an empty `sourceId` is rejected with
 //?      `sync.invalidRequest` before it ever reaches the Conductor.
 
@@ -27,13 +27,13 @@ async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 5
 
 export const customTests: CustomTestCase[] = [
   {
-    name: 'happy path: toggling a seeded skill InfoSource off persists (Prisma post-condition)',
+    name: 'happy path: toggling a seeded capability Skill off persists (Prisma post-condition)',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'skilltoggle_c1');
       try {
         await joinRoom(ctx, workspaceId);
-        const source = await ctx.prisma.infoSource.findFirst({ where: { workspaceId, mode: 'skill' } });
-        ctx.expect.ok(source !== null, 'the seeded demo workspace ships at least one skill InfoSource');
+        const source = await ctx.prisma.skill.findFirst({ where: { workspaceId, skillType: 'capability' } });
+        ctx.expect.ok(source !== null, 'the seeded demo workspace ships at least one capability Skill');
         if (!source) return;
 
         const res = await ctx.callSync<SkillToggleInput, SkillToggleResponse>(
@@ -43,7 +43,7 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.eq(res.status, 'success', 'skillToggle returns status "success"');
 
         const updated = await poll(async () => {
-          const row = await ctx.prisma.infoSource.findFirst({ where: { workspaceId, id: source.id } });
+          const row = await ctx.prisma.skill.findFirst({ where: { workspaceId, id: source.id, skillType: 'capability' } });
           return row && !row.enabled ? row : null;
         });
         ctx.expect.ok(updated !== null, 'the Conductor persisted enabled=false (post-condition, not just the ack)');

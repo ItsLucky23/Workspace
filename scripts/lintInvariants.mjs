@@ -64,7 +64,7 @@ const TENANT_MODELS_CAMEL = [
   "sprint", "studioArtifact", "studioBrandLibrary", "studioBrief", "stylePreset",
   "ticketArtifactLink", "ticketEvent", "ticketLink", "ticketReference", "ticket",
   "workspaceBudget", "workspaceMember", "workspaceNote", "workspaceRole",
-  "workspaceSignal", "workspaceSuggestion", "workspaceTrigger",
+  "workspaceSignal", "workspaceEntityVersion", "workspaceSuggestion", "workspaceTrigger",
 ];
 const TENANT_ACCESS_RE = new RegExp(
   `\\bprisma\\.(${TENANT_MODELS_CAMEL.join("|")})\\.(find\\w*|update\\w*|delete\\w*|upsert|count|aggregate|groupBy|create\\w*)\\b`,

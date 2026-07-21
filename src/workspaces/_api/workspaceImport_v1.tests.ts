@@ -55,6 +55,10 @@ export const customTests: CustomTestCase[] = [
         //? `skipStarterSeed: true` from the import path, so no phantom starter/example tickets mix in.
         const tickets = await ctx.prisma.ticket.findMany({ where: { workspaceId } });
         ctx.expect.eq(tickets.length, 2, 'exactly the 2 bundle-imported Ticket rows exist, no phantom starter tickets');
+
+        const retried = await ctx.callApi<{ bundle: unknown }, WorkspaceImportResponse>({ bundle });
+        ctx.expect.ok(retried.status === 'success' && retried.result.workspaceId === workspaceId, 'retrying the same bundle returns the deterministic completed workspace');
+        ctx.expect.eq(await ctx.prisma.workspace.count({ where: { ownerId: user.id, importCompleted: true } }), 1, 'an import retry cannot create a duplicate workspace');
       } finally {
         await (workspaceId ? cleanupWorkspace(ctx.prisma, workspaceId, [user.id]) : ctx.prisma.user.delete({ where: { id: user.id } }));
       }
@@ -75,6 +79,7 @@ export const customTests: CustomTestCase[] = [
         const workspaces = await ctx.prisma.workspaceMember.findMany({ where: { userId: user.id } });
         ctx.expect.eq(workspaces.length, 0, 'no workspace membership was created for the caller');
       } finally {
+        await ctx.prisma.globalJob.deleteMany({ where: { userId: user.id } });
         await ctx.prisma.user.delete({ where: { id: user.id } });
       }
     },

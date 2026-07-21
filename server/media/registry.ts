@@ -92,9 +92,16 @@ export async function runMediaGeneration(req: MediaGenerationRequest, overrides?
   }
   const available = await provider.available(apiKey);
   if (!available) return stubMediaResult(req.feature, providerId, req);
-  //? P3 — inject the per-workspace model override into params.model (the caller's own params.model still wins).
-  const wsModel = cfg?.models[req.feature];
-  const params = wsModel && !(req.params && typeof req.params.model === 'string') ? { ...req.params, model: wsModel } : req.params;
+  //? Layer the workspace media defaults UNDER the caller's params so an explicit per-request param always wins:
+  //?  - P3 per-feature model override (params.model → the fal/suno model id),
+  //?  - cheap-preview default (params.cheap → fal's schnell + lowest-res path),
+  //?  - default TTS voice (params.voiceId → ElevenLabs narration voice).
+  const wsDefaults: Record<string, unknown> = {
+    ...(cfg?.models[req.feature] ? { model: cfg.models[req.feature] } : {}),
+    ...(cfg?.cheap ? { cheap: true } : {}),
+    ...(cfg?.voiceId ? { voiceId: cfg.voiceId } : {}),
+  };
+  const params = Object.keys(wsDefaults).length > 0 ? { ...wsDefaults, ...req.params } : req.params;
   return provider.generate({ ...req, ...(params ? { params } : {}), ...(apiKey ? { apiKey } : {}) });
 }
 

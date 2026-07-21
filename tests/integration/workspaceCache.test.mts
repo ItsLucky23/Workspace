@@ -23,7 +23,7 @@ assert(provider.includes('const lastProjectByWsRef = useRef<Map<string, string>>
 /* ------------------------------------------------------------ the active entry stays delta-fresh */
 
 const mirror = provider.slice(provider.indexOf('const cacheEntry = useCallback'));
-assert(mirror.slice(0, 400).includes('snapCacheRef.current.set(snapKey(entry.activeWorkspaceId, entry.activeProjectId), entry)'), 'cacheEntry stores a snapshot under its resolved key');
+assert(mirror.slice(0, 700).includes('const key = snapKey(entry.activeWorkspaceId, entry.activeProjectId)') && mirror.slice(0, 700).includes('cache.set(key, entry)'), 'cacheEntry stores a snapshot under its resolved key');
 assert(provider.includes('useEffect(() => { cacheEntry(snap); }, [snap, cacheEntry]);'), 'the ACTIVE snapshot is mirrored to the cache on every change (so deltas keep the cached entry fresh)');
 
 /* ------------------------------------------------------------ instant switch: render cache, refetch in bg */
@@ -40,10 +40,18 @@ assert(provider.includes('useEffect(() => { refetch(); }, [refetch]);'), 'the wa
 /* ------------------------------------------------------------ background prefetch: once, throttled, skips cached */
 
 const prefetch = provider.slice(provider.indexOf('const prefetchedRef = useRef(false)'));
-assert(prefetch.slice(0, 900).includes('if (prefetchedRef.current || !snap.activeWorkspaceId || snap.workspaces.length <= 1) return'), 'prefetch runs once, only after the active workspace loads, and only when there are OTHER workspaces');
-assert(prefetch.slice(0, 900).includes('if (lastProjectByWsRef.current.has(wsId)) continue'), 'prefetch skips workspaces already cached');
-assert(prefetch.slice(0, 900).includes("data: { workspaceId: wsId }") && prefetch.slice(0, 900).includes('cacheEntry(res.result)'), 'prefetch fetches each other workspace and caches it (default project)');
-assert(prefetch.slice(0, 900).includes('setTimeout(resolve, 350)'), 'prefetch is throttled (sequential, ~350ms apart) so login stays fast and the server is not hammered');
+assert(prefetch.slice(0, 1400).includes('if (prefetchedRef.current || !snap.activeWorkspaceId || snap.workspaces.length <= 1) return'), 'prefetch runs once, only after the active workspace loads, and only when there are OTHER workspaces');
+assert(prefetch.slice(0, 1400).includes('if (lastProjectByWsRef.current.has(wsId)) continue'), 'prefetch skips workspaces already cached');
+assert(prefetch.slice(0, 1400).includes("data: { workspaceId: wsId }") && prefetch.slice(0, 1400).includes('cacheEntry(res.result)'), 'prefetch fetches each other workspace and caches it (default project)');
+assert(prefetch.slice(0, 1400).includes('setTimeout(resolve, 350)'), 'prefetch is throttled (sequential, ~350ms apart) so login stays fast and the server is not hammered');
+
+/* ------------------------------------------------------------ LRU cap bounds memory for many-workspace users */
+
+assert(provider.includes('const SNAP_CACHE_MAX ='), 'the cache is LRU-bounded (a user in very many workspaces cannot grow it unbounded)');
+const lru = provider.slice(provider.indexOf('const cacheEntry = useCallback'), provider.indexOf('const cacheEntry = useCallback') + 1400);
+assert(lru.includes('cache.delete(key);') && lru.includes('cache.set(key, entry);'), 'cacheEntry LRU-touches (delete + re-insert = most-recently-used)');
+assert(lru.includes('if (cache.size > SNAP_CACHE_MAX)') && lru.includes('if (oldKey !== key) cache.delete(oldKey)'), 'and evicts the least-recently-used beyond the cap, never the just-written (active) entry');
+assert(prefetch.slice(0, 1000).includes('if (snapCacheRef.current.size >= SNAP_CACHE_MAX) break'), 'prefetch stops at the cap so it never churns the LRU (fetch-then-evict)');
 
 /* ------------------------------------------------------------ big data must NOT be cached (only the snapshot) */
 

@@ -11,6 +11,7 @@ import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { hasCapability, CAP } from '../../../server/control/rbac';
 import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { readEntityVersion, worktreeFileEntityKey } from '../../../server/orchestrator/entityVersion';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -29,12 +30,13 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || !ticketKey || !path) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
+  const expectedVersion = await readEntityVersion(functions.db.prisma, workspaceId, worktreeFileEntityKey(ticketKey, path));
   const suppliedRequestId = data.clientRequestId?.trim();
   const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : createHash('sha256').update(ticketKey).update('\0').update(path).update('\0').update(content).digest('hex');
   const applied = await enqueueInternalAction({
     workspaceId,
     op: 'worktree-file-save',
-    target: { ticketKey },
+    target: { ticketKey, expectedVersion },
     payload: { path, content },
     userId: user.id,
     clientRequestId: `worktree-file-save:${requestId}`,

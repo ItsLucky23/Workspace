@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import path from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
 import { getProjectConfig, getUploadsDir, processUpload } from '@luckystack/core';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueGlobalAction } from '../../../server/orchestrator/globalOps';
 
 //? Themes the framework recognises (mirrors `defaultTheme` in @luckystack/core).
 const ALLOWED_THEMES = new Set<string>(['light', 'dark']);
@@ -108,7 +108,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     return { status: 'error', errorCode: 'api.invalidInputType' };
   }
 
-  let newData: Partial<Pick<SessionLayout, 'avatar' | 'name' | 'theme' | 'language'>> = {};
+  let newData: { avatar?: string; name?: string; theme?: SessionLayout['theme']; language?: SessionLayout['language'] } = {};
 
   if (avatar) newData = { ...newData, avatar: user.id }
   if (name) newData = { ...newData, name }
@@ -117,14 +117,11 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 
   if (!user.token) return { status: 'error', errorCode: 'session.invalid' }
 
-  await enqueueGlobalRouteWrite(
-    { kind: 'account.update', userId: user.id },
-    async () => {
-      await functions.db.prisma.user.update({ where: { id: user.id }, data: newData });
-      await functions.session.saveSession(user.token, { ...user, ...newData });
-      return true;
-    },
-  );
+  const write = await enqueueGlobalAction({ op: 'account-update', userId: user.id, payload: newData });
+  if (!('updated' in write) || !write.updated) return { status: 'error', errorCode: 'common.500' };
+  //? Redis session state is a derived cache, not authoritative account state. Refresh it only after the
+  //? durable DB job completed; a crash here is repaired by the next login/session refresh, never by replaying a token.
+  await functions.session.saveSession(user.token, { ...user, ...newData });
 
   return { status: 'success', result: {} }
 };

@@ -1,5 +1,5 @@
-//? Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill
-//? (InfoSource), then broadcasts the source id + new state to the room; every client
+//? Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a workflow capability
+//? (canonical Skill) or context document (InfoSource), then broadcasts the id + new state; every client
 //? flips it in place (no refetch). Requires editPipeline (OP_CAPABILITY).
 
 import { AuthProps, SessionLayout } from '../../../config';

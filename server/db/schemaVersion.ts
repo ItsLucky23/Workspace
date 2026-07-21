@@ -86,6 +86,45 @@ export const BACKFILL_STEPS: BackfillStep[] = [
       return res.count;
     },
   },
+  {
+    version: 6,
+    name: 'consolidate-workflow-skills',
+    //? InfoSource(mode=skill) was a second skill store for workflow capabilities. Preserve its exact stage,
+    //? kind/model and enabled state in canonical Skill rows, then remove only the migrated source row.
+    run: async (prisma) => {
+      const normalized = await prisma.skill.updateMany({ where: { skillType: { equals: undefined } }, data: { skillType: 'instruction' } }); // luckystack-allow tenant-scope: host-wide schema normalization before the canonical-model migration
+      const legacy = await prisma.infoSource.findMany({ where: { mode: 'skill' } }); // luckystack-allow tenant-scope: host-wide one-time migration enumerates every legacy skill, then preserves its workspaceId
+      let migrated = 0;
+      for (const source of legacy) {
+        const existing = await prisma.skill.findFirst({ where: { legacyInfoSourceId: source.id }, select: { id: true } }); // luckystack-allow tenant-scope: globally unique legacy ObjectId lookup during host-wide migration
+        if (!existing) {
+          await prisma.skill.create({ // luckystack-allow tenant-scope: workspaceId is copied exactly from the source row during host-wide migration
+            data: {
+              workspaceId: source.workspaceId,
+              projectId: source.projectId,
+              slug: `capability-${source.id}`,
+              name: source.name,
+              description: source.summary,
+              status: source.summary,
+              instruction: source.content ?? '',
+              examples: '',
+              applyPoints: [],
+              skillType: 'capability',
+              usedByStages: source.usedByStages,
+              kind: source.kind,
+              model: source.model,
+              legacyInfoSourceId: source.id,
+              enabled: source.enabled,
+              builtin: source.note === 'starter',
+            },
+          });
+        }
+        await prisma.infoSource.deleteMany({ where: { id: source.id, mode: 'skill' } }); // luckystack-allow tenant-scope: deletes only the globally enumerated legacy row after its canonical Skill exists
+        migrated += 1;
+      }
+      return normalized.count + migrated;
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = Math.max(0, ...BACKFILL_STEPS.map((s) => s.version));

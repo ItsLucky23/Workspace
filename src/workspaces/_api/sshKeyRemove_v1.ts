@@ -4,7 +4,7 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueGlobalAction } from '../../../server/orchestrator/globalOps';
 
 export const rateLimit: number | false = 12;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -17,13 +17,10 @@ export interface ApiParams {
   functions: Functions;
 }
 
-export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
+export const main = async ({ data, user }: ApiParams): Promise<ApiResponse> => {
   const id = data.id.trim();
   if (id.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
   //? Own-key only — the where clause carries userId so another account's id is a no-op, not a delete.
-  await enqueueGlobalRouteWrite(
-    { kind: 'ssh-key.remove', userId: user.id },
-    () => functions.db.prisma.sshKey.deleteMany({ where: { id, userId: user.id } }),
-  );
+  await enqueueGlobalAction({ op: 'ssh-key-remove', userId: user.id, target: { keyId: id } });
   return { status: 'success', result: {} };
 };

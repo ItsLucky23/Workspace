@@ -1024,10 +1024,6 @@ function AiRunCard({ run }: { run: AiRun }) {
   );
 }
 
-//? Fase 2: snoozing a suggestion (temporarily hide + resurface later) has no
-//? control-API op yet — the frozen 7+6 surface only has accept/dismiss.
-const onSnoozeSuggestion = (): void => { /* Fase 2: snooze suggestion — no control-API op yet */ };
-
 function SuggestionCard({ s, onOpenTicket, onAccept, onDismiss }: { s: AiSuggestion; onOpenTicket: (id: string) => void; onAccept: () => void; onDismiss: () => void }) {
   const translate = useTranslator();
   return (
@@ -1043,7 +1039,6 @@ function SuggestionCard({ s, onOpenTicket, onAccept, onDismiss }: { s: AiSuggest
       <div className="flex items-center gap-2 mt-3">
         <button type="button" onClick={onAccept} className="rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.accept' })}</button>
         <button type="button" onClick={onDismiss} className="rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 cursor-pointer">{translate({ key: 'workspaces.shell.dismiss' })}</button>
-        <button type="button" onClick={onSnoozeSuggestion} title={translate({ key: 'workspaces.shell.snooze' })} className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer"><Icon name="clock" /></button>
       </div>
     </div>
   );

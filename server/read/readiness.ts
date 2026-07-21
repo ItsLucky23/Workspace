@@ -25,7 +25,7 @@ export async function hostReadiness(now: number): Promise<HostReadiness> {
   const value: HostReadiness = {
     docker,
     claudeCli: claudeCliAvailable(),
-    push: (process.env.WORKSPACES_VAPID_PUBLIC ?? '').trim().length > 0 && (process.env.WORKSPACES_VAPID_PRIVATE ?? '').trim().length > 0,
+    push: (process.env.WS_VAPID_PUBLIC ?? '').trim().length > 0 && (process.env.WS_VAPID_PRIVATE ?? '').trim().length > 0,
     secretManager: (process.env.WORKSPACES_ENC_KEY ?? '').trim().length > 0,
   };
   hostCache = { at: now, value };

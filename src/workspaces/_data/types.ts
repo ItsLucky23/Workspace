@@ -416,6 +416,9 @@ export interface ContentSnapshot {
   assetLibrary: { id: string; kind: string; url: string; pieceId: string; pieceTitle: string; starred: boolean; createdAt: number }[];
   mediaCosts: { feature: string; cents: number }[];   // Q1: per-feature € estimate for the pre-spend confirm
   mediaModels: { feature: string; model: string }[];   // P3: per-feature model overrides (empty = env/default)
+  //? Workspace-wide media generation defaults — env (WS_MEDIA_CHEAP / WS_SCENE_CONTINUITY / ELEVENLABS_VOICE_ID)
+  //? is the host fallback; these override it per workspace. `voiceId` is a public identifier, not a secret.
+  mediaPrefs: { cheap: boolean; sceneContinuity: boolean; voiceId: string };
   shortLinks: ShortLinkSummary[];       // H2/H3 (ads): trackable links + clicks (the A/B comparison data)
   //? CI — the read-only comment inbox (cached comments on published posts) + platform notes
   //? ('comments.youtubeReconnect' → the one-time re-consent hint).

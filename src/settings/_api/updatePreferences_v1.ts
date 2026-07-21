@@ -1,6 +1,6 @@
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueGlobalAction } from '../../../server/orchestrator/globalOps';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -43,21 +43,16 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (typeof incoming.pushOnAutomation === 'boolean') sanitized.pushOnAutomation = incoming.pushOnAutomation;
   if (typeof incoming.pushOnAiSuggestion === 'boolean') sanitized.pushOnAiSuggestion = incoming.pushOnAiSuggestion;
 
-  const [writeError, updated] = await functions.tryCatch.tryCatch(() => enqueueGlobalRouteWrite(
-    { kind: 'account.preferences', userId: user.id },
-    async () => {
-      const saved = await functions.db.prisma.user.update({ where: { id: user.id }, data: { preferences: sanitized } });
-      if (user.token) {
-        //? Bind to a local first so the object literal isn't subject to excess property checks against
-        //? `BaseSessionLayout` — `preferences` lives on the project's extended `SessionLayout`.
-        const merged = { ...user, preferences: saved.preferences };
-        await functions.session.saveSession(user.token, merged);
-      }
-      return saved;
-    },
-  ));
+  const [writeError, updated] = await functions.tryCatch.tryCatch(() => enqueueGlobalAction({
+    op: 'account-preferences', userId: user.id, payload: { preferences: sanitized },
+  }));
 
-  if (writeError || !updated) return { status: 'error', errorCode: 'common.500' };
+  if (writeError || !updated || !('updated' in updated) || !updated.updated) return { status: 'error', errorCode: 'common.500' };
+  if (user.token) {
+    //? Sessions are a derived cache. Never persist/replay the bearer token in GlobalJob payloads.
+    const merged = { ...user, preferences: sanitized };
+    await functions.session.saveSession(user.token, merged);
+  }
 
   return { status: 'success', result: { preferences: sanitized } };
 };

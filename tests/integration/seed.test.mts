@@ -33,7 +33,8 @@ try {
   eq(await prisma.ticket.count({ where: { workspaceId } }), 12, 'Ticket count');
   eq(await prisma.sprint.count({ where: { workspaceId } }), 2, 'Sprint count (backlog is virtual)');
   eq(await prisma.workspaceSuggestion.count({ where: { workspaceId } }), 2, 'WorkspaceSuggestion count');
-  eq(await prisma.infoSource.count({ where: { workspaceId } }), DOCS.length + SKILLS.length, 'InfoSource count (DOCS + SKILLS)');
+  eq(await prisma.infoSource.count({ where: { workspaceId } }), DOCS.length, 'InfoSource count (context documents only)');
+  eq(await prisma.skill.count({ where: { workspaceId, skillType: 'capability' } }), SKILLS.length, 'canonical capability Skill count');
   eq(await prisma.envVar.count({ where: { workspaceId } }), 4, 'EnvVar count');
   eq(await prisma.integrationTool.count({ where: { workspaceId } }), 2, 'IntegrationTool count');
   eq(await prisma.invite.count({ where: { workspaceId } }), 1, 'Invite count');

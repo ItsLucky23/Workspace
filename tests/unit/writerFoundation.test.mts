@@ -85,9 +85,10 @@ const [validBuiltinsError] = tryCatchSync(() => assertValidInternalAction({ ...i
 eq(validBuiltinsError, null, 'the empty workspace-builtins InternalOp passes runtime validation');
 assert(rejectsInternal({ ...internalBase, op: 'workspace-builtins-ensure', target: {}, payload: { injected: true } }), 'workspace-builtins rejects injected payload fields');
 assert(rejectsInternal({ ...internalBase, op: 'design-library-write', target: {}, payload: { mode: 'save', kind: 'theme', name: 'Theme', content: {} } }), 'a replayable design save requires a deterministic artifact id');
-for (const unsafeReplay of ['brand-import', 'style-import', 'dockerfile-save', 'worktree-file-save'] as const) {
-  assert(!CRASH_REPLAYABLE_INTERNAL_OPS.includes(unsafeReplay), `${unsafeReplay} stays out of crash replay until it has an entity CAS`);
+for (const casReplay of ['brand-import', 'style-import', 'dockerfile-save', 'worktree-file-save'] as const) {
+  assert(CRASH_REPLAYABLE_INTERNAL_OPS.includes(casReplay), `${casReplay} is crash-replayable now that it carries an entity CAS`);
 }
+assert(rejectsInternal({ ...internalBase, op: 'brand-import', target: { expectedVersion: -1 }, payload: { kit: {} } }), 'entity CAS versions cannot be negative');
 
 const replayedRouteJob = internalActionFromSignal({
   workspaceId: 'workspace-a',

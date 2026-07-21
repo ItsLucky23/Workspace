@@ -179,10 +179,10 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     //? KEY NAMES ONLY — the value column (plaintext or encrypted) is never selected.
     prisma.envVar.findMany({ where: { workspaceId }, select: { key: true }, take: 40, orderBy: { key: 'asc' } }),
     prisma.pipeline.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { stages: true, enabled: true }, take: 5 }),
-    //? Parity wave — roles (roleKey refs), workflow-snippet skills (skill-toggle) and the project's
-    //? monorepo Service rows (service-delete) — same tenant-scoped/capped pattern.
+    //? Parity wave — roles (roleKey refs), canonical workflow capabilities (skill-toggle) and the
+    //? project's monorepo Service rows (service-delete) — same tenant-scoped/capped pattern.
     prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true, perms: true }, take: 12 }),
-    prisma.infoSource.findMany({ where: { workspaceId, mode: 'skill' }, select: { id: true, name: true, enabled: true }, take: 20 }),
+    prisma.skill.findMany({ where: { workspaceId, skillType: 'capability', OR: [{ projectId: activeProjectId }, { projectId: null }] }, select: { id: true, name: true, enabled: true }, take: 20 }),
     prisma.service.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 12 }),
     prisma.migration.findMany({ where: { workspaceId, projectId: activeProjectId, status: 'pending' }, select: { id: true, name: true, envKind: true }, take: 12, orderBy: { createdAt: 'desc' } }),
   ]);

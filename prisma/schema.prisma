@@ -161,6 +161,7 @@ model Workspace {
 
   // --- settings / field sweep (04b §13) ---
   timezone              String   @default("UTC")         // D55 — IANA tz; anchors cron + budget window reset + sprint dates
+  importCompleted        Boolean  @default(false)          // durable global workspace-import completion marker
   presetKey             String   @default("professional")// D1/D18 — 'simple'|'advanced'|'professional' (provenance only; tiers editable after)
   pricing               Json?                            // D31 — per-model price map (editable; zero-out → tokens-only cost chips)
 
@@ -425,6 +426,27 @@ model SchemaVersion {
   name      String
   rows      Int      @default(0)
   appliedAt DateTime @default(now())
+}
+
+//? Durable, encrypted account/global Conductor jobs. Unlike workspace signals these have no tenant yet
+//? (account mutations and imports can create one), so they use a dedicated global lease + replay queue.
+model GlobalJob {
+  id          String    @id @map("_id") @db.ObjectId
+  kind        String
+  userId      String?   @db.ObjectId
+  dedupKey    String    @unique
+  payloadEnc  String
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  result      Json?
+  lastError   String?
+  claimedAt   DateTime?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model AutomationRun {
@@ -1171,6 +1193,22 @@ model WorkspaceTrigger {
   @@index([workspaceId, on, enabled])
 }
 
+//? Entity-level CAS fence shared by typed route jobs and direct Conductor writes. A writer captures the
+//? current version before slow/external work; completion only applies while that exact version still wins.
+model WorkspaceEntityVersion {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId   String   @db.ObjectId
+  entityKey     String
+  version       Int      @default(0)
+  lastRequestId String?
+  contentHash   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([workspaceId, entityKey])
+  @@index([workspaceId, updatedAt])
+}
+
 //? Durable signal transport (B-O6). APPEND-ONLY (04b §11a). The Conductor /
 //? Workspace-AI consumes serially; `seq` (monotonic) + `processedAt` give the
 //? serial-consumption ordering (04 §3). Survives restart; part of the audit.
@@ -1888,20 +1926,29 @@ model DocumentRevision {
 //? resettable, not deletable. The humanizer's instruction embeds the ADR-0015 integrity boundary
 //? (human tone yes, AI-detection evasion never).
 model Skill {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  workspaceId String   @db.ObjectId
-  slug        String                                  // stable key, e.g. 'humanizer' (unique per workspace)
-  name        String
-  instruction String                                  // the prompt block injected at matching apply-points
-  examples    String   @default("")                   // optional few-shot examples appended under the instruction
-  applyPoints String[] @default([])                   // apply-point group ids; [] or ['all'] = every AI run
-  enabled     Boolean  @default(false)                // OFF until the user turns it on (consent-first)
-  builtin     Boolean  @default(false)                // seeded default (not deletable, instruction resettable)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId        String   @db.ObjectId
+  projectId          String?  @db.ObjectId
+  slug               String                                  // stable key, e.g. 'humanizer' (unique per workspace)
+  name               String
+  description        String?
+  status             String?
+  instruction        String                                  // the prompt block injected at matching apply-points
+  examples           String   @default("")                   // optional few-shot examples appended under the instruction
+  applyPoints         String[] @default([])                   // apply-point group ids; [] or ['all'] = every AI run
+  skillType           String   @default("instruction")         // instruction | capability (legacy workflow tool)
+  usedByStages        String[] @default([])                   // exact stage assignments migrated from InfoSource
+  kind                String?
+  model               String?
+  legacyInfoSourceId  String?  @db.ObjectId
+  enabled             Boolean  @default(false)                // OFF until the user turns it on (consent-first)
+  builtin             Boolean  @default(false)                // seeded default (not deletable, instruction resettable)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([workspaceId, enabled])
   @@index([workspaceId, slug])
+  @@index([legacyInfoSourceId])
 }
 
 //? A curated INSPIRATION/reference example a workspace collects (a great ad, thumbnail, video intro, hook).

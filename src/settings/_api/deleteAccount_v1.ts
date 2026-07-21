@@ -1,10 +1,8 @@
-import path from 'node:path';
-import { unlink } from 'node:fs/promises';
-import { dispatchHook, getUploadsDir } from '@luckystack/core';
-import { revokeUserSessions, verifyPassword, getUserAdapter } from '@luckystack/login';
+import { dispatchHook } from '@luckystack/core';
+import { verifyPassword, getUserAdapter } from '@luckystack/login';
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueGlobalAction } from '../../../server/orchestrator/globalOps';
 
 export const rateLimit: number | false = 3;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -59,18 +57,12 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     return { status: 'error', errorCode: 'api.internalServerError' };
   }
 
-  await enqueueGlobalRouteWrite(
-    { kind: 'account.delete', userId: user.id },
-    async () => {
-      //? Wipe every session through the adapter. `revokeUserSessions` calls `adapter.untrackActive` for each
-      //? token, so raw Redis deletion is unnecessary and would bypass custom adapters.
-      await revokeUserSessions(user.id);
-      await adapter.delete?.(user.id);
-      //? Remove the uploaded avatar so no PII file survives the account. Missing files are harmless.
-      await functions.tryCatch.tryCatch(() => unlink(path.join(getUploadsDir(), `${user.id}.webp`)));
-      return true;
-    },
-  );
+  const deleted = await enqueueGlobalAction({
+    op: 'account-delete',
+    userId: user.id,
+    payload: { ...(dbUser?.email ? { email: dbUser.email } : {}) },
+  });
+  if (!('deleted' in deleted) || !deleted.deleted) return { status: 'error', errorCode: 'common.500' };
 
   //? Observational post-hook — cascade-clean external state (Stripe / S3),
   //? audit, goodbye email.

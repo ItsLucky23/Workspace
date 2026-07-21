@@ -13,6 +13,7 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 interface ContentSettingsInput {
   op: string; clientRequestId: string;
   capCents?: number; alertPct?: number; enabled?: boolean;
+  cheap?: boolean; sceneContinuity?: boolean; voiceId?: string;
 }
 interface ContentSettingsOk { status: 'success' }
 interface ContentSettingsErr { status: 'error'; errorCode: string }
@@ -75,6 +76,29 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.ok(budget === null, 'no budget row was written for the rejected call');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId, outsider.id]);
+      }
+    },
+  },
+  {
+    name: 'save-media-provider persists a workspace-wide cheap-mode pref (__media_cheap EnvVar post-condition)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'contentsettings_c3');
+      try {
+        await joinRoom(ctx, workspaceId);
+        //? The pref rides the SAME save-media-provider op as provider keys/models (no new verb); presence-based,
+        //? so sending only `cheap` writes just the `__media_cheap` EnvVar and leaves keys/models untouched.
+        const res = await ctx.callSync<ContentSettingsInput, ContentSettingsResponse>(
+          { op: 'save-media-provider', clientRequestId: `cs-c3-${String(Date.now())}`, cheap: true },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'success', 'contentSettings returns status "success"');
+
+        const row = await poll(() => ctx.prisma.envVar.findFirst({ where: { workspaceId, key: '__media_cheap' } }));
+        ctx.expect.ok(row !== null, 'the Conductor stored the __media_cheap pref (post-condition, not just the ack)');
+        ctx.expect.eq(row?.value, '1', 'cheap=true is stored as "1"');
+        ctx.expect.eq(row?.secret, false, 'a generation-default pref is plaintext, not an encrypted secret');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
   },

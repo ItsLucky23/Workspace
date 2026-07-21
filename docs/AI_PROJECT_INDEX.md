@@ -76,7 +76,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (65)
+## Sync routes (66)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -98,6 +98,7 @@
 | `sync/workspaces/contentAssetDelta/v1` | yes | — | login | — | yes | — | Workspaces — [content-asset-delta] BROADCAST-ONLY realtime carrier. Mid-generation media jobs |
 | `sync/workspaces/contentControl/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [content-*] content-generation writes via `_sync` (U2 depth-program). ONE route for the |
 | `sync/workspaces/contentDirty/v1` | yes | — | login | — | yes | — | Workspaces — [content-dirty] BROADCAST-ONLY realtime carrier. A coarse "the content slice changed" |
+| `sync/workspaces/contentPieceDelta/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 | `sync/workspaces/contentSettings/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `sync/workspaces/copyWorkspaceAssets/v1` | yes | — | login | — | yes | — | Workspaces — [copy-workspace-assets] via `_sync` (FREEDOM_PROGRAM R2). Copy the user-authored styles + the |
 | `sync/workspaces/customTask/v1` | yes | — | login | — | yes | — | Workspaces — [custom-task] ops via `_sync` (FREEDOM_PROGRAM E5). Create/update/delete a user-defined AI |
@@ -132,7 +133,7 @@
 | `sync/workspaces/serviceProvision/v1` | yes | — | login | — | yes | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
 | `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | yes | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillsControl/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
-| `sync/workspaces/skillToggle/v1` | yes | — | login | — | yes | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a skill |
+| `sync/workspaces/skillToggle/v1` | yes | — | login | — | yes | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a workflow capability |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
 | `sync/workspaces/sprintEdit/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-edit] REALTIME write via `_sync`. Activates / renames / (re)dates a sprint, |
 | `sync/workspaces/stageCreate/v1` | yes | — | login | — | yes | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
@@ -152,13 +153,14 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 23 |
+| `ItsLucky23` | 24 |
 | _(unowned)_ | 106 |
 
-**Test coverage**: 128/129 routes have a per-route `.tests.ts`.
+**Test coverage**: 128/130 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
+- `sync/workspaces/contentPieceDelta/v1`
 - `sync/workspaces/workspaceDirty/v1`
 
 ## Pages (38)

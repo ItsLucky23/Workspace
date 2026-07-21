@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 424,
-    "edges": 546,
-    "symbols": 813,
-    "callEdges": 266
+    "nodes": 426,
+    "edges": 555,
+    "symbols": 816,
+    "callEdges": 267
   },
   "nodes": [
     {
@@ -1294,6 +1294,11 @@
       "route": "sync/workspaces/contentDirty/v1"
     },
     {
+      "id": "workspaces/_sync/contentPieceDelta_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/contentPieceDelta/v1"
+    },
+    {
       "id": "workspaces/_sync/contentSettings_server_v1.tests.ts",
       "kind": "other",
       "route": null
@@ -1950,6 +1955,11 @@
     },
     {
       "id": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "kind": "other",
       "route": null
     },
@@ -2783,6 +2793,10 @@
       "to": "workspaces/_functions/controlApi.ts"
     },
     {
+      "from": "workspaces/_sync/contentPieceDelta_server_v1.ts",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
       "from": "workspaces/_sync/contentSettings_server_v1.ts",
       "to": "workspaces/_functions/controlApi.ts"
     },
@@ -3428,6 +3442,10 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/_components/primitives.tsx"
     },
     {
@@ -3436,11 +3454,19 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/develop/board/[ticketId]/liveEditor.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/develop/board/ArtifactLinkPicker.tsx"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/DiffView.tsx",
@@ -3567,6 +3593,22 @@
       "to": "workspaces/_components/primitives.tsx"
     },
     {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/develop/board/boardFilters.ts",
       "to": "workspaces/_data/types.ts"
     },
@@ -3633,6 +3675,10 @@
     {
       "from": "workspaces/develop/board/KanbanCard.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/KanbanCard.tsx",
+      "to": "workspaces/develop/board/ArtifactLinkPicker.tsx"
     },
     {
       "from": "workspaces/develop/board/OnboardingBanner.tsx",
@@ -4358,6 +4404,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -4419,8 +4466,10 @@
       "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
@@ -4669,8 +4718,10 @@
       "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/board/page.tsx",
@@ -4802,6 +4853,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -4904,6 +4956,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -4979,6 +5032,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -5128,6 +5182,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
+      "workspaces/_sync/contentPieceDelta_server_v1.ts",
       "workspaces/_sync/saveGitConfig_server_v1.ts",
       "workspaces/_sync/saveIntegration_server_v1.ts",
       "workspaces/_sync/saveStageConfig_server_v1.tests.ts",
@@ -5158,6 +5213,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -5228,6 +5284,7 @@
       "workspaces/_sync/commentInbox_server_v1.ts",
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "workspaces/_sync/contentControl_server_v1.ts",
+      "workspaces/_sync/contentPieceDelta_server_v1.ts",
       "workspaces/_sync/contentSettings_server_v1.ts",
       "workspaces/_sync/documentsControl_server_v1.ts",
       "workspaces/_sync/mrAction_server_v1.ts",
@@ -5263,6 +5320,7 @@
       "workspaces/develop/backlog/BulkBar.tsx",
       "workspaces/develop/backlog/forms.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
@@ -5406,10 +5464,12 @@
       "workspaces/develop/answers/page.tsx",
       "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
       "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
@@ -5543,6 +5603,12 @@
     "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
+    "workspaces/develop/board/ArtifactLinkPicker.tsx": [
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/page.tsx"
+    ],
     "workspaces/develop/board/boardFilters.ts": [
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/page.tsx"
@@ -5666,56 +5732,56 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 94,
+      "dependents": 96,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 86,
-      "directDependents": 47
+      "dependents": 88,
+      "directDependents": 48
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 79,
-      "directDependents": 69
+      "dependents": 80,
+      "directDependents": 70
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 72,
+      "dependents": 73,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 71,
+      "dependents": 72,
       "directDependents": 10
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 70,
-      "directDependents": 64
+      "dependents": 71,
+      "directDependents": 65
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 63,
-      "directDependents": 54
+      "dependents": 65,
+      "directDependents": 56
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 44,
+      "dependents": 46,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 44,
-      "directDependents": 33
+      "dependents": 46,
+      "directDependents": 35
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -8624,6 +8690,24 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/contentPieceDelta_server_v1.ts::<module>",
+      "file": "workspaces/_sync/contentPieceDelta_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/contentPieceDelta_server_v1.ts::contentPieceDeltaPiece",
+      "file": "workspaces/_sync/contentPieceDelta_server_v1.ts",
+      "name": "contentPieceDeltaPiece",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/contentPieceDelta_server_v1.ts::main",
+      "file": "workspaces/_sync/contentPieceDelta_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/contentSettings_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/contentSettings_server_v1.tests.ts",
       "name": "<module>",
@@ -11108,6 +11192,10 @@
       "to": "workspaces/_sync/contentControl_server_v1.ts::isContentOp"
     },
     {
+      "from": "workspaces/_sync/contentPieceDelta_server_v1.ts::main",
+      "to": "workspaces/_sync/contentPieceDelta_server_v1.ts::contentPieceDeltaPiece"
+    },
+    {
       "from": "workspaces/_sync/contentSettings_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/contentSettings_server_v1.tests.ts::fn"
     },
@@ -12097,6 +12185,9 @@
     ],
     "workspaces/_sync/contentControl_server_v1.ts::isContentOp": [
       "workspaces/_sync/contentControl_server_v1.ts::main"
+    ],
+    "workspaces/_sync/contentPieceDelta_server_v1.ts::contentPieceDeltaPiece": [
+      "workspaces/_sync/contentPieceDelta_server_v1.ts::main"
     ],
     "workspaces/_sync/contentSettings_server_v1.tests.ts::fn": [
       "workspaces/_sync/contentSettings_server_v1.tests.ts::poll",

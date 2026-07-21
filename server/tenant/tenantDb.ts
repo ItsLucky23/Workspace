@@ -35,6 +35,7 @@ export const TENANT_MODELS = new Set<string>([
   'QuestionSet',
   'WorkspaceTrigger',
   'WorkspaceSignal',
+  'WorkspaceEntityVersion',
   'WorkspaceSuggestion',
   'WorkspaceNote',
   'SpendRecord',

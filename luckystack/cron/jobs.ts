@@ -38,6 +38,7 @@ import { runGitlabSyncTick, SYNC_INTERVAL_MS } from '../../server/git/gitlabSync
 import { runBackup, BACKUP_INTERVAL_MS, BACKUP_ENABLED } from '../../server/db/backup';
 import { runWorkspaceBuiltinsBackfill, WORKSPACE_BUILTINS_BACKFILL_MS } from '../../server/bootstrap/workspaceBuiltins';
 import { RUNTIME_JOB_RECOVERY_MS, runRuntimeJobRecovery } from '../../server/orchestrator/runtimeJobs';
+import { GLOBAL_JOB_RECOVERY_MS, runGlobalJobRecovery } from '../../server/orchestrator/globalOps';
 
 //? O3 — fire due scheduled posts.
 registerCronJob({ name: 'scheduled-publish', schedule: { everyMs: PUBLISH_INTERVAL_MS }, handler: async () => { await runScheduledPublish(getPrismaClient(), Date.now()); } });
@@ -72,6 +73,9 @@ registerCronJob({ name: 'route-job-recovery', schedule: { everyMs: ROUTE_JOB_REC
 
 //? Slow Docker/proxy launches keep a durable prepare/completion pair; re-drive stranded prepares.
 registerCronJob({ name: 'runtime-job-recovery', schedule: { everyMs: RUNTIME_JOB_RECOVERY_MS }, runOnStart: true, handler: async () => { await runRuntimeJobRecovery(); } });
+
+//? Account/global jobs use encrypted payloads + a renewable global writer lease; replay stranded writes.
+registerCronJob({ name: 'global-job-recovery', schedule: { everyMs: GLOBAL_JOB_RECOVERY_MS }, runOnStart: true, handler: async () => { await runGlobalJobRecovery(); } });
 
 //? F38 — retry failed/stranded automation runs (durable run history + dead letter).
 registerCronJob({ name: 'automation-recovery', schedule: { everyMs: AUTOMATION_RECOVERY_MS }, handler: async () => { await runAutomationRecovery(getPrismaClient()); } });

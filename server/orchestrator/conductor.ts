@@ -14,7 +14,7 @@
 import { getPrismaClient, redis, formatKey, tryCatch } from '@luckystack/core';
 import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/client';
 
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { currentWorkspaceId, hasTenantScope, runInTenant } from '../tenant/tenantContext';
 import { encryptSecret } from '../crypto/secretBox';
@@ -92,15 +92,15 @@ import { ensureEnvironment, deployEnvironment, teardownEnvironment, rollbackEnvi
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
 import { isEditorRunning, ticketEditGuard } from './editGuard';
-import { saveDockerfileDraft } from '../container/dockerfileDraft';
-import { writeWorktreeFile } from '../container/worktreeFiles';
+import { extendsBase, saveDockerfileDraft } from '../container/dockerfileDraft';
+import { isSafeWorktreePath, writeWorktreeFile } from '../container/worktreeFiles';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferredUntil, inFlightByWorkspace, recoveryReservation, withReservationRenewal } from './capacity';
 import { ciPublicIntentId, ciPublicIntentSignalId, runtimeLaunchCompletionId, stageForgeIntentId } from './actionIds';
 import { beginArtifact, completeArtifact, isArtifactKind } from '../studio/generate';
 import { withStudioBriefLock } from '../studio/briefLock';
 import { persistProjectDoc } from '../ai/docsGen';
 import { runAgentRecovery } from './agentControl';
-import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastWorkspaceDirty } from '../read/broadcast';
+import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastContentPieceDelta, broadcastWorkspaceDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
@@ -111,14 +111,15 @@ import { resolveTemplate, buildSkeleton, buildTemplateStructure, parseSections }
 import { activeThemeTokens, designTokenCssPath, patchManagedThemeCss } from '../designer/applyTokens';
 import { deleteDesignArtifact, saveDesignArtifact, setActiveDesignArtifact } from '../designer/library';
 import { refreshComments } from '../content/commentInbox';
-import { exportStyleSet, importStyleSet } from '../content/styles';
-import { exportBrandKit, importBrandKit } from '../studio/brand';
+import { exportStyleSet, importStyleSet, parseStyleSet } from '../content/styles';
+import { exportBrandKit, parseBrandKit, saveBrandLibrary } from '../studio/brand';
 import { applyAutomationEvent, fireEvent } from '../automation/triggers';
 import { fireCronTrigger } from '../automation/cron';
 import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
 import { CRASH_REPLAYABLE_INTERNAL_OPS, INTERNAL_OP_NAMES, internalActionFromSignal, internalActionReplayKeys, isInternalOp, type AgentRecoveryTransitionInternalAction, type InternalAction, type InternalOp, type StageDeferUpdateInternalAction } from './internalOps';
+import { applyEntityCas, dockerfileEntityKey, ENTITY_VERSION_KEYS, projectImageEntityKey, readEntityVersion, worktreeFileEntityKey } from './entityVersion';
 import {
   applyStageActivationComplete,
   applyStageDeferUpdate,
@@ -273,7 +274,7 @@ function readHooks(v: unknown): Record<string, boolean> {
 
 //? Workspace teardown — delete every tenant-scoped row, then the workspace (04b §11d).
 //? Live-container teardown (07 §A) precedes this in Fase 2; there are none in Fase 1.
-async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
+export async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   //? Mongo has no relational cascade here. Keep this exhaustive over every tenant-owned Prisma
   //? delegate: deleting the Workspace row first would strand unreadable data indefinitely.
   await prisma.ticketEvent.deleteMany({ where: { workspaceId } });
@@ -287,6 +288,7 @@ async function cascadeDeleteWorkspace(workspaceId: string): Promise<void> {
   await prisma.questionSet.deleteMany({ where: { workspaceId } });
   await prisma.workspaceTrigger.deleteMany({ where: { workspaceId } });
   await prisma.workspaceSignal.deleteMany({ where: { workspaceId } });
+  await prisma.workspaceEntityVersion.deleteMany({ where: { workspaceId } });
   await prisma.workspaceSuggestion.deleteMany({ where: { workspaceId } });
   await prisma.workspaceNote.deleteMany({ where: { workspaceId } });
   await prisma.workspaceChatMessage.deleteMany({ where: { workspaceId } });
@@ -923,16 +925,6 @@ export async function enqueueWorkspaceRouteWrite<T>(
   return result;
 }
 
-export async function enqueueGlobalRouteWrite<T>(request: ConductorRouteWrite, write: () => Promise<T>): Promise<T> {
-  if (!/^[a-z0-9][a-z0-9.-]{0,79}$/.test(request.kind)) throw new Error('[conductor] invalid global route-write identity');
-  let result: T | undefined;
-  const actionPromise = globalChain.then(() => runInWriterContext(GLOBAL_WRITER_SCOPE, async () => { result = await write(); }, undefined, `route:${request.kind}:${request.clientRequestId ?? randomUUID()}`));
-  globalChain = actionPromise.catch((error: unknown) => { console.error(`[conductor] global route write ${request.kind} failed:`, error); });
-  await actionPromise;
-  if (result === undefined) throw new Error('[conductor] global route write completed without a result');
-  return result;
-}
-
 //? A handled action may reject without throwing (for example a failed provider operation).
 //? Transport callers treat that as a failed ACK while successful `void` results remain valid.
 export function isControlActionFailure(result: unknown): boolean {
@@ -1035,14 +1027,16 @@ async function enqueueClaimedWriterAction(
   options: EnqueueControlActionOptions,
   dedupKey: string,
 ): Promise<EnqueuedControlAction> {
-  //? Login-only public ops (create-workspace / accept-invite) carry NO workspace yet: there is no
-  //? per-workspace signal or lease. They serialize on the global chain and receive the explicit
-  //? global writer context only around executeAction; internal actions are always workspace-scoped.
+  //? Login-only public ops (create-workspace / accept-invite) carry NO workspace yet. They share the
+  //? renewable global lease with typed account/import jobs, so multiple app instances still expose one
+  //? authoritative global writer rather than one in-process chain per instance.
   if (!action.workspaceId) {
     let result: unknown;
-    const actionPromise = globalChain.then(async () => {
-      result = await runInWriterContext(GLOBAL_WRITER_SCOPE, () => executeAction(action), undefined, dedupKey);
-    });
+    const runGlobalLease = options.workspaceLease ?? withWorkspaceLease;
+    const actionPromise = globalChain.then(() => runGlobalLease(GLOBAL_WRITER_SCOPE, async (lease) => {
+      result = await runInWriterContext(GLOBAL_WRITER_SCOPE, () => executeAction(action), lease, dedupKey);
+      lease.assertHeld();
+    }));
     //? Keep the queue tail recovered for later actions, but await the UNRECOVERED action promise
     //? below so this caller observes execute failures instead of receiving a false-success ACK.
     globalChain = actionPromise.catch((error: unknown) => {
@@ -1377,32 +1371,73 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     return { applied: true, changed, keys: [action.target.artifactId] };
   }
   if (action.op === 'project-docs-complete') {
-    await persistProjectDoc(prisma, { workspaceId: action.workspaceId, content: action.payload.content, summary: action.payload.summary });
-    return { applied: true };
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.projectDocs,
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(action.payload.content).digest('hex'),
+    }, () => persistProjectDoc(prisma, { workspaceId: action.workspaceId, content: action.payload.content, summary: action.payload.summary }));
+    return cas.applied ? { applied: true } : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'project-image-complete') {
-    // luckystack-allow tenant-scope: executeAction already asserted matching tenant/writer context and this mutation also includes action.workspaceId in where.
-    const updated = await prisma.project.updateMany({
-      where: { workspaceId: action.workspaceId, id: action.target.projectId },
-      data: { baseImageRef: action.payload.tag },
-    });
-    return updated.count === 1 ? { applied: true } : { ok: false, error: 'project.notFound' };
+    const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId, id: action.target.projectId }, select: { id: true } });
+    if (!project) return { ok: false, error: 'project.notFound' };
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: projectImageEntityKey(action.target.projectId),
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(action.payload.tag).digest('hex'),
+    }, () => prisma.project.updateMany({ where: { workspaceId: action.workspaceId, id: action.target.projectId }, data: { baseImageRef: action.payload.tag } }));
+    return cas.applied ? { applied: true } : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'brand-import') {
-    const imported = await importBrandKit(prisma, action.workspaceId, action.payload.kit);
-    return imported ? { applied: true } : { ok: false, error: 'brand.invalidKit' };
+    const parsed = parseBrandKit(action.payload.kit);
+    if (!parsed) return { ok: false, error: 'brand.invalidKit' };
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.brandLibrary,
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(JSON.stringify(parsed)).digest('hex'),
+    }, () => saveBrandLibrary(prisma, action.workspaceId, parsed));
+    return cas.applied ? { applied: true } : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'style-import') {
-    const imported = await importStyleSet(prisma, action.workspaceId, action.payload.styles);
-    return { applied: true, imported };
+    const parsed = parseStyleSet(action.payload.styles);
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.stylePresets,
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(JSON.stringify(parsed)).digest('hex'),
+    }, () => importStyleSet(prisma, action.workspaceId, parsed));
+    return cas.applied ? { applied: true, imported: cas.result ?? 0 } : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'dockerfile-save') {
-    return saveDockerfileDraft(action.workspaceId, action.target.projectId, action.payload.dockerfile);
+    const project = await prisma.project.findFirst({ where: { workspaceId: action.workspaceId, id: action.target.projectId }, select: { id: true } });
+    if (!project) return { ok: false, error: 'project.notFound' };
+    const content = action.payload.dockerfile.trim();
+    if (content.length === 0) return { ok: false, error: 'dockerfile.empty' };
+    if (!extendsBase(content)) return { ok: false, error: 'dockerfile.invalidBase' };
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: dockerfileEntityKey(action.target.projectId),
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(content).digest('hex'),
+    }, async () => {
+      const saved = saveDockerfileDraft(action.workspaceId, action.target.projectId, content);
+      if (saved.ok) await prisma.project.updateMany({ where: { workspaceId: action.workspaceId, id: action.target.projectId }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
+      return saved;
+    });
+    return cas.applied ? (cas.result ?? { ok: true }) : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'worktree-file-save') {
     const guard = await ticketEditGuard(prisma, action.workspaceId, action.target.ticketKey);
     if (!guard.allowed) return { ok: false, error: guard.reason ?? 'editor.locked' };
-    return writeWorktreeFile(action.workspaceId, action.target.ticketKey, action.payload.path, action.payload.content);
+    if (!isSafeWorktreePath(action.payload.path)) return { ok: false, error: 'editor.pathInvalid' };
+    const cas = await applyEntityCas(prisma, {
+      workspaceId: action.workspaceId, entityKey: worktreeFileEntityKey(action.target.ticketKey, action.payload.path),
+      expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
+      contentHash: createHash('sha256').update(action.payload.content).digest('hex'),
+    }, async () => {
+      const saved = await writeWorktreeFile(action.workspaceId, action.target.ticketKey, action.payload.path, action.payload.content);
+      if (!saved.ok) throw new Error(saved.error ?? 'editor.writeFailed');
+      return saved;
+    });
+    return cas.applied ? (cas.result ?? { ok: true }) : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'chat-turn-record') {
     const identities = [
@@ -2491,17 +2526,30 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const previewAssetUrl = str(payload, 'previewAssetUrl');
       const previewKind = str(payload, 'previewKind');
       const preview = { ...(previewAssetUrl ? { previewAssetUrl } : {}), ...(previewKind ? { previewKind } : {}) };
-      const existing = await prisma.stylePreset.findFirst({ where: { workspaceId: action.workspaceId, feature, key } });
-      if (existing) return prisma.stylePreset.update({ where: { id: existing.id }, data: { label, systemPrompt, ...preview } });
-      return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false, ...preview } });
+      const expectedVersion = await readEntityVersion(prisma, action.workspaceId, ENTITY_VERSION_KEYS.stylePresets);
+      const cas = await applyEntityCas(prisma, {
+        workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.stylePresets,
+        expectedVersion, requestId: action.clientRequestId,
+        contentHash: createHash('sha256').update(JSON.stringify({ feature, key, label, systemPrompt, preview })).digest('hex'),
+      }, async () => {
+        const existing = await prisma.stylePreset.findFirst({ where: { workspaceId: action.workspaceId, feature, key } });
+        if (existing) return prisma.stylePreset.updateMany({ where: { id: existing.id, workspaceId: action.workspaceId }, data: { label, systemPrompt, ...preview } });
+        return prisma.stylePreset.create({ data: { workspaceId: action.workspaceId, feature, key, label, systemPrompt, builtin: false, ...preview } });
+      });
+      return cas.applied ? cas.result : { ok: false, error: 'write.superseded' };
     }
     case 'delete-style': {
       //? Q3 — remove a per-workspace style (never a global builtin — the filter is workspace-scoped).
       const feature = str(payload, 'feature');
       const key = str(payload, 'key');
       if (!feature || !key) return;
-      await prisma.stylePreset.deleteMany({ where: { workspaceId: action.workspaceId, feature, key, builtin: false } });
-      return;
+      const expectedVersion = await readEntityVersion(prisma, action.workspaceId, ENTITY_VERSION_KEYS.stylePresets);
+      const cas = await applyEntityCas(prisma, {
+        workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.stylePresets,
+        expectedVersion, requestId: action.clientRequestId,
+        contentHash: createHash('sha256').update(`delete:${feature}:${key}`).digest('hex'),
+      }, () => prisma.stylePreset.deleteMany({ where: { workspaceId: action.workspaceId, feature, key, builtin: false } }));
+      return cas.applied ? undefined : { ok: false, error: 'write.superseded' };
     }
     //? GAP_SCAN A7 — store this workspace's platform APP credentials (the once-per-app YouTube/TikTok
     //? registration) encrypted at rest, so a self-hoster never has to edit `.env` + restart. Write-only:
@@ -2548,6 +2596,18 @@ async function executeAction(action: WriterAction): Promise<unknown> {
           ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
           : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: model, secret: false }, update: { value: model } }));
       }
+      //? Workspace-wide media generation defaults (Content → Settings), each overriding its host-env fallback
+      //? (WS_MEDIA_CHEAP / WS_SCENE_CONTINUITY / ELEVENLABS_VOICE_ID). Presence-based: a field only acts when the
+      //? client actually sent it, so a key/model save never clears an unrelated pref. Plaintext (not secrets).
+      const setPref = async (key: string, on: boolean, value: string): Promise<void> => {
+        await (on
+          ? prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value, secret: false }, update: { value } })
+          : prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } }));
+      };
+      if (typeof payload.cheap === 'boolean') await setPref('__media_cheap', payload.cheap, '1');
+      if (typeof payload.sceneContinuity === 'boolean') await setPref('__media_scene_continuity', payload.sceneContinuity, 'on');
+      const voiceId = str(payload, 'voiceId');
+      if (voiceId !== undefined) await setPref('__media_voice_id', voiceId.trim().length > 0, voiceId.trim());
       return;
     }
     case 'save-ai-provider': {
@@ -3102,18 +3162,24 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const toStage = str(payload, 'toStage');
       const dest = toStage && isContentStage(toStage) ? toStage : nextContentStage(piece.stageId);
       //? Past `publish` (no next stage) → mark the piece done.
-      if (!dest) return prisma.contentProject.update({ where: { id: piece.id }, data: { status: 'done' } });
-      return prisma.contentProject.update({ where: { id: piece.id }, data: { stageId: dest, status: 'idle' } });
+      //? `piece` was fetched scoped to this workspaceId above, so updating by its id is tenant-safe.
+      const updated = dest
+        ? await prisma.contentProject.update({ where: { id: piece.id }, data: { stageId: dest, status: 'idle' } }) // luckystack-allow tenant-scope: piece fetched scoped to workspaceId above
+        : await prisma.contentProject.update({ where: { id: piece.id }, data: { status: 'done' } }); // luckystack-allow tenant-scope: piece fetched scoped to workspaceId above
+      //? P7 — a single-piece structural change: push the ONE fresh piece (granular upsert) rather than the
+      //? coarse contentDirty full refetch. The `contentControl` route skips its contentDirty for this op.
+      await broadcastContentPieceDelta(prisma, action.workspaceId, contentProjectId);
+      return updated;
     }
     case 'content-archive': {
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
-      if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: true } });
+      if (contentProjectId) { await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: true } }); await broadcastContentPieceDelta(prisma, action.workspaceId, contentProjectId); }
       return;
     }
     case 'content-unarchive': {
       //? S2 — soft-undo of an archive: restore the piece. Non-destructive (the row was never deleted).
       const contentProjectId = str(target, 'contentProjectId') ?? str(payload, 'contentProjectId');
-      if (contentProjectId) await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: false } });
+      if (contentProjectId) { await prisma.contentProject.updateMany({ where: { workspaceId: action.workspaceId, id: contentProjectId }, data: { archived: false } }); await broadcastContentPieceDelta(prisma, action.workspaceId, contentProjectId); }
       return;
     }
     case 'save-custom-task': {
@@ -3167,9 +3233,22 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!sourceWorkspaceId || sourceWorkspaceId === action.workspaceId) return;
       const member = await prisma.workspaceMember.findFirst({ where: { workspaceId: sourceWorkspaceId, userId }, select: { id: true } });
       if (!member) return;
-      await importStyleSet(prisma, action.workspaceId, await exportStyleSet(prisma, sourceWorkspaceId));
+      const styles = await exportStyleSet(prisma, sourceWorkspaceId);
+      const styleVersion = await readEntityVersion(prisma, action.workspaceId, ENTITY_VERSION_KEYS.stylePresets);
+      await applyEntityCas(prisma, {
+        workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.stylePresets,
+        expectedVersion: styleVersion, requestId: `${action.clientRequestId}:styles`,
+        contentHash: createHash('sha256').update(JSON.stringify(styles)).digest('hex'),
+      }, () => importStyleSet(prisma, action.workspaceId, styles));
       const brand = await exportBrandKit(prisma, sourceWorkspaceId);
-      if (brand) await importBrandKit(prisma, action.workspaceId, brand);
+      if (brand) {
+        const brandVersion = await readEntityVersion(prisma, action.workspaceId, ENTITY_VERSION_KEYS.brandLibrary);
+        await applyEntityCas(prisma, {
+          workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.brandLibrary,
+          expectedVersion: brandVersion, requestId: `${action.clientRequestId}:brand`,
+          contentHash: createHash('sha256').update(JSON.stringify(brand)).digest('hex'),
+        }, () => saveBrandLibrary(prisma, action.workspaceId, brand));
+      }
       broadcastContentDirty(action.workspaceId);
       return;
     }
@@ -3447,11 +3526,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     }
     case 'skill-toggle': {
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
-      if (sourceId) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId }, data: { enabled: bool(payload, 'on') } });
+      if (!sourceId) return;
+      const skill = await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId, skillType: 'capability' }, data: { enabled: bool(payload, 'on') } });
+      //? The frozen op also toggles context documents on the Sources page. Capabilities moved to Skill;
+      //? context docs intentionally remain InfoSource, so fall back only when no canonical skill matched.
+      if (skill.count === 0) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId, mode: 'context-doc' }, data: { enabled: bool(payload, 'on') } });
       return;
     }
-    //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (Skill model; distinct from the
-    //? InfoSource 'skill-toggle' above). Create-or-edit; builtins are editable + resettable, never deletable.
+    //? SK1 (DOCUMENTS_AND_SKILLS) — prompt-instruction skills share the canonical Skill store with
+    //? workflow capabilities; skillType prevents either UI/control path from mutating the other semantic kind.
     case 'ai-skill-save': {
       const skillId = str(payload, 'skillId');
       const name = (str(payload, 'name') ?? '').trim();
@@ -3459,33 +3542,33 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const examples = str(payload, 'examples') ?? '';
       const applyPoints = Array.isArray(payload.applyPoints) ? payload.applyPoints.filter((p): p is string => typeof p === 'string' && (SKILL_APPLY_POINTS as readonly string[]).includes(p)) : [];
       if (skillId) {
-        await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { ...(name ? { name } : {}), instruction, examples, applyPoints } });
+        await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction' }, data: { ...(name ? { name } : {}), instruction, examples, applyPoints } });
         broadcastContentDirty(action.workspaceId);
         return;
       }
       if (!name) return;
       const slug = `${name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40) || 'skill'}-${Date.now().toString(36)}`;
-      const created = await prisma.skill.create({ data: { workspaceId: action.workspaceId, slug, name, instruction, examples, applyPoints, enabled: bool(payload, 'enabled') } });
+      const created = await prisma.skill.create({ data: { workspaceId: action.workspaceId, slug, name, instruction, examples, applyPoints, skillType: 'instruction', enabled: bool(payload, 'enabled') } });
       broadcastContentDirty(action.workspaceId);
       return { id: created.id };
     }
     case 'ai-skill-toggle': {
       const skillId = str(payload, 'skillId');
-      if (skillId) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { enabled: bool(payload, 'on') } }); broadcastContentDirty(action.workspaceId); }
+      if (skillId) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction' }, data: { enabled: bool(payload, 'on') } }); broadcastContentDirty(action.workspaceId); }
       return;
     }
     case 'ai-skill-delete': {
       const skillId = str(payload, 'skillId');
       //? builtins are never deletable (only resettable) — deleteMany's builtin:false filter enforces it.
-      if (skillId) { await prisma.skill.deleteMany({ where: { workspaceId: action.workspaceId, id: skillId, builtin: false } }); broadcastContentDirty(action.workspaceId); }
+      if (skillId) { await prisma.skill.deleteMany({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction', builtin: false } }); broadcastContentDirty(action.workspaceId); }
       return;
     }
     case 'ai-skill-reset': {
       const skillId = str(payload, 'skillId');
       if (!skillId) return;
-      const row = await prisma.skill.findFirst({ where: { workspaceId: action.workspaceId, id: skillId, builtin: true }, select: { slug: true } });
+      const row = await prisma.skill.findFirst({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction', builtin: true }, select: { slug: true } });
       const seed = row ? builtinSkillDefault(row.slug) : null;
-      if (seed) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId }, data: { name: seed.name, instruction: seed.instruction, applyPoints: seed.applyPoints, examples: '' } }); broadcastContentDirty(action.workspaceId); }
+      if (seed) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction' }, data: { name: seed.name, instruction: seed.instruction, applyPoints: seed.applyPoints, examples: '' } }); broadcastContentDirty(action.workspaceId); }
       return;
     }
     //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. The Conductor is the ONLY writer of

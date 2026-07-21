@@ -7,6 +7,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { checkMediaBudget } from '../media/budget';
 import { estimateMediaCostCents } from '../media/registry';
+import { loadWorkspaceMediaConfig } from '../media/workspaceKeys';
 import { resolveStyle } from './styles';
 import { runQueuedMediaAsset } from './queuedMediaJob';
 import { extractLastFrame, localizeAsset } from './render';
@@ -64,7 +65,9 @@ export async function decomposeIntoScenes(
   let costCents = 0;
   let stub = false;
   //? F3 — the previous clip's last frame (when continuity is on), fed as i2v conditioning to the next scene.
-  const continuity = sceneContinuityOn();
+  //? Per-workspace `__media_scene_continuity` (Content → Settings) OR the WS_SCENE_CONTINUITY host default.
+  const mediaCfg = await loadWorkspaceMediaConfig(prisma, workspaceId);
+  const continuity = mediaCfg.sceneContinuity || sceneContinuityOn();
   let prevFrameUrl: string | null = null;
   for (const [i, spec] of specs.entries()) {
     const budget = await checkMediaBudget(prisma, workspaceId, estimate);

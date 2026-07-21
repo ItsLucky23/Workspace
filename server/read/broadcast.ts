@@ -8,7 +8,7 @@
 import { getIoInstance, formatRoomName, socketEventNames } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { toContentAssetSummary, toTicket } from './mappers';
+import { toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toTicket } from './mappers';
 
 //? The full route key the client keys its bulkMove callback on (the framework derives this from
 //? the emitted `fullName`). Re-broadcasting a ticket already present just replaces it by id.
@@ -59,6 +59,57 @@ export async function broadcastContentAssetDelta(prisma: PrismaClient, workspace
     serverOutput: { status: 'success', contentProjectId, asset: toContentAssetSummary(asset, job) },
     clientOutput: {},
     message: `${CONTENT_ASSET_DELTA_ROUTE} sync success`,
+    status: 'success',
+  });
+}
+
+//? The per-PIECE content delta route: the client's `upsertSyncEventCallback('workspaces/contentPieceDelta')`
+//? upserts the piece by id into `snap.content.pieces`. Type carrier: `_sync/contentPieceDelta_server_v1.ts`.
+const CONTENT_PIECE_DELTA_ROUTE = 'sync/workspaces/contentPieceDelta/v1';
+
+//? Broadcast ONE content piece's fresh DB state to the workspace room, so every board upserts it by id with
+//? NO full refetch — the granular alternative to `broadcastContentDirty` for single-piece structural ops
+//? (advance/archive/unarchive). Reads the same rows the snapshot does for a piece + assembles via the SHARED
+//? `toContentPieceSummary`, so the shape matches the first-load projection exactly. Best-effort: no io ⇒ no-op.
+export async function broadcastContentPieceDelta(prisma: PrismaClient, workspaceId: string, contentProjectId: string): Promise<void> {
+  const io = getIoInstance();
+  if (!io) return;
+  const piece = await prisma.contentProject.findFirst({ where: { id: contentProjectId, workspaceId } });
+  if (!piece) return;
+  const assetRows = await prisma.contentAsset.findMany({ where: { workspaceId, contentProjectId }, orderBy: { createdAt: 'asc' } });
+  const jobIds = assetRows.map((a) => a.mediaJobId).filter((id): id is string => typeof id === 'string' && id.length > 0);
+  const jobById = new Map((jobIds.length > 0 ? await prisma.mediaJob.findMany({ where: { id: { in: jobIds } } }) : []).map((j) => [j.id, j])); // luckystack-allow tenant-scope: jobIds from this workspace's already-scoped assetRows
+  const assetIds = assetRows.map((a) => a.id);
+  const publishJobRows = assetIds.length > 0 ? await prisma.publishJob.findMany({ where: { workspaceId, assetId: { in: assetIds } } }) : [];
+  //? Same publish-state projection the snapshot applies (publishedOn = platforms with a 'done' job; publishJobs
+  //? = every job's honest status). Kept in sync with server/read/workspaceSnapshot.ts's asset loop.
+  const publishedByAsset = new Map<string, string[]>();
+  const jobsByAsset = new Map<string, NonNullable<ReturnType<typeof toContentAssetSummary>['publishJobs']>>();
+  for (const j of publishJobRows) {
+    if (j.status === 'done') { const l = publishedByAsset.get(j.assetId) ?? []; if (!l.includes(j.platform)) l.push(j.platform); publishedByAsset.set(j.assetId, l); }
+    const jl = jobsByAsset.get(j.assetId) ?? [];
+    jl.push({ platform: j.platform, status: j.status, ...(j.externalUrl ? { externalUrl: j.externalUrl } : {}), ...(j.scheduledAt ? { scheduledAt: j.scheduledAt.toISOString() } : {}), ...(j.error ? { error: j.error } : {}), ...(j.attempts > 0 ? { attempts: j.attempts } : {}) });
+    jobsByAsset.set(j.assetId, jl);
+  }
+  const assets = assetRows.map((a) => {
+    const summary = toContentAssetSummary(a, a.mediaJobId ? jobById.get(a.mediaJobId) : null);
+    const pub = publishedByAsset.get(a.id);
+    if (pub && pub.length > 0) summary.publishedOn = pub;
+    const jobs = jobsByAsset.get(a.id);
+    if (jobs && jobs.length > 0) summary.publishJobs = jobs;
+    return summary;
+  });
+  const sceneRows = await prisma.videoScene.findMany({ where: { workspaceId, contentProjectId }, orderBy: { order: 'asc' } });
+  const scenes = sceneRows.map((s) => toVideoSceneSummary(s));
+  const spendRows = await prisma.mediaSpend.findMany({ where: { workspaceId, contentProjectId }, select: { costCents: true } });
+  const spentCents = spendRows.reduce((n, s) => n + s.costCents, 0);
+  const room = formatRoomName(workspaceId, { purpose: 'broadcast', userId: null });
+  io.to(room).emit(socketEventNames.sync, {
+    cb: CONTENT_PIECE_DELTA_ROUTE,
+    fullName: CONTENT_PIECE_DELTA_ROUTE,
+    serverOutput: { status: 'success', piece: toContentPieceSummary(piece, assets, scenes, spentCents) },
+    clientOutput: {},
+    message: `${CONTENT_PIECE_DELTA_ROUTE} sync success`,
     status: 'success',
   });
 }

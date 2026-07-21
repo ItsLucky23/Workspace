@@ -97,37 +97,37 @@ export interface StudioArtifactCompleteInternalAction extends InternalActionBase
 
 export interface ProjectDocsCompleteInternalAction extends InternalActionBase {
   op: 'project-docs-complete';
-  target: Record<string, never>;
+  target: { expectedVersion?: number };
   payload: { content: string; summary: string };
 }
 
 export interface ProjectImageCompleteInternalAction extends InternalActionBase {
   op: 'project-image-complete';
-  target: { projectId: string };
+  target: { projectId: string; expectedVersion?: number };
   payload: { tag: string };
 }
 
 export interface BrandImportInternalAction extends InternalActionBase {
   op: 'brand-import';
-  target: Record<string, never>;
+  target: { expectedVersion?: number };
   payload: { kit: unknown };
 }
 
 export interface StyleImportInternalAction extends InternalActionBase {
   op: 'style-import';
-  target: Record<string, never>;
+  target: { expectedVersion?: number };
   payload: { styles: unknown };
 }
 
 export interface DockerfileSaveInternalAction extends InternalActionBase {
   op: 'dockerfile-save';
-  target: { projectId: string };
+  target: { projectId: string; expectedVersion?: number };
   payload: { dockerfile: string };
 }
 
 export interface WorktreeFileSaveInternalAction extends InternalActionBase {
   op: 'worktree-file-save';
-  target: { ticketKey: string };
+  target: { ticketKey: string; expectedVersion?: number };
   payload: { path: string; content: string };
 }
 
@@ -336,14 +336,17 @@ export function isInternalOp(value: string): value is InternalOp {
 }
 
 //? Only operations whose apply is idempotent and whose authoritative entity can be compared against
-//? later processed signals may be replayed. Brand/style imports can conflict with public copy ops;
-//? Dockerfile/worktree writes can conflict with out-of-band filesystem writers. Their typed signals remain
-//? auditable, but they deliberately stay outside this allowlist until they gain an entity CAS/version.
+//? later processed signals may be replayed. Brand/style/file completions carry an entity-version CAS;
+//? a crash may repeat the same idempotent bytes/upserts, while any newer completion makes the old job stale.
 export const CRASH_REPLAYABLE_INTERNAL_OPS: readonly InternalOp[] = [
   'studio-artifact-begin',
   'studio-artifact-complete',
   'project-docs-complete',
   'project-image-complete',
+  'brand-import',
+  'style-import',
+  'dockerfile-save',
+  'worktree-file-save',
   'chat-turn-record',
   'design-library-write',
   'studio-brief-save',
@@ -362,6 +365,10 @@ export function internalActionReplayKeys(action: InternalAction): readonly strin
   }
   if (action.op === 'project-docs-complete') return ['project-docs'];
   if (action.op === 'project-image-complete') return [`project-image:${action.target.projectId}`];
+  if (action.op === 'brand-import') return ['brand-library'];
+  if (action.op === 'style-import') return ['style-presets'];
+  if (action.op === 'dockerfile-save') return [`dockerfile:${action.target.projectId}`];
+  if (action.op === 'worktree-file-save') return [`worktree-file:${action.target.ticketKey}:${action.payload.path}`];
   if (action.op === 'chat-turn-record') return [`chat:${action.target.userMessageId}`, `chat:${action.target.aiMessageId}`];
   if (action.op === 'design-library-write') return action.target.artifactId ? [`design-artifact:${action.target.artifactId}`] : [];
   if (action.op === 'studio-brief-save') return [`studio-brief:${action.target.briefId}`];
@@ -691,31 +698,34 @@ export function assertValidInternalAction(action: unknown): asserts action is In
   if (action.op === 'project-docs-complete') {
     assertString('payload.content', action.payload.content, MAX_DOCUMENT_TEXT_BYTES);
     assertString('payload.summary', action.payload.summary, 500);
-    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] project docs target must be empty');
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     return;
   }
   if (action.op === 'project-image-complete') {
     assertRequiredString('target.projectId', action.target.projectId);
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     assertRequiredString('payload.tag', action.payload.tag, 1000);
     return;
   }
   if (action.op === 'brand-import') {
-    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] brand import target must be empty');
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     assertBoundedJson('payload.kit', action.payload.kit, MAX_STAGE_JSON_BYTES);
     return;
   }
   if (action.op === 'style-import') {
-    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] style import target must be empty');
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     assertBoundedJson('payload.styles', action.payload.styles, MAX_STAGE_JSON_BYTES);
     return;
   }
   if (action.op === 'dockerfile-save') {
     assertRequiredString('target.projectId', action.target.projectId);
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     assertString('payload.dockerfile', action.payload.dockerfile, MAX_DOCUMENT_TEXT_BYTES);
     return;
   }
   if (action.op === 'worktree-file-save') {
     assertRequiredString('target.ticketKey', action.target.ticketKey, 100);
+    if (action.target.expectedVersion !== undefined) assertSafeInteger('target.expectedVersion', action.target.expectedVersion, Number.MAX_SAFE_INTEGER);
     assertRequiredString('payload.path', action.payload.path, 4096);
     assertString('payload.content', action.payload.content, MAX_DOCUMENT_TEXT_BYTES);
     return;

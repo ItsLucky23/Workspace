@@ -4,13 +4,15 @@
 import { tryCatchSync } from '@luckystack/core';
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 import { currentWorkspaceId } from '../../server/tenant/tenantContext.ts';
-import { currentWriterScope, GLOBAL_WRITER_SCOPE } from '../../server/orchestrator/writerContext.ts';
+import { currentWriterScope } from '../../server/orchestrator/writerContext.ts';
 import { enqueueInternalAction, internalActionFromSignal, type RuntimeLaunchPrepareInternalAction } from '../../server/orchestrator/internalOps.ts';
 import { runtimeLaunchCompletionId, runtimeLaunchIntentId } from '../../server/orchestrator/actionIds.ts';
+import { ENTITY_VERSION_KEYS, readEntityVersion } from '../../server/orchestrator/entityVersion.ts';
 
 const prisma = await db();
 const { runPreparedRuntimeLaunch, runRuntimeJobRecovery } = await import('../../server/orchestrator/runtimeJobs.ts');
-const { enqueueGlobalRouteWrite, enqueueWorkspaceRouteWrite, runRouteJobRecovery } = await import('../../server/orchestrator/conductor.ts');
+const { enqueueWorkspaceRouteWrite, runRouteJobRecovery } = await import('../../server/orchestrator/conductor.ts');
+const { enqueueGlobalAction, globalActionIdentity, runGlobalJobRecovery } = await import('../../server/orchestrator/globalOps.ts');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace.ts');
 
 const stamp = Date.now();
@@ -22,11 +24,22 @@ try {
   workspaceId = created.workspaceId;
   const wsId = created.workspaceId;
 
-  const globalScope = await enqueueGlobalRouteWrite(
-    { kind: 'test-account-write', userId: owner.id, clientRequestId: `global-${String(stamp)}` },
-    async () => currentWriterScope(),
-  );
-  eq(globalScope, GLOBAL_WRITER_SCOPE, 'account route writes execute inside the global Conductor scope');
+  const globalAction = { op: 'account-preferences' as const, userId: owner.id, payload: { preferences: { pushOnAssignment: false } } };
+  const globalResult = await enqueueGlobalAction(globalAction);
+  assert('updated' in globalResult && globalResult.updated, 'typed global action applies the account write');
+  eq((await prisma.user.findUnique({ where: { id: owner.id } }))?.preferences, { pushOnAssignment: false }, 'typed global account state persisted');
+  const globalIdentity = globalActionIdentity(globalAction);
+  const durableJob = await prisma.globalJob.findUnique({ where: { id: globalIdentity.id } });
+  assert(durableJob?.status === 'completed', 'global action has a completed durable job');
+  assert(durableJob?.payloadEnc.startsWith('v1:') === true && !durableJob.payloadEnc.includes('pushOnAssignment'), 'global job payload is encrypted at rest');
+  await enqueueGlobalAction(globalAction);
+  eq(await prisma.globalJob.count({ where: { dedupKey: globalIdentity.dedupKey } }), 1, 'an identical global retry reuses one durable job');
+
+  await prisma.user.update({ where: { id: owner.id }, data: { preferences: {} } });
+  await prisma.globalJob.update({ where: { id: globalIdentity.id }, data: { status: 'running', processedAt: null, claimedAt: new Date(Date.now() - 60_000) } });
+  const globalRecovery = await runGlobalJobRecovery(Date.now());
+  assert(globalRecovery.replayed >= 1, 'global recovery replays a stranded typed account write');
+  eq((await prisma.user.findUnique({ where: { id: owner.id } }))?.preferences, { pushOnAssignment: false }, 'global replay is idempotent and restores the intended state');
   eq(currentWriterScope(), null, 'global writer context does not leak after completion');
 
   const observed = await enqueueWorkspaceRouteWrite(
@@ -47,6 +60,33 @@ try {
   assert(signal !== null, 'workspace route write appends a durable signal');
   assert(signal?.processedAt instanceof Date, 'the signal is marked processed only after the write completes');
   eq(currentWriterScope(), null, 'workspace writer context does not leak after completion');
+
+  const firstBrand = await enqueueInternalAction({
+    workspaceId: wsId, op: 'brand-import', target: { expectedVersion: 0 }, payload: { kit: { name: 'First brand', voice: 'direct' } },
+    userId: owner.id, clientRequestId: `brand-first-${String(stamp)}`,
+  });
+  assert(firstBrand.result !== null && typeof firstBrand.result === 'object' && 'applied' in firstBrand.result && firstBrand.result.applied === true, 'brand import commits at its captured entity version');
+  eq(await readEntityVersion(prisma, wsId, ENTITY_VERSION_KEYS.brandLibrary), 1, 'brand CAS advances exactly once');
+  const staleBrand = await enqueueInternalAction({
+    workspaceId: wsId, op: 'brand-import', target: { expectedVersion: 0 }, payload: { kit: { name: 'Stale brand', voice: 'stale' } },
+    userId: owner.id, clientRequestId: `brand-stale-${String(stamp)}`,
+  });
+  assert(staleBrand.result !== null && typeof staleBrand.result === 'object' && 'ok' in staleBrand.result && staleBrand.result.ok === false, 'a stale brand completion is terminally rejected');
+  eq((await prisma.studioBrandLibrary.findUnique({ where: { workspaceId: wsId } }))?.name, 'First brand', 'stale brand completion cannot overwrite current state');
+
+  const firstStyles = await enqueueInternalAction({
+    workspaceId: wsId, op: 'style-import', target: { expectedVersion: 0 },
+    payload: { styles: [{ feature: 'image-gen', key: 'cas', label: 'CAS', systemPrompt: 'first' }] },
+    userId: owner.id, clientRequestId: `style-first-${String(stamp)}`,
+  });
+  assert(firstStyles.result !== null && typeof firstStyles.result === 'object' && 'applied' in firstStyles.result && firstStyles.result.applied === true, 'style import commits at its captured entity version');
+  const staleStyles = await enqueueInternalAction({
+    workspaceId: wsId, op: 'style-import', target: { expectedVersion: 0 },
+    payload: { styles: [{ feature: 'image-gen', key: 'cas', label: 'CAS', systemPrompt: 'stale' }] },
+    userId: owner.id, clientRequestId: `style-stale-${String(stamp)}`,
+  });
+  assert(staleStyles.result !== null && typeof staleStyles.result === 'object' && 'ok' in staleStyles.result && staleStyles.result.ok === false, 'a stale style completion is terminally rejected');
+  eq((await prisma.stylePreset.findFirst({ where: { workspaceId: wsId, feature: 'image-gen', key: 'cas' } }))?.systemPrompt, 'first', 'stale style completion cannot overwrite current state');
 
   const project = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
   assert(project !== null, 'the fixture has a project for completion replay');

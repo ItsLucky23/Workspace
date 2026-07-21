@@ -1,7 +1,6 @@
-//? Board card + its ⋯ menu, and the two menuHandler pickers it opens (manual stage
-//? move, artifact reference). The pickers receive `ctx` as a PROP because
-//? menuHandler-opened forms render OUTSIDE the WorkspacesProvider tree — calling
-//? useWorkspaces() inside them crashes (lesson 0011).
+//? Board card + its ⋯ menu. The manual-stage picker receives `ctx` as a prop because
+//? menuHandler-opened forms render outside WorkspacesProvider; the shared artifact picker
+//? follows the same boundary (lesson 0011).
 
 import { useRef, useState } from 'react';
 
@@ -16,10 +15,10 @@ import { AvatarStack, LabelChip, PopMenu, StatusPill, WsButton, type PopMenuItem
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Ticket } from '../../_data/types';
 import { PRIORITY_DOT, PRIORITY_LABEL_KEY, isBadgedPriority } from '../../_functions/priority';
+import { ArtifactLinkPicker } from './ArtifactLinkPicker';
 
 //? #9 — a manual per-card stage move (discoverability for board-first users; the board is otherwise
-//? AI-driven). A small stage picker opened from the card menu → moveTicket. Kept as its own component
-//? so it can use hooks (cardMenuItems is a plain function).
+//? AI-driven). It reuses the authoritative bulk-move write with one ticket; no local-only override.
 function StageMovePicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<typeof useWorkspaces> }) {
   const translate = useTranslator();
   const [stageId, setStageId] = useState(ticket.stageId);
@@ -30,34 +29,8 @@ function StageMovePicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<type
       <Dropdown size="sm" items={items} value={items.find((i) => i.id === stageId)} onChange={(it) => { setStageId(String(it.id)); }} />
       <div className={`flex items-center justify-end gap-2`}>
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-        <WsButton icon="arrow-right" disabled={stageId === ticket.stageId} onClick={() => { ctx.moveTicket(ticket.id, stageId); void menuHandler.close(); }}>{translate({ key: 'workspaces.board.moveToStageConfirm' })}</WsButton>
+        <WsButton icon="arrow-right" disabled={stageId === ticket.stageId} onClick={() => { ctx.bulkMove([ticket.id], stageId); void menuHandler.close(); }}>{translate({ key: 'workspaces.board.moveToStageConfirm' })}</WsButton>
       </div>
-    </div>
-  );
-}
-
-//? #6 — attach a design/studio artifact to a ticket as a reference (the 'Add reference' card action was
-//? a dead no-op). Lists the workspace's studio + design library artifacts → linkArtifact.
-function ArtifactLinkPicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<typeof useWorkspaces> }) {
-  const translate = useTranslator();
-  const items: { id: string; kind: string; label: string }[] = [
-    ...ctx.studioArtifacts.map((a) => ({ id: a.id, kind: a.kind, label: a.title })),
-    ...ctx.designArtifacts.map((a) => ({ id: a.id, kind: a.kind, label: a.name })),
-  ];
-  return (
-    <div className={`w-full flex flex-col gap-2 p-5`}>
-      <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.board.addReferenceTitle', params: [{ key: 'id', value: ticket.id }] })}</div>
-      {items.length === 0 && <div className={`text-sm text-muted py-4 text-center`}>{translate({ key: 'workspaces.board.noArtifacts' })}</div>}
-      <div className={`max-h-80 overflow-y-auto flex flex-col gap-1`}>
-        {items.map((a) => (
-          <button key={`${a.kind}-${a.id}`} type="button" onClick={() => { ctx.linkArtifact(ticket.id, a.id, a.kind, a.label); void menuHandler.close(); }} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-container2 cursor-pointer`}>
-            <Icon name="link" className={`text-muted`} />
-            <span className={`text-sm text-title truncate`}>{a.label}</span>
-            <span className={`text-xs text-muted ml-auto shrink-0`}>{a.kind}</span>
-          </button>
-        ))}
-      </div>
-      <div className={`flex justify-end`}><WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton></div>
     </div>
   );
 }
@@ -69,7 +42,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
     { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
     //? #9 — manual stage move (opens a stage picker).
     { label: translate({ key: 'workspaces.board.moveToStage' }), icon: 'arrow-right-arrow-left', onClick: () => { void menuHandler.open(<StageMovePicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
-    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { void menuHandler.open(<ArtifactLinkPicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
+    { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { void menuHandler.open(<ArtifactLinkPicker ticketKey={ticket.id} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { divider: true },
     {
       label: paused ? translate({ key: 'workspaces.board.resumeAgent' }) : translate({ key: 'workspaces.board.pauseAgent' }), icon: paused ? 'play' : 'pause',

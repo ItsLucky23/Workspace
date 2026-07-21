@@ -85,7 +85,7 @@ export function enableLiveProviders(): { fal: boolean; elevenlabs: boolean; suno
 //? loudly when a renamed delegate is missed by Prisma generation.
 const WORKSPACE_DELEGATES = [
   'ticketEvent', 'ticket', 'ticketLink', 'ticketReference', 'sprint', 'agentSession', 'carryOver', 'handoff', 'questionSet',
-  'workspaceTrigger', 'workspaceSignal', 'workspaceSuggestion', 'workspaceNote', 'workspaceChatMessage', 'workspaceBudget',
+  'workspaceTrigger', 'workspaceSignal', 'workspaceEntityVersion', 'workspaceSuggestion', 'workspaceNote', 'workspaceChatMessage', 'workspaceBudget',
   'spendRecord', 'notification', 'infoSource', 'ragEntry', 'envVar', 'integrationTool', 'invite', 'workspaceRole', 'workspaceMember',
   'project', 'service', 'serviceStack', 'uiReviewRequest', 'promptExperiment', 'promptTrial', 'publishedSite', 'siteSnapshot',
   'publishMetricSnapshot', 'auditLog', 'forgeConnection', 'environment', 'buildArtifact', 'pipeline', 'pipelineRun',
@@ -111,6 +111,7 @@ export async function cleanupWorkspace(prisma: PrismaClient, workspaceId: string
   if (userIds.length === 0) return;
   await prisma.pushSubscription.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.sshKey.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.globalJob.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 }
 

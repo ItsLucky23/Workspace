@@ -74,4 +74,28 @@ assert(provider.includes('const ticket = snap.tickets.find((t) => t.id === id);'
 const p4 = provider.slice(provider.indexOf('setStageOverrides((prev) => {'));
 assert(p4.slice(0, 600).includes('[snap.tickets]'), 'the reconcile effect runs on every incoming ticket delta');
 
+/* ------------------------------------------------------------ P7 — granular per-piece content delta */
+
+//? Single-piece structural content ops (advance/archive/unarchive) push ONE fresh piece the client upserts by
+//? id, instead of the coarse contentDirty full refetch. The shape must come from the SAME mapper as the
+//? snapshot, or a live upsert would diverge from the first-load projection.
+const mappers = read('server/read/mappers.ts');
+const snapshotSrc = read('server/read/workspaceSnapshot.ts');
+assert(mappers.includes('export function toContentPieceSummary') && mappers.includes('export function toVideoSceneSummary'), 'the piece + scene mappers are extracted (shared by snapshot AND the delta)');
+assert(snapshotSrc.includes('toContentPieceSummary(c,'), 'the snapshot assembles pieces via the shared mapper (no inline shape that could drift)');
+assert(broadcast.includes('export async function broadcastContentPieceDelta') && broadcast.includes('toContentPieceSummary(piece,'), 'broadcastContentPieceDelta assembles via the SAME shared mapper');
+assert(broadcast.includes("'sync/workspaces/contentPieceDelta/v1'"), 'it emits on the per-piece route');
+const pieceCarrier = read('src/workspaces/_sync/contentPieceDelta_server_v1.ts');
+assert(pieceCarrier.includes('ContentPieceSummary') && pieceCarrier.includes('piece: contentPieceDeltaPiece()'), 'the carrier types the piece payload for the client callback');
+//? Client upserts the piece by id (idempotent — re-delivery safe).
+const pieceCb = provider.slice(provider.indexOf("name: 'workspaces/contentPieceDelta'"));
+assert(pieceCb.length > 0 && pieceCb.slice(0, 700).includes('s.content.pieces.some((p) => p.id === piece.id)'), 'the client upserts the piece by id into snap.content.pieces');
+//? The Conductor fires the delta after apply for the 3 single-piece ops; the route skips contentDirty for them.
+for (const op of ['content-advance', 'content-archive', 'content-unarchive']) {
+  assert(conductor.includes(`case '${op}'`), `conductor handles ${op}`);
+}
+assert(conductor.includes('broadcastContentPieceDelta(prisma, action.workspaceId, contentProjectId)'), 'the Conductor pushes the granular piece delta after the write');
+const route = read('src/workspaces/_sync/contentControl_server_v1.ts');
+assert(route.includes("op !== 'content-advance' && op !== 'content-archive' && op !== 'content-unarchive'"), 'the route SKIPS contentDirty for the piece-delta ops (else a redundant full refetch defeats the optimization)');
+
 report('realtimeConvergence');

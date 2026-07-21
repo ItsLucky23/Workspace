@@ -42,14 +42,14 @@ function slugify(name: string): string {
 //? for the `create-workspace` op). The pipeline comes from `createDefaultPipeline`
 //? (server-owned, no `src/` import) so it seeds real stages in a PROD bundle too —
 //? this is the lesson-0002 fix (the old `STAGE_CONFIGS` loop stubbed to a no-op in prod).
-export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional', packId?: string, skipStarterSeed?: boolean): Promise<{ workspaceId: string }> {
+export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string, name: string, enabledSections?: string[], presetKey: PipelinePreset = 'professional', packId?: string, skipStarterSeed?: boolean, requestedWorkspaceId?: string): Promise<{ workspaceId: string }> {
   const short = ownerId.slice(-6);
   //? Module gating (workspaces/_data/modules.ts): the caller passes the RESOLVED
   //? section-id list from the chosen module presets. Absent/empty ⇒ legacy all-on.
   const sections = enabledSections ?? [];
   const devEnabled = isModuleEnabled(sections.length > 0 ? sections : undefined, 'development');
   const ws = await prisma.workspace.create({
-    data: { name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey, enabledSections: sections },
+    data: { ...(requestedWorkspaceId ? { id: requestedWorkspaceId } : {}), name, slug: `${slugify(name)}-${short}`, ownerId, timezone: 'Europe/Amsterdam', presetKey, enabledSections: sections },
   });
   const workspaceId = ws.id;
 
@@ -252,15 +252,30 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     data: { workspaceId, label: 'Monthly', cap: BUDGET.cap, alertPct: BUDGET.alertPct, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: BUDGET.spent, enabled: true },
   });
 
-  //? Info sources — context-docs + skills unified into InfoSource.
+  //? Context documents remain InfoSource rows; workflow capabilities use the canonical Skill model.
   for (const d of DOCS) {
     await prisma.infoSource.create({
       data: { workspaceId, projectId: project.id, mode: 'context-doc', name: d.name, source: d.source, summary: d.summary, note: d.note, content: d.content, usedByStages: d.usedByStages ?? [], enabled: true },
     });
   }
   for (const sk of SKILLS) {
-    await prisma.infoSource.create({
-      data: { workspaceId, projectId: project.id, mode: 'skill', name: sk.name, summary: sk.description ?? null, kind: sk.kind, model: sk.model ?? null, usedByStages: sk.usedByStages ?? [], enabled: sk.on },
+    await prisma.skill.create({
+      data: {
+        workspaceId,
+        projectId: project.id,
+        slug: `capability-${sk.id}`,
+        name: sk.name,
+        description: sk.description ?? null,
+        status: sk.status,
+        instruction: '',
+        examples: '',
+        applyPoints: [],
+        skillType: 'capability',
+        kind: sk.kind,
+        model: sk.model ?? null,
+        usedByStages: sk.usedByStages ?? [],
+        enabled: sk.on,
+      },
     });
   }
 

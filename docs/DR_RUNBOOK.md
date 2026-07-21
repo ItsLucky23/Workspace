@@ -49,6 +49,17 @@ docker run --rm -v workspaces_redis-data:/data -v "$PWD/backups:/backup" alpine 
 Keep ≥7 daily + ≥4 weekly copies **off the host** (a bucket / another machine). Test a restore
 quarterly — an untested backup is a hope, not a backup.
 
+For a source-checkout/dev installation, the equivalent pre-migration command is:
+
+```bash
+npm run db:backup
+```
+
+It writes the compressed Mongo dump plus available media/repository archives under `data/backups/`,
+with SHA-256 checksums and the `WORKSPACES_ENC_KEY` fingerprint in `snapshot-*/manifest.json`. The key
+itself is never copied; back it up separately as required above. After an additive `prisma db push`, run
+`npm run db:upgrade` for watermarked data backfills and verified pre/post counts.
+
 ---
 
 ## 3. Restore (same host or a rebuild)

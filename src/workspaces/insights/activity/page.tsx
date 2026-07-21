@@ -2,7 +2,7 @@
 //? that happens across tickets (commands, file changes, AI messages, status moves, merges,
 //? CI, comments). Scan the timeline and click a ticket id to jump into that ticket; the
 //? who/what filter sits on its own compact row so the header never cramps at phone width.
-//? Renders purely from context (dummy data today; the real TicketEvent log wires in later).
+//? Renders the real TicketEvent projection from the workspace snapshot.
 //?
 //? KISS pass: title + Live badge + a one-line "what is this" sub; the Segmented filter moved
 //? out of the title row onto its own scrollable line (its only secondary control, one tap

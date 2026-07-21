@@ -10,6 +10,7 @@ import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated
 import { generateProjectDoc } from '../../../server/ai/docsGen';
 import { hasCapability, CAP } from '../../../server/control/rbac';
 import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { ENTITY_VERSION_KEYS, readEntityVersion } from '../../../server/orchestrator/entityVersion';
 
 export const rateLimit: number | false = 6;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -27,13 +28,16 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.editPipeline);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
+  //? Capture before the slow provider turn. A second generation or manual mutation that completes first
+  //? advances this entity and makes this completion terminally stale instead of overwriting newer docs.
+  const expectedVersion = await readEntityVersion(functions.db.prisma, workspaceId, ENTITY_VERSION_KEYS.projectDocs);
   const result = await generateProjectDoc(functions.db.prisma, workspaceId, undefined, {
     persist: async (input) => {
       const digest = createHash('sha256').update(input.content).digest('hex');
       await enqueueInternalAction({
         workspaceId,
         op: 'project-docs-complete',
-        target: {},
+        target: { expectedVersion },
         payload: { content: input.content, summary: input.summary },
         userId: user.id,
         clientRequestId: `docs-complete:${digest}`,

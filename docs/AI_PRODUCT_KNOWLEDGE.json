@@ -1,6 +1,6 @@
 {
-  "hash": "87d01e1d68a0bbb8",
-  "chunkCount": 228,
+  "hash": "1eaa9caf71a737d8",
+  "chunkCount": 231,
   "chunks": [
     {
       "id": "cap-001",
@@ -1369,6 +1369,24 @@
       "kind": "decision",
       "title": "Workspace-AI has no ambiguous later operations",
       "text": "ADR 0293: Workspace-AI has no ambiguous later operations. The exhaustive Workspace-AI catalog still classified seven operations as `later`. That state did not tell users or maintainers whether an operation lacked wiring, duplicated another verb, needed unavailable context or was intentionally outside the workspace assistant boundary. Leaving entries ambiguous also allowed future work to mistake catalog presence for an executable effect. Decision: The catalog has only `enabled` and `excluded` outcomes. `db-migrate-apply` is enabled because an existing pending migration can be validated from tenant-scoped context, dispatched through the existing project-admin sync route and protected by destructive confirmation plus the route's own approval/environment gates. The other six operations are excluded: - `gitlab-verify` duplicates the real credential-free resync/connectivity path and its legacy handler is a no-op. - `raise-cap` aliases canonical `edit-budget`. - `content-create` duplicates the richer brief-based content creation path. - `content-reorder-beats` and `content-save-scenes` require a complete destructive timeline graph that is intentionally owned by the visual editor. - `copy-workspace-assets` crosses workspace boundaries and remains an explicit UI flow where both memberships can be shown and confirmed."
+    },
+    {
+      "id": "adr-0294",
+      "kind": "decision",
+      "title": "Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs",
+      "text": "ADR 0294: Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs. Several media-generation knobs were host-global env-only (`WS_MEDIA_CHEAP`, `WS_SCENE_CONTINUITY`, `ELEVENLABS_VOICE_ID`), so one deployment could not vary them per tenant even though media provider keys and per-feature model overrides already resolve per workspace (ADR 0086/0091/0110/0111) via the encrypted `EnvVar __`-namespace store + `loadWorkspaceMediaConfig` (env as fallback). The owner asked to pull \"as many env settings as sensibly possible\" into the per-workspace environment. The question was where the three workspace-wide (not per-feature) media defaults should live and how they get written, without adding to the assistant's frozen verb surface (invariant 2). Decision: Store the three as workspace-wide plaintext `EnvVar` rows in the same `__`-namespace the media config loader already reads: `__media_cheap` (`'1'`), `__media_scene_continuity` (`'on'`), `__media_voice_id` (a public voice id, not a secret). `loadWorkspaceMediaConfig` reads them; `runMediaGeneration` layers them UNDER the caller's `params` (a per-request param always wins) as `params.cheap` / `params.voiceId`, and `sceneDecompose` ORs the per-workspace flag with the env default. They are WRITTEN through the EXISTING `save-media-provider` control-API op — presence-based, so sending only one pref leaves the others (and provider keys/models) untouched — surfaced in the snapshot as `content.mediaPre"
+    },
+    {
+      "id": "adr-0295",
+      "kind": "decision",
+      "title": "Consolidate semantic duplicates, not domain history",
+      "text": "ADR 0295: Consolidate semantic duplicates, not domain history. The audit found two actual skill stores: instruction skills in `Skill` and workflow capabilities in `InfoSource(mode='skill')`. It also found similarly named brand/style, document/RAG and artifact models. Those latter groups are not interchangeable rows: they represent source versus derived index, identity versus generation preset, or separate lifecycle/retention domains. ADR 0034 already rejected a single artifact mega-table and ADR 0270 kept instruction skills, styles and design artifacts semantically separate. Decision: `Skill` is the one skill store. `skillType='instruction'` rows contain reusable prompt instructions; `skillType='capability'` rows retain workflow-tool metadata (`kind`, `model`, `projectId`, `usedByStages`, status/description). Watermarked schema step 6 creates a capability row with `legacyInfoSourceId` before deleting each legacy `InfoSource(mode='skill')`. The frozen `skill-toggle` operation still accepts `sourceId`: it toggles a capability Skill first and falls back to a context-document InfoSource, so no public verb or client contract changes. The other models remain intentionally layered: - `Document` is mutable source, `DocumentRevision` is history, and `RagEntry` is a rebuildable derived retrieval index. - `StudioBrandLibrary` is workspace brand identity; `StylePreset` is a per-feature generation preset. - `DesignArtifact`, `StudioArtifact`, `BuildArtifact`, `ContentAsset` and document e"
+    },
+    {
+      "id": "adr-0296",
+      "kind": "decision",
+      "title": "Global writes use encrypted durable Conductor jobs",
+      "text": "ADR 0296: Global writes use encrypted durable Conductor jobs. ADR 0289 serialized account/global route callbacks only in one process. A crash lost the callback, multiple app instances had separate global chains, and persisting Web Push keys or import bundles as plaintext replay payloads would create a second sensitive-data store. Workspace import was additionally non-idempotent: retrying after a partial create could produce another workspace. Decision: Global route writes use the closed `GlobalAction` union and `GlobalJob` collection. The full validated payload is AES-256-GCM encrypted with `WORKSPACES_ENC_KEY`; searchable columns contain only job identity, kind, owner, status and retry metadata. Deterministic action hashing supplies the job ID and dedup key. Recovery replays only the typed union, with five bounded attempts. Typed global jobs and login-only global control actions share one renewable Redis lease (`global`) and the explicit global writer context. Account updates, preferences, account deletion, SSH add/remove, Push save/remove, PAT revoke and workspace import no longer accept callback writers. Session bearer tokens are never stored in a job. User rows are authoritative; the requesting route refreshes its derived session cache after job completion. Workspace import uses a deterministic workspace ID and an `importCompleted` marker. A partial import is deleted and rebuilt; a completed retry returns the same workspace."
     }
   ]
 }

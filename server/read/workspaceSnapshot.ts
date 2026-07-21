@@ -18,7 +18,7 @@ import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
-import { formatTime, toContentAssetSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
+import { formatTime, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
@@ -170,8 +170,7 @@ export interface WorkspaceSnapshot {
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
-  //? SK1 — the universal AI-skills layer (workspace-scoped instruction blocks; distinct from the
-  //? InfoSource-based `skills` workflow snippets below).
+  //? SK1 — canonical Skill rows: instruction skills surface here; capability skills surface in `skills`.
   aiSkills: AiSkillEntry[];
   //? DOC1 — the Documents module.
   documents: DocumentEntry[];
@@ -260,7 +259,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], mediaPrefs: { cheap: false, sceneContinuity: false, voiceId: '' }, shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -391,8 +390,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const customTaskRows = await prisma.customAiTask.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
     //? O5 — the workspace's reusable output specs (same explicit scoping fix).
     const outputTemplateRows = await prisma.outputTemplate.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { createdAt: 'desc' } });
-    //? SK1 — the workspace's AI skills (universal skills layer). Builtins are provisioned by workspace
-    //? bootstrap + the internal leader backfill; this snapshot remains strictly read-only.
+    //? SK1 — one canonical store for prompt instructions and workflow capabilities. `skillType` keeps the
+    //? semantics distinct without maintaining a second InfoSource-backed skill model.
     const aiSkillRows = await prisma.skill.findMany({ where: { workspaceId: currentWorkspaceId() }, orderBy: { slug: 'asc' } });
     //? DOC1 — the workspace's documents (newest-edited first; bounded).
     //? C7 — archived documents ship too (flagged), so the list can offer a restore instead of hiding them forever.
@@ -545,16 +544,13 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     const scenesByPiece = new Map<string, VideoSceneSummary[]>();
     for (const s of videoSceneRows) {
       const list = scenesByPiece.get(s.contentProjectId) ?? [];
-      list.push({ id: s.id, order: s.order, videoAssetId: s.videoAssetId, imageAssetId: s.imageAssetId, startTrimMs: s.startTrimMs, endTrimMs: s.endTrimMs, durationMs: s.durationMs, transitionIn: s.transitionIn, prompt: s.prompt });
+      list.push(toVideoSceneSummary(s));
       scenesByPiece.set(s.contentProjectId, list);
     }
     const contentSnapshot: ContentSnapshot = {
-      pieces: contentPieceRows.map((c) => {
-        //? V5 — the piece's newest voice/music asset url for the audio-track waveform.
-        const pieceAssets = assetsByPiece.get(c.id) ?? [];
-        const urlOfKind = (k: string): string | null => { for (let i = pieceAssets.length - 1; i >= 0; i--) { const a = pieceAssets[i]; if (a?.kind === k && a.url.length > 0) return a.url; } return null; };
-        return { id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId, assets: pieceAssets, scenes: scenesByPiece.get(c.id) ?? [], voiceVolume: c.voiceVolume, musicVolume: c.musicVolume, voiceUrl: urlOfKind('voice'), musicUrl: urlOfKind('music'), spentCents: spentByPiece.get(c.id) ?? 0, ...(c.archived ? { archived: true } : {}) };
-      }),
+      //? Shared assembly (toContentPieceSummary) so a live per-piece delta (broadcastContentPieceDelta) can
+      //? never produce a different shape than this first-load projection.
+      pieces: contentPieceRows.map((c) => toContentPieceSummary(c, assetsByPiece.get(c.id) ?? [], scenesByPiece.get(c.id) ?? [], spentByPiece.get(c.id) ?? 0)),
       mediaBudget: await getMediaBudgetStatus(prisma, contentWsId),
       analytics: computeContentAnalytics(
         contentPieceRows.map((c) => ({ stageId: c.stageId, status: c.status, format: c.format, archived: c.archived })),
@@ -575,6 +571,13 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       shortLinks: shortLinkRows.map((l) => ({ id: l.id, contentProjectId: l.contentProjectId, slug: l.slug, targetUrl: l.targetUrl, variant: l.variant, clicks: l.clicks })),
       //? P3 — per-feature media model overrides (from the __media_model_<feature> EnvVars).
       mediaModels: envRows.filter((e) => e.key.startsWith('__media_model_')).map((e) => ({ feature: e.key.slice('__media_model_'.length), model: e.value })),
+      //? Workspace-wide media generation defaults (from the __media_cheap / __media_scene_continuity /
+      //? __media_voice_id EnvVars). Presence-only booleans; the voice id is a public identifier (safe to echo).
+      mediaPrefs: {
+        cheap: envRows.some((e) => e.key === '__media_cheap' && e.value === '1'),
+        sceneContinuity: envRows.some((e) => e.key === '__media_scene_continuity' && e.value === 'on'),
+        voiceId: envRows.find((e) => e.key === '__media_voice_id')?.value ?? '',
+      },
       //? CI — the read-only comment inbox.
       comments: socialCommentRows.map((c) => ({ id: c.id, platform: c.platform, channelId: c.channelId ?? null, contentProjectId: c.contentProjectId ?? null, author: c.author, text: c.text, publishedAt: c.publishedAt.getTime(), read: c.read })),
       unreadComments,
@@ -583,12 +586,14 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     };
 
     //? Project-owned context follows the selected project. Null-project sources and the ADR 0034
-    //? design-system remain workspace-wide; sibling project docs/skills never enter this snapshot.
+    //? design-system remain workspace-wide; sibling project docs/capabilities never enter this snapshot.
     const visibleSourceRows = sourceRows.filter((source) => source.source === 'design-system' || source.projectId === null || source.projectId === activeProjectId);
     const docs: InfoDoc[] = visibleSourceRows.filter((source) => source.mode === 'context-doc').map((source) => toInfoDoc(source));
-    const skills: SkillEntry[] = visibleSourceRows.filter((source) => source.mode === 'skill').map((source) => ({
-      id: source.id, name: source.name, kind: asSkillKind(source.kind), status: source.summary ?? '', model: source.model ?? undefined, on: source.enabled, description: source.summary ?? undefined, usedByStages: source.usedByStages,
-    }));
+    const skills: SkillEntry[] = aiSkillRows
+      .filter((skill) => skill.skillType === 'capability' && (skill.projectId === null || skill.projectId === activeProjectId))
+      .map((skill) => ({
+        id: skill.id, name: skill.name, kind: asSkillKind(skill.kind), status: skill.status ?? '', model: skill.model ?? undefined, on: skill.enabled, description: skill.description ?? undefined, usedByStages: skill.usedByStages,
+      }));
 
     //? Register-flow step A: the ACTIVE project's linked-repo status (on-disk bare
     //? clone), keyed off its stored (clean) gitUrl. R3-b — the physical repo is now per-project,
@@ -652,8 +657,8 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
       //? O5 — reusable output specs.
       outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
-      //? SK1 — the universal AI-skills layer.
-      aiSkills: aiSkillRows.map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
+      //? SK1 — instruction skills only; workflow capabilities use the sibling `skills` projection.
+      aiSkills: aiSkillRows.filter((s) => s.skillType === 'instruction').map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
       //? DOC1 — the Documents module (assets JSON → typed list; unknown shapes dropped).
       documentTemplates,
       documents: documentRows.map((d) => ({

@@ -96,6 +96,9 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   //? Nudge the whole room to refetch the content slice (structural changes carry no fine-grained delta;
   //? the per-asset timer state still flows via broadcastContentAssetDelta). roomCode == workspaceId.
-  broadcastContentDirty(roomCode);
+  //? P7 — single-piece structural ops instead push a GRANULAR per-piece delta from the Conductor (already
+  //? fired, since dispatchControlSync awaited the apply); firing contentDirty too would add a redundant full
+  //? refetch, defeating the optimization. Everything else keeps the coarse nudge.
+  if (op !== 'content-advance' && op !== 'content-archive' && op !== 'content-unarchive') broadcastContentDirty(roomCode);
   return { status: 'success' };
 };

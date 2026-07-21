@@ -58,7 +58,7 @@ export interface ResolvedSkill {
 //? everything). Pure read, best-effort at call sites; deterministic order (slug) so prompts are stable.
 export async function resolveSkillsFor(workspaceId: string, applyPoint: SkillApplyPoint): Promise<ResolvedSkill[]> {
   const rows = await getPrismaClient().skill.findMany({
-    where: { workspaceId, enabled: true },
+    where: { workspaceId, skillType: 'instruction', enabled: true },
     select: { slug: true, name: true, instruction: true, examples: true, applyPoints: true },
     orderBy: { slug: 'asc' },
   });

@@ -128,7 +128,7 @@ const EMPTY_SNAP: Snap = {
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
   analytics: { cycleP50Hours: 0, cycleP85Hours: 0, throughputByWeek: [], stuckCount: 0, doneCount: 0, openCount: 0, tokensByLabel: [], totalTokens: 0 },
-  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
+  content: { pieces: [], mediaBudget: { enabled: false, capCents: 0, spentCents: 0, alertPct: 80, overAlert: false }, analytics: { totalPieces: 0, doneCount: 0, publishedCount: 0, byStage: [], byFormat: [], totalCostCents: 0, costByFeature: [] }, styles: [], references: [], channels: [], publishTargets: [], channelHealth: [], platformCredentials: [], assetLibrary: [], mediaCosts: [], mediaModels: [], mediaPrefs: { cheap: false, sceneContinuity: false, voiceId: '' }, shortLinks: [], comments: [], unreadComments: 0, trash: [], storage: { liveBytes: 0, trashBytes: 0, files: 0 } },
   triggers: [],
   agentRoles: [],
   aiRuns: [],
@@ -221,6 +221,11 @@ const answerKey = (ticketId: string, advisoryIndex?: number): string => `${ticke
 //? (an empty project segment = the workspace's default / no-project state).
 const snapKey = (workspaceId: string | null | undefined, projectId: string | null | undefined): string => `${workspaceId ?? ''}::${projectId ?? ''}`;
 
+//? LRU bound on the snapshot cache: each cached Snap is one workspace-project's small data, so N of them for a
+//? user in very many workspaces would grow memory unbounded. Keep the most-recently-used entries; an evicted
+//? one simply reloads on its next visit. Generous enough that a typical user's whole set stays cached.
+const SNAP_CACHE_MAX = 20;
+
 export function WorkspacesProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const { session } = useSession<SessionLayout>();
@@ -253,8 +258,22 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const lastProjectByWsRef = useRef<Map<string, string>>(new Map());
   const cacheEntry = useCallback((entry: Snap) => {
     if (!entry.activeWorkspaceId) return;
-    snapCacheRef.current.set(snapKey(entry.activeWorkspaceId, entry.activeProjectId), entry);
+    const key = snapKey(entry.activeWorkspaceId, entry.activeProjectId);
+    const cache = snapCacheRef.current;
+    //? LRU touch: delete + re-insert so this key becomes the most-recently-used (Map preserves insertion order).
+    cache.delete(key);
+    cache.set(key, entry);
     lastProjectByWsRef.current.set(entry.activeWorkspaceId, entry.activeProjectId ?? '');
+    //? Evict the least-recently-used beyond the cap. Never the just-written key — it's the ACTIVE workspace
+    //? (re-cached on every delta via the mirror effect), so it can't be the oldest anyway; the guard is belt-
+    //? and-braces. An evicted entry just reloads on its next visit (no correctness impact).
+    if (cache.size > SNAP_CACHE_MAX) {
+      //? Iterate in insertion order (oldest first); deleting an already-yielded key is safe on a Map iterator.
+      for (const oldKey of cache.keys()) {
+        if (cache.size <= SNAP_CACHE_MAX) break;
+        if (oldKey !== key) cache.delete(oldKey);
+      }
+    }
   }, []);
   //? Writes must target the snapshot the user still wants. During a switch the old
   //? snapshot remains rendered briefly, but it is no longer a valid write scope.
@@ -324,6 +343,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const others = snap.workspaces.filter((w) => w.id !== snap.activeWorkspaceId).map((w) => w.id);
     void (async () => {
       for (const wsId of others) {
+        //? Stop once the cache is full — prefetching more would just churn the LRU (fetch then evict). The
+        //? remaining workspaces lazy-load (still cached) on their first visit.
+        if (snapCacheRef.current.size >= SNAP_CACHE_MAX) break;
         if (lastProjectByWsRef.current.has(wsId)) continue;
         const res = await apiRequest({ name: 'workspaces/snapshot', version: 'v1', data: { workspaceId: wsId } });
         if (res.status === 'success') cacheEntry(res.result);
@@ -506,14 +528,25 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, []);
   //? #119 — announce which nav VIEW this user is on (ticket views fold into 'board') on view-change +
   //? a 15s heartbeat, so other clients render per-view presence badges. Ephemeral via the same relay.
+  //? The FIRST ping after switching workspace must wait for the room JOIN to be CONFIRMED — otherwise it
+  //? races the async `joinRoom` (the room-join effect above) and the server rejects a ping to a room we have
+  //? not joined yet (a `sync.failedRequest` toast on every switch, amplified once switching became instant).
+  //? A ref tracks the joined room so a mere VIEW change (same room, already joined) still pings immediately
+  //? without a redundant re-join; the cancelled flag drops a stale join-resolution after a rapid re-switch.
+  const joinedPresenceRoomRef = useRef<string | null>(null);
   useEffect(() => {
     const room = snap.activeWorkspaceId;
     if (!room) return;
+    let cancelled = false;
     const topView = isTicketView(view) ? 'board' : view;
     const ping = () => { void syncRequest({ name: 'workspaces/presence', version: 'v1', data: { view: topView, viewing: true, clientRequestId: nextReqId() }, receiver: room }); };
-    ping();
+    if (joinedPresenceRoomRef.current === room) {
+      ping();
+    } else {
+      void joinRoom(room).then((joined) => { if (!cancelled && joined) { joinedPresenceRoomRef.current = room; ping(); } });
+    }
     const t = setInterval(ping, 15_000);
-    return () => { clearInterval(t); };
+    return () => { cancelled = true; clearInterval(t); };
   }, [view, snap.activeWorkspaceId]);
 
   //? bulk-* deltas → upsert the affected tickets (each its own event; shared reducer).
@@ -614,6 +647,26 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
           pieces: s.content.pieces.map((p) => (p.id === pieceId
             ? { ...p, assets: p.assets.some((a) => a.id === asset.id) ? p.assets.map((a) => (a.id === asset.id ? asset : a)) : [...p.assets, asset] }
             : p)),
+        },
+      }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? content-piece delta → UPSERT the whole piece by id (advance/archive/unarchive) — the granular
+  //? alternative to a contentDirty full refetch for single-piece structural ops. Same idempotent shape as
+  //? the snapshot (broadcastContentPieceDelta shares its mapper), so a re-delivered delta is safe.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/contentPieceDelta', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success' || !serverOutput.piece) return;
+      const piece = serverOutput.piece;
+      setSnap((s) => ({
+        ...s,
+        content: {
+          ...s.content,
+          pieces: s.content.pieces.some((p) => p.id === piece.id)
+            ? s.content.pieces.map((p) => (p.id === piece.id ? piece : p))
+            : [piece, ...s.content.pieces],
         },
       }));
     },

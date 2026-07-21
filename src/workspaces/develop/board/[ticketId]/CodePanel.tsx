@@ -15,10 +15,13 @@ import { useNavigate } from 'react-router-dom';
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { loadThemeId } from 'src/_components/editor/editorThemes';
+import { menuHandler } from 'src/_functions/menuHandler';
+import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import type { EditorChange } from 'src/_components/editor/CodeEditorPanel';
 import type { EditorFile } from 'src/_components/editor/fileTree';
 
 import FileDiffViewer from './FileDiffViewer';
+import { ArtifactLinkPicker } from '../ArtifactLinkPicker';
 import { LazyVsCodeEmbed, useLiveEditor } from './liveEditor';
 import { EmptyState, WsButton } from '../../../_components/primitives';
 import type { TicketFile } from '../../../_data/types';
@@ -46,6 +49,7 @@ function ticketFilesToEditor(files: TicketFile[]): { editorFiles: EditorFile[]; 
 
 export default function CodePanel({ files, workspaceId, ticketKey, initialMode, initialFile }: { files: TicketFile[]; workspaceId: string; ticketKey: string; initialMode?: 'diff' | 'changes' | 'live'; initialFile?: string }) {
   const translate = useTranslator();
+  const ctx = useWorkspaces();
   const theme = loadThemeId(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   //? Preview-target (from the MR review tab's per-file affordance): in "changes" mode, float the requested
   //? file to the front so the Monaco panel opens it (it selects files[0]/changes[0] by default). Diff mode
@@ -88,8 +92,7 @@ export default function CodePanel({ files, workspaceId, ticketKey, initialMode, 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.ticket.changedFilesCount', params: [{ key: 'count', value: files.length }] })}</span>
-                {/* Fase 2: reference picker not wired yet — kept reachable, but ghost so it never reads as a working primary. */}
-                <WsButton variant="ghost" icon="link" onClick={() => { /* Fase 2: reference picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
+                <WsButton variant="ghost" icon="link" onClick={() => { void menuHandler.open(<ArtifactLinkPicker ticketKey={ticketKey} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.ticket.addReference' })}</WsButton>
               </div>
               <FileDiffViewer files={files} initialFile={initialMode === 'diff' ? initialFile : undefined} />
             </div>

@@ -5,7 +5,8 @@
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { deterministicObjectId } from '../../../server/orchestrator/actionIds';
+import { enqueueGlobalAction } from '../../../server/orchestrator/globalOps';
 
 export const rateLimit: number | false = 12;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -18,17 +19,19 @@ export interface ApiParams {
   functions: Functions;
 }
 
-export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
+export const main = async ({ data, user }: ApiParams): Promise<ApiResponse> => {
   const name = data.name.trim();
   const type = data.type.trim();
   const fingerprint = data.fingerprint.trim();
   const publicKey = data.publicKey.trim();
   if (name.length === 0 || publicKey.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
-  const key = await enqueueGlobalRouteWrite(
-    { kind: 'ssh-key.add', userId: user.id },
-    () => functions.db.prisma.sshKey.create({
-      data: { userId: user.id, name, type: type.length > 0 ? type : 'ed25519', fingerprint, publicKey },
-    }),
-  );
+  const keyId = deterministicObjectId(user.id, publicKey, 'ssh-public-key');
+  const key = await enqueueGlobalAction({
+    op: 'ssh-key-add',
+    userId: user.id,
+    target: { keyId },
+    payload: { name, type: type.length > 0 ? type : 'ed25519', fingerprint, publicKey },
+  });
+  if (!('id' in key)) return { status: 'error', errorCode: 'common.500' };
   return { status: 'success', result: { id: key.id } };
 };

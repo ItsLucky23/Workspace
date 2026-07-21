@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (211)
+## Decisions (214)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -224,6 +224,9 @@
 | 0291 | Budgeted capability-aware Workspace-AI tools | 🟢 accepted | ai, context, rbac, reliability | — | `docs/decisions/0291-budgeted-capability-aware-workspace-ai-tools.md` |
 | 0292 | Typed route jobs use bounded replay and runtime claims | 🟢 accepted | conductor, reliability, jobs, multi-instance | — | `docs/decisions/0292-typed-route-jobs-use-bounded-replay-and-runtime-claims.md` |
 | 0293 | Workspace-AI has no ambiguous later operations | 🟢 accepted | ai, tools, reliability, security | — | `docs/decisions/0293-workspace-ai-has-no-ambiguous-later-operations.md` |
+| 0294 | Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs | 🟢 accepted | multi-tenancy, content, media, secrets, config | — | `docs/decisions/0294-per-workspace-media-generation-defaults.md` |
+| 0295 | Consolidate semantic duplicates, not domain history | 🟢 accepted | data-model, skills, rag, artifacts, migration | — | `docs/decisions/0295-consolidate-semantic-duplicates-not-domain-history.md` |
+| 0296 | Global writes use encrypted durable Conductor jobs | 🟢 accepted | conductor, reliability, security, multi-instance | — | `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md` |
 
 ## Summaries
 
@@ -1930,6 +1933,30 @@ Workspace route writes use bounded, runtime-validated `InternalOp` payloads pers
 The catalog has only `enabled` and `excluded` outcomes.
 
 → `docs/decisions/0293-workspace-ai-has-no-ambiguous-later-operations.md`
+
+### 0294 — Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs
+
+**0294** · accepted · tags: multi-tenancy, content, media, secrets, config · 2026-07-21
+
+Store the three as workspace-wide plaintext `EnvVar` rows in the same `__`-namespace the media config loader already reads: `__media_cheap` (`'1'`), `__media_scene_continuity` (`'on'`), `__media_voice_id` (a public voice id, not a secret). `loadWorkspaceMediaConfig` reads them; `runMediaGeneration` layers them UNDER the caller's `params` (a per-request param always wins) as `params.cheap` / `params.voiceId`, and `sceneDecompose` ORs the per-workspace flag with the env default. They are WRITTEN through the EXISTING `save-media-provider` control-API op — presence-based, so sending only one pref leaves the others (and provider keys/models) untouched — surfaced in the snapshot as `content.mediaPrefs` and edited in Content → Settings → Admin. The host env vars remain the fallback. Suno's per-workspace model needed no backend work — it already flows via `__media_model_music`; only the Admin UI's model-override list was missing the `music` row.
+
+→ `docs/decisions/0294-per-workspace-media-generation-defaults.md`
+
+### 0295 — Consolidate semantic duplicates, not domain history
+
+**0295** · accepted · tags: data-model, skills, rag, artifacts, migration · 2026-07-21
+
+`Skill` is the one skill store. `skillType='instruction'` rows contain reusable prompt instructions; `skillType='capability'` rows retain workflow-tool metadata (`kind`, `model`, `projectId`, `usedByStages`, status/description). Watermarked schema step 6 creates a capability row with `legacyInfoSourceId` before deleting each legacy `InfoSource(mode='skill')`. The frozen `skill-toggle` operation still accepts `sourceId`: it toggles a capability Skill first and falls back to a context-document InfoSource, so no public verb or client contract changes.
+
+→ `docs/decisions/0295-consolidate-semantic-duplicates-not-domain-history.md`
+
+### 0296 — Global writes use encrypted durable Conductor jobs
+
+**0296** · accepted · tags: conductor, reliability, security, multi-instance · 2026-07-21
+
+Global route writes use the closed `GlobalAction` union and `GlobalJob` collection. The full validated payload is AES-256-GCM encrypted with `WORKSPACES_ENC_KEY`; searchable columns contain only job identity, kind, owner, status and retry metadata. Deterministic action hashing supplies the job ID and dedup key. Recovery replays only the typed union, with five bounded attempts.
+
+→ `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md`
 
 ## Code governed by decisions
 

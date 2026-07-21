@@ -110,14 +110,16 @@ function BudgetCard() {
   );
 }
 
-//? P3 — advanced: override the fal MODEL per feature (e.g. a low-poly 3d model, a fast/cheap image model).
-//? Free-text so any fal model id works; empty = the built-in default (shown as the placeholder). Saved on BLUR.
+//? P3 — advanced: override the generation MODEL per feature (fal image/video/3d + suno `music`, e.g. a
+//? low-poly 3d model, a fast/cheap image model, or a different Suno version). Free-text so any model id works;
+//? empty = the built-in default (shown as the placeholder). Saved on BLUR.
 const MODEL_FEATURES: { feature: string; def: string }[] = [
   { feature: 'image-gen', def: 'fal-ai/flux/dev' },
   { feature: 'reference-image', def: 'fal-ai/flux/dev/image-to-image' },
   { feature: 'video-gen', def: 'fal-ai/ltx-video' },
   { feature: 'model-3d', def: 'fal-ai/triposr' },
   { feature: 'avatar', def: 'fal-ai/ltx-video' },
+  { feature: 'music', def: 'V5' },
 ];
 function MediaModelRow({ feature, def, current, onSave }: { feature: string; def: string; current: string; onSave: (model: string) => void }) {
   const [value, setValue] = useState(current);
@@ -139,6 +141,39 @@ function ModelOverridesBody() {
         <MediaModelRow key={m.feature} feature={m.feature} def={m.def} current={currentOf(m.feature)} onSave={(model) => { saveMediaProvider({ feature: m.feature, model: model || 'default' }); }} />
       ))}
     </div>
+  );
+}
+
+//? Workspace-wide media generation defaults — each overrides its host-env fallback (WS_MEDIA_CHEAP /
+//? WS_SCENE_CONTINUITY / ELEVENLABS_VOICE_ID). The toggles save immediately (source of truth = the snapshot,
+//? refetched after the write); the default voice id saves on BLUR like the model overrides.
+function GenerationDefaultsCard() {
+  const translate = useTranslator();
+  const { content, saveMediaProvider } = useWorkspaces();
+  const prefs = content.mediaPrefs;
+  const [voiceId, setVoiceId] = useState(prefs.voiceId);
+  return (
+    <SectionCard title={translate({ key: 'workspaces.content.genDefaultsTitle' })} desc={translate({ key: 'workspaces.content.genDefaultsDesc' })}>
+      <div className={`py-2`}>
+        <label className={`flex items-center gap-2 cursor-pointer`}>
+          <input type="checkbox" checked={prefs.cheap} onChange={(e) => { saveMediaProvider({ cheap: e.target.checked }); }} className={`accent-primary`} />
+          <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.cheapLabel' })}</span>
+        </label>
+        <div className={`text-xs text-muted pl-6 mt-0.5`}>{translate({ key: 'workspaces.content.cheapDesc' })}</div>
+      </div>
+      <div className={`py-2 border-t border-divider`}>
+        <label className={`flex items-center gap-2 cursor-pointer`}>
+          <input type="checkbox" checked={prefs.sceneContinuity} onChange={(e) => { saveMediaProvider({ sceneContinuity: e.target.checked }); }} className={`accent-primary`} />
+          <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.sceneContinuityLabel' })}</span>
+        </label>
+        <div className={`text-xs text-muted pl-6 mt-0.5`}>{translate({ key: 'workspaces.content.sceneContinuityDesc' })}</div>
+      </div>
+      <div className={`flex flex-col gap-1 py-2 border-t border-divider`}>
+        <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.voiceIdLabel' })}</span>
+        <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.content.voiceIdDesc' })}</span>
+        <input value={voiceId} onChange={(e) => { setVoiceId(e.target.value); }} onBlur={() => { if (voiceId.trim() !== prefs.voiceId) saveMediaProvider({ voiceId: voiceId.trim() }); }} placeholder={translate({ key: 'workspaces.content.voiceIdPlaceholder' })} className={`w-full mt-1 ${fieldCls}`} />
+      </div>
+    </SectionCard>
   );
 }
 
@@ -199,6 +234,7 @@ export function AdminTab() {
     <div className={`flex flex-col gap-4`}>
       <KeysCard />
       <BudgetCard />
+      <GenerationDefaultsCard />
       <Disclosure summary={translate({ key: 'workspaces.content.modelsTitle' })}>
         <ModelOverridesBody />
       </Disclosure>

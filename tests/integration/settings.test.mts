@@ -142,15 +142,18 @@ try {
   eq(snapAfterApiRotation.workspaces[0]?.webhookConfigured, true, 'the post-rotation snapshot exposes webhook configured metadata');
   assert(!('webhookSecret' in (snapAfterApiRotation.workspaces[0] ?? {})), 'the post-rotation snapshot NEVER returns the webhook secret');
 
-  //? skill-toggle → target.sourceId flips InfoSource.enabled. Seed a disabled skill row,
-  //? then toggle it on.
-  const skill = await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'skill', name: `Test skill ${String(stamp)}`, kind: 'live', enabled: false, usedByStages: [] } });
+  //? skill-toggle → target.sourceId flips a canonical capability Skill. Seed one disabled, then toggle it on.
+  const skill = await prisma.skill.create({ data: { workspaceId: wsId, slug: `test-capability-${String(stamp)}`, name: `Test skill ${String(stamp)}`, instruction: '', skillType: 'capability', kind: 'live', enabled: false, usedByStages: [] } });
   await enqueueControlAction({ workspaceId: wsId, op: 'skill-toggle', target: { sourceId: skill.id }, payload: { on: true }, userId: owner.id, clientRequestId: `skill-${String(stamp)}` });
   const toggled = await poll(async () => {
-    const s = await prisma.infoSource.findFirst({ where: { workspaceId: wsId, id: skill.id } });
+    const s = await prisma.skill.findFirst({ where: { workspaceId: wsId, id: skill.id, skillType: 'capability' } });
     return s?.enabled === true ? s : null;
   });
-  assert(toggled !== null, 'skill-toggle flipped the InfoSource skill enabled=true');
+  assert(toggled !== null, 'skill-toggle flipped the capability Skill enabled=true');
+
+  const contextDoc = await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'test', name: `Test doc ${String(stamp)}`, enabled: false, usedByStages: [] } });
+  await enqueueControlAction({ workspaceId: wsId, op: 'skill-toggle', target: { sourceId: contextDoc.id }, payload: { on: true }, userId: owner.id, clientRequestId: `source-${String(stamp)}` });
+  assert((await prisma.infoSource.findFirst({ where: { workspaceId: wsId, id: contextDoc.id } }))?.enabled === true, 'skill-toggle retains its frozen context-document toggle behavior');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

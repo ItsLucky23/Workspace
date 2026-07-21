@@ -11,14 +11,18 @@ import { tryCatch, getPrismaClient } from '@luckystack/core';
 import { recordAiRun } from '../ai/activity';
 import { recordTurnSpend } from '../spend/record';
 
-const API_KEY = process.env.GEMINI_API_KEY ?? '';
+//? Read the key LAZILY (at call time), not at module load: `GEMINI_API_KEY` is a @luckystack/secret-manager
+//? pointer that only resolves into process.env AFTER boot's secret resolution — capturing it at import time
+//? would freeze the unresolved pointer (key set but silently forced to the local fallback). Mirrors the
+//? deliberate lazy read in server/ai/providers/geminiApi.ts.
+const geminiKey = (): string => process.env.GEMINI_API_KEY ?? '';
 //? text-embedding-004 was retired by Google (404s since mid-2026, silently forcing the local
 //? fallback) — gemini-embedding-001 is the current embeddings model (3072-dim).
 const EMBED_MODEL = process.env.WS_EMBED_MODEL ?? 'gemini-embedding-001';
 const LOCAL_DIM = 256;
 
 export function embedTag(): string {
-  return API_KEY.length > 0 ? `gemini:${EMBED_MODEL}` : `local:v1:${String(LOCAL_DIM)}`;
+  return geminiKey().length > 0 ? `gemini:${EMBED_MODEL}` : `local:v1:${String(LOCAL_DIM)}`;
 }
 
 //? FNV-1a — a small, fast, stable string hash (no Math.random, deterministic across runs).
@@ -64,7 +68,7 @@ const GEMINI_BATCH_MAX = 100;
 //? Batch-embed via the Gemini embeddings API (sliced to the API's batch limit). Returns null on
 //? any failure so the caller can fall back to local embeddings rather than losing the whole index.
 async function geminiEmbed(texts: string[]): Promise<number[][] | null> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents?key=${API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents?key=${geminiKey()}`;
   const [err, out] = await tryCatch(async () => {
     const all: number[][] = [];
     for (let start = 0; start < texts.length; start += GEMINI_BATCH_MAX) {
@@ -101,7 +105,7 @@ function meterEmbedRun(texts: string[], meter: EmbedMeterCtx, startedAt: number)
 //? Embed a batch of texts with the active embedder (Gemini if keyed, else local). Never throws.
 export async function embedTexts(texts: string[], meter: EmbedMeterCtx = {}): Promise<number[][]> {
   if (texts.length === 0) return [];
-  if (API_KEY.length > 0) {
+  if (geminiKey().length > 0) {
     const startedAt = Date.now();
     const g = await geminiEmbed(texts);
     if (g) {

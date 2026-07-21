@@ -4,9 +4,9 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob, VideoScene as DbVideoScene } from '@prisma/client';
 
-import type { ContentAssetSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
+import type { ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
 
 //? DB priority string → the frontend `TicketPriority` union (falls back to 'normal'
@@ -126,6 +126,32 @@ export function toContentAssetSummary(a: DbContentAsset, job?: DbMediaJob | null
     ...(a.parentId ? { variant: true } : {}),
     ...(critique ? { critique } : {}),
     ...(posterUrl ? { posterUrl } : {}),
+  };
+}
+
+//? Map a VideoScene row → the frontend `VideoSceneSummary`. Shared by `buildSnapshot` AND
+//? `broadcastContentPieceDelta` so the timeline shape can't diverge between first-load and live-upsert.
+export function toVideoSceneSummary(s: DbVideoScene): VideoSceneSummary {
+  return { id: s.id, order: s.order, videoAssetId: s.videoAssetId, imageAssetId: s.imageAssetId, startTrimMs: s.startTrimMs, endTrimMs: s.endTrimMs, durationMs: s.durationMs, transitionIn: s.transitionIn, prompt: s.prompt };
+}
+
+//? Assemble ONE content piece's frontend summary from its row + its already-mapped assets/scenes/spend.
+//? Shared by `buildSnapshot` (all pieces, first load) AND `broadcastContentPieceDelta` (a single piece, live
+//? upsert) so the piece shape can NEVER diverge between the two paths — the exact divergence class the tests
+//? guard. The caller owns the querying (batch vs single); this is the pure, identical assembly.
+export function toContentPieceSummary(
+  c: { id: string; title: string; format: string; stageId: string; status: string; channelId: string | null; voiceVolume: number; musicVolume: number; archived: boolean },
+  assets: ContentAssetSummary[],
+  scenes: VideoSceneSummary[],
+  spentCents: number,
+): ContentPieceSummary {
+  //? V5 — the piece's NEWEST voice/music asset url for the audio-track waveform.
+  const urlOfKind = (k: string): string | null => { for (let i = assets.length - 1; i >= 0; i -= 1) { const a = assets[i]; if (a?.kind === k && a.url.length > 0) return a.url; } return null; };
+  return {
+    id: c.id, title: c.title, format: c.format, stageId: c.stageId, status: c.status, channelId: c.channelId,
+    assets, scenes, voiceVolume: c.voiceVolume, musicVolume: c.musicVolume,
+    voiceUrl: urlOfKind('voice'), musicUrl: urlOfKind('music'), spentCents,
+    ...(c.archived ? { archived: true } : {}),
   };
 }
 

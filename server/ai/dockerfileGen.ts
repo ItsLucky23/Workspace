@@ -5,18 +5,15 @@
 //? then reviews (Monaco slice) + commits into the repo. The actual L2 `docker build` of
 //? the draft is a later slice (P2, 07b §1.2).
 
-import { writeFileSync, mkdirSync } from 'node:fs';
-import path from 'node:path';
 import { runAiCompletion } from './registry';
 import { repoManifests } from '../git/repoStore';
-import { draftPath as projectDraftPath } from '../container/dockerfileDraft';
 import { resolveProjectId } from '../orchestrator/projectResolve';
 import { extendsAllowedBase } from '../container/baseImages';
 import type { PrismaClient } from '@prisma/client';
 
 const BASE_IMAGE = process.env.WS_BASE_IMAGE ?? 'workspaces/base:0.1.0';
 
-export interface DockerfileResult { ok: boolean; dockerfile: string; path?: string; error?: string }
+export interface DockerfileResult { ok: boolean; dockerfile: string; projectId?: string; error?: string }
 
 //? Strip a ```dockerfile ... ``` fence if the model added one despite the instruction.
 function extractDockerfile(text: string): string {
@@ -29,9 +26,8 @@ function extractDockerfile(text: string): string {
 //? variant) via the shared guard. A `# syntax=` directive before it is fine.
 const extendsBase = extendsAllowedBase;
 
-//? Generate the draft `.workspaces/Dockerfile` from the linked repo's manifests. Persists
-//? it to the workspace data dir (the pre-commit draft) and points Project.dockerfilePath
-//? at its eventual repo location. Returns the content + a typed error on failure.
+//? Generate the draft `.workspaces/Dockerfile` from the linked repo's manifests. This slow provider path
+//? is READ-ONLY; the route submits the result as a typed CAS completion through the Conductor.
 export async function generateDockerfile(prisma: PrismaClient, workspaceId: string, projectId?: string): Promise<DockerfileResult> {
   //? R3-b — generate for the ACTIVE/target project (its own repo + draft slot).
   const resolvedId = await resolveProjectId(prisma, workspaceId, projectId);
@@ -52,10 +48,5 @@ export async function generateDockerfile(prisma: PrismaClient, workspaceId: stri
   if (!res.ok) return { ok: false, dockerfile: '', error: res.error ?? 'ai.turnFailed' };
   const dockerfile = extractDockerfile(res.text);
   if (dockerfile.length === 0 || !extendsBase(dockerfile)) return { ok: false, dockerfile, error: 'dockerfile.invalidBase' };
-  const dfPath = projectDraftPath(workspaceId, resolvedId);
-  mkdirSync(path.dirname(dfPath), { recursive: true });
-  writeFileSync(dfPath, dockerfile, 'utf8');
-  //? ADR 0035: write only the TARGET project (was updateMany over every project).
-  await prisma.project.update({ where: { id: resolvedId }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
-  return { ok: true, dockerfile, path: dfPath };
+  return { ok: true, dockerfile, projectId: resolvedId };
 }

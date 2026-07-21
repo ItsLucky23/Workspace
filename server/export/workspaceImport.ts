@@ -17,7 +17,7 @@ function str(v: unknown): string { return typeof v === 'string' ? v : ''; }
 function arr(v: unknown): unknown[] { return Array.isArray(v) ? v : []; }
 
 //? Import a bundle (parsed JSON) as a NEW workspace for `ownerId`. Never touches an existing workspace.
-export async function importWorkspaceBundle(prisma: PrismaClient, ownerId: string, bundle: unknown): Promise<WorkspaceImportResult> {
+export async function importWorkspaceBundle(prisma: PrismaClient, ownerId: string, bundle: unknown, requestedWorkspaceId?: string): Promise<WorkspaceImportResult> {
   const b = asRecord(bundle);
   const meta = asRecord(b.workspace);
   const name = str(meta.name);
@@ -25,7 +25,7 @@ export async function importWorkspaceBundle(prisma: PrismaClient, ownerId: strin
 
   //? skipStarterSeed=true — an import already carries the bundle's own tickets; the default
   //? "welcome" starter tickets would otherwise land as phantoms alongside them.
-  const created = await createBlankWorkspace(prisma, ownerId, `${name} (import)`, undefined, 'professional', undefined, true);
+  const created = await createBlankWorkspace(prisma, ownerId, `${name} (import)`, undefined, 'professional', undefined, true, requestedWorkspaceId);
   const workspaceId = created.workspaceId;
   const project = await prisma.project.create({ data: { workspaceId, name: `${name} (import)`, gitlabPath: '' } });
 
@@ -72,5 +72,8 @@ export async function importWorkspaceBundle(prisma: PrismaClient, ownerId: strin
     }
   }
 
+  //? This marker is the final authoritative write. Global-job replay treats an absent/false marker as a
+  //? partial import, deletes that deterministic workspace, and rebuilds it; true returns the same result.
+  await prisma.workspace.update({ where: { id: workspaceId }, data: { importCompleted: true } });
   return { ok: true, workspaceId, name: `${name} (import)`, tickets, pieces, sources };
 }

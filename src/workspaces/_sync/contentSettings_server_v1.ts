@@ -22,6 +22,9 @@ export interface SyncParams {
     op: string; clientRequestId: string;
     capCents?: number; alertPct?: number; enabled?: boolean;
     providerId?: string; apiKey?: string; feature?: string; model?: string;
+    //? Workspace-wide media generation defaults (save-media-provider): cheap-preview / scene-continuity toggles
+    //? + the default ElevenLabs voice id. Each overrides its host-env fallback per workspace.
+    cheap?: boolean; sceneContinuity?: boolean; voiceId?: string;
     key?: string; label?: string; systemPrompt?: string;
     previewAssetUrl?: string; previewKind?: string;   // #155 — style preview thumbnail
     channelId?: string; brandVoice?: string; productContext?: string;

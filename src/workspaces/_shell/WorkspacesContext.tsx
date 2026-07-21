@@ -374,7 +374,7 @@ export interface WorkspacesCtx {
   createContentPiece: (input: { title: string; brief: string; format?: string }) => void;
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
-  saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string }) => void;
+  saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string; cheap?: boolean; sceneContinuity?: boolean; voiceId?: string }) => void;
   //? G7 — create/update a prompt A/B experiment, and stop one (its trials are kept).
   savePromptExperiment: (input: { experimentId?: string; feature: string; name: string; variantA: string; variantB: string }) => void;
   stopPromptExperiment: (experimentId: string) => void;

@@ -6,8 +6,7 @@
 /** @docs owner ItsLucky23 */
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { importWorkspaceBundle } from '../../../server/export/workspaceImport';
-import { enqueueGlobalRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueGlobalAction, workspaceImportAction } from '../../../server/orchestrator/globalOps';
 
 export const rateLimit: number | false = 3;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -20,12 +19,10 @@ export interface ApiParams {
   functions: Functions;
 }
 
-export const main = async ({ data, user, functions }: ApiParams): Promise<ApiResponse> => {
-  //? No tenant exists yet; serialize the complete validated import on the global Conductor chain.
-  const res = await enqueueGlobalRouteWrite(
-    { kind: 'workspace.import', userId: user.id },
-    () => importWorkspaceBundle(functions.db.prisma, user.id, data.bundle),
-  );
-  if (!res.ok) return { status: 'error', errorCode: res.error ?? 'import.failed' };
+export const main = async ({ data, user }: ApiParams): Promise<ApiResponse> => {
+  //? No tenant exists yet. The encrypted global job owns a deterministic target workspace, so a crash
+  //? rebuilds only its partial import and can never create a second workspace from the same bundle.
+  const res = await enqueueGlobalAction(workspaceImportAction(user.id, data.bundle));
+  if (!('ok' in res) || !res.ok) return { status: 'error', errorCode: 'error' in res && res.error ? res.error : 'import.failed' };
   return { status: 'success', result: res };
 };

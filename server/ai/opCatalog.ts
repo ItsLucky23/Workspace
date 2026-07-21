@@ -290,7 +290,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'skill-toggle': {
     mode: 'enabled',
-    hint: 'enable or disable a workflow-snippet skill (an InfoSource on the Sources page — NOT an AI skill; those use ai-skill-toggle). params: sourceId (from the workflow-snippet skills list below), on (true/false)',
+    hint: 'enable or disable a workflow capability or context document from the Sources page (NOT an instruction AI skill; those use ai-skill-toggle). params: sourceId, on (true/false)',
     params: { sourceId: { kind: 'sourceId', required: true }, on: { kind: 'boolean', required: true } },
   },
   //? SK1 — the universal AI-skills layer. GAP_SCAN C3: toggling/saving a skill is exactly the kind of

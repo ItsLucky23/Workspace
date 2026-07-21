@@ -68,7 +68,7 @@ export type ControlOp =
   | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
   | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role' | 'studio-send-to-content'
   //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (workspace-scoped instruction blocks
-  //? injected into AI runs). Distinct from the older 'skill-toggle' (InfoSource workflow snippets).
+  //? injected into AI runs). Distinct from the older 'skill-toggle' (workflow capabilities/context docs).
   | 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-delete' | 'ai-skill-reset'
   //? DOC (DOCUMENTS_AND_SKILLS) — the Documents module. AI output lands as aiDraft; apply-draft is the
   //? consent that writes content (B-23). gen-image reuses the media pipeline into document assets.

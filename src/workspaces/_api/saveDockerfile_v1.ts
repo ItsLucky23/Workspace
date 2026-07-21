@@ -12,6 +12,7 @@ import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated
 import { resolveProjectId } from '../../../server/orchestrator/projectResolve';
 import { hasCapability, CAP } from '../../../server/control/rbac';
 import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { dockerfileEntityKey, readEntityVersion } from '../../../server/orchestrator/entityVersion';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -32,12 +33,13 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? R3-b — write to the active/target project's own draft slot.
   const projectId = await resolveProjectId(functions.db.prisma, workspaceId, data.projectId);
   if (!projectId) return { status: 'error', errorCode: 'api.invalidRequest' };
+  const expectedVersion = await readEntityVersion(functions.db.prisma, workspaceId, dockerfileEntityKey(projectId));
   const suppliedRequestId = data.clientRequestId?.trim();
   const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : createHash('sha256').update(projectId).update('\0').update(data.dockerfile).digest('hex');
   const applied = await enqueueInternalAction({
     workspaceId,
     op: 'dockerfile-save',
-    target: { projectId },
+    target: { projectId, expectedVersion },
     payload: { dockerfile: data.dockerfile },
     userId: user.id,
     clientRequestId: `dockerfile-save:${requestId}`,

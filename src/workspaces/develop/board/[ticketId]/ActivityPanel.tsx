@@ -6,7 +6,7 @@
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../../_components/Icon';
-import { Disclosure, EmptyState, WsButton } from '../../../_components/primitives';
+import { Disclosure, EmptyState } from '../../../_components/primitives';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member, StageHistoryEntry, Ticket, TicketLink } from '../../../_data/types';
 
@@ -85,8 +85,6 @@ function LinksSection({ links, onOpen }: { links: TicketLink[]; onOpen: (id: str
         icon="link"
         title={translate({ key: 'workspaces.ticket.noLinks' })}
         sub={translate({ key: 'workspaces.ticket.noLinksTeachSub' })}
-        //? Fase 2: ticket link picker not wired yet — kept reachable, secondary so it doesn't promise more than it does.
-        action={<WsButton variant="secondary" icon="link" onClick={() => { /* Fase 2: ticket link picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.linkTicket' })}</WsButton>}
       />
     );
   }
@@ -106,8 +104,6 @@ function LinksSection({ links, onOpen }: { links: TicketLink[]; onOpen: (id: str
           </div>
         ))}
       </div>
-      {/* Fase 2: ticket link picker not wired yet */}
-      <WsButton variant="ghost" icon="link" className="self-start" onClick={() => { /* Fase 2: ticket link picker not wired yet */ }}>{translate({ key: 'workspaces.ticket.linkTicket' })}</WsButton>
     </div>
   );
 }

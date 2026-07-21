@@ -3,7 +3,7 @@ import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 import { loginSeededUser, cleanupWorkspace, joinRoom } from '../../../tests/_helpers.mjs';
 
 //? Per-route tests for `workspaces/skillsControl/v1` — the universal AI-skills layer (the
-//? `Skill` model, distinct from the InfoSource `skill-toggle` route), whitelisted to
+//? instruction Skill rows, distinct from the capability/context-doc `skill-toggle` route), whitelisted to
 //? `SKILL_OPS`. Covers:
 //?  [1] happy path — `ai-skill-save` (no `skillId` → create) dispatched through the Conductor;
 //?      asserted via the real Prisma post-condition (a new `Skill` row), not just the ack.
