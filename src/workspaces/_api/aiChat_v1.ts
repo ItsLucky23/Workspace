@@ -6,10 +6,13 @@
 //? the Conductor + OP_CAPABILITY RBAC. Membership-gated; heavily rate-limited (AI turns
 //? are expensive). Per-user request/response (not a room broadcast), hence `_api` not `_sync`.
 
+import { randomUUID } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { interpretChat } from '../../../server/ai/workspaceChat';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { deterministicObjectId } from '../../../server/orchestrator/actionIds';
 
 export const rateLimit: number | false = 20;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -17,7 +20,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; message: string; projectId?: string; history?: { role: string; text: string }[] };
+  data: { workspaceId: string; message: string; projectId?: string; history?: { role: string; text: string }[]; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -37,13 +40,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? cross-device. Proposals/plans are transient offers → not persisted (see the model doc).
   //? The expensive provider call completed OUTSIDE the workspace lease. Only its short deterministic
   //? completion write enters the Conductor, so AI latency cannot block unrelated authoritative actions.
-  await enqueueWorkspaceRouteWrite(
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const clientRequestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : randomUUID();
+  await enqueueInternalAction({
     workspaceId,
-    { kind: 'ai-chat.record', userId: user.id },
-    () => functions.db.prisma.workspaceChatMessage.createMany({ data: [
-      { workspaceId, userId: user.id, role: 'user', text: message },
-      { workspaceId, userId: user.id, role: 'ai', text: result.reply },
-    ] }),
-  );
+    op: 'chat-turn-record',
+    target: {
+      userMessageId: deterministicObjectId(workspaceId, `${user.id}:${clientRequestId}`, 'chat-user'),
+      aiMessageId: deterministicObjectId(workspaceId, `${user.id}:${clientRequestId}`, 'chat-ai'),
+    },
+    payload: { userText: message, aiText: result.reply },
+    userId: user.id,
+    clientRequestId: `chat-turn:${clientRequestId}`,
+  });
   return { status: 'success', result };
 };

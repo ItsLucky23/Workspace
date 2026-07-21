@@ -24,17 +24,19 @@ export async function saveDesignArtifact(prisma: PrismaClient, workspaceId: stri
   const content = asJson(a.content);
   const source = a.source === 'ai' || a.source === 'seed' ? a.source : 'manual';
   const name = a.name.trim();
-  //? No id → upsert by (kind, name) so re-saving the same look ("Use this look", re-import, re-copy) UPDATES
-  //? the existing row instead of piling up duplicate rows in the library (they surface via the L2 round-trip).
-  const existing = a.id
-    ? { id: a.id }
-    : await prisma.designArtifact.findFirst({ where: { workspaceId, kind: a.kind, name }, select: { id: true } });
+  //? A supplied id is a deterministic retry identity. Resolve it globally first so an impossible hash
+  //? collision cannot alias another tenant; an absent id keeps the legacy kind/name upsert behaviour.
+  const supplied = a.id ? await prisma.designArtifact.findUnique({ where: { id: a.id }, select: { id: true, workspaceId: true } }) : null;
+  if (supplied && supplied.workspaceId !== workspaceId) return '';
+  const existing = supplied ?? (a.id
+    ? null
+    : await prisma.designArtifact.findFirst({ where: { workspaceId, kind: a.kind, name }, select: { id: true } }));
   let id: string;
   if (existing) {
     await prisma.designArtifact.updateMany({ where: { workspaceId, id: existing.id }, data: { name, description: a.description ?? null, content } });
     id = existing.id;
   } else {
-    const created = await prisma.designArtifact.create({ data: { workspaceId, active: false, kind: a.kind, name, description: a.description ?? null, content, source }, select: { id: true } });
+    const created = await prisma.designArtifact.create({ data: { ...(a.id ? { id: a.id } : {}), workspaceId, active: false, kind: a.kind, name, description: a.description ?? null, content, source }, select: { id: true } });
     id = created.id;
   }
   //? Refresh the design-system doc so the saved look joins the named-looks catalog the coding agent reads.

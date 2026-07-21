@@ -137,7 +137,7 @@ function InspirationForm() {
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted">{translate({ key: 'workspaces.inspire.desc' })}</div>
       <div className="flex flex-wrap items-center gap-2">
-        <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { call('image', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'inspire-image', imageUrl: uploaded } })); }} />
+        <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { call('image', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'inspire-image', imageUrl: uploaded, clientRequestId: globalThis.crypto.randomUUID() } })); }} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>

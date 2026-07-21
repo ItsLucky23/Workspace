@@ -348,7 +348,7 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
   const issue = () => {
     const scopes = [...(scopeTickets ? ['tickets:write'] : []), ...(scopeContent ? ['content:write'] : [])];
     if (scopes.length === 0) return;
-    void apiRequest({ name: 'workspaces/issuePat', version: 'v1', data: { workspaceId, name: name.trim() || 'API token', scopes } }).then((r) => {
+    void apiRequest({ name: 'workspaces/issuePat', version: 'v1', data: { workspaceId, name: name.trim() || 'API token', scopes, clientRequestId: globalThis.crypto.randomUUID() } }).then((r) => {
       if (r.status === 'success') { setRawOnce(r.result.token); setName(''); refetch(); }
     });
   };

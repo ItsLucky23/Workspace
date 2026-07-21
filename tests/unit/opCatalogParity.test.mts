@@ -40,6 +40,7 @@ const ctx: Ctx = {
   roles: [{ key: 'member', label: 'Member' }],
   infoSources: [{ id: 'src1', name: 'Deploy checklist', enabled: true }],
   projectServices: [{ id: 'svc1', name: 'api' }],
+  migrations: [{ id: 'mig1', name: 'add-users', envKind: 'dev' }],
   projectFacts: { repoLinked: false, stack: 'unknown', framework: '', dependencies: [], databases: [], deployTargets: [], envKeys: [], ciPipelines: [] },
   enabledSections: [],
 };
@@ -101,12 +102,15 @@ try {
   const teardownExtra = validateGenericAction({ op: 'env-teardown', envId: 'e1', rmVolumes: true }, ctx);
   assert(teardownExtra !== null && !('rmVolumes' in (teardownExtra.params ?? {})), 'undeclared fields are stripped from params');
 
-  //? A `later` op (safe but not yet dispatchable) does NOT validate yet — the parity wave's deliberate
-  //? skips stay later (no dispatch precedent / unexpressible params / out-of-workspace reference).
+  //? There is no ambiguous `later` bucket left. Duplicate aliases, full-state timeline replacements and
+  //? cross-workspace operations are explicitly excluded; the one safe missing effect is dispatchable.
   for (const op of ['content-create', 'content-reorder-beats', 'content-save-scenes', 'raise-cap', 'gitlab-verify', 'copy-workspace-assets'] as const) {
-    eq(PROPOSE_CATALOG[op].mode, 'later', `${op} deliberately stays later`);
-    eq(validateGenericAction({ op }, ctx), null, `${op} is not proposable until its dispatcher lands`);
+    eq(PROPOSE_CATALOG[op].mode, 'excluded', `${op} is consciously excluded from chat`);
+    eq(validateGenericAction({ op }, ctx), null, `${op} cannot enter a chat proposal`);
   }
+  const migrationApply = validateGenericAction({ op: 'db-migrate-apply', migrationId: 'mig1' }, ctx);
+  assert(migrationApply !== null && migrationApply.destructive === true, 'a real pending migration is proposable behind destructive confirmation');
+  eq(validateGenericAction({ op: 'db-migrate-apply', migrationId: 'missing' }, ctx), null, 'a dangling migration id is rejected');
 
   // ---- (5) the chat entry point: legacy rich path intact, generic path reachable behind it
   assert(validateChatAction({ op: 'bulk-move', ticketKeys: ['DEV-1'], stageId: 'refined' }, ctx) !== null, 'legacy bulk-move still validates via the rich path');

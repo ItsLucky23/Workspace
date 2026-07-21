@@ -5,12 +5,13 @@
 //? first `FROM` extends the L1 base before writing, so an edited draft cannot smuggle an
 //? arbitrary base. Committing the draft into the linked repo is a later slice.
 
+import { createHash } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { saveDockerfileDraft } from '../../../server/container/dockerfileDraft';
 import { resolveProjectId } from '../../../server/orchestrator/projectResolve';
 import { hasCapability, CAP } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -18,7 +19,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; dockerfile: string; projectId?: string };
+  data: { workspaceId: string; dockerfile: string; projectId?: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -31,10 +32,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? R3-b — write to the active/target project's own draft slot.
   const projectId = await resolveProjectId(functions.db.prisma, workspaceId, data.projectId);
   if (!projectId) return { status: 'error', errorCode: 'api.invalidRequest' };
-  const result = await enqueueWorkspaceRouteWrite(
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : createHash('sha256').update(projectId).update('\0').update(data.dockerfile).digest('hex');
+  const applied = await enqueueInternalAction({
     workspaceId,
-    { kind: 'dockerfile.save', userId: user.id },
-    () => Promise.resolve(saveDockerfileDraft(workspaceId, projectId, data.dockerfile)),
-  );
+    op: 'dockerfile-save',
+    target: { projectId },
+    payload: { dockerfile: data.dockerfile },
+    userId: user.id,
+    clientRequestId: `dockerfile-save:${requestId}`,
+  });
+  const result = applied.result !== null && typeof applied.result === 'object' && 'ok' in applied.result && typeof applied.result.ok === 'boolean'
+    ? { ok: applied.result.ok, ...('error' in applied.result && typeof applied.result.error === 'string' ? { error: applied.result.error } : {}) }
+    : { ok: false, error: 'dockerfile.saveFailed' };
   return { status: 'success', result };
 };

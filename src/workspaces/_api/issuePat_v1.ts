@@ -1,10 +1,13 @@
 //? X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the
 //? workspace the PAT is scoped to). The RAW token is returned ONCE here + never stored (only its hash is).
 
+import { randomUUID } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { generateToken } from '../../../server/auth/pat';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { deterministicObjectId } from '../../../server/orchestrator/actionIds';
 
 export const rateLimit: number | false = 10;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -14,7 +17,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 const ALLOWED_SCOPES = new Set(['tickets:write', 'content:write']);
 
 export interface ApiParams {
-  data: { workspaceId: string; name?: string; scopes?: string[] };
+  data: { workspaceId: string; name?: string; scopes?: string[]; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -27,15 +30,21 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const scopes = (Array.isArray(data.scopes) ? data.scopes : []).filter((s): s is string => typeof s === 'string' && ALLOWED_SCOPES.has(s));
   if (scopes.length === 0) return { status: 'error', errorCode: 'pat.noScopes' };
   const token = generateToken();
-  const [writeError, created] = await functions.tryCatch.tryCatch(() => enqueueWorkspaceRouteWrite(
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const clientRequestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : randomUUID();
+  const patId = deterministicObjectId(workspaceId, `${user.id}:${clientRequestId}`, 'personal-access-token');
+  const [writeError, created] = await functions.tryCatch.tryCatch(() => enqueueInternalAction({
     workspaceId,
-    { kind: 'pat.issue', userId: user.id },
-    () => functions.db.prisma.personalAccessToken.create({
-      data: { userId: user.id, workspaceId, name: (data.name ?? 'API token').trim() || 'API token', tokenHash: token.hash, tokenPrefix: token.prefix, scopes },
-    }),
-  ));
-  if (writeError) return { status: 'error', errorCode: 'common.500' };
-  if (!created) return { status: 'error', errorCode: 'common.500' };
+    op: 'pat-issue',
+    target: { patId },
+    payload: { name: (data.name ?? 'API token').trim() || 'API token', tokenHash: token.hash, tokenPrefix: token.prefix, scopes },
+    userId: user.id,
+    clientRequestId: `pat-issue:${clientRequestId}`,
+  }));
+  const persistedId = created?.result !== null && typeof created?.result === 'object' && 'keys' in created.result && Array.isArray(created.result.keys)
+    ? created.result.keys.find((key): key is string => typeof key === 'string')
+    : undefined;
+  if (writeError || persistedId !== patId) return { status: 'error', errorCode: 'common.500' };
   //? The RAW token is shown ONCE — the client must store it now; the server keeps only the hash.
-  return { status: 'success', result: { id: created.id, token: token.raw, prefix: token.prefix, scopes } };
+  return { status: 'success', result: { id: patId, token: token.raw, prefix: token.prefix, scopes } };
 };

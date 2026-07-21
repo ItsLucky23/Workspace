@@ -9,7 +9,7 @@ import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { buildProjectImage } from '../../../server/container/imageBuild';
 import { hasCapability, CAP } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 6;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -30,15 +30,14 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   //? #44 — build the ACTIVE project (falls back to first when omitted), not always project #1.
   const result = await buildProjectImage(functions.db.prisma, workspaceId, data.projectId, {
     persist: async (projectId, tag) => {
-      await enqueueWorkspaceRouteWrite(
+      await enqueueInternalAction({
         workspaceId,
-        { kind: 'project-image.complete', userId: user.id },
-        async () => {
-          const updated = await functions.db.prisma.project.updateMany({ where: { workspaceId, id: projectId }, data: { baseImageRef: tag } });
-          if (updated.count !== 1) throw new Error('project.notFound');
-          return true;
-        },
-      );
+        op: 'project-image-complete',
+        target: { projectId },
+        payload: { tag },
+        userId: user.id,
+        clientRequestId: `project-image-complete:${projectId}:${tag}`,
+      });
     },
   });
   return { status: 'success', result };

@@ -16,7 +16,7 @@ export const CHAT_ENABLED_OPS = [
   // CI + reasoning + memory
   'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'index-memory',
   // user-app DB (db-connect stays excluded — it carries a connection-string secret)
-  'db-migrate-create', 'db-introspect',
+  'db-migrate-create', 'db-migrate-apply', 'db-introspect',
   // projects / greenfield
   'project-create', 'project-from-template',
   // service stacks (preset-only via chat; bring-your-own compose stays UI-only)

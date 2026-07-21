@@ -2,10 +2,13 @@
 //? authoritative workspace content, so the typed `_api` validates and the Conductor performs the write.
 //? `relaxed` validation: the handler validates every field explicitly below.
 
+import { randomUUID } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { CAP, hasCapability } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
+import { deterministicObjectId } from '../../../server/orchestrator/actionIds';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -15,7 +18,7 @@ export const auth: AuthProps = { login: true, additional: [] };
 export interface ApiParams {
   //? Fields are optional at the type level because the route is `validation: 'relaxed'` (the handler
   //? validates below) — so the `?? ''` guards are genuine, not dead conditionals.
-  data: { workspaceId: string; id?: string; projectId?: string; name?: string; productName?: string; audience?: string; tone?: string; goals?: string; notes?: string };
+  data: { workspaceId: string; id?: string; projectId?: string; name?: string; productName?: string; audience?: string; tone?: string; goals?: string; notes?: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -43,18 +46,20 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     ...(projectId ? { projectId } : {}),
   };
 
-  const id = data.id;
-  const savedId = await enqueueWorkspaceRouteWrite(
+  const create = !data.id;
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : randomUUID();
+  const briefId = data.id ?? deterministicObjectId(workspaceId, requestId, 'studio-brief');
+  const saved = await enqueueInternalAction({
     workspaceId,
-    { kind: 'studio-brief.save', userId: user.id },
-    async () => {
-      if (id) {
-        const updated = await functions.db.prisma.studioBrief.updateMany({ where: { workspaceId, id }, data: fields });
-        return updated.count === 1 ? id : null;
-      }
-      const brief = await functions.db.prisma.studioBrief.create({ data: { workspaceId, ...fields } });
-      return brief.id;
-    },
-  );
+    op: 'studio-brief-save',
+    target: { briefId },
+    payload: { create, ...fields },
+    userId: user.id,
+    clientRequestId: `studio-brief-save:${requestId}`,
+  });
+  const savedId = saved.result !== null && typeof saved.result === 'object' && 'keys' in saved.result && Array.isArray(saved.result.keys)
+    ? saved.result.keys.find((key): key is string => typeof key === 'string')
+    : undefined;
   return savedId ? { status: 'success', result: { id: savedId } } : { status: 'error', errorCode: 'api.invalidRequest' };
 };

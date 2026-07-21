@@ -28,7 +28,7 @@ export function useLiveEditor(workspaceId: string, ticketKey: string): LiveEdito
   const [err, setErr] = useState<string | null>(null);
   const launch = useCallback(async (): Promise<void> => {
     setLaunching(true); setErr(null);
-    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/openEditor', version: 'v1', data: { workspaceId, ticketKey } }));
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/openEditor', version: 'v1', data: { workspaceId, ticketKey, clientRequestId: globalThis.crypto.randomUUID() } }));
     setLaunching(false);
     if (error || res?.status !== 'success' || !res.result.ok || !res.result.url) {
       const code = res?.status === 'error' ? res.errorCode : (res?.status === 'success' ? res.result.error : undefined);

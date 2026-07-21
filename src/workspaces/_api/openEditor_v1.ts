@@ -5,11 +5,14 @@
 //? like generateDockerfile/buildProjectImage. Gated on `workTickets`. The user's profile
 //? (extensions + auth) is projected into the session so logins follow them across tickets.
 
+import { randomUUID } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { openEditorForTicket } from '../../../server/container/editorSession';
 import { ticketEditGuard } from '../../../server/orchestrator/editGuard';
 import { hasCapability, CAP } from '../../../server/control/rbac';
+import { runtimeLaunchIntentId } from '../../../server/orchestrator/actionIds';
+import { runDurableRuntimeLaunch } from '../../../server/orchestrator/runtimeJobs';
 
 export const rateLimit: number | false = 12;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -17,7 +20,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; ticketKey: string };
+  data: { workspaceId: string; ticketKey: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -32,14 +35,20 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const guard = await ticketEditGuard(functions.db.prisma, workspaceId, ticketKey);
   if (!guard.allowed) return { status: 'success', result: { ok: false, error: guard.reason ?? 'editor.locked' } };
   //? The ticket must be activated (has a DEV-#### branch cut) before it has a container/editor.
-  const ticket = await functions.db.prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true } });
+  const ticket = await functions.db.prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true, projectId: true } });
   if (!ticket?.branch) return { status: 'error', errorCode: 'editor.notActivated' };
-  //? Prefer the project's built L2 image (its toolchain); openvscode is installed on-demand if
+  //? Prefer this ticket project's built L2 image (its toolchain); openvscode is installed on-demand if
   //? the image didn't bake it in.
-  const project = await functions.db.prisma.project.findFirst({ where: { workspaceId }, select: { baseImageRef: true } });
-  const result = await openEditorForTicket({
-    workspaceId, ticketKey, branch: ticket.branch, userId: user.id,
-    ...(project?.baseImageRef ? { image: project.baseImageRef } : {}),
+  const project = await functions.db.prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true } });
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const clientRequestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : randomUUID();
+  const result = await runDurableRuntimeLaunch({
+    workspaceId,
+    op: 'runtime-launch-prepare',
+    target: { intentId: runtimeLaunchIntentId(workspaceId, clientRequestId), ticketKey, projectId: ticket.projectId },
+    payload: { mode: 'editor-open', branch: ticket.branch, ...(project?.baseImageRef ? { image: project.baseImageRef } : {}) },
+    userId: user.id,
+    clientRequestId: `runtime-editor-open:${clientRequestId}`,
   });
   return { status: 'success', result };
 };

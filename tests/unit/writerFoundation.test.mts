@@ -4,7 +4,7 @@
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
-import { assertValidInternalAction, type InternalOp } from '../../server/orchestrator/internalOps';
+import { CRASH_REPLAYABLE_INTERNAL_OPS, assertValidInternalAction, internalActionFromSignal, internalActionReplayKeys, type InternalOp } from '../../server/orchestrator/internalOps';
 import { PROPOSE_CATALOG } from '../../server/ai/opCatalog';
 import { OP_CAPABILITY } from '../../server/control/rbac';
 import { isDocumentOp, PUBLIC_DOCUMENT_OPS } from '../../src/workspaces/_sync/documentsControl_server_v1';
@@ -27,6 +27,21 @@ const INTERNAL_OPS: InternalOp[] = [
   'automation-cron-fire',
   'automation-action-run',
   'workspace-builtins-ensure',
+  'studio-artifact-begin',
+  'studio-artifact-complete',
+  'project-docs-complete',
+  'project-image-complete',
+  'brand-import',
+  'style-import',
+  'dockerfile-save',
+  'worktree-file-save',
+  'chat-turn-record',
+  'design-library-write',
+  'studio-brief-save',
+  'studio-delete',
+  'pat-issue',
+  'runtime-launch-prepare',
+  'runtime-launch-complete',
   'stage-activation-complete',
   'stage-session-start',
   'stage-session-update',
@@ -69,6 +84,26 @@ eq(validInternalError, null, 'a well-formed gated InternalOp passes runtime vali
 const [validBuiltinsError] = tryCatchSync(() => assertValidInternalAction({ ...internalBase, op: 'workspace-builtins-ensure', target: {}, payload: {} }));
 eq(validBuiltinsError, null, 'the empty workspace-builtins InternalOp passes runtime validation');
 assert(rejectsInternal({ ...internalBase, op: 'workspace-builtins-ensure', target: {}, payload: { injected: true } }), 'workspace-builtins rejects injected payload fields');
+assert(rejectsInternal({ ...internalBase, op: 'design-library-write', target: {}, payload: { mode: 'save', kind: 'theme', name: 'Theme', content: {} } }), 'a replayable design save requires a deterministic artifact id');
+for (const unsafeReplay of ['brand-import', 'style-import', 'dockerfile-save', 'worktree-file-save'] as const) {
+  assert(!CRASH_REPLAYABLE_INTERNAL_OPS.includes(unsafeReplay), `${unsafeReplay} stays out of crash replay until it has an entity CAS`);
+}
+
+const replayedRouteJob = internalActionFromSignal({
+  workspaceId: 'workspace-a',
+  kind: 'project-image-complete',
+  payload: {
+    op: 'project-image-complete',
+    userId: 'user-a',
+    clientRequestId: 'project-image:one',
+    version: 1,
+    target: { projectId: 'project-a' },
+    payload: { tag: 'workspaces/project-a:sha256' },
+  },
+});
+eq(replayedRouteJob?.op, 'project-image-complete', 'a bounded typed route job reconstructs from its durable signal');
+eq(replayedRouteJob ? internalActionReplayKeys(replayedRouteJob) : [], ['project-image:project-a'], 'a replayable completion exposes its supersession entity key');
+eq(internalActionFromSignal({ workspaceId: 'workspace-a', kind: 'project-image-complete', payload: { userId: 'u', clientRequestId: 'x', target: {}, payload: {} } }), null, 'an incomplete durable job cannot reconstruct');
 
 eq(currentWriterScope(), null, 'writer context is absent outside an execute boundary');
 let observedWorkspaceScope: string | null = null;

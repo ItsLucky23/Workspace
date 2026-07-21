@@ -1,6 +1,6 @@
 {
-  "hash": "c089a907e6c846bd",
-  "chunkCount": 226,
+  "hash": "87d01e1d68a0bbb8",
+  "chunkCount": 228,
   "chunks": [
     {
       "id": "cap-001",
@@ -1357,6 +1357,18 @@
       "kind": "decision",
       "title": "Budgeted capability-aware Workspace-AI tools",
       "text": "ADR 0291: Budgeted capability-aware Workspace-AI tools. The Workspace-AI catalog had 148 nominally enabled actions and injected all enabled-module hints into every turn. This consumed context, advertised actions the caller could not authorize, and encouraged semantically weak tool selection. Workspace instructions and enabled skills had no aggregate hard ceiling, so user-managed context could crowd out the feature contract and current request. Decision: The catalog remains exhaustive for validation and client dispatch; no verb is added or removed from the frozen surface. For a real chat request, the server filters actions by enabled module, the caller's effective capability vector and availability of every required entity reference. It then ranks the remaining hints against the request and exposes at most 36. Every one-shot AI feature passes through a provider-independent 64,000-character central budget at `runAiCompletion`: 20,000 current-prompt characters, 32,000 feature-system characters, 4,000 workspace instruction characters, 6,000 skill characters and 2,000 product-capability characters. Truncation is explicit and preserves both the beginning and end of a section."
+    },
+    {
+      "id": "adr-0292",
+      "kind": "decision",
+      "title": "Typed route jobs use bounded replay and runtime claims",
+      "text": "ADR 0292: Typed route jobs use bounded replay and runtime claims. ADR 0289 moved legacy route callbacks under the Conductor, but their closures could not be reconstructed after a process crash. Studio generation, docs/image completion, chat persistence, design-library writes, PAT issuance, file saves and editor/preview launches therefore had writer serialization without durable replay. Slow Docker/proxy work also could not remain inside the workspace lease. A naive replay of every persisted payload is unsafe: an old file, brand/style import or completion can overwrite a newer authoritative write. A periodic runtime sweep can also duplicate a launch that is merely slow rather than crashed. Decision: Workspace route writes use bounded, runtime-validated `InternalOp` payloads persisted in `WorkspaceSignal`. Deterministic Mongo IDs make create-style effects idempotent. The leader recovery sweep reconstructs only an explicit allowlist of idempotent operations and compares entity replay keys against later processed internal signals; a superseded signal is acknowledged without applying its stale payload. File and brand/style operations remain auditable typed signals but are excluded from crash replay until they gain an entity CAS/version that also covers out-of-band writers. Editor, preview, ref-preview and preview-close use a durable prepare → external execute → typed completion protocol. Docker/proxy execution stays outside the workspace writer lease. A per-intent Redis lease prev"
+    },
+    {
+      "id": "adr-0293",
+      "kind": "decision",
+      "title": "Workspace-AI has no ambiguous later operations",
+      "text": "ADR 0293: Workspace-AI has no ambiguous later operations. The exhaustive Workspace-AI catalog still classified seven operations as `later`. That state did not tell users or maintainers whether an operation lacked wiring, duplicated another verb, needed unavailable context or was intentionally outside the workspace assistant boundary. Leaving entries ambiguous also allowed future work to mistake catalog presence for an executable effect. Decision: The catalog has only `enabled` and `excluded` outcomes. `db-migrate-apply` is enabled because an existing pending migration can be validated from tenant-scoped context, dispatched through the existing project-admin sync route and protected by destructive confirmation plus the route's own approval/environment gates. The other six operations are excluded: - `gitlab-verify` duplicates the real credential-free resync/connectivity path and its legacy handler is a no-op. - `raise-cap` aliases canonical `edit-budget`. - `content-create` duplicates the richer brief-based content creation path. - `content-reorder-beats` and `content-save-scenes` require a complete destructive timeline graph that is intentionally owned by the visual editor. - `copy-workspace-assets` crosses workspace boundaries and remains an explicit UI flow where both memberships can be shown and confirmed."
     }
   ]
 }

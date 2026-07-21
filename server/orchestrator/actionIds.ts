@@ -19,6 +19,14 @@ export function stageForgeIntentId(workspaceId: string, clientRequestId: string)
   return deterministicObjectId(workspaceId, clientRequestId, 'stage-forge-intent');
 }
 
+export function runtimeLaunchIntentId(workspaceId: string, clientRequestId: string): string {
+  return deterministicObjectId(workspaceId, clientRequestId, 'runtime-launch-intent');
+}
+
+export function runtimeLaunchCompletionId(workspaceId: string, intentId: string): string {
+  return deterministicObjectId(workspaceId, intentId, 'runtime-launch-completion');
+}
+
 //? Per-service CI fans one user action out into one run PER UNIT, each needing its own durable intent.
 //? The unit is NOT salted in here: it is already part of the `clientRequestId` the caller sends (see
 //? `unitRequestId` in the dispatcher), and the Conductor derives these same ids from the request id it

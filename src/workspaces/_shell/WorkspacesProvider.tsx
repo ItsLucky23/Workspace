@@ -1203,7 +1203,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const history = chat.filter((m) => !m.pending && m.text.length > 0).slice(-8).map((m) => ({ role: m.role, text: m.text }));
     setChat((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId: scope.workspaceId, projectId: scope.projectId, message: trimmed, ...(history.length > 0 ? { history } : {}) } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId: scope.workspaceId, projectId: scope.projectId, message: trimmed, ...(history.length > 0 ? { history } : {}), clientRequestId: nextReqId() } }));
       setChat((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) {
@@ -1787,11 +1787,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       openPreview: async (ticketKey) => {
         const room = snap.activeWorkspaceId;
         if (!room) return { ok: false };
-        const res = await apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: room, ticketKey } });
+        const res = await apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: room, ticketKey, clientRequestId: nextReqId() } });
         if (res.status !== 'success') return { ok: false, error: res.errorCode };
         return res.result;
       },
-      closePreview: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: room, ticketKey } }); },
+      closePreview: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: room, ticketKey, clientRequestId: nextReqId() } }); },
       signOut,
       // live tenant data
       loading,
@@ -1828,17 +1828,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       promoteBrand: async (artifactId) => { const ws = snap.activeWorkspaceId; if (!ws) return; await apiRequest({ name: 'workspaces/studioBrand', version: 'v1', data: { workspaceId: ws, op: 'promote', artifactId } }); refetch(); },
       saveBrief: async (b) => {
         const ws = snap.activeWorkspaceId; if (!ws) return;
-        await apiRequest({ name: 'workspaces/studioSaveBrief', version: 'v1', data: { workspaceId: ws, ...b } });
+        await apiRequest({ name: 'workspaces/studioSaveBrief', version: 'v1', data: { workspaceId: ws, ...b, clientRequestId: nextReqId() } });
         refetch();
       },
       generateArtifact: async (briefId, kind, tweak) => {
         const ws = snap.activeWorkspaceId; if (!ws) return { ok: false };
-        const res = await apiRequest({ name: 'workspaces/studioGenerate', version: 'v1', data: { workspaceId: ws, briefId, kind, ...(tweak ? { tweak } : {}) } });
+        const res = await apiRequest({ name: 'workspaces/studioGenerate', version: 'v1', data: { workspaceId: ws, briefId, kind, ...(tweak ? { tweak } : {}), clientRequestId: nextReqId() } });
         refetch();
         return { ok: res.status === 'success', ...(res.status === 'success' ? { artifactId: res.result.artifactId } : { error: res.errorCode }) };
       },
-      deleteBrief: (briefId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, briefId } }).then(() => { refetch(); }); },
-      deleteArtifact: (artifactId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, artifactId } }).then(() => { refetch(); }); },
+      deleteBrief: (briefId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, briefId, clientRequestId: nextReqId() } }).then(() => { refetch(); }); },
+      deleteArtifact: (artifactId) => { const ws = snap.activeWorkspaceId; if (ws) void apiRequest({ name: 'workspaces/studioDelete', version: 'v1', data: { workspaceId: ws, artifactId, clientRequestId: nextReqId() } }).then(() => { refetch(); }); },
       saveTrigger: (t) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-save', clientRequestId: nextReqId(), ...t }, receiver: room }).then(() => { refetch(); }); },
       toggleTrigger: (id, enabled) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId: id, enabled, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },

@@ -46,12 +46,13 @@ export interface CatalogCtx {
   styles: { key: string }[];
   infoSources: { id: string }[];
   projectServices: { id: string }[];
+  migrations: { id: string }[];
   //? GAP_SCAN C4 — the workspace's enabled modules. An empty list is the legacy "everything on" state.
   enabledSections?: string[];
   permissions?: boolean[];
 }
 
-type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'ticketKeys' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'sprintId' | 'memberId' | 'roleKey' | 'inviteId' | 'documentId' | 'findingId' | 'referenceId' | 'outputTemplateId' | 'styleKey' | 'sourceId' | 'projectServiceId' | 'enum';
+type ParamKind = 'string' | 'number' | 'boolean' | 'ticketKey' | 'ticketKeys' | 'stageId' | 'stageKeys' | 'pieceId' | 'envId' | 'serviceName' | 'presetKey' | 'taskId' | 'triggerId' | 'mrId' | 'channelId' | 'skillId' | 'sprintId' | 'memberId' | 'roleKey' | 'inviteId' | 'documentId' | 'migrationId' | 'findingId' | 'referenceId' | 'outputTemplateId' | 'styleKey' | 'sourceId' | 'projectServiceId' | 'enum';
 interface ParamSpec { kind: ParamKind; required?: true; values?: readonly string[] }
 export interface OpSpec {
   mode: 'enabled' | 'later' | 'excluded';
@@ -61,8 +62,6 @@ export interface OpSpec {
   params?: Record<string, ParamSpec>;
 }
 
-const LATER: OpSpec = { mode: 'later' };
-const LATER_D: OpSpec = { mode: 'later', destructive: true };
 const EXCLUDED: OpSpec = { mode: 'excluded' };
 
 //? Exhaustive over ControlOp — adding an op to the union without classifying it here is a tsc error.
@@ -181,9 +180,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'ui-review-to-ticket': EXCLUDED, // U2 gap-fix — direct inbox button on the designer page
   'ui-review-dismiss': EXCLUDED,   // U2 gap-fix — direct inbox button
   'gitlab-settings': EXCLUDED, // carries the forge token
-  //? gitlab-verify stays later: no `_sync` route, no UI dispatch, and the Conductor case is a deliberate
-  //? no-op stub (completion-gaps-v3) — wiring it would need a NEW surface, which chat never adds.
-  'gitlab-verify': LATER,
+  //? Connectivity is already proven by the credential-free snapshot fetch in gitlab-resync. Keeping a
+  //? second no-op writer would let chat report success without evidence, so the legacy alias is excluded.
+  'gitlab-verify': EXCLUDED,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
   'forge-webhook-rotate': EXCLUDED, // #27 — mints a secret; direct settings-UI button, never a chat proposal
@@ -276,9 +275,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'roll back (revert) a merged merge request. params: mrId, ticketKey (the pair from the MR list below)',
     params: { mrId: { kind: 'mrId', required: true }, ticketKey: { kind: 'ticketKey', required: true } },
   },
-  //? raise-cap stays LATER_D: no manual UI ever dispatches it and the Conductor aliases it onto the
-  //? edit-budget handler — "raise the cap to X" is fully expressible as edit-budget { cap: X }.
-  'raise-cap': LATER_D,
+  //? Exact legacy alias of edit-budget. Showing both wastes scarce tool context and creates two names for
+  //? one effect, so chat exposes only the canonical operation.
+  'raise-cap': EXCLUDED,
   'edit-budget': {
     mode: 'enabled', destructive: true,
     hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap). Only pass the fields to change.",
@@ -555,7 +554,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'draft a DB migration for the user’s app. params: name (migration name)',
     params: { name: { kind: 'string', required: true } },
   },
-  'db-migrate-apply': LATER_D,
+  'db-migrate-apply': {
+    mode: 'enabled', destructive: true,
+    hint: 'apply an existing pending migration to its configured user-app database. params: migrationId (from the pending migrations list). Always requires the extra explicit confirmation',
+    params: { migrationId: { kind: 'migrationId', required: true } },
+  },
   'db-introspect': { mode: 'enabled', hint: 'introspect the connected user-app database (tables/columns). params: connectionId?', params: { connectionId: { kind: 'string' } } },
   // ---- content settings / brand / styles
   //? Unit trap: capCents is CENTS (€25 = 2500) while edit-budget's cap is the plain Budgets-UI number.
@@ -587,9 +590,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     params: { productContext: { kind: 'string', required: true } },
   },
   // ---- content pipeline
-  //? content-create stays later: NO manual UI ever fires it (the UI + chat create path is
-  //? create-content → content-from-brief, special-cased in the provider) — no dispatch precedent.
-  'content-create': LATER,
+  //? The core create-content proposal already maps to content-from-brief and carries the richer brief.
+  //? Exposing this lower-level duplicate would create a second, less capable creation path.
+  'content-create': EXCLUDED,
   'content-advance': {
     mode: 'enabled',
     hint: 'advance a content piece to its next pipeline stage. params: pieceId (a piece id from the list)',
@@ -726,11 +729,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'region-edit (inpaint) an image asset with an ALREADY-UPLOADED painted mask (costs money) — params: pieceId, referenceUrl (the source image url), maskUrl (a painted mask image url), prompt, parentAssetId (the source assetId). Without an existing mask url, point the user to the image editor instead',
     params: { pieceId: { kind: 'pieceId', required: true }, referenceUrl: { kind: 'string', required: true }, maskUrl: { kind: 'string', required: true }, prompt: { kind: 'string', required: true }, parentAssetId: { kind: 'string', required: true } },
   },
-  //? content-reorder-beats: route+Conductor exist but NO UI ever dispatches it (the timeline saves via
-  //? content-save-scenes) — no dispatch precedent to copy, stays later. content-save-scenes: its nested
-  //? scenes[] is not expressible in ParamKind AND the model cannot know the current scene ids (absent ids
-  //? are DELETED) — stays later by deliberate choice, not oversight.
-  'content-reorder-beats': LATER, 'content-save-scenes': LATER,
+  //? Timeline replacement requires the complete current scene/beat graph; omitted ids are destructive.
+  //? That graph intentionally stays in the visual editor rather than entering a compact chat context.
+  'content-reorder-beats': EXCLUDED, 'content-save-scenes': EXCLUDED,
   'content-transcode': {
     mode: 'enabled',
     hint: 'transcode a video/render asset into an extra delivery format (webm or gif) — free ffmpeg job, produces a new variant. params: pieceId, assetId, format',
@@ -825,9 +826,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'delete a saved output template. params: templateId (from the templates list)',
     params: { templateId: { kind: 'outputTemplateId', required: true } },
   },
-  //? copy-workspace-assets stays LATER: sourceWorkspaceId is an OUT-OF-workspace reference — loadCtx has
-  //? no user identity, so the chat ctx cannot list the user's other workspaces to validate against.
-  'copy-workspace-assets': LATER,
+  //? Workspace-AI is deliberately confined to one workspace. Cross-workspace copy remains an explicit UI
+  //? flow where both memberships can be shown and confirmed; it must not widen chat's tenant boundary.
+  'copy-workspace-assets': EXCLUDED,
   'copilot-propose': EXCLUDED, // meta (the propose channel itself)
   'run-agent-role': EXCLUDED, // #167 — direct UI button (interviewer "generate now"), not a chat proposal
   //? #17/#113 — the Assistant may PROPOSE launching/stopping a ticket's live preview ("open a preview of
@@ -963,6 +964,7 @@ function requiredParamContextExists(kind: ParamKind, ctx: CatalogCtx): boolean {
   if (kind === 'roleKey') return ctx.roles.length > 0;
   if (kind === 'inviteId') return ctx.invites.length > 0;
   if (kind === 'documentId') return ctx.documents.length > 0;
+  if (kind === 'migrationId') return ctx.migrations.length > 0;
   if (kind === 'findingId') return ctx.findings.length > 0;
   if (kind === 'referenceId') return ctx.references.length > 0;
   if (kind === 'outputTemplateId') return ctx.outputTemplates.length > 0;
@@ -1005,6 +1007,7 @@ function checkParam(kind: ParamKind, value: unknown, spec: ParamSpec, ctx: Catal
   if (kind === 'roleKey') return typeof value === 'string' && ctx.roles.some((r) => r.key === value) ? value : undefined;
   if (kind === 'inviteId') return typeof value === 'string' && ctx.invites.some((i) => i.id === value) ? value : undefined;
   if (kind === 'documentId') return typeof value === 'string' && ctx.documents.some((d) => d.id === value) ? value : undefined;
+  if (kind === 'migrationId') return typeof value === 'string' && ctx.migrations.some((m) => m.id === value) ? value : undefined;
   if (kind === 'findingId') return typeof value === 'string' && ctx.findings.some((f) => f.id === value) ? value : undefined;
   if (kind === 'referenceId') return typeof value === 'string' && ctx.references.some((r) => r.id === value) ? value : undefined;
   if (kind === 'outputTemplateId') return typeof value === 'string' && ctx.outputTemplates.some((t) => t.id === value) ? value : undefined;

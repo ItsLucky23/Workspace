@@ -59,6 +59,7 @@ const ctx: Ctx = {
   roles: [],
   infoSources: [],
   projectServices: [],
+  migrations: [],
   projectFacts: { repoLinked: false, stack: '', framework: '', dependencies: [], databases: [], deployTargets: [], envKeys: [], ciPipelines: [] },
 };
 

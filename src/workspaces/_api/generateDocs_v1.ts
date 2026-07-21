@@ -3,11 +3,13 @@
 //? The AI turn runs outside the lease; its short deterministic InfoSource completion enters the Conductor.
 //? editPipeline-gated + rate-limited. The trigger button + live surfacing are a later UI slice.
 
+import { createHash } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { generateProjectDoc, persistProjectDoc } from '../../../server/ai/docsGen';
+import { generateProjectDoc } from '../../../server/ai/docsGen';
 import { hasCapability, CAP } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 6;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -27,11 +29,15 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
   const result = await generateProjectDoc(functions.db.prisma, workspaceId, undefined, {
     persist: async (input) => {
-      await enqueueWorkspaceRouteWrite(
+      const digest = createHash('sha256').update(input.content).digest('hex');
+      await enqueueInternalAction({
         workspaceId,
-        { kind: 'docs-generate.complete', userId: user.id },
-        async () => { await persistProjectDoc(functions.db.prisma, input); return true; },
-      );
+        op: 'project-docs-complete',
+        target: {},
+        payload: { content: input.content, summary: input.summary },
+        userId: user.id,
+        clientRequestId: `docs-complete:${digest}`,
+      });
     },
   });
   return { status: 'success', result };

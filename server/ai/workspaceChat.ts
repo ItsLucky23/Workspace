@@ -99,6 +99,7 @@ export interface Ctx {
   roles: { key: string; label: string }[];
   infoSources: { id: string; name: string; enabled: boolean }[];
   projectServices: { id: string; name: string }[];
+  migrations: { id: string; name: string; envKind: string }[];
   //? Parity wave — structured facts about the ACTIVE project so "is X possible with this project?"
   //? is answerable from real state. envKeys carries KEY NAMES ONLY — values never enter a prompt.
   projectFacts: ProjectFacts;
@@ -160,7 +161,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
   ]);
   //? Parity wave — the remaining reference collections + the project-facts sources, same
   //? tenant-scoped/capped pattern as the batch above (small caps: the state text has a 12k budget).
-  const [documents, docTemplates, sprints, inviteRows, findings, uiReviews, styleRows, outputTemplates, referenceRows, unreadComments, totalComments, dbConns, envVarRows, pipelines, roleRows, infoSourceRows, projectServiceRows] = await Promise.all([
+  const [documents, docTemplates, sprints, inviteRows, findings, uiReviews, styleRows, outputTemplates, referenceRows, unreadComments, totalComments, dbConns, envVarRows, pipelines, roleRows, infoSourceRows, projectServiceRows, migrations] = await Promise.all([
     prisma.document.findMany({ where: { workspaceId, archived: false }, select: { id: true, title: true, aiDraft: true }, take: 20, orderBy: { updatedAt: 'desc' } }),
     prisma.documentTemplate.findMany({ where: { workspaceId }, select: { slug: true, name: true }, take: 12 }),
     prisma.sprint.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 10, orderBy: { createdAt: 'desc' } }),
@@ -183,6 +184,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true, perms: true }, take: 12 }),
     prisma.infoSource.findMany({ where: { workspaceId, mode: 'skill' }, select: { id: true, name: true, enabled: true }, take: 20 }),
     prisma.service.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 12 }),
+    prisma.migration.findMany({ where: { workspaceId, projectId: activeProjectId, status: 'pending' }, select: { id: true, name: true, envKind: true }, take: 12, orderBy: { createdAt: 'desc' } }),
   ]);
   //? PROJECT FACTS — package.json straight from the bare clone via the existing repoStore loader
   //? (best-effort: '' when unlinked/absent; parse failure degrades to no dependency facts).
@@ -233,6 +235,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     roles: roleRows.map((r) => ({ key: r.key, label: r.label })),
     infoSources: infoSourceRows.map((s) => ({ id: s.id, name: s.name, enabled: s.enabled })),
     projectServices: projectServiceRows.map((s) => ({ id: s.id, name: s.name })),
+    migrations: migrations.map((m) => ({ id: m.id, name: m.name, envKind: m.envKind })),
     projectFacts: {
       repoLinked,
       //? Explicit project stack wins; else a parsed package.json implies node; else unknown/unlinked.
@@ -286,6 +289,7 @@ function workspaceStateText(ctx: Ctx): string {
     `Roles (roleKey — label): ${ctx.roles.map((r) => `${r.key} — ${r.label}`).join('; ') || '(none)'}`,
     `Workflow-snippet skills (sourceId — name [on|off]): ${ctx.infoSources.map((s) => `${s.id} — ${s.name} [${s.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
     `Project services / deploy-units (serviceId — name): ${ctx.projectServices.map((s) => `${s.id} — ${s.name}`).join('; ') || '(none)'}`,
+    `Pending DB migrations (migrationId — name [env]): ${ctx.migrations.map((m) => `${m.id} — ${m.name} [${m.envKind}]`).join('; ') || '(none)'}`,
     `Open interview findings (findingId — title): ${ctx.findings.map((fi) => `${fi.id} — ${fi.title}`).join('; ') || '(none)'}`,
     `Open UI reviews (reviewId — page [status]): ${ctx.uiReviews.map((r) => `${r.id} — ${r.page} [${r.status}]`).join('; ') || '(none)'}`,
     `Style presets (key — name): ${ctx.styles.map((s) => `${s.key} — ${s.name}`).join('; ') || '(none)'}`,

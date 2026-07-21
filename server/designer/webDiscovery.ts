@@ -13,6 +13,7 @@
 import { tryCatch, tryCatchSync } from '@luckystack/core';
 
 import { runAiCompletion } from '../ai/registry';
+import type { AiProviderId } from '../ai/types';
 import { safeHttpRequest, type SafeHttpDependencies } from '../security/safeHttp';
 
 export interface DiscoveredSite { url: string; title: string }
@@ -98,20 +99,24 @@ export function parseAiSites(text: string, limit = 6): DiscoveredSite[] {
 
 //? AI-backed discovery (the reliable default): the model suggests real, well-designed reference sites for the
 //? brief. Uses the pluggable AI layer (feature `scraper`), so the backend is a per-workspace config choice.
-async function discoverViaAi(query: string, workspaceId: string | undefined, limit: number): Promise<DiscoveredSite[]> {
+async function discoverViaAi(query: string, workspaceId: string | undefined, limit: number, providerId?: AiProviderId): Promise<DiscoveredSite[]> {
   const system = 'You are a design researcher. Given a design brief, suggest real, existing, well-designed websites/products that exemplify it (their PUBLIC marketing/app pages). Output ONLY a JSON array of objects {"url": string (a real https URL), "title": string (site name + why it fits, short)}. No prose. Prefer distinct hosts.';
   const prompt = `Design brief: "${query}"\n\nSuggest ${String(limit)} reference sites as a JSON array.`;
-  const [err, res] = await tryCatch(() => runAiCompletion('scraper', { prompt, system, timeoutMs: 60_000, ...(workspaceId ? { workspaceId, label: `Design discovery · ${query.slice(0, 40)}` } : {}) }));
+  const [err, res] = await tryCatch(() => runAiCompletion(
+    'scraper',
+    { prompt, system, timeoutMs: 60_000, ...(workspaceId ? { workspaceId, label: `Design discovery · ${query.slice(0, 40)}` } : {}) },
+    providerId ? { scraper: providerId } : undefined,
+  ));
   if (err || !res?.ok) return [];
   return parseAiSites(res.text, limit);
 }
 
 //? Discover up to `limit` candidate reference sites for a design brief. Primary path = AI suggestion (reliable,
 //? uses the working provider layer); falls back to the static search-endpoint scrape. Returns [] on failure.
-export async function discoverReferenceSites(query: string, limit = 6, workspaceId?: string, dependencies: SafeHttpDependencies = {}): Promise<DiscoveredSite[]> {
+export async function discoverReferenceSites(query: string, limit = 6, workspaceId?: string, dependencies: SafeHttpDependencies = {}, providerId?: AiProviderId): Promise<DiscoveredSite[]> {
   const q = query.trim();
   if (q.length === 0) return [];
-  const viaAi = await discoverViaAi(q, workspaceId, limit);
+  const viaAi = await discoverViaAi(q, workspaceId, limit, providerId);
   if (viaAi.length > 0) return viaAi;
   const html = await fetchSearch(q, dependencies);
   return html ? parseSearchResults(html, limit) : [];

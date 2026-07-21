@@ -221,6 +221,12 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const name = str(p, 'name'); if (!name) return;
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-create', projectId: x.activeProjectId, name, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? The generic destructive-confirm is the explicit migration approval; the server still scopes the
+  //? migration id to this workspace and applies its configured environment contract.
+  'db-migrate-apply': (p, x) => {
+    const migrationId = str(p, 'migrationId'); if (!migrationId) return;
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-migrate-apply', migrationId, approved: true, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   'db-introspect': (p, x) => {
     const connectionId = str(p, 'connectionId');
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', projectId: x.activeProjectId, ...(connectionId ? { connectionId } : {}), clientRequestId: x.nextReqId() }, receiver: x.room });
@@ -423,11 +429,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   //? state, NOT the Conductor). `x.room` is the workspaceId; ticketKey was validated against the ctx.
   'preview-up': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
-    void apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: x.room, ticketKey } });
+    void apiRequest({ name: 'workspaces/openPreview', version: 'v1', data: { workspaceId: x.room, ticketKey, clientRequestId: x.nextReqId() } });
   },
   'preview-down': (p, x) => {
     const ticketKey = str(p, 'ticketKey'); if (!ticketKey) return;
-    void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: x.room, ticketKey } });
+    void apiRequest({ name: 'workspaces/closePreview', version: 'v1', data: { workspaceId: x.room, ticketKey, clientRequestId: x.nextReqId() } });
   },
 
   //? ---- Parity wave 2026-07-20 — every dispatcher below copies the EXACT `_sync` shape its manual UI

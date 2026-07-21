@@ -28,7 +28,7 @@ const EXTRACT_RECOVERY_MS = Math.max(60_000, Number(process.env.WS_EXTRACT_RECOV
 //? F38 — how often failed automation runs are retried.
 const AUTOMATION_RECOVERY_MS = Math.max(60_000, Number(process.env.WS_AUTOMATION_RECOVERY_MIN ?? '5') * 60_000);
 import { runCronTriggers, CRON_TICK_MS, runAutomationRecovery } from '../../server/automation/cron';
-import { drainCapacityQueue, CAPACITY_DRAIN_MS, runExtractRecovery } from '../../server/orchestrator/conductor';
+import { drainCapacityQueue, CAPACITY_DRAIN_MS, ROUTE_JOB_RECOVERY_MS, runExtractRecovery, runRouteJobRecovery } from '../../server/orchestrator/conductor';
 import { runWorkerReapTick, WORKER_REAP_MS } from '../../server/orchestrator/workerReaper';
 import { runWatchdogSweep, WATCHDOG_INTERVAL_MS } from '../../server/orchestrator/watchdog';
 import { reapIdleEditors, EDITOR_REAP_MS } from '../../server/proxy/editorReaper';
@@ -37,6 +37,7 @@ import { runDemoWatch, DEMO_WATCH_MS } from '../../server/deploy/demoWatch';
 import { runGitlabSyncTick, SYNC_INTERVAL_MS } from '../../server/git/gitlabSync';
 import { runBackup, BACKUP_INTERVAL_MS, BACKUP_ENABLED } from '../../server/db/backup';
 import { runWorkspaceBuiltinsBackfill, WORKSPACE_BUILTINS_BACKFILL_MS } from '../../server/bootstrap/workspaceBuiltins';
+import { RUNTIME_JOB_RECOVERY_MS, runRuntimeJobRecovery } from '../../server/orchestrator/runtimeJobs';
 
 //? O3 — fire due scheduled posts.
 registerCronJob({ name: 'scheduled-publish', schedule: { everyMs: PUBLISH_INTERVAL_MS }, handler: async () => { await runScheduledPublish(getPrismaClient(), Date.now()); } });
@@ -65,6 +66,12 @@ registerCronJob({ name: 'workspace-builtins', schedule: { everyMs: WORKSPACE_BUI
 
 //? F35 — re-drive document extractions whose process died mid-parse (durable job + bounded attempts).
 registerCronJob({ name: 'document-extract-recovery', schedule: { everyMs: EXTRACT_RECOVERY_MS }, handler: async () => { await runExtractRecovery(); } });
+
+//? Typed route jobs whose process died after durable intent but before completion.
+registerCronJob({ name: 'route-job-recovery', schedule: { everyMs: ROUTE_JOB_RECOVERY_MS }, runOnStart: true, handler: async () => { await runRouteJobRecovery(); } });
+
+//? Slow Docker/proxy launches keep a durable prepare/completion pair; re-drive stranded prepares.
+registerCronJob({ name: 'runtime-job-recovery', schedule: { everyMs: RUNTIME_JOB_RECOVERY_MS }, runOnStart: true, handler: async () => { await runRuntimeJobRecovery(); } });
 
 //? F38 — retry failed/stranded automation runs (durable run history + dead letter).
 registerCronJob({ name: 'automation-recovery', schedule: { everyMs: AUTOMATION_RECOVERY_MS }, handler: async () => { await runAutomationRecovery(getPrismaClient()); } });

@@ -3,10 +3,13 @@
 //? — the container launch + dev-server boot are slow and must not block the serial writer, like
 //? openEditor/generateDockerfile. Gated on `workTickets`.
 
+import { randomUUID } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { openPreviewForTicket } from '../../../server/container/previewSession';
 import { hasCapability, CAP } from '../../../server/control/rbac';
+import { runtimeLaunchIntentId } from '../../../server/orchestrator/actionIds';
+import { runDurableRuntimeLaunch } from '../../../server/orchestrator/runtimeJobs';
 
 export const rateLimit: number | false = 12;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -14,7 +17,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; ticketKey: string };
+  data: { workspaceId: string; ticketKey: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -24,6 +27,17 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || !ticketKey) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const result = await openPreviewForTicket(workspaceId, ticketKey);
+  const ticket = await functions.db.prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { projectId: true, branch: true } });
+  if (!ticket?.branch) return { status: 'success', result: { ok: false, error: 'preview.notActivated' } };
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const clientRequestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : randomUUID();
+  const result = await runDurableRuntimeLaunch({
+    workspaceId,
+    op: 'runtime-launch-prepare',
+    target: { intentId: runtimeLaunchIntentId(workspaceId, clientRequestId), ticketKey, projectId: ticket.projectId },
+    payload: { mode: 'preview-open', branch: ticket.branch },
+    userId: user.id,
+    clientRequestId: `runtime-preview-open:${clientRequestId}`,
+  });
   return { status: 'success', result };
 };

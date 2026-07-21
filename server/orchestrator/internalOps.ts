@@ -83,6 +83,98 @@ export interface WorkspaceBuiltinsEnsureInternalAction extends InternalActionBas
   payload: Record<string, never>;
 }
 
+export interface StudioArtifactBeginInternalAction extends InternalActionBase {
+  op: 'studio-artifact-begin';
+  target: { artifactId: string; briefId: string };
+  payload: { kind: string; tweak?: string };
+}
+
+export interface StudioArtifactCompleteInternalAction extends InternalActionBase {
+  op: 'studio-artifact-complete';
+  target: { artifactId: string; briefId: string };
+  payload: { kind: string; title?: string; content?: unknown; providerId?: string; status: 'ready' | 'error'; error?: string | null };
+}
+
+export interface ProjectDocsCompleteInternalAction extends InternalActionBase {
+  op: 'project-docs-complete';
+  target: Record<string, never>;
+  payload: { content: string; summary: string };
+}
+
+export interface ProjectImageCompleteInternalAction extends InternalActionBase {
+  op: 'project-image-complete';
+  target: { projectId: string };
+  payload: { tag: string };
+}
+
+export interface BrandImportInternalAction extends InternalActionBase {
+  op: 'brand-import';
+  target: Record<string, never>;
+  payload: { kit: unknown };
+}
+
+export interface StyleImportInternalAction extends InternalActionBase {
+  op: 'style-import';
+  target: Record<string, never>;
+  payload: { styles: unknown };
+}
+
+export interface DockerfileSaveInternalAction extends InternalActionBase {
+  op: 'dockerfile-save';
+  target: { projectId: string };
+  payload: { dockerfile: string };
+}
+
+export interface WorktreeFileSaveInternalAction extends InternalActionBase {
+  op: 'worktree-file-save';
+  target: { ticketKey: string };
+  payload: { path: string; content: string };
+}
+
+export interface ChatTurnRecordInternalAction extends InternalActionBase {
+  op: 'chat-turn-record';
+  target: { userMessageId: string; aiMessageId: string };
+  payload: { userText: string; aiText: string };
+}
+
+export interface DesignLibraryWriteInternalAction extends InternalActionBase {
+  op: 'design-library-write';
+  target: { artifactId?: string };
+  payload: { mode: 'save' | 'activate' | 'delete'; kind?: string; name?: string; description?: string; content?: unknown; source?: string };
+}
+
+export interface StudioBriefSaveInternalAction extends InternalActionBase {
+  op: 'studio-brief-save';
+  target: { briefId: string };
+  payload: { create: boolean; projectId?: string; name: string; productName: string; audience: string; tone: string; goals: string; notes: string | null };
+}
+
+export interface StudioDeleteInternalAction extends InternalActionBase {
+  op: 'studio-delete';
+  target: { briefId?: string; artifactId?: string };
+  payload: Record<string, never>;
+}
+
+export interface PatIssueInternalAction extends InternalActionBase {
+  op: 'pat-issue';
+  target: { patId: string };
+  payload: { name: string; tokenHash: string; tokenPrefix: string; scopes: string[] };
+}
+
+export type RuntimeLaunchMode = 'preview-open' | 'preview-close' | 'ref-preview-open' | 'editor-open';
+
+export interface RuntimeLaunchPrepareInternalAction extends InternalActionBase {
+  op: 'runtime-launch-prepare';
+  target: { intentId: string; ticketKey: string; projectId: string };
+  payload: { mode: RuntimeLaunchMode; branch?: string; ref?: string; image?: string };
+}
+
+export interface RuntimeLaunchCompleteInternalAction extends InternalActionBase {
+  op: 'runtime-launch-complete';
+  target: { intentId: string; ticketKey: string; projectId: string };
+  payload: { mode: RuntimeLaunchMode; ok: boolean; error?: string };
+}
+
 export interface StageTarget {
   ticketId: string;
   ticketKey: string;
@@ -198,6 +290,21 @@ export type InternalAction =
   | AutomationCronFireInternalAction
   | AutomationActionRunInternalAction
   | WorkspaceBuiltinsEnsureInternalAction
+  | StudioArtifactBeginInternalAction
+  | StudioArtifactCompleteInternalAction
+  | ProjectDocsCompleteInternalAction
+  | ProjectImageCompleteInternalAction
+  | BrandImportInternalAction
+  | StyleImportInternalAction
+  | DockerfileSaveInternalAction
+  | WorktreeFileSaveInternalAction
+  | ChatTurnRecordInternalAction
+  | DesignLibraryWriteInternalAction
+  | StudioBriefSaveInternalAction
+  | StudioDeleteInternalAction
+  | PatIssueInternalAction
+  | RuntimeLaunchPrepareInternalAction
+  | RuntimeLaunchCompleteInternalAction
   | StageActivationCompleteInternalAction
   | StageSessionStartInternalAction
   | StageSessionUpdateInternalAction
@@ -210,6 +317,76 @@ export type InternalAction =
   | AgentRecoveryTransitionInternalAction
   | WatchdogReminderApplyInternalAction;
 export type InternalOp = InternalAction['op'];
+
+export const INTERNAL_OP_NAMES: readonly InternalOp[] = [
+  'document-set-asset-text', 'forge-event-apply', 'forge-snapshot-apply', 'ci-public-complete',
+  'automation-event-apply', 'automation-cron-fire', 'automation-action-run', 'workspace-builtins-ensure',
+  'studio-artifact-begin', 'studio-artifact-complete', 'project-docs-complete', 'project-image-complete',
+  'brand-import', 'style-import', 'dockerfile-save', 'worktree-file-save', 'chat-turn-record',
+  'design-library-write', 'studio-brief-save', 'studio-delete', 'pat-issue',
+  'runtime-launch-prepare', 'runtime-launch-complete',
+  'stage-activation-complete', 'stage-session-start', 'stage-session-update', 'stage-tool-trail-append',
+  'stage-turn-complete', 'stage-handoff-complete', 'stage-forge-prepare', 'stage-forge-complete',
+  'stage-defer-update', 'agent-recovery-transition', 'watchdog-reminder-apply',
+];
+const INTERNAL_OPS = new Set<string>(INTERNAL_OP_NAMES);
+
+export function isInternalOp(value: string): value is InternalOp {
+  return INTERNAL_OPS.has(value);
+}
+
+//? Only operations whose apply is idempotent and whose authoritative entity can be compared against
+//? later processed signals may be replayed. Brand/style imports can conflict with public copy ops;
+//? Dockerfile/worktree writes can conflict with out-of-band filesystem writers. Their typed signals remain
+//? auditable, but they deliberately stay outside this allowlist until they gain an entity CAS/version.
+export const CRASH_REPLAYABLE_INTERNAL_OPS: readonly InternalOp[] = [
+  'studio-artifact-begin',
+  'studio-artifact-complete',
+  'project-docs-complete',
+  'project-image-complete',
+  'chat-turn-record',
+  'design-library-write',
+  'studio-brief-save',
+  'studio-delete',
+  'runtime-launch-complete',
+];
+
+export function internalActionReplayKeys(action: InternalAction): readonly string[] {
+  if (action.op === 'studio-artifact-begin' || action.op === 'studio-artifact-complete') {
+    return [`studio-artifact:${action.target.artifactId}`, `studio-brief:${action.target.briefId}`];
+  }
+  if (action.op === 'studio-delete') {
+    return action.target.artifactId
+      ? [`studio-artifact:${action.target.artifactId}`]
+      : [`studio-brief:${action.target.briefId ?? ''}`];
+  }
+  if (action.op === 'project-docs-complete') return ['project-docs'];
+  if (action.op === 'project-image-complete') return [`project-image:${action.target.projectId}`];
+  if (action.op === 'chat-turn-record') return [`chat:${action.target.userMessageId}`, `chat:${action.target.aiMessageId}`];
+  if (action.op === 'design-library-write') return action.target.artifactId ? [`design-artifact:${action.target.artifactId}`] : [];
+  if (action.op === 'studio-brief-save') return [`studio-brief:${action.target.briefId}`];
+  if (action.op === 'runtime-launch-complete') return [`runtime-launch:${action.target.intentId}`];
+  return [];
+}
+
+export function internalActionFromSignal(input: { workspaceId: string; kind: string; payload: unknown }): InternalAction | null {
+  if (!isInternalOp(input.kind) || !isRecord(input.payload)) return null;
+  const replay = isRecord(input.payload.replay) ? input.payload.replay : input.payload;
+  const candidate: unknown = {
+    workspaceId: input.workspaceId,
+    op: input.kind,
+    userId: input.payload.userId,
+    clientRequestId: input.payload.clientRequestId,
+    target: replay.target,
+    payload: replay.payload,
+  };
+  const [validationError] = tryCatchSync(() => { assertValidInternalAction(candidate); });
+  if (validationError) return null;
+  //? The assertion above runs inside tryCatchSync, so TypeScript cannot retain its narrowing here.
+  //? Repeating this pure bounded validation preserves a cast-free return type.
+  assertValidInternalAction(candidate);
+  return candidate;
+}
 
 type AssertNoPublicOverlap<T extends never> = T;
 export type _InternalOpsAreNotControlOps = AssertNoPublicOverlap<Extract<InternalOp, ControlOp>>;
@@ -487,6 +664,138 @@ export function assertValidInternalAction(action: unknown): asserts action is In
     if (Object.keys(action.target).length > 0 || Object.keys(action.payload).length > 0) {
       throw new Error('[workspace-builtins] target and payload must be empty');
     }
+    return;
+  }
+  if (action.op === 'studio-artifact-begin') {
+    assertRequiredString('target.artifactId', action.target.artifactId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.artifactId)) throw new Error('[internal-op] invalid studio artifact id');
+    assertRequiredString('target.briefId', action.target.briefId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.briefId)) throw new Error('[internal-op] invalid studio brief id');
+    assertRequiredString('payload.kind', action.payload.kind, 40);
+    assertOptionalString('payload.tweak', action.payload.tweak, MAX_STAGE_TEXT_BYTES);
+    return;
+  }
+  if (action.op === 'studio-artifact-complete') {
+    assertRequiredString('target.artifactId', action.target.artifactId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.artifactId)) throw new Error('[internal-op] invalid studio artifact id');
+    assertRequiredString('target.briefId', action.target.briefId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.briefId)) throw new Error('[internal-op] invalid studio brief id');
+    assertRequiredString('payload.kind', action.payload.kind, 40);
+    if (action.payload.status !== 'ready' && action.payload.status !== 'error') throw new Error('[internal-op] invalid studio artifact status');
+    assertOptionalString('payload.title', action.payload.title, 500);
+    assertOptionalString('payload.providerId', action.payload.providerId, 100);
+    if (action.payload.error !== null) assertOptionalString('payload.error', action.payload.error, 1000);
+    if (action.payload.content !== undefined) assertBoundedJson('payload.content', action.payload.content, MAX_STAGE_JSON_BYTES);
+    return;
+  }
+  if (action.op === 'project-docs-complete') {
+    assertString('payload.content', action.payload.content, MAX_DOCUMENT_TEXT_BYTES);
+    assertString('payload.summary', action.payload.summary, 500);
+    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] project docs target must be empty');
+    return;
+  }
+  if (action.op === 'project-image-complete') {
+    assertRequiredString('target.projectId', action.target.projectId);
+    assertRequiredString('payload.tag', action.payload.tag, 1000);
+    return;
+  }
+  if (action.op === 'brand-import') {
+    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] brand import target must be empty');
+    assertBoundedJson('payload.kit', action.payload.kit, MAX_STAGE_JSON_BYTES);
+    return;
+  }
+  if (action.op === 'style-import') {
+    if (Object.keys(action.target).length > 0) throw new Error('[internal-op] style import target must be empty');
+    assertBoundedJson('payload.styles', action.payload.styles, MAX_STAGE_JSON_BYTES);
+    return;
+  }
+  if (action.op === 'dockerfile-save') {
+    assertRequiredString('target.projectId', action.target.projectId);
+    assertString('payload.dockerfile', action.payload.dockerfile, MAX_DOCUMENT_TEXT_BYTES);
+    return;
+  }
+  if (action.op === 'worktree-file-save') {
+    assertRequiredString('target.ticketKey', action.target.ticketKey, 100);
+    assertRequiredString('payload.path', action.payload.path, 4096);
+    assertString('payload.content', action.payload.content, MAX_DOCUMENT_TEXT_BYTES);
+    return;
+  }
+  if (action.op === 'chat-turn-record') {
+    assertRequiredString('target.userMessageId', action.target.userMessageId, 24);
+    assertRequiredString('target.aiMessageId', action.target.aiMessageId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.userMessageId) || !/^[a-f\d]{24}$/i.test(action.target.aiMessageId)) throw new Error('[internal-op] invalid chat message id');
+    assertRequiredString('payload.userText', action.payload.userText, 64_000);
+    assertString('payload.aiText', action.payload.aiText, 64_000);
+    return;
+  }
+  if (action.op === 'design-library-write') {
+    if (action.payload.mode !== 'save' && action.payload.mode !== 'activate' && action.payload.mode !== 'delete') throw new Error('[internal-op] invalid design library mode');
+    const artifactId = action.target.artifactId;
+    if (artifactId !== undefined) {
+      assertString('target.artifactId', artifactId, 24);
+      if (!/^[a-f\d]{24}$/i.test(artifactId)) throw new Error('[internal-op] invalid design artifact id');
+    }
+    if (action.payload.mode === 'save') {
+      if (artifactId === undefined) throw new Error('[internal-op] design library save target is required');
+      assertRequiredString('payload.kind', action.payload.kind, 40);
+      assertRequiredString('payload.name', action.payload.name, 500);
+      assertOptionalString('payload.description', action.payload.description, MAX_STAGE_TEXT_BYTES);
+      assertOptionalString('payload.source', action.payload.source, 40);
+      assertBoundedJson('payload.content', action.payload.content, MAX_STAGE_JSON_BYTES);
+      return;
+    }
+    if (action.target.artifactId === undefined) throw new Error('[internal-op] design library target is required');
+    return;
+  }
+  if (action.op === 'studio-brief-save') {
+    assertRequiredString('target.briefId', action.target.briefId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.briefId)) throw new Error('[internal-op] invalid studio brief id');
+    if (typeof action.payload.create !== 'boolean') throw new Error('[internal-op] invalid studio brief mode');
+    assertOptionalString('payload.projectId', action.payload.projectId, 24);
+    assertRequiredString('payload.name', action.payload.name, 500);
+    assertRequiredString('payload.productName', action.payload.productName, 500);
+    assertString('payload.audience', action.payload.audience, MAX_STAGE_TEXT_BYTES);
+    assertString('payload.tone', action.payload.tone, MAX_STAGE_TEXT_BYTES);
+    assertString('payload.goals', action.payload.goals, MAX_STAGE_TEXT_BYTES);
+    if (action.payload.notes !== null) assertString('payload.notes', action.payload.notes, MAX_STAGE_TEXT_BYTES);
+    return;
+  }
+  if (action.op === 'studio-delete') {
+    if (Object.keys(action.payload).length > 0) throw new Error('[internal-op] studio delete payload must be empty');
+    const briefId = action.target.briefId;
+    const artifactId = action.target.artifactId;
+    if ((briefId === undefined) === (artifactId === undefined)) throw new Error('[internal-op] studio delete requires exactly one target');
+    const id = briefId ?? artifactId;
+    assertRequiredString('studio delete target', id, 24);
+    if (!/^[a-f\d]{24}$/i.test(id)) throw new Error('[internal-op] invalid studio delete target');
+    return;
+  }
+  if (action.op === 'pat-issue') {
+    assertRequiredString('target.patId', action.target.patId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.patId)) throw new Error('[internal-op] invalid PAT id');
+    assertRequiredString('payload.name', action.payload.name, 200);
+    assertRequiredString('payload.tokenHash', action.payload.tokenHash, 64);
+    if (!/^[a-f\d]{64}$/i.test(action.payload.tokenHash)) throw new Error('[internal-op] invalid PAT hash');
+    assertRequiredString('payload.tokenPrefix', action.payload.tokenPrefix, 40);
+    assertStringArray('payload.scopes', action.payload.scopes, 10, 100);
+    return;
+  }
+  if (action.op === 'runtime-launch-prepare' || action.op === 'runtime-launch-complete') {
+    assertRequiredString('target.intentId', action.target.intentId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.intentId)) throw new Error('[internal-op] invalid runtime intent id');
+    assertRequiredString('target.ticketKey', action.target.ticketKey, 100);
+    assertRequiredString('target.projectId', action.target.projectId, 24);
+    if (!/^[a-f\d]{24}$/i.test(action.target.projectId)) throw new Error('[internal-op] invalid runtime project id');
+    if (action.payload.mode !== 'preview-open' && action.payload.mode !== 'preview-close' && action.payload.mode !== 'ref-preview-open' && action.payload.mode !== 'editor-open') throw new Error('[internal-op] invalid runtime mode');
+    if (action.op === 'runtime-launch-prepare') {
+      assertOptionalString('payload.branch', action.payload.branch, 500);
+      assertOptionalString('payload.ref', action.payload.ref, 500);
+      assertOptionalString('payload.image', action.payload.image, 1000);
+      if ((action.payload.mode === 'editor-open' && !action.payload.branch) || (action.payload.mode === 'ref-preview-open' && !action.payload.ref)) throw new Error('[internal-op] runtime intent lacks its immutable input');
+      return;
+    }
+    if (typeof action.payload.ok !== 'boolean') throw new Error('[internal-op] invalid runtime completion');
+    assertOptionalString('payload.error', action.payload.error, 1000);
     return;
   }
   if (action.op === 'stage-activation-complete') {

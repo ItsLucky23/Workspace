@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (209)
+## Decisions (211)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -222,6 +222,8 @@
 | 0289 | Conductor route-write migration seam | 🟢 accepted | conductor, single-writer, tenancy, migration | — | `docs/decisions/0289-conductor-route-write-migration-seam.md` |
 | 0290 | Tenant-scoped proxy, media and egress boundaries | 🟢 accepted | security, tenancy, proxy, media, egress | — | `docs/decisions/0290-tenant-scoped-proxy-media-and-egress-boundaries.md` |
 | 0291 | Budgeted capability-aware Workspace-AI tools | 🟢 accepted | ai, context, rbac, reliability | — | `docs/decisions/0291-budgeted-capability-aware-workspace-ai-tools.md` |
+| 0292 | Typed route jobs use bounded replay and runtime claims | 🟢 accepted | conductor, reliability, jobs, multi-instance | — | `docs/decisions/0292-typed-route-jobs-use-bounded-replay-and-runtime-claims.md` |
+| 0293 | Workspace-AI has no ambiguous later operations | 🟢 accepted | ai, tools, reliability, security | — | `docs/decisions/0293-workspace-ai-has-no-ambiguous-later-operations.md` |
 
 ## Summaries
 
@@ -1912,6 +1914,22 @@ Generated preview, ref-preview, editor and environment route ids/hosts include t
 The catalog remains exhaustive for validation and client dispatch; no verb is added or removed from the frozen surface. For a real chat request, the server filters actions by enabled module, the caller's effective capability vector and availability of every required entity reference. It then ranks the remaining hints against the request and exposes at most 36.
 
 → `docs/decisions/0291-budgeted-capability-aware-workspace-ai-tools.md`
+
+### 0292 — Typed route jobs use bounded replay and runtime claims
+
+**0292** · accepted · tags: conductor, reliability, jobs, multi-instance · 2026-07-21
+
+Workspace route writes use bounded, runtime-validated `InternalOp` payloads persisted in `WorkspaceSignal`. Deterministic Mongo IDs make create-style effects idempotent. The leader recovery sweep reconstructs only an explicit allowlist of idempotent operations and compares entity replay keys against later processed internal signals; a superseded signal is acknowledged without applying its stale payload. File and brand/style operations remain auditable typed signals but are excluded from crash replay until they gain an entity CAS/version that also covers out-of-band writers.
+
+→ `docs/decisions/0292-typed-route-jobs-use-bounded-replay-and-runtime-claims.md`
+
+### 0293 — Workspace-AI has no ambiguous later operations
+
+**0293** · accepted · tags: ai, tools, reliability, security · 2026-07-21
+
+The catalog has only `enabled` and `excluded` outcomes.
+
+→ `docs/decisions/0293-workspace-ai-has-no-ambiguous-later-operations.md`
 
 ## Code governed by decisions
 

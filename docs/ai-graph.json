@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 424,
     "edges": 546,
-    "symbols": 807,
-    "callEdges": 260
+    "symbols": 813,
+    "callEdges": 266
   },
   "nodes": [
     {
@@ -6668,6 +6668,12 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/designerInspiration_v1.ts::firstResultKey",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "firstResultKey",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/designerInspiration_v1.ts::main",
       "file": "workspaces/_api/designerInspiration_v1.ts",
       "name": "main",
@@ -6677,6 +6683,12 @@
       "id": "workspaces/_api/designerInspiration_v1.ts::resolveSide",
       "file": "workspaces/_api/designerInspiration_v1.ts",
       "name": "resolveSide",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerInspiration_v1.ts::saveInspirationArtifacts",
+      "file": "workspaces/_api/designerInspiration_v1.ts",
+      "name": "saveInspirationArtifacts",
       "kind": "function"
     },
     {
@@ -6704,9 +6716,27 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_api/designerLibrary_v1.ts::firstResultKey",
+      "file": "workspaces/_api/designerLibrary_v1.ts",
+      "name": "firstResultKey",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerLibrary_v1.ts::isObjectId",
+      "file": "workspaces/_api/designerLibrary_v1.ts",
+      "name": "isObjectId",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/designerLibrary_v1.ts::main",
       "file": "workspaces/_api/designerLibrary_v1.ts",
       "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/designerLibrary_v1.ts::routeRequestId",
+      "file": "workspaces/_api/designerLibrary_v1.ts",
+      "name": "routeRequestId",
       "kind": "function"
     },
     {
@@ -7482,6 +7512,12 @@
       "file": "workspaces/_api/studioGenerate_v1.ts",
       "name": "complete",
       "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/studioGenerate_v1.ts::firstResultKey",
+      "file": "workspaces/_api/studioGenerate_v1.ts",
+      "name": "firstResultKey",
+      "kind": "function"
     },
     {
       "id": "workspaces/_api/studioGenerate_v1.ts::main",
@@ -10725,7 +10761,27 @@
     },
     {
       "from": "workspaces/_api/designerInspiration_v1.ts::main",
+      "to": "workspaces/_api/designerInspiration_v1.ts::saveInspirationArtifacts"
+    },
+    {
+      "from": "workspaces/_api/designerInspiration_v1.ts::main",
       "to": "workspaces/_api/designerInspiration_v1.ts::str"
+    },
+    {
+      "from": "workspaces/_api/designerInspiration_v1.ts::saveInspirationArtifacts",
+      "to": "workspaces/_api/designerInspiration_v1.ts::firstResultKey"
+    },
+    {
+      "from": "workspaces/_api/designerLibrary_v1.ts::main",
+      "to": "workspaces/_api/designerLibrary_v1.ts::firstResultKey"
+    },
+    {
+      "from": "workspaces/_api/designerLibrary_v1.ts::main",
+      "to": "workspaces/_api/designerLibrary_v1.ts::isObjectId"
+    },
+    {
+      "from": "workspaces/_api/designerLibrary_v1.ts::main",
+      "to": "workspaces/_api/designerLibrary_v1.ts::routeRequestId"
     },
     {
       "from": "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror",
@@ -10772,8 +10828,12 @@
       "to": "workspaces/_api/studioDelete_v1.ts::afterBriefCheck"
     },
     {
-      "from": "workspaces/_api/studioDelete_v1.ts::main",
-      "to": "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief"
+      "from": "workspaces/_api/studioGenerate_v1.ts::complete",
+      "to": "workspaces/_api/studioGenerate_v1.ts::firstResultKey"
+    },
+    {
+      "from": "workspaces/_api/studioGenerate_v1.ts::main",
+      "to": "workspaces/_api/studioGenerate_v1.ts::firstResultKey"
     },
     {
       "from": "workspaces/_data/seed.ts::<module>",
@@ -11742,11 +11802,27 @@
     "workspaces/_api/designerInspiration_v1.ts::enqueueCompareReview": [
       "workspaces/_api/designerInspiration_v1.ts::main"
     ],
+    "workspaces/_api/designerInspiration_v1.ts::firstResultKey": [
+      "workspaces/_api/designerInspiration_v1.ts::main",
+      "workspaces/_api/designerInspiration_v1.ts::saveInspirationArtifacts"
+    ],
     "workspaces/_api/designerInspiration_v1.ts::resolveSide": [
+      "workspaces/_api/designerInspiration_v1.ts::main"
+    ],
+    "workspaces/_api/designerInspiration_v1.ts::saveInspirationArtifacts": [
       "workspaces/_api/designerInspiration_v1.ts::main"
     ],
     "workspaces/_api/designerInspiration_v1.ts::str": [
       "workspaces/_api/designerInspiration_v1.ts::main"
+    ],
+    "workspaces/_api/designerLibrary_v1.ts::firstResultKey": [
+      "workspaces/_api/designerLibrary_v1.ts::main"
+    ],
+    "workspaces/_api/designerLibrary_v1.ts::isObjectId": [
+      "workspaces/_api/designerLibrary_v1.ts::main"
+    ],
+    "workspaces/_api/designerLibrary_v1.ts::routeRequestId": [
+      "workspaces/_api/designerLibrary_v1.ts::main"
     ],
     "workspaces/_api/devLaunchEditor_v1.ts::ensureMirror": [
       "workspaces/_api/devLaunchEditor_v1.ts::main"
@@ -11780,11 +11856,11 @@
       "workspaces/_api/saveDockerfile_v1.tests.ts::run"
     ],
     "workspaces/_api/studioDelete_v1.ts::afterBriefCheck": [
-      "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief",
-      "workspaces/_api/studioDelete_v1.ts::main"
+      "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief"
     ],
-    "workspaces/_api/studioDelete_v1.ts::deleteStudioBrief": [
-      "workspaces/_api/studioDelete_v1.ts::main"
+    "workspaces/_api/studioGenerate_v1.ts::firstResultKey": [
+      "workspaces/_api/studioGenerate_v1.ts::complete",
+      "workspaces/_api/studioGenerate_v1.ts::main"
     ],
     "workspaces/_data/modules.ts::sanitizeSections": [
       "workspaces/_sync/saveSections_server_v1.ts::main"

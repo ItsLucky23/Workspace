@@ -1,11 +1,12 @@
 //? R1 — import a portable style-set JSON into a workspace (upsert by feature+key; never touches builtin
 //? globals). Membership-gated. `styles` is a JSON STRING (as exported by styleExport).
 
+import { createHash } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { importStyleSet } from '../../../server/content/styles';
 import { CAP, hasCapability } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 20;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -13,7 +14,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; styles: string };
+  data: { workspaceId: string; styles: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -24,10 +25,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!(await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workspaceSettings))) return { status: 'error', errorCode: 'auth.forbidden' };
   const [parseErr, parsed] = await functions.tryCatch.tryCatch(() => JSON.parse(styles) as unknown);
   if (parseErr) return { status: 'error', errorCode: 'style.invalidJson' };
-  const written = await enqueueWorkspaceRouteWrite(
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : createHash('sha256').update(styles).digest('hex');
+  const applied = await enqueueInternalAction({
     workspaceId,
-    { kind: 'style.import', userId: user.id },
-    () => importStyleSet(functions.db.prisma, workspaceId, parsed),
-  );
+    op: 'style-import',
+    target: {},
+    payload: { styles: parsed },
+    userId: user.id,
+    clientRequestId: `style-import:${requestId}`,
+  });
+  const written = applied.result !== null && typeof applied.result === 'object' && 'imported' in applied.result && typeof applied.result.imported === 'number'
+    ? applied.result.imported
+    : 0;
   return { status: 'success', result: { imported: written } };
 };

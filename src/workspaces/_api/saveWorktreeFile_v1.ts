@@ -5,12 +5,12 @@
 //? non-user-editable stage — would race the agent's edits on the shared /work worktree, so it is refused.
 /** @docs owner ItsLucky23 */
 
+import { createHash } from 'node:crypto';
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
-import { writeWorktreeFile } from '../../../server/container/worktreeFiles';
-import { ticketEditGuard } from '../../../server/orchestrator/editGuard';
 import { hasCapability, CAP } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -18,7 +18,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; ticketKey: string; path: string; content: string };
+  data: { workspaceId: string; ticketKey: string; path: string; content: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -29,16 +29,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || !ticketKey || !path) return { status: 'error', errorCode: 'api.invalidRequest' };
   const allowed = await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets);
   if (!allowed) return { status: 'error', errorCode: 'auth.forbidden' };
-  const result = await enqueueWorkspaceRouteWrite(
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : createHash('sha256').update(ticketKey).update('\0').update(path).update('\0').update(content).digest('hex');
+  const applied = await enqueueInternalAction({
     workspaceId,
-    { kind: 'worktree-file.save', userId: user.id },
-    async () => {
-      //? Re-check the stage lock INSIDE the writer lease; checking before enqueue left a race where an AI turn
-      //? could start while this edit waited in the queue and both would then write `/work` concurrently.
-      const guard = await ticketEditGuard(functions.db.prisma, workspaceId, ticketKey);
-      if (!guard.allowed) return { ok: false, error: guard.reason ?? 'editor.locked' };
-      return writeWorktreeFile(workspaceId, ticketKey, path, content);
-    },
-  );
+    op: 'worktree-file-save',
+    target: { ticketKey },
+    payload: { path, content },
+    userId: user.id,
+    clientRequestId: `worktree-file-save:${requestId}`,
+  });
+  const result = applied.result !== null && typeof applied.result === 'object' && 'ok' in applied.result && typeof applied.result.ok === 'boolean'
+    ? { ok: applied.result.ok, ...('error' in applied.result && typeof applied.result.error === 'string' ? { error: applied.result.error } : {}) }
+    : { ok: false, error: 'editor.writeFailed' };
   return { status: 'success', result };
 };

@@ -4,7 +4,7 @@ import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';
 import { withStudioBriefLock } from '../../../server/studio/briefLock';
 import { CAP, hasCapability } from '../../../server/control/rbac';
-import { enqueueWorkspaceRouteWrite } from '../../../server/orchestrator/conductor';
+import { enqueueInternalAction } from '../../../server/orchestrator/internalOps';
 
 export const rateLimit: number | false = 30;
 export const httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST';
@@ -12,7 +12,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; briefId?: string; artifactId?: string };
+  data: { workspaceId: string; briefId?: string; artifactId?: string; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -40,17 +40,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   if (!workspaceId || (!briefId && !artifactId) || (briefId && artifactId)) return { status: 'error', errorCode: 'api.invalidRequest' };
   if (!(await hasCapability(functions.db.prisma, workspaceId, user.id, CAP.workTickets))) return { status: 'error', errorCode: 'auth.forbidden' };
 
-  const [deleteError, deleted] = await functions.tryCatch.tryCatch(() => enqueueWorkspaceRouteWrite(
+  const targetId = briefId ?? artifactId ?? '';
+  const suppliedRequestId = data.clientRequestId?.trim();
+  const requestId = suppliedRequestId !== undefined && suppliedRequestId.length > 0 ? suppliedRequestId : targetId;
+  const [deleteError, deleted] = await functions.tryCatch.tryCatch(() => enqueueInternalAction({
     workspaceId,
-    { kind: 'studio.delete', userId: user.id },
-    async () => {
-      if (artifactId) {
-        const result = await functions.db.prisma.studioArtifact.deleteMany({ where: { workspaceId, id: artifactId } });
-        return result.count === 1;
-      }
-      return briefId ? deleteStudioBrief(functions.db.prisma, workspaceId, briefId) : false;
-    },
-  ));
-  if (deleteError || deleted !== true) return { status: 'error', errorCode: 'api.invalidRequest' };
+    op: 'studio-delete',
+    target: { ...(briefId ? { briefId } : {}), ...(artifactId ? { artifactId } : {}) },
+    payload: {},
+    userId: user.id,
+    clientRequestId: `studio-delete:${requestId}`,
+  }));
+  const changed = deleted?.result !== null && typeof deleted?.result === 'object' && 'changed' in deleted.result && deleted.result.changed === true;
+  if (deleteError || !changed) return { status: 'error', errorCode: 'api.invalidRequest' };
   return { status: 'success', result: { ok: true } };
 };

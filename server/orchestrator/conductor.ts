@@ -91,9 +91,14 @@ import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment, rollbackEnvironment } from '../deploy/environment';
 import { promoteEnvironment } from '../deploy/promote';
 import { buildExport } from '../deploy/buildExport';
-import { isEditorRunning } from './editGuard';
+import { isEditorRunning, ticketEditGuard } from './editGuard';
+import { saveDockerfileDraft } from '../container/dockerfileDraft';
+import { writeWorktreeFile } from '../container/worktreeFiles';
 import { acquireSlot, releaseSlot, enqueueDeferred, dequeueDeferredUntil, inFlightByWorkspace, recoveryReservation, withReservationRenewal } from './capacity';
-import { ciPublicIntentId, ciPublicIntentSignalId, stageForgeIntentId } from './actionIds';
+import { ciPublicIntentId, ciPublicIntentSignalId, runtimeLaunchCompletionId, stageForgeIntentId } from './actionIds';
+import { beginArtifact, completeArtifact, isArtifactKind } from '../studio/generate';
+import { withStudioBriefLock } from '../studio/briefLock';
+import { persistProjectDoc } from '../ai/docsGen';
 import { runAgentRecovery } from './agentControl';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastWorkspaceDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
@@ -104,6 +109,7 @@ import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
 import { extractUploadText, isParseableUpload } from '../documents/parseUpload';
 import { resolveTemplate, buildSkeleton, buildTemplateStructure, parseSections } from '../documents/templates';
 import { activeThemeTokens, designTokenCssPath, patchManagedThemeCss } from '../designer/applyTokens';
+import { deleteDesignArtifact, saveDesignArtifact, setActiveDesignArtifact } from '../designer/library';
 import { refreshComments } from '../content/commentInbox';
 import { exportStyleSet, importStyleSet } from '../content/styles';
 import { exportBrandKit, importBrandKit } from '../studio/brand';
@@ -112,7 +118,7 @@ import { fireCronTrigger } from '../automation/cron';
 import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
 import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
-import type { AgentRecoveryTransitionInternalAction, InternalAction, InternalOp, StageDeferUpdateInternalAction } from './internalOps';
+import { CRASH_REPLAYABLE_INTERNAL_OPS, INTERNAL_OP_NAMES, internalActionFromSignal, internalActionReplayKeys, isInternalOp, type AgentRecoveryTransitionInternalAction, type InternalAction, type InternalOp, type StageDeferUpdateInternalAction } from './internalOps';
 import {
   applyStageActivationComplete,
   applyStageDeferUpdate,
@@ -380,6 +386,8 @@ function writerSignalId(action: WriterAction): string | undefined {
   if (action.op === 'stage-forge-prepare') return stageForgeIntentId(action.workspaceId, action.clientRequestId);
   if (action.op === 'agent-recovery-transition' && action.payload.phase === 'prepare') return recoveryIntentId(action.workspaceId, action.clientRequestId);
   if (action.op === 'ci-run' && action.payload.phase === 'prepare') return ciPublicIntentSignalId(action.workspaceId, action.clientRequestId);
+  if (action.op === 'runtime-launch-prepare') return action.target.intentId;
+  if (action.op === 'runtime-launch-complete') return runtimeLaunchCompletionId(action.workspaceId, action.target.intentId);
   return undefined;
 }
 
@@ -401,6 +409,7 @@ function writerSignalPayload(action: WriterAction): ReturnType<typeof jsonInput>
         containerId: action.payload.containerId,
         expectedBranch: action.payload.expectedBranch,
       },
+      replay: { version: 1, target: action.target, payload: action.payload },
     });
   }
   if (action.op === 'agent-recovery-transition' && action.payload.phase === 'prepare') {
@@ -419,6 +428,7 @@ function writerSignalPayload(action: WriterAction): ReturnType<typeof jsonInput>
         expected: action.payload.expected,
         recovery: { runToken: recovery.runToken, runFence: recovery.fence },
       },
+      replay: { version: 1, target: action.target, payload: action.payload },
     });
   }
   if (action.op === 'ci-run' && action.payload.phase === 'prepare') {
@@ -438,6 +448,14 @@ function writerSignalPayload(action: WriterAction): ReturnType<typeof jsonInput>
       },
     });
   }
+  //? Persist full typed input only for the reviewed replay/runtime allowlist. Other internal payloads can
+  //? contain source files, webhook parameters or provider material; their audit signal keeps identity only,
+  //? exactly like public actions, until an explicit credential-free replay contract is added.
+  if (isInternalOp(action.op) && (
+    CRASH_REPLAYABLE_INTERNAL_OPS.includes(action.op)
+    || action.op === 'runtime-launch-prepare'
+    || action.op === 'runtime-launch-complete'
+  )) return jsonInput({ ...base, version: 1, target: action.target, payload: action.payload });
   return jsonInput(base);
 }
 
@@ -1222,6 +1240,79 @@ export async function runExtractRecovery(): Promise<{ revived: number }> {
   return { revived: stale.length };
 }
 
+export const ROUTE_JOB_RECOVERY_MS = Math.max(60_000, Number(process.env.WS_ROUTE_JOB_RECOVERY_MIN ?? '1') * 60_000);
+const ROUTE_JOB_STALE_MS = 30_000;
+
+//? Typed route completions persist their complete bounded action in WorkspaceSignal before execution.
+//? This leader-only sweep reconstructs an action after a process crash and replays it under the normal
+//? tenant lease/writer context. Every allow-listed handler is idempotent (deterministic create, CAS or upsert).
+export async function runRouteJobRecovery(now = Date.now()): Promise<{ replayed: number; superseded: number; failed: number }> {
+  const rows = await prisma.workspaceSignal.findMany({
+    where: {
+      OR: [{ processedAt: null }, { processedAt: { isSet: false } }],
+      kind: { in: [...CRASH_REPLAYABLE_INTERNAL_OPS] },
+      createdAt: { lte: new Date(now - ROUTE_JOB_STALE_MS) },
+    },
+    select: { id: true, workspaceId: true, seq: true, kind: true, payload: true },
+    orderBy: { createdAt: 'asc' },
+    take: 100,
+  });
+  let replayed = 0;
+  let superseded = 0;
+  let failed = 0;
+  for (const row of rows) {
+    const action = internalActionFromSignal(row);
+    const replayKeys = action ? internalActionReplayKeys(action) : [];
+    if (!action || !CRASH_REPLAYABLE_INTERNAL_OPS.includes(action.op) || replayKeys.length === 0) {
+      failed += 1;
+      continue;
+    }
+    const previous = wsChains.get(row.workspaceId) ?? Promise.resolve();
+    const replay = previous.then(() => withWorkspaceLease(row.workspaceId, async (lease) => {
+      await runInTenant(row.workspaceId, async () => {
+        const pending = await prisma.workspaceSignal.findFirst({
+          where: { id: row.id, workspaceId: row.workspaceId, OR: [{ processedAt: null }, { processedAt: { isSet: false } }] },
+          select: { id: true },
+        });
+        if (!pending) return;
+        //? A process can restart, accept a newer write, and only then reach this sweep. Never let the old
+        //? completion overwrite that newer state. Read the earliest bounded window of later processed
+        //? internal signals; if the window overflows, fail conservatively by treating the old job as stale.
+        const later = await prisma.workspaceSignal.findMany({
+          where: { workspaceId: row.workspaceId, seq: { gt: row.seq }, kind: { in: [...INTERNAL_OP_NAMES] }, processedAt: { not: null } },
+          select: { workspaceId: true, kind: true, payload: true },
+          orderBy: { seq: 'asc' },
+          take: 5001,
+        });
+        const replayKeySet = new Set(replayKeys);
+        const hasNewerEntityWrite = later.length > 5000 || later.some((candidate) => {
+          const laterAction = internalActionFromSignal(candidate);
+          return laterAction !== null && internalActionReplayKeys(laterAction).some((key) => replayKeySet.has(key));
+        });
+        if (hasNewerEntityWrite) {
+          lease.assertHeld();
+          await markWorkspaceSignalProcessed(row.workspaceId, row.id);
+          superseded += 1;
+          return;
+        }
+        const result = await runInWriterContext(row.workspaceId, async () => {
+          lease.assertHeld();
+          return executeAction(action);
+        }, lease, `replay:${row.id}`);
+        lease.assertHeld();
+        if (writerActionWasApplied(result) || isControlActionFailure(result)) {
+          await markWorkspaceSignalProcessed(row.workspaceId, row.id);
+        }
+        replayed += 1;
+      });
+    }));
+    wsChains.set(row.workspaceId, replay.catch((error: unknown) => { console.error(`[conductor] route job replay ${row.id} failed:`, error); }));
+    const [replayError] = await tryCatch(() => replay);
+    if (replayError) failed += 1;
+  }
+  return { replayed, superseded, failed };
+}
+
 //? SEC1/SEC2 (COMPLETION FASE SEC) — RBAC-hardening helpers. Positional capability indices
 //? mirror `server/control/rbac.ts` CAP (promoteAdmin=5, demoteAdmin=6, ownerActions=7).
 const CAP_PROMOTE_ADMIN = 5;
@@ -1257,6 +1348,178 @@ async function executeAction(action: WriterAction): Promise<unknown> {
   if (action.op === 'stage-defer-update') return applyStageDeferUpdate(prisma, action.workspaceId, action);
   if (action.op === 'agent-recovery-transition') return applyAgentRecoveryTransition(prisma, action.workspaceId, action);
   if (action.op === 'watchdog-reminder-apply') return applyWatchdogReminder(prisma, action.workspaceId, action);
+  if (action.op === 'studio-artifact-begin') {
+    if (!isArtifactKind(action.payload.kind)) return { ok: false, error: 'studio.invalidKind' };
+    const begun = await beginArtifact(prisma, {
+      workspaceId: action.workspaceId,
+      briefId: action.target.briefId,
+      kind: action.payload.kind,
+      ...(action.payload.tweak ? { tweak: action.payload.tweak } : {}),
+    }, { artifactId: action.target.artifactId });
+    return begun.ok ? { keys: [action.target.artifactId], artifactId: action.target.artifactId } : begun;
+  }
+  if (action.op === 'studio-artifact-complete') {
+    if (!isArtifactKind(action.payload.kind)) return { ok: false, error: 'studio.invalidKind' };
+    const changed = await completeArtifact(prisma, action.target.artifactId, {
+      workspaceId: action.workspaceId,
+      briefId: action.target.briefId,
+      kind: action.payload.kind,
+    }, {
+      status: action.payload.status,
+      ...(action.payload.title === undefined ? {} : { title: action.payload.title }),
+      ...(action.payload.content === undefined ? {} : { content: asJsonValue(action.payload.content) }),
+      ...(action.payload.providerId === undefined ? {} : { providerId: action.payload.providerId }),
+      ...(action.payload.error === undefined ? {} : { error: action.payload.error }),
+    });
+    return { applied: true, changed, keys: [action.target.artifactId] };
+  }
+  if (action.op === 'project-docs-complete') {
+    await persistProjectDoc(prisma, { workspaceId: action.workspaceId, content: action.payload.content, summary: action.payload.summary });
+    return { applied: true };
+  }
+  if (action.op === 'project-image-complete') {
+    const updated = await prisma.project.updateMany({
+      where: { workspaceId: action.workspaceId, id: action.target.projectId },
+      data: { baseImageRef: action.payload.tag },
+    });
+    return updated.count === 1 ? { applied: true } : { ok: false, error: 'project.notFound' };
+  }
+  if (action.op === 'brand-import') {
+    const imported = await importBrandKit(prisma, action.workspaceId, action.payload.kit);
+    return imported ? { applied: true } : { ok: false, error: 'brand.invalidKit' };
+  }
+  if (action.op === 'style-import') {
+    const imported = await importStyleSet(prisma, action.workspaceId, action.payload.styles);
+    return { applied: true, imported };
+  }
+  if (action.op === 'dockerfile-save') {
+    return saveDockerfileDraft(action.workspaceId, action.target.projectId, action.payload.dockerfile);
+  }
+  if (action.op === 'worktree-file-save') {
+    const guard = await ticketEditGuard(prisma, action.workspaceId, action.target.ticketKey);
+    if (!guard.allowed) return { ok: false, error: guard.reason ?? 'editor.locked' };
+    return writeWorktreeFile(action.workspaceId, action.target.ticketKey, action.payload.path, action.payload.content);
+  }
+  if (action.op === 'chat-turn-record') {
+    const identities = [
+      { id: action.target.userMessageId, role: 'user', text: action.payload.userText },
+      { id: action.target.aiMessageId, role: 'ai', text: action.payload.aiText },
+    ];
+    const existing = await prisma.workspaceChatMessage.findMany({ where: { id: { in: identities.map((entry) => entry.id) } } });
+    for (const row of existing) {
+      const expected = identities.find((entry) => entry.id === row.id);
+      if (!expected || row.workspaceId !== action.workspaceId || row.userId !== action.userId || row.role !== expected.role || row.text !== expected.text) {
+        throw new Error('[conductor] chat message identity collision');
+      }
+    }
+    const existingIds = new Set(existing.map((row) => row.id));
+    for (const entry of identities) {
+      if (!existingIds.has(entry.id)) {
+        await prisma.workspaceChatMessage.create({ data: { id: entry.id, workspaceId: action.workspaceId, userId: action.userId, role: entry.role, text: entry.text } });
+      }
+    }
+    return { applied: true };
+  }
+  if (action.op === 'design-library-write') {
+    if (action.payload.mode === 'save') {
+      const id = await saveDesignArtifact(prisma, action.workspaceId, {
+        ...(action.target.artifactId ? { id: action.target.artifactId } : {}),
+        kind: action.payload.kind ?? '',
+        name: action.payload.name ?? '',
+        ...(action.payload.description === undefined ? {} : { description: action.payload.description }),
+        content: action.payload.content,
+        ...(action.payload.source === undefined ? {} : { source: action.payload.source }),
+      });
+      return id ? { applied: true, keys: [id] } : { ok: false, error: 'design.notFound' };
+    }
+    const artifactId = action.target.artifactId;
+    if (!artifactId) return { ok: false, error: 'design.notFound' };
+    if (action.payload.mode === 'activate') {
+      const activated = await setActiveDesignArtifact(prisma, action.workspaceId, artifactId);
+      return activated ? { applied: true, keys: [artifactId] } : { ok: false, error: 'design.notFound' };
+    }
+    await deleteDesignArtifact(prisma, action.workspaceId, artifactId);
+    return { applied: true, keys: [artifactId] };
+  }
+  if (action.op === 'studio-brief-save') {
+    const fields = {
+      name: action.payload.name,
+      productName: action.payload.productName,
+      audience: action.payload.audience,
+      tone: action.payload.tone,
+      goals: action.payload.goals,
+      notes: action.payload.notes,
+      ...(action.payload.projectId ? { projectId: action.payload.projectId } : {}),
+    };
+    if (!action.payload.create) {
+      const updated = await prisma.studioBrief.updateMany({ where: { workspaceId: action.workspaceId, id: action.target.briefId }, data: fields });
+      return updated.count === 1 ? { applied: true, keys: [action.target.briefId] } : { ok: false, error: 'studio.briefNotFound' };
+    }
+    const existing = await prisma.studioBrief.findUnique({ where: { id: action.target.briefId } });
+    if (existing) {
+      return existing.workspaceId === action.workspaceId
+        ? { applied: true, keys: [existing.id] }
+        : { ok: false, error: 'studio.briefIdentityCollision' };
+    }
+    const created = await prisma.studioBrief.create({ data: { id: action.target.briefId, workspaceId: action.workspaceId, ...fields } });
+    return { applied: true, keys: [created.id] };
+  }
+  if (action.op === 'studio-delete') {
+    if (action.target.artifactId) {
+      const deleted = await prisma.studioArtifact.deleteMany({ where: { workspaceId: action.workspaceId, id: action.target.artifactId } });
+      return { applied: true, changed: deleted.count === 1, keys: [action.target.artifactId] };
+    }
+    const briefId = action.target.briefId;
+    if (!briefId) return { ok: false, error: 'studio.briefNotFound' };
+    return withStudioBriefLock(action.workspaceId, briefId, async () => {
+      const brief = await prisma.studioBrief.findFirst({ where: { workspaceId: action.workspaceId, id: briefId }, select: { id: true } });
+      if (!brief) return { applied: true, changed: false, keys: [briefId] };
+      await prisma.studioArtifact.deleteMany({ where: { workspaceId: action.workspaceId, briefId } });
+      const deleted = await prisma.studioBrief.deleteMany({ where: { workspaceId: action.workspaceId, id: briefId } });
+      return { applied: true, changed: deleted.count === 1, keys: [briefId] };
+    });
+  }
+  if (action.op === 'pat-issue') {
+    const existing = await prisma.personalAccessToken.findUnique({ where: { id: action.target.patId } });
+    if (existing) {
+      const exact = existing.workspaceId === action.workspaceId && existing.userId === action.userId
+        && existing.tokenHash === action.payload.tokenHash && existing.tokenPrefix === action.payload.tokenPrefix;
+      return exact ? { applied: true, keys: [existing.id] } : { ok: false, error: 'pat.identityCollision' };
+    }
+    const created = await prisma.personalAccessToken.create({
+      data: {
+        id: action.target.patId,
+        userId: action.userId,
+        workspaceId: action.workspaceId,
+        name: action.payload.name,
+        tokenHash: action.payload.tokenHash,
+        tokenPrefix: action.payload.tokenPrefix,
+        scopes: action.payload.scopes,
+      },
+    });
+    return { applied: true, keys: [created.id] };
+  }
+  if (action.op === 'runtime-launch-prepare') {
+    const ticket = await prisma.ticket.findFirst({
+      where: { workspaceId: action.workspaceId, projectId: action.target.projectId, key: action.target.ticketKey, archived: false },
+      select: { branch: true },
+    });
+    if (!ticket) return { ok: false, error: 'runtime.ticketNotFound' };
+    if (action.payload.mode !== 'preview-close' && !ticket.branch) return { ok: false, error: 'runtime.ticketNotActivated' };
+    if (action.payload.branch !== undefined && ticket.branch !== action.payload.branch) return { ok: false, error: 'runtime.staleBranch' };
+    if (action.payload.mode === 'editor-open') {
+      const guard = await ticketEditGuard(prisma, action.workspaceId, action.target.ticketKey);
+      if (!guard.allowed) return { ok: false, error: guard.reason ?? 'editor.locked' };
+    }
+    return { applied: true, keys: [action.target.ticketKey] };
+  }
+  if (action.op === 'runtime-launch-complete') {
+    const prepared = await prisma.workspaceSignal.findFirst({
+      where: { id: action.target.intentId, workspaceId: action.workspaceId, kind: 'runtime-launch-prepare', processedAt: { not: null } },
+      select: { id: true },
+    });
+    return prepared ? { applied: true, keys: [action.target.ticketKey] } : { ok: false, error: 'runtime.intentNotPrepared' };
+  }
   if (action.op === 'ci-public-complete') return applyPublicCiComplete(prisma, action.workspaceId, action);
   if (action.op === 'automation-event-apply') {
     return applyAutomationEvent(prisma, action.workspaceId, action.payload.event, action.payload.depth);

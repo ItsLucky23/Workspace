@@ -65,7 +65,7 @@ export default function Interviewer() {
     setDraft('');
     setBusy(true);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}) } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}), clientRequestId: globalThis.crypto.randomUUID() } }));
       setMessages((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) return { ...m, pending: false, text: translate({ key: 'workspaces.interviewer.error' }) };

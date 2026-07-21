@@ -42,6 +42,10 @@ export const KIND_META: Record<ArtifactKind, { role: StudioRole; feature: AiFeat
 };
 export const ARTIFACT_KINDS: readonly ArtifactKind[] = ['landing', 'component', 'brand', 'copy', 'strategy', 'email', 'ads', 'social', 'names', 'thumbnail', 'videoScript'];
 
+export function isArtifactKind(value: string): value is ArtifactKind {
+  return (ARTIFACT_KINDS as readonly string[]).includes(value);
+}
+
 //? The workspace's central brand library (ADR 0013 G-MKT-2), folded into every prompt so all
 //? artifacts stay on-brand. Null when the workspace hasn't set one yet.
 export interface BrandContext { palette: { name: string; hex: string }[]; typography: { heading: string; body: string }; voice: string; taglines: string[] }
@@ -182,7 +186,15 @@ export function applyRefine(prompt: string, tweak?: string): string {
 }
 
 export interface GenerateInput { workspaceId: string; briefId: string; kind: ArtifactKind; tweak?: string }
-export interface BeginArtifactDependencies { afterBriefCheck?: () => Promise<void> }
+export interface BeginArtifactDependencies { afterBriefCheck?: () => Promise<void>; artifactId?: string }
+
+export interface StudioArtifactCompletion {
+  title?: string;
+  content?: Prisma.InputJsonValue;
+  providerId?: string;
+  status: 'ready' | 'error';
+  error?: string | null;
+}
 
 //? A Mongo ObjectId is exactly 24 hex chars — guard the shape BEFORE the lock/lookup (mirrors
 //? server/orchestrator/projectResolve.ts) so a malformed briefId resolves to "not found" instead of
@@ -192,7 +204,7 @@ const isObjectId = (s: string): boolean => /^[0-9a-fA-F]{24}$/.test(s);
 
 //? Complete only the placeholder created for this workspace/brief while it is still generating. This
 //? compare-and-set makes a deleted artifact and a duplicate/stale detached completion harmless.
-export async function completeArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, data: Prisma.StudioArtifactUpdateManyMutationInput): Promise<boolean> {
+export async function completeArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, data: StudioArtifactCompletion): Promise<boolean> {
   const updated = await prisma.studioArtifact.updateMany({
     where: { id: artifactId, workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, status: 'generating' },
     data,
@@ -214,8 +226,16 @@ export async function beginArtifact(
     if (!brief) return { ok: false, error: 'studio.briefNotFound' };
     await dependencies.afterBriefCheck?.();
     const meta = KIND_META[input.kind];
+    if (dependencies.artifactId) {
+      const existing = await prisma.studioArtifact.findUnique({ where: { id: dependencies.artifactId } });
+      if (existing) {
+        return existing.workspaceId === input.workspaceId && existing.briefId === input.briefId && existing.kind === input.kind
+          ? { ok: true, artifactId: existing.id }
+          : { ok: false, error: 'studio.artifactIdentityCollision' };
+      }
+    }
     const art = await prisma.studioArtifact.create({
-      data: { workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
+      data: { ...(dependencies.artifactId ? { id: dependencies.artifactId } : {}), workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
     });
     return { ok: true, artifactId: art.id };
   }));
@@ -226,7 +246,7 @@ export async function beginArtifact(
 //? ready/error, then broadcast so every client refetches the snapshot. Call DETACHED (fire-and-forget)
 //? from the route for an async return, or awaited via `generateArtifact` for the synchronous callers.
 export interface FinishArtifactDependencies {
-  complete?: (artifactId: string, input: GenerateInput, data: Prisma.StudioArtifactUpdateManyMutationInput) => Promise<boolean>;
+  complete?: (artifactId: string, input: GenerateInput, data: StudioArtifactCompletion) => Promise<boolean>;
 }
 
 export async function finishArtifact(prisma: PrismaClient, artifactId: string, input: GenerateInput, dependencies: FinishArtifactDependencies = {}): Promise<GenerateResult> {

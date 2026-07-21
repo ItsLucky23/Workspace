@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `c089a907e6c846bd` · 17 capabilities · 209 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `87d01e1d68a0bbb8` · 17 capabilities · 211 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -235,3 +235,5 @@
 - `adr-0289` Conductor route-write migration seam
 - `adr-0290` Tenant-scoped proxy, media and egress boundaries
 - `adr-0291` Budgeted capability-aware Workspace-AI tools
+- `adr-0292` Typed route jobs use bounded replay and runtime claims
+- `adr-0293` Workspace-AI has no ambiguous later operations

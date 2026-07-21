@@ -159,7 +159,7 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
     };
     //? #25 — a raw ref goes through open-ref-preview; commit/revert/asof through timeTravelPreview.
     if (spec.kind === 'ref') {
-      void apiRequest({ name: 'workspaces/openRefPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, ref: spec.value } }).then(settle);
+      void apiRequest({ name: 'workspaces/openRefPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, ref: spec.value, clientRequestId: globalThis.crypto.randomUUID() } }).then(settle);
       return;
     }
     void apiRequest({ name: 'workspaces/timeTravelPreview', version: 'v1', data: { workspaceId: ctx.activeWorkspace.id, ticketKey: ticket.id, branch: ticket.branch ?? 'main', spec } }).then(settle);
